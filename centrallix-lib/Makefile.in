@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.13 2004/08/29 02:07:14 jorupp Exp $
+## $Id: Makefile.in,v 1.14 2004/09/09 03:06:48 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -96,12 +96,20 @@ src/mtask.lo: src/mtask.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 libCentrallix.so:	$(DYNAMICFILES)
-	$(CC) $(CFLAGS) -shared -fPIC $(DYNAMICFILES) -o libCentrallix.so ${LIBS}
+	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,libCentrallix.so $(DYNAMICFILES) -o libCentrallix.so ${LIBS}
 
 libCentrallix.a:	$(STATICFILES)
 	$(AR) -r libCentrallix.a $(STATICFILES)
 	$(AR) -s libCentrallix.a
 	${RANLIB} libCentrallix.a
+
+libStParse.so:		src/stparse.lo
+	$(CC) $(CFLAGS) -shared -fPIC -Wl,-soname,libStParse.so src/stparse.lo -o libStParse.so ${LIBS}
+
+libStParse.a:		src/stparse.o
+	$(AR) -r libStParse.a src/stparse.o
+	$(AR) -s libStParse.a
+	${RANLIB} libStParse.a
 
 install: all
 	mkdir -p "$(includedir)"

@@ -33,7 +33,8 @@ AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
-FINAL_TARGETS="libCentrallix.a"
+CXLIBVER="0.7.4"
+FINAL_TARGETS="libCentrallix.a libStParse.a"
 
 dnl Check for makedepend
 CHECK_MAKEDEPEND
@@ -56,5 +57,6 @@ SHARED_LIBCENTRALLIX
 
 AC_SUBST(PROFILE)
 AC_SUBST(FINAL_TARGETS)
+AC_SUBST(CXLIBVER)
     
 AC_OUTPUT(Makefile, echo timestamp > stamp-h)
