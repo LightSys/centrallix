@@ -60,7 +60,6 @@ checkbox_test "widget/page"
 		</actions>
 		<sample>
 		<![CDATA[
-
 $Version=2$
 // Here's our connector.Imagine that this is embedded within a treeview
 // and references an 'html' control called 'ht1' somewhere else on the page.
@@ -77,7 +76,6 @@ cn1 "widget/connector"
 	// The Source for LoadPage is the Pathname from ClickItem.
 	Source = "Pathname";
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -114,7 +112,6 @@ my_editbox "widget/editbox"
 	bgcolor = "white";
 	x = 10; y = 10; width=100; height=19;
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -148,7 +145,6 @@ mySoundPlayer "widget/execmethod"
 	method = "Play";
 	parameter = "/data/Welcome.wav";
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -337,7 +333,6 @@ HTMLArea "widget/html"
 		</actions>
 		<sample>
 		<![CDATA[
-
 $Version=2$
 MyButton "widget/htmlwindow"
 	{
@@ -378,7 +373,6 @@ MyButton "widget/htmlwindow"
 		</actions>
 		<sample>
 		<![CDATA[
-
 $Version=2$
 MyButton "widget/imagebutton"
 	{
@@ -430,7 +424,6 @@ myMenu "widget/menu"
 	b2 "widget/textbutton" { x = 0; y = 0; width=70; height=24;text="Two"; }
 	b3 "widget/textbutton" { x = 0; y = 0; width=70; height=24;text="Three"; }
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -491,7 +484,6 @@ MyPage "widget/page"
 	bgcolor = "white";
 	textcolor = "black";
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -526,7 +518,6 @@ mypane "widget/pane"
 	style = "raised";
 	bgcolor = "#c0c0c0";
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -573,7 +564,6 @@ testradio "widget/radiobuttonpanel"
 	label1 "widget/radiobutton" { label="basketball";selected="true"; }
 	label2 "widget/radiobutton" { label="is fun"; }
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -645,7 +635,6 @@ testradio "widget/radiobuttonpanel"
 		</actions>
 		<sample>
 		<![CDATA[
-
 $Version=2$
 MyScrollPane "widget/scrollpane"
 	{
@@ -664,7 +653,6 @@ MyScrollPane "widget/scrollpane"
 		source = "/";
 		}
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -698,7 +686,6 @@ MyScrollPane "widget/scrollpane"
 		</actions>
 		<sample>
 		<![CDATA[
-
 $Version=2$
 // Here's a tab control with two tab pages.
 myTabControl "widget/tab"
@@ -771,7 +758,6 @@ tblFileList "widget/table"
 	name "widget/table-column" { title="Object Name";width=20; }
 	annotation "widget/table-column" { title="Annotation"; width=25; }
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -804,7 +790,6 @@ tblFileList "widget/table"
 		</actions>
 		<sample>
 		<![CDATA[
-
 $Version=2$
 MyButton "widget/textbutton"
 	{
@@ -867,7 +852,6 @@ mytimerTwo "widget/timer"
 		Time="500"; AutoReset="0";
 		}
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -941,7 +925,6 @@ counter "widget/variable"
 	{
 	value = 0;
 	}
-
 		]]>
 		</sample>
 	</widget>

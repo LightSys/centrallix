@@ -17,9 +17,9 @@
 	<h1>Centrallix Application<br/>Widget<br/>Reference</h1>
 	<br/>
 	<p>This guide contains a basic overview and specification of each of the widgets that Centrallix supports, including a handful of planned (but not yet implemented or not fully implemented) widgets.</p>
-	<p>Each widget can have properties, child properties, events, and actions.=  Properties define how the widget behaves, appears, and is constructed. Child properties usually define how a widget contained within the given widget relates to its parent. Such properties are normally managed by the containing (parent) widget rather than by the child, and many times the child widget cannot exist without its parent.Events enable a widget to have an &quot;influence&quot; on the other widgets on the page, and are utilized by placing a &quot;connector&quot; widget within the given widget.The connector routes an event's firing to the activation of an &quot;action&quot; on some other widget on the page.Actions are &quot;methods&quot; on widgets which cause the widget to do something or change its appearance in some way.</p>
-	<p>The &quot;overview&quot; section for each widget describes the widget's purpose and how it operates.A &quot;usage&quot; section is provided to show the appropriate contexts for the use of the widget in a real application.</p>
-	<p>Where possible, sample code is provided for each widget to show how the widget can be used.In most cases the widget's code is displayed in isolation, although widgets can never be used outside of a &quot;widget/page&quot;container widget at some level. In a few cases, a more complete mini-application is shown.</p>
+	<p>Each widget can have properties, child properties, events, and actions.=  Properties define how the widget behaves, appears, and is constructed. Child properties usually define how a widget contained within the given widget relates to its parent. Such properties are normally managed by the containing (parent) widget rather than by the child, and many times the child widget cannot exist without its parent.Events enable a widget to have an "influence" on the other widgets on the page, and are utilized by placing a "connector" widget within the given widget.The connector routes an event's firing to the activation of an "action" on some other widget on the page.Actions are "methods" on widgets which cause the widget to do something or change its appearance in some way.</p>
+	<p>The "overview" section for each widget describes the widget's purpose and how it operates.A "usage" section is provided to show the appropriate contexts for the use of the widget in a real application.</p>
+	<p>Where possible, sample code is provided for each widget to show how the widget can be used.In most cases the widget's code is displayed in isolation, although widgets can never be used outside of a "widget/page"container widget at some level. In a few cases, a more complete mini-application is shown.</p>
 	<p>Copyright (c)  1998-2002 LightSys Technology Services, Inc.</p>
 	<br/>
 	<p><b>Documentation on the following widgets is available:</b></p>
@@ -143,9 +143,14 @@
 
 <xsl:template match="sample">
 	<h3 class="sample">Sample Code:</h3>
-	<pre>
-	<xsl:apply-templates />
-	</pre>
+	<xsl:if test="string-length(normalize-space(string()))">
+		<pre>
+		<xsl:apply-templates />
+		</pre>
+	</xsl:if>
+	<xsl:if test="not(string-length(normalize-space(string())))">
+		<p class="none">none currently available</p>
+	</xsl:if>
 </xsl:template>
 
 
