@@ -34,12 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.1 2001/08/13 18:00:52 gbeeley Exp $
+    $Id: expression.h,v 1.2 2001/10/02 16:23:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
-    Revision 1.1  2001/08/13 18:00:52  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/02 16:23:50  gbeeley
+    Added expGenerateText().
+
+    Revision 1.1.1.1  2001/08/13 18:00:52  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -125,6 +128,8 @@ typedef struct _ET
 
 #define	EXPR_OBJID_CURRENT	(-2)
 #define EXPR_OBJID_PARENT	(-3)
+
+#define EXPR(x) ((pExpression)(x))
 
 
 /** parameter-object listing structure **/
@@ -212,6 +217,9 @@ int expFreeExpression(pExpression this);
 pExpression expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflags);
 pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags);
 pExpression expLinkExpression(pExpression this);
+
+/*** Generator functions ***/
+int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char);
 
 /*** Internal Functions ***/
 pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);
