@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.2  2002/03/09 06:39:14  jorupp
+    * Added ViewDOM action to alerter
+        pass object to display as parameter
+
     Revision 1.1  2002/03/08 02:07:13  jorupp
     * initial commit of alerter widget
     * build callback listing object for form
@@ -105,8 +109,101 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    window.confirm(sendthis[\"param\"]);\n"
 		"    }\n", 0);
+#if 0
+	Example Connector parameters for using ActionViewDOM
+	    event="Click";
+	    target="alerter";
+	    action="ConfirmDOM";
+	    param="eval(prompt(\"variable\",\"navBtn1\"))";
+		or
+	    param="(navBtn1)";
 
+	note that global variables can be used (second example),
+	  but a paren must be present somewhere in the call
+#endif
 
+	htrAddScriptFunction(s, "alrt_action_view_DOM", "\n"
+		"function alrt_action_view_DOM(param)\n"
+		"    {\n"
+		"    var walkthis=param[\"param\"];\n"
+		/*
+		"    var funcbehav;\n"
+		"    if(typeof(param[\"param\"])==\"array\")\n"
+		"        {\n"
+		"        walkthis=param[\"param\"][0];\n"
+		"        funcbehav=param[\"param\"][1];\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        walkthis=param[\"param\"];\n"
+		"        funcbehav=1;\n"
+		"        }\n"
+		*/
+		"    var DOM=alrt_walk_DOM(walkthis,\"Base Object\",\"Unknown\",0);\n"
+		"    var win=window.open();\n"
+		"    win.document.write(\"<PRE>\"+DOM+\"</PRE>\\n\");\n"
+		"    win.document.close();\n"
+		"    delete DOM\n"
+		"    }\n", 0);
+	htrAddScriptFunction(s, "alrt_walk_DOM", "\n"
+		"function alrt_walk_DOM(walkthis,name,type,depth)\n"
+		"    {\n"
+		"    if(depth>=7)\n" /* no inf loop */
+		"        return \"\";\n"
+		"    if(typeof(walkthis)==\"function\")\n"
+		"        {\n"
+		"        return \"<LI>\"+name+\" (\"+type+\"): <small>\"+walkthis+\"</small></LI>\\n\"\n"
+		/*
+		"        if(funcbehav==1)\n"
+		"            {\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            var fname=String(walkthis).exec(/function ([^(]) ?/);\n"
+		"            confirm(fname);\n"
+		"            return \"<LI>\"+name+\" (\"+type+\"): \"+fname[1]+\"</LI>\\n\"\n"
+		"            }\n"
+		*/
+		"        }\n"
+		"    if(typeof(walkthis)!=\"object\" && typeof(walkthis)!=\"array\")\n"
+		"        {\n"
+		"        return \"<LI>\"+name+\" (\"+type+\"): \"+walkthis+\"</LI>\\n\";\n"
+		"        }\n"
+		"    var ret=\"<LI>\"+name+\": </LI>\\n<UL>\\n\";\n"
+		"    for(var i in walkthis)\n"
+		"        {\n"
+		"        if(\n"	/* don't walk into the following..... */
+		"            ((/parent/i).test(i)) || \n"
+		"            ((/form/i).test(i)) || \n"
+		"            ((/document/i).test(i)) || \n"
+		"            ((/osrc/i).test(i)) || \n"
+		"            ((/above/i).test(i)) || \n"
+		"            ((/below/i).test(i)) || \n"
+		"            ((/window/i).test(i)) )\n"
+		"            {\n"
+		"            ret+=\"<LI>\"+name+\" (\"+type+\"): <small>recursive</small></LI>\\n\";\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            ret+=alrt_walk_DOM(walkthis[i],i,typeof(walkthis[i]),depth+1);\n"
+		"            }\n"
+		"        }\n"
+		"    ret+=\"</UL>\\n\";\n"
+		"    return ret;\n"
+		"    }\n", 0);
+
+#if 0
+		"function alrt_search(arr,obj)\n"
+		"    {\n"
+		"    for(var i in arr)\n"
+		"        {\n"
+		"        if(arr[i]==obj)\n"
+		"            return 1;\n"
+		"        }\n"
+		"    return 0;\n"
+		"    }\n", 0);
+#endif
+	
 	/** Alert initializer **/
 	htrAddScriptFunction(s, "alrt_init", "\n"
 		"function alrt_init()\n"
@@ -114,6 +211,7 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    alrt = new Object();\n"
 		"    alrt.ActionAlert = alrt_action_alert;\n"
 		"    alrt.ActionConfirm = alrt_action_confirm;\n"
+		"    alrt.ActionViewDOM = alrt_action_view_DOM;\n"
 		"    return alrt;\n"
 		"    }\n",0);
 
@@ -148,6 +246,8 @@ htalrtInitialize()
 	htrAddParam(drv,"Alert","Parameter",DATA_T_STRING);
 	htrAddAction(drv,"Confirm");
 	htrAddParam(drv,"Confirm","Parameter",DATA_T_STRING);
+	htrAddAction(drv,"ViewDOM");
+	htrAddParam(drv,"ViewDOM","Paramater",DATA_T_STRING);
 
 
 	/** Register. **/
