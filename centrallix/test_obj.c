@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.7 2002/05/02 01:14:56 gbeeley Exp $
+    $Id: test_obj.c,v 1.8 2002/06/01 19:08:46 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.8  2002/06/01 19:08:46  mattphillips
+    A littl ebit of code cleanup...  getting rid of some compiler warnings.
+
     Revision 1.7  2002/05/02 01:14:56  gbeeley
     Added dynamic module loading support in Centrallix, starting with the
     Sybase driver, using libdl.
@@ -89,25 +92,22 @@
 
 void* my_ptr;
 
-
+#define BUFF_SIZE 1024
 
 void
 start(void* v)
     {
     pObjSession s;
-    char sbuf[1024];
+    char sbuf[BUFF_SIZE];
     static char* inbuf = (char *)NULL;
     char prompt[1024];
     char* ptr;
     char cmdname[64];
     pObject obj,child_obj,to_obj;
     pObjQuery qy;
-    char* username;
-    char* group;
     char* filename;
     char* filetype;
     char* fileannot;
-    int size;
     int cnt,i;
     char* attrname;
     char* methodname;
@@ -119,7 +119,7 @@ start(void* v)
     char* stringval;
     int intval;
     int is_where, is_orderby;
-    char user[32];
+    char* user;
     char* pwd;
     pFile StdOut;
     pLxSession ls = NULL;
@@ -128,7 +128,6 @@ start(void* v)
     double dblval;
     pMoneyType m;
     MoneyType mval;
-    void* aptr;
     pObjData pod;
     int use_srctype;
     char mname[64];
@@ -142,10 +141,11 @@ start(void* v)
 	rl_bind_key ('\t', rl_insert);
 
 	/** Authenticate **/
-	printf("Username: "); gets(user);
+	user = readline("Username: ");
 	pwd = getpass("Password: ");
 	if (mssAuthenticate(user,pwd) < 0)
 	    puts("Warning: auth failed, running outside session context.");
+	free(user);
 	StdOut = fdOpen("/dev/tty", O_RDWR, 0600);
 
 	/** Open a session **/
@@ -343,7 +343,7 @@ start(void* v)
 		    printf("list: object '%s' doesn't support directory queries.\n",ptr);
 		    continue;
 		    }
-		while(child_obj = objQueryFetch(qy,O_RDONLY))
+		while(NULL != (child_obj = objQueryFetch(qy,O_RDONLY)))
 		    {
 		    if (objGetAttrValue(child_obj,"name",POD(&filename)) >= 0)
 			{
@@ -558,7 +558,9 @@ start(void* v)
 		puts("Enter attributes, blank line to end.");
 		while(1)
 		    {
-		    gets(sbuf);
+		    char* slbuf = readline("");
+		    strncpy(sbuf, slbuf, BUFF_SIZE-1);
+		    sbuf[BUFF_SIZE-1] = 0;
 		    if (sbuf[0] == 0) break;
 		    attrname = strtok(sbuf,"=");
 		    stringval = strtok(NULL,"=");
@@ -666,4 +668,5 @@ main(int argc, char* argv[])
 	    }
 
     mtInitialize(0, start);
+    return 0;
     }
