@@ -109,17 +109,24 @@ function htr_event(e)
     return cx__event;
     }
 
+function htr_alert(obj,maxlevels)
+    {
+    alert(htr_obj_to_text(obj,0,maxlevels));
+    }
+
 function htr_alert_obj(obj,maxlevels)
     {
-    if(window.alreadyopen)
-	return;
-    window.alreadyopen = true;
-    var w = window.open();
+    var w;
+    if (window.alertwin)
+	w = window.alertwin;
+    else
+	w = window.open();
     w.document.open();
     w.document.write("<pre>\n");
     w.document.write(htr_obj_to_text(obj,0,maxlevels));
     w.document.write("</pre>\n");
     w.document.close();
+    window.alertwin = w;
     }
 
 function htr_obj_to_text(obj,level,maxlevels)
@@ -402,8 +409,10 @@ function htr_getzindex(l)
 	return l.zIndex;
     else if (cx__capabilities.Dom0IE)
 	return parseInt(l.currentStyle.zIndex);
-    else if (cx__capabilities.Dom1HTML)
+    else if (cx__capabilities.Dom1HTML && l.style.zIndex)
 	return parseInt(l.style.zIndex);
+    else if (cx__capabilities.Dom1HTML)
+	return pg_get_style(l, 'z-index');
     return null;
     }
 

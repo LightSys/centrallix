@@ -69,10 +69,10 @@ function eb_settext(l,txt)
     	}
     else if (cx__capabilities.Dom1HTML)
         {        
-    	l.HiddenLayer.innerHTML = '<PRE>' + htutil_encode(txt) + '</PRE> ';
+    	l.HiddenLayer.innerHTML = '<PRE style="padding:0px; margin:0px;">' + htutil_encode(txt) + '</PRE> ';
         }
-    pg_set_style(l.HiddenLayer, 'visibility', 'inherit');
-    pg_set_style(l.ContentLayer, 'visibility', 'hidden');
+    htr_setvisibility(l.HiddenLayer, 'inherit');
+    htr_setvisibility(l.ContentLayer, 'hidden');
     
     var tmp = l.ContentLayer;
     l.ContentLayer = l.HiddenLayer;
@@ -158,18 +158,20 @@ function eb_select(x,y,l,c,n)
     if (eb_current) eb_current.cursorlayer = null;     
     eb_current = l;    
     eb_current.cursorlayer = ibeam_current;    
-    pg_set_style(ibeam_current, 'visibility', 'hidden');
+    setPageX(eb_current.ContentLayer, getPageX(eb_current)+1);
+    setPageX(eb_current.HiddenLayer, getPageX(eb_current)+1);
+    htr_setvisibility(ibeam_current, 'hidden');
     moveAbove(ibeam_current,eb_current);
     moveToAbsolute(ibeam_current, getPageX(eb_current.ContentLayer) + eb_current.cursorCol*text_metric.charWidth, getPageY(eb_current.ContentLayer));    
-    pg_set_style(ibeam_current, 'zIndex', pg_get_style(eb_current,'zIndex') + 2);
-    pg_set_style(ibeam_current, 'visibility', 'inherit');
+    htr_setzindex(ibeam_current, htr_getzindex(eb_current) + 2);
+    htr_setvisibility(ibeam_current, 'inherit');
     cn_activate(l,"GetFocus");
     return 1;
     }
 
 function eb_deselect()
     {
-    pg_set_style(ibeam_current, 'visibility', 'hidden');
+    htr_setvisibility(ibeam_current, 'hidden');
     cn_activate(eb_current,"LoseFocus");
     if (eb_current)
 	{
@@ -206,20 +208,14 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	{
 	l.bg = main_bg;
 	}
-    l.kind = 'eb';
-    l.document.layer = l;
-    l.mainlayer = l;
+    htr_init_layer(l,l,'eb');
+    htr_init_layer(c1,l,'eb');
+    htr_init_layer(c2,l,'eb');
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
     l.fieldname = fieldname;
     ibeam_init();
-    l.charWidth = Math.floor((getClipWidth(l)-2)/text_metric.charWidth);
-    c1.mainlayer = l;
-    c2.mainlayer = l;
-    c1.kind = 'eb';
-    c2.kind = 'eb';
-    c1.document.layer = l;
-    c2.document.layer = l;
+    l.charWidth = Math.floor((getClipWidth(l)-3)/text_metric.charWidth);
     l.content = '';
     l.keyhandler = eb_keyhandler;
     l.getfocushandler = eb_select;
@@ -242,11 +238,15 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	l.enabled = 'full';
 	}
     l.isFormStatusWidget = false;
-    pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', is_readonly?0:3);
-    setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2);
-    setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2);
+    if (cx__capabilities.CSSBox)
+	pg_addarea(l, -1,-1,getClipWidth(l)+3,getClipHeight(l)+3, 'ebox', 'ebox', is_readonly?0:3);
+    else
+	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', is_readonly?0:3);
+    setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
+    setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     if (fm_current) fm_current.Register(l);
     l.form = fm_current;
     l.changed = false;
     return l;
     }
+

@@ -29,12 +29,14 @@ function pg_get_style(element,attr)
 	}
     if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
 	{
+	if(attr == 'zIndex') attr = 'z-index';
 	if(attr.substring(0,5) == 'clip.')
 	    {
 	    return eval('element.' + attr);
 	    }	
 	var comp_style = window.getComputedStyle(element,null);
 	var cssValue = comp_style.getPropertyCSSValue(attr);
+	if (!cssValue) alert(element.id + '.' + attr);
 	if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
 	    {
 	    alert(attr + ': ' + cssValue.cssValueType);
@@ -42,6 +44,8 @@ function pg_get_style(element,attr)
 	    }
 	if(cssValue.primitiveType >= CSSPrimitiveValue.CSS_STRING)
 	    return cssValue.getStringValue();
+	if (cssValue.primitiveType == CSSPrimitiveValue.CSS_NUMBER)
+	    return cssValue.getFloatValue(CSSPrimitiveValue.CSS_NUMBER);
 	return cssValue.getFloatValue(CSSPrimitiveValue.CSS_PX);
 	}
     else if(cx__capabilities.Dom0NS)
@@ -208,6 +212,11 @@ function pg_set_style(element,attr, value)
 	else if(attr == 'position')
 	    {
 	    element.runtimeStyle.position = value;
+	    return;
+	    }	    
+	else if(attr == 'width')
+	    {
+	    element.runtimeStyle.width = value;
 	    return;
 	    }	    
 	else
@@ -531,10 +540,10 @@ function pg_isinlayer(outer,inner)
 function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     {
     
-    pg_set_style(tl, 'visibility', 'hidden');
-    pg_set_style(bl, 'visibility', 'hidden');
-    pg_set_style(rl, 'visibility', 'hidden');
-    pg_set_style(ll, 'visibility', 'hidden');
+    htr_setvisibility(tl, 'hidden');
+    htr_setvisibility(bl, 'hidden');
+    htr_setvisibility(rl, 'hidden');
+    htr_setvisibility(ll, 'hidden');
     //abc();
     if (cx__capabilities.Dom0NS)
         {
@@ -545,43 +554,52 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     	}
     else if (cx__capabilities.Dom1HTML)
         {
-    	tl.style.backgroundColor = c1;
-    	ll.style.backgroundColor = c1;
-    	bl.style.backgroundColor = c2;
-    	rl.style.backgroundColor = c2;    		
+    	htr_setbgcolor(tl,c1);
+    	htr_setbgcolor(ll,c1);
+    	htr_setbgcolor(bl,c2);
+    	htr_setbgcolor(rl,c2);
         }
     //alert("x, y --" + x + " " + y);
     
     resizeTo(tl,w,1);
+    setClipWidth(tl,w);
+    setClipHeight(tl,1);
     moveAbove(tl,pl);
     moveToAbsolute(tl,x,y);
-    pg_set_style(tl,'zIndex',z);
+    htr_setzindex(tl,z);
     resizeTo(bl,w+s-1,1);
+    setClipWidth(bl,w+s-1);
+    setClipHeight(bl,1);
     moveAbove(bl,pl);
     moveToAbsolute(bl,x,y+h-s+1);
-    pg_set_style(bl,'zIndex',z);
+    htr_setzindex(bl,z);
     resizeTo(ll,1,h);
+    setClipHeight(ll,h);
+    setClipWidth(ll,1);
     moveAbove(ll,pl);
     moveToAbsolute(ll,x,y);
-    pg_set_style(ll,'zIndex',z);
+    htr_setzindex(ll,z);
     resizeTo(rl,1,h+1);
+    setClipHeight(rl,h+1);
+    setClipWidth(rl,1);
     moveAbove(rl,pl);
     moveToAbsolute(rl,x+w-s+1,y);
-    pg_set_style(rl, 'zIndex', z);
-    pg_set_style(tl, 'visibility', 'inherit');
-    pg_set_style(bl, 'visibility', 'inherit');
-    pg_set_style(rl, 'visibility', 'inherit');
-    pg_set_style(ll, 'visibility', 'inherit');
+    htr_setzindex(rl,z);
+    htr_setvisibility(tl, 'inherit');
+    htr_setvisibility(bl, 'inherit');
+    htr_setvisibility(rl, 'inherit');
+    htr_setvisibility(ll, 'inherit');
+    //alert(rl.style.cssText);
     return;
     }
 
 /** To hide a box **/
 function pg_hidebox(tl,bl,rl,ll)
     {
-    tl.visibility = 'hidden';
-    bl.visibility = 'hidden';
-    rl.visibility = 'hidden';
-    ll.visibility = 'hidden';
+    htr_setvisibility(tl,'hidden');
+    htr_setvisibility(bl,'hidden');
+    htr_setvisibility(rl,'hidden');
+    htr_setvisibility(ll,'hidden');
     
     if (cx__capabilities.Dom0NS)
         {    
@@ -590,7 +608,7 @@ function pg_hidebox(tl,bl,rl,ll)
         rl.moveAbove(document.layers.pgtvl);
         ll.moveAbove(document.layers.pgtvl);
         }
-    else if (cx__capabilities.Dom0IE)
+    else if (cx__capabilities.Dom1HTML)
         {
         moveAbove(tl, document.getElementById("pgtvl"));
         moveAbove(bl, document.getElementById("pgtvl"));
@@ -826,10 +844,10 @@ function pg_togglecursor()
 	
 	//status = cl.runtimeStyle.zIndex;
 	
-	if (pg_get_style(cl,'visibility') != 'inherit')
-	    pg_set_style(cl,'visibility','inherit');
+	if (htr_getvisibility(cl) != 'inherit')
+	    htr_setvisibility(cl,'inherit');
 	else
-	    pg_set_style(cl,'visibility','hidden');
+	    htr_setvisibility(cl,'hidden');
 	}
     setTimeout(pg_togglecursor,333);
     }
@@ -883,11 +901,39 @@ function pg_keytimeout()
 	}
     }
 
+function pg_keyuphandler(k,m,e)
+    {
+    }
+
+function pg_keypresshandler(k,m,e)
+    {
+    return pg_keyhandler_internal(k,m,e);
+    }
+
 function pg_keyhandler(k,m,e)
     {
     //alert(this.caller);
     pg_lastmodifiers = m;
-        
+
+    // block non-special codes for IE here - handle em in keypress, not keydown.
+    if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
+	{
+	if (k >= 32 && k != 46)
+	    return true;
+
+	// IE passes DEL in as code 46 for keydown.  ASC(46), the period,
+	// is passed as code 190 here but code 46 in the keypress event.  
+	// Go figure.
+	if (k == 46) 
+	    k = 127;
+	}
+
+    return pg_keyhandler_internal(k,m,e);
+    }
+
+function pg_keyhandler_internal(k,m,e)
+    {
+    //htr_alert_obj(e,1);
     // layer.keyhandler is a callback routine that is optional 
     // on any layer requesting focus with pg_addarea().
     // It is set up in the corresponding widget drivers.
@@ -1149,7 +1195,7 @@ function pg_setmousefocus(l, xo, yo)
 	        }
 	    else if (cx__capabilities.Dom1HTML)
 	        {
-	    	pg_mkbox(l, x,y,w,h, 1, document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"), page.mscolor1, page.mscolor2, document.getElementById("pgktop").currentStyle.zIndex-1);
+	    	pg_mkbox(l, x,y,w,h, 1, document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"), page.mscolor1, page.mscolor2, htr_getzindex(document.getElementById("pgktop"))-1);
 	    	}
 	    }
 	}
@@ -1203,7 +1249,7 @@ function pg_setkbdfocus(l, a, xo, yo)
 		    }
 		else if (cx__capabilities.Dom1HTML)
 		    {		    
-		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, pg_get_style(document.getElementById("pgtop"),'zIndex')+100);
+		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, htr_getzindex(document.getElementById("pgtop"))+100);
 		    }
 		}
 	    }
@@ -1644,3 +1690,226 @@ function pg_msg_received()
     return;
     }
 
+
+// event handlers
+function pg_mousemove(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (pg_modallayer)
+        {
+        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    if (pg_curlayer != null)
+        {
+        pg_setmousefocus(pg_curlayer, e.pageX - getPageX(pg_curlayer), e.pageY - getPageY(pg_curlayer));
+        }
+    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+        {
+        pg_removemousefocus();
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_mouseout(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (pg_modallayer)
+        {
+        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    if (ibeam_current && e.target == ibeam_current)
+        {
+        pg_curlayer = pg_curkbdlayer;
+        pg_curarea = pg_curkbdarea;
+        return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    if (e.target == pg_curlayer) pg_curlayer = null;
+    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer == pg_curarea.layer) || (e.target == pg_curarea.layer)))
+        {
+        pg_removemousefocus();
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_mouseover(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (pg_modallayer)
+        {
+        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    if (ibeam_current && e.target == ibeam_current)
+        {
+        pg_curlayer = pg_curkbdlayer;
+        pg_curarea = pg_curkbdarea;
+        return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    if (e.target != null && getPageX(e.target) != null)
+        {
+        pg_curlayer = e.target;
+        if (pg_curlayer.mainlayer != null) pg_curlayer = pg_curlayer.mainlayer;
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_mousedown(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (pg_modallayer)
+        {
+        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    //if (pg_curlayer) alert('cur layer kind = ' + ly.kind + ' ' + ly.id);
+    if (ibeam_current && e.target.layer == ibeam_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+        {
+        pg_removemousefocus();
+        }
+    if (pg_curarea != null)
+        {
+        if (pg_curlayer != pg_curkbdlayer)
+            if (!pg_removekbdfocus()) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+        pg_setkbdfocus(pg_curlayer, pg_curarea, e.pageX - getPageX(pg_curarea.layer), e.pageY-getPageY(pg_curarea.layer));
+        }
+    else if (!ly.keep_kbd_focus)
+        {
+        if (!pg_removekbdfocus()) return EVENT_HALT | EVENT_PREVENT_ALLOW_ACTION;
+        pg_curkbdarea = null;
+        pg_curkbdlayer = null;
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_mouseup(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (pg_modallayer)
+        {
+        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_keydown(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (cx__capabilities.Dom0NS)
+	{
+        k = e.which;
+        if (k > 65280) k -= 65280;
+        if (k >= 128) k -= 128;
+        if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        pg_lastkey = k;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window);
+        if (pg_keyhandler(k, e.modifiers, e))
+	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	else
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else if (cx__capabilities.Dom0IE)
+	{
+        k = e.keyCode;
+        if (k > 65280) k -= 65280;
+        //if (k >= 128) k -= 128;
+        if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        pg_lastkey = k;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window);
+        if (pg_keyhandler(k, e.modifiers, e))
+	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	else
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else if (cx__capabilities.Dom2Events)
+	{
+	k = e.Dom2Event.which;
+        if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        pg_lastkey = k;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window);
+        if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	else
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_keyup(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (cx__capabilities.Dom0NS)
+	{
+        k = e.which;
+        if (k > 65280) k -= 65280;
+        if (k >= 128) k -= 128;
+        if (k == pg_lastkey) pg_lastkey = -1;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+        pg_keytimeoutid = null;
+	}
+    else if (cx__capabilities.Dom0IE)
+	{
+        k = e.keyCode;
+        if (k > 65280) k -= 65280;
+        //if (k >= 128) k -= 128;
+        if (k == pg_lastkey) pg_lastkey = -1;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+        pg_keytimeoutid = null;
+        if (pg_keyuphandler(k, e.modifiers, e))
+	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	else
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else if (cx__capabilities.Dom2Events)
+	{
+	k = e.Dom2Event.which;
+        if (k == pg_lastkey) pg_lastkey = -1;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+        pg_keytimeoutid = null;
+        if (pg_keyuphandler(k, e.modifiers, e))
+	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	else
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_keypress(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (cx__capabilities.Dom0IE)
+	{
+        k = e.keyCode;
+        if (k > 65280) k -= 65280;
+        //if (k >= 128) k -= 128;
+        if (k == pg_lastkey) pg_lastkey = -1;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+        pg_keytimeoutid = null;
+        if (pg_keypresshandler(k, e.modifiers, e))
+	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	else
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else if (cx__capabilities.Dom2Events)
+	{
+	k = e.Dom2Event.which;
+	if (k == 8) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        if (k == pg_lastkey) pg_lastkey = -1;
+        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+	pg_keytimeoutid = null;
+        if (pg_keypresshandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
+	else
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }

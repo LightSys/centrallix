@@ -140,10 +140,27 @@ function Element_MoveToAbsolute(x,y)
     this.pageY = y;
     }
 
+function Element_ResizeTo(w,h)
+    {
+    pg_set_style(this,'width',w);
+    pg_set_style(this,'height',h);
+    }
+
+function Element_MoveAbove(lb)
+    {
+    if (lb)
+	{
+        var z = htr_getzindex(lb);
+        htr_setzindex(this,++z);
+        this.parentLayer = lb.parentLayer;
+	}
+    }
 
 HTMLElement.prototype.moveBy = Element_MoveBy; 
 HTMLElement.prototype.moveTo = Element_MoveTo;
 HTMLElement.prototype.moveToAbsolute = Element_MoveToAbsolute;
+HTMLElement.prototype.resizeTo = Element_ResizeTo;
+HTMLElement.prototype.moveAbove = Element_MoveAbove;
 
 HTMLElement.prototype.x getter = function ()
     {
