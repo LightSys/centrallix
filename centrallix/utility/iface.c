@@ -46,6 +46,9 @@
 #include "centrallix.h"
 #include "ht_render.h"
 
+/************** Debug Enable/Disable *****************/
+#define IFC_DEBUG 0
+
 
 /************** Internal Typedefs ********************/
 
@@ -139,7 +142,8 @@ ifc_internal_FreeMajorVersion(pIfcMajorVersion v, int type)
 		}
 	    nmFree(v, sizeof(IfcMajorVersion));
 	    }
-	fprintf(stderr, "ifc_internal_FreeMajorVersion()\n");
+	if (IFC_DEBUG)
+	    fprintf(stderr, "ifc_internal_FreeMajorVersion()\n");
     }
 
 
@@ -211,7 +215,8 @@ ifc_internal_NewMajorVersion(pObject def, int type)
     char		    *ptr, MemberName[64];
     ObjData		    Val;
 
-	fprintf(stderr, "ifc_internal_NewMajorVersion([%s], %d)\n", def->Pathname->Pathbuf, type);
+	if (IFC_DEBUG)
+	    fprintf(stderr, "ifc_internal_NewMajorVersion([%s], %d)\n", def->Pathname->Pathbuf, type);
 
 	/** initialize local datastructures **/
 	NumCategories = IFC.NumCategories[type];
@@ -256,7 +261,8 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		objQueryClose(MinorQy);
 		goto error;
 		}
-	    fprintf(stderr, "Initial processing of '%s' minor version %d\n", def->Pathname->Pathbuf+1, i);
+	    if (IFC_DEBUG)
+		fprintf(stderr, "Initial processing of '%s' minor version %d\n", def->Pathname->Pathbuf+1, i);
 	    if (HighestMinorVersion < i) HighestMinorVersion = i;
 	    /** check for duplicate minor versions **/
 	    else if (HighestMinorVersion == i)
@@ -290,7 +296,8 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	    /** Get the version name **/
 	    objGetAttrValue(MinorObj, "name", DATA_T_STRING, &Val);
 	    ThisMinorVersion = atoi(Val.String+1);
-	    fprintf(stderr, "Second processing, minor version %d\n", ThisMinorVersion);
+	    if (IFC_DEBUG)
+		fprintf(stderr, "Second processing, minor version %d\n", ThisMinorVersion);
 	    if (ExpectedMinorVersion < 0)
 		{
 		mssError(1, "IFC", "Trying to process too many minor versions for '%s'!", def->Pathname->Pathbuf);
@@ -379,7 +386,8 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 			}   /** end if (i >= ThisOffset) **/
 		    } /** end for (i=0;i<xaCount(&(MajorVersion->Members[... **/
 		/** add member to Members array **/
-		fprintf(stderr, "Adding '%s' to '%s'\n", MemberName, def->Pathname->Pathbuf);
+		if (IFC_DEBUG)
+		    fprintf(stderr, "Adding '%s' to '%s'\n", MemberName, def->Pathname->Pathbuf);
 		xaAddItem(&(MajorVersion->Members[MemberCategory]), nmSysStrdup(MemberName));
 		xaAddItem(&(MajorVersion->Properties[MemberCategory]), nmSysStrdup(MemberObj->Pathname->Pathbuf+1));
 		} /** end while ( (MemberObj = ... **/
@@ -401,7 +409,8 @@ ifc_internal_FreeIfcDef(pIfcDefinition def)
     int i;
     pIfcMajorVersion major;
 
-	fprintf(stderr, "ifc_internal_FreeIfcDef([%s])\n", def->Path);
+	if (IFC_DEBUG)
+	    fprintf(stderr, "ifc_internal_FreeIfcDef([%s])\n", def->Path);
 	objClose(def->Obj);
 	nmSysFree(def->Path);
 	for (i=0;i<xaCount(&def->MajorVersions);i++)
@@ -426,7 +435,8 @@ ifc_internal_NewIfcDef(pObjSession s, char* path)
     int t, vnum;
 
 
-	fprintf(stderr, "ifc_internal_NewIfcDef('%s')\n", path);
+	if (IFC_DEBUG)
+	    fprintf(stderr, "ifc_internal_NewIfcDef('%s')\n", path);
     
 	/** open top-level object **/
 	if ( (obj = objOpen(s, path, O_RDONLY, 0600, "system/structure")) == NULL)
@@ -509,7 +519,8 @@ ifc_internal_NewIfcDef(pObjSession s, char* path)
 void
 ifcReleaseHandle(IfcHandle handle)
     {
-	fprintf(stderr, "ifcReleaseHandle('%s')\n", handle->DefPath);
+	if (IFC_DEBUG) 
+	    fprintf(stderr, "ifcReleaseHandle('%s')\n", handle->DefPath);
 /*	ifc_internal_Print(handle); */
 
 	/** release the memory for every member and property path **/
@@ -535,7 +546,8 @@ ifc_internal_BuildHandle(pIfcDefinition def, int major, int minor)
     int i;
     XString fullpath;
 
-	fprintf(stderr, "ifc_internal_BuildHandle(%s, %d, %d)\n", def->Path, major, minor);
+	if (IFC_DEBUG)
+	    fprintf(stderr, "ifc_internal_BuildHandle(%s, %d, %d)\n", def->Path, major, minor);
 
 	/** make sure the major version we need is there **/
 	if ( major >= xaCount(&(def->MajorVersions)) || (maj_v = xaGetItem(&(def->MajorVersions), major)) == NULL)
@@ -594,7 +606,8 @@ ifcGetHandle(pObjSession s, char* ref)
     int major, minor;
     pIfcDefinition def;
 
-	fprintf(stderr, "ifcGetHandle('%s')\n", ref);
+	if (IFC_DEBUG)
+	    fprintf(stderr, "ifcGetHandle('%s')\n", ref);
 
 	/** get the absolute path **/
 	if (ref[0] == '/') strncpy(path, ref, 512);
@@ -668,16 +681,19 @@ ifc_internal_Print(IfcHandle handle)
     int i, j;
     char* name, *prop_path;
 
-	fprintf(stderr, "Printing handle to '%s'\n", handle->DefPath);
+	if (IFC_DEBUG)
+	    fprintf(stderr, "Printing handle to '%s'\n", handle->DefPath);
 	
 	for (i=0;i<IFC.NumCategories[handle->Type];i++)
 	    {
-	    fprintf(stderr, "\t%s: \n", IFC.CategoryNames[handle->Type][i]);
+	    if (IFC_DEBUG)
+		fprintf(stderr, "\t%s: \n", IFC.CategoryNames[handle->Type][i]);
 	    for (j=handle->Offsets[i];j<xaCount(&(handle->Members[i]));j++)
 		{
 		name = xaGetItem(&(handle->Members[i]), j);
 		prop_path = xaGetItem(&(handle->Properties[i]), j);
-		fprintf(stderr, "\t\tMember: '%s'\t\tProperties object: '%s'\n", name, prop_path);
+		if (IFC_DEBUG)
+		    fprintf(stderr, "\t\tMember: '%s'\t\tProperties object: '%s'\n", name, prop_path);
 		}
 	    }
 	return 0;
