@@ -794,12 +794,8 @@ VII DEVELOPMENT BY PROTOTYPING
 	position a visual layer on screen.
 
 	Finally, delete all log entries from the CVS header in the file except
-	the $Log: HTDriver_Authoring.txt,v $
-	the Revision 1.2  2001/11/12 22:02:04  gbeeley
-	the Added a section to the HTDriver authoring guide on how to prototype
-	the a new widget.
-	the line, of course, and change the author/date/etc. information
-	in the file header.
+	the dollar-sign-Log-dollar-sign line, of course, and change the 
+	author/date/etc. information in the file header.
 
 	To get the widget added to the system, edit Makefile and add the new
 	widget's .o file to the XHTDRIVERS= line.  Don't include the path to
