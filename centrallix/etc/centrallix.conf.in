@@ -8,6 +8,7 @@ centrallix "system/config"
     {
     // General Configuration Data
     types_config = "##SYSCONFDIR##/types.cfg";
+    useragent_config = "##SYSCONFDIR##/useragent.cfg";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/rootnode";
     
