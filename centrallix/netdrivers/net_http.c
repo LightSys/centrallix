@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.10 2002/03/23 03:52:54 gbeeley Exp $
+    $Id: net_http.c,v 1.11 2002/03/23 05:09:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.11  2002/03/23 05:09:16  gbeeley
+    Fixed a logic error in net_http's ls__startat osml feature.  Improved
+    OSML error text.
+
     Revision 1.10  2002/03/23 03:52:54  gbeeley
     Fixed a potential security blooper when the cookie was copied to a tmp
     buffer.
@@ -751,9 +755,9 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		else
 		    n = strtol(ptr,NULL,0);
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__startat"),&ptr) < 0)
-		    start = strtol(ptr,NULL,0) - 1;
-		else
 		    start = 0;
+		else
+		    start = strtol(ptr,NULL,0) - 1;
 		if (start < 0) start = 0;
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"

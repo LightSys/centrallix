@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.2 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: obj_object.c,v 1.3 2002/03/23 05:09:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.3  2002/03/23 05:09:16  gbeeley
+    Fixed a logic error in net_http's ls__startat osml feature.  Improved
+    OSML error text.
+
     Revision 1.2  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -573,7 +577,8 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 			if (this->SubPtr + this->SubCnt >= this->Pathname->nElements) break;
 
 			/** Otherwise, error out **/
-		        mssError(1,"OSML","Object access failed - driver not found");
+			obj_internal_PathPart(this->Pathname,0,0);
+		        mssError(1,"OSML","Object '%s' access failed - no driver found",this->Pathname->Pathbuf+1);
 		        obj_internal_FreeObj(this);
 			return NULL;
 			}
@@ -612,7 +617,8 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    this->Data = this->Driver->Open(this, mask, ck_type, usrtype, &(s->Trx));
 	    if (!this->Data)
 	        {
-	        mssError(0,"OSML","Object access failed - driver open failed");
+		obj_internal_PathPart(this->Pathname,0,0);
+	        mssError(0,"OSML","Object '%s' access failed - driver open failed", this->Pathname->Pathbuf+1);
 	        obj_internal_FreeObj(this);
 		return NULL;
 		}
