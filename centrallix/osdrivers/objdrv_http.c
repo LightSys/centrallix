@@ -118,13 +118,14 @@ http_internal_Cleanup(pHttpData inf,char *line)
 	HTTP_CLEANUP(inf->AuthLine);
 	HTTP_CLEANUP(inf->Annotation);
 	if(inf->Socket)
-	    netCloseTCP(inf->Socket,0,0);
+	    netCloseTCP(inf->Socket,1,0);
 	if(inf->Attr)
 	    stFreeInf(inf->Attr);
 
 	nmFree(inf,sizeof(HttpData));
 	}
-    mssError(0,"HTTP",line);
+    if(line)
+        mssError(0,"HTTP",line);
     return NULL;
     }
 
@@ -530,6 +531,8 @@ httpClose(void* inf_v, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
 
+	/** Release all internal memory allocations **/
+	http_internal_Cleanup(inf,NULL);
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
 	nmFree(inf,sizeof(HttpData));
@@ -567,6 +570,7 @@ int
 httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
+    int i;
     if(!inf->Socket || (flags & FD_U_SEEK && offset==0))
 	{
 	/** if there's no connection or we're told to seek to 0, reinit the connection **/
@@ -579,7 +583,10 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    return -1;
 	}
     if(!inf->Socket) return -1;
-    return fdRead(inf->Socket,buffer,maxcnt,offset,flags);
+    if(HTTP_OS_DEBUG) printf("HTTP -- starting fdRead\n");
+    i=fdRead(inf->Socket,buffer,maxcnt,offset,flags);
+    if(HTTP_OS_DEBUG) printf("HTTP -- done with fdRead\n");
+    return i;
     }
 
 
