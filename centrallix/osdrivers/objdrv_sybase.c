@@ -23,6 +23,11 @@
 #include "xhashqueue.h"
 #include "multiquery.h"
 #include "magic.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#else
+#define HAVE_CTYPE_B 1
+#endif
 #include "centrallix.h"
 
 /************************************************************************/
@@ -64,10 +69,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.15 2004/06/10 17:37:07 mmcgill Exp $
+    $Id: objdrv_sybase.c,v 1.16 2004/06/10 17:56:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.16  2004/06/10 17:56:28  gbeeley
+    - oops, need to add the config.h include in this file for correct checking
+      of the __ctype_b problem.
+
     Revision 1.15  2004/06/10 17:37:07  mmcgill
     Configure updates to work on Fedora Core 1 (nasty interface change in
     glibc __ctype_b)
