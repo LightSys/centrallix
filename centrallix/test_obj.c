@@ -64,10 +64,27 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.31 2004/05/04 18:22:59 gbeeley Exp $
+    $Id: test_obj.c,v 1.32 2004/07/02 00:23:24 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.32  2004/07/02 00:23:24  mmcgill
+    Changes include, but are not necessarily limitted to:
+        - fixed test_obj hints printing, added printing of hints to show command
+        to make them easier to read.
+        - added objDuplicateHints, for making deep copies of hints structures.
+        - made sure GroupID and VisualLength2 were set to their proper defualts
+          inf objPresentationHints() [obj_attr.c]
+        - did a bit of restructuring in the sybase OS driver:
+    	* moved the type conversion stuff in sybdGetAttrValue into a seperate
+    	  function (sybd_internal_GetCxValue, sybd_internal_GetCxType). In
+    	* Got rid of the Types union, made it an ObjData struct instead
+    	* Stored column lengths in ColLengths
+    	* Fixed a couple minor bugs
+        - Roughed out a preliminary hints implementation for the sybase driver,
+          in such a way that it shouldn't be *too* big a deal to add support for
+          user-defined types.
+
     Revision 1.31  2004/05/04 18:22:59  gbeeley
     - Adding DATA_T_BINARY data type for counted (non-zero-terminated)
       strings of data.
@@ -257,7 +274,7 @@ typedef struct
 
 int text_gen_callback(pWriteStruct dst, char *src, int len, int a, int b)
     {
-    dst->buffer = (char*)realloc(dst->buffer,dst->buflen+len);
+    dst->buffer = (char*)realloc(dst->buffer,dst->buflen+len+1);
     if(!dst->buffer)
 	return -1;
     memcpy(dst->buffer+dst->buflen,src,len);
@@ -265,27 +282,29 @@ int text_gen_callback(pWriteStruct dst, char *src, int len, int a, int b)
     return 0;
     }
 
-int printExpression(pExpression exp)
+int 
+printExpression(pExpression exp)
     {
     pWriteStruct dst;
     pParamObjects tmplist;
 
-    if(!exp)
-	return -1;
-    dst = (pWriteStruct)nmMalloc(sizeof(WriteStruct));
-    dst->buffer=(char*)malloc(0);
-    dst->buflen=0;
+	if(!exp)
+	    return -1;
+	dst = (pWriteStruct)nmMalloc(sizeof(WriteStruct));
+	dst->buffer=(char*)malloc(1);
+	dst->buflen=0;
 
-    tmplist = expCreateParamList();
-    expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
-    expGenerateText(exp,tmplist,text_gen_callback,dst,'"',"JavaScript");
-    expFreeParamList(tmplist);
+	tmplist = expCreateParamList();
+	expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
+	expGenerateText(exp,tmplist,text_gen_callback,dst,'"',"javascript");
+	dst->buffer[dst->buflen]='\0';
+	expFreeParamList(tmplist);
 
-    printf("%s",dst->buffer);
+	printf("%s ",dst->buffer);
 
-    free(dst->buflen);
-    nmFree(dst,sizeof(WriteStruct));
-    return 0;
+	free(dst->buffer);
+	nmFree(dst,sizeof(WriteStruct));
+	return 0;
     }
 
 
@@ -304,19 +323,20 @@ testobj_show_hints(pObject obj, char* attrname)
 	}
 
     printf("Presentation Hints for \"%s\":\n",attrname);
-    printf("  Constraint   :\n");
-    printExpression(hints->Constraint);
-    printf("  DefaultExpr  :\n");
-    printExpression(hints->DefaultExpr);
-    printf("  MinValue     :\n");
-    printExpression(hints->MinValue);
-    printf("  MaxValue     :\n");
-    printExpression(hints->MaxValue);
-    printf("  EnumList     :\n");
+    printf("  Constraint   : ");
+    printExpression(hints->Constraint); printf("\n");
+    printf("  DefaultExpr  : ");
+    printExpression(hints->DefaultExpr); printf("\n");
+    printf("  MinValue     : ");
+    printExpression(hints->MinValue); printf("\n");
+    printf("  MaxValue     : ");
+    printExpression(hints->MaxValue); printf("\n");
+    printf("  EnumList     : ");
     for(i=0;i<hints->EnumList.nItems;i++)
 	{
 	printf("    %s\n",(char*)xaGetItem(&hints->EnumList,i));
 	}
+    printf("\n");
     printf("  EnumQuery    : %s\n",hints->EnumQuery);
     printf("  Format       : %s\n",hints->Format);
     printf("  VisualLength : %i\n",hints->VisualLength);
@@ -351,6 +371,7 @@ testobj_show_attr(pObject obj, char* attrname)
     pStringVec sv;
     pIntVec iv;
     Binary bn;
+    pObjPresentationHints hints;
 
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) 
@@ -362,21 +383,21 @@ testobj_show_attr(pObject obj, char* attrname)
 	    {
 	    case DATA_T_INTEGER:
 		if (objGetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval)) == 1)
-		    printf("  %20.20s: NULL\n",attrname);
+		    printf("  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: %d\n",attrname, intval);
+		    printf("  %20.20s: %d",attrname, intval);
 		break;
 
 	    case DATA_T_STRING:
 		if (objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval)) == 1)
-		    printf("  %20.20s: NULL\n",attrname);
+		    printf("  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: \"%s\"\n",attrname, stringval);
+		    printf("  %20.20s: \"%s\"",attrname, stringval);
 		break;
 
 	    case DATA_T_BINARY:
 		if (objGetAttrValue(obj,attrname,DATA_T_BINARY,POD(&bn)) == 1)
-		    printf("  %20.20s: NULL\n", attrname);
+		    printf("  %20.20s: NULL", attrname);
 		else
 		    {
 		    printf("  %20.20s: %d bytes: ", bn.Size);
@@ -384,64 +405,85 @@ testobj_show_attr(pObject obj, char* attrname)
 			{
 			printf("%2.2x  ", bn.Data[i]);
 			}
-		    printf("\n");
+		    printf("");
 		    }
 		break;
 
 	    case DATA_T_DATETIME:
 		if (objGetAttrValue(obj,attrname,DATA_T_DATETIME,POD(&dt)) == 1 || dt==NULL)
-		    printf("  %20.20s: NULL\n",attrname);
+		    printf("  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: %2.2d-%2.2d-%4.4d %2.2d:%2.2d:%2.2d\n", 
+		    printf("  %20.20s: %2.2d-%2.2d-%4.4d %2.2d:%2.2d:%2.2d", 
 			attrname,dt->Part.Month+1, dt->Part.Day+1, dt->Part.Year+1900,
 			dt->Part.Hour, dt->Part.Minute, dt->Part.Second);
 		break;
 	    
 	    case DATA_T_DOUBLE:
 		if (objGetAttrValue(obj,attrname,DATA_T_DOUBLE,POD(&dblval)) == 1)
-		    printf("  %20.20s: NULL\n",attrname);
+		    printf("  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: %g\n", attrname, dblval);
+		    printf("  %20.20s: %g", attrname, dblval);
 		break;
 
 	    case DATA_T_MONEY:
 		if (objGetAttrValue(obj,attrname,DATA_T_MONEY,POD(&m)) == 1 || m == NULL)
-		    printf("  %20.20s: NULL\n", attrname);
+		    printf("  %20.20s: NULL", attrname);
 		else
-		    printf("  %20.20s: %s\n", attrname, objDataToStringTmp(DATA_T_MONEY, m, 0));
+		    printf("  %20.20s: %s", attrname, objDataToStringTmp(DATA_T_MONEY, m, 0));
 		break;
 
 	    case DATA_T_INTVEC:
 		if (objGetAttrValue(obj,attrname,DATA_T_INTVEC,POD(&iv)) == 1 || iv == NULL)
 		    {
-		    printf("  %20.20s: NULL\n",attrname);
+		    printf("  %20.20s: NULL",attrname);
 		    }
 		else
 		    {
 		    printf("  %20.20s: ", attrname);
 		    for(i=0;i<iv->nIntegers;i++) 
 			printf("%d%s",iv->Integers[i],(i==iv->nIntegers-1)?"":",");
-		    printf("\n");
 		    }
 		break;
 
 	    case DATA_T_STRINGVEC:
 		if (objGetAttrValue(obj,attrname,DATA_T_STRINGVEC,POD(&sv)) == 1 || sv == NULL)
 		    {
-		    printf("  %20.20s: NULL\n",attrname);
+		    printf("  %20.20s: NULL",attrname);
 		    }
 		else
 		    {
 		    printf("  %20.20s: ",attrname);
 		    for(i=0;i<sv->nStrings;i++) 
 			printf("\"%s\"%s",sv->Strings[i],(i==sv->nStrings-1)?"":",");
-		    printf("\n");
 		    }
 		break;
 
 	    default:
-		printf("  %20.20s: <unknown type>\n",attrname);
+		printf("  %20.20s: <unknown type>",attrname);
 		break;
+	    }
+	hints = objPresentationHints(obj, attrname);
+	if (hints)
+	    {
+	    printf(" [Hints: ");
+	    if (hints->EnumQuery != NULL) printf("EnumQuery=[%s] ", hints->EnumQuery);
+	    if (hints->Format != NULL) printf("Format=[%s] ", hints->Format);
+	    if (hints->AllowChars != NULL) printf("AllowChars=[%s] ", hints->AllowChars);
+	    if (hints->BadChars != NULL) printf("BadChars=[%s] ", hints->BadChars);
+	    if (hints->Length != 0) printf("Length=%d ", hints->Length);
+	    if (hints->VisualLength != 0) printf("VisualLength=%d ", hints->VisualLength);
+	    if (hints->VisualLength2 != 1) printf("VisualLength2=%d ", hints->VisualLength2);
+	    if (hints->Style != 0) printf("Style=%d ", hints->Style);
+	    if (hints->StyleMask != 0) printf("StyleMask=%d ", hints->StyleMask);
+	    if (hints->GroupID != -1) printf("GroupID=%d ", hints->GroupID);
+	    if (hints->GroupName != NULL) printf("GroupName=[%s] ", hints->GroupName);
+	    if (hints->FriendlyName != NULL) printf("FriendlyName=[%s] ", hints->FriendlyName);
+	    if (hints->Constraint != NULL) { printf("Constraint="); printExpression(hints->Constraint); }
+	    if (hints->DefaultExpr != NULL) { printf("DefaultExpr="); printExpression(hints->DefaultExpr); }
+	    if (hints->MinValue != NULL) { printf("MinValue="); printExpression(hints->MinValue); }
+	    if (hints->MaxValue != NULL) { printf("MaxValue="); printExpression(hints->MaxValue); }
+	    nmFree(hints, sizeof(ObjPresentationHints));
+	    printf("]\n");
 	    }
 
     return 0;

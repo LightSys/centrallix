@@ -40,10 +40,27 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.5 2004/05/07 01:18:23 gbeeley Exp $
+    $Id: hints.c,v 1.6 2004/07/02 00:23:25 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.6  2004/07/02 00:23:25  mmcgill
+    Changes include, but are not necessarily limitted to:
+        - fixed test_obj hints printing, added printing of hints to show command
+        to make them easier to read.
+        - added objDuplicateHints, for making deep copies of hints structures.
+        - made sure GroupID and VisualLength2 were set to their proper defualts
+          inf objPresentationHints() [obj_attr.c]
+        - did a bit of restructuring in the sybase OS driver:
+    	* moved the type conversion stuff in sybdGetAttrValue into a seperate
+    	  function (sybd_internal_GetCxValue, sybd_internal_GetCxType). In
+    	* Got rid of the Types union, made it an ObjData struct instead
+    	* Stored column lengths in ColLengths
+    	* Fixed a couple minor bugs
+        - Roughed out a preliminary hints implementation for the sybase driver,
+          in such a way that it shouldn't be *too* big a deal to add support for
+          user-defined types.
+
     Revision 1.5  2004/05/07 01:18:23  gbeeley
     - support for StyleMask addition to the Style hint, which allows the
       determination of which hints have been set, not just whether they are on
@@ -958,4 +975,31 @@ hntEncodeHints(pObjPresentationHints ph, pXString xs)
     return xs->Length - initlen;
     }
 
+pObjPresentationHints
+objDuplicateHints(pObjPresentationHints hints)
+    {
+    pObjPresentationHints new_hints;
+    int i;
 
+	if (!hints) return NULL;
+	if ( (new_hints=(pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
+	
+	/** shallow copy first **/
+	memcpy(new_hints, hints, sizeof(ObjPresentationHints));
+
+	/** Now the XArray **/
+	xaInit(&(new_hints->EnumList), 8);
+	for (i=0;i<xaCount(&(hints->EnumList));i++)
+	    xaAddItem(&(new_hints->EnumList), xaGetItem(&(new_hints->EnumList), i));
+	
+	/** Duplicate the expressions **/
+	if (hints->Constraint) new_hints->Constraint = expDuplicateExpression(hints->Constraint);
+	if (hints->DefaultExpr) new_hints->DefaultExpr = expDuplicateExpression(hints->DefaultExpr);
+	if (hints->MinValue) new_hints->MinValue = expDuplicateExpression(hints->MinValue);
+	if (hints->MaxValue) new_hints->MaxValue = expDuplicateExpression(hints->MaxValue);
+	
+	/** All Done **/
+	return new_hints;
+    }
+
+    

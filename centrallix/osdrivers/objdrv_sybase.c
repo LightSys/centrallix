@@ -29,6 +29,7 @@
 #define HAVE_CTYPE_B 1
 #endif
 #include "centrallix.h"
+#include "hints.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -69,10 +70,27 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.18 2004/06/23 21:33:56 mmcgill Exp $
+    $Id: objdrv_sybase.c,v 1.19 2004/07/02 00:23:24 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.19  2004/07/02 00:23:24  mmcgill
+    Changes include, but are not necessarily limitted to:
+        - fixed test_obj hints printing, added printing of hints to show command
+        to make them easier to read.
+        - added objDuplicateHints, for making deep copies of hints structures.
+        - made sure GroupID and VisualLength2 were set to their proper defualts
+          inf objPresentationHints() [obj_attr.c]
+        - did a bit of restructuring in the sybase OS driver:
+    	* moved the type conversion stuff in sybdGetAttrValue into a seperate
+    	  function (sybd_internal_GetCxValue, sybd_internal_GetCxType). In
+    	* Got rid of the Types union, made it an ObjData struct instead
+    	* Stored column lengths in ColLengths
+    	* Fixed a couple minor bugs
+        - Roughed out a preliminary hints implementation for the sybase driver,
+          in such a way that it shouldn't be *too* big a deal to add support for
+          user-defined types.
+
     Revision 1.18  2004/06/23 21:33:56  mmcgill
     Implemented the ObjInfo interface for all the drivers that are currently
     a part of the project (in the Makefile, in other words). Authors of the
@@ -234,6 +252,7 @@ typedef struct
     unsigned char ColFlags[256];
     unsigned char ColTypes[256];
     unsigned char ColKeys[256];
+    unsigned char ColLengths[256];
     int		nCols;
     char*	Keys[8];
     int		KeyCols[8];
@@ -254,6 +273,7 @@ typedef struct
 #define SYBD_CF_FOKEY		8	/* column is a foreign key referencing another table */
 
 
+#define SYBD_MAX_NUM_TYPES	81
 /*** Structure for directory entry nodes ***/
 typedef struct
     {
@@ -268,6 +288,8 @@ typedef struct
     XHashTable	TableInf;
     int		LastAccess;
     char	Types[81][14];
+    XHashTable	TypeNameToID;					/** for figuring out id from name **/
+    pObjPresentationHints	TypeHints[SYBD_MAX_NUM_TYPES];		/** for storing hint info about each type **/
     }
     SybdNode, *pSybdNode;
 
@@ -307,6 +329,7 @@ typedef struct
     int		CurAttr;
     int		Size;
     int		ColID;
+    /** I'm not sure why this can't just be an ObjData. Less headaches that way.
     union
         {
 	DateTime	Date;
@@ -315,6 +338,8 @@ typedef struct
 	StringVec	SV;
 	}
 	Types;
+    **/
+    ObjData	Types;
     char*	ColPtrs[256];
     unsigned char ColNum[256];
     char	RowBuf[2048];
@@ -439,6 +464,11 @@ sybd_internal_AttrType(pSybdTableInf tdata, int colid)
 	    return DATA_T_MONEY;
 	else if (tdata->ColTypes[colid] == 8 || tdata->ColTypes[colid] == 23)
 	    return DATA_T_DOUBLE;
+	else
+	    {
+	    mssError(1, "SYBD", "Encountered type %d, which cannot be represented internally.", tdata->ColTypes[colid]);
+	    return -1;
+	    }
     }
 
 /*** sybd_internal_Exec - executes a query and returns the CTlib command
@@ -631,6 +661,373 @@ sybd_internal_ReleaseConn(pSybdNode db_node, CS_CONNECTION* session)
     }
 
 
+/*** sybd_internal_GetCxType - convert a sybase usertype to a centrallix datatype.
+ *** Like GetDefaultHints, it might not be a bad idea to push this to a file somehow,
+ *** to make the handling of types more flexable (and allow for user-defined types)
+ ***/
+int
+sybd_internal_GetCxType(int ut)
+    {
+	if (ut == 1 || ut == 2 || ut == 18 || ut == 19 || ut == 25) return DATA_T_STRING;
+	if (ut == 5 || ut == 6 || ut == 7 || ut == 16) return DATA_T_INTEGER;
+	if (ut == 12 || ut == 22) return DATA_T_DATETIME;
+	if (ut == 8 || ut == 23) return DATA_T_DOUBLE;
+	if (ut == 11 || ut == 21) return DATA_T_MONEY;
+
+	mssError(1, "SYBD", "the usertype %d is not supported by Centrallix");
+	return -1;
+    }
+
+/*** sybd_internal_GetCxValue - convert a sybase value of some type to its
+ *** corresponding centrallix representation. Assumes val points to valid memory.
+ ***/
+int
+sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
+    {
+    int i,minus,n;
+    unsigned int msl,lsl,divtmp;
+    int days,fsec;
+    float f;
+    union		    /** Well...the following code was ripped straight out **/
+	{		    /** of sybdGetAttrValue, and I can't for the life of me **/
+	DateTime Date;	    /** figure out what the Types union is in the SybdData struct **/
+	MoneyType Money;    /** for, so I'm reproducing it here for the conversions. Seems **/
+	IntVec IV;	    /** pretty weird if you ask me. I think that union (and this) **/
+	StringVec SV;	    /** should be nixed, and everything should use pObjData. MJM**/
+	} Types;
+
+	/** Make sure the passed in data type matches what we'll end up with **/
+	if (sybd_internal_GetCxType(ut) != datatype)
+	    {
+	    mssError(1, "SYBD", "Mismatched data types. Got %d, should've been %s", 
+		datatype, sybd_internal_GetCxType(ut));
+	    return -1;
+	    }
+
+	if (ptr == NULL) return 1;
+	if (ut==5 || ut==6 || ut==7 || ut==16)
+	    {
+	    val->Integer = 0;
+	    if (ut==5 || ut==16) memcpy(val,ptr,1);
+	    else if (ut==6) memcpy(val,ptr,2);
+	    else memcpy(val,ptr,4);
+	    return 0;
+	    }
+	else if (ut==1 || ut==2 || ut==18 || ut==19)
+	    {
+	    val->String = ptr;
+	    return 0;
+	    }
+	else if (ut==22 || ut==12)
+	    {
+	    /** datetime **/
+//	    val->DateTime = &Types.Date;
+	    memcpy(&days,ptr,4);
+	    memcpy(&fsec,ptr+4,4);
+
+	    /** Convert the time **/
+	    fsec /= 300;
+	    val->DateTime->Part.Hour = fsec/3600;
+	    fsec -= (val->DateTime->Part.Hour*3600);
+	    val->DateTime->Part.Minute = fsec/60;
+	    fsec -= (val->DateTime->Part.Minute*60);
+	    val->DateTime->Part.Second = fsec;
+
+	    /** Convert the date **/
+	    if (days > 364) days++; /* hack to cover 1900 not being leap year */
+	    days = days*4;
+	    val->DateTime->Part.Year = days / (365*4 + 1);
+	    days -= (val->DateTime->Part.Year * (365*4 + 1));
+	    days = (days)/4;
+	    val->DateTime->Part.Month = 0;
+	    for(n=0;n<12;n++) 
+		{
+		if (days >= (obj_month_days[n] + ((n==1 && IS_LEAP_YEAR(val->DateTime->Part.Year+1900))?1:0)))
+		    {
+		    val->DateTime->Part.Month++;
+		    days -= (obj_month_days[n] + ((n==1 && IS_LEAP_YEAR(val->DateTime->Part.Year+1900))?1:0));
+		    }
+		else
+		    {
+		    break;
+		    }
+		}
+	    val->DateTime->Part.Day = days;
+	    return 0;
+	    }
+	else if (ut == 8)
+	    {
+	    /** float **/
+	    memcpy(val, ptr, 8);
+	    return 0;
+	    }
+	else if (ut == 23)
+	    {
+	    memcpy(&f, ptr, 4);
+	    val->Double = f;
+	    return 0;
+	    }
+	else if (ut == 11 || ut == 21)
+	    {
+	    /** money **/
+//	    val->Money = &(Types.Money);
+	    if (ut == 21)
+		{
+		/** smallmoney, 4-byte **/
+		memcpy(&i, ptr, 4);
+		val->Money->WholePart = i/10000;
+		if (i < 0 && (i%10000) != 0) val->Money->WholePart--;
+		val->Money->FractionPart = i - (val->Money->WholePart*10000);
+		return 0;
+		}
+	    else
+		{
+		/** normal 8-byte money **/
+		memcpy(&lsl, ptr+4, 4);
+		memcpy(&msl, ptr, 4);
+		minus = 0;
+		if (msl >= 0x80000000)
+		    {
+		    /** Negate **/
+		    minus = 1;
+		    msl = ~msl;
+		    lsl = ~lsl;
+		    if (lsl == 0xFFFFFFFF) msl++;
+		    lsl++;
+		    }
+		/** Long division, 16 bits = 1 "digit" **/
+		divtmp = msl/10000;
+		n = divtmp;
+		msl -= divtmp*10000;
+		msl = (msl<<16) + (lsl>>16);
+		divtmp = msl/10000;
+		n = (n<<16) + divtmp;
+		msl -= divtmp*10000;
+		msl = (msl<<16) + (lsl & 0xFFFF);
+		divtmp = msl/10000;
+		n = (n<<16) + divtmp;
+		msl -= divtmp*10000;
+		val->Money->WholePart = n;
+		val->Money->FractionPart = msl;
+		if (minus)
+		    {
+		    val->Money->WholePart = -val->Money->WholePart;
+		    if (val->Money->FractionPart > 0)
+			{
+			val->Money->WholePart--;
+			val->Money->FractionPart = 10000 - val->Money->FractionPart;
+			}
+		    }
+		return 0;
+		}
+	    }
+
+	mssError(1, "SYBD", "usertype %d not supported by Centrallix", ut);
+	return -1;
+    }
+
+/*** sybd_internal_GetDefaultHints - returns a default hints structure for the given datatype.
+ *** these are hard-coded right now, but there's no reason they couldn't be pushed out to
+ *** a file to make them easier to change, should the sybase types change
+ ***/
+pObjPresentationHints
+sybd_internal_GetDefaultHints(int usertype)
+    {
+    pObjPresentationHints hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints));
+    pParamObjects tmplist;
+
+	memset(hints, 0, sizeof(ObjPresentationHints));
+	xaInit(&(hints->EnumList), 8);
+	hints->GroupID = -1;
+	hints->VisualLength2 = 1;
+	
+	tmplist = expCreateParamList();
+	expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
+	switch (usertype)
+	    {
+	    case 1: /** char **/
+		break;
+	    case 2: /** varchar **/
+		break;
+//	    case 3: /** binary **/
+//		break;
+//	    case 4: /** varbinary **/
+//		break;
+	    case 5: /** tinyint **/
+		hints->MinValue = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->MaxValue = expCompileExpression("255", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		break;
+	    case 6: /** smallint **/
+		hints->MinValue = expCompileExpression("-32768", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->MaxValue = expCompileExpression("32767", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		break;
+	    case 7: /** int **/
+		hints->MinValue = expCompileExpression("-2147438648", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->MaxValue = expCompileExpression("2147438647", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		break;
+	    case 8: /** float **/
+		break;
+//	    case 10: /** numeric **/
+//		break;
+	    case 11: /** money **/
+		hints->Format="money";
+		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		break;
+	    case 12: /** datetime **/
+		hints->Format="datetime";
+		break;
+//	    case 13: /** intn **/
+//		break;
+//	    case 14: /** floatn **/
+//		break;
+//	    case 15: /** datetimn **/
+//		break;
+	    case 16: /** bit **/
+		hints->Style |= OBJ_PH_STYLE_NOTNULL;
+		hints->StyleMask |= OBJ_PH_STYLE_NOTNULL;
+		hints->MaxValue = expCompileExpression("1", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->MinValue = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		break;
+//	    case 17: /** moneyn **/
+//		hints->Format="money";
+	    case 18: /** sysname (this is pretty useless since you can't use this directly as a column's type) **/
+		hints->Style |= OBJ_PH_STYLE_NOTNULL;
+		hints->StyleMask |= OBJ_PH_STYLE_NOTNULL;
+		hints->AllowChars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQQRSTUVWXYZ0123456789_$#@";
+		break;
+		/** constriaint expression to force alphabetic/_ as first char? **/
+	    case 19: /** text **/
+		break;
+	    case 20: /** image **/
+		break;
+	    case 21: /** smallmoney **/
+		hints->Format="money";
+		break;
+	    case 22: /** smalldatetime **/
+		hints->Format="datetime";
+		break;
+	    case 23: /** real **/
+		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		break;
+//	    case 24: /** nchar **/
+//		break;
+//	    case 25: /** nvarchar **/
+//		break;
+//	    case 26: /** decimal **/
+//		break;
+//	    case 27: /** decimaln **/
+//		break;
+//	    case 28: /** numericn **/
+//		break;
+//	    case 80: /** timestamp **/
+//		break;
+	    default:
+		mssError(1, "SYBD", "%d not a supported type", usertype);
+		xaDeInit(&(hints->EnumList));
+		nmFree(hints, sizeof(ObjPresentationHints));
+		expFreeParamList(tmplist);
+		return NULL;
+	    }
+	expFreeParamList(tmplist);
+	return hints;
+    }
+
+
+/*** sybd_internal_MergTypeHints - look for hints that are relevent for the given type,
+ *** and add them into the existing hints structure, over-riding where necessary.
+ ***/
+int
+sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, int ut)
+    {
+    pParamObjects tmplist;
+    pExpression exp;
+    char* ptr;
+    int t, i;
+
+	t = sybd_internal_GetCxType(ut);
+	
+	/** check for expressions **/
+	if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE)
+	    {
+	    tmplist = expCreateParamList();
+	    expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
+
+	    stAttrValue(stLookup(type_inf, "constraint"),NULL,&ptr,0);
+	    if (ptr) 
+		{
+		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    mssError(0, "SYBD", "Error in constraint expression %s", ptr);
+		else 
+		    {
+		    if (hints->Constraint) expFreeExpression(hints->Constraint);
+		    hints->Constraint = exp;
+		    }
+		}
+	    stAttrValue(stLookup(type_inf, "default"),NULL,&ptr,0);
+	    if (ptr) 
+		{
+		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    mssError(0, "SYBD", "Error in default expression %s", ptr);
+		else 
+		    {
+		    if (hints->DefaultExpr) expFreeExpression(hints->DefaultExpr);
+		    hints->DefaultExpr = exp;
+		    }
+		}
+	    stAttrValue(stLookup(type_inf, "min"),NULL,&ptr,0);
+	    if (ptr) 
+		{
+		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    mssError(0, "SYBD", "Error in min expression %s", ptr);
+		else 
+		    {
+		    if (hints->MinValue) expFreeExpression(hints->MinValue);
+		    hints->MinValue = exp;
+		    }
+		}
+	    stAttrValue(stLookup(type_inf, "max"),NULL,&ptr,0);
+	    if (ptr) 
+		{
+		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    mssError(0, "SYBD", "Error in max expression %s", ptr);
+		else 
+		    {
+		    if (hints->MaxValue) expFreeExpression(hints->MaxValue);
+		    hints->MaxValue = exp;
+		    }
+		}
+
+	    expFreeParamList(tmplist);
+	    }
+	
+	/** check for allowed/disallowed characters **/
+	if (t == DATA_T_STRING)
+	    {
+	    if (stAttrValue(stLookup(type_inf, "allowchars"),NULL,&ptr,0) >= 0)
+		{
+		if (hints->AllowChars) free(hints->AllowChars);
+		hints->AllowChars = strdup(ptr);
+		}
+	    if (stAttrValue(stLookup(type_inf, "badchars"),NULL,&ptr,0) >= 0)
+		{
+		if (hints->BadChars) free(hints->BadChars);
+		hints->BadChars = strdup(ptr);
+		}
+	    }
+	
+	/** check for visual length **/
+	if (stAttrValue(stLookup(type_inf, "length"),&i,NULL,0) >= 0) hints->VisualLength = i;
+	if (stAttrValue(stLookup(type_inf, "height"),&i,NULL,0) >= 0) hints->VisualLength2 = i;
+
+	/** check for Style **/
+
+    return 0;
+    }
+
+
 /*** sybd_internal_OpenNode - attempts to lookup a driver node in the
  *** node cache, otherwise opens it from the filesystem.  Expects the
  *** given path to the datasource's node.  'path' specifies that path,
@@ -644,11 +1041,16 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
     {
     pSybdNode db_node;
     int type,i;
+    int* TypeNum;
     CS_CONNECTION* s;
     CS_COMMAND* cmd;
     CS_INT restype;
-    char* ptr;
+    char* ptr,* TypeName;
     pSnNode snnode;
+    pObjPresentationHints hints;
+    unsigned char is_variable, length;
+    pStructInf type_hints, type_inf;
+    pParamObjects tmplist;
 
     	/** First, do a lookup in the db node cache. **/
 	db_node = (pSybdNode)xhLookup(&(SYBD_INF.DBNodes),path);
@@ -731,21 +1133,55 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 	xhAdd(&(SYBD_INF.DBNodes), db_node->Path, (void*)db_node);
 	xaAddItem(&SYBD_INF.DBNodeList, (void*)db_node);
 
+	xhInit(&(db_node->TypeNameToID), 31, 0);
+	memset(db_node->TypeHints, 0, sizeof(void*)*SYBD_MAX_NUM_TYPES);
+
+	/** find the typehints part of the node, if there is one **/
+	type_hints = stLookup(snnode->Data, "typehints");
+
 	/** Get a connection and get the types list. **/
 	s = sybd_internal_GetConn(db_node, mssUserName(), mssPassword());
 	if (s)
 	    {
-	    if ((cmd=sybd_internal_Exec(s,"select usertype,name from systypes")))
+	    if ((cmd=sybd_internal_Exec(s,"select usertype,name,length,variable from systypes")))
 	        {
 		while(ct_results(cmd, &restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 		    {
 		    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
 		        {
-			type = 0;
-			ct_get_data(cmd, 1, &type, 4, (CS_INT*)&i);
+			TypeNum = (int*)malloc(4);
+			*TypeNum=0;
+			ct_get_data(cmd, 1, TypeNum, 4, (CS_INT*)&i);
 			if (i==0) continue;
-			ct_get_data(cmd, 2, db_node->Types[type], 13, (CS_INT*)&i);
-			db_node->Types[type][i] = 0;
+			TypeName = (char*)malloc(14);
+			ct_get_data(cmd, 2, TypeName, 13, (CS_INT*)&i);
+			TypeName[i]='\0';
+			memcpy(db_node->Types[*TypeNum], TypeName, strlen(TypeName)+1);
+			ct_get_data(cmd, 3, &length, 1, (CS_INT*)&i);
+			ct_get_data(cmd, 4, &is_variable, 1, (CS_INT*)&i);
+			
+//			fprintf(stderr, "Type name: %s, Type Num: %d, is_variable: %d, length: %d\n", TypeName, *TypeNum,
+//			    is_variable, length);
+			/** add name->id entry in hash table **/
+			xhAdd(&(db_node->TypeNameToID), TypeName, (char*)TypeNum);
+
+			/** create a base hints entry for each type **/
+			if ( (hints = sybd_internal_GetDefaultHints(*TypeNum)) != NULL)
+			    db_node->TypeHints[*TypeNum] = hints;
+
+			/** supliment that base entry a bit **/
+			switch (sybd_internal_GetCxType(*TypeNum))
+			    {
+			    case DATA_T_INTEGER: hints->VisualLength = 13; break;
+			    case DATA_T_DATETIME: hints->VisualLength = 20; break;
+			    case DATA_T_MONEY: hints->VisualLength = 16; break;
+			    case DATA_T_DOUBLE: hints->VisualLength = 16; break;
+			    }
+
+			/** check to see if there's anything pertaining to this type in the node **/
+			if ( type_hints && (type_inf = stLookup(type_hints, TypeName)) != NULL)
+			    sybd_internal_MergeTypeHints(type_inf, hints, *TypeNum);
+			
 			}
 		    }
 		sybd_internal_Close(cmd);
@@ -814,7 +1250,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	tdata->HasContent = 0;
 
 	/** Build the query to get the cols. **/
-	snprintf(sbuf,sizeof(sbuf),"SELECT c.name,c.colid,c.status,c.usertype FROM syscolumns c,sysobjects o WHERE c.id=o.id AND o.name='%s' ORDER BY c.colid",table);
+	snprintf(sbuf,sizeof(sbuf),"SELECT c.name,c.colid,c.status,c.usertype,c.length FROM syscolumns c,sysobjects o WHERE c.id=o.id AND o.name='%s' ORDER BY c.colid",table);
 	if (!(cmd=sybd_internal_Exec(session,sbuf)))
 	    {
 	    nmSysFree(tdata->ColBuf);
@@ -882,6 +1318,11 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	    ct_get_data(cmd, 4, &(tdata->ColTypes[tdata->nCols]), 4, (CS_INT*)&i);
 	    if (tdata->ColTypes[tdata->nCols] == 19 || tdata->ColTypes[tdata->nCols] == 20)
 	        tdata->HasContent = 1;
+
+	    /** Get the column length (MJM) **/
+	    tdata->ColLengths[tdata->nCols] = 0;
+	    ct_get_data(cmd, 5, &(tdata->ColLengths[tdata->nCols]), 4, (CS_INT*)&i);
+	    
 	    tdata->nCols++;
 	    }
 	sybd_internal_Close(cmd);
@@ -1598,7 +2039,6 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
 
     return 0;
     }
-
 
 
 /*** sybdOpen - open a table, row, or column.
@@ -2814,7 +3254,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 
 	/** Cursor mode retrieval?  Open cursor if so. **/
-	if ((qy->Flags & SYBD_QF_USECURSOR) && qy->Cmd)
+	if (qy && (qy->Flags & SYBD_QF_USECURSOR) && qy->Cmd)
 	    {
 	    while(ct_results(qy->Cmd,(CS_INT*)&restype)==CS_SUCCEED && restype != CS_CMD_DONE);
 	    sybd_internal_Close(qy->Cmd);
@@ -3285,153 +3725,14 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	        {
 		ptr = inf->ColPtrs[i];
 		t = tdata->ColTypes[i];
-		if (ptr == NULL) return 1;
-		if (t==5 || t==6 || t==7 || t==16)
+		val->Generic = &(inf->Types.Generic);	/** bwahaha. This is a travesty. I wash my hands of this code. **/
+		if (sybd_internal_GetCxValue(ptr, t, val, datatype) < 0)
 		    {
-		    if (datatype != DATA_T_INTEGER)
-			{
-			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
-			return -1;
-			}
-		    val->Integer = 0;
-		    if (t==5 || t==16) memcpy(val,ptr,1);
-		    else if (t==6) memcpy(val,ptr,2);
-		    else memcpy(val,ptr,4);
-		    return 0;
+		    mssError(1, "SYBD", "Couldn't get value for %s.", attrname);
+		    return -1;
 		    }
-		else if (t==1 || t==2 || t==18 || t==19)
-		    {
-		    if (datatype != DATA_T_STRING)
-			{
-			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
-			return -1;
-			}
-		    val->String = ptr;
-		    return 0;
-		    }
-		else if (t==22 || t==12)
-		    {
-		    if (datatype != DATA_T_DATETIME)
-			{
-			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
-			return -1;
-			}
-		    /** datetime **/
-		    val->DateTime = &(inf->Types.Date);
-		    memcpy(&days,ptr,4);
-		    memcpy(&fsec,ptr+4,4);
 
-		    /** Convert the time **/
-		    fsec /= 300;
-		    inf->Types.Date.Part.Hour = fsec/3600;
-		    fsec -= (inf->Types.Date.Part.Hour*3600);
-		    inf->Types.Date.Part.Minute = fsec/60;
-		    fsec -= (inf->Types.Date.Part.Minute*60);
-		    inf->Types.Date.Part.Second = fsec;
-
-		    /** Convert the date **/
-		    if (days > 364) days++; /* hack to cover 1900 not being leap year */
-		    days = days*4;
-		    inf->Types.Date.Part.Year = days / (365*4 + 1);
-		    days -= (inf->Types.Date.Part.Year * (365*4 + 1));
-		    days = (days)/4;
-		    inf->Types.Date.Part.Month = 0;
-		    for(n=0;n<12;n++) 
-		        {
-			if (days >= (obj_month_days[n] + ((n==1 && IS_LEAP_YEAR(inf->Types.Date.Part.Year+1900))?1:0)))
-		            {
-			    inf->Types.Date.Part.Month++;
-			    days -= (obj_month_days[n] + ((n==1 && IS_LEAP_YEAR(inf->Types.Date.Part.Year+1900))?1:0));
-			    }
-			else
-			    {
-			    break;
-			    }
-			}
-		    inf->Types.Date.Part.Day = days;
-		    return 0;
-		    }
-		else if (t == 8)
-		    {
-		    if (datatype != DATA_T_DOUBLE)
-			{
-			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be double)", attrname);
-			return -1;
-			}
-		    /** float **/
-		    memcpy(val, ptr, 8);
-		    return 0;
-		    }
-		else if (t == 23)
-		    {
-		    if (datatype != DATA_T_DOUBLE)
-			{
-			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be double)", attrname);
-			return -1;
-			}
-		    memcpy(&f, ptr, 4);
-		    val->Double = f;
-		    return 0;
-		    }
-		else if (t == 11 || t == 21)
-		    {
-		    if (datatype != DATA_T_MONEY)
-			{
-			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be money)", attrname);
-			return -1;
-			}
-		    /** money **/
-		    val->Money = &(inf->Types.Money);
-		    if (t == 21)
-		        {
-			/** smallmoney, 4-byte **/
-			memcpy(&i, ptr, 4);
-			inf->Types.Money.WholePart = i/10000;
-			if (i < 0 && (i%10000) != 0) inf->Types.Money.WholePart--;
-			inf->Types.Money.FractionPart = i - (inf->Types.Money.WholePart*10000);
-			return 0;
-			}
-		    else
-		        {
-			/** normal 8-byte money **/
-			memcpy(&lsl, ptr+4, 4);
-			memcpy(&msl, ptr, 4);
-			minus = 0;
-			if (msl >= 0x80000000)
-			    {
-			    /** Negate **/
-			    minus = 1;
-			    msl = ~msl;
-			    lsl = ~lsl;
-			    if (lsl == 0xFFFFFFFF) msl++;
-			    lsl++;
-			    }
-			/** Long division, 16 bits = 1 "digit" **/
-			divtmp = msl/10000;
-			n = divtmp;
-			msl -= divtmp*10000;
-			msl = (msl<<16) + (lsl>>16);
-			divtmp = msl/10000;
-			n = (n<<16) + divtmp;
-			msl -= divtmp*10000;
-			msl = (msl<<16) + (lsl & 0xFFFF);
-			divtmp = msl/10000;
-			n = (n<<16) + divtmp;
-			msl -= divtmp*10000;
-			inf->Types.Money.WholePart = n;
-			inf->Types.Money.FractionPart = msl;
-			if (minus)
-			    {
-			    inf->Types.Money.WholePart = -inf->Types.Money.WholePart;
-			    if (inf->Types.Money.FractionPart > 0)
-			        {
-				inf->Types.Money.WholePart--;
-				inf->Types.Money.FractionPart = 10000 - inf->Types.Money.FractionPart;
-				}
-			    }
-			return 0;
-			}
-		    }
+		return 0;
 		}
 	    }
 
@@ -3990,18 +4291,117 @@ sybdInfo(void* inf_v, pObjectInfo info)
 	    case SYBD_T_TABLE:
 	    case SYBD_T_COLSOBJ:
 	    case SYBD_T_ROWSOBJ:
-		info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
+		info->Flags |= ( OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
 		    OBJ_INFO_F_NO_CONTENT );
+		if (inf->TData && inf->TData->RowCount > 0) 
+		    {
+		    info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN );
+		    info->nSubobjects = inf->TData->RowCount;
+		    }
 		break;
 	    case SYBD_T_COLUMN:
 		info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
 		    OBJ_INFO_F_NO_CONTENT );
 		break;
 	    case SYBD_T_ROW:
-		info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CAN_HAVE_CONTENT );
+		info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ );
+		if (inf->TData && inf->TData->HasContent) info->Flags |= OBJ_INFO_F_CAN_HAVE_CONTENT;
 		break;
 	    }
 	return 0;
+    }
+
+
+/*** datPresentationHints - return a presentation-hints structure
+ *** dcontaining information about a particular attribute.
+ ***/
+pObjPresentationHints
+sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
+    {
+    pSybdData inf = SYBD(inf_v);
+    pObjPresentationHints hints=NULL;
+    int datatype, i;
+
+	if (!strcmp(attrname, "name") || !strcmp(attrname, "inner_type") || !strcmp(attrname, "outer_type") ||
+	    !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname, "last_modification"))
+	    {
+	    if ( (hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
+	    xaInit(&(hints->EnumList), 8);
+	    memset(hints, 0, sizeof(ObjPresentationHints));
+	    hints->GroupID=-1;
+	    hints->VisualLength2=1;
+	    if (!strcmp(attrname, "annotation")) hints->VisualLength = 60;
+	    else hints->VisualLength = 30;
+	    if (!strcmp(attrname, "name")) hints->Length = 30;
+	    else if (!strcmp(attrname, "annotation")) hints->Length = 255;
+	    else 
+		{
+		hints->Style |= OBJ_PH_STYLE_READONLY;
+		hints->StyleMask |= OBJ_PH_STYLE_READONLY;
+		}
+	    return hints;
+	    }
+        
+	switch(inf->Type)
+	    {
+	    case SYBD_T_DATABASE: break;
+	    case SYBD_T_TABLE: break;
+	    case SYBD_T_ROWSOBJ: break;
+	    case SYBD_T_COLSOBJ: break;
+	    case SYBD_T_COLUMN:
+		if (strcmp(attrname, "datatype"))
+		    {
+		    mssError(1, "SYBD", "No attribute %s", attrname);
+		    return NULL;
+		    }
+
+		if ( (hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
+		xaInit(&(hints->EnumList), 8);
+		memset(hints, 0, sizeof(ObjPresentationHints));
+		hints->GroupID=-1;
+		hints->VisualLength2=1;
+		hints->Style |= OBJ_PH_STYLE_READONLY;
+		hints->StyleMask |= OBJ_PH_STYLE_READONLY;
+		hints->VisualLength = 15;
+
+		return hints;
+		break;
+	    case SYBD_T_ROW: break;
+		/** the attributes of a row are the column names, with the values being the field values **/
+		/** find the name of the column, and get its data type **/
+		for (i=0;i<inf->TData->nCols;i++) 
+		    {
+		    if (!strcmp(attrname, inf->TData->Cols[i]))
+			{
+			datatype = inf->TData->ColTypes[i];
+			
+			/** Duplicate the hints structure **/
+			hints=objDuplicateHints(inf->Node->TypeHints[datatype]);
+
+			/** TODO: pull stuff out of the node to flesh the structure out **/
+			
+			/** If this is a stringish datatype, set its length and visual length.
+			 ** It's important to make sure we don't override something the user
+			 ** might've set **/
+			if (sybd_internal_GetCxType(datatype) == DATA_T_STRING)
+			    {
+			    if (hints->Length == 0) hints->Length = inf->TData->ColLengths[i];
+			    if (hints->VisualLength == 0) hints->VisualLength = inf->TData->ColLengths[i];
+			    }
+			break;
+			}
+		    }
+		if (i == inf->TData->nCols)
+		    {
+		    mssError(1, "SYBD", "No attribute '%s'", attrname);
+		    return NULL;
+		    }
+		break;
+	    default:
+		mssError(1, "SYBD", "Can't get hints for that type yet");
+		break;
+	    }
+        return hints;
     }
 
 /*** sybdInitialize - initialize this driver, which also causes it to 
@@ -4062,6 +4462,7 @@ sybdInitialize()
 	drv->ExecuteMethod = sybdExecuteMethod;
 	drv->Commit = sybdCommit;
 	drv->Info = sybdInfo;
+	drv->PresentationHints = sybdPresentationHints;
 
 	/** Initialize CT Library **/
 	if (cs_ctx_alloc(CS_VERSION_100, &SYBD_INF.Context) != CS_SUCCEED) return -1;
@@ -4072,7 +4473,7 @@ sybdInitialize()
 	nmRegister(sizeof(SybdQuery),"SybdQuery");
 	nmRegister(sizeof(SybdConn),"SybdConn");
 	nmRegister(sizeof(SybdNode),"SybdNode");
-
+	
 	/** Register the driver **/
 	if (objRegisterDriver(drv) < 0) return -1;
 	SYBD_INF.ObjDriver = drv;

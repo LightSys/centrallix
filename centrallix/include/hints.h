@@ -41,5 +41,6 @@ pObjPresentationHints objInfToHints(pStructInf inf, int data_type);
 pObjPresentationHints hntObjToHints(pObject obj);
 int hntVerifyHints(pObjPresentationHints hints, pTObjData ptod, char** msg, pParamObjects objlist);
 int hntEncodeHints(pObjPresentationHints hints, pXString xs);
+pObjPresentationHints objDuplicateHints(pObjPresentationHints hints);
 
 #endif /** _HINTS_H **/

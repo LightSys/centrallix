@@ -48,10 +48,27 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.8 2004/06/12 04:02:28 gbeeley Exp $
+    $Id: obj_attr.c,v 1.9 2004/07/02 00:23:24 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.9  2004/07/02 00:23:24  mmcgill
+    Changes include, but are not necessarily limitted to:
+        - fixed test_obj hints printing, added printing of hints to show command
+        to make them easier to read.
+        - added objDuplicateHints, for making deep copies of hints structures.
+        - made sure GroupID and VisualLength2 were set to their proper defualts
+          inf objPresentationHints() [obj_attr.c]
+        - did a bit of restructuring in the sybase OS driver:
+    	* moved the type conversion stuff in sybdGetAttrValue into a seperate
+    	  function (sybd_internal_GetCxValue, sybd_internal_GetCxType). In
+    	* Got rid of the Types union, made it an ObjData struct instead
+    	* Stored column lengths in ColLengths
+    	* Fixed a couple minor bugs
+        - Roughed out a preliminary hints implementation for the sybase driver,
+          in such a way that it shouldn't be *too* big a deal to add support for
+          user-defined types.
+
     Revision 1.8  2004/06/12 04:02:28  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -368,6 +385,9 @@ objPresentationHints(pObject this, char* attrname)
 	    ph = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints));
 	    memset(ph,0,sizeof(ObjPresentationHints));
 	    xaInit(&(ph->EnumList),16);
+	    /** init the non-0 default values **/
+	    ph->GroupID=-1;
+	    ph->VisualLength2=1;
 	    }
 
     return ph;
