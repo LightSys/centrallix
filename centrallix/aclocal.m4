@@ -112,7 +112,7 @@ AC_DEFUN(BUILD_DYNAMIC,
 	    AC_MSG_RESULT(autodetecting)
 	    AC_MSG_CHECKING(if dynamic loading can be enabled)
 	    dnl This isn't the _correct_ way to check, but it works for cygwin
-	    if test "$HAVE_LIBDL"; then
+	    if test "$ac_cv_lib_dl_main" = "yes"; then
 		WITH_DYNAMIC_LOAD="yes"
 	    else
 		WITH_DYNAMIC_LOAD="no"

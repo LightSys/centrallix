@@ -249,7 +249,7 @@ modules: mods
 
 modules_install: mods config_install
 	@mkdir -p $(libdir)
-	@$(INSTALL) $(MODULES) $(libdir)
+	$(if $(strip ${MODULES}),@$(INSTALL) $(MODULES) $(libdir))
 	@echo ""
 	@echo "***************************************************************"
 	@echo "Libraries have been installed in $(libdir)"

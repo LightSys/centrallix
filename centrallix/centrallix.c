@@ -3,6 +3,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dlfcn.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "centrallix.h"
 #include "mtask.h"
 #include "obj.h"
@@ -45,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.8 2002/08/16 03:09:44 jorupp Exp $
+    $Id: centrallix.c,v 1.9 2002/08/16 03:39:42 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.9  2002/08/16 03:39:42  jorupp
+     * fixed a bug in the configure script that was causing the 'autodetection' of the
+        support of dynamic loading to always fail
+
     Revision 1.8  2002/08/16 03:09:44  jorupp
      * added the ability to disable the dynamic loading modules -- needed under cygwin
        -- centrallix now compiles and runs under cygwin (without dynamic loading modules)
@@ -113,6 +120,8 @@ cx_internal_LoadModules(char* type)
     pCxModule moduledata;
     int i,j,found;
     int n_loaded = 0;
+
+	printf("Version: %s\n",PACKAGE_VERSION);
 
 	/** Find the modules section in the configuration file.  It is not
 	 ** an error if the section is not there - just no module loading
