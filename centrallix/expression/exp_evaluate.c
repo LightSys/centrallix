@@ -66,10 +66,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.2 2001/09/28 20:04:50 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.3 2001/10/02 16:23:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.3  2001/10/02 16:23:09  gbeeley
+    Added exp_generator expressiontree-to-text generation module.  Also fixed
+    a precedence problem with EXPR_N_FUNCTION nodes; not sure why that wasn't
+    causing trouble previously.
+
     Revision 1.2  2001/09/28 20:04:50  gbeeley
     Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
     are now self-contained and require no redundant OBJECT nodes as parent
@@ -1508,7 +1513,6 @@ exp_internal_DefineNodeEvals()
 	EXP.EvalFunctions[EXPR_N_LIST] = expEvalList;
 
 	/** Operator precedence list **/
-	EXP.Precedence[EXPR_N_FUNCTION] = 1;
 	EXP.Precedence[EXPR_N_MULTIPLY] = 10;
 	EXP.Precedence[EXPR_N_DIVIDE] = 10;
 	EXP.Precedence[EXPR_N_PLUS] = 20;
@@ -1530,6 +1534,7 @@ exp_internal_DefineNodeEvals()
 	EXP.Precedence[EXPR_N_MONEY] = 100;
 	EXP.Precedence[EXPR_N_OBJECT] = 100;
 	EXP.Precedence[EXPR_N_PROPERTY] = 100;
+	EXP.Precedence[EXPR_N_FUNCTION] = 200;
 	EXP.Precedence[EXPR_N_LIST] = 200;
 
     return 0;

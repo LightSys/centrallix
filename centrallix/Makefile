@@ -47,7 +47,7 @@ XRPTMODS=epsonfx_prt.o hppcl_prt.o html_prt.o barcode.o prtmgmt.o text_prt.o
 RPTMODS=$(patsubst %,report/%,$(XRPTMODS))
 
 # Expression evaluation/compilation manager.
-XEXPRMODS=exp_main.o exp_params.o exp_compiler.o exp_evaluate.o exp_functions.o
+XEXPRMODS=exp_main.o exp_params.o exp_compiler.o exp_evaluate.o exp_functions.o exp_generator.o
 EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
 
 # Javascript VM modules... for Centrallix side of things.
