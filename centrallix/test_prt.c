@@ -58,10 +58,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.3 2002/10/17 20:23:17 gbeeley Exp $
+    $Id: test_prt.c,v 1.4 2002/10/18 22:01:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.4  2002/10/18 22:01:37  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.3  2002/10/17 20:23:17  gbeeley
     Got printing v3 subsystem open/close session working (basically)...
 
@@ -122,10 +129,12 @@ start(void* v)
     char prompt[1024];
     char* ptr;
     char cmdname[64];
+    char sbuf[256];
     int is_where;
     char* user;
     char* pwd;
     pFile StdOut;
+    pFile fd;
     pLxSession ls = NULL;
     pFile cxconf;
     pStructInf mss_conf;
@@ -136,6 +145,14 @@ start(void* v)
     int log_all_errors;
     pPrtSession prtsession;
     int rval;
+    int pagehandle, areahandle;
+    int rcnt;
+    void* outputfn;
+    void* outputarg;
+    int t;
+
+	outputfn = testWrite;
+	outputarg = NULL;
 
 	/** Load the configuration file **/
 	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
@@ -249,13 +266,117 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		prtsession= prtOpenSession(ptr, testWrite, NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg);
 		printf("session: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (prtsession) 
 		    {
 		    rval = prtCloseSession(prtsession);
 		    printf("session: prtCloseSession returned %d\n", rval);
 		    }
+		}
+	    else if (!strcmp(cmdname,"printfile"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: printfile <mime type> <filename>\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		printf("printfile: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (!prtsession)
+		    {
+		    continue;
+		    }
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: printfile <mime type> <filename>\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		fd = fdOpen(ptr, O_RDONLY, 0600);
+		if (!fd)
+		    {
+		    printf("printfile: %s: could not access file\n", ptr);
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		pagehandle = prtGetPageRef(prtsession);
+		printf("printfile: prtGetPageRef returned page handle %d\n", pagehandle);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		printf("printfile: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+		while((rcnt = fdRead(fd, sbuf, 255, 0, 0)) > 0)
+		    {
+		    sbuf[rcnt] = '\0';
+		    rval = prtWriteString(areahandle, sbuf);
+		    printf("printfile: prtWriteString returned %d\n", rval);
+		    }
+		fdClose(fd, 0);
+		rval = prtEndObject(areahandle);
+		printf("printfile: prtEndObject(area) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("printfile: prtCloseSession returned %d\n", rval);
+		}
+	    else if (!strcmp(cmdname,"text"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: text <mime type> 'text'\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		printf("text: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (!prtsession)
+		    {
+		    continue;
+		    }
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: text <mime type> 'text'\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		pagehandle = prtGetPageRef(prtsession);
+		printf("text: prtGetPageRef returned page handle %d\n", pagehandle);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		printf("text: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+		rval = prtWriteString(areahandle, ptr);
+		printf("text: prtWriteString returned %d\n", rval);
+		rval = prtEndObject(areahandle);
+		printf("text: prtEndObject(area) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("text: prtCloseSession returned %d\n", rval);
+		}
+	    else if (!strcmp(cmdname,"output"))
+		{
+		if (outputarg)
+		    {
+		    fdClose(outputarg,0);
+		    }
+		outputarg = NULL;
+		outputfn = testWrite;
+		if ((t=mlxNextToken(ls)) == MLX_TOK_EOF)
+		    {
+		    continue;
+		    }
+		if (t != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: output 'filename'\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		outputarg = fdOpen(ptr, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+		if (!outputarg)
+		    {
+		    printf("output: could not open '%s'\n", ptr);
+		    continue;
+		    }
+		outputfn = fdWrite;
 		}
 	    else
 		{

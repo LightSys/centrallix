@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.3 2002/10/18 22:01:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.3  2002/10/18 22:01:39  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.2  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -208,6 +215,37 @@ prt_textlm_LineGeom(pPrtObjStream starting_point, double* bottom, double* top)
     }
 
 
+/*** prt_textlm_UpdateLineY() - update the Y position of an entire line
+ *** by offsetting it by a given amount.
+ ***/
+int
+prt_textlm_UpdateLineY(pPrtObjStream starting_point, double y_offset)
+    {
+    pPrtObjStream scan;
+
+	/** Scan forwards first **/
+	for(scan=starting_point; scan && !(scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)); scan=scan->Next)
+	    {
+	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND)) 
+		{
+		scan->Y += y_offset;
+		}
+	    }
+
+	/** Now scan backwards **/
+	for(scan=starting_point; scan; scan=scan->Prev)
+	    {
+	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND)) 
+		{
+		scan->Y += y_offset;
+		}
+	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_textlm_ChildResizeReq() - this is called when a child object
  *** within this one is about to be resized.  This method gives this
  *** layout manager a chance to prevent the resize operation (return -1).  
@@ -259,7 +297,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     /*double oldheight;*/
     int n,sl,last_sep;
     pPrtObjStream objptr;
-    pPrtObjStream split_obj;
+    pPrtObjStream split_obj = NULL;
     /*unsigned char* spaceptr;*/
     pPrtObjStream new_parent;
     double x,y;
@@ -273,19 +311,27 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    prt_textlm_LineGeom(this->ContentTail, &bottom, &top);
 
 	    /** Determine X and Y for the new object. **/
-	    if (objptr->Flags & (PRT_OBJ_F_NEWLINE || PRT_OBJ_F_SOFTNEWLINE))
+	    if (objptr->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE))
 		{
 		objptr->X = 0.0;
 		objptr->Y = bottom;
 		}
 	    else
 		{
-		/** Where will this go, by default? **/
+		/** Where will this go, by default?  X is pretty easy... **/
 		x = this->ContentTail->X + this->ContentTail->Width;
-		if (bottom - top > objptr->Height)
+
+		/** for the Y location, we have to look at the baseline for text. **/
+		y = this->ContentTail->Y + this->ContentTail->YBase - objptr->YBase;
+		if (y < top && !(objptr->Flags & PRT_OBJ_F_YSET))
+		    {
+		    prt_textlm_UpdateLineY(this->ContentTail, top - y);
+		    }
+
+		/*if (objptr->Height > bottom - top)
 		    y = top;
 		else
-		    y = bottom - objptr->Height;
+		    y = bottom - objptr->Height;*/
 
 		/** Set X position **/
 		if (!(objptr->Flags & PRT_OBJ_F_XSET) || (objptr->X < x) || (objptr->X >= this->Width - this->MarginLeft - this->MarginRight))
@@ -328,6 +374,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 			    if (last_sep != 0)
 				{
 				split_obj = prt_internal_AllocObj("string");
+				split_obj->Session = objptr->Session;
 				split_obj->Justification = this->Justification;
 				prt_internal_CopyAttrs(objptr, split_obj);
 				if (objptr->Content[last_sep] == ' ')
@@ -337,6 +384,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 				objptr->Content[last_sep] = '\0';
 				objptr->Width = ckw;
 				split_obj->Height = objptr->Height;
+				split_obj->YBase = objptr->YBase;
 				split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
 				split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 				}
@@ -357,12 +405,14 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 				    {
 				    /** Split it. **/
 				    split_obj = prt_internal_AllocObj("string");
+				    split_obj->Session = objptr->Session;
 				    split_obj->Justification = this->Justification;
 				    prt_internal_CopyAttrs(objptr, split_obj);
 				    split_obj->Content = nmSysStrdup(objptr->Content+n);
 				    objptr->Content[n] = '\0';
 				    objptr->Width = ckw;
 				    split_obj->Height = objptr->Height;
+				    split_obj->YBase = objptr->YBase;
 				    split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
 				    split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 				    }
@@ -471,6 +521,7 @@ prt_textlm_InitContainer(pPrtObjStream this)
 	first_obj->Width = 0.0;
 	first_obj->Session = this->Session;
 	first_obj->Height = this->LineHeight;
+	first_obj->YBase = prt_internal_GetFontBaseline(first_obj);
 
 	/** Add the initial object **/
 	prt_internal_Add(this, first_obj);

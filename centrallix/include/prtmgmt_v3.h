@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.2 2002/04/25 04:30:13 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.3 2002/10/18 22:01:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.3  2002/10/18 22:01:38  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.2  2002/04/25 04:30:13  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -120,6 +127,7 @@ typedef struct _POS
     double		PageY;
     double		X;			/* Relative X position to container origin */
     double		Y;			/* Relative Y position to container origin */
+    double		YBase;			/* Relative Y baseline to the object's Y position */
     double		Width;			/* Width of object */
     double		Height;			/* Height of object */
     double		MarginLeft;
@@ -173,6 +181,7 @@ typedef struct _PFM
     int			(*Generate)();
     int			(*GetNearestFontSize)();
     double		(*GetCharacterMetric)();
+    double		(*GetCharacterBaseline)();
     int			(*Close)();
     }
     PrtFormatter, *pPrtFormatter;
@@ -191,6 +200,7 @@ typedef struct _PD
     int			(*SetTextStyle)();
     int			(*GetNearestFontSize)();
     double		(*GetCharacterMetric)();
+    double		(*GetCharacterBaseline)();
     int			(*SetHPos)();
     int			(*SetVPos)();
     int			(*WriteText)();
@@ -345,6 +355,7 @@ int prt_internal_Add(pPrtObjStream parent, pPrtObjStream new_child);
 int prt_internal_CopyAttrs(pPrtObjStream src, pPrtObjStream dst);
 int prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst);
 double prt_internal_GetFontHeight(pPrtObjStream obj);
+double prt_internal_GetFontBaseline(pPrtObjStream obj);
 double prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n);
 pPrtObjStream prt_internal_YSort(pPrtObjStream obj);
 int prt_internal_FreeTree(pPrtObjStream obj);

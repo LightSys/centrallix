@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.3 2002/10/17 20:23:18 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.4 2002/10/18 22:01:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.4  2002/10/18 22:01:38  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.3  2002/10/17 20:23:18  gbeeley
     Got printing v3 subsystem open/close session working (basically)...
 
@@ -175,6 +182,7 @@ prt_internal_Add(pPrtObjStream parent, pPrtObjStream new_child)
 	    parent->ContentTail = new_child;
 	    new_child->Parent = parent;
 	    }
+	new_child->Session = parent->Session;
 
     return 0;
     }
@@ -229,6 +237,16 @@ prt_internal_GetFontHeight(pPrtObjStream obj)
     }
 
 
+/*** prt_internal_GetFontBaseline - Figure out the distance from the top
+ *** of the printed font to its baseline.  Ask the formatter about this.
+ ***/
+double
+prt_internal_GetFontBaseline(pPrtObjStream obj)
+    {
+    return PRTSESSION(obj)->Formatter->GetCharacterBaseline(PRTSESSION(obj)->FormatterData, &(obj->TextStyle));
+    }
+
+
 /*** prt_internal_GetStringWidth - obtain, via char metrics, the physical
  *** width of the given string of text.
  ***/
@@ -236,13 +254,20 @@ double
 prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n)
     {
     double w = 0.0;
+    char oldend;
+    int l;
     
 	/** Add it up for each char in the string **/
-	while(*str && n)
+	l = strlen(str);
+	if (l > n)
 	    {
-	    w += PRTSESSION(obj)->Formatter->GetCharacterMetric(PRTSESSION(obj)->FormatterData, *str, &(obj->TextStyle));
-	    str++;
-	    n--;
+	    oldend = str[n];
+	    str[n] = '\0';
+	    }
+	w = PRTSESSION(obj)->Formatter->GetCharacterMetric(PRTSESSION(obj)->FormatterData, str, &(obj->TextStyle));
+	if (l > n)
+	    {
+	    str[n] = oldend;
 	    }
 
     return w;
@@ -368,6 +393,8 @@ int
 prt_internal_FreeTree(pPrtObjStream obj)
     {
     pPrtObjStream subtree,del;
+    int handle_id = -1;
+    pPrtHandle h;
 
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
@@ -389,6 +416,9 @@ prt_internal_FreeTree(pPrtObjStream obj)
 	if (obj->LayoutMgr) obj->LayoutMgr->DeinitContainer(obj);
 
 	/** Free the memory used by the object itself **/
+	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTableByPtr, (void*)&obj);
+	if (h) handle_id = h->HandleID;
+	if (handle_id >= 0) prtFreeHandle(handle_id);
 	nmFree(obj,sizeof(PrtObjStream));
 
     return 0;
@@ -447,11 +477,14 @@ prt_internal_AddEmptyObj(pPrtObjStream container)
 	    {
 	    /** yes - add an empty string object. **/
 	    obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
+	    obj->Session = container->Session;
 	    obj->Content = nmSysStrdup("");
 	    obj->Width = 0.0;
 	    prev_obj = (container->ContentTail)?(container->ContentTail):container;
+	    prt_internal_CopyAttrs(prev_obj, obj);
 	    obj->Height = prt_internal_GetFontHeight(prev_obj);
-	    container->LayoutMgr->AddObject(obj);
+	    obj->YBase = prt_internal_GetFontBaseline(prev_obj);
+	    container->LayoutMgr->AddObject(container, obj);
 	    }
 	else
 	    {

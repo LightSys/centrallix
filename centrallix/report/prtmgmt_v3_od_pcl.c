@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.3 2002/10/17 20:23:18 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.4 2002/10/18 22:01:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.4  2002/10/18 22:01:39  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.3  2002/10/17 20:23:18  gbeeley
     Got printing v3 subsystem open/close session working (basically)...
 
@@ -253,6 +260,36 @@ prt_pclod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle 
     }
 
 
+/*** prt_pclod_GetCharacterBaseline() - returns the Y offset of the text
+ *** baseline from the upper-left corner of the text, for a given style
+ *** or for the current style.
+ ***/
+double
+prt_pclod_GetCharacterBaseline(void* context_v, pPrtTextStyle style)
+    {
+    pPrtPclodInf context = (pPrtPclodInf)context_v;
+    double bl;
+
+	/** Use current style or specified one? **/
+	if (!style) style = &(context->SelectedStyle);
+
+	/** Get the standard baseline height given the font type. **/
+	switch(style->FontID)
+	    {
+	    case PRT_FONT_T_MONOSPACE:	bl = 0.75; break;
+	    case PRT_FONT_T_SANSSERIF:	bl = 0.75; break;
+	    case PRT_FONT_T_SERIF:	bl = 0.75; break;
+	    case PRT_FONT_T_USBARCODE:	bl = 1.00; break;
+	    default:			bl = 1.00; break;
+	    }
+
+	/** Correct for the font size **/
+	bl = (style->FontSize/12.0)*bl;
+
+    return bl;
+    }
+
+
 /*** prt_pclod_SetTextStyle() - set the current output text style, including
  *** attributes (bold/italic/underlined), color, size, and typeface.
  ***/
@@ -342,8 +379,8 @@ prt_pclod_SetVPos(void* context_v, double y)
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[64];
 
-	/** Generate the horiz-index positioning command. **/
-	snprintf(pclbuf, 64, "\33&a%.1fV", (y)*72 + 0.000001);
+	/** Generate the vertical index positioning command. **/
+	snprintf(pclbuf, 64, "\33&a%.1fV", (y)*120 + 0.000001);
 	prt_pclod_Output(context, pclbuf, -1);
 
     return 0;
@@ -356,9 +393,20 @@ int
 prt_pclod_WriteText(void* context_v, char* str)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
+    char pclbuf[64];
+    double bl;
 
-	/** Just output it. **/
+	/** Temporarily move the cursor position to adjust for the baseline. **/
+	bl = prt_pclod_GetCharacterBaseline(context_v, NULL);
+	snprintf(pclbuf, 64, "\33&a+%.1fV", (bl)*120 + 0.000001);
+	prt_pclod_Output(context, pclbuf, -1);
+
+	/** output it. **/
 	prt_pclod_Output(context, str, -1);
+
+	/** Put the cursor back **/
+	snprintf(pclbuf, 64, "\33&a-%.1fV", (bl)*120 + 0.000001);
+	prt_pclod_Output(context, pclbuf, -1);
 
     return 0;
     }
@@ -409,6 +457,7 @@ prt_pclod_Initialize()
 	drv->SetResolution = prt_pclod_SetResolution;
 	drv->GetNearestFontSize = prt_pclod_GetNearestFontSize;
 	drv->GetCharacterMetric = prt_pclod_GetCharacterMetric;
+	drv->GetCharacterBaseline = prt_pclod_GetCharacterBaseline;
 	drv->SetTextStyle = prt_pclod_SetTextStyle;
 	drv->SetHPos = prt_pclod_SetHPos;
 	drv->SetVPos = prt_pclod_SetVPos;

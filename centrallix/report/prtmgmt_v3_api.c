@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.3 2002/10/18 22:01:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.3  2002/10/18 22:01:38  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.2  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -87,7 +94,7 @@ prtGetPageRef(pPrtSession s)
 		h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTableByPtr, (void*)&obj);
 		if (h) handle_id = h->HandleID;
 		}
-	    obj = obj->Next;
+	    obj = obj->ContentHead;
 	    }
 
 	/** Found a page object, but no handle allocated yet? **/
@@ -509,7 +516,7 @@ prtWriteString(int handle_id, char* str)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream string_obj;
-    int rval;
+    int rval=0;
     char* special_char_ptr;
     int len;
     double x;
@@ -523,23 +530,26 @@ prtWriteString(int handle_id, char* str)
 	while(*str)
 	    {
 	    /** Adding text containing a tab or newline? **/
-	    special_char_ptr = strpbrk(str,"\n\t");
+	    special_char_ptr = strpbrk(str,"\n\t\14");
 	    if (special_char_ptr)
-		len = str - special_char_ptr;
+		len = special_char_ptr - str;
 	    else
 		len = strlen(str);
 
 	    /** Create a new textstring object **/
 	    string_obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
 	    if (!string_obj) return -1;
+	    string_obj->Session = obj->Session;
 
 	    /** Format it and add it to the container **/
 	    string_obj->Content = nmSysMalloc(len+1);
 	    strncpy(string_obj->Content, str, len);
 	    string_obj->Content[len] = 0;
-	    string_obj->Width = prt_internal_GetStringWidth(obj->ContentTail, str, -1);
+	    prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,string_obj);
+	    string_obj->Width = prt_internal_GetStringWidth(obj->ContentTail, string_obj->Content, -1);
 	    string_obj->Height = prt_internal_GetFontHeight(string_obj);
-	    rval = obj->LayoutMgr->AddObject(string_obj);
+	    string_obj->YBase = prt_internal_GetFontBaseline(string_obj);
+	    rval = obj->LayoutMgr->AddObject(obj,string_obj);
 
 	    /** Skipping over a special char? **/
 	    if (special_char_ptr)
@@ -551,8 +561,12 @@ prtWriteString(int handle_id, char* str)
 		    }
 		else if (*special_char_ptr == '\t')
 		    {
-		    x = floor(floor(obj->ContentTail->X/8.0 + 0.00000001)*8.0 + 8.00000001);
+		    x = floor(floor((obj->ContentTail->X + obj->ContentTail->Width)/8.0 + 0.00000001)*8.0 + 8.00000001);
 		    prtSetHPos(handle_id, x);
+		    }
+		else if (*special_char_ptr == '\14')
+		    {
+		    prtWriteFF(handle_id);
 		    }
 		}
 	    else
@@ -581,11 +595,14 @@ prtWriteNL(int handle_id)
 	/** Create a new textstring object **/
 	nl_obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
 	if (!nl_obj) return -1;
+	nl_obj->Session = obj->Session;
 	nl_obj->Content = nmSysStrdup("");
 	nl_obj->Width = 0.0;
+	prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,nl_obj);
 	nl_obj->Height = prt_internal_GetFontHeight(nl_obj);
+	nl_obj->YBase = prt_internal_GetFontBaseline(nl_obj);
 	nl_obj->Flags |= PRT_OBJ_F_NEWLINE;
-	rval = obj->LayoutMgr->AddObject(nl_obj);
+	rval = obj->LayoutMgr->AddObject(obj,nl_obj);
 
     return rval;
     }
@@ -637,6 +654,7 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 
 	/** Init container... **/
 	prt_internal_CopyAttrs(obj, new_obj);
+	new_obj->Session = obj->Session;
 	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj);
 
 	/** Set the object's position, flags, etc. **/
@@ -684,6 +702,9 @@ int
 prtEndObject(int handle_id)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+
+	if (!obj) return -1;
+	ASSERTMAGIC(obj,MGK_PRTOBJSTRM);
 
 	/** Release the handle **/
 	prtFreeHandle(handle_id);

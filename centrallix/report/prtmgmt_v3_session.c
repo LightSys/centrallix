@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.3 2002/10/18 22:01:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.3  2002/10/18 22:01:39  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.2  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -109,6 +116,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg)
 
 	/** Create the initial document object stream **/
 	this->StreamHead = prt_internal_AllocObj("document");
+	this->StreamHead->Session = this;
 
 	/** Add a page to the document. **/
 	page_os = prt_internal_AllocObj("page");

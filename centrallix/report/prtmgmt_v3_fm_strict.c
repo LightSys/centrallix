@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.3 2002/10/18 22:01:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.3  2002/10/18 22:01:38  gbeeley
+    Printing of text into an area embedded within a page now works.  Two
+    testing options added to test_prt: text and printfile.  Use the "output"
+    option to redirect output to a file or device instead of to the screen.
+    Word wrapping has also been tested/debugged and is functional.  Added
+    font baseline logic to the design.
+
     Revision 1.2  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -179,6 +186,18 @@ prt_strictfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style)
     }
 
 
+/*** prt_strictfm_GetCharacterBaseline - return the distance from the upper
+ *** left corner of the character cell to the left baseline point of the 
+ *** character cell, in standard units.
+ ***/
+double
+prt_strictfm_GetCharacterBaseline(void* context_v, pPrtTextStyle style)
+    {
+    pPrtStrictfmInf context = (pPrtStrictfmInf)context_v;
+    return context->OutputDriver->GetCharacterBaseline(context->OutputDriverData, style);
+    }
+
+
 /*** prt_strictfm_Close() - end a printing session and destroy the context
  *** structure.
  ***/
@@ -258,10 +277,10 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 	/** Ok, follow the object chain on the page, generating the bits and pieces **/
 	memcpy(&cur_style, &(page_obj->TextStyle), sizeof(PrtTextStyle));
-	cur_y = 0.0;
+	cur_y = -1.0;
 	drv->SetTextStyle(drvdata, &cur_style);
 	cur_obj = page_obj;
-	while((cur_obj = cur_obj->Next))
+	while((cur_obj = cur_obj->YNext))
 	    {
 	    /** Style change? **/
 	    if (memcmp(&cur_style, &(page_obj->TextStyle), sizeof(PrtTextStyle)))
@@ -282,7 +301,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    switch(cur_obj->ObjType->TypeID)
 		{
 		case PRT_OBJ_T_STRING:
-		    drv->WriteText(drvdata, cur_obj->Content);
+		    if (*(cur_obj->Content)) drv->WriteText(drvdata, cur_obj->Content);
 		    break;
 
 		case PRT_OBJ_T_IMAGE:
@@ -320,6 +339,7 @@ prt_strictfm_Initialize()
 	fmtdrv->Generate = prt_strictfm_Generate;
 	fmtdrv->GetNearestFontSize = prt_strictfm_GetNearestFontSize;
 	fmtdrv->GetCharacterMetric = prt_strictfm_GetCharacterMetric;
+	fmtdrv->GetCharacterBaseline = prt_strictfm_GetCharacterBaseline;
 	fmtdrv->Close = prt_strictfm_Close;
 
 	/** Register with the main prtmgmt system **/
