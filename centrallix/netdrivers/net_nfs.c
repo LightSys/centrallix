@@ -32,6 +32,8 @@
 /** XRingQueue **/
 #include "xringqueue.h"
 
+#include "magic.h"
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -66,10 +68,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.26 2003/06/04 09:59:51 jorupp Exp $
+    $Id: net_nfs.c,v 1.27 2003/06/05 03:57:06 anoncvs_obe Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.27  2003/06/05 03:57:06  anoncvs_obe
+    net_nfs would not compile on my rh73 system with these local variables
+    declared in a block with these statements before the declarations.
+
     Revision 1.26  2003/06/04 09:59:51  jorupp
      * cleaned up debugging output (can turn back on via setting the bits in NNFS_DEBUG)
      * properly terminates the list of directory entries
@@ -1876,11 +1882,6 @@ nnfs_internal_nfs_listener(void* v)
 	/** Loop, accepting requests **/
 	while(1)
 	    {
-	    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
-		printf("listener blocking waiting for request\n");
-	    i=netRecvUDP(NNFS.nfsSocket,buf,MAX_PACKET_SIZE,0,&remoteaddr,&remotehost,&remoteport);
-	    if(i==-1)
-		break;
 	    XDR xdr_in;
 	    XDR xdr_out; // only used on error
 	    struct rpc_msg msg_in;
@@ -1888,6 +1889,12 @@ nnfs_internal_nfs_listener(void* v)
 	    int wasError=1; // mark if there was an error
 	    int isDup=0; // mark if this is a duplicate
 	    pQueueEntry entry;
+
+	    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
+		printf("listener blocking waiting for request\n");
+	    i=netRecvUDP(NNFS.nfsSocket,buf,MAX_PACKET_SIZE,0,&remoteaddr,&remotehost,&remoteport);
+	    if(i==-1)
+		break;
 
 	    entry = (pQueueEntry)nmMalloc(sizeof(QueueEntry));
 	    if(!entry) continue;
