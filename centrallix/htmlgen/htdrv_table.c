@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.6 2002/04/27 06:37:45 jorupp Exp $
+    $Id: htdrv_table.c,v 1.7 2002/04/27 18:42:22 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.7  2002/04/27 18:42:22  jorupp
+     * the dynamicrow table widget will now change the current osrc row when you click a row...
+
     Revision 1.6  2002/04/27 06:37:45  jorupp
      * some bug fixes in the form
      * cleaned up some debugging output in the label
@@ -199,10 +202,22 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"                }\n"
 		"            }\n"
 		"        if(this.rows[i].recnum==this.osrc.CurrentRecord)\n"
-		"            eval('this.rows[i].'+this.row_bgndhigh+';');\n"
+		"            this.rows[i].select();\n"
 		"        else\n"
-		"             eval('this.rows[i].'+(this.rows[i].recnum\%2?this.row_bgnd1:this.row_bgnd2)+';');\n"
+		"            this.rows[i].deselect();\n"
 		"        }\n"
+		"    }\n",0);
+
+	htrAddScriptFunction(s,"tbld_select", "\n"
+		"function tbld_select()\n"
+		"    {\n"
+		"    eval('this.'+this.table.row_bgndhigh+';');\n"
+		"    }\n",0);
+
+	htrAddScriptFunction(s,"tbld_deselect", "\n"
+		"function tbld_deselect()\n"
+		"    {\n"
+		"    eval('this.'+(this.recnum\%2?this.table.row_bgnd1:this.table.row_bgnd2)+';');\n"
 		"    }\n",0);
 
 	// OSRC records are 1-osrc.replicasize
@@ -252,11 +267,19 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    t.rows=new Array(t.windowsize+1);\n"
 		"    t.clip.width=width;\n"
 		"    t.clip.height=height;\n"
+		"    t.kind='tabledynamic';\n"
+		"    t.subkind='table';\n"
+		"    t.document.layer=t;\n"
 		"    var voffset=0;\n"
 		/** build layers **/
 		"    for(var i=0;i<t.windowsize+1;i++)\n"
 		"        {\n"
 		"        t.rows[i]=new Layer(width,t);\n"
+		"        t.rows[i].kind='tabledynamic';\n"
+		"        t.rows[i].subkind='row';\n"
+		"        t.rows[i].document.layer=t.rows[i];\n"
+		"        t.rows[i].select=tbld_select;\n"
+		"        t.rows[i].deselect=tbld_deselect;\n"
 		"        t.rows[i].rownum=i;\n"
 		"        t.rows[i].table=t;\n"
 		"        t.rows[i].x=0;\n"
@@ -270,6 +293,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        for(var j=0;j<t.colcount;j++)\n"
 		"            {\n"
 		"            t.rows[i].cols[j]=new Layer(t.cols[j][2]*2,t.rows[i]);\n"
+		"            t.rows[i].cols[j].row=t.rows[i];\n"
+		"            t.rows[i].cols[j].kind='tabledynamic';\n"
+		"            t.rows[i].cols[j].subkind='cell';\n"
+		"            t.rows[i].cols[j].document.layer=t.rows[i].cols[j];\n"
 		"            t.rows[i].cols[j].colnum=j;\n"
 		"            t.rows[i].cols[j].x=hoffset;\n"
 		"            t.rows[i].cols[j].y=0;\n"
@@ -282,8 +309,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            }\n"
 		"            voffset+=t.rowheight+t.cellvspacing;\n"
 		"        }\n"
+		"    t.rows[0].subkind='headerrow';\n"
 		"    for(var i=0;i<t.colcount;i++)\n"
 		"        {\n"
+		"        t.rows[0].cols[i].subkind='headercell';\n"
 		"        if(t.titlecolor)\n"
 		"            t.rows[0].cols[i].document.write('<font color='+t.titlecolor+'>'+t.cols[i][1]+'</font>');\n"
 		"      	 else\n"
@@ -321,6 +350,21 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	    }
 
 	htrAddScriptInit(s,"null));\n");
+
+	htrAddEventHandler(s,"document","MOUSEDOWN","tabledynamic",
+		"\n"
+		"    targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && (targetLayer.subkind=='row' || targetLayer.subkind=='cell'))\n"
+		"        {\n"
+		"        if(targetLayer.row) targetLayer=targetLayer.row;\n"
+		"        if(targetLayer.table.osrc.CurrentRecord!=targetLayer.recnum)\n"
+		"            {\n"
+		"            targetLayer.table.osrc.MoveToRecord(targetLayer.recnum);\n"
+		"            \n"
+		"            }\n"
+		"        }\n"
+		"    \n"
+		"\n");
 
     return 0;
     }
@@ -472,6 +516,7 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 	objQueryClose(qy);
 	htrAddBodyItem(s,"</TABLE></TD></TR></TABLE>\n");
 
+	
 	/** Function to handle clicking of a table row **/
 	htrAddScriptFunction(s, "tbls_rowclick", "\n"
 		"function tbls_rowclick(x,y,l,cls,nm)\n"
@@ -559,7 +604,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	t.name[63] = 0;
 
 	/** Write named global **/
-	nptr=nmSysMalloc(strlen(t.name)+1);
+	nptr=nmMalloc(strlen(t.name)+1);
 	strcpy(nptr,t.name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
