@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.61 2004/03/10 10:51:09 jasonyip Exp $
+    $Id: htdrv_page.c,v 1.62 2004/03/11 23:12:53 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.62  2004/03/11 23:12:53  jasonyip
+
+    Added IE browser check.
+
     Revision 1.61  2004/03/10 10:51:09  jasonyip
 
     These are the latest IE-Port files.
@@ -420,7 +424,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char dtfocus1[64];	/* dt focus = navyblue rectangle */
     char dtfocus2[64];
 
-	if(!((s->Capabilities.Dom0NS || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
+	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
 	    mssError(1,"HTPAGE","CSS Level 1 Support and (Netscape DOM support or (W3C Level 1 DOM support and W3C Level 2 Events support required))");
 	    return -1;
