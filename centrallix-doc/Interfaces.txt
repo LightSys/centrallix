@@ -1,0 +1,137 @@
+
+***************************************************
+*	END-USER INTERFACE DOCUMENTATION          *
+*	by Matt McGill, August 2004               *
+***************************************************
+
+DEFINITION OF AN INTERFACE
+
+An Interface is a statement about the functionality provided by a class of
+entities. Those entities could be widgets, OSML objects, or any other 
+Centrallix entity, and each entity has its own type of interface.
+
+All interfaces consist of a type, categories, members, and properties.
+*   A category is a type of functionality. For example, since widgets can have
+    actions and events (actions and events are types of functionality that all
+    widgets can posess), there are 'action' and 'event' categories for widget
+    interfaces. Each interface type has its own set of categories. 
+*   Members represent specific instances of functionality within a particular 
+    category. All widget interfaces have an 'action' category, and 'Load' 
+    might be a member of the 'foo' widget interface. Every widget that 
+    implements the 'foo' interface, therefore, has a 'Load' action.
+*   Properties are additional pieces of information that are attatched to a
+    member. The amount and types of information included in the properties of
+    a member vary depending on the context; more on that later.
+
+Some of the main jobs for interfaces are providing a way of classifying
+components, and making it possible for a container to specify requirements
+that must be met by any contained component. In other words, interfaces are
+the glue that allow components to interact with the applications they get
+plugged into. Applications interact with components through the interfaces
+they implement, and components can be grouped together in terms of common
+functionality based on the interfaces those interfaces.
+
+VERSIONS AND INTERFACES
+
+An Interface is meant to be a description of functionality common across the 
+set of all entities that implement it. However, it is likely that over the
+course of time some interfaces will need to be changed to support new
+functionality. In order to lighten the burden placed on the developer with 
+respect to maintaining interface definitions and the applications/components 
+that reference them, a versioning convention has been built into the Centrallix
+interface system. 
+
+All versions of an interface must be contained within a single file, to keep
+things easy to manage. That file is named after the interface, with a .ifc
+extension to identify it as an interface file.
+
+Each interface file must contain at least one major version. The numbering of
+major versions in an interface file is arbitrary - major version numbers need
+not start at 0 or 1, and numbers can be skipped. Each major version is
+distinct. That is to say, a change in major version indicates a loss of
+backward-compatibility. Major version 2 of interface 'foo' is not compatible
+with major version 1 of interface 'foo', and vice versa. If a container
+requires that its contained component implement 'foo 1.x', components that only
+implement 'foo 2.x' cannot be loaded into that container - they are not 
+backward-compatible.
+
+Each major version must contain at least one minor version. Unlike major
+version numbering, minor version numbering within each major version must
+start at 0, and increase without skipping numbers. An increase in minor
+version number indicates the addition of new functionality without a loss of
+backward-compatibility. A container that requires its contained component to
+implement 'foo 1.5' can contain a component that implements 'foo 1.x', where
+x >= 5.
+
+REFERENCING INTERFACES
+
+All interface definitions must be referencable within the OSML. An interface
+reference consists of the OSML path to the interface file, along with the
+desired major and minor version number as a path parameter. The path can be 
+absolute, or it can be relative to the default interface directory, which is
+set via 'iface_dir' in centrallix.conf.
+
+A valid interface reference might look like this:
+net/centrallix/button.ifc?cx__version=1.1
+
+The 'cx__version' path parameter is required for all interface references.
+
+SYNTAX OF AN INTERFACE DEFINITION
+
+Here is an example of a simple interface definition:
+
+    button "iface/definition"
+	{
+	type = widget;
+	v1 "iface/majorversion"
+	    {
+	    v0 "iface/minorversion"
+		{
+		x "iface/property" {}
+		y "iface/property" {}
+		width "iface/property" {}
+		height "iface/property" {}
+		enabled "iface/property" {}
+		Click "iface/event" {}
+		}
+	    v1 "iface/minorversion"
+		{
+		foo "iface/action" 
+		    {
+		    cond = runclient(:recid < 1);
+		    }
+		bar "iface/action" {}
+		}
+	    }
+	}
+
+The name of the interface definition is 'button', so the name of the file
+would be 'button.ifc'.
+
+Every 'iface/definition' must have a type, and at least one major version.
+The 'button' interface has only one major version - 1. The example
+demonstrates the naming convention for major and minor versions - a lower-
+case v followed by the version number. All major and minor version numbers
+must be specified in this way.
+
+Major version 1 has two minor versions - 0 and 1. 'button 1.0' includes members
+x, y, width, height, enabled, and Click. 'button 1.1' contains all of these,
+and in addition contains members foo and bar.
+
+Member types contain the category to which they belong, as the example
+demonstrates. The format for a member is:
+
+    <member name> "iface/<category>" { [properties subnode] }
+
+The reference for 'button 1.1' would be:
+    net/centrallix/button.ifc?cx__version=1.1
+
+THE WIDGET INTERFACE TYPE
+
+The 'widget' interface type has five categories:
+*   'param' - parameters that can be set in an application definition
+*   'event' - events that can occur related to the widget or component
+*   'action' - actions that can be performed on the widget or component
+*   'property' - properties that can be referenced by other widgets
+*   'container' - parts of a widget or component that can contain other
+    widgets or components
