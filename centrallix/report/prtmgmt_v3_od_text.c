@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.3 2003/03/18 04:06:25 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.4 2003/03/21 22:41:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.4  2003/03/21 22:41:21  gbeeley
+    Enhancement to text output driver to buffer entire page before writing
+    it to the output, thus allowing borders and boxes to look nicer in
+    the text only output.
+
     Revision 1.3  2003/03/18 04:06:25  gbeeley
     Added basic image (picture/bitmap) support; only PNG images supported
     at present.  Moved image and border (rectangles) functionality into a
@@ -74,6 +79,9 @@
  **END-CVSDATA***********************************************************/
 
 
+#define PRT_TEXTOD_MAXROWS	256	/* maximum lines per page */
+#define PRT_TEXTOD_MAXCOLS	256	/* maximum columns per page */
+
 /*** our list of resolutions ***/
 PrtResolution prt_text_resolutions[] =
     {
@@ -90,11 +98,14 @@ typedef struct _PTEXT
     int			CurPhysHPos;
     int			CurHPos;
     int			CurVPos;
+    unsigned char	PageBuf[PRT_TEXTOD_MAXROWS][PRT_TEXTOD_MAXCOLS+1];
+    double		LineY[PRT_TEXTOD_MAXROWS];
+    int			MaxLine;
     }
     PrtTextodInf, *pPrtTextodInf;
 
 
-/*** prt_textod_Output() - outputs the given snippet of text or PCL code
+/*** prt_textod_Output() - outputs the given snippet of text 
  *** to the output channel for the printing session.  If length is set
  *** to -1, it is calculated a la strlen().
  ***/
@@ -113,12 +124,101 @@ prt_textod_Output(pPrtTextodInf context, char* str, int len)
     }
 
 
+/*** prt_textod_BufWrite() - write data into the page buffer, adjusting
+ *** the line end markers, line positions, and line-page-Y locations,
+ *** as needed.
+ ***/
+int
+prt_textod_BufWrite(pPrtTextodInf context, double x, double y, char* text)
+    {
+    int row,col,i,len;
+
+	/** Which row to write into? **/
+	row = 0;
+	while(row < y && row < PRT_TEXTOD_MAXROWS)
+	    {
+	    if (context->LineY[row] == 0.0) context->LineY[row] = row;
+	    row++;
+	    }
+	if (row >= PRT_TEXTOD_MAXROWS) return -1; /* offpage */
+	if (context->LineY[row] == 0.0)
+	    {
+	    context->LineY[row] = y;
+	    if (context->MaxLine < row) context->MaxLine = row;
+	    }
+	else if (context->LineY[row] > y)
+	    {
+	    /** move rows **/
+	    if (context->MaxLine >= PRT_TEXTOD_MAXROWS-1) return -1;
+	    for(i=context->MaxLine; i>=row; i--)
+		{
+		memcpy(context->PageBuf[i+1], context->PageBuf[i], PRT_TEXTOD_MAXCOLS+1);
+		context->LineY[i+1] = context->LineY[i];
+		}
+	    context->LineY[row] = y;
+	    memset(context->PageBuf[row], 0, PRT_TEXTOD_MAXCOLS+1);
+	    }
+
+	/** Ok, found a row.  Now point to the col, padding with spaces if needed. **/
+	col = x;
+	if (col >= PRT_TEXTOD_MAXCOLS) return -1;
+	for(i=0;i<col;i++) if (context->PageBuf[row][i] == '\0') context->PageBuf[row][i] = ' ';
+
+	/** Write the text, adjusting for line drawing if need be. **/
+	len = strlen(text);
+	for(i=0;i<len;i++)
+	    {
+	    if (i+col >= PRT_TEXTOD_MAXCOLS) break;
+	    if (text[i] == '|' && context->PageBuf[row][col+i] == '-')
+		context->PageBuf[row][col+i] = '+';
+	    else if (text[i] == '-' && context->PageBuf[row][col+i] == '|')
+		context->PageBuf[row][col+i] = '+';
+	    else if (text[i] == '-' && context->PageBuf[row][col+i] == '-')
+		context->PageBuf[row][col+i] = '=';
+	    else if (context->PageBuf[row][col+i] == ' ' || context->PageBuf[row][col+i] == '\0')
+		context->PageBuf[row][col+i] = text[i];
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_textod_OutputPage() - writes the buffered page to the output.
+ ***/
+int
+prt_textod_OutputPage(pPrtTextodInf context)
+    {
+    int row;
+
+	/** Output all lines that were written **/
+	for(row=0;row<=context->MaxLine;row++)
+	    {
+	    prt_textod_Output(context, context->PageBuf[row], -1);
+	    prt_textod_Output(context, "\r\n", 2);
+	    }
+
+	/** form feed **/
+	prt_textod_Output(context, "\14", 1);
+
+	/** Clear the page **/
+	context->MaxLine = -1;
+	for(row=0;row<PRT_TEXTOD_MAXROWS;row++) 
+	    {
+	    memset(context->PageBuf[row], 0, PRT_TEXTOD_MAXCOLS+1);
+	    context->LineY[row] = 0.0;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_textod_Open() - open a new printing session with this driver.
  ***/
 void*
 prt_textod_Open(pPrtSession s)
     {
     pPrtTextodInf context;
+    int i;
 
 	/** Set up the context structure for this printing session **/
 	context = (pPrtTextodInf)nmMalloc(sizeof(PrtTextodInf));
@@ -135,6 +235,12 @@ prt_textod_Open(pPrtSession s)
 	context->CurVPos = 0;
 	context->CurHPos = 0;
 	context->CurPhysHPos = 0;
+	context->MaxLine = -1;
+	for(i=0;i<PRT_TEXTOD_MAXROWS;i++) 
+	    {
+	    memset(context->PageBuf[i], 0, PRT_TEXTOD_MAXCOLS+1);
+	    context->LineY[i] = 0.0;
+	    }
 
     return (void*)context;
     }
@@ -243,12 +349,17 @@ prt_textod_SetHPos(void* context_v, double x)
 
 	/** Emit enough spaces to move us to the correct column **/
 	t = x + 0.00001;
-	if (t < context->CurPhysHPos) return -1;
+	if (t < context->CurPhysHPos) 
+	    {
+	    /*return -1;*/
+	    context->CurHPos = t;
+	    return 0;
+	    }
 	while(t > context->CurPhysHPos)
 	    {
 	    d = t - context->CurPhysHPos;
 	    if (d > 16) d = 16;
-	    prt_textod_Output(context, "                ",d);
+	    /*prt_textod_Output(context, "                ",d);*/
 	    context->CurPhysHPos += d;
 	    }
 	context->CurHPos = t;
@@ -272,7 +383,7 @@ prt_textod_SetVPos(void* context_v, double y)
 	n = y + 0.00001;
 	while(context->CurVPos < n)
 	    {
-	    prt_textod_Output(context,"\r\n",2);
+	    /*prt_textod_Output(context,"\r\n",2);*/
 	    context->CurVPos++;
 	    context->CurPhysHPos = 0;
 	    }
@@ -294,7 +405,8 @@ prt_textod_WriteText(void* context_v, char* str)
 
 	/** output it. **/
 	n = strlen(str);
-	prt_textod_Output(context, str, n);
+	/*prt_textod_Output(context, str, n);*/
+	prt_textod_BufWrite(context, context->CurHPos, context->CurVPos, str);
 	context->CurHPos += n;
 	context->CurPhysHPos += n;
 
@@ -325,7 +437,8 @@ prt_textod_WriteFF(void* context_v)
     pPrtTextodInf context = (pPrtTextodInf)context_v;
 
 	/** Issue a formfeed (ctl-L). **/
-	prt_textod_Output(context, "\14", 1);
+	/*prt_textod_Output(context, "\14", 1);*/
+	prt_textod_OutputPage(context);
 	context->CurVPos = 0;
 	context->CurHPos = 0;
 	context->CurPhysHPos = 0;
@@ -346,7 +459,7 @@ prt_textod_WriteRect(void* context_v, double width, double height, double next_y
     {
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     double new_y;
-    char rectbuf[32];
+    char rectbuf[33];
     int n,cnt;
     char rectch;
 
@@ -365,14 +478,16 @@ prt_textod_WriteRect(void* context_v, double width, double height, double next_y
 	else n = (width + 0.0001);
 
 	/** Write em **/
-	context->CurHPos += n;
-	context->CurPhysHPos += n;
 	memset(rectbuf,rectch,(n>32)?32:n);
 	while(n > 0)
 	    {
 	    cnt = n;
 	    if (cnt > 32) cnt = 32;
-	    prt_textod_Output(context, rectbuf, cnt);
+	    rectbuf[cnt] = '\0';
+	    /*prt_textod_Output(context, rectbuf, cnt);*/
+	    prt_textod_BufWrite(context, context->CurHPos, context->CurVPos, rectbuf);
+	    context->CurHPos += cnt;
+	    context->CurPhysHPos += cnt;
 	    n -= cnt;
 	    }
 
