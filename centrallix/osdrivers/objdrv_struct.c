@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.5 2002/08/13 01:51:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.5  2002/08/13 01:51:13  gbeeley
+    Added mssError warning/error message if the attribute could not be found
+    or a type mismatch occurred.
+
     Revision 1.4  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -520,6 +524,7 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
+    int rval;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -606,7 +611,12 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    }
 	else
 	    {
-	    return stGetAttrValue(find_inf, datatype, val, 0);
+	    rval = stGetAttrValue(find_inf, datatype, val, 0);
+	    if (rval < 0)
+		{
+		mssError(1,"STX","Type mismatch or non-existent attribute '%s'", attrname);
+		}
+	    return rval;
 	    }
 
 	/*mssError(1,"STX","Could not locate requested structure file attribute");*/
