@@ -53,10 +53,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.4  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.3  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -207,7 +227,7 @@ qyt_internal_ReadObject(char* path, pObjSession s)
 	    switch(type)
 	        {
 		case DATA_T_INTEGER:
-		    if (objGetAttrValue(obj,attrname,POD(&ival)) == 0)
+		    if (objGetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&ival)) == 0)
 		        {
 		        xaAddItem(&objattr->AttrValues, xsStringEnd(&objattr->AttrValueBuf));
 			xsConcatenate(&objattr->AttrValueBuf, (char*)&ival, 4);
@@ -219,7 +239,7 @@ qyt_internal_ReadObject(char* path, pObjSession s)
 		    break;
 
 		case DATA_T_STRING:
-		    if (objGetAttrValue(obj,attrname,POD(&sval)) == 0)
+		    if (objGetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&sval)) == 0)
 		        {
 		        xaAddItem(&objattr->AttrValues, xsStringEnd(&objattr->AttrValueBuf));
 		        xsConcatenate(&objattr->AttrValueBuf,sval, strlen(sval)+1);
@@ -298,12 +318,12 @@ qyt_internal_SubstWhere()
 		    {
 		    if (subst_types[n_subst] == DATA_T_INTEGER) 
 		        {
-			objGetAttrValue(qy->ObjInf->LLObj, attrname, POD(&(subst_int[n_subst])));
+			objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER, POD(&(subst_int[n_subst])));
 			len += 12;
 			}
 		    else if (subst_types[n_subst] == DATA_T_STRING)
 		        {
-			objGetAttrValue(qy->ObjInf->LLObj, attrname, POD(&(subst_str[n_subst])));
+			objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER, POD(&(subst_str[n_subst])));
 			len += strlen(subst_str[n_subst]);
 			}
 		    n_subst++;
@@ -860,7 +880,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 		    switch(subst_types[n_subst])
 		        {
 			case DATA_T_INTEGER:
-			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, POD(&(subst_int[n_subst]))) == 1)
+			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER,POD(&(subst_int[n_subst]))) == 1)
 			        {
 			        subst_types[n_subst] = -1;
 			        len += 6;
@@ -872,7 +892,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 			    break;
 
 			case DATA_T_STRING:
-			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, POD(&sptr)) == 1)
+			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER,POD(&sptr)) == 1)
 			        {
 				subst_types[n_subst] = -1;
 				len += 6;
@@ -1056,7 +1076,7 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-		    objGetAttrValue(llobj, "name", POD(&objname));
+		    objGetAttrValue(llobj, "name", DATA_T_STRING,POD(&objname));
 		    }
 	        }
 	    }
@@ -1139,13 +1159,18 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-qytGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+qytGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pQytData inf = QYT(inf_v);
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
 	    obj_internal_PathPart(inf->Obj->Pathname,0,0);
 	    return 0;
@@ -1154,17 +1179,27 @@ qytGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If content-type, return as appropriate **/
 	if (!strcmp(attrname,"outer_type") && !(inf->LLObj))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = inf->NodeData->UsrType;
 	    return 0;
 	    }
 	else if ((!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type")) && !(inf->LLObj))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = "system/void";
 	    return 0;
 	    }
 
 	/** Low-level object?  Lookup the attribute in it **/
-	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, POD(val));
+	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, POD(val));
 
 	mssError(1,"QYT","Invalid attribute for querytree object");
 
@@ -1204,13 +1239,18 @@ qytGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-qytSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
+qytSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
     {
     pQytData inf = QYT(inf_v);
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"QYT","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    if (inf->NodeData == inf->BaseNode->Data)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
@@ -1231,7 +1271,7 @@ qytSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	    }
 
 	/** Otherwise, attempt to pass setattr through to lowlevel obj **/
-	if (inf->LLObj) return objSetAttrValue(inf->LLObj, attrname, val);
+	if (inf->LLObj) return objSetAttrValue(inf->LLObj, attrname, datatype, val);
 
 	mssError(1,"QYT","Invalid attribute for querytree object");
 

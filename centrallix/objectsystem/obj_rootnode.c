@@ -47,10 +47,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_rootnode.c,v 1.4 2002/07/12 21:50:46 gbeeley Exp $
+    $Id: obj_rootnode.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_rootnode.c,v $
 
     $Log: obj_rootnode.c,v $
+    Revision 1.5  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.4  2002/07/12 21:50:46  gbeeley
     Rootnode driver was stat()ing the default rootnode, not the configured
     one in OSYS.RootPath.  Caused "driver rootnode does not support last
@@ -209,11 +229,22 @@ rootGetAttrType(void* inf_v, char* attr, pObjTrxTree* oxt)
 /*** rootGetAttrValue - return the value of an attribute.
  ***/
 int
-rootGetAttrValue(void* inf_v, char* attr, pObjData val, pObjTrxTree* oxt)
+rootGetAttrValue(void* inf_v, char* attr, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     struct stat fileinfo;
     pRootData inf = (pRootData)inf_v;
     struct tm* t;
+
+	/** Verify the expected data type of the POD **/
+	if (!strcmp(attr,"name") || !strcmp(attr,"inner_type") || !strcmp(attr,"outer_type") ||
+		!strcmp(attr,"content_type") || !strcmp(attr,"annotation"))
+	    {
+	    if (datatype != DATA_T_STRING) 
+		{
+		mssError(1,"ROOT","Type mismatch getting '%s' attribute of rootnode",attr);
+		return -1;
+		}
+	    }
 
     	/** Name?  Value is "" **/
 	if (!strcmp(attr, "name"))
@@ -244,6 +275,11 @@ rootGetAttrValue(void* inf_v, char* attr, pObjData val, pObjTrxTree* oxt)
 	/** Last mod time? **/
 	if (!strcmp(attr,"last_modification"))
 	    {
+	    if (datatype != DATA_T_DATETIME) 
+		{
+		mssError(1,"ROOT","Type mismatch getting '%s' attribute of rootnode",attr);
+		return -1;
+		}
 	    if (inf->MTime.Value == 0)
 		{
 	        if (stat(OSYS.RootPath,&fileinfo) < 0) return -1;
@@ -266,7 +302,7 @@ rootGetAttrValue(void* inf_v, char* attr, pObjData val, pObjTrxTree* oxt)
 /*** rootSetAttrValue - disabled for now, no attributes to set.
  ***/
 int
-rootSetAttrValue(void* inf_v, char* attr, pObjData val, pObjTrxTree* oxt)
+rootSetAttrValue(void* inf_v, char* attr, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     return -1;
     }

@@ -57,10 +57,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_dbl.c,v 1.1 2002/07/29 17:47:36 kai5263499 Exp $
+    $Id: objdrv_dbl.c,v 1.2 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_dbl.c,v $
 
     $Log: objdrv_dbl.c,v $
+    Revision 1.2  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.1  2002/07/29 17:47:36  kai5263499
     Initial import of Greg's DBL object system driver...
 
@@ -797,7 +817,7 @@ dblGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-dblGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pDblData inf = DBL(inf_v);
     int i,t,minus,n;
@@ -810,6 +830,11 @@ dblGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DBL","Type mismatch accessing attribute '%s' [should be string]", attrname);
+		return -1;
+		}
 	    ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
 	    if (ptr[0] == '.' && ptr[1] == '\0')
 	        {
@@ -825,6 +850,11 @@ dblGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Is it an annotation? **/
 	if (!strcmp(attrname, "annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DBL","Type mismatch accessing attribute '%s' [should be string]", attrname);
+		return -1;
+		}
 	    /** Different for various objects. **/
 	    switch(inf->Type)
 	        {
@@ -869,6 +899,11 @@ dblGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If Attr is content-type, report the type. **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DBL","Type mismatch accessing attribute '%s' [should be string]", attrname);
+		return -1;
+		}
 	    switch(inf->Type)
 	        {
 		case DBL_T_DATABASE: *((char**)val) = "system/void"; break;
@@ -891,6 +926,11 @@ dblGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Outer type... **/
 	if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DBL","Type mismatch accessing attribute '%s' [should be string]", attrname);
+		return -1;
+		}
 	    switch(inf->Type)
 	        {
 		case DBL_T_DATABASE: *((char**)val) = "application/dbl"; break;
@@ -908,6 +948,11 @@ dblGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    {
 	    if (strcmp(attrname,"datatype")) return -1;
 
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DBL","Type mismatch accessing attribute '%s' [should be string]", attrname);
+		return -1;
+		}
 	    /** Get the table info. **/
 	    tdata=inf->TData;
 
@@ -928,6 +973,12 @@ dblGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	        {
 		ptr = inf->ColPtrs[i];
 		t = tdata->ColTypes[i];
+		if (datatype != t)
+		    {
+		    mssError(1,"DBL","Type mismatch accessing attribute '%s' [requested=%s, actual=%s]", 
+			    attrname, obj_type_names[datatype], obj_type_names[t]);
+		    return -1;
+		    }
 		}
 	    }
 
@@ -1000,7 +1051,7 @@ dblGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-dblSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+dblSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pDblData inf = DBL(inf_v);
     int type,rval;
@@ -1012,12 +1063,22 @@ dblSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DBL","Type mismatch setting attribute '%s' [should be string]", attrname);
+		return -1;
+		}
 	    if (inf->Type == DBL_T_DATABASE) return -1;
 	    }
 
 	/** Changing the 'annotation'? **/
 	if (!strcmp(attrname,"annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DBL","Type mismatch setting attribute '%s' [should be string]", attrname);
+		return -1;
+		}
 	    /** Choose the appropriate action based on object type **/
 	    switch(inf->Type)
 	        {
@@ -1051,6 +1112,11 @@ dblSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    /** Attempting to set 'suggested' size for content write? **/
 	    if (!strcmp(attrname,"size")) 
 	        {
+		if (datatype != DATA_T_INTEGER)
+		    {
+		    mssError(1,"DBL","Type mismatch setting attribute '%s' [should be integer]", attrname);
+		    return -1;
+		    }
 		inf->Size = *(int*)val;
 		}
 	    else
@@ -1061,6 +1127,12 @@ dblSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    /** We're within a transaction.  Fill in the oxt. **/
 		    type = dblGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
+		    if (datatype != type)
+			{
+			mssError(1,"DBL","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+				attrname, obj_type_names[datatype], obj_type_names[type]);
+			return -1;
+			}
 		    (*oxt)->AllocObj = 0;
 		    (*oxt)->Object = NULL;
 		    (*oxt)->Status = OXT_S_VISITED;
@@ -1077,6 +1149,12 @@ dblSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    /** No transaction.  Simply do an update. **/
 		    type = dblGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
+		    if (datatype != type)
+			{
+			mssError(1,"DBL","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+				attrname, obj_type_names[datatype], obj_type_names[type]);
+			return -1;
+			}
 		    }
 		}
 	    }

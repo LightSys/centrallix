@@ -45,10 +45,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.3 2002/06/19 23:29:34 gbeeley Exp $
+    $Id: obj_trx.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.4  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.3  2002/06/19 23:29:34  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -537,7 +557,7 @@ oxtDelete(pObject obj, pObjTrxTree* oxt)
  *** We treat this in the oxt structure as if it were a child item.
  ***/
 int
-oxtSetAttrValue(void* this_v, char* attrname, void* val, pObjTrxTree* oxt)
+oxtSetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
     pObjTrxTree new_oxt = NULL;
@@ -560,7 +580,7 @@ oxtSetAttrValue(void* this_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    }
 
 	/** Call the driver. **/
-	rval = this->Obj->LowLevelDriver->SetAttrValue(this->LLParam, attrname, val, pass_oxt);
+	rval = this->Obj->LowLevelDriver->SetAttrValue(this->LLParam, attrname, datatype, val, pass_oxt);
 
 	/** Failed? **/
 	if (rval < 0 && new_oxt)
@@ -659,10 +679,10 @@ oxtOpenAttr(void* this_v, char* attrname, pObjTrxTree* oxt)
 /*** oxtGetAttrValue -- even this is passthru for now.  Sigh.
  ***/
 int
-oxtGetAttrValue(void* this_v, char* attrname, void* val, pObjTrxTree* oxt)
+oxtGetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->GetAttrValue(this->LLParam, attrname, val, oxt);
+    return this->Obj->LowLevelDriver->GetAttrValue(this->LLParam, attrname, datatype, val, oxt);
     }
 
 

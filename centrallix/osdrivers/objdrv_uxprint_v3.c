@@ -53,10 +53,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_uxprint_v3.c,v 1.1 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: objdrv_uxprint_v3.c,v 1.2 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_uxprint_v3.c,v $
 
     $Log: objdrv_uxprint_v3.c,v $
+    Revision 1.2  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.1  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -727,7 +747,7 @@ uxpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-uxpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pUxpData inf = UXP(inf_v);
     char* ptr;
@@ -736,6 +756,11 @@ uxpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    ptr = strrchr(inf->Obj->Pathname->Pathbuf+1,'/')+1;
 	    if (ptr)
 	        {
@@ -750,15 +775,30 @@ uxpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    }
 	else if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    stAttrValue(stLookup(inf->Node->Data,"type"), NULL, &ptr, 0);
 	    *((char**)val) = ptr;
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = "system/printer";
 	    }
 	else if (!strcmp(attrname,"spool_file"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = inf->SpoolPathname;
 	    }
 	else
@@ -767,6 +807,11 @@ uxpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    find_inf = stLookup(inf->Node->Data, attrname);
 	    if (!find_inf && !strcmp(attrname,"annotation"))
 	        {
+		if (datatype != DATA_T_STRING)
+		    {
+		    mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		    return -1;
+		    }
 		*((char**)val) = "Printer";
 		return 0;
 		}
@@ -823,7 +868,7 @@ uxpGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-uxpSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+uxpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pUxpData inf = UXP(inf_v);
     pStructInf attr_inf;
@@ -831,6 +876,11 @@ uxpSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"UXP","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	    if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	        strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
@@ -853,6 +903,11 @@ uxpSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    attr_inf = stLookup(inf->Node->Data, attrname);
 	    if (!attr_inf && !strcmp(attrname,"annotation"))
 	        {
+		if (datatype != DATA_T_STRING)
+		    {
+		    mssError(1,"UXP","Type mismatch setting attribute '%s' (should be string)", attrname);
+		    return -1;
+		    }
 		attr_inf = stAddAttr(inf->Node->Data, attrname);
 		stSetAttrValue(attr_inf, DATA_T_STRING, val, 0);
 		}

@@ -57,10 +57,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.5 2002/06/19 23:20:42 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.6 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.6  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.5  2002/06/19 23:20:42  gbeeley
     Fixed some compiler warnings, repaired some potential security issues.
 
@@ -598,7 +618,7 @@ rpt_internal_QyGetAttrType(void* qyobj, char* attrname)
  *** value.
  ***/
 int
-rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, void* data_ptr)
+rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* data_ptr)
     {
     pObject obj = ((pQueryConn)qyobj)->QueryItem;
     pQueryConn qy = (pQueryConn)qyobj;
@@ -623,6 +643,12 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, void* data_ptr)
 	    	if (!strcmp(subitem->Name, attrname))
 	            {
 		    exp = (pExpression)(qy->AggregateExpList.Items[n]);
+		    if (datatype != exp->DataType && !(exp->Flags & EXPR_F_NULL))
+			{
+			mssError(1,"RPT","Type mismatch accessing query property '%s' [requested=%s, actual=%s]",
+				attrname, datatype, exp->DataType);
+			return -1;
+			}
 		    if (!(exp->Flags & EXPR_F_NULL)) switch(exp->DataType)
 		        {
 			case DATA_T_INTEGER: *(int*)data_ptr = exp->Integer; break;
@@ -673,7 +699,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, void* data_ptr)
     	/** Return 1 if object is NULL. **/
 	if (obj == NULL) return 1;
 
-    return objGetAttrValue(obj, attrname, POD(data_ptr));
+    return objGetAttrValue(obj, attrname, datatype, POD(data_ptr));
     }
 
 
@@ -821,7 +847,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 		switch(t)
 		    {
 		    case DATA_T_INTEGER:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&n)) == 1)
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_INTEGER, POD(&n)) == 1)
 		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 		        else
 		            snprintf(nbuf[i],32,"%d",n);
@@ -829,7 +855,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 			break;
 
 		    case DATA_T_STRING:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&lvalue)) == 1)
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_STRING, POD(&lvalue)) == 1)
 		            {
 		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			    lvalue = nbuf[i];
@@ -837,7 +863,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 			break;
 
 		    case DATA_T_DATETIME:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&dt)) == 1 || dt == NULL)
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_DATETIME, POD(&dt)) == 1 || dt == NULL)
 		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
 			    snprintf(nbuf[i],32,"%s",objDataToStringTmp(DATA_T_DATETIME, dt, 0));
@@ -845,7 +871,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 			break;
 
 		    case DATA_T_MONEY:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&m)) == 1 || dt == NULL)
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_MONEY, POD(&m)) == 1 || dt == NULL)
 			    snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
 			    snprintf(nbuf[i],32,"%s",objDataToStringTmp(DATA_T_MONEY, m, 0));
@@ -853,7 +879,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 			break;
 
 		    case DATA_T_DOUBLE:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&dbl)) == 1)
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_DOUBLE, POD(&dbl)) == 1)
 			    snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
 			    snprintf(nbuf[i],32,"%f",dbl);
@@ -1660,11 +1686,11 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
                     switch(t)
                         {
                         case DATA_T_STRING:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&ptr)) == 1) ptr=NULL;
+                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_STRING, POD(&ptr)) == 1) ptr=NULL;
                             break;
     
                         case DATA_T_INTEGER:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&n)) == 1)
+                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_STRING, POD(&n)) == 1)
                                 {
                                 ptr = NULL;
                                 }
@@ -1677,14 +1703,14 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
     
                         case DATA_T_DATETIME:
                         case DATA_T_MONEY:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&p)) == 1 || p == NULL)
+                            if (objGetAttrValue(qy->QueryItem, cname, t, POD(&p)) == 1 || p == NULL)
                                 ptr = NULL;
                             else
                                 ptr = objDataToStringTmp(t, p, 0);
                             break;
     
                         case DATA_T_DOUBLE:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&dbl)) == 1)
+                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_DOUBLE, POD(&dbl)) == 1)
                                 {
                                 ptr = NULL;
                                 }
@@ -2089,7 +2115,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 	switch(t)
 	    {
 	    case DATA_T_INTEGER:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&n)) == 1)
+	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_INTEGER, POD(&n)) == 1)
 	            {
 	            txt = rpt_internal_GetNULLstr();
 		    }
@@ -2101,19 +2127,19 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 		break;
 
 	    case DATA_T_STRING:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&txt)) == 1) txt=rpt_internal_GetNULLstr();
+	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_STRING, POD(&txt)) == 1) txt=rpt_internal_GetNULLstr();
 		break;
 
 	    case DATA_T_MONEY:
 	    case DATA_T_DATETIME:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&p)) == 1 || p == NULL) 
+	        if (objGetAttrValue(qy->QueryItem, src, t, POD(&p)) == 1 || p == NULL) 
 		    txt = rpt_internal_GetNULLstr();
 		else 
 		    txt = objDataToStringTmp(t, p, 0);
 		break;
 
 	    case DATA_T_DOUBLE:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&dbl)) == 1)
+	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_DOUBLE, POD(&dbl)) == 1)
 		    {
 		    txt = rpt_internal_GetNULLstr();
 		    }
@@ -3360,7 +3386,7 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pRptData inf = RPT(inf_v);
     pStructInf find_inf, value_inf, tmp_inf;
@@ -3370,6 +3396,11 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    /* *((char**)val) = inf->Node->Data->Name;*/
 	    *((char**)val) = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
 	    obj_internal_PathPart(inf->Obj->Pathname,0,0);
@@ -3379,6 +3410,11 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If content-type, return as appropriate **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
     	    /** Is the worker thread running yet?  Start it if not. **/
 	    if (inf->MasterFD == NULL)
 	        {
@@ -3391,6 +3427,11 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = inf->Node->Data->UsrType;
 	    return 0;
 	    }
@@ -3398,6 +3439,11 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Caller is asking for current page #? **/
 	if (!strcmp(attrname,"page"))
 	    {
+	    if (datatype != DATA_T_INTEGER)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be integer)", attrname);
+		return -1;
+		}
 	    if (!inf->RSess || !inf->RSess->PSession)
 	        {
 		*(int*)val = 1;
@@ -3419,19 +3465,29 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		if (tmp_inf) find_inf = tmp_inf;
 		if (stGetAttrType(find_inf,0) == DATA_T_STRING && stAttrIsList(find_inf))
 		    {
+		    if (datatype != DATA_T_STRINGVEC)
+			{
+			mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be stringvec)", attrname);
+			return -1;
+			}
 		    inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
 		    inf->SVvalue.Strings = (char**)(inf->VecData);
                     *(pStringVec*)val = &(inf->SVvalue);
 		    }
                 else if (stGetAttrType(find_inf,0) == DATA_T_INTEGER && stAttrIsList(find_inf))
                     {
+		    if (datatype != DATA_T_INTVEC)
+			{
+			mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be intvec)", attrname);
+			return -1;
+			}
 		    inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
 		    inf->IVvalue.Integers = (int*)(inf->VecData);
                     *(pIntVec*)val = &(inf->IVvalue);
                     }
 		else
 		    {
-		    stGetAttrValue(find_inf, DATA_T_ANY, POD(val), 0);
+		    stGetAttrValue(find_inf, datatype, POD(val), 0);
 		    }
                 return 0;
                 }
@@ -3469,19 +3525,29 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    /** Return the data of the appropriate type. **/
 		    if (stGetAttrType(value_inf,0) == DATA_T_STRING && stAttrIsList(value_inf))
 			{
+			if (datatype != DATA_T_STRINGVEC)
+			    {
+			    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be stringvec)", attrname);
+			    return -1;
+			    }
 			inf->VecData = stGetValueList(value_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
 			inf->SVvalue.Strings = (char**)(inf->VecData);
 			*(pStringVec*)val = &(inf->SVvalue);
 			}
 		    else if (stGetAttrType(value_inf,0) == DATA_T_INTEGER && stAttrIsList(value_inf))
 			{
+			if (datatype != DATA_T_INTVEC)
+			    {
+			    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be intvec)", attrname);
+			    return -1;
+			    }
 			inf->VecData = stGetValueList(value_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
 			inf->IVvalue.Integers = (int*)(inf->VecData);
 			*(pIntVec*)val = &(inf->IVvalue);
 			}
 		    else
 			{
-			stGetAttrValue(value_inf, DATA_T_ANY, POD(val), 0);
+			stGetAttrValue(value_inf, datatype, POD(val), 0);
 			}
 		    }
 		}
@@ -3490,6 +3556,11 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If annotation, and not found, return "" **/
         if (!strcmp(attrname,"annotation"))
             {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
             *(char**)val = "";
             return 0;
             }
@@ -3559,7 +3630,7 @@ rptGetFirstAttr(void* inf_v, pObjTrxTree *oxt)
  *** point to an appropriate data type.
  ***/
 int
-rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
+rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree *oxt)
     {
     pRptData inf = RPT(inf_v);
     pStructInf find_inf;
@@ -3569,6 +3640,11 @@ rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    /** GRB - error out on this for now.  The stuff that is needed to rename
 	     ** a node like this isn't really in place.
 	     **/
@@ -3604,6 +3680,11 @@ rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
 	/** Content-type?  can't set that **/
 	if (!strcmp(attrname,"content_type")) 
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    mssError(1,"RPT","Illegal attempt to modify content type");
 	    return -1;
 	    }
@@ -3612,6 +3693,12 @@ rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
 	/** First, see if the thing exists in the original inf struct. **/
 	type = rptGetAttrType(inf_v, attrname, oxt);
 	if (type < 0) return -1;
+	if (datatype != type)
+	    {
+	    mssError(1,"RPT","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+		    attrname, obj_type_names[datatype], obj_type_names[type]);
+	    return -1;
+	    }
 
 	/** Now, look for it in the override struct. **/
 	find_inf = stLookup(inf->AttrOverride, attrname);

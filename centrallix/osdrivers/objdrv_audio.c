@@ -57,10 +57,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_audio.c,v 1.1 2001/11/12 20:43:44 gbeeley Exp $
+    $Id: objdrv_audio.c,v 1.2 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_audio.c,v $
 
     $Log: objdrv_audio.c,v $
+    Revision 1.2  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.1  2001/11/12 20:43:44  gbeeley
     Added execmethod nonvisual widget and the audio /dev/dsp device obj
     driver.  Added "execmethod" ls__mode in the HTTP network driver.
@@ -299,9 +319,16 @@ audGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-audGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+audGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pAudData inf = AUD(inf_v);
+
+	/** right now, all audio device attrs are strings **/
+	if (datatype != DATA_T_STRING)
+	    {
+	    mssError(1,"AUD","Type mismatch accessing attribute '%s'", attrname);
+	    return -1;
+	    }
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -368,12 +395,19 @@ audGetFirstAttr(void* inf_v, pObjTrxTree *oxt)
  *** point to an appropriate data type.
  ***/
 int
-audSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
+audSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree *oxt)
     {
     pAudData inf = AUD(inf_v);
     pStructInf find_inf;
     int type;
     int n;
+
+	/** right now, all audio device attrs are strings **/
+	if (datatype != DATA_T_STRING)
+	    {
+	    mssError(1,"AUD","Type mismatch setting attribute '%s'", attrname);
+	    return -1;
+	    }
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))

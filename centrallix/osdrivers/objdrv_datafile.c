@@ -53,10 +53,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.5 2002/06/19 23:29:34 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.6 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.6  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.5  2002/06/19 23:29:34  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -2709,7 +2729,7 @@ datGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-datGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
+datGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pDatData inf = DAT(inf_v);
     int i;
@@ -2719,6 +2739,11 @@ datGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DAT","Type mismatch accessing attribute 'name' (must be a string)");
+		return -1;
+		}
 	    ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
 	    if (ptr[0] == '.' && ptr[1] == '\0')
 	        {
@@ -2734,6 +2759,11 @@ datGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	/** Is it an annotation? **/
 	if (!strcmp(attrname, "annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DAT","Type mismatch accessing attribute 'annotation' (must be a string)");
+		return -1;
+		}
 	    /** Different for various objects. **/
 	    switch(inf->Type)
 	        {
@@ -2775,6 +2805,11 @@ datGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	/** If Attr is content-type, report the type. **/
 	if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DAT","Type mismatch accessing attribute 'outer_type' (must be a string)");
+		return -1;
+		}
 	    switch(inf->Type)
 	        {
 		case DAT_T_TABLE: val->String = "system/table"; break;
@@ -2789,6 +2824,11 @@ datGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	    }
 	else if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DAT","Type mismatch accessing attribute '%s' (must be a string)",attrname);
+		return -1;
+		}
 	    switch(inf->Type)
 	        {
 		case DAT_T_TABLE: val->String = "system/void"; break;
@@ -2806,6 +2846,12 @@ datGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	if (inf->Type == DAT_T_COLUMN)
 	    {
 	    if (strcmp(attrname,"datatype")) return -1;
+
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DAT","Type mismatch accessing attribute 'datatype' (must be a string)");
+		return -1;
+		}
 
 	    /** Get the table info. **/
 	    tdata=inf->TData;
@@ -2840,6 +2886,12 @@ datGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	    for(i=0;i<tdata->nCols;i++) if (!strcmp(tdata->Cols[i],attrname))
 	        {
 		if (inf->ColPtrs[i] == NULL) return 1;
+		if (datatype != tdata->ColTypes[i])
+		    {
+		    mssError(1,"DAT","Type mismatch accessing attribute '%s' [requested=%s, actual=%s]",
+			    attrname, obj_type_names[datatype], obj_type_names[tdata->ColTypes[i]]);
+		    return -1;
+		    }
 		switch(tdata->ColTypes[i])
 		    {
 		    case DATA_T_INTEGER: memcpy(val, inf->ColPtrs[i], 4); break;
@@ -2917,7 +2969,7 @@ datGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-datSetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
+datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pDatData inf = DAT(inf_v);
     unsigned char* ptr;
@@ -2931,6 +2983,11 @@ datSetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
         /** Modifying name? **/
 	if (!strcmp(attrname, "name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DAT","Type mismatch setting attribute 'name' (must be a string)");
+		return -1;
+		}
 	    /** Kinda complex - not yet implemented. **/
 	    return -1;
 	    }
@@ -2938,6 +2995,11 @@ datSetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
     	/** Modifying annotation? **/
 	if (!strcmp(attrname, "annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"DAT","Type mismatch setting attribute 'annotation' (must be a string)");
+		return -1;
+		}
 	    /** How annotation is modified depends on object type **/
 	    switch(inf->Type)
 	        {
@@ -2973,6 +3035,12 @@ datSetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 		/** We're within a transaction.  Fill in the oxt. **/
 		type = datGetAttrType(inf_v, attrname, oxt);
 		if (type < 0) return -1;
+		if (datatype != type)
+		    {
+		    mssError(1,"DAT","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+			    attrname, datatype, type);
+		    return -1;
+		    }
 		(*oxt)->AllocObj = 0;
 		(*oxt)->Object = NULL;
 		(*oxt)->Status = OXT_S_VISITED;
@@ -2994,6 +3062,14 @@ datSetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 		    return -1;
 		    }
 		type = inf->TData->ColTypes[colid];
+
+		/** Verify the caller is specifying the correct datatype **/
+		if (datatype != type)
+		    {
+		    mssError(1,"DAT","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+			    attrname, datatype, type);
+		    return -1;
+		    }
 
 		/** Generate a new row. **/
 		ptr = dat_csv_GenerateRow(inf, colid, val, NULL);

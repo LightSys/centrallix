@@ -49,10 +49,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_indexfile.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_indexfile.c,v 1.3 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_indexfile.c,v $
 
     $Log: objdrv_indexfile.c,v $
+    Revision 1.3  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -1182,7 +1202,7 @@ idx_internal_AttrGetType(pIdxRowRef rowinf, char* attrname)
  *** of an element in a given row.
  ***/
 int
-idx_internal_AttrGetValue(pIdxRowRef rowinf, char* attrname, pObjData val)
+idx_internal_AttrGetValue(pIdxRowRef rowinf, char* attrname, int datatype, pObjData val)
     {
     int i,j,cnt;
     unsigned char* rowptr;
@@ -1201,6 +1221,12 @@ idx_internal_AttrGetValue(pIdxRowRef rowinf, char* attrname, pObjData val)
 		    cnt++;
 		    }
 		if (cnt == rowinf->Page->Data.Info.RowCount) return 1; /* null */
+		if (datatype != rowinf->Page->TData->Columns[i]->Type)
+		    {
+		    mssError(1,"IDX","Type mismatch getting attribute '%s' [requested=%s, actual=%s]",
+			    attrname, obj_type_names[datatype],obj_type_names[rowinf->Page->TData->Columns[i]->Type]);
+		    return -1;
+		    }
 		switch(rowinf->Page->TData->Columns[i]->Type)
 		    {
 		    case DATA_T_INTEGER: memcpy(&(val->Integer), rowptr+3, 4); break;
@@ -1738,7 +1764,7 @@ idxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-idxGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
+idxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pIdxData inf = IDX(inf_v);
     pStructInf find_inf;
@@ -1748,6 +1774,12 @@ idxGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"IDX","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
@@ -1756,12 +1788,24 @@ idxGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	/** REPLACE MYOBJECT/TYPE WITH AN APPROPRIATE TYPE. **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"IDX","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    if (inf->Type == IDX_T_USERLIST) *((char**)val) = "system/void";
 	    else if (inf->Type == IDX_T_USER) *((char**)val) = "system/void";
 	    return 0;
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"IDX","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    if (inf->Type == IDX_T_USERLIST) *((char**)val) = "system/idxserlist";
 	    else if (inf->Type == IDX_T_USER) *((char**)val) = "system/user";
 	    return 0;
@@ -1770,6 +1814,13 @@ idxGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"IDX","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
+	    *((char**)val) = "";
 	    return 0;
 	    }
 
@@ -1812,7 +1863,7 @@ idxGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-idxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+idxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pIdxData inf = IDX(inf_v);
     pStructInf find_inf;
@@ -1821,6 +1872,12 @@ idxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Changing name of node object? **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"IDX","Type mismatch setting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    return 0;
 	    }
 
@@ -1828,6 +1885,12 @@ idxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"content_type"))
 	    {
 	    /** SET THE TYPE HERE, IF APPLICABLE, AND RETURN 0 ON SUCCESS **/
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"IDX","Type mismatch setting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    return -1;
 	    }
 

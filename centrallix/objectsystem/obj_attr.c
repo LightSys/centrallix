@@ -48,10 +48,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.3 2002/04/25 17:59:59 gbeeley Exp $
+    $Id: obj_attr.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.4  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.3  2002/04/25 17:59:59  gbeeley
     Added better magic number support in the OSML API.  ObjQuery and
     ObjSession structures are now protected with magic numbers, and
@@ -82,6 +102,8 @@ int
 objGetAttrType(pObject this, char* attrname)
     {
 
+	ASSERTMAGIC(this, MGK_OBJECT);
+
     	/** Builtin attribute 'objcontent' is always a string **/
 	if (!strcmp(attrname, "objcontent")) return DATA_T_STRING;
 
@@ -93,7 +115,7 @@ objGetAttrType(pObject this, char* attrname)
  *** particular attribute.
  ***/
 int 
-objGetAttrValue(pObject this, char* attrname, pObjData val)
+objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     {
     int bytes,maxbytes,maxread,readcnt;
     char readbuf[256];
@@ -102,9 +124,25 @@ objGetAttrValue(pObject this, char* attrname, pObjData val)
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
+#ifdef _OBJATTR_CONV
+	/** Caller is using OLD API syntax **/
+	if (data_type < 0 || data_type > 256)
+	    {
+	    val = (pObjData)data_type;
+	    data_type = objGetAttrType(this, attrname);
+	    }
+#endif
+
     	/** How about content? **/
 	if (!strcmp(attrname,"objcontent"))
 	    {
+	    /** Check type **/
+	    if (data_type != DATA_T_STRING) 
+		{
+		mssError(1,"OSML","Type mismatch in retrieving 'objcontent' attribute");
+		return -1;
+		}
+
 	    /** Initialize the string **/
 	    if (!this->ContentPtr)
 	        {
@@ -139,7 +177,7 @@ objGetAttrValue(pObject this, char* attrname, pObjData val)
 	    }
 
 	/** Call the driver. **/
-	rval = this->Driver->GetAttrValue(this->Data, attrname, val, &(this->Session->Trx));
+	rval = this->Driver->GetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
 
     	/** Inner/content type, and OSML has a better idea than driver? **/
 	if ((!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && rval==0 && this->Type)
@@ -181,10 +219,20 @@ objGetNextAttr(pObject this)
  *** can be renamed by setting the "name" attribute.
  ***/
 int 
-objSetAttrValue(pObject this, char* attrname, pObjData val)
+objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     {
-    ASSERTMAGIC(this, MGK_OBJECT);
-    return this->Driver->SetAttrValue(this->Data, attrname, val, &(this->Session->Trx));
+    
+	ASSERTMAGIC(this, MGK_OBJECT);
+
+#ifdef _OBJATTR_CONV
+	if (data_type < 0 || data_type > 256)
+	    {
+	    val = (pObjData)data_type;
+	    data_type = objGetAttrType(this, attrname);
+	    }
+#endif
+
+    return this->Driver->SetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
     }
 
 

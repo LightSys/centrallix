@@ -47,10 +47,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.3 2002/05/03 03:51:21 gbeeley Exp $
+    $Id: obj_query.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.4  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.3  2002/05/03 03:51:21  gbeeley
     Added objUnmanageObject() and objUnmanageQuery() which cause an object
     or query to not be closed automatically on session close.  This should
@@ -332,7 +352,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    while((tmp_obj = objQueryFetch(this, 0400)))
 	        {
 		xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
-		objGetAttrValue(tmp_obj,"name",POD(&ptr));
+		objGetAttrValue(tmp_obj,"name",DATA_T_STRING,POD(&ptr));
 		xsConcatenate(&this->SortInf->SortNamesBuf, ptr, strlen(ptr)+1);
 		expModifyParam(this->ObjList, NULL, tmp_obj);
 		start_ptr = xsStringEnd(&this->SortInf->SortDataBuf);
@@ -570,7 +590,7 @@ objQueryFetch(pObjQuery this, int mode)
 		}
             obj->Data = obj_data;
     
-            this->Obj->Driver->GetAttrValue(obj_data, "name", &name);
+            this->Obj->Driver->GetAttrValue(obj_data, "name", DATA_T_STRING, &name, NULL);
             if (strlen(name) + strlen(this->Obj->Pathname->Pathbuf) + 1 > 255) 
                 {
 		this->Obj->Driver->Close(obj_data, &(obj->Session->Trx));

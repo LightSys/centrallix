@@ -56,10 +56,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.11 2002/08/07 14:52:14 cwtryon Exp $
+    $Id: objdrv_xml.c,v 1.12 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.12  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.11  2002/08/07 14:52:14  cwtryon
     replace naked reference to children structure member with accessor function (for XML1/2 differences)
 
@@ -1047,7 +1067,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
  *** pointer must point to an appropriate data type.
  ***/
 int
-xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pXmlData inf = XML(inf_v);
     pStructInf find_inf;
@@ -1066,11 +1086,16 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 
 	/** inner_type is an alias for content_type **/
 	if(!strcmp(attrname,"inner_type"))
-	    return xmlGetAttrValue(inf_v,"content_type",val,oxt);
+	    return xmlGetAttrValue(inf_v,"content_type",datatype,val,oxt);
     
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"XML","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    /** for the top level one -- return the inner name, not the outer one **/
 	    if(inf->Obj->SubCnt==1)
 		*((char**)val) = (char*)inf->CurNode->name;
@@ -1081,6 +1106,11 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the type **/
 	if (!strcmp(attrname,"internal_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"XML","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = (char*)inf->CurNode->name;
 	    return 0;
 	    }
@@ -1246,7 +1276,7 @@ xmlGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-xmlSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
+xmlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
     {
     pXmlData inf = XML(inf_v);
     pStructInf find_inf;
@@ -1257,6 +1287,11 @@ xmlSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	/** Changing name of node object? **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"XML","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
@@ -1282,6 +1317,11 @@ xmlSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	/** Set content type if that was requested. **/
 	if (!strcmp(attrname,"content_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"XML","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    /** SET THE TYPE HERE, IF APPLICABLE, AND RETURN 0 ON SUCCESS **/
 	    return -1;
 	    }

@@ -63,10 +63,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.8 2002/07/11 21:26:30 lkehresman Exp $
+    $Id: objdrv_sybase.c,v 1.9 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.9  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.8  2002/07/11 21:26:30  lkehresman
     removed double quoting for datetime and money in the sybase osdriver
 
@@ -2710,7 +2730,7 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
     int i,t,minus,n;
@@ -2723,6 +2743,11 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
 	    if (ptr[0] == '.' && ptr[1] == '\0')
 	        {
@@ -2738,6 +2763,11 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Is it an annotation? **/
 	if (!strcmp(attrname, "annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    /** Different for various objects. **/
 	    switch(inf->Type)
 	        {
@@ -2782,6 +2812,11 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If Attr is content-type, report the type. **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    switch(inf->Type)
 	        {
 		case SYBD_T_DATABASE: *((char**)val) = "system/void"; break;
@@ -2804,6 +2839,11 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Outer type... **/
 	if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    switch(inf->Type)
 	        {
 		case SYBD_T_DATABASE: *((char**)val) = "application/sybase"; break;
@@ -2820,6 +2860,11 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	if (inf->Type == SYBD_T_COLUMN)
 	    {
 	    if (strcmp(attrname,"datatype")) return -1;
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 
 	    /** Get the table info. **/
 	    tdata=inf->TData;
@@ -2844,6 +2889,11 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		if (ptr == NULL) return 1;
 		if (t==5 || t==6 || t==7 || t==16)
 		    {
+		    if (datatype != DATA_T_INTEGER)
+			{
+			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
+			return -1;
+			}
 		    *(int*)val = 0;
 		    if (t==5 || t==16) memcpy(val,ptr,1);
 		    else if (t==6) memcpy(val,ptr,2);
@@ -2852,11 +2902,21 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    }
 		else if (t==1 || t==2 || t==18 || t==19)
 		    {
+		    if (datatype != DATA_T_STRING)
+			{
+			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
+			return -1;
+			}
 		    *(char**)val = ptr;
 		    return 0;
 		    }
 		else if (t==22 || t==12)
 		    {
+		    if (datatype != DATA_T_DATETIME)
+			{
+			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
+			return -1;
+			}
 		    /** datetime **/
 		    *(pDateTime*)val = &(inf->Types.Date);
 		    memcpy(&days,ptr,4);
@@ -2894,18 +2954,33 @@ sybdGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    }
 		else if (t == 8)
 		    {
+		    if (datatype != DATA_T_DOUBLE)
+			{
+			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be double)", attrname);
+			return -1;
+			}
 		    /** float **/
 		    memcpy(val, ptr, 8);
 		    return 0;
 		    }
 		else if (t == 23)
 		    {
+		    if (datatype != DATA_T_DOUBLE)
+			{
+			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be double)", attrname);
+			return -1;
+			}
 		    memcpy(&f, ptr, 4);
 		    *(double*)val = f;
 		    return 0;
 		    }
 		else if (t == 11 || t == 21)
 		    {
+		    if (datatype != DATA_T_MONEY)
+			{
+			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be money)", attrname);
+			return -1;
+			}
 		    /** money **/
 		    *(pMoneyType*)val = &(inf->Types.Money);
 		    if (t == 21)
@@ -3030,7 +3105,7 @@ sybdGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+sybdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
     int type,rval;
@@ -3042,12 +3117,22 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SYBD","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    if (inf->Type == SYBD_T_DATABASE) return -1;
 	    }
 
 	/** Changing the 'annotation'? **/
 	if (!strcmp(attrname,"annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"SYBD","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    /** Choose the appropriate action based on object type **/
 	    switch(inf->Type)
 	        {
@@ -3110,6 +3195,11 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    /** Attempting to set 'suggested' size for content write? **/
 	    if (!strcmp(attrname,"size")) 
 	        {
+		if (datatype != DATA_T_INTEGER)
+		    {
+		    mssError(1,"SYBD","Type mismatch setting attribute '%s' (should be integer)", attrname);
+		    return -1;
+		    }
 		inf->Size = *(int*)val;
 		}
 	    else
@@ -3120,6 +3210,12 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    /** We're within a transaction.  Fill in the oxt. **/
 		    type = sybdGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
+		    if (datatype != type)
+			{
+			mssError(1,"SYBD","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+				attrname, obj_type_names[datatype], obj_type_names[type]);
+			return -1;
+			}
 		    (*oxt)->AllocObj = 0;
 		    (*oxt)->Object = NULL;
 		    (*oxt)->Status = OXT_S_VISITED;
@@ -3141,6 +3237,12 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    /** No transaction.  Simply do an update. **/
 		    type = sybdGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
+		    if (datatype != type)
+			{
+			mssError(1,"SYBD","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+				attrname, obj_type_names[datatype], obj_type_names[type]);
+			return -1;
+			}
 		    ptr = sybd_internal_FilenameToKey(inf->Node, sess,inf->TablePtr,inf->RowColPtr);
 		    if (!ptr)
 			{

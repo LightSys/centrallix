@@ -66,10 +66,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.6 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.7 2002/08/10 02:09:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.7  2002/08/10 02:09:44  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.6  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -1040,11 +1060,11 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	switch(t)
 	    {
 	    case DATA_T_INTEGER: 
-	        v = getfn(obj,tree->Name,&(tree->Integer));
+	        v = getfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
 		break;
 
 	    case DATA_T_STRING: 
-	        v = getfn(obj,tree->Name,&(tree->String));
+	        v = getfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
 		if (v != 0) break;
 		n = strlen(tree->String);
 		if (n < 64) 
@@ -1063,18 +1083,18 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 		break;
 
 	    case DATA_T_DOUBLE:
-	        v = getfn(obj,tree->Name,&(tree->Types.Double));
+	        v = getfn(obj,tree->Name,DATA_T_DOUBLE,&(tree->Types.Double));
 		if (v != 0) break;
 		break;
 
 	    case DATA_T_DATETIME:
-	        v = getfn(obj,tree->Name,&vptr);
+	        v = getfn(obj,tree->Name,DATA_T_DATETIME,&vptr);
 		if (v != 0) break;
 		memcpy(&(tree->Types.Date),vptr,sizeof(DateTime));
 		break;
 
 	    case DATA_T_MONEY:
-	        v = getfn(obj,tree->Name,&vptr);
+	        v = getfn(obj,tree->Name,DATA_T_MONEY,&vptr);
 		if (v != 0) break;
 		memcpy(&(tree->Types.Money), vptr, sizeof(MoneyType));
 		break;
@@ -1151,6 +1171,8 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 		}
 	    else
 	        {
+		mssError(1,"EXP","Bark!  Unhandled type conversion in expRevEvalProperty (%s->%s)", 
+			obj_type_names[tree->DataType],obj_type_names[attr_type]);
 		return -1;
 		}
 	    }
@@ -1159,24 +1181,28 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	switch(attr_type)
 	    {
 	    case DATA_T_INTEGER:
-	        setfn(obj,tree->Name,&(tree->Integer));
+	        setfn(obj,tree->Name,DATA_T_INTEGER,&(tree->Integer));
 	        break;
 
 	    case DATA_T_STRING:
-	        setfn(obj,tree->Name,&(tree->String));
+	        setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
 	        break;
 
 	    case DATA_T_DATETIME:
-	        setfn(obj,tree->Name,&dtptr);
+	        setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
 		break;
 
 	    case DATA_T_MONEY:
-	        setfn(obj,tree->Name,&mptr);
+	        setfn(obj,tree->Name,DATA_T_MONEY,&mptr);
 		break;
 
 	    case DATA_T_DOUBLE:
-	        setfn(obj,tree->Name, &(tree->Types.Double));
+	        setfn(obj,tree->Name, DATA_T_DOUBLE, &(tree->Types.Double));
 		break;
+
+	    default:
+		mssError(1,"EXP","Bark!  Unhandled data type in expRevEvalProperty (%s)", obj_type_names[attr_type]);
+		return -1;
 	    }
 
     return 0;

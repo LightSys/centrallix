@@ -50,10 +50,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.4  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.3  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -496,7 +516,7 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
@@ -504,6 +524,11 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"STX","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = inf->Data->Name;
 	    return 0;
 	    }
@@ -511,6 +536,11 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If content-type, return as appropriate **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"STX","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    if (stLookup(inf->Data,"content"))
 	        *((char**)val) = "application/octet-stream";
 	    else
@@ -519,6 +549,11 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"STX","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = inf->Data->UsrType;
 	    return 0;
 	    }
@@ -529,6 +564,11 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If annotation, and not found, return "" **/
 	if (!find_inf && !strcmp(attrname,"annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"STX","Type mismatch getting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *(char**)val = "";
 	    return 0;
 	    }
@@ -542,12 +582,22 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    if (inf->VecData) nmSysFree(inf->VecData);
 	    if (stGetAttrType(find_inf, 0) == DATA_T_INTEGER)
 		{
+		if (datatype != DATA_T_INTVEC)
+		    {
+		    mssError(1,"STX","Type mismatch getting attribute '%s' (should be intvec)", attrname);
+		    return -1;
+		    }
 		inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
 		POD(val)->IntVec = &(inf->IVvalue);
 		POD(val)->IntVec->Integers = (int*)(inf->VecData);
 		}
 	    else
 		{
+		if (datatype != DATA_T_STRINGVEC)
+		    {
+		    mssError(1,"STX","Type mismatch getting attribute '%s' (should be stringvec)", attrname);
+		    return -1;
+		    }
 		inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
 		POD(val)->StringVec = &(inf->SVvalue);
 		POD(val)->StringVec->Strings = (char**)(inf->VecData);
@@ -556,7 +606,7 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    }
 	else
 	    {
-	    return stGetAttrValue(find_inf, DATA_T_ANY, val, 0);
+	    return stGetAttrValue(find_inf, datatype, val, 0);
 	    }
 
 	/*mssError(1,"STX","Could not locate requested structure file attribute");*/
@@ -604,7 +654,7 @@ stxGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-stxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
+stxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
@@ -613,6 +663,11 @@ stxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"STX","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    if (inf->Data == inf->Node->Data)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
@@ -639,6 +694,11 @@ stxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	/** Set content type if that was requested. **/
 	if (!strcmp(attrname,"content_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"STX","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    strcpy(inf->Data->UsrType,*(char**)val);
 	    return 0;
 	    }
@@ -655,6 +715,12 @@ stxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	/** Set value of attribute **/
 	t = stGetAttrType(find_inf, 0);
 	if (t <= 0) return -1;
+	if (datatype != t)
+	    {
+	    mssError(1,"STX","Type mismatch setting attribute '%s' [requested=%s, actual=%s",
+		    attrname, obj_type_names[datatype], obj_type_names[t]);
+	    return -1;
+	    }
 	stSetAttrValue(find_inf, t, val, 0);
 
 	/** Set dirty flag **/

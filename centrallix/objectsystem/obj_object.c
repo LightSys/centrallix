@@ -49,10 +49,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.4 2002/04/25 17:59:59 gbeeley Exp $
+    $Id: obj_object.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.5  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.4  2002/04/25 17:59:59  gbeeley
     Added better magic number support in the OSML API.  ObjQuery and
     ObjSession structures are now protected with magic numbers, and
@@ -518,8 +538,8 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	while(1)
 	    {
 	    /** Get the name and type from the previous open. **/
-	    objGetAttrValue(this,"name",POD(&name));
-	    objGetAttrValue(this,"inner_type",POD(&type));
+	    objGetAttrValue(this,"name",DATA_T_STRING,POD(&name));
+	    objGetAttrValue(this,"inner_type",DATA_T_STRING,POD(&type));
 
 	    /** If the driver "claimed" the last path element, we're done. **/
 	    if (this->SubPtr + this->SubCnt - 1 > this->Pathname->nElements) break;

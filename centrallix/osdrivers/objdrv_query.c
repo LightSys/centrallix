@@ -49,10 +49,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_query.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_query.c,v 1.3 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_query.c,v $
 
     $Log: objdrv_query.c,v $
+    Revision 1.3  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -453,7 +473,7 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    switch(subst_types[n_subst])
 		        {
 			case DATA_T_INTEGER:
-			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, &(subst_int[n_subst])) == 1)
+			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER, &(subst_int[n_subst])) == 1)
 			        {
 			        subst_types[n_subst] = -1;
 			        len += 6;
@@ -465,7 +485,7 @@ QyOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			    break;
 
 			case DATA_T_STRING:
-			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, &sptr) == 1)
+			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_STRING, &sptr) == 1)
 			        {
 				subst_types[n_subst] = -1;
 				len += 6;
@@ -694,7 +714,7 @@ QyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-QyGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
+QyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
     pStructInf find_inf, tmp_inf;
@@ -721,7 +741,7 @@ QyGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 		if (!find_inf) return -1;
 		ptr = (char*)find_inf->StrVal[0];
 		if (!inf->MultiQueryObject) return -1;
-	        objGetAttrValue((void*)inf->MultiQueryObject, ptr, val);
+	        objGetAttrValue((void*)inf->MultiQueryObject, ptr, datatype, val);
 		tmptype = objGetAttrType((void*)inf->MultiQueryObject, ptr);
 		if (tmptype != DATA_T_STRING)
 		    tstr = objDataToStringTmp(tmptype, val, 0);
@@ -745,7 +765,7 @@ QyGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 			{
 			ptr = find_inf->StrVal[0];
 			if (!inf->MultiQueryObject) return -1;
-	        	objGetAttrValue((void*)inf->MultiQueryObject, ptr+1, val);
+	        	objGetAttrValue((void*)inf->MultiQueryObject, ptr+1, datatype, val);
 			tmptype = objGetAttrType((void*)inf->MultiQueryObject, ptr+1);
 			if (tmptype != DATA_T_STRING)
 		    	    tstr = objDataToStringTmp(tmptype, val, 0);
@@ -788,7 +808,7 @@ QyGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 	if (inf->Type == QY_T_ITEM)
 	    {
 	    /** Pass the attribute question to the multiquery **/
-	    return objGetAttrValue((void*)inf->MultiQueryObject, attrname, val);
+	    return objGetAttrValue((void*)inf->MultiQueryObject, attrname, datatype, val);
 	    }
 	if (inf->Type == QY_T_LIST)
 	    {
@@ -886,7 +906,7 @@ QyGetFirstAttr(pQyData inf, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-QySetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
+QySetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
     {
     pQyData inf = QY(inf_v);
     pStructInf find_inf;
@@ -933,7 +953,7 @@ QySetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
-		objSetAttrValue(inf->MultiQueryObject, attrname, val);
+		objSetAttrValue(inf->MultiQueryObject, attrname, datatype, val);
 		return 0;
 	    }
 	return -1;

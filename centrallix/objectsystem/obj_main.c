@@ -45,10 +45,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.4 2002/08/03 02:36:34 gbeeley Exp $
+    $Id: obj_main.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.5  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.4  2002/08/03 02:36:34  gbeeley
     Made all hash tables the same size at 257 (a prime) entries.
 
@@ -80,6 +100,9 @@
 
 /*** OSML Globals ***/
 OSYS_t OSYS;
+
+#define OBJ_TYPE_NAMES_CNT  32
+char* obj_type_names[OBJ_TYPE_NAMES_CNT];
 
 /*** obj_internal_BuildIsA - scan the content type registry (from types.cfg)
  *** and determine what types are related to what other types.  This is an
@@ -157,8 +180,9 @@ int obj_internal_TypeFnName(void* obj, char* name)
     if (!strcmp(name,"name")) return DATA_T_STRING;
     else return -1;
     }
-int obj_internal_GetFnName(void* obj, char* name, pObjData val)
+int obj_internal_GetFnName(void* obj, char* name, int type, pObjData val)
     {
+    if (type != DATA_T_STRING) return -1;
     if (!strcmp(name,"name") && obj) 
         {
 	if (obj)
@@ -174,7 +198,7 @@ int obj_internal_GetFnName(void* obj, char* name, pObjData val)
     else 
         return -1;
     }
-int obj_internal_SetFnName(void* obj, char* name, pObjData val) { return -1; }
+int obj_internal_SetFnName(void* obj, char* name, int type, pObjData val) { return -1; }
 
 
 
@@ -203,6 +227,19 @@ objInitialize()
 	xaInit(&(OSYS.Drivers), 256);
 	xhInit(&(OSYS.Types), 257, 0);
 	xaInit(&(OSYS.TypeList), 256);
+
+	/** Setup the data type names list **/
+	for(i=0;i<OBJ_TYPE_NAMES_CNT;i++) obj_type_names[i] = "(unknown)";
+	obj_type_names[DATA_T_INTEGER] = "integer";
+	obj_type_names[DATA_T_STRING] = "string";
+	obj_type_names[DATA_T_DATETIME] = "datetime";
+	obj_type_names[DATA_T_MONEY] = "money";
+	obj_type_names[DATA_T_DOUBLE] = "double";
+	obj_type_names[DATA_T_UNAVAILABLE] = "unavailable";
+	obj_type_names[DATA_T_INTVEC] = "intvec";
+	obj_type_names[DATA_T_STRINGVEC] = "stringvec";
+	obj_type_names[DATA_T_CODE] = "code";
+	obj_type_names[DATA_T_ARRAY] = "array";
 
 	chdir("/");
 

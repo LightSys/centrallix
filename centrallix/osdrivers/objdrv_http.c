@@ -826,7 +826,7 @@ httpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-httpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
     pStructInf find_inf;
@@ -836,13 +836,25 @@ httpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 
 	if (!strcmp(attrname,"outer_type"))
 	    {	// shouldn't we return something like application/http, not the inner type?
-	    if(httpGetAttrValue(inf_v,"Content-Type", val, oxt)!=0)
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
+	    if(httpGetAttrValue(inf_v,"Content-Type", datatype, val, oxt)!=0)
 		*((char**)val) = "application/http";
 	    return 0;
 	    }
@@ -851,13 +863,25 @@ httpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** REPLACE MYOBJECT/TYPE WITH AN APPROPRIATE TYPE. **/
 	if (!strcmp(attrname,"content_type"))
 	    {
-	    if(httpGetAttrValue(inf_v,"Content-Type", val, oxt)!=0)
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
+	    if(httpGetAttrValue(inf_v,"Content-Type", datatype, val, oxt)!=0)
 		*((char**)val) = "application/http";
 	    return 0;
 	    }
 
 	if (!strcmp(attrname,"annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    if(inf->Annotation)
 		{
 		*((char**)val)=inf->Annotation;
@@ -869,6 +893,12 @@ httpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 
 	if(!strcmp(attrname,"last_modification"))
 	    {
+	    if (datatype != DATA_T_DATETIME)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=datetime]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    if(inf->LastModified.Value)
 		*((pDateTime*)val)=&(inf->LastModified);
 	    else
@@ -876,18 +906,36 @@ httpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    }
 	if(!strcmp(attrname,"Content-Length"))
 	    {
+	    if (datatype != DATA_T_INTEGER)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=integer]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    *(int*)val=inf->ContentLength;
 	    return 0;
 	    }
 
 	if(stLookup(inf->Attr,attrname)) 
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    return stAttrValue(stLookup(inf->Attr,attrname),NULL,(char**)val,0);
 	    }
 
 	if(!strcmp(attrname,"inner_type"))
 	    {
-	    if(httpGetAttrValue(inf_v,"Content-Type", val, oxt)!=0)
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
+	    if(httpGetAttrValue(inf_v,"Content-Type", datatype, val, oxt)!=0)
 		*((char**)val) = "application/http";
 	    return 0;
 	    }
@@ -895,6 +943,12 @@ httpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
 	    *(char**)val = "";
 	    return 0;
 	    }
@@ -964,7 +1018,7 @@ httpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-httpSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
+httpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
     {
     return -1;
     }

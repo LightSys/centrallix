@@ -57,10 +57,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.2 2002/05/03 03:48:16 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.3 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.3  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.2  2002/05/03 03:48:16  gbeeley
     Update due to modification in the xhClear() api.
 
@@ -595,7 +615,7 @@ rpt_internal_QyGetAttrType(void* qyobj, char* attrname)
  *** value.
  ***/
 int
-rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, void* data_ptr)
+rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* data_ptr)
     {
     pObject obj = ((pQueryConn)qyobj)->QueryItem;
     pQueryConn qy = (pQueryConn)qyobj;
@@ -670,7 +690,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, void* data_ptr)
     	/** Return 1 if object is NULL. **/
 	if (obj == NULL) return 1;
 
-    return objGetAttrValue(obj, attrname, POD(data_ptr));
+    return objGetAttrValue(obj, attrname, datatype, POD(data_ptr));
     }
 
 
@@ -3345,7 +3365,7 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
+rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pRptData inf = RPT(inf_v);
     pStructInf find_inf, value_inf, tmp_inf;
@@ -3544,7 +3564,7 @@ rptGetFirstAttr(void* inf_v, pObjTrxTree *oxt)
  *** point to an appropriate data type.
  ***/
 int
-rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
+rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree *oxt)
     {
     pRptData inf = RPT(inf_v);
     pStructInf find_inf;

@@ -54,10 +54,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_unixuser.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_unixuser.c,v 1.3 2002/08/10 02:09:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_unixuser.c,v $
 
     $Log: objdrv_unixuser.c,v $
+    Revision 1.3  2002/08/10 02:09:45  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -550,9 +570,19 @@ uxuGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-uxuGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
+uxuGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pUxuData inf = UXU(inf_v);
+    int t;
+
+	/** Check the type **/
+	t = uxuGetAttrType(inf_v, attrname, oxt);
+	if (datatype != t)
+	    {
+	    mssError(1,"UXU","Type mismatch accessing attribute '%s' [requested=%s, actual=%s]",
+		    attrname, obj_type_names[datatype], obj_type_names[t]);
+	    return -1;
+	    }
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -635,7 +665,7 @@ uxuGetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 /*** uxuGetNextAttr - get the next attribute name for this object.
  ***/
 char*
-uxuGetNextAttr(void* inf_v, pObjTrxTree oxt)
+uxuGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     {
     pUxuData inf = UXU(inf_v);
 
@@ -653,7 +683,7 @@ uxuGetNextAttr(void* inf_v, pObjTrxTree oxt)
 /*** uxuGetFirstAttr - get the first attribute name for this object.
  ***/
 char*
-uxuGetFirstAttr(void* inf_v, pObjTrxTree oxt)
+uxuGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     {
     pUxuData inf = UXU(inf_v);
     char* ptr;
@@ -672,9 +702,19 @@ uxuGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-uxuSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
+uxuSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pUxuData inf = UXU(inf_v);
+    int t;
+
+	/** Check the type **/
+	t = uxuGetAttrType(inf_v, attrname, oxt);
+	if (datatype != t)
+	    {
+	    mssError(1,"UXU","Type mismatch accessing attribute '%s' [requested=%s, actual=%s]",
+		    attrname, obj_type_names[datatype], obj_type_names[t]);
+	    return -1;
+	    }
 
 	/** Choose the attr name **/
 	/** Changing name of node object? **/

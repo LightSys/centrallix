@@ -35,10 +35,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.11 2002/06/19 23:27:36 gbeeley Exp $
+    $Id: obj.h,v 1.12 2002/08/10 02:09:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.12  2002/08/10 02:09:44  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.11  2002/06/19 23:27:36  gbeeley
     Added a few more presentations hints options.
 
@@ -162,6 +182,7 @@ typedef struct
     }
     Pathname, *pPathname;
 
+extern char* obj_type_names[];
 
 extern char* obj_short_months[];
 extern char* obj_long_months[];
@@ -498,10 +519,16 @@ int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
 
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);
-int objGetAttrValue(pObject this, char* attrname, pObjData val);
+#if 0
+int objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
+int objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
+#else
+#define _OBJATTR_CONV
+int objSetAttrValue();
+int objGetAttrValue();
+#endif
 char* objGetFirstAttr(pObject this);
 char* objGetNextAttr(pObject this);
-int objSetAttrValue(pObject this, char* attrname, pObjData val);
 pObject objOpenAttr(pObject this, char* attrname, int mode);
 int objAddAttr(pObject this, char* attrname, int type, pObjData val);
 pObjPresentationHints objPresentationHints(pObject this, char* attrname);

@@ -43,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.9 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: multiquery.c,v 1.10 2002/08/10 02:09:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.10  2002/08/10 02:09:44  gbeeley
+    Yowzers!  Implemented the first half of the conversion to the new
+    specification for the obj[GS]etAttrValue OSML API functions, which
+    causes the data type of the pObjData argument to be passed as well.
+    This should improve robustness and add some flexibilty.  The changes
+    made here include:
+
+        * loosening of the definitions of those two function calls on a
+          temporary basis,
+        * modifying all current objectsystem drivers to reflect the new
+          lower-level OSML API, including the builtin drivers obj_trx,
+          obj_rootnode, and multiquery.
+        * modification of these two functions in obj_attr.c to allow them
+          to auto-sense the use of the old or new API,
+        * Changing some dependencies on these functions, including the
+          expSetParamFunctions() calls in various modules,
+        * Adding type checking code to most objectsystem drivers.
+        * Modifying *some* upper-level OSML API calls to the two functions
+          in question.  Not all have been updated however (esp. htdrivers)!
+
     Revision 1.9  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -115,8 +135,8 @@ struct
     }
     MQINF;
 
-int mqSetAttrValue(void* inf_v, char* attrname, pObjData value, pObjTrxTree* oxt);
-int mqGetAttrValue(void* inf_v, char* attrname, void* value, pObjTrxTree* oxt);
+int mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTrxTree* oxt);
+int mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTree* oxt);
 int mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
 int mqQueryClose(void* qy_v, pObjTrxTree* oxt);
 
@@ -1709,9 +1729,11 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 /*** mqGetAttrValue - retrieves the value of an attribute.  See the object system
  *** documentation on the appropriate pointer types for *value.
+ ***
+ *** Returns: -1 on error, 0 on success, and 1 if successful but value was NULL.
  ***/
 int
-mqGetAttrValue(void* inf_v, char* attrname, void* value, pObjTrxTree* oxt)
+mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
     int id=-1,i;
@@ -1720,6 +1742,11 @@ mqGetAttrValue(void* inf_v, char* attrname, void* value, pObjTrxTree* oxt)
     	/** Request for row id? **/
 	if (!strcmp(attrname,"ls__rowid"))
 	    {
+	    if (datatype != DATA_T_INTEGER)
+		{
+		mssError(1,"MQ","Type mismatch getting attribute 'ls__rowid' (should be integer)");
+		return -1;
+		}
 	    *((int*)value) = p->Serial;
 	    return 0;
 	    }
@@ -1746,6 +1773,12 @@ mqGetAttrValue(void* inf_v, char* attrname, void* value, pObjTrxTree* oxt)
 	exp = (pExpression)p->Query->Tree->AttrCompiledExpr.Items[id];
 	p->Query->QTree->ObjList->Session = p->Query->SessionID;
 	if (expEvalTree(exp,p->Query->QTree->ObjList) < 0) return 1;
+	if (exp->DataType != datatype)
+	    {
+	    mssError(1,"MQ","Type mismatch getting attribute '%s' [requested=%s, actual=%s]", 
+		    attrname,obj_type_names[datatype],obj_type_names[exp->DataType]);
+	    return -1;
+	    }
 	if (exp->Flags & EXPR_F_NULL) return 1;
 	switch(exp->DataType)
 	    {
@@ -1794,7 +1827,7 @@ mqGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** the query must have been opened FOR UPDATE.
  ***/
 int
-mqSetAttrValue(void* inf_v, char* attrname, pObjData value, pObjTrxTree* oxt)
+mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
     int i, id;
@@ -1826,6 +1859,14 @@ mqSetAttrValue(void* inf_v, char* attrname, pObjData value, pObjTrxTree* oxt)
 	p->Query->QTree->ObjList->Session = p->Query->SessionID;
 	if (expEvalTree(exp,p->Query->QTree->ObjList) < 0) return -1;
 	if (exp->DataType == DATA_T_UNAVAILABLE) return -1;
+
+	/** Verify that the types match. **/
+	if (exp->DataType != datatype)
+	    {
+	    mssError(1,"MQ","Type mismatch setting attribute '%s' [requested=%s, actual=%s]", 
+		    attrname,obj_type_names[datatype],obj_type_names[exp->DataType]);
+	    return -1;
+	    }
 
 	/** Set the expression result to the given value. **/
 	switch(exp->DataType)
