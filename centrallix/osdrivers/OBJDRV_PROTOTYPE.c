@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -54,10 +54,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: OBJDRV_PROTOTYPE.c,v 1.5 2004/06/11 21:06:57 mmcgill Exp $
+    $Id: OBJDRV_PROTOTYPE.c,v 1.6 2004/12/31 04:21:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/OBJDRV_PROTOTYPE.c,v $
 
     $Log: OBJDRV_PROTOTYPE.c,v $
+    Revision 1.6  2004/12/31 04:21:49  gbeeley
+    - bring prototype osdriver source file more up to date
+
     Revision 1.5  2004/06/11 21:06:57  mmcgill
     Did some code tree scrubbing.
 
@@ -168,7 +171,7 @@ xxxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
 	    {
-	    node = snNewNode(node_path, usrtype);
+	    node = snNewNode(obj->Prev, usrtype);
 	    if (!node)
 	        {
 		nmFree(inf,sizeof(XxxData));
@@ -180,13 +183,13 @@ xxxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** Otherwise, try to open it first. **/
 	if (!node)
 	    {
-	    node = snReadNode(node_path);
+	    node = snReadNode(obj->Prev);
 	    }
 
 	/** If no node, and user said CREAT ok, try that. **/
 	if (!node && (obj->Mode & O_CREAT) && (obj->SubPtr == obj->Pathname->nElements))
 	    {
-	    node = snNewNode(node_path, usrtype);
+	    node = snNewNode(obj->Prev, usrtype);
 	    }
 
 	/** If _still_ no node, quit out. **/
@@ -214,7 +217,7 @@ xxxClose(void* inf_v, pObjTrxTree* oxt)
     pXxxData inf = XXX(inf_v);
 
     	/** Write the node first, if need be. **/
-	snWriteNode(inf->Node);
+	snWriteNode(inf->Obj->Prev, inf->Node);
 	
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
@@ -402,6 +405,8 @@ xxxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	/** If 'content-type', it's also a string. **/
 	if (!strcmp(attrname,"content_type")) return DATA_T_STRING;
+	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
+	if (!strcmp(attrname,"inner_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
 
 	/** Check for attributes in the node object if that was opened **/
@@ -437,9 +442,18 @@ xxxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	/** If content-type, return as appropriate **/
 	/** REPLACE MYOBJECT/TYPE WITH AN APPROPRIATE TYPE. **/
-	if (!strcmp(attrname,"content_type"))
+	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
-	    val->String = "myobject/type";
+	    /*val->String = "application/octet-stream";*/
+	    val->String = "system/void";
+	    return 0;
+	    }
+
+	/** Object type. **/
+	/** REPLACE WITH SOMETHING MORE COHERENT **/
+	if (!strcmp(attrname,"outer_type"))
+	    {
+	    val->String = "system/object";
 	    return 0;
 	    }
 
@@ -532,7 +546,12 @@ xxxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    }
 
 	/** Set content type if that was requested. **/
-	if (!strcmp(attrname,"content_type"))
+	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
+	    {
+	    /** SET THE TYPE HERE, IF APPLICABLE, AND RETURN 0 ON SUCCESS **/
+	    return -1;
+	    }
+	if (!strcmp(attrname,"outer_type"))
 	    {
 	    /** SET THE TYPE HERE, IF APPLICABLE, AND RETURN 0 ON SUCCESS **/
 	    return -1;
@@ -572,8 +591,7 @@ xxxOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     }
 
 
-/*** xxxGetFirstMethod -- there are no methods yet, so this just always
- *** fails.
+/*** xxxGetFirstMethod -- return name of First method available on the object.
  ***/
 char*
 xxxGetFirstMethod(void* inf_v, pObjTrxTree oxt)
@@ -582,7 +600,7 @@ xxxGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** xxxGetNextMethod -- same as above.  Always fails. 
+/*** xxxGetNextMethod -- return successive names of methods after the First one.
  ***/
 char*
 xxxGetNextMethod(void* inf_v, pObjTrxTree oxt)
@@ -591,12 +609,46 @@ xxxGetNextMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** xxxExecuteMethod - No methods to execute, so this fails.
+/*** xxxExecuteMethod - Execute a method, by name.
  ***/
 int
 xxxExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
+    }
+
+
+/*** xxxPresentationHints - Return a structure containing "presentation hints"
+ *** data, which is basically metadata about a particular attribute, which
+ *** can include information which relates to the visual representation of
+ *** the data on the client.
+ ***/
+pObjPresentationHints
+xxxPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
+    {
+    /** No hints yet on this **/
+    return NULL;
+    }
+
+
+/*** xxxInfo - return object metadata - about the object, not about a 
+ *** particular attribute.
+ ***/
+int
+xxxInfo(void* inf_v, pObjectInfo info_struct)
+    {
+    memset(info_struct, sizeof(ObjectInfo), 0);
+    return 0;
+    }
+
+
+/*** xxxCommit - commit any changes made to the underlying data source.
+ ***/
+int
+xxxCommit(void* inf_v, pObjTrxTree* oxt)
+    {
+    /** no uncommitted changes yet **/
+    return 0;
     }
 
 
@@ -644,7 +696,9 @@ xxxInitialize()
 	drv->GetFirstMethod = xxxGetFirstMethod;
 	drv->GetNextMethod = xxxGetNextMethod;
 	drv->ExecuteMethod = xxxExecuteMethod;
-	drv->PresentationHints = NULL;
+	drv->PresentationHints = xxxPresentationHints;
+	drv->Info = xxxInfo;
+	drv->Commit = xxxCommit;
 
 	nmRegister(sizeof(XxxData),"XxxData");
 	nmRegister(sizeof(XxxQuery),"XxxQuery");
