@@ -309,7 +309,8 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 function tv_BuildNewLayers(l, linkcnt)
     {
     /** pre-load some variables **/
-    var tgtClipWidth = tv_tgt_layer.clip.width;
+    //var tgtClipWidth = tv_tgt_layer.clip.width;
+    var tgtClipWidth = tv_tgt_layer.mainlayer.setwidth - (tv_tgt_layer.x - tv_tgt_layer.mainlayer.x) - 20;
     var tgtX = tv_tgt_layer.x;
     var tgtY = tv_tgt_layer.y;
 
@@ -330,7 +331,7 @@ function tv_BuildNewLayers(l, linkcnt)
 	var link_bold;
     
 	var link_bold = 0;
-	var one_layer = tv_new_layer(tgtClipWidth,tv_tgt_layer.pdoc,l);
+	var one_layer = tv_new_layer(tgtClipWidth,tv_tgt_layer.pdoc,l.mainlayer);
 	one_layer.parent=l;
 	one_layer.collapse=one_layer.parent.collapse;
 	one_layer.expand=one_layer.parent.expand;
@@ -348,7 +349,7 @@ function tv_BuildNewLayers(l, linkcnt)
 		t=typeof(o);
 		}
 	    link_href="";
-	    one_link=j;
+	    one_link=j + '.';
 	    if(o && (t=="object" || t=="function"))
 		{
 		one_layer.obj=o;
@@ -517,6 +518,7 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
 	alert('browser not supported');
 	}
     l.clip.width = w;
+    l.setwidth = w;
     l.childimgs = '';
     l.collapse=tv_collapse;
     l.expand=tv_expand;
@@ -572,6 +574,7 @@ function tv_collapse()
 	sl = layers[i];
 	if (sl.fname!=null && sl!=l && l.fname==sl.fname.substring(0,l.fname.length))
 	    {
+	    //alert(sl.fname);
 	    tv_cache_layer(sl,l.pdoc);
 	    delete layers[i];
 	    sl.fname = null;
