@@ -53,10 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.24 2002/09/10 01:02:49 jorupp Exp $
+    $Id: objdrv_mime.c,v 1.25 2003/06/04 08:55:14 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.25  2003/06/04 08:55:14  jorupp
+     * a number of smaller osdriver patches that have been sitting in my copy for a while....
+       * couple better comments in http
+       * better file naming in mbox
+       * (slightly) better memory management in mime
+       * xml should actually work :) (no xmlGetAttrValue with a null pointer)
+
     Revision 1.24  2002/09/10 01:02:49  jorupp
      * should return a null query object when there are no attachments
 
@@ -358,6 +365,10 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
 	free(inf->AttrValue);
 	inf->AttrValue=NULL;
 	}
+
+    /** probably needs to be more done here, but I have _no_ clue what's going on :) -- JDR **/
+    libmime_Cleanup(inf->Header);
+    nmFree(inf,sizeof(MimeInfo));
     return 0;
     }
 

@@ -57,10 +57,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.20 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: objdrv_xml.c,v 1.21 2003/06/04 08:55:14 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.21  2003/06/04 08:55:14  jorupp
+     * a number of smaller osdriver patches that have been sitting in my copy for a while....
+       * couple better comments in http
+       * better file naming in mbox
+       * (slightly) better memory management in mime
+       * xml should actually work :) (no xmlGetAttrValue with a null pointer)
+
     Revision 1.20  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -541,7 +548,7 @@ xml_internal_ReadDoc(pObject obj)
 	    {
 	    if(XML_DEBUG) printf("found %s in cache\n",path);
 	    /** found match in cache -- check modification time **/
-	    if(objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,POD(&pDT))==0)
+	    if(objGetAttrValue(obj->Prev,"last_modification",DATA_T_DATETIME,POD(&pDT))==0)
 	    if(pDT && pDT->Value!=pCache->lastmod.Value)
 		{
 		/** modification time changed -- update **/
@@ -1134,6 +1141,12 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
     XmlAttrObj* pHE;
     xmlNodePtr np;
     xmlAttrPtr ap;
+
+    if(!inf)
+	{
+	mssError(0,"XML","Null pointer passed as object to xmlGetAttrValue for %s!",attrname);
+	return -1;
+	}
 
 	if(inf->AttrValue)
 	    {

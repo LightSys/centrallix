@@ -751,9 +751,7 @@ httpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
     }
 
 
-/*** httpOpenQuery - open a directory query.  This driver is pretty 
- *** unintelligent about queries.  So, we leave the query matching logic
- *** to the ObjectSystem management layer in this case.
+/*** httpOpenQuery - Can't get directory information over HTTP
  ***/
 void*
 httpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
@@ -762,7 +760,7 @@ httpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     }
 
 
-/*** httpQueryFetch - get the next directory entry as an open object.
+/*** httpQueryFetch - no entries
  ***/
 void*
 httpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)

@@ -54,10 +54,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mbox.c,v 1.2 2002/11/06 19:32:26 jorupp Exp $
+    $Id: objdrv_mbox.c,v 1.3 2003/06/04 08:55:14 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mbox.c,v $
 
     $Log: objdrv_mbox.c,v $
+    Revision 1.3  2003/06/04 08:55:14  jorupp
+     * a number of smaller osdriver patches that have been sitting in my copy for a while....
+       * couple better comments in http
+       * better file naming in mbox
+       * (slightly) better memory management in mime
+       * xml should actually work :) (no xmlGetAttrValue with a null pointer)
+
     Revision 1.2  2002/11/06 19:32:26  jorupp
      * throw errors when looking up the type of a non-existant attribute (for debugging)
      * respond to inner_type _and_ content_type
@@ -178,7 +185,7 @@ mboxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	ptr = obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt-1,1);
 	if(ptr)
 	    {
-	    i=sscanf(ptr,"msg%i.msg",&inf->mnum);
+	    i=sscanf(ptr,"msg%06i.msg",&inf->mnum);
 	    if(i==0)
 		inf->mnum=-1;
 	    else
