@@ -171,6 +171,8 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 	    sybase_libdir="$withval",
 	    sybase_libdir="/opt/sybase/lib"
 	)
+
+	ENABLE_SYBASE="no"
  
 	if test "$WITH_SYBASE" = "no"; then
 	    AC_MSG_RESULT(no)
@@ -208,6 +210,7 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		    STATIC_LIBS="$STATIC_LIBS $SYBASE_LIBS"
 		    OBJDRIVERS="$OBJDRIVERS objdrv_sybase.o"
 		fi
+		ENABLE_SYBASE="yes"
 		AC_MSG_RESULT(yes)
 		CENTRALLIX_ADD_DRIVER(sybd, [Sybase Database])
 	    else
@@ -215,6 +218,7 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 	    fi
 	fi
 
+	AC_SUBST(ENABLE_SYBASE)
 	AC_SUBST(SYBASE_LIBS)
 	AC_SUBST(SYBASE_CFLAGS)
     ]
@@ -232,6 +236,8 @@ AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
 	    WITH_GZIP="$enableval", 
 	    WITH_GZIP="yes"
 	)
+
+	ENABLE_GZIP="no"
 
 	if test "$WITH_GZIP" = "no"; then
 	    AC_MSG_RESULT(no)
@@ -289,12 +295,15 @@ AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
 		STATIC_LIBS="$STATIC_LIBS $GZIP_LIBS"
 		OBJDRIVERS="$OBJDRIVERS objdrv_gzip.o"
 	    fi
+
+	    ENABLE_GZIP="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(gzip, GZip)
 	else
 	    AC_MSG_RESULT(no)
 	fi
 
+	AC_SUBST(ENABLE_GZIP)
 	AC_SUBST(GZIP_CFLAGS)
 	AC_SUBST(GZIP_LIBS)
     ]
@@ -312,6 +321,8 @@ AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
 	    WITH_HTTP="$enableval", 
 	    WITH_HTTP="yes"
 	)
+
+	ENABLE_HTTP="no"
  
 	if test "$WITH_HTTP" = "yes"; then
 	    AC_DEFINE(USE_HTTP)
@@ -320,11 +331,15 @@ AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
 	    else
 		OBJDRIVERS="$OBJDRIVERS objdrv_http.o"
 	    fi
+
+	    ENABLE_HTTP="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(http, HTTP)
 	else
 	    AC_MSG_RESULT(no)
 	fi
+
+	AC_SUBST(ENABLE_HTTP)
     ]
 )
 
@@ -340,6 +355,8 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
 	    WITH_MIME="$enableval", 
 	    WITH_MIME="yes"
 	)
+
+	ENABLE_MIME="no"
  
 	if test "$WITH_MIME" = "yes"; then
 	    AC_DEFINE(USE_MIME)
@@ -348,11 +365,13 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
 	    else
 		OBJDRIVERS="$OBJDRIVERS objdrv_mime.o"
 	    fi
+	    ENABLE_MIME="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(mime, [MIME encoding])
 	else
 	    AC_MSG_RESULT(no)
 	fi
+	AC_SUBST(ENABLE_MIME)
     ]
 )
 
@@ -368,6 +387,8 @@ AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
 	    WITH_DBL="$enableval", 
 	    WITH_DBL="no"
 	)
+
+	ENABLE_DBL="no"
  
 	if test "$WITH_DBL" = "yes"; then
 	    AC_DEFINE(USE_DBL)
@@ -376,11 +397,13 @@ AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
 	    else
 		OBJDRIVERS="$OBJDRIVERS objdrv_dbl.o"
 	    fi
+	    ENABLE_DBL="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(dbl, DBL)
 	else
 	    AC_MSG_RESULT(no)
 	fi
+	AC_SUBST(ENABLE_DBL)
     ]
 )
 
@@ -397,6 +420,8 @@ AC_DEFUN(CENTRALLIX_CHECK_MBOX_OS,
 	    WITH_MBOX="yes"
 	)
  
+	ENABLE_MBOX="no"
+	
 	if test "$WITH_MBOX" = "yes"; then
 	    AC_DEFINE(USE_MBOX)
 	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
@@ -404,11 +429,13 @@ AC_DEFUN(CENTRALLIX_CHECK_MBOX_OS,
 	    else
 		OBJDRIVERS="$OBJDRIVERS objdrv_mbox.o"
 	    fi
+	    ENABLE_MBOX="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(mbox, mbox)
 	else
 	    AC_MSG_RESULT(no)
 	fi
+	AC_SUBST(ENABLE_MBOX)
     ]
 )
 
@@ -424,6 +451,8 @@ AC_DEFUN(CENTRALLIX_CHECK_SHELL_OS,
 	    WITH_SHELL="$enableval", 
 	    WITH_SHELL="no"
 	)
+
+	ENABLE_SHELL="no"
  
 	if test "$WITH_SHELL" = "yes"; then
 	    AC_DEFINE(USE_SHELL)
@@ -434,10 +463,13 @@ AC_DEFUN(CENTRALLIX_CHECK_SHELL_OS,
 	    fi
 	    AC_MSG_RESULT(yes)
 	    AC_WARN(The shell driver can be _very_ insecure!!!)
+	    AC_WARN(It will be built, but *not* enabled by default)
 	    CENTRALLIX_ADD_DRIVER(shell, shell)
 	else
 	    AC_MSG_RESULT(no)
 	fi
+
+	AC_SUBST(ENABLE_SHELL)
     ]
 )
 
@@ -453,6 +485,8 @@ AC_DEFUN(CENTRALLIX_CHECK_BERK_OS,
 	    WITH_BERK="$enableval", 
 	    WITH_BERK="no"
 	)
+
+	ENABLE_BERK="no"
  
 	if test "$WITH_BERK" = "yes"; then
 	    AC_DEFINE(USE_BERK)
@@ -461,11 +495,14 @@ AC_DEFUN(CENTRALLIX_CHECK_BERK_OS,
 	    else
 		OBJDRIVERS="$OBJDRIVERS objdrv_berk.o"
 	    fi
+	    ENABLE_BERK="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(berk, berk)
 	else
 	    AC_MSG_RESULT(no)
 	fi
+
+	AC_SUBST(ENABLE_BERK)
     ]
 )
 
@@ -481,6 +518,8 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 	    WITH_XML="$enableval", 
 	    WITH_XML="yes"
 	)
+
+	ENABLE_XML="no"
 
 	if test "$WITH_XML" = "no"; then
 	    AC_MSG_RESULT(no)
@@ -609,18 +648,20 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 		STATIC_LIBS="$STATIC_LIBS $XML_LIBS"
 		OBJDRIVERS="$OBJDRIVERS objdrv_xml.o"
 	    fi
+	    ENABLE_XML="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(xml, XML)
 	else
 	    AC_MSG_RESULT(no)
 	fi
 
+	AC_SUBST(ENABLE_XML)
 	AC_SUBST(XML_CFLAGS)
 	AC_SUBST(XML_LIBS)
     ]
 )
 
-dnl Test for the SHELL os driver.
+dnl Test for the nfs netdriver.
 AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
     [
 	AC_MSG_CHECKING(if NFS netdriver support is desired)
@@ -632,6 +673,8 @@ AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
 	    WITH_NETNFS="$enableval", 
 	    WITH_NETNFS="no"
 	)
+
+	ENABLE_NETNFS="no"
  
 	if test "$WITH_NETNFS" = "yes"; then
 	    AC_DEFINE(USE_NETNFS)
@@ -640,11 +683,13 @@ AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
 	    else
 		NETDRIVERS="$OBJDRIVERS net_nfs.o"
 	    fi
+	    ENABLE_NETNFS="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(nfs,nfs)
 	else
 	    AC_MSG_RESULT(no)
 	fi
+	AC_SUBST(ENABLE_NETNFS)
     ]
 )
 

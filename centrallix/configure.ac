@@ -121,6 +121,9 @@ if test "$WITH_DYNAMIC_LOAD" = "yes"; then
     AC_DEFINE(WITH_DYNAMIC_LOAD,1,[Use dynamic loading])
 fi
 
-AC_OUTPUT(Makefile, echo timestamp > stamp-h)
+AC_CONFIG_FILES(Makefile)
+AC_CONFIG_FILES(etc/centrallix.conf.mk:etc/centrallix.conf.in)
+AC_CONFIG_COMMANDS([timestamp],[echo timestamp > stamp-h])
+AC_OUTPUT
 
 CENTRALLIX_OUTPUT_SUMMARY
