@@ -185,7 +185,6 @@ function htr_unwatch(obj, attr, func)
 function htr_watchchanged(prop,oldval,newval)
     {
     var setprop = newval;
-    //alert("changed: " + event.srcElement.id);
     
     for (var i=0;i<this.htr_watchlist.length;i++)
 	{
@@ -259,7 +258,6 @@ function htr_extract_bgcolor(s)
 	return s.substr(cp+2,s.length-cp-3);
 	}
     else if (s.substr(0,8) == "bgcolor=")
-	{
 	{
 	var qp = s.indexOf("'");
 	if (qp < 1)
@@ -411,8 +409,9 @@ function htr_setzindex(l,v)
 **/
 function htr_get_parent_div(o)
     {
-    if(o && o.parentNode && o.nodeName != "BODY" && o.nodeName != "DIV" || o.parentNode.nodeName == "DIV") {
+    if(o && o.parentNode && o.nodeName != "BODY" && o.nodeName != "DIV" || o.parentNode.nodeName == "DIV") 
+        {
 	return htr_get_parent_div(o.parentNode);
-    }
+        }
     return o;
     }
