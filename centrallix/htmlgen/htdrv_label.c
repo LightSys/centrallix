@@ -42,6 +42,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.8  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.7  2002/05/31 05:03:32  jorupp
      * OSRC now can do a DoubleSync -- check kardia for an example
 
@@ -215,6 +220,7 @@ htlblInitialize()
 	strcpy(drv->WidgetName,"label");
 	drv->Render = htlblRender;
 	drv->Verify = htlblVerify;
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

@@ -59,10 +59,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.16 2002/06/03 18:43:45 jorupp Exp $
+    $Id: htdrv_table.c,v 1.17 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.17  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.16  2002/06/03 18:43:45  jorupp
      * fixed a bug with the handling of empty fields in the dynamic table
 
@@ -1111,6 +1116,7 @@ httblInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	htrAddEvent(drv,"Click");
 

@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.18 2002/06/03 05:09:25 jorupp Exp $
+    $Id: htdrv_editbox.c,v 1.19 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.19  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.18  2002/06/03 05:09:25  jorupp
      * impliment the form view mode correctly
      * fix scrolling back in the OSRC (from the table)
@@ -537,6 +542,7 @@ htebInitialize()
 	strcpy(drv->WidgetName,"editbox");
 	drv->Render = htebRender;
 	drv->Verify = htebVerify;
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add a 'set value' action **/
 	htrAddAction(drv,"SetValue");

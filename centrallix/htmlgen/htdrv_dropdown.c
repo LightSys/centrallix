@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.15 2002/06/06 17:12:20 jorupp Exp $
+    $Id: htdrv_dropdown.c,v 1.16 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.16  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.15  2002/06/06 17:12:20  jorupp
      * fix bugs in radio and dropdown related to having no form
      * work around Netscape bug related to functions not running all the way through
@@ -547,6 +552,7 @@ int htddInitialize() {
    strcpy(drv->WidgetName,"dropdown");
    drv->Render = htddRender;
    drv->Verify = htddVerify;
+   strcpy(drv->Target, "Netscape47x:default");
    xaInit(&(drv->PosParams),16);
    xaInit(&(drv->Properties),16);
    xaInit(&(drv->Events),16);

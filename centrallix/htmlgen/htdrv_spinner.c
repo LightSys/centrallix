@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.4 2002/03/16 03:57:55 bones120 Exp $
+    $Id: htdrv_spinner.c,v 1.5 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.5  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.4  2002/03/16 03:57:55  bones120
     Finally, it works...sort of :)
 
@@ -449,6 +454,8 @@ htspnrInitialize()
 	strcpy(drv->WidgetName,"spinner");
 	drv->Render = htspnrRender;
 	drv->Verify = htspnrVerify;
+	strcpy(drv->Target, "Netscape47x:default");
+
 
 	/** Add a 'set value' action **/
 	htrAddAction(drv,"SetValue");

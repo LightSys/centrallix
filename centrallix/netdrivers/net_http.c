@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.18 2002/05/06 22:46:55 gbeeley Exp $
+    $Id: net_http.c,v 1.19 2002/06/09 23:44:47 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.19  2002/06/09 23:44:47  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.18  2002/05/06 22:46:55  gbeeley
     Updating net_http a bit to properly return OK on a ping.
 
@@ -2001,6 +2006,7 @@ nht_internal_ConnHandler(void* conn_v)
     char sbuf[160];
     char auth[160] = "";
     char cookie[160] = "";
+    char* useragent = 0;
     char dest[256] = "";
     char hdr[64];
     char* msg;
@@ -2096,6 +2102,30 @@ nht_internal_ConnHandler(void* conn_v)
 		if (mlxNextToken(s) != MLX_TOK_INTEGER) msg="Expected content-length",Throw(e);
 		size = mlxIntVal(s);
 		if (mlxNextToken(s) != MLX_TOK_EOL) msg="Expected EOL after length",Throw(e);
+		}
+	    else if (!strcmp(hdr,"user-agent"))
+	        {
+		/** Copy whole User-Agent. **/
+		mlxSetOptions(s,MLX_F_IFSONLY);
+		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected str after Cookie:",Throw(e);
+		/** NOTE: This needs to be freed up at the end of the session.  Is that taken
+		          care of by mssEndSession?  I don't think it is, since xhClear is passed
+			  a NULL function for free_fn.  This will be a 160 byte memory leak for
+			  each session otherwise. 
+		    January 6, 2002   NRE
+		 **/
+		useragent = (char*)nmMalloc(160);
+		strcpy(useragent, mlxStringVal(s,NULL));
+		/** lets put the delimeter back into the string **/
+		strcat(useragent, " ");
+		while((toktype = mlxNextToken(s)))
+		    {
+		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
+		    strcat(useragent, mlxStringVal(s,NULL));
+		    /** lets put the delimeter back into the string **/
+		    strcat(useragent, " ");
+		    }
+		mlxUnsetOptions(s,MLX_F_IFSONLY);
 		}
 	    else
 	        {
@@ -2254,6 +2284,10 @@ nht_internal_ConnHandler(void* conn_v)
 	    }
 
 	nht_internal_LinkSess(nsess);
+
+	/** Set the session's UserAgent if one was found in the headers. **/
+	if (*useragent)
+	    mssSetParam("User-Agent", useragent);
 
 	/** Parse out the requested url **/
 	url_inf = htsParseURL(urlptr);

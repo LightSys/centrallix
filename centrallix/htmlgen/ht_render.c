@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <regex.h>
 #include <stdarg.h>
 #include "ht_render.h"
 #include "obj.h"
@@ -44,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.10 2002/05/03 03:43:25 gbeeley Exp $
+    $Id: ht_render.c,v 1.11 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.11  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.10  2002/05/03 03:43:25  gbeeley
     Added FD_U_PACKET to the fdWrite() calls in ht_render.  It is possible
     that some data was getting dropped - fdWrite() makes no guarantee of
@@ -115,6 +122,96 @@ struct
     }
     HTR;
 
+/** Several XArrays that are used to hold compiled regular expressions for quick lookup **/
+XArray htregNtsp47;
+XArray htregMoz;
+XArray htregMSIE;
+
+XHashTable htWidgetSets;
+XHashTable htNtsp47_default;
+
+/*** htrRegisterUserAgent - creates a bunch of regular expressions that
+ *** will be used to do lookups for detecting the user agent.
+ ***/
+int
+htrRegisterUserAgent()
+    {
+    regex_t *reg;
+
+	xaInit(&(htregNtsp47),4);
+	xaInit(&(htregMoz),4);
+	xaInit(&(htregMSIE),4);
+
+	/** We will need to regfree the compiled regular expressions at deinitialization
+	    of the HTML generator.  Currently this (regfree'ing) is not implemented **/
+
+	/** Netscape 4.7x regular expressions **/
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "Mozilla\\/4\\.7[5-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregNtsp47), (void *)reg);
+
+	/** Mozilla regular expressions **/
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:0\\.9\\.[7-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregMoz), (void *)reg);
+	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.0\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregMoz), (void *)reg);
+
+	/** Internet Explorer regular expressions **/
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "MSIE 5.0[0-9]{0,5}", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregMSIE), (void *)reg);
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "MSIE 5.5[0-9]{0,5}", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregMSIE), (void *)reg);
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "MSIE 6.0[0-9]{0,5}", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregMSIE), (void *)reg);
+
+    return 0;
+    }
+
+int
+htr_internal_GetBrowser(char *browser)
+    {
+    int count;
+    int i;
+    regex_t *reg;
+
+    /** first lets check the Netscape 4.7 regexes **/
+    count = xaCount(&(htregNtsp47));
+    for(i=0;i<count;i++) 
+	{
+	if ((reg = (regex_t*)xaGetItem(&(htregNtsp47),i))) 
+	    {
+	    /** 0 signifies a match, REG_NOMATCH signifies the opposite **/
+	    if (regexec(reg, browser, (size_t)0, NULL, 0) == 0)
+		return HTR_NETSCAPE_47;
+	    }
+	}
+    count = xaCount(&(htregMoz));
+    for(i=0;i<count;i++) 
+	{
+	if ((reg = (regex_t*)xaGetItem(&(htregMoz),i)))
+	    {
+	    /** 0 signifies a match, REG_NOMATCH signifies the opposite **/
+	    if (regexec(reg, browser, (size_t)0, NULL, 0) == 0)
+		return HTR_MOZILLA;
+	    }
+	}
+    count = xaCount(&(htregMSIE));
+    for(i=0;i<count;i++) 
+	{
+	if ((reg = (regex_t*)xaGetItem(&(htregMSIE),i)))
+	    {
+	    /** 0 signifies a match, REG_NOMATCH signifies the opposite **/
+	    if (regexec(reg, browser, (size_t)0, NULL, 0) == 0)
+		return HTR_MSIE;
+	    }
+	}
+
+    return 0;
+    }
 
 /*** htr_internal_AddTextToArray - adds a string of text to an array of 
  *** buffer blocks, allocating new blocks in the XArray if necessary.
@@ -173,8 +270,54 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
     {
     char* w_name;
     pHtDriver drv;
+    char drv_key[64];
+    char buf[384];
+    pXHashTable widget_drivers = NULL;
+    char* agent = NULL;
 
-    	/** Get the name of the widget.. **/
+	agent = (char*)mssGetParam("User-Agent");
+	if (!agent)
+	    {
+	    mssError(1, "HTR", "User-Agent undefined in the session parameters");
+	    return -1;
+	    }
+
+	/** Figure out which browser is being used **/
+	switch (htr_internal_GetBrowser(agent))
+	    {
+		case HTR_NETSCAPE_47:
+		    strcpy(drv_key, "Netscape47x");
+		    break;
+		case HTR_MOZILLA:
+		    strcpy(drv_key, "Mozilla");
+		    break;
+		case HTR_MSIE:
+		    strcpy(drv_key, "MSIE");
+		    break;
+		default:
+		    snprintf(buf, 384, "No widgets have been defined for your browser type.<br>Your browser was identified as: %s", agent);
+		    htrAddBodyItem(session, buf);
+		    mssError(1, "HTR", "Unknown browser type");
+		    return -1;
+	    }
+
+	/** Find the desired style/theme **/
+	/** Right now we are just using one theme **/
+	strcat(drv_key, ":default");
+
+	/** Find the hashtable keyed with widget names for this combination of 
+	 ** user-agent:style that contains pointers to the drivers to use.
+	 **/
+	widget_drivers = (pXHashTable)xhLookup(&(htWidgetSets), drv_key);
+	if (!widget_drivers)
+	    {
+	    snprintf(buf, 384, "No widgets have been defined for your browser type and requested style combination.<br>Your browser and style have been identified as: %s", drv_key);
+	    htrAddBodyItem(session, buf);
+	    mssError(1, "HTR", "Invalid UserAgent:style combination %s.", drv_key);
+	    return -1;
+	    }
+
+	/** Get the name of the widget.. **/
 	objGetAttrValue(widget_obj, "outer_type", POD(&w_name));
 	if (strncmp(w_name,"widget/",7)) 
 	    {
@@ -183,7 +326,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 	    }
 
 	/** Lookup the driver **/
-	drv = (pHtDriver)xhLookup(&(HTR.WidgetDrivers),w_name+7);
+	drv = (pHtDriver)xhLookup(widget_drivers,w_name+7);
 	if (!drv) 
 	    {
 	    mssError(1,"HTR","Unknown widget content type");
@@ -932,11 +1075,20 @@ htrAllocDriver()
 int 
 htrRegisterDriver(pHtDriver drv)
     {
+	pXHashTable lookupHash;
 
     	/** Add to the drivers listing and the widget name map. **/
 	xaAddItem(&(HTR.Drivers),(void*)drv);
 	xhAdd(&(HTR.WidgetDrivers),drv->WidgetName,(char*)drv);
 
+	
+	lookupHash = (pXHashTable)xhLookup(&(htWidgetSets),drv->Target);
+	if (!lookupHash) 
+	    {
+	    mssError(1,"HTR","Widget set not found for User-Agent:style combination of %s on driver %s",drv->Target,drv->Name);
+	    return -1;
+	    }
+	xhAdd(lookupHash,drv->WidgetName,(char*)drv);
     return 0;
     }
 
@@ -947,12 +1099,25 @@ htrRegisterDriver(pHtDriver drv)
 int
 htrInitialize()
     {
+	/** Register the user agents and the regular expressions to match them **/
+	htrRegisterUserAgent();
 
     	/** Initialize the global hash tables and arrays **/
 	xaInit(&(HTR.Drivers),64);
 	xhInit(&(HTR.WidgetDrivers),255,0);
 
+	/** This is a hashtable that will be keyed with user-agent:style combinations
+	    that point to hashtables keyed with widget names that point to the widget 
+	    driver. **/
+	xhInit(&(htWidgetSets),32,0);
+
+	/** Each user-agent:style combination will have a hashtable of widget names
+	    that contain pointers to the widget driver to use.  Each widget set will
+	    need a hashtable. **/
+	xhInit(&(htNtsp47_default),32,0);
+
+	/** Add the target User-Agent/styles to the hash of widget sets.  Each widget
+	    set will need to be added here. **/
+	xhAdd(&(htWidgetSets),"Netscape47x:default",(char*)&(htNtsp47_default));
     return 0;
     }
-
-

@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.7 2002/05/30 00:16:18 jorupp Exp $
+    $Id: htdrv_textbutton.c,v 1.8 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.8  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.7  2002/05/30 00:16:18  jorupp
      * switching to the _va functions...
 
@@ -374,6 +379,7 @@ httbtnInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add the 'click' event **/
 	htrAddEvent(drv, "Click");

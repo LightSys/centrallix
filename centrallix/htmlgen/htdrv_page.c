@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.14 2002/06/03 05:31:39 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.15 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.15  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.14  2002/06/03 05:31:39  lkehresman
     Fixed some global variables that should have been local.
 
@@ -706,6 +711,7 @@ htpageInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

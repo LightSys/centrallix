@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.9 2002/06/06 17:12:22 jorupp Exp $
+    $Id: htdrv_radiobutton.c,v 1.10 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.10  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.9  2002/06/06 17:12:22  jorupp
      * fix bugs in radio and dropdown related to having no form
      * work around Netscape bug related to functions not running all the way through
@@ -127,7 +132,6 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    int x=-1,y=-1,w,h;
    int id;
    char fieldname[32];
-
 
    /** Get an id for this. **/
    id = (HTRB.idcnt++);
@@ -223,7 +227,8 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
    /*
-      Now lets loop through and create a style sheet for each optionpane on the radiobuttonpanel
+      Now lets loop through and create a style sheet for each optionpane on the
+      radiobuttonpanel
    */   
    qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
    if (qy) {
@@ -557,6 +562,7 @@ int htrbInitialize() {
    xaInit(&(drv->Properties),16);
    xaInit(&(drv->Events),16);
    xaInit(&(drv->Actions),16);
+   strcpy(drv->Target, "Netscape47x:default");
 
 #if 00
    /** Add the 'load page' action **/

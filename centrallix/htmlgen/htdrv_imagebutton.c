@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.10 2002/06/02 22:47:23 jorupp Exp $
+    $Id: htdrv_imagebutton.c,v 1.11 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.11  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.10  2002/06/02 22:47:23  jorupp
      * fix some problems I introduced before
 
@@ -369,6 +374,7 @@ htibtnInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	htrAddAction(drv,"Enable");
 	htrAddAction(drv,"Disable");

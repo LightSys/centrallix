@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.9 2002/05/03 03:51:21 gbeeley Exp $
+    $Id: obj.h,v 1.10 2002/06/09 23:44:47 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.10  2002/06/09 23:44:47  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.9  2002/05/03 03:51:21  gbeeley
     Added objUnmanageObject() and objUnmanageQuery() which cause an object
     or query to not be closed automatically on session close.  This should
@@ -541,4 +546,3 @@ int objRegisterEvent(char* class_code, char* pathname, char* where_clause, int f
 int objUnRegisterEvent(char* class_code, char* xdata);
 
 #endif /*_OBJ_H*/
-

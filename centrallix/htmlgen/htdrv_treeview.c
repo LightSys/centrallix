@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.12 2002/05/02 01:12:43 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.13 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.13  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.12  2002/05/02 01:12:43  gbeeley
     Fixed some buggy initialization code where an XArray was not being
     setup prior to being used.  Was causing potential bad pointers to
@@ -757,6 +762,7 @@ httreeInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add the 'click item' event **/
 	htrAddEvent(drv,"ClickItem");

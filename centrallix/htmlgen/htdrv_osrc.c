@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.34 2002/06/06 17:12:21 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.35 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.35  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.34  2002/06/06 17:12:21  jorupp
      * fix bugs in radio and dropdown related to having no form
      * work around Netscape bug related to functions not running all the way through
@@ -1322,6 +1327,7 @@ int htosrcInitialize() {
    strcpy(drv->WidgetName,"osrc");
    drv->Render = htosrcRender;
    drv->Verify = htosrcVerify;
+   strcpy(drv->Target, "Netscape47x:default");
    xaInit(&(drv->PosParams),16);
    xaInit(&(drv->Properties),16);
    xaInit(&(drv->Events),16);

@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.6 2002/05/31 19:22:03 lkehresman Exp $
+    $Id: htdrv_pane.c,v 1.7 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.7  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.6  2002/05/31 19:22:03  lkehresman
     * Added option to dropdown to allow specification of number of elements
       to display at one time (default 3).
@@ -245,6 +250,7 @@ htpnInitialize()
 	strcpy(drv->WidgetName,"pane");
 	drv->Render = htpnRender;
 	drv->Verify = htpnVerify;
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

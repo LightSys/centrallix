@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_menu.c,v 1.3 2002/05/02 01:12:43 gbeeley Exp $
+    $Id: htdrv_menu.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_menu.c,v $
 
     $Log: htdrv_menu.c,v $
+    Revision 1.4  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.3  2002/05/02 01:12:43  gbeeley
     Fixed some buggy initialization code where an XArray was not being
     setup prior to being used.  Was causing potential bad pointers to
@@ -323,6 +328,7 @@ htmenuInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add the 'click' event **/
 	htrAddAction(drv,"Activate");

@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.8 2002/06/01 19:08:46 mattphillips Exp $
+    $Id: test_obj.c,v 1.9 2002/06/09 23:44:45 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.9  2002/06/09 23:44:45  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.8  2002/06/01 19:08:46  mattphillips
     A littl ebit of code cleanup...  getting rid of some compiler warnings.
 
@@ -282,7 +287,7 @@ start(void* v)
 		objSetAttrValue(obj, "annotation", POD(&ptr));
 		objClose(obj);
 		}
-	    else if (!strcmp(cmdname,"list"))
+	    else if (!strcmp(cmdname,"list") || !strcmp(cmdname, "ls"))
 		{
 		is_where = 0;
 		is_orderby = 0;

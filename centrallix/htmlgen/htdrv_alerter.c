@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.6  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.5  2002/03/12 04:01:48  jorupp
     * started work on a tree-view interface to the javascript DOM
          didn't go so well...
@@ -416,6 +421,7 @@ htalrtInitialize()
 	strcpy(drv->WidgetName,"alerter");
 	drv->Render = htalrtRender;
 	drv->Verify = htalrtVerify;
+    strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add a 'executemethod' action **/
 	htrAddAction(drv,"Alert");

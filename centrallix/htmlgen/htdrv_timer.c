@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_timer.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.4  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -204,6 +209,7 @@ httmInitialize()
 	strcpy(drv->WidgetName,"timer");
 	drv->Render = httmRender;
 	drv->Verify = httmVerify;
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add an 'expired' event **/
 	htrAddEvent(drv,"Expire");

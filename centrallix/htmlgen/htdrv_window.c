@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.13 2002/06/06 17:12:23 jorupp Exp $
+    $Id: htdrv_window.c,v 1.14 2002/06/09 23:44:47 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.14  2002/06/09 23:44:47  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.13  2002/06/06 17:12:23  jorupp
      * fix bugs in radio and dropdown related to having no form
      * work around Netscape bug related to functions not running all the way through
@@ -596,6 +601,7 @@ htwinInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add the 'set visibility' action **/
 	htrAddAction(drv,"SetVisibility");

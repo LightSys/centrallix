@@ -44,12 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_sys_osml.c,v 1.1 2001/08/13 18:00:51 gbeeley Exp $
+    $Id: htdrv_sys_osml.c,v 1.2 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_sys_osml.c,v $
 
     $Log: htdrv_sys_osml.c,v $
-    Revision 1.1  2001/08/13 18:00:51  gbeeley
-    Initial revision
+    Revision 1.2  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
+    Revision 1.1.1.1  2001/08/13 18:00:51  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -221,6 +226,7 @@ htosmlInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

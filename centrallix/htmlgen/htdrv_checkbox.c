@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.12 2002/05/03 01:40:55 jheth Exp $
+    $Id: htdrv_checkbox.c,v 1.13 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.13  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.12  2002/05/03 01:40:55  jheth
     Defined fieldname size to be 60 (from 30) in ht_render.h - HT_FIELDNAME_SIZE
 
@@ -353,6 +358,7 @@ int htcbInitialize() {
    xaInit(&(drv->Properties),16);
    xaInit(&(drv->Events),16);
    xaInit(&(drv->Actions),16);
+   strcpy(drv->Target,"Netscape47x:default");
 
 #if 00
    /** Add the 'load page' action **/

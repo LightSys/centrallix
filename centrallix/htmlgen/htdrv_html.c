@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.4  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -411,6 +416,7 @@ hthtmlInitialize()
         xaInit(&(drv->Properties),16);
         xaInit(&(drv->Events),16);
         xaInit(&(drv->Actions),16);
+	strcpy(drv->Target, "Netscape47x:default");
 
         /** Add the 'load page' action **/
 	htrAddAction(drv,"LoadPage");

@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.8 2002/05/03 01:41:39 jheth Exp $
+    $Id: ht_render.h,v 1.9 2002/06/09 23:44:47 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.9  2002/06/09 23:44:47  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.8  2002/05/03 01:41:39  jheth
     Defined global variable HT_FIELDNAME_SIZE, set to 60 - Used in some visible widgets
 
@@ -120,6 +125,7 @@ typedef struct
     XArray	Properties;		/* Properties this thing will have. */
     XArray	Events;			/* Events for this widget type */
     XArray	Actions;		/* Actions on this widget type */
+    char	Target[32];		/* Browser type the widget support */
     }
     HtDriver, *pHtDriver;
 
@@ -162,7 +168,11 @@ typedef struct
 #define HTR_F_NAMEALLOC		1
 #define HTR_F_VALUEALLOC	2
 
+#define HTR_NETSCAPE_47		1
+#define HTR_MOZILLA		2
+#define HTR_MSIE		3
 
+    
 /** Structure for a named array, for using arrays in lookups. **/
 typedef struct
     {

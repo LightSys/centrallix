@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.43  2002/06/09 23:44:46  nehresma
+    This is the initial cut of the browser detection code.  Note that each widget
+    needs to register which browser and style is supported.  The GNU regular
+    expression library is also needed (comes with GLIBC).
+
     Revision 1.42  2002/06/03 05:09:25  jorupp
      * impliment the form view mode correctly
      * fix scrolling back in the OSRC (from the table)
@@ -1258,6 +1263,8 @@ htformInitialize()
 	strcpy(drv->WidgetName,"form");
 	drv->Render = htformRender;
 	drv->Verify = htformVerify;
+	strcpy(drv->Target, "Netscape47x:default");
+
 
 	/** Add our actions **/
 	htrAddAction(drv,"Clear");
