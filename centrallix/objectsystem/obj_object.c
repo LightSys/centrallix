@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.11 2003/05/30 17:39:52 gbeeley Exp $
+    $Id: obj_object.c,v 1.12 2003/07/07 20:29:21 affert Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.12  2003/07/07 20:29:21  affert
+    Fixed a bug.
+
     Revision 1.11  2003/05/30 17:39:52  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -857,8 +860,8 @@ obj_internal_NormalizePath(char* cwd, char* name)
 
     	/** Allocate the path structure **/
 	path = (pPathname)nmMalloc(sizeof(Pathname));
-	path->OpenCtlBuf = NULL;
 	if (!path) return NULL;
+	path->OpenCtlBuf = NULL;
 
 	/** Initialize structure and incremental pointer **/
         bufptr = path->Pathbuf+1;
