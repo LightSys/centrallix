@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.27 2002/08/15 13:58:16 pfinley Exp $
+    $Id: htdrv_window.c,v 1.28 2002/08/15 14:08:47 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.28  2002/08/15 14:08:47  pfinley
+    fixed a bit masking issue with the page closetype flag.
+
     Revision 1.27  2002/08/15 13:58:16  pfinley
     Made graphical window closing and shading properties of the window widget,
     rather than globally of the page.
@@ -299,7 +302,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    if (!strcmp(ptr,"shrink1")) closetype = 1;
 	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
-	    else if (!strcmp(ptr,"shrink3")) closetype = 1 & 2;
+	    else if (!strcmp(ptr,"shrink3")) closetype = 1 | 2;
 	    }
 
 	/** Compute titlebar width & height - includes edge below titlebar. **/
