@@ -57,10 +57,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.4 2002/05/03 03:48:16 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.5 2002/06/19 23:20:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.5  2002/06/19 23:20:42  gbeeley
+    Fixed some compiler warnings, repaired some potential security issues.
+
     Revision 1.4  2002/05/03 03:48:16  gbeeley
     Update due to modification in the xhClear() api.
 
@@ -396,7 +399,8 @@ rpt_internal_GetStyle(pStructInf element)
 
 
 /*** rpt_internal_CheckFormats - check for new datetime/money/null formats or
- *** restore original formats
+ *** restore original formats.  Limit on formatting strings is 31 chars, plus
+ *** one null terminator.
  ***/
 int
 rpt_internal_CheckFormats(pStructInf inf, char* savedmfmt, char* saveddfmt, char* savednfmt, int restore)
@@ -428,21 +432,24 @@ rpt_internal_CheckFormats(pStructInf inf, char* savedmfmt, char* saveddfmt, char
 	        {
 		oldfmt = (char*)mssGetParam("dfmt");
 		if (!oldfmt) oldfmt = obj_default_date_fmt;
-		strcpy(saveddfmt, oldfmt);
+		memccpy(saveddfmt, oldfmt, 0, 31);
+		saveddfmt[31] = 0;
 		mssSetParam("dfmt",newdfmt);
 		}
 	    if (newmfmt) 
 	        {
 		oldfmt = (char*)mssGetParam("mfmt");
 		if (!oldfmt) oldfmt = obj_default_money_fmt;
-		strcpy(savedmfmt, oldfmt);
+		memccpy(savedmfmt, oldfmt, 0, 31);
+		savedmfmt[31] = 0;
 		mssSetParam("mfmt",newmfmt);
 		}
 	    if (newnfmt)
 	        {
 		oldfmt = (char*)mssGetParam("nfmt");
 		if (!oldfmt) oldfmt = obj_default_null_fmt;
-		strcpy(savednfmt, oldfmt);
+		memccpy(savednfmt, oldfmt, 0, 31);
+		savednfmt[31] = 0;
 		mssSetParam("nfmt",newnfmt);
 		}
 	    }
@@ -815,41 +822,41 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 		    {
 		    case DATA_T_INTEGER:
 		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&n)) == 1)
-		            sprintf(nbuf[i],rpt_internal_GetNULLstr());
+		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 		        else
-		            sprintf(nbuf[i],"%d",n);
+		            snprintf(nbuf[i],32,"%d",n);
 		        lvalue = nbuf[i];
 			break;
 
 		    case DATA_T_STRING:
 		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&lvalue)) == 1)
 		            {
-		            sprintf(nbuf[i],rpt_internal_GetNULLstr());
+		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			    lvalue = nbuf[i];
 			    }
 			break;
 
 		    case DATA_T_DATETIME:
 		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&dt)) == 1 || dt == NULL)
-			    strcpy(nbuf[i],rpt_internal_GetNULLstr());
+		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
-			    strcpy(nbuf[i],objDataToStringTmp(DATA_T_DATETIME, dt, 0));
+			    snprintf(nbuf[i],32,"%s",objDataToStringTmp(DATA_T_DATETIME, dt, 0));
 			lvalue = nbuf[i];
 			break;
 
 		    case DATA_T_MONEY:
 		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&m)) == 1 || dt == NULL)
-			    strcpy(nbuf[i],rpt_internal_GetNULLstr());
+			    snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
-			    strcpy(nbuf[i],objDataToStringTmp(DATA_T_MONEY, m, 0));
+			    snprintf(nbuf[i],32,"%s",objDataToStringTmp(DATA_T_MONEY, m, 0));
 			lvalue = nbuf[i];
 			break;
 
 		    case DATA_T_DOUBLE:
 		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&dbl)) == 1)
-			    strcpy(nbuf[i],rpt_internal_GetNULLstr());
+			    snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
-			    sprintf(nbuf[i],"%f",dbl);
+			    snprintf(nbuf[i],32,"%f",dbl);
 			lvalue = nbuf[i];
 			break;
 
@@ -920,7 +927,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 int
 rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, pQueryConn this_qy)
     {
-    int style,oldstyle;
+    int style,oldstyle=0;
     char* title = NULL;
     int cols=1,colsep=4,lmargin=0,rmargin=0;
     int oldcols=-1, oldcolsep, oldlmargin=-1, oldrmargin;
@@ -1380,9 +1387,9 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
     {
     char* ptr;
     int titlebar=1;
-    int style,oldstyle;
+    int style,oldstyle=0;
     int cnt,v,colmask,len,i;
-    pQueryConn qy;
+    pQueryConn qy = NULL;
     char* cname;
     char* cname2;
     pStructInf ui;
@@ -1498,6 +1505,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	prtDoTable(rs->PSession, (is_rel_cols?PRT_T_F_RELCOLWIDTH:0) | (lower_sep?PRT_T_F_LOWERSEP:0),colsep);
 
 	/** Decide which columns of the result set to use **/
+	colmask = 0x7FFFFFFF;
 	if (!table->UserData)
 	    {
 	    /** Determine which source to use. **/
@@ -1506,11 +1514,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	    else
 		qy = ac->Queries[ac->Count-1];
 
-	    if (!(ui=stLookup(table,"columns")))
-	        {
-	        colmask = 0x7FFFFFFF;
-	        }
-	    else
+	    if ((ui=stLookup(table,"columns")))
 	        {
 	        colmask=0;
 	        for(v=0,cname=objGetFirstAttr(qy->QueryItem);cname;v++,cname=objGetNextAttr(qy->QueryItem))
@@ -1848,7 +1852,7 @@ rpt_internal_WriteExpResult(pRptSession rs, pExpression exp)
 int
 rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs)
     {
-    int attr=0,oldattr;
+    int attr=0,oldattr=0;
     char* ptr = NULL;
     char oldmfmt[32],olddfmt[32],oldnfmt[32];
     char* saved_font = NULL;
@@ -1909,7 +1913,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs)
 int
 rpt_internal_DoComment(pRptData inf, pStructInf comment, pRptSession rs)
     {
-    int attr=0,oldattr;
+    int attr=0,oldattr=0;
     char* ptr=NULL;
     int nl=1;
     pXString text_str;
@@ -1961,7 +1965,7 @@ rpt_internal_DoComment(pRptData inf, pStructInf comment, pRptSession rs)
 int
 rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn this_qy)
     {
-    int style,oldstyle;
+    int style,oldstyle=0;
     char* src;
     char* tsrc;
     int nl=1;
@@ -2144,7 +2148,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 int
 rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
     {
-    int style,oldstyle;
+    int style,oldstyle=0;
     int i;
     pQueryConn qy;
     int rulesep=0,ffsep=0;
@@ -2416,7 +2420,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
     int i;
     pStructInf ck_inf;
     char* ptr;
-    pXArray xa;
+    pXArray xa = NULL;
     pExpression exp;
     int err = 0;
     pXString subst_value;
@@ -2482,13 +2486,23 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 			xaAddItem(xa, (void*)exp);
 			}
 		    }
+		else
+		    {
+		    mssError(1,"RPT","Missing '%s' columns= expression list", object->Name);
+		    err = 1;
+		    }
 
 	        /** If errors, free the XArray and its expressions **/
 	        if (err)
 	            {
 	            object->UserData = NULL;
-	            for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
-	            xaDeInit(xa);
+		    if (xa)
+			{
+			for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
+			xaDeInit(xa);
+			nmFree(xa,sizeof(XArray));
+			xa = NULL;
+			}
 	            }
 	        else
 	            {
@@ -2547,8 +2561,13 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	    else if (!strcmp(object->UsrType,"report/table"))
 	        {
 	        object->UserData = NULL;
-	        for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
-	        xaDeInit(xa);
+		if (xa)
+		    {
+		    for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
+		    xaDeInit(xa);
+		    nmFree(xa,sizeof(XArray));
+		    xa = NULL;
+		    }
 		}
 	    }
 
@@ -2690,7 +2709,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	        }
 	    prtWriteNL(ps);
 	    cur_time = time(NULL);
-	    sprintf(sbuf,"REQUESTED BY USER %s AT %s",mssUserName(),ctime(&cur_time));
+	    snprintf(sbuf,128,"REQUESTED BY USER %s AT %s",mssUserName(),ctime(&cur_time));
 	    prtWriteString(ps,sbuf,-1);
 	    /*prtWriteNL(ps);*/
 	    prtSetAttr(ps,0);
@@ -3550,6 +3569,11 @@ rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    /** GRB - error out on this for now.  The stuff that is needed to rename
+	     ** a node like this isn't really in place.
+	     **/
+	    mssErrorErrno(1,"RPT","SetAttr 'name': could not rename report node object");
+	    return -1;
 	    if (inf->Node->Data)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
@@ -3562,11 +3586,15 @@ rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
 	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
-	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
+
+		/** GRB - rpt may not be in a fs file.  It is not this driver's
+		 ** duty to call things like rename().
+		 **/
+	        /*if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0)
 		    {
 		    mssErrorErrno(1,"RPT","SetAttr 'name': could not rename report node object");
 		    return -1;
-		    }
+		    }*/
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
 	    strcpy(inf->Node->Data->Name,*(char**)val);
