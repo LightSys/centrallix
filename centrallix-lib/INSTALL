@@ -1,0 +1,38 @@
+Installing Centrallix-lib
+
+This document will describe how to compile and install the Centrallix libraries
+on your system.  This doesn't go into too much depth with troubleshooting, but
+if you have problems, please subscribe to our mailing lists for help.  The
+build and install process for the libs is very easy.
+
+
+COMPILE LIBS
+============
+    Compilation is simple for the libs.  All you need to do is run the
+    configure script and then do make and make install as shown in the example
+    below.  You can set the --prefix option to anywhere you desire.  This
+    should be the same as the prefix for the centrallix package.
+
+      $ ./configure --prefix=/usr/local
+      $ make
+      $ make install
+
+    This will create the files libCentrallix.a and libCentrallix.so in
+    /usr/local/lib (assuming you use the --prefix=/usr/local option, otherwise
+    add your own prefix there).  Be sure that the previously mentioned path is
+    listed in /etc/ld.so.conf and be sure to run ldconfig.
+
+
+COMPILE CENTRALLIX
+==================
+    The next step is to compile the centrallix package.  For instructions on
+    that, see the INSTALL document associated with that package.
+      
+    
+PROBLEMS?
+=========
+    If you have problems installing and/or running Centrallix, you can
+    submit any questions to our mailing list.  You can subscribe to the list
+    by going to the following link:
+
+    http://lists.sourceforge.net/lists/listinfo/centrallix-users
