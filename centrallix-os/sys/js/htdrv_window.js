@@ -106,9 +106,9 @@ function wn_cb_reveal(e)
 function wn_setvisibility_th(v)
     {
     var cur_vis = htr_getvisibility(this);
-    if (v && (cur_vis != 'inherit' && cur_vis != ''))
+    if (v && (cur_vis != 'inherit' && cur_vis != 'visible'))
 	pg_reveal_event(this, v, 'RevealCheck');
-    else if (!v && (cur_vis == 'inherit' || cur_vis == ''))
+    else if (!v && (cur_vis == 'inherit' || cur_vis == 'visible'))
 	pg_reveal_event(this, v, 'ObscureCheck');
     return;
     }
