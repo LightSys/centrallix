@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.9 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.10 2002/03/13 19:48:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.10  2002/03/13 19:48:45  gbeeley
+    Fixed a window-dragging issue with nested html windows.  Added the
+    dropdown widget to lsmain.c.  Updated changelog.
+
     Revision 1.9  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -318,7 +322,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptFunction(s, "wn_domove", "\n"
 		"function wn_domove()\n"
 		"    {\n"
-		"    if (wn_current != null) wn_current.moveTo((wn_newx<0)?0:wn_newx,(wn_newy<0)?0:wn_newy);\n"
+		"    if (wn_current != null) wn_current.moveToAbsolute((wn_newx<0)?0:wn_newx,(wn_newy<0)?0:wn_newy);\n"
 		"    wn_clicked = 0;\n"
 		"    return true;\n"
 		"    }\n",0);

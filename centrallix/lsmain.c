@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.11 2002/03/09 02:42:01 bones120 Exp $
+    $Id: lsmain.c,v 1.12 2002/03/13 19:48:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.12  2002/03/13 19:48:46  gbeeley
+    Fixed a window-dragging issue with nested html windows.  Added the
+    dropdown widget to lsmain.c.  Updated changelog.
+
     Revision 1.11  2002/03/09 02:42:01  bones120
     Initial commit of the spinner box.
 
@@ -230,10 +234,11 @@ start(void* v)
 	htexInitialize();			/* method exec module */
 	htspInitialize();			/* spinner box module*/
 	htfsInitialize();			/* form status module */
+	htddInitialize();			/* dropdown htdrv module */
 
 	htformInitialize();			/* forms module */
-    htosrcInitialize();         /* osrc module */
-    htalrtInitialize();			/* alert module */
+	htosrcInitialize();			/* osrc module */
+	htalrtInitialize();			/* alert module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */

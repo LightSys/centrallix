@@ -1,12 +1,27 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
-0.7.1 --> next version not yet released
+0.7.1 --> 0.7.2	    ** not yet released **
 
     Changes:
 
 	1.  In process of adding support for scripts in structure files.  This
 	    will allow embedding of functions and more advanced facilities 
 	    within apps and potentially reports.
+	2.  Added support for a global configuration file, centrallix.conf, 
+	    that can be used to customize the server name, logging mechanism,
+	    and HTTP module TCP listener port.  The -c command line option can
+	    point to the configuration file if not at the default location
+	    (/usr/local/etc/centrallix.conf).  A sample centrallix.conf can be
+	    found in the centrallix-os package in the doc/install directory.
+	3.  Better support for running Centrallix as a non-root user via the
+	    availability of alternate-password-file authentication.  Note that
+	    Centrallix's security model is not mature enough yet to make
+	    running as non-root a serious option, though we're working on it.
+	4.  Fixed a few potential security problems in the htmlgen subsystem's
+	    various modules, primarily including sprintf() vs. snprintf()
+	    function calls.
+	5.  Added some preliminary work towards the version-3 prtmgmt sub-
+	    system.  These files are the "v3" files in the 'report' directory.
 
 
 -------------------------------------------------------------------------------

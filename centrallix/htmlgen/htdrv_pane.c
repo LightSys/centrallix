@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.4 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.5 2002/03/13 19:48:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.5  2002/03/13 19:48:46  gbeeley
+    Fixed a window-dragging issue with nested html windows.  Added the
+    dropdown widget to lsmain.c.  Updated changelog.
+
     Revision 1.4  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -227,8 +231,6 @@ int
 htpnInitialize()
     {
     pHtDriver drv;
-    /*pHtEventAction action;
-    pHtParam param;*/
 
     	/** Allocate the driver **/
 	drv = htrAllocDriver();
@@ -239,18 +241,6 @@ htpnInitialize()
 	strcpy(drv->WidgetName,"pane");
 	drv->Render = htpnRender;
 	drv->Verify = htpnVerify;
-
-#if 00
-	/** Add the 'load page' action **/
-	action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(action->Name,"LoadPage");
-	xaInit(&action->Parameters,16);
-	param = (pHtParam)nmSysMalloc(sizeof(HtParam));
-	strcpy(param->ParamName,"Source");
-	param->DataType = DATA_T_STRING;
-	xaAddItem(&action->Parameters,(void*)param);
-	xaAddItem(&drv->Actions,(void*)action);
-#endif
 
 	/** Register. **/
 	htrRegisterDriver(drv);

@@ -126,6 +126,9 @@ jsengine: $(JSVM)
 test_obj: test_obj.o $(BASEOBJS)
 	cc test_obj.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -o test_obj $(LIBS)
 
+test_prt: test_prt.o $(BASEOBJS)
+	cc test_prt.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
+
 ts: ts.o $(LSOBJS) $(TESTSUITE)
 	cc ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) -o ts $(LIBS)
 
