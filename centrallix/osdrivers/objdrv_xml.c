@@ -56,10 +56,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.9 2002/08/04 20:38:24 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.10 2002/08/06 05:27:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.10  2002/08/06 05:27:06  jorupp
+     * added basic caching mechanism (no expiration -- couldn't figure that out)
+     * attributes are returned as pointers to malloc()ed memory -- this breaks test_obj's ls function
+
     Revision 1.9  2002/08/04 20:38:24  jorupp
      * fixed a bug that caused a segfault when running a query on an object with no subnodes
      * fixed a compile warning about a cast
@@ -196,6 +200,15 @@
 #define XML_ATTR 1
 #define XML_SUBOBJ 2
 
+/** the element used in the document cache **/
+typedef struct
+    {
+    xmlDocPtr	document;
+    DateTime	lastmod;
+    int		LinkCnt;
+    }
+    XmlCacheObj, *pXmlCacheObj;
+
 /** the element of the inf->Attributes hash **/
 typedef struct
     {
@@ -227,8 +240,9 @@ typedef struct
     xmlAttrPtr	CurXmlAttr;
     xmlNodePtr	CurSubNode;
     /** GetAttrValue has to return a refence to memory that won't be free()ed **/
-    char	AttrValue[XML_ATTR_SIZE];
+    char*	AttrValue;
     pXHashTable	Attributes;
+    pXmlCacheObj    CacheObj;
     }
     XmlData, *pXmlData;
 
@@ -249,7 +263,7 @@ typedef struct
 /*** GLOBALS ***/
 struct
     {
-    int		dmy_global_variable;
+    XHashTable	cache;
     }
     XML_INF;
 
@@ -326,7 +340,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	regmatch_t pmatch[3];
 
 	ptr=obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt-1,1);
-	if((i=regcomp(&namematch,"^(.*)|([0123456789]*)$",REG_EXTENDED)))
+	if((i=regcomp(&namematch,"^([^|]*)\\|*([0123456789]*)$",REG_EXTENDED)))
 	    {
 	    /** this is a critical failure -- this regex should compile just fine **/
 	    mssError(0,"XML","Error while building namematch");
@@ -391,7 +405,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 		{
 		/** we found some nodes that match, and the specific requested one **/
 		if(XML_DEBUG) printf("found matches, and exact target: %i\n",target);
-		obj->SubCnt+=2;
+		obj->SubCnt++;
 		inf->CurNode=p;
 		/** maybe there are more **/
 		return xml_internal_GetNode(inf,obj);
@@ -415,7 +429,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 			} while  ((p=p->next)!=NULL);
 		    
 		    if(XML_DEBUG) printf("found matches, and assumed target\n");
-		    obj->SubCnt+=1;
+		    obj->SubCnt++;
 		    inf->CurNode=p;
 		    /** maybe there are more **/
 		    return xml_internal_GetNode(inf,obj);
@@ -443,6 +457,72 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
     return -1;
     }
 
+pXmlCacheObj
+xml_internal_ReadDoc(pObject obj)
+    {
+    xmlParserCtxtPtr ctxt;
+    char* ptr;
+    char* path;
+    int bytes;
+    pXmlCacheObj pCache;
+    pDateTime pDT=0;
+
+	path=obj_internal_PathPart(obj->Pathname,0,3);
+	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache,path)))
+	    {
+	    if(XML_DEBUG) printf("found %s in cache\n",path);
+	    /** found match in cache -- check modification time **/
+	    if(objGetAttrType(obj,"last_modification")==DATA_T_INTEGER && 
+		objGetAttrValue(obj,"last_modification",POD(&pDT))==0)
+	    if(pDT && pDT->Value!=pCache->lastmod.Value)
+		{
+		/** modification time changed -- update **/
+		xmlFreeDoc(pCache->document);
+		pCache->document=NULL;
+		}
+	    }
+	else
+	    {
+	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
+	    pCache=nmMalloc(sizeof(XmlCacheObj));
+	    if(!pCache) return NULL;
+	    memset(pCache,0,sizeof(XmlCacheObj));
+	    ptr=malloc(strlen(path)+1);
+	    strcpy(ptr,path);
+	    xhAdd(&XML_INF.cache,ptr,(char*)pCache);
+	    }
+
+	if(!pCache->document)
+	    {
+#ifndef USE_LIBXML1
+	    xmlKeepBlanksDefault (0);
+	    xmlLineNumbersDefault(1);
+#endif
+	    /** parse the document **/
+	    ptr=malloc(XML_BLOCK_SIZE);
+	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
+	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
+	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
+	    {
+		if(XML_DEBUG) printf("giving parser a chunk\n");
+		xmlParseChunk(ctxt,ptr,bytes,0);
+		if(XML_DEBUG) printf("parser done with the chunk\n");
+	    }
+	    free(ptr);
+	    xmlParseChunk(ctxt,NULL,0,1);
+	    /** get the document reference **/
+	    if(!ctxt->myDoc)
+		{
+		mssError(0,"XML","No Document in XML file!");
+		xmlFreeParserCtxt(ctxt);
+		return NULL;
+		}
+	    pCache->document=ctxt->myDoc;
+	    xmlFreeParserCtxt(ctxt);
+	}
+    return pCache;
+    }
+
 /*** xmlOpen - open an object.
  ***/
 void*
@@ -452,9 +532,7 @@ xmlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     int rval;
     char* node_path;
     pSnNode node = NULL;
-    char* ptr;
-    xmlParserCtxtPtr ctxt;
-    int bytes;
+    pXmlCacheObj pCache;
 
 	/** Allocate the structure **/
 	inf = (pXmlData)nmMalloc(sizeof(XmlData));
@@ -467,30 +545,13 @@ xmlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** Set object params. **/
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
 
-#ifndef USE_LIBXML1
-	xmlKeepBlanksDefault (0);
-	xmlLineNumbersDefault(1);
-#endif
-	/** parse the document **/
-	ptr=malloc(XML_BLOCK_SIZE);
-	ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
-	objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
-	while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
-	{
-	    if(XML_DEBUG) printf("giving parser a chunk\n");
-	    xmlParseChunk(ctxt,ptr,bytes,0);
-	    if(XML_DEBUG) printf("parser done with the chunk\n");
-	}
-	free(ptr);
-	xmlParseChunk(ctxt,NULL,0,1);
-	/** get the document reference **/
-	if(!ctxt->myDoc)
+	if (!(inf->CacheObj=xml_internal_ReadDoc(obj)))
 	    {
-	    mssError(0,"XML","No Document in XML file!");
+	    nmFree(inf,sizeof(XmlData));
 	    return NULL;
 	    }
-	inf->CurNode=xmlDocGetRootElement(ctxt->myDoc);
-	xmlFreeParserCtxt(ctxt);
+
+	inf->CurNode=xmlDocGetRootElement(inf->CacheObj->document);
 
 	obj->SubCnt=1;
 	if(XML_DEBUG) printf("objdrv_xml.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
@@ -505,6 +566,8 @@ xmlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	
 	if(XML_DEBUG) printf("objdrv_xml.c took: (%i,%i,%i) %s\n",obj->SubPtr,
 		obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
+
+	inf->CacheObj->LinkCnt++;
 
     return (void*)inf;
     }
@@ -533,8 +596,14 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	if(XML_DEBUG) printf("objdrv_xml.c closing: (%i,%i,%i) %s\n",inf->Obj->SubPtr,
 		inf->Obj->SubCnt,inf->Obj->Pathname->nElements,obj_internal_PathPart(inf->Obj->Pathname,0,0));
 	
+	/** free any memory used to return an attribute **/
+	if(inf->AttrValue)
+	    {
+	    free(inf->AttrValue);
+	    inf->AttrValue=NULL;
+	    }
 	/** Release the memory **/
-	//inf->Node->OpenCnt --;
+	inf->CacheObj->LinkCnt--;
 	nmFree(inf,sizeof(XmlData));
 
     return 0;
@@ -739,6 +808,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf = (pXmlData)nmMalloc(sizeof(XmlData));
 	if (!inf) return NULL;
 	memset(inf,0,sizeof(XmlData));
+	inf->CacheObj=qy->Data->CacheObj;
 
 	while(flag==0)
 	    {
@@ -808,6 +878,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->CurNode=qy->NextNode;
 	qy->ItemCnt++;
 
+	inf->CacheObj->LinkCnt++;
     return (void*)inf;
     }
 
@@ -984,6 +1055,12 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
     xmlNodePtr np;
     xmlAttrPtr ap;
 
+	if(inf->AttrValue)
+	    {
+	    free(inf->AttrValue);
+	    inf->AttrValue=NULL;
+	    }
+
 	/** inner_type is an alias for content_type **/
 	if(!strcmp(attrname,"inner_type"))
 	    return xmlGetAttrValue(inf_v,"content_type",val,oxt);
@@ -1017,18 +1094,16 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		ap=(xmlAttrPtr)pHE->ptr;
 		/*ptr2=(char*)xml_internal_GetChildren(ap);*/
 		/* I consider this a hack -- I can't figure out where to get the text! */
-		ptr2=xmlGetProp(ap->parent,ap->name);
-		if(ptr2)
+		inf->AttrValue=xmlGetProp(ap->parent,ap->name);
+		if(inf->AttrValue)
 		    {
-		    *(int*)val=strtol(ptr2,&ptr,10);
+		    *(int*)val=strtol(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
-			free(ptr2);
+			//free(inf->AttrValue);
+			//inf->AttrValue=NULL;
 			return 0;
 			}
-		    strncpy(inf->AttrValue,ptr2,XML_ATTR_SIZE);
-		    inf->AttrValue[XML_ATTR_SIZE-1]='\0';
-		    free(ptr2);
 		    *((char**)val) = inf->AttrValue;
 		    return 0;
 		    }
@@ -1036,23 +1111,19 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    else if(pHE->type==XML_SUBOBJ)
 		{
 		np=(xmlNodePtr)pHE->ptr;
-		ptr2=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
-		if(ptr2)
+		inf->AttrValue=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
+		if(inf->AttrValue)
 		    {
-		    *(int*)val=strtol(ptr2,&ptr,10);
+		    *(int*)val=strtol(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
-			free(ptr2);
+			//free(inf->AttrValue);
+			//inf->AttrValue=NULL;
 			return 0;
 			}
-		    strncpy(inf->AttrValue,ptr2,XML_ATTR_SIZE);
-		    inf->AttrValue[XML_ATTR_SIZE-1]='\0';
-		    free(ptr2);
 		    *((char**)val) = inf->AttrValue;
 		    return 0;
 		    }
-		else
-		    printf("ptr2 wasn't valid\n");
 		}
 	    else
 		{
@@ -1289,12 +1360,12 @@ xmlInitialize()
 
 	/** Initialize globals **/
 	memset(&XML_INF,0,sizeof(XML_INF));
-	XML_INF.dmy_global_variable = 0;
+	xhInit(&XML_INF.cache,17,0);
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"XML - XML OS Driver");
 	drv->Capabilities = 0;
-	xaInit(&(drv->RootContentTypes),16);
+	xaInit(&(drv->RootContentTypes),1);
 	xaAddItem(&(drv->RootContentTypes),"text/xml");
 
 	/** Setup the function references. **/
