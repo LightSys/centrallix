@@ -1,5 +1,6 @@
 CODE	MODULE
 =======	=====================================================================
+aud	OSDriver - Linux OSS /dev/dsp audio (plays WAV files on ExecMethod)
 bar	BarCode generator module (for prt mgmt)
 dat	OSDriver - Flat data file (CSV/etc)
 ev	MTASK internal - event handling
@@ -8,6 +9,8 @@ fd	MTASK Module file I/O
 fxp	PrtDriver - Epson-FX (text/x-epson-fx) output
 htcb    HTDriver - Checkbox
 htconn	HTDriver - event-action connector
+hteb	HTDriver - edit box
+htex	HTDriver - exec method
 hthtml	HTDriver - HTML document pane
 htibtn	HTDriver - image button
 htmenu	HTDriver - menu
@@ -22,6 +25,7 @@ htspane	HTDriver - ScrollPane
 httab	HTDriver - tab control
 httbl	HTDriver - tabular data presentation
 httbtn	HTDriver - Text button
+httm	HTDriver - Timer
 httree	HTDriver - TreeView
 htvbl	HTDriver - global javascript variable
 htwin	HTDriver - draggable popup window
