@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.10 2002/03/09 02:38:48 jheth Exp $
+    $Id: lsmain.c,v 1.11 2002/03/09 02:42:01 bones120 Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.11  2002/03/09 02:42:01  bones120
+    Initial commit of the spinner box.
+
     Revision 1.10  2002/03/09 02:38:48  jheth
     Make OSRC work with Form - Query at least
 
@@ -225,6 +228,7 @@ start(void* v)
 	htebInitialize();			/* editbox module */
 	httmInitialize();			/* timer nonvisual module */
 	htexInitialize();			/* method exec module */
+	htspInitialize();			/* spinner box module*/
 	htfsInitialize();			/* form status module */
 
 	htformInitialize();			/* forms module */
