@@ -1,4 +1,4 @@
-## $Id: Makefile,v 1.2 2001/10/01 20:27:59 gbeeley Exp $
+## $Id: Makefile,v 1.3 2001/10/16 23:42:31 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Attic/Makefile,v $
 ##
 ## Centrallix-Lib Makefile
@@ -16,11 +16,11 @@
 CFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -g -pg
 MTCFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -g -pg
 
-XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
+XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o
 #XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o net_raw_api.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
 
-XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo stparse.lo
+XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo 
 #XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo stparse.lo net_raw_api.lo
 DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
 
