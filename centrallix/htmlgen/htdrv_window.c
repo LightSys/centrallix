@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.6 2002/02/13 19:20:40 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.7 2002/02/13 19:30:48 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.7  2002/02/13 19:30:48  lkehresman
+    Fixed a bug I introduced with my last commit.  ly.document.images[6] doesn't always exist.
+
     Revision 1.6  2002/02/13 19:20:40  lkehresman
     Fixed a minor bug that wouldn't reset the "X" image if the close button
     was clicked, but the mouse moved out of the image border.
@@ -361,7 +364,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        e.target.src = '/sys/images/01close.gif';\n"
 		"        e.target.layer.visibility = 'hidden';\n"
 		"        }\n"
-		"    else if (ly.document.images[6].name == 'close')\n"
+		"    else if (ly.document.images.length > 6 && ly.document.images[6].name == 'close')\n"
 		"        {\n"
 		"        ly.document.images[6].src = '/sys/images/01close.gif';\n"
 		"        }\n"
