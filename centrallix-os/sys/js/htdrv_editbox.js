@@ -22,7 +22,7 @@ function eb_update_cursor(eb,val)
 	}
     if(eb.cursorlayer == ibeam_current)
 	{
-	moveToAbsolute(ibeam_current, getPageX(eb.ContentLayer) + eb.cursorCol*text_metric.charWidth, getPageX(eb.ContentLayer));
+	moveToAbsolute(ibeam_current, getPageX(eb.ContentLayer) + eb.cursorCol*text_metric.charWidth, getPageY(eb.ContentLayer));
 	}
     }
 
