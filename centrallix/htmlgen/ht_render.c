@@ -51,10 +51,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.43 2004/03/10 10:39:04 jasonyip Exp $
+    $Id: ht_render.c,v 1.44 2004/04/29 16:26:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.44  2004/04/29 16:26:41  gbeeley
+    - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
+    - Added inline-include feature to help with debugging in IE, which does
+      not specify the correct file in its errors.  To use it, just append
+      "?ls__collapse_includes=yes" to your .app URL.
+
     Revision 1.43  2004/03/10 10:39:04  jasonyip
 
     I have added a JS15 CAP for javascript 1.5 Capability.
@@ -1315,6 +1321,44 @@ htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layer
     }
 
 
+/*** htr_internal_GenInclude - generate an include statement for an
+ *** external javascript file; or if collapse_includes is set, insert
+ *** the thing directly in the output.  If file cannot be opened,
+ *** then an include statement is generated in any event.
+ ***/
+int
+htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
+    {
+    pStruct c_param;
+    pFile include_file;
+    char buf[256];
+    int rcnt;
+
+	/** Insert file directly? **/
+	c_param = stLookup_ne(s->Params, "ls__collapse_includes");
+	if (c_param && !strcasecmp(c_param->StrVal,"yes"))
+	    {
+	    include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
+	    if (include_file)
+		{
+		fdPrintf(output, "<SCRIPT language=\"javascript\" DEFER>\n// Included from: %s\n\n", filename);
+		while((rcnt = objRead(include_file, buf, sizeof(buf), 0, 0)) > 0)
+		    {
+		    fdWrite(output, buf, rcnt, 0, FD_U_PACKET);
+		    }
+		objClose(include_file);
+		fdPrintf(output, "\n</SCRIPT>\n");
+		return 0;
+		}
+	    }
+
+	/** Otherwise, just generate an include statement **/
+	fdPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%s\" DEFER></SCRIPT>\n", filename);
+
+    return 0;
+    }
+
+
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
@@ -1346,6 +1390,7 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	if (!s) return -1;
 	memset(s,0,sizeof(HtSession));
 	s->Params = params;
+	s->ObjSession = appstruct->Session;
 
 	/** Did user request a class of widgets? **/
 	classname = (char*)mssGetParam("Class");
@@ -1498,25 +1543,22 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,FD_U_PACKET);
 
 	/** include ht_render.js **/
-	snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"/sys/js/ht_render.js\" DEFER></SCRIPT>\n\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
+	htr_internal_GenInclude(output, s, "/sys/js/ht_render.js");
 
 	/** include browser-specific geometry js **/
 	if(s->Capabilities.Dom0IE)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"/sys/js/ht_geom_dom0ie.js\" DEFER></SCRIPT>\n\n");
+	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ie.js");
 	    }
 	else
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"/sys/js/ht_geom_dom0ns.js\" DEFER></SCRIPT>\n\n");
+	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ns.js");
 	    }
-	fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
 
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
-	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"%s\" DEFER></SCRIPT>\n\n",sv->Name);
-	    fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
+	    htr_internal_GenInclude(output, s, sv->Name);
 	    }
 	fdWrite(output, "<SCRIPT language=\"javascript\" DEFER>\n\n", 38,0,FD_U_PACKET);
 

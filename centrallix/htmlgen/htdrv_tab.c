@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.20 2004/03/10 10:51:09 jasonyip Exp $
+    $Id: htdrv_tab.c,v 1.21 2004/04/29 16:26:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.21  2004/04/29 16:26:43  gbeeley
+    - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
+    - Added inline-include feature to help with debugging in IE, which does
+      not specify the correct file in its errors.  To use it, just append
+      "?ls__collapse_includes=yes" to your .app URL.
+
     Revision 1.20  2004/03/10 10:51:09  jasonyip
 
     These are the latest IE-Port files.
@@ -420,9 +426,9 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			htrAddStylesheetItem_va(s, "\t#tc%dtab%d { %s }\n",
 				id, tabcnt, bg);
 			if (tab_width <= 0)
-			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; top:%dpx; left:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
+			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
 			else
-			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; top:%dpx; left:%dpx; width:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
+			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; width:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
 			if (tloc != Right)
 			    {
 			    if (tab_width <= 0)

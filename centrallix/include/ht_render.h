@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.19 2004/03/10 10:44:02 jasonyip Exp $
+    $Id: ht_render.h,v 1.20 2004/04/29 16:26:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.20  2004/04/29 16:26:43  gbeeley
+    - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
+    - Added inline-include feature to help with debugging in IE, which does
+      not specify the correct file in its errors.  To use it, just append
+      "?ls__collapse_includes=yes" to your .app URL.
+
     Revision 1.19  2004/03/10 10:44:02  jasonyip
 
     Corrected the comment - should be javascript 1.5
@@ -319,6 +325,7 @@ typedef struct
     HtCapabilities Capabilities;	/* the capabilities supported by the browser */
     pHtClass	Class;			/* the widget class to use **/
     pStruct	Params;			/* params from the user */
+    pObjSession	ObjSession;		/* objectsystem session */
     }
     HtSession, *pHtSession;
 

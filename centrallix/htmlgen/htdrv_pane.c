@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.22 2004/03/10 10:51:09 jasonyip Exp $
+    $Id: htdrv_pane.c,v 1.23 2004/04/29 16:26:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.23  2004/04/29 16:26:42  gbeeley
+    - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
+    - Added inline-include feature to help with debugging in IE, which does
+      not specify the correct file in its errors.  To use it, just append
+      "?ls__collapse_includes=yes" to your .app URL.
+
     Revision 1.22  2004/03/10 10:51:09  jasonyip
 
     These are the latest IE-Port files.
@@ -267,7 +273,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 	if (style == 1) /* raised */
 	    {
-	    if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+	    if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
 		{
 		c1 = "white_1x1.png";
 		c2 = "dkgrey_1x1.png";
@@ -284,7 +290,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 	else if (style == 0) /* lowered */
 	    {
-	    if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+	    if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
 		{
 		c1 = "dkgrey_1x1.png";
 		c2 = "white_1x1.png";
@@ -301,7 +307,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 
 	/** Ok, write the style header items. **/
-	if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+	if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
@@ -363,7 +369,13 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	if(s->Capabilities.Dom0NS || (s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
 	    /** Script initialization call. **/
-	    if(s->Capabilities.Dom0NS)
+	    if (s->Capabilities.Dom0NS)
+		htrAddScriptInit_va(s, "    %s = pn_init(%s.cxSubElement(\"pn%dbase\"), %s.cxSubElement(\"pn%dbase\").document.layers.pn%dmain);\n",
+			nptr,parentname, id, parentname,id,id);
+	    else
+		htrAddScriptInit_va(s, "    %s = pn_init(%s.cxSubElement(\"pn%dmain\"), %s.cxSubElement(\"pn%dmain\"));\n",
+			nptr,parentname, id, parentname, id);
+	    /*if(s->Capabilities.Dom0NS)
 	        {
 	    	htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
 		    nptr, parentname, id, parentname, id, id);
@@ -372,44 +384,51 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	        {
 	        if(strstr(parentname, "document") != NULL)
 	            {
-	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.getElementById(\"pn%dbase\"), %s.getElementById(\"pn%dbase\").document.getElementById(\"pn%dmain\"));\n",
-		        nptr, parentname, id, parentname, id, id);
+	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.getElementById(\"pn%dmain\"), %s.getElementById(\"pn%dmain\"));\n",
+		        nptr, parentname, id, parentname, id);
 		    }
 		else
 		    {
-	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.document.getElementById(\"pn%dbase\"), %s.document.getElementById(\"pn%dbase\").document.getElementById(\"pn%dmain\"));\n",
-		        nptr, parentname, id, parentname, id, id);		    	
+	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.document.getElementById(\"pn%dmain\"), %s.document.getElementById(\"pn%dmain\"));\n",
+		        nptr, parentname, id, parentname, id);		    	
 		    }
-	        }
+	        }*/
 
 	    /** HTML body <DIV> element for the base layer. **/
-	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
-	    htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s height=%d>\n",w,main_bg,h);
-	    if (style == 2) /* flat */
+	    if (s->Capabilities.Dom0NS)
 		{
-		htrAddBodyItem_va(s,"        <TR><TD><img src=/sys/images/trans_1.gif></TD></TR>\n    </TABLE>\n\n");
-		}
-	    else /* lowered or raised */
-		{
-		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-		htrAddBodyItem_va(s,"            <TD><img src=/sys/images/trans_1.gif></TD>\n");
-		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+		htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
+		htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s height=%d>\n",w,main_bg,h);
+		if (style == 2) /* flat */
+		    {
+		    htrAddBodyItem_va(s,"        <TR><TD><img src=/sys/images/trans_1.gif></TD></TR>\n    </TABLE>\n\n");
+		    }
+		else /* lowered or raised */
+		    {
+		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+		    htrAddBodyItem_va(s,"            <TD><img src=/sys/images/trans_1.gif></TD>\n");
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+		    }
 		}
 	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
 
 	    /** Check for objects within the pane. **/
-	    snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+	    if (s->Capabilities.Dom0NS)
+		snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+	    else
+		snprintf(sbuf,160,"%s.mainlayer",nptr);
 	    snprintf(sbuf2,160,"%s.mainlayer",nptr);
 	    htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
 	    /** End the containing layer. **/
-	    htrAddBodyItem(s, "</td></tr></table></DIV></DIV>\n");
+	    htrAddBodyItem(s, "</td></tr></table></DIV>\n");
+	    if (s->Capabilities.Dom0NS) htrAddBodyItem(s, "</DIV>\n");
 	    }
 	else
 	    {
