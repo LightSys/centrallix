@@ -23,10 +23,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.14 2004/06/12 04:09:37 gbeeley Exp $
+    $Id: mtask.h,v 1.15 2005/02/06 02:35:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.15  2005/02/06 02:35:41  gbeeley
+    - Adding 'mkrpm' script for automating the RPM build process for this
+      package (script is portable to other packages).
+    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
+      between mtask threads)
+    - added xsString(xstr) for getting the string instead of xstr->String.
+
     Revision 1.14  2004/06/12 04:09:37  gbeeley
     - supporting logic to allow saving of an MTask security context for later
       use in a new thread.  This is needed for the asynchronous event delivery
@@ -226,6 +233,11 @@ typedef struct _FD
     char*	RdCachePtr;
     char*	PrintfBuf;
     int		PrintfBufSize;
+    char*	PipeBuf;
+    int		PipeBufSize;
+    int		PipeBufHead;
+    int		PipeBufTail;
+    struct _FD*	OtherFD;
 #ifdef HAVE_LIBZ
     gzFile	GzFile;
 #endif
@@ -233,6 +245,7 @@ typedef struct _FD
     File, *pFile;
 
 #define FD_PRINTF_BUFSIZ 512		/* initial size for fdPrintf buf */
+#define FD_PIPE_BUFSIZ	(8192+1)	/* size of pipe buffers */
 
 #define FD_F_RDBLK	1		/* FD is blocked for reading */
 #define FD_F_WRBLK	2		/* blocked for writing */
@@ -245,6 +258,8 @@ typedef struct _FD
 #define FD_UF_GZIP	256		/* Enable Gzip compression */
 #define FD_F_UDP	512		/* is a UDP socket */
 #define FD_F_CONNECTED	1024		/* is a 'connected' UDP socket */
+#define FD_F_PIPE	2048		/* is a pipe */
+#define FD_UF_BLOCKINGIO 4096		/* use blocking IO only */
 
 
 #define FD_S_OPENING	0		/* FD is opening or connecting */
@@ -421,6 +436,7 @@ int fdSetOptions(pFile filedesc, int options);
 int fdUnSetOptions(pFile filedesc, int options);
 int fdPrintf(pFile filedesc, const char* fmt, ...);
 int fdAccess(const char* filename, int check_ok);
+int fdPipe(pFile *filedesc1, pFile *filedesc2);
 
 
 /** MTASK Networking Functions **/

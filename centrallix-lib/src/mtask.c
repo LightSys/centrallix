@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.28 2004/08/30 02:29:50 gbeeley Exp $
+    $Id: mtask.c,v 1.29 2005/02/06 02:35:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.29  2005/02/06 02:35:41  gbeeley
+    - Adding 'mkrpm' script for automating the RPM build process for this
+      package (script is portable to other packages).
+    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
+      between mtask threads)
+    - added xsString(xstr) for getting the string instead of xstr->String.
+
     Revision 1.28  2004/08/30 02:29:50  gbeeley
     - SnNode magic number
     - fixed that constant with an, ummm, 'ambiguous' value
@@ -399,6 +406,14 @@ evFile(int ev_type, void* obj)
             }
 
     return code;
+    }
+
+
+/*** EVPIPE is an event processor for pipes
+ ***/
+int
+evPipe(int ev_type, void* obj)
+    {
     }
 
 
@@ -2071,25 +2086,35 @@ int
 fdSetOptions(pFile filedesc, int options)
     {
     int old_options;
-    old_options = filedesc->Flags;
-    filedesc->Flags |= (options & (FD_UF_RDBUF | FD_UF_WRBUF | FD_UF_GZIP));
-#ifdef HAVE_LIBZ
-    if ((old_options & FD_UF_WRBUF) && (options & FD_UF_GZIP))
-	{
-	if (filedesc->WrCacheBuf && filedesc->WrCacheLen > 0)
-	    {
-	    filedesc->Flags &= ~(FD_UF_WRBUF | FD_UF_GZIP);
-	    fdWrite(filedesc, filedesc->WrCacheBuf, filedesc->WrCacheLen, 0, FD_U_PACKET);
-	    filedesc->WrCacheLen = 0;
-	    filedesc->WrCachePtr = filedesc->WrCacheBuf;
-	    filedesc->Flags |= (FD_UF_WRBUF | FD_UF_GZIP);
-	    }
-	}
+    int arg;
 
-    if ( (options & FD_UF_GZIP) && !(old_options & FD_UF_GZIP) )
-	{
-	filedesc->GzFile = gzdopen(dup(filedesc->FD), (filedesc->Flags & FD_F_WR ? "wb" : "rb"));
-	}
+	old_options = filedesc->Flags;
+	filedesc->Flags |= (options & (FD_UF_RDBUF | FD_UF_WRBUF | FD_UF_GZIP | FD_UF_BLOCKINGIO));
+
+	/** set blocking io? **/
+	if (!(old_options & FD_UF_BLOCKINGIO) && (options & FD_UF_BLOCKINGIO))
+	    {
+	    arg=0;
+	    ioctl(filedesc->FD,FIONBIO,&arg);
+	    }
+    
+#ifdef HAVE_LIBZ
+	if ((old_options & FD_UF_WRBUF) && (options & FD_UF_GZIP))
+	    {
+	    if (filedesc->WrCacheBuf && filedesc->WrCacheLen > 0)
+		{
+		filedesc->Flags &= ~(FD_UF_WRBUF | FD_UF_GZIP);
+		fdWrite(filedesc, filedesc->WrCacheBuf, filedesc->WrCacheLen, 0, FD_U_PACKET);
+		filedesc->WrCacheLen = 0;
+		filedesc->WrCachePtr = filedesc->WrCacheBuf;
+		filedesc->Flags |= (FD_UF_WRBUF | FD_UF_GZIP);
+		}
+	    }
+
+	if ( (options & FD_UF_GZIP) && !(old_options & FD_UF_GZIP) )
+	    {
+	    filedesc->GzFile = gzdopen(dup(filedesc->FD), (filedesc->Flags & FD_F_WR ? "wb" : "rb"));
+	    }
 #endif
     return 0;
     }
@@ -2102,9 +2127,17 @@ int
 fdUnSetOptions(pFile filedesc, int options)
     {
     int old_options;
+    int arg;
 
     	old_options = filedesc->Flags;
-        filedesc->Flags &= ~(options & (FD_UF_RDBUF | FD_UF_WRBUF | FD_UF_GZIP));
+        filedesc->Flags &= ~(options & (FD_UF_RDBUF | FD_UF_WRBUF | FD_UF_GZIP | FD_UF_BLOCKINGIO));
+
+	/** set nonblocking io? **/
+	if ((old_options & FD_UF_BLOCKINGIO) && !(options & FD_UF_BLOCKINGIO))
+	    {
+	    arg=1;
+	    ioctl(filedesc->FD,FIONBIO,&arg);
+	    }
     	
 	/** Make sure we flush the write-cache. **/
 	if ((old_options & FD_UF_WRBUF) && (options & FD_UF_WRBUF))
@@ -2125,6 +2158,64 @@ fdUnSetOptions(pFile filedesc, int options)
 
 #endif
     return 0;
+    }
+
+
+/*** FDPIPE creates to "pFile" descriptors which are an mtask-level (not
+ *** kernel level) "pipe".  That is, what is written to one can be read from
+ *** the other.  The descriptors are symmetric - no special features are
+ *** present on one but not on the other.  Return: 0 on success, -1 on fail.
+ ***/
+int
+fdPipe(pFile *filedesc1, pFile *filedesc2)
+    {
+
+	/** Allocate the two descriptors **/
+	*filedesc1 = NULL;
+	*filedesc2 = NULL;
+	*filedesc1 = (pFile)nmMalloc(sizeof(File));
+	if (!*filedesc1) goto fdpipe_error;
+	memset(*filedesc1, 0, sizeof(File));
+	*filedesc2 = (pFile)nmMalloc(sizeof(File));
+	if (!*filedesc2) goto fdpipe_error;
+	memset(*filedesc2, 0, sizeof(File));
+
+	(*filedesc1)->EventCkFn = (*filedesc2)->EventCkFn = evPipe;
+	(*filedesc1)->Flags = (*filedesc2)->Flags = FD_F_PIPE;
+	(*filedesc1)->ErrCode = (*filedesc2)->ErrCode = 0;
+	(*filedesc1)->Status = (*filedesc2)->Status = FD_S_OPEN;
+	(*filedesc1)->FD = (*filedesc2)->FD = -1;
+	(*filedesc1)->UnReadLen = (*filedesc2)->UnReadLen = 0;
+	(*filedesc1)->WrCacheBuf = (*filedesc2)->WrCacheBuf = NULL;
+	(*filedesc1)->RdCacheBuf = (*filedesc2)->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
+	(*filedesc1)->GzFile = (*filedesc2)->GzFile = NULL;
+#endif
+	(*filedesc1)->PrintfBuf = (*filedesc2)->PrintfBuf = NULL;
+
+	/** Allocate the pipe memory buffers **/
+	(*filedesc1)->PipeBuf = nmSysMalloc(FD_PIPE_BUFSIZ);
+	(*filedesc2)->PipeBuf = nmSysMalloc(FD_PIPE_BUFSIZ);
+	if (!(*filedesc1)->PipeBuf || !(*filedesc2)->PipeBuf) goto fdpipe_error;
+
+	/** Set up pipe data **/
+	(*filedesc1)->PipeBufSize = (*filedesc2)->PipeBufSize = FD_PIPE_BUFSIZ;
+	(*filedesc1)->PipeBufHead = (*filedesc2)->PipeBufHead = 0;
+	(*filedesc1)->PipeBufTail = (*filedesc2)->PipeBufTail = 0;
+	(*filedesc1)->OtherFD = (*filedesc2);
+	(*filedesc2)->OtherFD = (*filedesc1);
+
+	return 0;
+
+    fdpipe_error:
+	if ((*filedesc1)->PipeBuf) nmSysFree((*filedesc1)->PipeBuf);
+	if ((*filedesc2)->PipeBuf) nmSysFree((*filedesc2)->PipeBuf);
+	if ((*filedesc1)) nmFree((*filedesc1), sizeof(File));
+	if ((*filedesc2)) nmFree((*filedesc2), sizeof(File));
+	(*filedesc1) = NULL;
+	(*filedesc2) = NULL;
+
+    return -1;
     }
 
 
@@ -2258,7 +2349,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 	    }
 
     	/** If filedesc not listed as blocked, try reading now. **/
-    	if (!(filedesc->Flags & FD_F_RDBLK))
+    	if (!(filedesc->Flags & FD_F_RDBLK) && !(filedesc->Flags & FD_UF_BLOCKINGIO))
     	    {
     	    if (flags & FD_U_SEEK)
 		{
@@ -2491,7 +2582,7 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 	    }
 
     	/** If filedesc not listed as blocked, try writing now. **/
-    	if (!(filedesc->Flags & FD_F_RDBLK))
+    	if (!(filedesc->Flags & FD_F_RDBLK) && !(filedesc->Flags & FD_UF_BLOCKINGIO))
     	    {
     	    if (flags & FD_U_SEEK)
 		{

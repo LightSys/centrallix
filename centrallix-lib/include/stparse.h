@@ -20,12 +20,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.h,v 1.1 2001/08/13 18:04:20 gbeeley Exp $
+    $Id: stparse.h,v 1.2 2005/02/06 02:35:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/stparse.h,v $
 
     $Log: stparse.h,v $
-    Revision 1.1  2001/08/13 18:04:20  gbeeley
-    Initial revision
+    Revision 1.2  2005/02/06 02:35:41  gbeeley
+    - Adding 'mkrpm' script for automating the RPM build process for this
+      package (script is portable to other packages).
+    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
+      between mtask threads)
+    - added xsString(xstr) for getting the string instead of xstr->String.
+
+    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
     Initial checkin of centrallix-lib
@@ -37,20 +44,24 @@
 #include "mtask.h"
 #include "mtlexer.h"
 
+#define	ST_MAX_SUBINF	(128)
+#define ST_MAX_VALUES	(64)
+#define ST_MAX_NAMELEN	(64)
+
 /** Structure for storing protocol data. **/
 typedef struct _PI
     {
-    char	Name[64];	/* name of component */
-    char	UsrType[64];	/* type of component. */
-    char*	StrVal[64];	/* string value, null if integer */
-    int		IntVal[64];	/* integer value, as appropriate */
-    int		StrAlloc[64];	/* string was malloc'd? */
-    int		nVal;		/* number of value items */
-    int		Type;		/* type of component: ST_T_xxx */
-    struct _PI*	SubInf[64];	/* Additional info attached here */
-    int		nSubInf;	/* number of subparts */
-    struct _PI*	Parent;		/* Parent inf */
-    void*	UserData;	/* Misc linkage value */
+    char	Name[ST_MAX_NAMELEN];	/* name of component */
+    char	UsrType[ST_MAX_NAMELEN]; /* type of component. */
+    char*	StrVal[ST_MAX_VALUES];	/* string value, null if integer */
+    int		IntVal[ST_MAX_VALUES];	/* integer value, as appropriate */
+    int		StrAlloc[ST_MAX_VALUES]; /* string was malloc'd? */
+    int		nVal;			/* number of value items */
+    int		Type;			/* type of component: ST_T_xxx */
+    struct _PI*	SubInf[ST_MAX_SUBINF];	/* Additional info attached here */
+    int		nSubInf;		/* number of subparts */
+    struct _PI*	Parent;			/* Parent inf */
+    void*	UserData;		/* Misc linkage value */
     }
     StructInf, *pStructInf;
 

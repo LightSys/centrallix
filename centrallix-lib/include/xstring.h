@@ -23,10 +23,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.9 2003/04/03 21:38:30 gbeeley Exp $
+    $Id: xstring.h,v 1.10 2005/02/06 02:35:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.10  2005/02/06 02:35:41  gbeeley
+    - Adding 'mkrpm' script for automating the RPM build process for this
+      package (script is portable to other packages).
+    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
+      between mtask threads)
+    - added xsString(xstr) for getting the string instead of xstr->String.
+
     Revision 1.9  2003/04/03 21:38:30  gbeeley
     Adding xsSubst() to the xstring library.  Does a replacement of a
     string with another based on position, not content.
@@ -99,6 +106,7 @@ int xsDeInit(pXString this);
 int xsCheckAlloc(pXString this, int addl_needed);
 int xsConcatenate(pXString this, char* text, int len);
 int xsCopy(pXString this, char* text, int len);
+char* xsString(pXString this);
 char* xsStringEnd(pXString this);
 int xsPrintf(pXString this, char* fmt, ...);
 int xsConcatPrintf(pXString this, char* fmt, ...);

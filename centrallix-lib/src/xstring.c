@@ -31,10 +31,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.14 2004/02/24 05:10:17 gbeeley Exp $
+    $Id: xstring.c,v 1.15 2005/02/06 02:35:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.15  2005/02/06 02:35:41  gbeeley
+    - Adding 'mkrpm' script for automating the RPM build process for this
+      package (script is portable to other packages).
+    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
+      between mtask threads)
+    - added xsString(xstr) for getting the string instead of xstr->String.
+
     Revision 1.14  2004/02/24 05:10:17  gbeeley
     - Adding %X to xsPrintf and related routines.  Also affects fdPrintf
       which uses the xstring mechanism under the hood.
@@ -890,3 +897,12 @@ xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const
     return rval;
     }
 
+char*
+xsString(pXString this)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
+    CXSEC_EXIT(XS_FN_KEY);
+    return this->String;
+    }

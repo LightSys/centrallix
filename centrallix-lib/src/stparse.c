@@ -33,10 +33,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.4 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: stparse.c,v 1.5 2005/02/06 02:35:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.5  2005/02/06 02:35:41  gbeeley
+    - Adding 'mkrpm' script for automating the RPM build process for this
+      package (script is portable to other packages).
+    - stubbed out pipe functionality in mtask (non-OS pipes; to be used
+      between mtask threads)
+    - added xsString(xstr) for getting the string instead of xstr->String.
+
     Revision 1.4  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -93,7 +100,7 @@ stFreeInf(pStructInf this)
     int i,j;
 
 	/** Free any subinfs first **/
-	for(i=0;i<64;i++) if (this->SubInf[i]) stFreeInf(this->SubInf[i]);
+	for(i=0;i<ST_MAX_SUBINF;i++) if (this->SubInf[i]) stFreeInf(this->SubInf[i]);
 
 	/** String need to be deallocated? **/
 	for(i=0;i<this->nVal;i++) if (this->StrVal[i] && this->StrAlloc[i]) 
@@ -132,7 +139,7 @@ stAddInf(pStructInf main_inf, pStructInf sub_inf)
     int found=0;
 
 	/** Find a slot for the sub inf in the main one **/
-	for(i=0;i<64;i++) if (!(main_inf->SubInf[i]))
+	for(i=0;i<ST_MAX_SUBINF;i++) if (!(main_inf->SubInf[i]))
 	    {
 	    main_inf->SubInf[i] = sub_inf;
 	    main_inf->nSubInf++;
@@ -198,7 +205,7 @@ int
 stAddValue(pStructInf inf, char* strval, int intval)
     {
 
-	if (inf->nVal == 64) return 0;
+	if (inf->nVal == ST_MAX_VALUES) return 0;
 	if (strval)
 	    {
 	    inf->StrVal[inf->nVal] = strval;
@@ -309,7 +316,7 @@ st_internal_ParseAttr(pLxSession s, pStructInf inf)
 	        }
 
 	    /** Oops? **/
-	    if (inf->nVal == 64)
+	    if (inf->nVal == ST_MAX_VALUES)
 	        {
 		mssError(1,"ST","Exceeded internal representation for attribute values");
 		return -1;
@@ -681,7 +688,7 @@ st_internal_GenerateGroup(pStructInf info, char** buf, int* buflen, int* datalen
 	(*datalen) += strlen((*buf)+(*datalen));
 
 	/** Print any sub-info parts and attributes **/
-	for(i=0;i<64;i++) if (info->SubInf[i])
+	for(i=0;i<ST_MAX_SUBINF;i++) if (info->SubInf[i])
 	    {
 	    switch(info->SubInf[i]->Type)
 		{
@@ -772,7 +779,7 @@ stGenerateMsgGeneric(void* dst, int (*write_fn)(), pStructInf info, int flags)
 	datalen = strlen(buf);
 
 	/** Print any sub-info parts and attributes **/
-	for(i=0;i<64;i++) if (info->SubInf[i])
+	for(i=0;i<ST_MAX_SUBINF;i++) if (info->SubInf[i])
 	    {
 	    switch(info->SubInf[i]->Type)
 		{
