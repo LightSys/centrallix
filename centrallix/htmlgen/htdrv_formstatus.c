@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.17 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_formstatus.c,v 1.18 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.18  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.17  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -283,7 +289,16 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    htrAddEventHandler(s,"document","MOUSEOVER","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOver');\n\n"); 
    htrAddEventHandler(s,"document","MOUSEOUT", "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOut');\n\n"); 
    htrAddEventHandler(s,"document","MOUSEMOVE","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseMove');\n\n"); 
-   
+  
+    htrAddScriptWgtr(s, "    // htdrv_formstatus.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
    if(s->Capabilities.Dom0NS)
      {
      snprintf(sbuf,160,"%s.document",nptr);
@@ -298,6 +313,9 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
      {
      mssError(0,"HTFS","Cannot render -- browser not supported");
      }
+
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
    return 0;
 }
 

@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.36 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_editbox.c,v 1.37 2004/08/04 01:58:56 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.37  2004/08/04 01:58:56  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.36  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -483,9 +489,21 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/*sprintf(sbuf2,"%s.mainlayer",nptr);*/
 	/*htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);*/
 
+    htrAddScriptWgtr(s, "    // htdrv_editbox.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
+
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</DIV>\n");

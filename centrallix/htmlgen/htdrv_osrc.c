@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.55 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_osrc.c,v 1.56 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.56  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.55  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -533,7 +539,17 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
    htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%dloader",id);
    htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
    htrAddBodyItem(s, "\n");
-  
+
+
+    htrAddScriptWgtr(s, "    // htdrv_osrc.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, false)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
    /**
    qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
    if (qy)
@@ -559,7 +575,9 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	else
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z, parentname, parentobj);
 	}
-    
+
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
    /** We set osrc_current=null so that orphans can't find us  **/
    htrAddScriptInit(s, "    //osrc_current.InitQuery();\n");

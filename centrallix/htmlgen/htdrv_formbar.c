@@ -67,6 +67,7 @@ int htfbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
     for (i=0;i<xaCount(&(tree->Children));i++)
 	htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, parentname, parentobj);
+
    return 0;
 }
 

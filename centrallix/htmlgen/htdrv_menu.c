@@ -275,9 +275,17 @@ int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pa
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
     htrAddBodyItem_va(s,"</TABLE>\n");
     htrAddBodyItem_va(s,"</BODY></DIV>\n");
-    
-    /* Read and initialize the menu items */
+   
+    htrAddScriptWgtr(s, "    // htdrv_menu.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
 
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
+    /* Read and initialize the menu items */
     flag=0;
     for (i=0;i<xaCount(&(tree->Children));i++)
 	{
@@ -331,6 +339,9 @@ int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pa
 	    htrAddScriptInit(s,xs.String);
 	    xsDeInit(&xs);
 	    }
+    
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
     return 0;
 }

@@ -73,6 +73,7 @@ wgtrbInitialize()
 
 	wgtrRegisterDriver(name, wgtrbVerify, wgtrbNew);
 	wgtrAddType(name, "radiobuttonpanel");
+	wgtrAddType(name, "radiobutton");
 
 	return 0;
     }

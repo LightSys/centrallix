@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.37 2004/08/02 14:09:35 mmcgill Exp $
+    $Id: htdrv_window.c,v 1.38 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.38  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.37  2004/08/02 14:09:35  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -607,6 +613,14 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"%d\" height=\"%d\"><tr %s><td>&nbsp;</td></tr></table>\n",id,bw,bh,bgnd);
 	    }
 
+    htrAddScriptWgtr(s, "    // htdrv_window.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
 
 	/** Check for more sub-widgets within the page. **/
 	if(s->Capabilities.Dom1HTML)
@@ -641,6 +655,9 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		htrRenderWidget(s, sub_tree, z+2, sbuf, sbuf2);
 		}
 	    }
+	
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
 	htrAddBodyItem(s,"</DIV></DIV>\n");
 

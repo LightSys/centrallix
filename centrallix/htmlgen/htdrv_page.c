@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.65 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_page.c,v 1.66 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.66  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.65  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -851,6 +857,10 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		"    pg_keytimeoutid = null;\n");
 	    }
 
+	/** create the root node of the wgtr **/
+	htrAddScriptWgtr_va(s, "    document.tree = new WgtrNode('%s', '%s', %s, false);\n", tree->Name, tree->Type, name);
+	htrAddScriptWgtr(s, "    curr_node.unshift(document.tree)\n\n");
+
 	/** Check for more sub-widgets within the page. **/
 	/*
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
@@ -864,6 +874,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    objQueryClose(qy);
 	    }
 	*/
+
 	count = xaCount(&(tree->Children));
 	for (i=0;i<count;i++)
 	    {
@@ -890,6 +901,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		    "    document.layers.pginpt.visibility = 'inherit';\n");
 	    htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");
 	    }
+	
+	/** for debugging - make sure the tree's being built right **/
+	htrAddScriptWgtr(s, "    wgtrWalk(document.tree);\n");
 
 	return 0;
     }

@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_remotectl.c,v 1.10 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_remotectl.c,v 1.11 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_remotectl.c,v $
 
     $Log: htdrv_remotectl.c,v $
+    Revision 1.11  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.10  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -283,11 +289,23 @@ htrmtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    nptr = parentobj;
 	    }
 
+    htrAddScriptWgtr(s, "    // htdrv_remotectl.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, false)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
 	for (i=0;i<xaCount(&(tree->Children));i++)  
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, sbuf, nptr);
 
         /** End the containing layer. **/
         if (mode == 1) htrAddBodyItem(s, "</DIV>\n");
+
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
     return 0;
     }

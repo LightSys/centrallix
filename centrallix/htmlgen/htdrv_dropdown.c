@@ -347,6 +347,14 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	}
     }
 
+    htrAddScriptWgtr(s, "    // htdrv_dropdown.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
     flag=0;
     for (i=0;i<xaCount(&(tree->Children));i++)
 	{
@@ -391,6 +399,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	xsDeInit(&xs);
 	}
 
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
+
     return 0;
 }
 
@@ -433,10 +444,16 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.44 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_dropdown.c,v 1.45 2004/08/04 01:58:56 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.45  2004/08/04 01:58:56  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.44  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related

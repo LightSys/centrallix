@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.13 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_spinner.c,v 1.14 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.14  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.13  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -328,6 +334,17 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
 	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
   	htrAddBodyItem(s, "</DIV>\n"); 
+
+    htrAddScriptWgtr(s, "    // htdrv_spinner.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 	return 0;
     }
 

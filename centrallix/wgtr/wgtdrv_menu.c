@@ -73,6 +73,7 @@ wgtmenuInitialize()
 
 	wgtrRegisterDriver(name, wgtmenuVerify, wgtmenuNew);
 	wgtrAddType(name, "menu");
+	wgtrAddType(name, "menuitem");
 
 	return 0;
     }

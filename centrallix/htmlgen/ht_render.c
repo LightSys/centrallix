@@ -51,10 +51,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.48 2004/08/02 14:09:33 mmcgill Exp $
+    $Id: ht_render.c,v 1.49 2004/08/04 01:58:56 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.49  2004/08/04 01:58:56  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.48  2004/08/02 14:09:33  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -968,6 +974,23 @@ htrAddBodyParam_va(pHtSession s, char* fmt, ... )
     }
 
 
+/*** htrAddScriptWgtr_va() - use a vararg list to add a formatted string
+ *** to wgtr function of the document
+ ***/
+int
+htrAddScriptWgtr_va(pHtSession s, char* fmt, ...)
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddScriptWgtr, fmt, va);
+	va_end(va);
+
+    return 0;
+    }
+
+
+
 /*** htrAddScriptInit_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to startup function of the document.
  ***/
@@ -1086,6 +1109,16 @@ htrAddScriptInit(pHtSession s, char* init_text)
     {
     return htr_internal_AddTextToArray(&(s->Page.Inits), init_text);
     }
+
+
+/*** htrAddScriptWgtr - adds some text to the wgtr function
+ ***/
+int
+htrAddScriptWgtr(pHtSession s, char* wgtr_text)
+    {
+    return htr_internal_AddTextToArray(&(s->Page.Wgtr), wgtr_text);
+    }
+
 
 /*** htrAddScriptCleanup -- adds some initialization text that runs outside of a
  *** function context in the HTML JavaScript.
@@ -1497,6 +1530,17 @@ htr_internal_GetGeom(pFile output)
     }
 
 
+/*** htr_internal_BuildClientWgtr - responsible for generating the DHTML to build
+ *** a client-side representation of the widget tree.
+ ***/
+int
+htr_internal_BuildClientWgtr(pHtSession s, pWgtrNode tree)
+    {
+	htrAddScriptInclude(s, "/sys/js/tst/ht_utils_wgtr.js", 0);
+	
+    }
+
+
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
@@ -1638,33 +1682,36 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	xaInit(&(s->Page.HtmlExpressionInit),16);
 	xaInit(&(s->Page.EventScripts.Array),16);
 	xhInit(&(s->Page.EventScripts.HashTable),257,0);
+	xaInit(&(s->Page.Wgtr), 64);
 	s->Page.HtmlBodyFile = NULL;
 	s->Page.HtmlHeaderFile = NULL;
 	s->Page.HtmlStylesheetFile = NULL;
 	s->DisableBody = 0;
 
+	
+	/** init some things that the widget drivers will need to build the wgt tree client-side **/
+	htrAddScriptWgtr(s, "    var client_node;\n");
+	htrAddScriptWgtr(s, "    var curr_node = new Array(0)\n");
+	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
 
-#if 0
-	/** Verify the widget tree **/
-	if (wgtrVerify(s, tree) < 0)
+	/** Render the top-level widget. **/
+	rval = htrRenderWidget(s, tree, 10, "document", "document");
+
+	/** Add wgtr debug window **/
+	htrAddStylesheetItem(s, "\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
+	htrAddBodyItem(s,   "<div id=\"dbgwnd\"><form name=\"dbgform\">"
+			    "<textarea name=\"dbgtxt\" cols=\"30\" rows=\"10\"></textarea>"
+			    "</form></div>\n");
+
+	/** last thing in the startup() function should be calling build_wgtr **/
+	htrAddScriptInit(s, "    build_wgtr();\n");
+
+	if (rval < 0)
 	    {
-	    fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODT bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
+	    fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
 	    mssPrintError(output);
 	    }
-	else {
-#endif
-	    /** Render the top-level widget. **/
-	    rval = htrRenderWidget(s, tree, 10, "document", "document");
-
-	    if (rval < 0)
-		{
-		fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
-		mssPrintError(output);
-		}
-#if 0
-	    }
-#endif
-
+	
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
 	/** FIXME: should probably specify the DTD.... **/
 	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
@@ -1806,6 +1853,16 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	    }
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
+	/** Write the wgtr declaration **/
+	fdWrite(output, "\nfunction build_wgtr()\n    {\n", 29, 0, FD_U_PACKET);
+	for (i=0;i<s->Page.Wgtr.nItems;i++)
+	    {
+	    ptr = (char*)(s->Page.Wgtr.Items[i]);
+	    n = *(int*)ptr;
+	    fdWrite(output, ptr+8, n, 0, FD_U_PACKET);
+	    }
+	fdWrite(output, "    }\n", 6, 0, FD_U_PACKET);
+
 	/** Write the initialization lines **/
 	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
 	htr_internal_writeCxCapabilities(s,output);
@@ -1905,6 +1962,8 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	xhDeInit(&(s->Page.NameGlobals));
 	for(i=0;i<s->Page.Inits.nItems;i++) nmFree(s->Page.Inits.Items[i],2048);
 	xaDeInit(&(s->Page.Inits));
+	for (i=0;i<s->Page.Wgtr.nItems;i++) nmFree(s->Page.Wgtr.Items[i], 2048);
+	xaDeInit(&(s->Page.Wgtr));
 	for(i=0;i<s->Page.Cleanups.nItems;i++) nmFree(s->Page.Cleanups.Items[i],2048);
 	xaDeInit(&(s->Page.Cleanups));
 	for(i=0;i<s->Page.HtmlBody.nItems;i++) nmFree(s->Page.HtmlBody.Items[i],2048);

@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.30 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_checkbox.c,v 1.31 2004/08/04 01:58:56 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.31  2004/08/04 01:58:56  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.30  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -359,9 +365,21 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
    htrAddBodyItemLayerEnd(s, 0);
 
+    htrAddScriptWgtr(s, "    // htdrv_checkbox.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
    /** Check for more sub-widgets **/
     for (i=0;i<xaCount(&(tree->Children));i++)
 	 htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
+
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
    return 0;
 }

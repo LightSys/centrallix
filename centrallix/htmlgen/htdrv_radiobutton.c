@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.23 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_radiobutton.c,v 1.24 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.24  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.23  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -362,9 +368,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
       Now lets loop through and create a style sheet for each optionpane on the
       radiobuttonpanel
    */   
+    i = 1;
     for (j=0;j<xaCount(&(tree->Children));j++)
 	{
-	i = 1;
 	radiobutton_obj = xaGetItem(&(tree->Children), j);
 	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 	if (!strcmp(ptr,"widget/radiobutton"))
@@ -430,13 +436,22 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
       "   if (ly != null && ly.kind == 'radiobutton') {\n"
       "      if (ly.mainlayer.enabled) cn_activate(ly.mainlayer, 'MouseMove');\n"
       "   }\n");
-   
+ 
+    htrAddScriptWgtr(s, "    // htdrv_radiobutton.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
    /*
       Now lets loop through and add each radiobutton
    */
+    i = 1;
     for (j=0;j<xaCount(&(tree->Children));j++)
 	{
-	int i = 1;
 	sub_tree = xaGetItem(&(tree->Children), j);
 	wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
         if (!strcmp(ptr,"widget/radiobutton")) 
@@ -458,6 +473,8 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	    }
 	}
 
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
    /*
       Do the HTML layers
    */
@@ -466,9 +483,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    htrAddBodyItem_va(s,"         <DIV ID=\"radiobuttonpanel%dcoverpane\">\n", id);
 
    /* Loop through each radio button and do the option pane and sub layers */
+    i = 1;
     for (j=0;j<xaCount(&(tree->Children));j++)
 	{
-	int i = 1;
 	radiobutton_obj = xaGetItem(&(tree->Children), j);
         wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
         if (!strcmp(ptr,"widget/radiobutton")) 

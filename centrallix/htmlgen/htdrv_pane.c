@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.25 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_pane.c,v 1.26 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.26  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.25  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -480,6 +486,16 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		}
 	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
 
+
+    htrAddScriptWgtr(s, "    // htdrv_pane.c\n");
+    /** Add this node to the widget tree **/
+    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
+    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
+
+    /** make ourself the current node for our children **/
+    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
+
+
 	    /** Check for objects within the pane. **/
 	    if (s->Capabilities.Dom0NS)
 		snprintf(sbuf,160,"%s.mainlayer.document",nptr);
@@ -487,6 +503,9 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		snprintf(sbuf,160,"%s.mainlayer",nptr);
 	    snprintf(sbuf2,160,"%s.mainlayer",nptr);
 	    htrRenderSubwidgets(s, tree, sbuf, sbuf2, z+2);
+
+    /** make our parent the current node again **/
+    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
 	    /** End the containing layer. **/
 	    htrAddBodyItem(s, "</td></tr></table></DIV>\n");

@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.24 2004/08/02 14:09:35 mmcgill Exp $
+    $Id: ht_render.h,v 1.25 2004/08/04 01:58:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.25  2004/08/04 01:58:57  mmcgill
+    Added code to ht_render and the ht drivers to build a representation of
+    the widget tree on the client-side, linking each node to its corresponding
+    widget object or layer. Also fixed a couple bugs that were introduced
+    by switching to rendering off the widget tree.
+
     Revision 1.24  2004/08/02 14:09:35  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -390,6 +396,7 @@ typedef struct
     XArray	HtmlBodyParams;		/* params for <body> tag */
     XArray	Includes;		/* script includes */
     XHashTable	NameIncludes;		/* hash lookup for includes */
+    XArray	Wgtr;			/* code for wgtr-building function */
     HtNameArray	EventScripts;		/* various event script code */
     }
     HtPage, *pHtPage;
@@ -476,6 +483,9 @@ int htrAddExpression(pHtSession s, char* objname, char* property, pExpression ex
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pWgtrNode widget, int z, char* parentname, char* parentobj);
 int htrRenderSubwidgets(pHtSession s, pWgtrNode widget, char* docname, char* layername, int zlevel);
+
+int htrAddScriptWgtr(pHtSession s, char* wgtr_text);
+int htrAddScriptWgtr_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3))); 
 
 /** Utility routines **/
 int htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen);
