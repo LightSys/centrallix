@@ -170,7 +170,7 @@ obj_trx.o:		obj.h mtlexer.h mtask.h xarray.h
 obj_datatypes.o:	obj.h mtask.h
 objdrv_ux.o:		obj.h mtask.h xarray.h xhash.h
 objdrv_uxprint.o:	obj.h mtask.h xarray.h xhash.h stparse.h st_node.h
-objdrv_sybase.o:	obj.h mtask.h xarray.h xhash.h mtsession.h expression.h multiquery.h
+osdrivers/objdrv_sybase.o:	obj.h expression.h multiquery.h
 objdrv_struct.o: 	obj.h mtask.h xarray.h xhash.h stparse.h
 objdrv_qytree.o: 	obj.h mtask.h xarray.h xhash.h xstring.h st_node.h stparse.h expression.h
 objdrv_report.o:	obj.h mtask.h xarray.h xhash.h report.h st_node.h stparse.h xstring.h expression.h
@@ -185,10 +185,10 @@ htdrv_textbutton.o:	ht_render.h obj.h
 htdrv_menu.o:		ht_render.h obj.h
 htdrv_framset.o:	ht_render.h obj.h
 expression.o:		expression.h obj.h xarray.h
-multiquery.o:		multiquery.h obj.h xarray.h xstring.h expression.h
-multiq_projection.o:	multiquery.h obj.h expression.h
-multiq_tablegen.o:	multiquery.h obj.h expression.h
-multiq_equijoin.o:	multiquery.h obj.h expression.h
+multiquery/multiquery.o:	multiquery.h obj.h expression.h
+multiquery/multiq_projection.o:	multiquery.h obj.h expression.h
+multiquery/multiq_tablegen.o:	multiquery.h obj.h expression.h
+multiquery/multiq_equijoin.o:	multiquery.h obj.h expression.h
 html_prt.o:		mtask.h report.h barcode.h prtmgmt.h
 hppcl_prt.o:		mtask.h report.h barcode.h prtmgmt.h
 epsonfx_prt.o:		mtask.h report.h barcode.h prtmgmt.h
