@@ -29,6 +29,7 @@ httab	HTDriver - tab control
 httbl	HTDriver - tabular data presentation
 httbtn	HTDriver - Text button
 httm	HTDriver - Timer
+http	OSDriver - HTTP source protocol driver
 httree	HTDriver - TreeView
 htvbl	HTDriver - global javascript variable
 htwin	HTDriver - draggable popup window
