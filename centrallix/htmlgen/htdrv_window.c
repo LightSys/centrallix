@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.32 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_window.c,v 1.33 2003/07/20 03:41:17 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.33  2003/07/20 03:41:17  jorupp
+     * got window mostly working in Mozilla
+
     Revision 1.32  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -246,6 +249,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char* nptr;
     char bgnd[128] = "";
     char hdr_bgnd[128] = "";
+    char bgnd_style[128] = "";
+    char hdr_bgnd_style[128] = "";
     char txtcolor[64] = "";
     int has_titlebar = 1;
     char title[128];
@@ -253,9 +258,9 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     int gshade = 0;
     int closetype = 0;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
-	    mssError(1,"HTWIN","Netscape DOM support required");
+	    mssError(1,"HTWIN","Netscape DOM support or W3C DOM Level 1 support required");
 	    return -1;
 	    }
 
@@ -285,17 +290,27 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
 	    sprintf(bgnd,"bgcolor='%.40s'",ptr);
 	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
+	    sprintf(bgnd_style,"background-color: %.40s;",ptr);
+	    sprintf(hdr_bgnd_style,"background-color: %.40s;",ptr);
 	}
 	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0) {
-	    sprintf(bgnd,"background='%.110s'",ptr);
-	    sprintf(hdr_bgnd,"background='%.110s'",ptr);
+	    sprintf(bgnd,"background='%.100s'",ptr);
+	    sprintf(hdr_bgnd,"background='%.100s'",ptr);
+	    sprintf(bgnd_style,"background-image: %.100s;",ptr);
+	    sprintf(hdr_bgnd_style,"background-image: %.100s;",ptr);
 	}
 
 	/** Check header background color/image **/
 	if (objGetAttrValue(w_obj,"hdr_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
 	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
+	    sprintf(hdr_bgnd_style,"background-color: %.40s;",ptr);
+	    }
 	else if (objGetAttrValue(w_obj,"hdr_background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(hdr_bgnd,"background='%.110s'",ptr);
+	    {
+	    sprintf(hdr_bgnd,"background='%.100s'",ptr);
+	    sprintf(hdr_bgnd_style,"background-image: %.100s;",ptr);
+	    }
 
 	/** Check title text color. **/
 	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -366,11 +381,26 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    bh = h-tbh-3;
 	    }
 
-	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
-		id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
-		id, bx, by, bw, bh, bw, bh, z+1);
+	if(s->Capabilities.HTML40 && s->Capabilities.CSS2)
+	    {
+	    /** Ok, write the style header items. **/
+	    htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; overflow: clip; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; %s}\n",
+		    id,visible?"inherit":"hidden",x,y,w,h, w+2, h+2, z, bgnd_style);
+	    htrAddStylesheetItem_va(s,"\t#wn%dbase { border-style: solid; border-width: 1px; border-color: white gray gray white; }\n");
+	    htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %dpx; WIDTH: 100%; overflow: clip; Z-INDEX: %d; text-color: %s; %s}\n", id, tbh, z+1, txtcolor, hdr_bgnd_style);
+	    htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%dpx; WIDTH: %dpx; HEIGHT:%dpx; overflow: clip; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; }\n",
+		    id, tbh, w-2, h-tbh-2, w, h-tbh, z+1);
+	    htrAddStylesheetItem_va(s,"\t#wn%dmain { border-style: solid; border-width: 1px; border-color: gray white white gray; }\n");
+	    htrAddStylesheetItem_va(s,"\t#wn%dclose { vertical-align: middle; }\n",id);
+	    }
+	else
+	    {
+	    /** Ok, write the style header items. **/
+	    htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(%dpx, %dpx); Z-INDEX:%d; }\n",
+		    id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	    htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(%dpx,%dpx); Z-INDEX:%d; }\n",
+		    id, bx, by, bw, bh, bw, bh, z+1);
+	    }
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "wn_top_z","10000",0);
@@ -391,12 +421,18 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
 	
+
+	// FIXME: does this MOUSEDOWN work if for NS4 if there is no title?
 	/** Event handler for mousedown -- initial click **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","wn",
 		"    if (ly.kind == 'wn')\n"
 		"        {\n"
-		"        if (e.target.name == 'close') e.target.src = '/sys/images/02close.gif';\n"
-		"        else if (e.pageY < ly.mainlayer.pageY + 24)\n"
+		"        if (e.target.name == 'close') \n"
+		"            pg_set(e.target,'src','/sys/images/02close.gif');\n"
+		"        else if (\n"
+		"                (cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||\n"
+		"                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' )\n"
+		"             )\n"
 		"            {\n"
 		"            wn_current = ly.mainlayer;\n"
 		"            wn_msx = e.pageX;\n"
@@ -404,7 +440,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"            wn_newx = null;\n"
 		"            wn_newy = null;\n"
 		"            wn_moved = 0;\n"
-		"            wn_windowshade(e.target.layer);\n"
+		"            wn_windowshade(ly.mainlayer);\n"
 		"            }\n"
 		"        cn_activate(ly.mainlayer, 'MouseDown');\n"
 		"        }\n");
@@ -413,12 +449,12 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddEventHandler(s, "document","MOUSEUP","wn",
 		"    if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')\n"
 		"        {\n"
-		"        e.target.src = '/sys/images/01close.gif';\n"
+		"        pg_set(e.target,'src','/sys/images/01close.gif');\n"
 		"        wn_close(ly.mainlayer);\n"
 		"        }\n"
-		"    else if (ly.document != null && ly.document.images.length > 6 && ly.document.images[6].name == 'close')\n"
+		"    else if (ly.document != null && pg_images(ly).length > 6 && pg_images(ly)[6].name == 'close')\n"
 		"        {\n"
-		"        ly.document.images[6].src = '/sys/images/01close.gif';\n"
+		"        pg_set(pg_images(ly)[6],'src','/sys/images/01close.gif');\n"
 		"        }\n"
 		"    if (wn_current != null)\n"
 		"        {\n"
@@ -457,90 +493,127 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddEventHandler(s, "document", "MOUSEOUT", "wn",
 		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
-	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d,%d);\n", 
-		name,parentname,id,parentname,id,id,gshade,closetype);
+	if(s->Capabilities.Dom1HTML)
+	    {
+	    /** Script initialization call. **/
+	    htrAddScriptInit_va(s,"    %s = wn_init(document.getElementById('wn%dbase'),document.getElementById('wn%dmain'),%d,%d, document.getElementById('wn%dtitlebar'));\n", 
+		    name,id,id,gshade,closetype, id);
+	    }
+	else if(s->Capabilities.Dom0NS)
+	    {
+	    /** Script initialization call. **/
+	    htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d,%d);\n", 
+		    name,parentname,id,parentname,id,id,gshade,closetype);
+	    }
 
 	/** HTML body <DIV> elements for the layers. **/
 	/** This is the top white edge of the window **/
-	htrAddBodyItem_va(s,"<DIV ID=\"wn%dbase\"><TABLE border=0 cellspacing=0 cellpadding=0>\n",id);
-	htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	if (!is_dialog_style)
+	if(s->Capabilities.HTML40 && s->Capabilities.CSS2) 
 	    {
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    }
-	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",is_dialog_style?(tbw):(tbw-2));
-	if (!is_dialog_style)
-	    {
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    }
-	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD></TR>\n");
-	
-	/** Titlebar for window, if specified. **/
-	if (has_titlebar)
-	    {
-	    htrAddBodyItem_va(s,"<TR><TD width=1><IMG SRC=/sys/images/white_1x1.png width=1 height=22></TD>\n");
-	    htrAddBodyItem_va(s,"    <TD width=%d %s colspan=%d><TABLE border=0><TR><TD><IMG SRC=/sys/images/01close.gif name=close align=left></TD><TD valign=\"middle\"><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
-	    	tbw,hdr_bgnd,is_dialog_style?1:3,txtcolor,title);
-	    htrAddBodyItem_va(s,"    <TD width=1><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=22></TD></TR>\n");
-	    }
-
-	/** This is the beveled-down edge below the top of the window **/
-	if (!is_dialog_style)
-	    {
-	    htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem_va(s,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD>\n",w-3);
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
+	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dbase\">\n",id);
+	    if (has_titlebar)
+		{
+		htrAddBodyItem_va(s,"<DIV ID=\"wn%dtitlebar\">\n",id);
+		htrAddBodyItem_va(s,"<img id=\"wn%dclose\" name=\"close\" src=\"/sys/images/01close.gif\"/> <span style=\"position: absolute; bottom: 0px; font-weight: 600;\">%s</span>\n", id, title);
+		htrAddBodyItem_va(s,"</DIV>\n");
+		}
+	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\">\n",id);
 	    }
 	else
 	    {
-	    if (has_titlebar)
-	        {
-	        htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	        htrAddBodyItem_va(s,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w-1);
-	        htrAddBodyItem_va(s,"<TR><TD colspan=2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-1);
-	        htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
+	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dbase\"><TABLE border=\"0\" cellspacing=\"0\" cellpadding=\"0\">\n",id);
+	    htrAddBodyItem_va(s,"<TR><TD><IMG src=\"/sys/images/white_1x1.png\" \"width=\"1\" height=\"1\"></TD>\n");
+	    if (!is_dialog_style)
+		{
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"1\"></TD>\n");
 		}
+	    htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/white_1x1.png\" width=\"%d\" height=\"1\"></TD>\n",is_dialog_style?(tbw):(tbw-2));
+	    if (!is_dialog_style)
+		{
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"1\"></TD>\n");
+		}
+	    htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"1\"></TD></TR>\n");
+	    
+	    /** Titlebar for window, if specified. **/
+	    if (has_titlebar)
+		{
+		htrAddBodyItem_va(s,"<TR><TD width=\"1\"><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"22\"></TD>\n");
+		htrAddBodyItem_va(s,"    <TD width=\"%d\" %s colspan=\"%d\"><TABLE border=\"0\"><TR><TD><IMG src=\"/sys/images/01close.gif\" name=\"close\" align=\"left\"></TD><TD valign=\"middle\"><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
+		    tbw,hdr_bgnd,is_dialog_style?1:3,txtcolor,title);
+		htrAddBodyItem_va(s,"    <TD width=\"1\"><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"22\"></TD></TR>\n");
+		}
+
+	    /** This is the beveled-down edge below the top of the window **/
+	    if (!is_dialog_style)
+		{
+		htrAddBodyItem_va(s,"<TR><TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"1\"></TD>\n");
+		htrAddBodyItem_va(s,"    <TD colspan=\"2\"><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"%d\" height=\"1\"></TD>\n",w-3);
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"1\"></TD>\n");
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"1\"></TD></TR>\n");
+		}
+	    else
+		{
+		if (has_titlebar)
+		    {
+		    htrAddBodyItem_va(s,"<TR><TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"1\"></TD>\n");
+		    htrAddBodyItem_va(s,"    <TD colspan=\"2\"><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"%d\" height=\"1\"></TD></TR>\n",w-1);
+		    htrAddBodyItem_va(s,"<TR><TD colspan=\"2\"><IMG src=\"/sys/images/white_1x1.png\" width=\"%d\" height=\"1\"></TD>\n",w-1);
+		    htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"1\"></TD></TR>\n");
+		    }
+		}
+
+	    /** This is the left side of the window. **/
+	    htrAddBodyItem_va(s,"<TR><TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"%d\"></TD>\n", bh);
+	    if (!is_dialog_style)
+		{
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"%d\"></TD>\n",bh);
+		}
+
+	    /** Here's where the content goes... **/
+	    htrAddBodyItem(s,"    <TD></TD>\n");
+
+	    /** Right edge of the window **/
+	    if (!is_dialog_style)
+		{
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"%d\"></TD>\n",bh);
+		}
+	    htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"%d\"></TD></TR>\n",bh);
+
+	    /** And... bottom edge of the window. **/
+	    if (!is_dialog_style)
+		{
+		htrAddBodyItem_va(s,"<TR><TD><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"1\"></TD>\n");
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"1\"></TD>\n");
+		htrAddBodyItem_va(s,"    <TD colspan=\"2\"><IMG src=\"/sys/images/white_1x1.png\" width=\"%d\" height=\"1\"></TD>\n",w-3);
+		htrAddBodyItem_va(s,"    <TD><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"1\"></TD></TR>\n");
+		}
+	    htrAddBodyItem_va(s,"<TR><TD colspan=\"5\"><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"%d\" height=\"1\"></TD></TR>\n",w);
+	    htrAddBodyItem(s,"</TABLE>\n");
+
+	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"%d\" height=\"%d\"><tr %s><td>&nbsp;</td></tr></table>\n",id,bw,bh,bgnd);
 	    }
-
-	/** This is the left side of the window. **/
-	htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n", bh);
-	if (!is_dialog_style)
-	    {
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD>\n",bh);
-	    }
-
-	/** Here's where the content goes... **/
-	htrAddBodyItem(s,"    <TD></TD>\n");
-
-	/** Right edge of the window **/
-	if (!is_dialog_style)
-	    {
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
-	    }
-	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD></TR>\n",bh);
-
-	/** And... bottom edge of the window. **/
-	if (!is_dialog_style)
-	    {
-	    htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem_va(s,"    <TD colspan = 2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-3);
-	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
-	    }
-	htrAddBodyItem_va(s,"<TR><TD colspan=5><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w);
-	htrAddBodyItem(s,"</TABLE>\n");
-
-	htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\"><table border=0 cellpadding=0 cellspacing=0 width=%d height=%d><tr %s><td>&nbsp;</td></tr></table>\n",id,bw,bh,bgnd);
 
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	snprintf(sbuf,HT_SBUF_SIZE,"%s.ContentLayer.document",name);
+	if(s->Capabilities.Dom1HTML)
+	    {
+	    snprintf(sbuf,HT_SBUF_SIZE,"%s.ContentLayer",name);
+	    }
+	else if(s->Capabilities.Dom0NS)
+	    {
+	    snprintf(sbuf,HT_SBUF_SIZE,"%s.ContentLayer.document",name);
+	    }
 	snprintf(sbuf2,HT_SBUF_SIZE,"%s.ContentLayer",name);
 
-	snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer.document",name);
+	if(s->Capabilities.Dom1HTML)
+	    {
+	    snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer",name);
+	    }
+	else
+	    {
+	    snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer.document",name);
+	    }
 	snprintf(sbuf4,HT_SBUF_SIZE,"%s.mainlayer",name);
 	if (qy)
 	    {

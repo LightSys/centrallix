@@ -42,6 +42,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.17  2003/07/20 03:41:17  jorupp
+     * got window mostly working in Mozilla
+
     Revision 1.16  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -261,7 +264,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	if(s->Capabilities.Dom1HTML)
 	    {
-	    htrAddScriptInit_va(s,"    %s = lbl_init(%s.getElementById('lbl%d'));\n", nptr, parentname, id);
+	    htrAddScriptInit_va(s,"    %s = lbl_init(document.getElementById('lbl%d'));\n", nptr, id);
 	    }
 	else if(s->Capabilities.Dom0NS)
 	    {

@@ -9,8 +9,20 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function wn_init(l,ml,gs,ct)
+function wn_init(l,ml,gs,ct,titlebar)
     {
+    /** NS4 version doesn't use a separate div for the title bar **/
+    if(cx__capabilities.Dom1HTML)
+	{
+	titlebar.subkind = 'titlebar';
+	l.titlebar = titlebar;
+	titlebar.mainlayer = l;
+	titlebar.kind = 'wn';
+	}
+    else
+	{
+	titlebar=l;
+	}
     l.keep_kbd_focus = true;
     l.oldwin=window_current;
     window_current=l;
@@ -21,28 +33,39 @@ function wn_init(l,ml,gs,ct)
 	l.osrc.push(t);
 	t=t.oldosrc;
 	}
-    l.document.layer = l;
+    if(cx__capabilities.Dom0NS)
+	l.document.layer = l;
+    else if(cx__capabilities.Dom1HTML)
+	l.layer = l;
     l.mainlayer = l;
     l.ContentLayer = ml;
-    ml.document.layer = ml;
+    if(cx__capabilities.Dom0NS)
+	ml.document.layer = ml;
+    else if(cx__capabilities.Dom1HTML)
+	ml.layer = ml;
     ml.mainlayer = l;
-    l.orig_width = l.clip.width;
-    l.orig_right = l.clip.right;
-    l.orig_left = l.clip.left;
-    l.orig_height = l.clip.height;
-    l.orig_bottom = l.clip.bottom;
-    l.orig_top = l.clip.top;
+
+    l.orig_width = pg_get_style(l,'clip.width');
+    l.orig_height = pg_get_style(l,'clip.height');
+    l.orig_right = pg_get_style(l,'clip.right');
+    l.orig_left = pg_get_style(l,'clip.left');
+    l.orig_bottom = pg_get_style(l,'clip.bottom');
+    l.orig_top = pg_get_style(l,'clip.top');
+
     l.gshade = gs;
     l.closetype = ct;
     l.working = false;
     l.shaded = false;
     l.kind = 'wn';
     ml.kind = 'wn';
-    for(i=0;i<l.document.images.length;i++)
+
+    /** make sure the images are set up **/
+    for(i=0;i<pg_images(titlebar).length;i++)
 	{
-	l.document.images[i].layer = l;
-	l.document.images[i].kind = 'wn';
+	pg_images(titlebar)[i].layer = l;
+	pg_images(titlebar)[i].kind = 'wn';
 	}
+
     wn_bring_top(l);
     l.ActionSetVisibility = wn_setvisibility;
     l.ActionToggleVisibility = wn_togglevisibility;
@@ -73,13 +96,13 @@ function wn_windowshade(l)
 	    {
 	    if (l.gshade)
 		{
-		var size = Math.ceil((l.clip.height-24)*speed/duration);
+		var size = Math.ceil((pg_get_style(l,'clip.hieght')-24)*speed/duration);
 		l.working = true;
 		wn_graphical_shade(l,24,speed,size);
 		}
 	    else
 		{
-		l.clip.height = 24;
+		pg_set_style(l,'clip.height',24);
 		}
 	    l.shaded = true;
 	    }
@@ -93,7 +116,7 @@ function wn_windowshade(l)
 		}
 	    else
 		{
-		l.clip.height = l.orig_height;
+		pg_set_style(l,'clip.height',l.orig_height);
 		}
 	    l.shaded = false;
 	    }
@@ -114,58 +137,78 @@ function wn_manual_unshade(l)
 
 function wn_graphical_shade(l,to,speed,size)
     {
-    if (to < l.clip.height)
+    var height = pg_get_style(l,'clip.height');
+    if (to < height)
     	{
-	if (l.clip.height - size < to)
+	if (height - size < to)
 	    {
-	    l.clip.height = to;
-//	    ft = new Date();
-//	    alert(ft-st);
+	    pg_set_style(l,'clip.height',to);
 	    l.working = false;
 	    return;
 	    }
-	else l.clip.height-=size;
-	l.ContentLayer.clip.top +=size;
-	l.ContentLayer.pageY -= size;
+	else 
+	    pg_set_style(l,'clip.height',height-size);
+	pg_set_style(l.ContentLayer,'clip.top',pg_get_style(l.ContentLayer,'clip.top')+size);
+	pg_set_style(l.ContentLayer,'pageY',pg_get_style(l.ContentLayer,'pageY')-size);
 	}
     else
         {
-	if (l.clip.height + size > to)
+	if (height + size > to)
 	    {
-	    l.clip.height = to;
-//	    ft=new Date();
-//	    alert(ft-st);
+	    pg_set_style(l,'clip.height',to);
 	    l.working = false;
 	    return;
 	    }
-	else l.clip.height+=size;
-	l.ContentLayer.pageY += size;
-	l.ContentLayer.clip.top -= size;
+	else 
+	    pg_set_style(l,'clip.height',height+size);
+	pg_set_style(l.ContentLayer,'clip.top',pg_get_style(l.ContentLayer,'clip.top')-size);
+	pg_set_style(l.ContentLayer,'pageY',pg_get_style(l.ContentLayer,'pageY')+size);
 	}
     setTimeout(wn_graphical_shade,speed,l,to,speed,size);
     }
 
-function wn_close(l,type)
+function wn_close(l)
     {
-    if (l.closetype == 0) l.visibility = 'hidden';
+    if (l.closetype == 0)
+	{
+	if(cx__capabilities.Dom2CSS2)
+	    {
+	    l.style.setProperty('visibility','hidden','');
+	    }
+	else if(cx__capabilities.Dom0NS)
+	    {
+	    l.visibility = 'hidden';
+	    }
+	else
+	    {
+	    alert("can't close");
+	    }
+	}
     else
         {
-	st = new Date();
-	var speed = 20;
-	var duration = 150;
-	var sizeX = 0;
-	var sizeY = 0;
-	if (l.closetype & 1)
+	if(cx__capabilities.Dom0NS)
 	    {
-	    var toX = Math.ceil(l.clip.width/2);
-	    sizeX = Math.ceil(toX*speed/duration);
+	    st = new Date();
+	    var speed = 20;
+	    var duration = 150;
+	    var sizeX = 0;
+	    var sizeY = 0;
+	    if (l.closetype & 1)
+		{
+		var toX = Math.ceil(l.clip.width/2);
+		sizeX = Math.ceil(toX*speed/duration);
+		}
+	    if (l.closetype & 2)
+		{
+		var toY = Math.ceil(l.clip.height/2);
+		sizeY = Math.ceil(toY*speed/duration);
+		}
+	    wn_graphical_close(l,speed,sizeX,sizeY);
 	    }
-	if (l.closetype & 2)
+	else
 	    {
-	    var toY = Math.ceil(l.clip.height/2);
-	    sizeY = Math.ceil(toY*speed/duration);
+	    alert("close type " + l.closetype + " is not implimented for this browser");
 	    }
-	wn_graphical_close(l,speed,sizeX,sizeY);
 	}
     }
 
@@ -240,15 +283,15 @@ function wn_domove()
         var newx,newy;
         if (wn_newx < pg_attract && wn_newx > -pg_attract) newx = 0;
         else if (wn_newx+wn_current.clip.width > window.innerWidth-ha-pg_attract && wn_newx+wn_current.clip.width < window.innerWidth-ha+pg_attract)
-		newx = window.innerWidth-ha-wn_current.clip.width;
-        else if (wn_newx+wn_current.clip.width < 25) newx = 25-wn_current.clip.width;
+		newx = window.innerWidth-ha-pg_get_style(wn_current,'clip.width');
+        else if (wn_newx+wn_current.clip.width < 25) newx = 25-pg_get_style(wn_current,'clip.width');
         else if (wn_newx > window.innerWidth-35-ha) newx = window.innerWidth-35-ha;
 	else newx = wn_newx;
         if (wn_newy<0) newy = 0;
         else if (wn_newy > window.innerHeight-12-va) newy = window.innerHeight-12-va;
         else if (wn_newy < pg_attract) newy = 0;
         else if (wn_newy+wn_current.clip.height > window.innerHeight-va-pg_attract && wn_newy+wn_current.clip.height < window.innerHeight-va+pg_attract)
-		newy = window.innerHeight-va-wn_current.clip.height;
+		newy = window.innerHeight-va-pg_get_style(wn_current,'clip.height');
         else newy = wn_newy;
         wn_current.moveToAbsolute(newx,newy);
     	wn_current.clicked = 0;
@@ -259,10 +302,12 @@ function wn_domove()
 function wn_adjust_z(l,zi)
     {
     if (zi < 0) l.zIndex += zi;
+    /*
     for(i=0;i<l.document.layers.length;i++)
 	{
 	//wn_adjust_z(l.document.layers[i],zi);
 	}
+    */
     if (zi > 0) l.zIndex += zi;
     if (l.zIndex > wn_top_z) wn_top_z = l.zIndex;
 //    wn_clicked = 0;

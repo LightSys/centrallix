@@ -17,7 +17,14 @@ function htr_event(e)
 	{
 	cx__event.Dom2Event = e;
 	cx__event.type = e.type;
-	cx__event.target = e.target;
+
+	// move up from text nodes and spans to containers
+	var t = e.target;
+	while(t.nodeType == Node.TEXT_NODE || t.nodeName == 'SPAN')
+	    t = t.parentNode;
+
+	cx__event.target = t;
+
 	cx__event.pageX = e.clientX;
 	cx__event.pageY = e.clientY;
 	}
@@ -51,7 +58,10 @@ function htr_event(e)
 	cx__event.pageX = e.clientX;
 	cx__event.pageY = e.clientY;
 	}
-    //htr_alert_obj(cx__event,2);
+    if(e.altKey && e.type && e.type == "mousedown" )
+	{
+	htr_alert_obj(cx__event,3);
+	}
     return cx__event;
     }
 
@@ -75,8 +85,14 @@ function htr_obj_to_text(obj,level,maxlevels)
     var j = "";
     for(var i in obj)
 	{
-	j = j+= htr_build_tabs(level) + i + ": " + obj[i] + "\n" + 
-	    htr_obj_to_text(obj[i],level+1,maxlevels);
+	var attr = obj[i];
+	if(typeof(attr)=='function')
+	    attr = "function";
+	if(i == 'innerHTML' || i == 'outerHTML')
+	    attr = "[ HTML REMOVED ]";
+	j+= htr_build_tabs(level) + i + ": " + attr + "\n";
+	if(attr == obj[i])
+	    j += htr_obj_to_text(obj[i],level+1,maxlevels);
 	}
     return j;
     }

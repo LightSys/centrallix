@@ -9,6 +9,61 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+
+/** returns an attribute of the element in pixels **/
+function pg_get_style(element,attr)
+    {
+    if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
+	{
+	if(attr.substring(0,5) == 'clip.')
+	    {
+	    return eval('element.' + attr);
+	    }
+	var comp_style = window.getComputedStyle(element,null);
+	var cssValue = comp_style.getPropertyCSSValue(attr);
+	if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
+	    {
+	    alert(attr + ': ' + cssValue.cssValueType);
+	    return null;
+	    }
+	if(cssValue.primitiveType >= CSSPrimitiveValue.CSS_STRING)
+	    return cssValue.getStringValue();
+	return cssValue.getFloatValue(CSSPrimitiveValue.CSS_PX);
+	}
+    else if(cx__capabilities.Dom0NS)
+	{
+	return eval('element.' + attr);
+	}
+    else
+	{
+	alert('cannot calculate CSS values for this browser');
+	}
+    }
+
+function pg_set_style(element,attr, value)
+    {
+    if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
+	{
+	if(attr.substr(0,5) == 'clip.')
+	    {
+	    eval('element.' + attr + ' = value;');
+	    return;
+	    }
+	element.style.setProperty(attr,value + "px","");
+	return;
+	}
+    else if(cx__capabilities.Dom0NS)
+	{
+	eval('element.' + attr + ' = value;');
+	return;
+	}
+    else
+	{
+	alert('cannot set CSS values for this browser');
+	return;
+	}
+    }
+
 function pg_ping_init(l,i)
     {
     l.tid=setInterval(pg_ping_send,i,l);
@@ -17,9 +72,10 @@ function pg_ping_init(l,i)
 function pg_ping_recieve()
     {
     var link;
+    //confirm("recieving");
     if(cx__capabilities.Dom1HTML)
 	{
-	link = this.getElementsByTagName("a")[0];
+	link = this.contentDocument.getElementsByTagName("a")[0];
 	}
     else if(cx__capabilities.Dom0NS)
 	{
@@ -48,6 +104,70 @@ function pg_ping_send(p)
 	{
 	p.src='/INTERNAL/ping';
 	}
+    }
+
+/** Function to get the images attacked to a layer **/
+function pg_images(o)
+    {
+    if(cx__capabilities.Dom1HTML)
+	{
+	return o.getElementsByTagName("img");
+	}
+    else if(cx__capabilities.Dom0NS || cx__capabilities.Dom0IE)
+	{
+	return o.document.images;
+	}
+    else
+	{
+	return null;
+	}
+    }
+
+/** function to set an attribute **/
+function pg_set(o,a,v)
+    {
+    if(cx__capabilities.Dom1HTML)
+	{
+	return o.setAttribute(a,v);
+	}
+    else
+	{
+	o[a]=v;
+	}
+    }
+
+function pg_get_computed_clip(o)
+    {
+    if(cx__capabilities.Dom2CSS)
+	return getComputedStyle(o,null).getPropertyCSSValue('clip').getRectValue();
+    else if(cx__capabilities.Dom0NS)
+	return o.clip;
+    else
+	return null;
+    }
+
+function pg_get_clip(o)
+    {
+    if(cx__capabilities.Dom2CSS2)
+	{
+	var clip = o.style.getPropertyCSSValue('clip');
+	if(clip)
+	    return clip.getRectValue();
+	else
+	    {
+	    var computed = getComputedStyle(o,null).getPropertyCSSValue('clip').cssText;
+	    o.style.setProperty('clip',computed,"");
+	    clip = o.style.getPropertyValue('clip');
+	    alert(clip);
+	    clip = o.style.getPropertyCSSValue('clip');
+	    alert(clip);
+	    return clip.getRectValue;
+	    }
+	}
+    else if(cx__capabilities.Dom0NS)
+	return o.clip;
+    else
+	return null;
     }
 
 
