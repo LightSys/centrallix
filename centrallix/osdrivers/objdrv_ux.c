@@ -54,10 +54,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.12 2004/02/24 20:10:59 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.13 2004/05/04 18:20:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.13  2004/05/04 18:20:15  gbeeley
+    - Another fix for the RDONLY vs RDWR issue
+
     Revision 1.12  2004/02/24 20:10:59  gbeeley
     - fixing some date/time related problems
     - efficiency improvement for net_http allowing browser to actually
@@ -710,7 +713,7 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    }
 
 	/** Access called for RDWR but we can't open it RDWR? **/
-	if ((obj->Mode & O_ACCMODE) == O_RDWR && access(inf->RealPathname,W_OK) < 0)
+	if ((obj->Mode & O_ACCMODE) == O_RDWR && fdAccess(inf->RealPathname,W_OK) < 0)
 	    {
 	    obj->Mode &= ~O_ACCMODE;
 	    obj->Mode |= O_RDONLY;
