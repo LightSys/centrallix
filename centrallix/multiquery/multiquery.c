@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.11 2002/11/14 03:46:39 gbeeley Exp $
+    $Id: multiquery.c,v 1.12 2003/03/12 03:19:08 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.12  2003/03/12 03:19:08  lkehresman
+    * Added basic presentation hint support to multiquery.  It only returns
+      hints for the first result set, which is the wrong way to do it.  I went
+      ahead and committed this so that peter and rupp can start working on the
+      other stuff while I work on implementing this correctly.
+
+    * Hints are now presented to the client in the form:
+      <a target=XHANDLE HREF='http://ATTRIBUTE/?HINTS#TYPE'>
+      where HINTS = hintname=value&hintname=value
+
     Revision 1.11  2002/11/14 03:46:39  gbeeley
     Updated some files that were depending on the old xaAddItemSorted() to
     use xaAddItemSortedInt32() because these uses depend on sorting on a
@@ -1991,6 +2001,28 @@ mqRegisterQueryDriver(pQueryDriver drv)
     return 0;
     }
 
+/*** mqPresentationHints
+ ***/
+pObjPresentationHints
+mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
+    {
+    pPseudoObject p = (pPseudoObject)inf_v;
+    pObjPresentationHints ph;
+    pObject obj;
+    int i;
+
+    for (i=0; i < p->ObjList.nObjects; i++)
+	{
+	if (p->ObjList.Objects[i]->Driver->PresentationHints != NULL)
+	    {
+	    obj = p->ObjList.Objects[i];
+	    ph = obj->Driver->PresentationHints(obj->Data, attrname);
+	    return ph;
+	    }
+	}
+
+    return NULL;
+    }
 
 /*** mqInitialize - initialize the multiquery module and link in with the
  *** objectsystem management layer, registering as the multiquery module.
@@ -2032,6 +2064,7 @@ mqInitialize()
 	drv->GetFirstMethod = mqGetFirstMethod;
 	drv->GetNextMethod = mqGetNextMethod;
 	drv->ExecuteMethod = mqExecuteMethod;
+	drv->PresentationHints = mqPresentationHints;
 
 	nmRegister(sizeof(QueryElement),"QueryElement");
 	nmRegister(sizeof(QueryStructure),"QueryStructure");

@@ -61,10 +61,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.31 2002/12/23 06:22:04 jorupp Exp $
+    $Id: net_http.c,v 1.32 2003/03/12 03:19:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.32  2003/03/12 03:19:09  lkehresman
+    * Added basic presentation hint support to multiquery.  It only returns
+      hints for the first result set, which is the wrong way to do it.  I went
+      ahead and committed this so that peter and rupp can start working on the
+      other stuff while I work on implementing this correctly.
+
+    * Hints are now presented to the client in the form:
+      <a target=XHANDLE HREF='http://ATTRIBUTE/?HINTS#TYPE'>
+      where HINTS = hintname=value&hintname=value
+
     Revision 1.31  2002/12/23 06:22:04  jorupp
      * added ability to take flags (numbers only) to ls__req=read
 
@@ -1071,8 +1081,9 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
     ObjData od;
     char* dptr;
     int type,rval;
-    XString xs;
     char sbuf[100];
+    XString xs, hints;
+    pObjPresentationHints ph;
     static char* coltypenames[] = {"unknown","integer","string","double","datetime","intvec","stringvec","money",""};
 
 	/** Get type and value **/
@@ -1088,8 +1099,39 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	    dptr = objDataToStringTmp(type, (void*)(od.String), 0);
 	if (!dptr) dptr = "";
 
+	/** Presentation Hints **/
+	xsInit(&hints);
+	ph = objPresentationHints(obj, attrname);
+	/* Needed: Constraints */
+	/* Needed: DefaultExpr */
+	/* Needed: MinValue */
+	/* Needed: MaxValue */
+	/* Needed: EnumList */
+	if (ph->EnumQuery != NULL)
+	    xsConcatPrintf(&hints, "%sEnumQuery=%s", (strlen(hints.String)?"&":""), ph->EnumQuery);
+	if (ph->Format != NULL)
+	    xsConcatPrintf(&hints, "%sFormat=%s", (strlen(hints.String)?"&":""), ph->Format);
+	if (ph->Length > 0)
+	    xsConcatPrintf(&hints, "%sLength=%d", (strlen(hints.String)?"&":""), ph->Length);
+	if (ph->VisualLength > 0)
+	    xsConcatPrintf(&hints, "%sVisualLength=%d", (strlen(hints.String)?"&":""), ph->VisualLength);
+	if (ph->VisualLength2 > 0)
+	    xsConcatPrintf(&hints, "%sVisualLength2=%d", (strlen(hints.String)?"&":""), ph->VisualLength2);
+	if (ph->BitmaskRO > 0)
+	    xsConcatPrintf(&hints, "%sBitmaskRO=%d", (strlen(hints.String)?"&":""), ph->BitmaskRO);
+	if (ph->Style > 0)
+	    xsConcatPrintf(&hints, "%sStyle=%d", (strlen(hints.String)?"&":""), ph->Style);
+	if (ph->GroupID > 0)
+	    xsConcatPrintf(&hints, "%sGroupID=%d", (strlen(hints.String)?"&":""), ph->GroupID);
+	if (ph->GroupName != NULL)
+	    xsConcatPrintf(&hints, "%sGroupName=%s", (strlen(hints.String)?"&":""), ph->GroupName);
+	if (ph->OrderID > 0)
+	    xsConcatPrintf(&hints, "%sOrderID=%d", (strlen(hints.String)?"&":""), ph->OrderID);
+	if (ph->FriendlyName != NULL)
+	    xsConcatPrintf(&hints, "%sFriendlyName=%s", (strlen(hints.String)?"&":""), ph->FriendlyName);
+
 	/** Write the HTML output. **/
-	snprintf(sbuf,100,"<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/#%s'>",tgt,attrname,coltypenames[type]);
+	snprintf(sbuf,100,"<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>",tgt,attrname,hints.String,coltypenames[type]);
 	xsCopy(&xs,sbuf,-1);
 	if (encode)
 	    nht_internal_Escape(&xs, dptr);
@@ -1097,8 +1139,9 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	    xsConcatenate(&xs,dptr,-1);
 	xsConcatenate(&xs,"</A>\n",5);
 	fdWrite(conn,xs.String,strlen(xs.String),0,0);
-	//printf("%s",xs.String);
+	printf("%s",xs.String);
 	xsDeInit(&xs);
+	xsDeInit(&hints);
 
     return 0;
     }
