@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.21 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.22 2002/07/16 19:31:03 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.22  2002/07/16 19:31:03  lkehresman
+    Added an include that I forgot earlier
+
     Revision 1.21  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -261,6 +264,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\", %d, \"%s\");\n",
