@@ -43,12 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.1 2001/08/13 18:00:52 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.2 2001/10/08 03:59:54 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
-    Revision 1.1  2001/08/13 18:00:52  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/08 03:59:54  lkehresman
+    Added window shading support
+
+    Revision 1.1.1.1  2001/08/13 18:00:52  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -212,6 +215,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptGlobal(s, "wn_msx","null",0);
 	htrAddScriptGlobal(s, "wn_msy","null",0);
 	htrAddScriptGlobal(s, "wn_moved","0",0);
+	htrAddScriptGlobal(s, "wn_clicked","0",0);
+	htrAddScriptGlobal(s, "wn_heights", "Array()", 0);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -220,10 +225,11 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Our initialization processor function. **/
 	htrAddScriptFunction(s, "wn_init", "\n"
-		"function wn_init(l,ml)\n"
+		"function wn_init(l,ml,h)\n"
 		"    {\n"
 		"    l.document.layer = l;\n"
 		"    ml.document.Layer = ml;\n"
+		"    l.orig_height = h;\n"
 		"    l.mainLayer = ml;\n"
 		"    l.kind = 'wn';\n"
 		"    for(i=0;i<l.document.images.length;i++)\n"
@@ -235,6 +241,27 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    l.ActionSetVisibility = wn_setvisibility;\n"
 		"    return l;\n"
 		"    }\n",0);
+
+	/** Action handler for WindowShade**/
+	htrAddScriptFunction(s, "wn_unset_windowshade", "\n"
+		"function wn_unset_windowshade() {\n"
+		"    wn_clicked = 0;\n"
+		"}\n", 0);
+
+	htrAddScriptFunction(s, "wn_windowshade", "\n"
+		"function wn_windowshade(layer) {\n"
+		"    if (wn_clicked == 1) {\n"
+		"        wn_clicked = 0;\n"
+		"        if (layer.clip.height != 23) {\n"
+		"            layer.clip.height = 23;\n"
+		"        } else {\n"
+		"            layer.clip.height = layer.orig_height;\n"
+		"        }\n"
+		"    } else {\n"
+		"        wn_clicked = 1;\n"
+		"        setTimeout(\"wn_unset_windowshade()\", 1200);\n"
+		"    }\n"
+		"}\n", 0);
 
 	/** Action handler for SetVisibility **/
 	htrAddScriptFunction(s, "wn_setvisibility", "\n"
@@ -297,6 +324,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"            wn_newx = null;\n"
 		"            wn_newy = null;\n"
 		"            wn_moved = 0;\n"
+		"            wn_windowshade(e.target.layer);\n"
 		"            }\n"
 		"        }\n");
 
@@ -336,8 +364,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n");
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain);\n", 
-		name,parentname,id,parentname,id,id);
+	sprintf(sbuf,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
+		name,parentname,id,parentname,id,id,h);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
@@ -441,6 +469,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	sprintf(sbuf,"<DIV ID=\"wn%dmain\">\n",id);
 	htrAddBodyItem(s, sbuf);
+
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
