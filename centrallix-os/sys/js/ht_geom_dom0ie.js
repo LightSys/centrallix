@@ -29,7 +29,7 @@ function getClipWidth(l)
 function getRuntimeClipWidth(l) 
     {
     var cpvals = getRuntimeClipArray(l);
-    return cpvals[1] - cpvals[3];
+    return parseInt(cpvals[1]) - parseInt(cpvals[3]);
     }
     
 // Setting the clip.width value to w is the same as:
@@ -38,10 +38,19 @@ function setClipWidth(l, value)
     {    
     var curly = l.currentStyle;
     var c_left = curly.clipLeft;
-    var c_right = parseInt(c_left.split("px")[0]) + value;
-    c_right += "px";               
+    if (isNaN(parseInt(c_left)))
+	{
+	//c_left = l.offsetLeft;
+	c_left = 0;
+	var c_right = c_left + value;
+	c_left = "" + c_left + "px";
+	}
+    else
+	{
+	var c_right = parseInt(c_left.split("px")[0]) + value;
+	}
     
-    setClip(l, curly.clipTop, c_right, curly.clipBottom, c_left);    
+    setClip(l, curly.clipTop, "" + c_right + "px", curly.clipBottom, c_left);    
     }
 
 // Clip Height
@@ -62,7 +71,7 @@ function getClipHeight(l)
 function getRuntimeClipHeight(l) 
     {
     var cpvals = getRuntimeClipArray(l);
-    return cpvals[2] - cpvals[0];
+    return parseInt(cpvals[2]) - parseInt(cpvals[0]);
     }
 
 // Setting the clip.height to h is the same as:
@@ -71,7 +80,17 @@ function setClipHeight(l, value)
     { 
     var curly = l.currentStyle;
     var c_top = curly.clipTop;
-    var c_bottom = parseInt(c_top.split("px")[0]) + value;
+    if (isNaN(parseInt(c_top)))
+	{
+	//c_top = l.offsetTop;
+	c_top = 0;
+	var c_bottom = c_top + value;
+	c_top = "" + c_top + "px";
+	}
+    else
+	{
+	var c_bottom = parseInt(c_top.split("px")[0]) + value;
+	}
     c_bottom += "px";
     
     setClip(l, c_top, curly.clipRight, c_bottom, curly.clipLeft);
@@ -80,20 +99,23 @@ function setClipHeight(l, value)
 // Clip Top
 function getClipTop(l) 
     { 
-    return l.currentStyle.clipTop; 
+    var rval = parseInt(l.currentStyle.clipTop); 
+    if (isNaN(rval))
+	return l.offsetTop;
+    else
+	return rval;
     }
 
 function setClipTop(l, value) 
     {
     var curly = l.currentStyle;
-    value += "px";
-    setClip(l, value, curly.clipRight, curly.clipBottom, curly.clipLeft);
+    setClip(l, "" + value + "px", curly.clipRight, curly.clipBottom, curly.clipLeft);
     }
 
 // Clip Bottom
 function getClipBottom(l) 
     { 
-    return l.currentStyle.clipBottom;
+    return parseInt(l.currentStyle.clipBottom);
     }
 
 function setClipBottom(l, value) 
@@ -114,20 +136,19 @@ function setClipBottom(l, value)
 // Clip Left
 function getClipLeft(l) 
     { 
-    return l.currentStyle.clipLeft;
+    return parseInt(l.currentStyle.clipLeft);
     }
 
 function setClipLeft(l, value) 
     { 
     var curly = l.currentStyle;
-    value += "px";
-    setClip(l, curly.clipTop, curly.clipRight, curly.clipBottom, value);
+    setClip(l, curly.clipTop, curly.clipRight, curly.clipBottom, "" + value + "px");
     }
 
 // Clip Right
 function getClipRight(l) 
     { 
-    return l.currentStyle.clipRight;
+    return parseInt(l.currentStyle.clipRight);
     }
 
 function setClipRight(l, value) 
@@ -263,7 +284,7 @@ function getRelativeX(l)
 
 function setRelativeX(l, value)
    {
-   l.style.left = value;
+   l.style.left = value + "px";
    }
 
 function getRelativeY(l)
@@ -302,8 +323,8 @@ function moveToAbsolute(l, x, y)
 
 function moveTo(l, x, y)
     {
-    l.style.left = x;
-    l.style.top = y;
+    l.style.left = x + "px";
+    l.style.top = y + "px";
     }
 
 function moveBy(l, x, y)
