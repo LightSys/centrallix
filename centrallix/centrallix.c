@@ -62,10 +62,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.13 2002/10/18 01:48:45 gbeeley Exp $
+    $Id: centrallix.c,v 1.14 2002/12/24 09:51:56 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.14  2002/12/24 09:51:56  jorupp
+     * yep, this is what it looks like -- inital commit of the terminal widget :)
+       -- the first Mozilla-only widget
+     * it's not even close to a 'real' form yet -- mozilla takes so much CPU time
+       rendering the table that it's pretty useless
+
     Revision 1.13  2002/10/18 01:48:45  gbeeley
     Added attribute-based enable/disable module, so that structure file
     editors can turn them on and off and not ignore them as a result of
@@ -443,6 +449,7 @@ cxHtInit()
 	htosrcInitialize();			/* osrc module */
 	htalrtInitialize();			/* alert module */
 	htlblInitialize();			/* label module */
+	httermInitialize();			/* terminal module */
 
 	/** Load any htdriver modules **/
 	cx_internal_LoadModules("htdriver");
