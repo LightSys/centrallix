@@ -15,10 +15,11 @@ AC_PROG_INSTALL
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
+AC_CHECK_LIB(crypt, main)
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS(fcntl.h sys/ioctl.h sys/time.h syslog.h unistd.h)
+AC_CHECK_HEADERS(fcntl.h sys/ioctl.h sys/time.h syslog.h unistd.h shadow.h zlib.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -28,6 +29,6 @@ dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
-AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul)
+AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
 AC_OUTPUT(Makefile, echo timestamp > stamp-h)

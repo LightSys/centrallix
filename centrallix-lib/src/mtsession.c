@@ -3,7 +3,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pwd.h>
+#ifdef HAVE_SHADOW_H
 #include <shadow.h>
+#endif
 #include <errno.h>
 #include <stdarg.h>
 #include <syslog.h>
@@ -34,10 +36,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.6 2002/06/20 15:57:05 gbeeley Exp $
+    $Id: mtsession.c,v 1.7 2002/08/16 03:05:38 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.7  2002/08/16 03:05:38  jorupp
+     * added checks for shadow passwords and endservent() to allow build under cygwin
+       -- this has been tested under cygwin, and it works pretty well
+
     Revision 1.6  2002/06/20 15:57:05  gbeeley
     Fixed some compiler warnings.  Repaired improper buffer handling in
     mtlexer's mlxReadLine() function.
@@ -174,7 +180,9 @@ mssAuthenticate(char* username, char* password)
     char* encrypted_pwd;
     char* pwd;
     struct passwd* pw;
+#ifdef HAVE_SHADOW_H
     struct spwd* spw;
+#endif
     char salt[3];
     pFile altpass_fd;
     pLxSession altpass_lxs;
@@ -201,15 +209,19 @@ mssAuthenticate(char* username, char* password)
 		nmFree(s,sizeof(MtSession));
 		return -1;
 		}
+#ifdef HAVE_SHADOW_H
 	    spw = getspnam(s->UserName);
 	    if (!spw)
 		{
+#endif
 		pwd = pw->pw_passwd;
+#ifdef HAVE_SHADOW_H
 		}
 	    else
 		{
 		pwd = spw->sp_pwdp;
 		}
+#endif
 	    strncpy(salt,pwd,2);
 	    salt[2]=0;
 	    encrypted_pwd = (char*)crypt(s->Password,pwd);

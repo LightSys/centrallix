@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.9 2002/08/13 02:38:24 gbeeley Exp $
+    $Id: mtask.c,v 1.10 2002/08/16 03:05:38 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.10  2002/08/16 03:05:38  jorupp
+     * added checks for shadow passwords and endservent() to allow build under cygwin
+       -- this has been tested under cygwin, and it works pretty well
+
     Revision 1.9  2002/08/13 02:38:24  gbeeley
     Added "plan B" in case CLK_TCK ever becomes obsolete.  Linux man page
     says CLK_TCK is a macro for the sysconf(_SC_CLK_TCK) call.  The sysconf
@@ -2191,7 +2195,9 @@ netListenTCP(const char* service_name, int queue_length, int flags)
 		return NULL;
 		}
 	    port = srv->s_port;
+#ifdef HAVE_ENDSERVENT
 	    endservent();
+#endif
 	    }
 
 	/** Setup to bind to that address. **/
@@ -2376,7 +2382,9 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
 	if (!port)
 	    {
 	    srv = getservbyname(service_name,"tcp");
+#ifdef HAVE_ENDSERVENT
 	    endservent();
+#endif
 	    if (srv == NULL) 
 	        {
 		close(s);

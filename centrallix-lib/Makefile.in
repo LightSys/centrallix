@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.4 2002/08/02 09:08:43 mattphillips Exp $
+## $Id: Makefile.in,v 1.5 2002/08/16 03:05:37 jorupp Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -42,6 +42,8 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_DATA = @INSTALL_DATA@
 
+LIBS = @LIBS@
+
 ## CFLAGS.  "MTCFLAGS" is used exclusively by the MTASK module
 ## compilation.  DO NOT OPTIMIZE MTASK!!!!  It will cause it to
 ## stop working!!!
@@ -73,7 +75,7 @@ src/mtask.lo: src/mtask.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 libCentrallix.so:	$(DYNAMICFILES)
-	$(CC) $(CFLAGS) -shared -fPIC $(DYNAMICFILES) -o libCentrallix.so
+	$(CC) $(CFLAGS) -shared -fPIC $(DYNAMICFILES) -o libCentrallix.so ${LIBS}
 
 libCentrallix.a:	$(STATICFILES)
 	$(AR) -r libCentrallix.a $(STATICFILES)
