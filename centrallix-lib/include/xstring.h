@@ -20,10 +20,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.4 2002/08/06 16:00:28 lkehresman Exp $
+    $Id: xstring.h,v 1.5 2002/09/21 01:59:33 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.5  2002/09/21 01:59:33  jorupp
+     * added some functions to xstring -- helps quite a bit for string manipulation :)
+
     Revision 1.4  2002/08/06 16:00:28  lkehresman
     Added some xstring manipulation functions:
       xsRTrim - right trim whitespace
@@ -72,6 +75,9 @@ int xsWrite(pXString this, char* buf, int len, int offset, int flags);
 int xsRTrim(pXString this);
 int xsLTrim(pXString this);
 int xsTrim(pXString this);
+int xsFind(pXString this,char* find,int findlen, int offset);
+int xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen);
+int xsInsertAfter(pXString this, char* ins, int inslen, int offset);
 
 #define XS_U_SEEK	2
 

@@ -26,10 +26,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.5 2002/08/06 16:39:25 lkehresman Exp $
+    $Id: xstring.c,v 1.6 2002/09/21 01:59:33 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.6  2002/09/21 01:59:33  jorupp
+     * added some functions to xstring -- helps quite a bit for string manipulation :)
+
     Revision 1.5  2002/08/06 16:39:25  lkehresman
     Fixed a bug (that greg noticed) in the xsRTrim function that was
     inaccurately setting the string length.
@@ -432,5 +435,71 @@ xsTrim(pXString this)
 	xsLTrim(this);
 	xsRTrim(this);
 
+    return 0;
+    }
+
+/*** xsFind - searches an xString for a string from an offset and returns the offset it was found at
+ ***   returns -1 if not found
+ ***/
+int
+xsFind(pXString this,char* find,int findlen, int offset)
+    {
+    if(findlen==-1) findlen=strlen(find);
+    for(;offset<this->Length;offset++)
+	{
+	if(this->String[offset]==find[0])
+	    {
+	    int i;
+	    for(i=1;i<findlen;i++)
+		{
+		if(this->String[offset+i]!=find[i])
+		    break;
+		}
+	    if(i==findlen)
+		return offset;
+	    }
+	}
+    return -1;
+    }
+
+/*** xsReplace - searches an xString for a string and replaces that string with another
+ ***   returns the starting offset of the replace if successful, and -1 if not found
+ ***/
+int
+xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen)
+    {
+    if(findlen==-1) findlen=strlen(find);
+    if(replen==-1) replen=strlen(rep);
+    offset=xsFind(this,find,findlen,offset);
+    if(offset==-1) return -1;
+    if(findlen>=replen)
+	{
+	memcpy(&(this->String[offset]),rep,replen);
+	if(replen!=findlen)
+	    {
+	    memmove(this->String+offset+replen,this->String+offset+findlen,this->Length-offset-findlen);
+	    this->Length-=findlen-replen;
+	    }
+	}
+    else
+	{
+	/** warning: untested code :) **/
+	xsCheckAlloc(this,replen-findlen);
+	memmove(this->String+offset+replen,this->String+offset+findlen,this->Length-offset-findlen);
+	this->Length+=replen-findlen;
+	}
+    return offset;
+    }
+
+/*** xsInsertAfter - inserts the supplied string at offset
+ ***/
+int
+xsInsertAfter(pXString this, char* ins, int inslen, int offset)
+    {
+    if(inslen==-1) inslen=strlen(ins);
+    if(xsCheckAlloc(this,inslen)==-1) return -1;
+    memmove(this->String+offset+inslen,this->String+offset,this->Length-offset);
+    memcpy(this->String+offset,ins,inslen);
+    this->Length+=inslen;
     return 0;
     }
