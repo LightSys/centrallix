@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.20 2002/07/18 14:31:05 lkehresman Exp $
+    $Id: ht_render.c,v 1.21 2002/07/18 14:54:06 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.21  2002/07/18 14:54:06  pfinley
+    save a few characters :)
+
     Revision 1.20  2002/07/18 14:31:05  lkehresman
     Whoops!  I was sending the wrong string size to fdWrite.  Fixed it.
 
@@ -1053,7 +1056,7 @@ htrRender(pFile output, pObject appstruct)
 	        n = *(int*)ptr;
 	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	        }
-	    snprintf(sbuf, HT_SBUF_SIZE, " onResize=\"location.href=location.href\" onLoad=\"startup();\" onUnload=\"cleanup();\">\n"); 
+	    snprintf(sbuf, HT_SBUF_SIZE, " onResize=\"location.reload()\" onLoad=\"startup();\" onUnload=\"cleanup();\">\n"); 
 	    fdWrite(output, sbuf, sizeof(sbuf),0,FD_U_PACKET);
 	    }
 	else
