@@ -86,7 +86,7 @@ function tc_addtab(l_tab, l_page, l, nm)
 	{
 	newx += l.xo;
 	newy += l.yo;
-	l_tab.clip[l.cl] -= l.ci;
+	l_tab.clip[l.cl] += l.ci;
 	if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
 	else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
 	if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
