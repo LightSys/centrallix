@@ -12,3 +12,8 @@ stamp-h.in
 etc/centrallix.conf
 etc/centrallix.init
 etc/rootnode
+test_obj
+sfedit
+test_prt
+autom4te-2.53.cache
+config.h.in~
