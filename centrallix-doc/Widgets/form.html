@@ -13,28 +13,81 @@
 <span class="overview">
 			<p>The form widget is used as a high-level container for form elements.=  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
 			<p>Forms have five different &quot;modes&quot;of operation, each of which can be specifically allowed or disallowed for the form.</p>
-		
+		<ol>
 		<li> No Data - form inactive/disabled, no data viewed/edited.</li>
 		<li> View - data being viewed readonly.</li>
 		<li> Modify - existing data being modified.</li>
 		<li> Query - query criteria being entered (used for query-by-form applications)</li>
 		<li> New - new object being entered/created.</li>
-		
+		</ol>
 			<p>Note: at the time of this writing, the form widget was in its design phase and had not yet been implemented.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.=  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
 		</span><h3 class="properties">Properties:</h3>
-<p class="none">none currently available</p>
+<table class="properties">
+<tr class="notimplimented">
+<td class="name">AllowQuery</td>
+<td class="type">integer</td>
+<td class="description">Allow query by form</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">AllowNew</td>
+<td class="type">integer</td>
+<td class="description">Allow creation of new records</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">AllowModify</td>
+<td class="type">integer</td>
+<td class="description">Allow modification of existing records</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">AllowView</td>
+<td class="type">integer</td>
+<td class="description">Allow viewing of existing data</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">AllowNoData</td>
+<td class="type">integer</td>
+<td class="description">Allow the 'no data' state</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">MultiEnter</td>
+<td class="type">integer</td>
+<td class="description">Enable MultiEnter</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">TabMode</td>
+<td class="type">string</td>
+<td class="description">How to react to a tab in a control</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">ReadOnly</td>
+<td class="type">integer</td>
+<td class="description">Allow changes</td>
+</tr>
+<tr>
+<td class="name">_3bconfirmwindow</td>
+<td class="type">string</td>
+<td class="description">The name of the window to use for all 3-way confirm operations (save/discard/cancel)</td>
+</tr>
+</table>
 <h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of formelement child widgets)</p>
+<table class="childproperties"><tr class="notimplimented">
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Fieldname (from the dataset) to bind this element to</td>
+</tr></table>
+<p class="childname">(of formstatus child widgets)</p>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
 <table class="actions">
-<tr>
+<tr class="notimplimented">
 <td class="name">Clear</td>
 <td class="description">Clears the form to a 'no data'state.</td>
 </tr>
-<tr>
+<tr class="notimplimented">
 <td class="name">Delete</td>
 <td class="description">Deletes the current object displayed.</td>
 </tr>
@@ -54,7 +107,7 @@
 <td class="name">Last</td>
 <td class="description">Moves the form to the last object in the objectsource.</td>
 </tr>
-<tr>
+<tr class="notimplimented">
 <td class="name">New</td>
 <td class="description">Allows creation of new form contents.</td>
 </tr>

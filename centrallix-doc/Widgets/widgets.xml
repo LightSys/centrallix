@@ -165,19 +165,33 @@ mySoundPlayer "widget/execmethod"
 			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.=  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
 		</usage>
 		<properties>
+			<property name="AllowQuery" type="integer"><ni/>Allow query by form</property>
+			<property name="AllowNew" type="integer"><ni/>Allow creation of new records</property>
+			<property name="AllowModify" type="integer"><ni/>Allow modification of existing records</property>
+			<property name="AllowView" type="integer"><ni/>Allow viewing of existing data</property>
+			<property name="AllowNoData" type="integer"><ni/>Allow the 'no data' state</property>
+			<property name="MultiEnter" type="integer"><ni/>Enable MultiEnter</property>
+			<property name="TabMode" type="string"><ni/>How to react to a tab in a control</property>
+			<property name="ReadOnly" type="integer"><ni/>Allow changes</property>
+			<property name="_3bconfirmwindow" type="string">The name of the window to use for all 3-way confirm operations (save/discard/cancel)</property>
 		</properties>
 		<children>
+			<child type="formelement">
+				<childproperty name="fieldname" type="string"><ni/>Fieldname (from the dataset) to bind this element to</childproperty>
+			</child>
+			<child type="formstatus">
+			</child>
 		</children>
 		<events>
 		</events>
 		<actions>
-			<action name="Clear">Clears the form to a 'no data'state.</action>
-			<action name="Delete">Deletes the current object displayed.</action>
+			<action name="Clear"><ni/>Clears the form to a 'no data'state.</action>
+			<action name="Delete"><ni/>Deletes the current object displayed.</action>
 			<action name="Discard">Cancels an edit of form contents.</action>
 			<action name="Edit">Allows editing of form's contents.</action>
 			<action name="First">Moves the form to the first object in the objectsource.</action>
 			<action name="Last">Moves the form to the last object in the objectsource.</action>
-			<action name="New">Allows creation of new form contents.</action>
+			<action name="New"><ni/>Allows creation of new form contents.</action>
 			<action name="Next">Moves the form to the next object in the objectsource.</action>
 			<action name="Prev">Moves the form to the previous object in the objectsource.</action>
 			<action name="Query">Allows entering of query criteria.</action>

@@ -73,11 +73,20 @@
 	<xsl:if test="boolean(count(property))">
 		<table class="properties">
 		<xsl:for-each select="property">
-			<tr>
-				<td class="name"><xsl:value-of select="@name"/></td>
-				<td class="type"><xsl:value-of select="@type"/></td>
-				<td class="description"><xsl:apply-templates /></td>
-			</tr>
+			<xsl:if test="boolean(count(ni))">
+				<tr class="notimplimented">
+					<td class="name"><xsl:value-of select="@name"/></td>
+					<td class="type"><xsl:value-of select="@type"/></td>
+					<td class="description"><xsl:apply-templates /></td>
+				</tr>
+			</xsl:if>
+			<xsl:if test="not(count(ni))">
+				<tr>
+					<td class="name"><xsl:value-of select="@name"/></td>
+					<td class="type"><xsl:value-of select="@type"/></td>
+					<td class="description"><xsl:apply-templates /></td>
+				</tr>
+			</xsl:if>
 		</xsl:for-each>
 		</table>
 	</xsl:if>
@@ -91,15 +100,29 @@
 	<xsl:if test="count(child)">
 		<xsl:for-each select="child">
 			<p class="childname">(of <xsl:value-of select="@type"/> child widgets)</p>
-			<table class="childproperties">
-			<xsl:for-each select="childproperty">
-				<tr>
-					<td class="name"><xsl:value-of select="@name"/></td>
-					<td class="type"><xsl:value-of select="@type"/></td>
-					<td class="description"><xsl:apply-templates /></td>
-				</tr>
-			</xsl:for-each>
-			</table>
+			<xsl:if test="count(childproperty)">
+				<table class="childproperties">
+				<xsl:for-each select="childproperty">
+					<xsl:if test="boolean(count(ni))">
+						<tr class="notimplimented">
+							<td class="name"><xsl:value-of select="@name"/></td>
+							<td class="type"><xsl:value-of select="@type"/></td>
+							<td class="description"><xsl:apply-templates /></td>
+						</tr>
+					</xsl:if>
+					<xsl:if test="not(count(ni))">
+						<tr>
+							<td class="name"><xsl:value-of select="@name"/></td>
+							<td class="type"><xsl:value-of select="@type"/></td>
+							<td class="description"><xsl:apply-templates /></td>
+						</tr>
+					</xsl:if>
+				</xsl:for-each>
+				</table>
+			</xsl:if>
+			<xsl:if test="not(count(childproperty))">
+				<p class="none">none currently available</p>
+			</xsl:if>
 		</xsl:for-each>
 	</xsl:if>
 	<xsl:if test="not(count(child))">
@@ -112,10 +135,18 @@
 	<xsl:if test="count(action)">
 		<table class="actions">
 		<xsl:for-each select="action">
-			<tr>
-				<td class="name"><xsl:value-of select="@name"/></td>
-				<td class="description"><xsl:apply-templates /></td>
-			</tr>
+			<xsl:if test="boolean(count(ni))">
+				<tr class="notimplimented">
+					<td class="name"><xsl:value-of select="@name"/></td>
+					<td class="description"><xsl:apply-templates /></td>
+				</tr>
+			</xsl:if>
+			<xsl:if test="not(boolean(count(ni)))">
+				<tr>
+					<td class="name"><xsl:value-of select="@name"/></td>
+					<td class="description"><xsl:apply-templates /></td>
+				</tr>
+			</xsl:if>
 		</xsl:for-each>
 		</table>
 	</xsl:if>
@@ -129,10 +160,18 @@
 	<xsl:if test="count(event)">
 		<table class="events">
 		<xsl:for-each select="event">
-			<tr>
-				<td class="name"><xsl:value-of select="@name"/></td>
-				<td class="description"><xsl:apply-templates /></td>
-			</tr>
+			<xsl:if test="boolean(count(ni))">
+				<tr class="notimplimented">
+					<td class="name"><xsl:value-of select="@name"/></td>
+					<td class="description"><xsl:apply-templates /></td>
+				</tr>
+			</xsl:if>
+			<xsl:if test="not(boolean(count(ni)))">
+				<tr>
+					<td class="name"><xsl:value-of select="@name"/></td>
+					<td class="description"><xsl:apply-templates /></td>
+				</tr>
+			</xsl:if>
 		</xsl:for-each>
 		</table>
 	</xsl:if>
@@ -156,6 +195,7 @@
 
 <!--HTML elements allowed in other stuff-->
 <xsl:template match="p"><p><xsl:apply-templates/></p></xsl:template>
+<xsl:template match="ol"><ol><xsl:apply-templates/></ol></xsl:template>
 <xsl:template match="ul"><ul><xsl:apply-templates/></ul></xsl:template>
 <xsl:template match="li"><li><xsl:apply-templates/></li></xsl:template>
 <xsl:template match="b"><b><xsl:apply-templates/></b></xsl:template>
