@@ -274,6 +274,13 @@ config_install: config
 rhinit_install: config
 	$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
 
+sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
+	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
+
+sfedit: sfeditor/sfedit.o $(LSOBJS)
+	$(CC) sfeditor/sfedit.o centrallix.o $(LSOBJS) $(LIBDIRS) $(PROFILE) -o sfedit $(LIBS) `gtk-config --libs`
+	
+
 .c.so:	$<
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
@@ -311,7 +318,7 @@ etc/centrallix.init:
 clean:
 	@rm -f */*.o
 	@rm -f */*.so
-	@rm -f centrallix test_obj lsclient
+	@rm -f centrallix test_obj lsclient sfedit
 	@rm -f *.o
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
