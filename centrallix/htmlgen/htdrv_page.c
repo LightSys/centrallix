@@ -42,10 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.27 2002/07/17 19:45:44 pfinley Exp $
+    $Id: htdrv_page.c,v 1.28 2002/07/17 20:09:12 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.28  2002/07/17 20:09:12  lkehresman
+    Two changes to htdrv_page event handlers
+      *  getfocushandler() function now is passed a reference to the current
+         pg_area object as the 5th parameter.
+      *  losefocushandler() is now an optional function (like the
+         getfocushandler function is).  I think it was supposed to work like
+         this originally, but someone forgot to put the check in there.
+
     Revision 1.27  2002/07/17 19:45:44  pfinley
     fixed a javascript error that i created
 
@@ -427,7 +435,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        pg_curkbdlayer = pg_curlayer;\n"
 		"        if (pg_curkbdlayer.getfocushandler)\n"
 		"            {\n"
-		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
+		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name,pg_curarea);\n"
 		"            if (v & 1)\n"
 		"                {\n"
 		"                if (!pg_insame) pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
@@ -460,7 +468,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"    else if (pg_curkbdlayer != null)\n"
 		"        {\n"
 		"        pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
-		"        if (!pg_curkbdlayer.losefocushandler()) return true;\n"
+		"        if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return true;\n"
 		"        pg_curkbdarea = null;\n"
 		"        pg_curkbdlayer = null;\n"
 		"        pg_insame = false;\n"
