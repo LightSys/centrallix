@@ -294,6 +294,9 @@ depend:	.depend
 	@makedepend -o.o -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c >.depend 2>/dev/null
 	@makedepend -o.so -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c >>.depend 2>/dev/null
 
+.subbuild:
+	@echo '1' >.subbuild
+
 backup:
 	@/bin/echo -n Creating a backup of $(VERSION).$(PREVBUILD) "... "
 	@mkdir VER/$(VERSION).$(PREVBUILD) 2>/dev/null; exit 0
