@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.1 2001/11/03 05:48:33 gbeeley Exp $
+    $Id: htdrv_timer.c,v 1.2 2001/11/03 05:55:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.2  2001/11/03 05:55:17  gbeeley
+    Fixed html problem in the timer.  Doesn't need a closing DIV when
+    it never had an opening DIV tag.  Will only mess things up, it will.
+
     Revision 1.1  2001/11/03 05:48:33  gbeeley
     Ok.  Really added the timer file this time.  Forgot last time.  Of
     course, the silly cvs log won't reflect my forgotten time in the
@@ -171,9 +175,6 @@ httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	sprintf(sbuf,"%s.document",nptr);
 	sprintf(sbuf2,"%s",nptr);
 	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
-
-	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
 
     return 0;
     }
