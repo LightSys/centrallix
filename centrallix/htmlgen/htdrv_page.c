@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.8 2002/03/16 06:53:34 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.9 2002/03/23 01:18:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.9  2002/03/23 01:18:09  lkehresman
+    Fixed focus detection and form notification on editbox and anything that
+    uses keyboard input.
+
     Revision 1.8  2002/03/16 06:53:34  gbeeley
     Added modal-layer function at the page level.  Calling pg_setmodal(l)
     causes all mouse activity outside of layer l to be ignored.  Useful
@@ -340,6 +344,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                pg_mkbox(pg_curlayer,x-1,y-1,w+2,h+2, 1,  pg_curlayer.pg_dttop,pg_curlayer.pg_dtbtm,pg_curlayer.pg_dtrgt,pg_curlayer.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+1);\n"
 		"                }\n"
 		"            }\n"
+		"        }\n"
+		"    else if (pg_curkbdlayer != null)\n"
+		"        {\n"
+		"        if (!pg_curkbdlayer.losefocushandler()) return true;\n"
+		"        pg_curkbdarea = null;\n"
+		"        pg_curkbdlayer = null;\n"
 		"        }\n");
 
 	/** This resets the keyboard focus. **/

@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.10 2002/03/20 21:13:12 jorupp Exp $
+    $Id: htdrv_editbox.c,v 1.11 2002/03/23 01:18:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.11  2002/03/23 01:18:09  lkehresman
+    Fixed focus detection and form notification on editbox and anything that
+    uses keyboard input.
+
     Revision 1.10  2002/03/20 21:13:12  jorupp
      * fixed problem in imagebutton point and click handlers
      * hard-coded some values to get a partially working osrc for the form
@@ -303,7 +307,6 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_keyhandler", "\n"
 		"function eb_keyhandler(l,e,k)\n"
 		"    {\n"
-		"    if(eb_current.form) eb_current.form.FocusNotify(eb_current);\n"
 		"    if(eb_current.enabled!='full') return 1;\n"
 		"    txt = l.content;\n"
 		"    if (k == 9)\n"
@@ -342,7 +345,6 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        l.HiddenLayer.pageX += adj;\n"
 		"        }\n"
 		"    eb_ibeam.visibility = 'inherit';\n"
-		"    if(eb_current.form) eb_current.form.DataNotify(eb_current);\n"
 		"    return false;\n"
 		"    }\n", 0);
 
@@ -374,6 +376,10 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if(eb_current && eb_current.changed)\n"
 		"        {\n"
 		"        eb_current.changed=false;\n"
+		"        if (eb_current.form)\n"
+		"            {\n"
+		"            eb_current.form.DataNotify(eb_current);\n"
+		"            }\n"
 		"        }\n"
 		"    eb_current = null;\n"
 		"    return true;\n"
