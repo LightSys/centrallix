@@ -63,10 +63,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.51 2004/08/29 19:32:53 pfinley Exp $
+    $Id: net_http.c,v 1.52 2004/08/30 03:18:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.52  2004/08/30 03:18:20  gbeeley
+    - directory indexing (default document) now supported via net_http.
+    - need some way to make objOpen less noisy when we *know* that it is OK
+      for the open to fail based on file nonexistence.
+
     Revision 1.51  2004/08/29 19:32:53  pfinley
     fixing last commit... put the paren in the wrong place
 
@@ -530,6 +535,7 @@ struct
     regex_t*	reNet47;
     int		EnableGzip;
     int		CondenseJS;
+    char*	DirIndex[16];
     }
     NHT;
 
@@ -2318,7 +2324,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
     pObject target_obj, sub_obj, tmp_obj;
     pWgtrNode widget_tree;
     char* bufptr;
-    char cur_wd[256];
+    char path[256];
     int rowid;
     int tid = -1;
     int convert_text = 0;
@@ -2335,6 +2341,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
     char* wptr;
     int client_h, client_w;
     int gzip;
+    int i;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -2368,6 +2375,36 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 		netCloseTCP(conn,1000,0);
 		nht_internal_UnlinkSess(nsess);
 		thExit();
+		}
+
+	    /** Directory indexing? **/
+	    objGetAttrValue(target_obj, "inner_type", DATA_T_STRING, POD(&ptr));
+	    if (!strcmp(ptr,"system/void") && NHT.DirIndex[0] && (!find_inf || !strcmp(find_inf->StrVal,"content")))
+		{
+		/** Check the object type. **/
+		objGetAttrValue(target_obj, "outer_type", DATA_T_STRING,POD(&ptr));
+
+		/** no dirindex on .app files! **/
+		if (strcmp(ptr,"widget/page") && strcmp(ptr,"widget/frameset") &&
+			strcmp(ptr,"widget/component-decl"))
+		    {
+		    tmp_obj = NULL;
+		    for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
+			{
+			if (NHT.DirIndex[i])
+			    {
+			    snprintf(path,sizeof(path),"%s/%s",url_inf->StrVal,NHT.DirIndex[i]);
+			    tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY, 0600, "text/html");
+			    if (tmp_obj) break;
+			    }
+			}
+		    if (tmp_obj)
+			{
+			objClose(target_obj);
+			target_obj = tmp_obj;
+			tmp_obj = NULL;
+			}
+		    }
 		}
 
 	    /** Do we need to set params as a part of the open? **/
@@ -2626,6 +2663,11 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 			fdPrintf(conn,"<A HREF=%s%s%s TARGET='%s'>%d:%d:%s</A><BR>\n",dptr,
 			    (dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
 			}
+		    else if (send_info && !objinfo)
+			{
+			fdPrintf(conn,"<A HREF=%s%s%s TARGET='%s'>0:0:%s</A><BR>\n",dptr,
+			    (dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
+			}
 		    else
 			{
 			fdPrintf(conn,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
@@ -2646,7 +2688,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	    {
 	    /** Change directory to appropriate query root **/
 	    fdPrintf(conn,"Content-Type: text/html\r\n\r\n");
-	    strcpy(cur_wd, objGetWD(nsess->ObjSess));
+	    strcpy(path, objGetWD(nsess->ObjSess));
 	    objSetWD(nsess->ObjSess, target_obj);
 
 	    /** Need to encode result set? **/
@@ -2671,7 +2713,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 		}
 
 	    /** Switch the current directory back to what it used to be. **/
-	    tmp_obj = objOpen(nsess->ObjSess, cur_wd, O_RDONLY, 0600, "text/html");
+	    tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY, 0600, "text/html");
 	    objSetWD(nsess->ObjSess, tmp_obj);
 	    objClose(tmp_obj);
 	    }
@@ -3494,6 +3536,7 @@ nht_internal_Handler(void* v)
     char listen_port[32];
     char* strval;
     int intval;
+    int i;
 
     	/*printf("Handler called, stack ptr = %8.8X\n",&listen_socket);*/
 
@@ -3542,6 +3585,11 @@ nht_internal_Handler(void* v)
 		snprintf(NHT.Realm, 80, "Centrallix");
 		}
 
+	    /** Directory indexing? **/
+	    for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
+		{
+		stAttrValue(stLookup(my_config,"dir_index"), NULL, &(NHT.DirIndex[i]), i);
+		}
 
 	    /** Should we enable gzip? **/
 #ifdef HAVE_LIBZ
