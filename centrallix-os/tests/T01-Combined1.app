@@ -76,7 +76,7 @@ Page1 "widget/page"
 			abbrev "widget/table-column" { title="<b>Abbrev.</b>"; width=60; }
 			full_name "widget/table-column" { title="<b>Full State Name</b>"; width=250; }
 
-			Connector1 "widget/connector" { event="Click"; target="Window1"; action="SetVisibility"; IsVisible=1; }
+			Connector1 "widget/connector" { event="DblClick"; target="Window1"; action="SetVisibility"; IsVisible=1; }
 			}
 		    }
 		}
