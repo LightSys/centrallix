@@ -248,7 +248,7 @@ function pg_get_clip(o)
     }
 
 
-/** Function to emulate getElementByID **/
+/** Function to emulate getElementById **/
 function pg_getelementbyid(nm)
     {
     if (this.layers)
@@ -259,17 +259,21 @@ function pg_getelementbyid(nm)
 	return null;
     }
 
-/** Function to walk the DOM and set up getElementByID emulation **/
+/** Function to walk the DOM and set up getElementById emulation **/
 function pg_set_emulation(d)
     {
     var a = null;
     var i = 0;
-    if (d.document) d = d.document;
-    d.getElementByID = pg_getelementbyid;
-    if (this.layers)
-	a = this.layers;
-    else if (this.all)
-	a = this.all;
+    d.getElementById = pg_getelementbyid;
+    if (d.document) 
+	{
+	d = d.document;
+	d.getElementById = pg_getelementbyid;
+	}
+    if (d.layers)
+	a = d.layers;
+    else if (d.all)
+	a = d.all;
     else
 	a = null;
     if (a)
@@ -582,7 +586,6 @@ function pg_status_init()
 	return false;
     pg_status.zIndex = 1000000;
     pg_status.visibility = 'visible';
-    pg_set_emulation(document);
     }
  
 function pg_status_close()
@@ -597,6 +600,8 @@ function pg_init(l,a,gs,ct)
     l.ActionLaunch = pg_launch;
     window.windowlist = new Object();
     pg_attract = a;
+    if (cx__capabilities.Dom0NS) pg_set_emulation(document);
+    htr_init_layer(window,window,"window");
     return l;
     }
 
@@ -706,7 +711,9 @@ function pg_expression(o,p,e,l)
 	{
 	var item = l[i];
 	item[2] = eval(item[0]); // get obj reference
-	item[2].watch(item[1], pg_expchange);
+	item[2].pg_expchange = pg_expchange;
+	htr_watch(item[2],item[1],"pg_expchange");
+	//item[2].watch(item[1], pg_expchange);
 	}
     }
 
