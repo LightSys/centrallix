@@ -11,17 +11,17 @@
 #include <grp.h>
 #include <time.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "xstring.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
 #include "stparse.h"
 #include "stparse_ne.h"
 #include "st_node.h"
 #include "expression.h"
 #include "report.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.10 2004/06/23 21:33:56 mmcgill Exp $
+    $Id: objdrv_report_v3.c,v 1.11 2005/02/26 06:36:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.11  2005/02/26 06:36:59  gbeeley
+    - Adding document_format option so that .rpt author can specify what output
+      format (html, pdf, text, etc.) should be used for the report.
+
     Revision 1.10  2004/06/23 21:33:56  mmcgill
     Implemented the ObjInfo interface for all the drivers that are currently
     a part of the project (in the Makefile, in other words). Authors of the
@@ -3583,6 +3587,8 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     int i;
     pStruct paramdata;
     pStructInf newparam;
+    pStructInf ct_param;
+    char* ptr;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
 	if (obj->SubPtr != obj->Pathname->nElements)
@@ -3654,6 +3660,18 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** Check format version **/
 	if (stAttrValue(stLookup(inf->Node->Data,"version"),&(inf->Version),NULL,0) < 0)
 	    inf->Version = 1;
+
+	/** Lookup forced content type param **/
+	if ((ct_param = rpt_internal_GetParam(inf, "document_format")) != NULL)
+	    {
+	    ptr = NULL;
+	    stGetAttrValue(ct_param, DATA_T_STRING, POD(&ptr), 0);
+	    if (ptr)
+		{
+		memccpy(inf->ContentType, ptr, 0, 63);
+		inf->ContentType[63] = '\0';
+		}
+	    }
 
     return (void*)inf;
     }
