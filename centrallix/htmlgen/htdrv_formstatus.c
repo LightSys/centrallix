@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.1 2002/03/06 23:31:07 lkehresman Exp $
+    $Id: htdrv_formstatus.c,v 1.2 2002/03/07 00:12:58 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.2  2002/03/07 00:12:58  lkehresman
+    Reworked form status widget to take advantage of the new icons
+
     Revision 1.1  2002/03/06 23:31:07  lkehresman
     Added form status widget.
 
@@ -93,15 +96,15 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"function fs_setvalue(m) {\n"
 	"   this.currentMode = m;\n"
 	"   if (this.currentMode == 'View') {;\n" 
-	"      this.document.images[0].src = '/sys/images/ico01a.gif';\n"
+	"      this.document.images[0].src = '/sys/images/formstat01.gif';\n"
 	"   } else if (this.currentMode == 'Modify') {\n"
-	"      this.document.images[0].src = '/sys/images/ico01b.gif';\n"
+	"      this.document.images[0].src = '/sys/images/formstat02.gif';\n"
 	"   } else if (this.currentMode == 'New') {\n"
-	"      this.document.images[0].src = '/sys/images/ico01c.gif';\n"
+	"      this.document.images[0].src = '/sys/images/formstat03.gif';\n"
 	"   } else if (this.currentMode == 'Query') {\n"
-	"      this.document.images[0].src = '/sys/images/ico01d.gif';\n"
+	"      this.document.images[0].src = '/sys/images/formstat04.gif';\n"
 	"   } else {\n"
-	"      this.document.images[0].src = '/sys/images/ico01.gif';\n"
+	"      this.document.images[0].src = '/sys/images/formstat05.gif';\n"
 	"   }\n"
 	"}\n", 0);
 
@@ -118,14 +121,17 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	/*
 	"   cnt=0;\n"
 	"   while (confirm('again?')) {\n"
-	"      if (cnt % 4 == 0) {\n"
-	"         l.setvalue('View');\n"
-	"      } else if (cnt % 4 == 1) {\n"
+	"      if (cnt == 0) {\n"
 	"         l.setvalue('Modify');\n"
-	"      } else if (cnt % 4 == 2) {\n"
+	"      } else if (cnt == 1) {\n"
+	"         l.setvalue('Modify');\n"
+	"      } else if (cnt == 2) {\n"
+	"         l.setvalue('New');\n"
+	"      } else if (cnt == 3) {\n"
 	"         l.setvalue('Query');\n"
 	"      } else {\n"
 	"         l.setvalue('No Data');\n"
+	"         cnt = -1;\n"
 	"      }\n"
 	"      cnt++\n"
 	"   }\n"
@@ -137,7 +143,7 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/
-   sprintf(sbuf,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/ico01.gif></DIV>\n", id);
+   sprintf(sbuf,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
    htrAddBodyItem(s, sbuf);
 
    return 0;
