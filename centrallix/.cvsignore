@@ -1,0 +1,14 @@
+.depend
+.subbuild
+Makefile
+centrallix
+config.h
+config.log
+config.status
+gmon.out
+stamp-h
+stamp-h.in
+test_obj
+etc/centrallix.conf
+etc/centrallix.init
+etc/rootnode
