@@ -29,10 +29,10 @@ OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 #XOBJDRIVERS=objdrv_ux.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_report.o objdrv_uxprint.o objdrv_datafile.o objdrv_unixuser.o
 XOBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_struct.o objdrv_report.o objdrv_uxprint.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
-XOBJDRIVERMODULES=objdrv_sybase.so
+XOBJDRIVERMODULES=objdrv_sybase.so objdrv_http.so
 OBJDRIVERMODULES=$(patsubst %,osdrivers/%,$(XOBJDRIVERMODULES))
 
-XV3OBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
+XV3OBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o objdrv_http.o
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
 # DHTML generation subsystem, including drivers and the ht_render main system.
@@ -118,7 +118,7 @@ CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I$(CXLIBDIR)/include -DBUI
 #LIBS=-lnsl -lsocket
 #LIBS=-lsybtcl -lct -linsck -lcomn -lintl -lcs -lm
 #LIBS=-lct -lcomn -lintl -lsybtcl -lcs -linsck -lm -lcrypt -lreadline $(CXLIBDIR)/libCentrallix.a -lncurses
-LIBS=-lm -lcrypt -lreadline $(CXLIBDIR)/libCentrallix.a -lncurses -ldl
+LIBS=-lm -lcrypt -lreadline -lncurses $(CXLIBDIR)/libCentrallix.a -ldl
 #LIBS=-lm
 STATICLIBS=/usr/local/syblinux/elf/lib/libct.a /usr/local/syblinux/elf/lib/libcomn.a /usr/local/syblinux/elf/lib/libintl.a /usr/local/syblinux/elf/lib/libsybtcl.a /usr/local/syblinux/elf/lib/libcs.a /usr/local/syblinux/elf/lib/libinsck.a
 LIBDIRS=-L$(SYBASE)/lib
@@ -162,6 +162,9 @@ all:	centrallix mods modules_install
 osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 	cc $(CFLAGS) $(LIBDIRS) -DMODULE -Wno-unused -shared -fPIC $< -lct -lcomn -lintl -lsybtcl -lcs -linsck -o $@
 	
+osdrivers/objdrv_http.so: osdrivers/objdrv_http.c
+	cc $(CFLAGS) $(LIBDIRS) -DMODULE -Wno-unused -shared -fPIC $< -lcomn -lintl -lcs -linsck -o $@
+	
 .c.so:	$<
 	cc $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
@@ -169,8 +172,8 @@ osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 jsengine: $(JSVM)
 	cc $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
 
-test_obj: test_obj.o centrallix.o $(BASEOBJS)
-	cc centrallix.o test_obj.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -Wl,-export-dynamic -o test_obj $(LIBS)
+test_obj: test_obj.o centrallix.o $(BASEOBJS) ${HTDRIVERS} ${NETDRIVERS}
+	cc centrallix.o test_obj.o $(BASEOBJS) ${HTDRIVERS} ${NETDRIVERS} $(LIBDIRS) $(LIBS) $(PROFILE) -Wl,-export-dynamic -o test_obj
 
 test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
 	cc test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
@@ -212,3 +215,4 @@ backup:
 # Dependencies made by "make depend"
 include .depend
 
+# DO NOT DELETE
