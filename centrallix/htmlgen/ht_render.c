@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.26 2002/08/12 09:14:28 mattphillips Exp $
+    $Id: ht_render.c,v 1.27 2002/09/11 00:57:08 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.27  2002/09/11 00:57:08  jorupp
+     * added check for Mozilla 1.1
+
     Revision 1.26  2002/08/12 09:14:28  mattphillips
     Use the built-in PACKAGE_VERSION instead of VERSION to get the current version
     number to be more standard.  PACKAGE_VERSION is set by autoconf, but read from
@@ -229,6 +232,9 @@ htrRegisterUserAgent()
 	    xaAddItem(&(htregMoz), (void *)reg);
 	reg = (regex_t *)nmMalloc(sizeof(regex_t));
 	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.1a", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregMoz), (void *)reg);
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.1\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    xaAddItem(&(htregMoz), (void *)reg);
 
 	/** Internet Explorer regular expressions **/
