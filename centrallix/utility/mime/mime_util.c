@@ -44,7 +44,7 @@
 **  Deallocates all memory used for the mime message
 */
 void
-libmime_Cleanup(pMimeMsg msg)
+libmime_Cleanup(pMimeHeader msg)
     {
     // FIXME FIXME
     // Do cleanup stuff.. memory leaking now!

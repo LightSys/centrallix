@@ -53,13 +53,13 @@ char* TypeStrings[] =
 /*  libmime_ParseHeader
 **
 **  Parses a message (located at obj->Prev) starting at the "start" byte, and ending
-**  at the "end" byte.  This creates the MimeMsg data structure and recursively
+**  at the "end" byte.  This creates the MimeHeader data structure and recursively
 **  calls itself to fill it in.  Note that no data is actually stored.  This is just
 **  the shell of the message and contains seek points denoting where to start
 **  and end reading.
 */
 int
-libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end)
+libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end)
     {
     pLxSession lex;
     int flag, toktype, alloc, err, size;
@@ -89,6 +89,8 @@ libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end)
 	return -1;
 	}
 
+    mlxSetOffset(lex, start);
+    printf("\nStarting Header Parsing... (s:%d, e:%d)\n", start, end);
     flag = 1;
     while (flag)
 	{
@@ -149,24 +151,38 @@ libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end)
 	}
     xsDeInit(&xsbuf);
     msg->HdrSeekStart = start;
-    msg->MsgSeekStart = mlxGetOffset(lex) + 1;
-
-    flag = 1;
-    start = 0;
-    mlxSetOffset(lex, msg->MsgSeekStart);
-    while (flag)
+    if (start)
 	{
-	size = objRead(obj->Prev, buf, MIME_BUFSIZE, 0, 0);
-	start += size;
-	if (!size)
-	    {
-	    flag = 0;
-	    }
-	else
-	    {
-	    }
+	msg->MsgSeekStart = start;
 	}
-    msg->MsgSeekEnd = size;
+    else
+	{
+	msg->MsgSeekStart = mlxGetOffset(lex) + 1;
+	}
+
+    if (end)
+	{
+	msg->MsgSeekEnd = end;
+	}
+    else
+	{
+	flag = 1;
+	start = 0;
+	mlxSetOffset(lex, msg->MsgSeekStart);
+	while (flag)
+	    {
+	    size = objRead(obj->Prev, buf, MIME_BUFSIZE, 0, 0);
+	    start += size;
+	    if (!size)
+		{
+		flag = 0;
+		}
+	    else
+		{
+		}
+	    }
+	msg->MsgSeekEnd = size;
+	}
 
     mlxCloseSession(lex);
     return 0;
@@ -182,7 +198,7 @@ libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end)
 */
 
 int
-libmime_LoadExtendedHeader(pMimeMsg msg, pXString xsbuf, pLxSession lex)
+libmime_LoadExtendedHeader(pMimeHeader msg, pXString xsbuf, pLxSession lex)
     {
     int toktype, i;
     unsigned long offset;
@@ -212,11 +228,11 @@ libmime_LoadExtendedHeader(pMimeMsg msg, pXString xsbuf, pLxSession lex)
 
 /*  libmime_SetMailer
 **
-**  Parses the "X-Mailer" header element and fills in the MimeMsg data structure
+**  Parses the "X-Mailer" header element and fills in the MimeHeader data structure
 **  with the data accordingly.
 */
 int
-libmime_SetMailer(pMimeMsg msg, char *buf)
+libmime_SetMailer(pMimeHeader msg, char *buf)
     {
     strncpy(msg->Mailer, buf, 79);
     msg->MIMEVersion[79] = 0;
@@ -230,11 +246,11 @@ libmime_SetMailer(pMimeMsg msg, char *buf)
 
 /*  libmime_SetMIMEVersion
 **
-**  Parses the "MIME-Version" header element and fills in the MimeMsg data structure
+**  Parses the "MIME-Version" header element and fills in the MimeHeader data structure
 **  with the data accordingly.
 */
 int
-libmime_SetMIMEVersion(pMimeMsg msg, char *buf)
+libmime_SetMIMEVersion(pMimeHeader msg, char *buf)
     {
     strncpy(msg->MIMEVersion, buf, 15);
     msg->MIMEVersion[15] = 0;
@@ -248,11 +264,11 @@ libmime_SetMIMEVersion(pMimeMsg msg, char *buf)
 
 /*  libmime_SetDate
 **
-**  Parses the "Date" header element and fills in the MimeMsg data structure
+**  Parses the "Date" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetDate(pMimeMsg msg, char *buf)
+libmime_SetDate(pMimeHeader msg, char *buf)
     {
     /** Get the date **/
 
@@ -267,11 +283,11 @@ libmime_SetDate(pMimeMsg msg, char *buf)
 
 /*  libmime_SetSubject
 **
-**  Parses the "Subject" header element and fills in the MimeMsg data structure
+**  Parses the "Subject" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetSubject(pMimeMsg msg, char *buf)
+libmime_SetSubject(pMimeHeader msg, char *buf)
     {
     /** Get the date **/
     strncpy(msg->Subject, buf, 79);
@@ -287,11 +303,11 @@ libmime_SetSubject(pMimeMsg msg, char *buf)
 
 /*  libmime_SetFrom
 **
-**  Parses the "From" header element and fills in the MimeMsg data structure
+**  Parses the "From" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetFrom(pMimeMsg msg, char *buf)
+libmime_SetFrom(pMimeHeader msg, char *buf)
     {
     msg->FromList = (pXArray)nmMalloc(sizeof(XArray));
     xaInit(msg->FromList, sizeof(EmailAddr));
@@ -302,11 +318,11 @@ libmime_SetFrom(pMimeMsg msg, char *buf)
 
 /*  libmime_SetCc
 **
-**  Parses the "Cc" header element and fills in the MimeMsg data structure
+**  Parses the "Cc" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetCc(pMimeMsg msg, char *buf)
+libmime_SetCc(pMimeHeader msg, char *buf)
     {
     msg->CcList = (pXArray)nmMalloc(sizeof(XArray));
     xaInit(msg->CcList, sizeof(EmailAddr));
@@ -317,11 +333,11 @@ libmime_SetCc(pMimeMsg msg, char *buf)
 
 /*  libmime_SetTo
 **
-**  Parses the "To" header element and fills in the MimeMsg data structure
+**  Parses the "To" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetTo(pMimeMsg msg, char *buf)
+libmime_SetTo(pMimeHeader msg, char *buf)
     {
     msg->ToList = (pXArray)nmMalloc(sizeof(XArray));
     xaInit(msg->ToList, sizeof(EmailAddr));
@@ -332,11 +348,11 @@ libmime_SetTo(pMimeMsg msg, char *buf)
 
 /*  libmime_SetContentLength
 **
-**  Parses the "Content-Length" header element and fills in the MimeMsg data structure
+**  Parses the "Content-Length" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetContentLength(pMimeMsg msg, char *buf)
+libmime_SetContentLength(pMimeHeader msg, char *buf)
     {
     msg->ContentLength = atoi(buf);
 
@@ -349,11 +365,11 @@ libmime_SetContentLength(pMimeMsg msg, char *buf)
 
 /*  libmime_SetTransferEncoding
 **
-**  Parses the "Content-Transfer-Encoding" header element and fills in the MimeMsg data structure
+**  Parses the "Content-Transfer-Encoding" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetTransferEncoding(pMimeMsg msg, char *buf)
+libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     {
     strncpy(msg->TransferEncoding, buf, 31);
     msg->TransferEncoding[31] = 0;
@@ -367,11 +383,11 @@ libmime_SetTransferEncoding(pMimeMsg msg, char *buf)
 
 /*  libmime_SetContentDisp
 **
-**  Parses the "Content-Disposition" header element and fills in the MimeMsg data structure
+**  Parses the "Content-Disposition" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetContentDisp(pMimeMsg msg, char *buf)
+libmime_SetContentDisp(pMimeHeader msg, char *buf)
     {
     char *ptr, *cptr;
 
@@ -406,11 +422,11 @@ libmime_SetContentDisp(pMimeMsg msg, char *buf)
 
 /*  libmime_SetContentType
 **
-**  Parses the "Content-Type" header element and fills in the MimeMsg data structure
+**  Parses the "Content-Type" header element and fills in the MimeHeader data structure
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-libmime_SetContentType(pMimeMsg msg, char *buf)
+libmime_SetContentType(pMimeHeader msg, char *buf)
     {
     char *ptr, *cptr;
     char maintype[32], tmpname[128];
@@ -477,7 +493,7 @@ libmime_SetContentType(pMimeMsg msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType]);
+	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType-1]);
 	printf("  SUBTYPE     : \"%s\"\n", msg->ContentSubType);
 	printf("  BOUNDARY    : \"%s\"\n", msg->Boundary);
 	printf("  NAME        : \"%s\"\n", msg->PartName);
@@ -566,4 +582,64 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	count++;
 	}
     return -1;
+    }
+
+int
+libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end)
+    {
+    pLxSession lex;
+    XString xsbuf;
+    pMimeHeader l_msg;
+    int flag=1, alloc, toktype, count;
+    int l_pos=0;
+    char bound[80], bound_end[82];
+
+    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
+    if (!lex)
+	{
+	return -1;
+	}
+    mlxSetOffset(lex, msg->MsgSeekStart);
+    count = msg->MsgSeekStart;
+
+    snprintf(bound, 79, "--%s", msg->Boundary);
+    snprintf(bound_end, 81, "--%s--", msg->Boundary);
+    bound[79] = 0;
+    bound_end[81] = 0;
+
+    while (flag)
+	{
+	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	toktype = mlxNextToken(lex);
+	if (toktype == MLX_TOK_ERROR)
+	    {
+	    flag = 0;
+	    }
+	else
+	    {
+	    alloc = 0;
+	    xsInit(&xsbuf);
+	    xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
+	    xsRTrim(&xsbuf);
+	    count = mlxGetOffset(lex);
+	    /** Check if this is the start of a boundary **/
+	    if (!strncmp(xsbuf.String, bound, strlen(bound)))
+		{
+		if (l_pos != 0)
+		    {
+		    l_msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
+		    libmime_ParseHeader(obj, l_msg, l_pos+strlen(bound)+2, count-2);
+		    xaAddItem(&msg->Parts, l_msg);
+		    }
+		l_pos = count;
+		/** Check if it is the boundary end **/
+		if (!strncmp(xsbuf.String, bound_end, strlen(bound_end)))
+		    {
+		    flag = 0;
+		    }
+		}
+	    }
+	}
+
+    return 0;
     }

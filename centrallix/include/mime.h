@@ -67,12 +67,12 @@ typedef struct _MM
     pEmailAddr	Sender;
     XArray	Parts;
     }
-    MimeMsg, *pMimeMsg;
+    MimeHeader, *pMimeHeader;
 
 /*** Possible Main Content Types ***/
 extern char* TypeStrings[];
 
-#define MIME_DEBUG            0
+#define MIME_DEBUG            1
 #define MIME_DEBUG_ADDR       0
 
 #define MIME_ST_NORM          0
@@ -96,18 +96,19 @@ extern char* TypeStrings[];
 
 
 /** mime_parse.c **/
-int libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end);
+int libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end);
 int libmime_ParseHeaderElement(char *buf, char *element);
-int libmime_LoadExtendedHeader(pMimeMsg msg, pXString xsbuf, pLxSession lex);
-int libmime_SetMIMEVersion(pMimeMsg msg, char *buf);
-int libmime_SetDate(pMimeMsg msg, char *buf);
-int libmime_SetSubject(pMimeMsg msg, char *buf);
-int libmime_SetFrom(pMimeMsg msg, char *buf);
-int libmime_SetCc(pMimeMsg msg, char *buf);
-int libmime_SetTo(pMimeMsg msg, char *buf);
-int libmime_SetTransferEncoding(pMimeMsg msg, char *buf);
-int libmime_SetContentDisp(pMimeMsg msg, char *buf);
-int libmime_SetContentType(pMimeMsg msg, char *buf);
+int libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end);
+int libmime_LoadExtendedHeader(pMimeHeader msg, pXString xsbuf, pLxSession lex);
+int libmime_SetMIMEVersion(pMimeHeader msg, char *buf);
+int libmime_SetDate(pMimeHeader msg, char *buf);
+int libmime_SetSubject(pMimeHeader msg, char *buf);
+int libmime_SetFrom(pMimeHeader msg, char *buf);
+int libmime_SetCc(pMimeHeader msg, char *buf);
+int libmime_SetTo(pMimeHeader msg, char *buf);
+int libmime_SetTransferEncoding(pMimeHeader msg, char *buf);
+int libmime_SetContentDisp(pMimeHeader msg, char *buf);
+int libmime_SetContentType(pMimeHeader msg, char *buf);
 
 /** mime_address.c **/
 int libmime_ParseAddressList(char *buf, pXArray xary);
@@ -116,11 +117,18 @@ int libmime_ParseAddress(char *buf, pEmailAddr addr);
 int libmime_ParseAddressElements(char *buf, pEmailAddr addr);
 
 /** mime_util.c **/
-void libmime_Cleanup(pMimeMsg msg);
+void libmime_Cleanup(pMimeHeader msg);
 int libmime_StringLTrim(char *str);
 int libmime_StringRTrim(char *str);
 int libmime_StringTrim(char *str);
 int libmime_StringFirstCaseCmp(char *c1, char *c2);
 int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
+
+/** mime_encode.c **/
+int libmime_EncodeQP();
+int libmime_DecodeQP();
+int libmime_EncodeBase64();
+int libmime_DecodeBase64();
+
 #endif /** _MIME_H **/
