@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.14 2003/11/18 06:01:11 gbeeley Exp $
+    $Id: ht_render.h,v 1.15 2003/11/22 16:34:37 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.15  2003/11/22 16:34:37  jorupp
+     * add definitions for htrAddStyleSheetItem*
+     * add GCC __attribute__ definition to _va functions (adds warning about mismatched format type options)
+    	note: I've also added a check that disables the attributes if you're not using GCC.  I can't
+    	test this, as all I have for a compiler is GCC.  Let me know if it doesn't work.
+
     Revision 1.14  2003/11/18 06:01:11  gbeeley
     - adding utility method htrGetBackground to simplify bgcolor/image
 
@@ -303,22 +309,28 @@ typedef struct
 #define HTR_LAYER_F_DEFAULT	0	/* no flags */
 #define HTR_LAYER_F_DYNAMIC	1	/* layer will be reloaded from server */
 
+#ifndef __GNUC__
+#define __attribute__(a) /* hide function attributes from non-GCC compilers */
+#endif
 
 /** Rendering engine functions **/
 int htrAddHeaderItem(pHtSession s, char* html_text);
-int htrAddHeaderItem_va(pHtSession s, char* fmt, ... );
+int htrAddHeaderItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
 int htrAddBodyItem(pHtSession s, char* html_text);
-int htrAddBodyItem_va(pHtSession s, char* fmt, ... );
+int htrAddBodyItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
 int htrAddBodyParam(pHtSession s, char* html_param);
-int htrAddBodyParam_va(pHtSession s, char* fmt, ... );
+int htrAddBodyParam_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
 int htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code);
 int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
 int htrAddScriptInit(pHtSession s, char* init_text);
-int htrAddScriptInit_va(pHtSession s, char* fmt, ... );
+int htrAddScriptInit_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
 int htrAddScriptCleanup(pHtSession s, char* init_text);
-int htrAddScriptCleanup_va(pHtSession s, char* fmt, ... );
+int htrAddScriptCleanup_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
 int htrAddScriptInclude(pHtSession s, char* filename, int flags);
+int htrAddStylesheetItem(pHtSession s, char* html_text);
+int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
+
 int htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp);
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);
