@@ -1655,14 +1655,29 @@ myTabControl &quot;widget/tab&quot;
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
-<td class="name">background</td>
-<td class="type">string</td>
-<td class="description">A background image for the table. This &quot;shows through&quot; between table cells.</td>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the table. Default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the table. Default is 0.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the table.The height is determined dynamically.</td>
 </tr>
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, to be used between table cells and rows.If neither transparent.</td>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the table. This &quot;shows through&quot; between table cells.</td>
 </tr>
 <tr>
 <td class="name">hdr_background</td>
@@ -1673,21 +1688,6 @@ myTabControl &quot;widget/tab&quot;
 <td class="name">hdr_bgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, for the header row cells.</td>
-</tr>
-<tr>
-<td class="name">inner_border</td>
-<td class="type">integer</td>
-<td class="description">width of the inner spacing between cells in a table. Default0.</td>
-</tr>
-<tr>
-<td class="name">inner_padding</td>
-<td class="type">integer</td>
-<td class="description">margins within each cell, in pixels.  Default is 0 pixels.</td>
-</tr>
-<tr>
-<td class="name">outer_border</td>
-<td class="type">integer</td>
-<td class="description">width of the outer spacing around the outside of the table, in pixels.  Default0.</td>
 </tr>
 <tr>
 <td class="name">row_background1</td>
@@ -1710,14 +1710,14 @@ myTabControl &quot;widget/tab&quot;
 <td class="description">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate &quot;row_bgcolor2&quot;.</td>
 </tr>
 <tr>
-<td class="name">sql</td>
-<td class="type">string</td>
-<td class="description">The SQL query to be used for obtaining the data for the table.This query's result set child widgets.</td>
+<td class="name">row_backgroundhilight</td>
+<td class="type">integer</td>
+<td class="description">the background image of the highlighted row</td>
 </tr>
 <tr>
-<td class="name">textcolor</td>
-<td class="type"> (string</td>
-<td class="description">A color, RGB or named, of the text in the normal data rows.</td>
+<td class="name">row_bgcolorhilight</td>
+<td class="type">integer</td>
+<td class="description">the background color of the hilighted row</td>
 </tr>
 <tr>
 <td class="name">titlecolor</td>
@@ -1725,79 +1725,79 @@ myTabControl &quot;widget/tab&quot;
 <td class="description">A color, RGB or named, of the text in the header row.  If unset, defaults to textcolor.</td>
 </tr>
 <tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">width, in pixels, of the table.The height is determined dynamically.</td>
-</tr>
-<tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the table. Default is 0.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the table. Default is 0.</td>
-</tr>
-<tr>
-<td class="name">windowsize</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">rowheight</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">cellhspacing</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">cellvspacing</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">dragcols</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">colsep</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">gridinemptyrows</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">followcurrent</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">mode</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">row_backgroundhilight</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">row_bgcolorhilight</td>
-<td class="type">integer</td>
-<td class="description"></td>
+<td class="name">textcolor</td>
+<td class="type"> (string</td>
+<td class="description">A color, RGB or named, of the text in the normal data rows.</td>
 </tr>
 <tr>
 <td class="name">textcolorhilight</td>
 <td class="type">integer</td>
-<td class="description"></td>
+<td class="description">the text color of the hilighted row</td>
+</tr>
+<tr>
+<td class="name">inner_border</td>
+<td class="type">integer</td>
+<td class="description">width of the inner spacing between cells in a table. Default0.</td>
+</tr>
+<tr>
+<td class="name">inner_padding</td>
+<td class="type">integer</td>
+<td class="description">margins within each cell, in pixels.  Default is 0 pixels.</td>
+</tr>
+<tr>
+<td class="name">outer_border</td>
+<td class="type">integer</td>
+<td class="description">width of the outer spacing around the outside of the table, in pixels.  Default0.</td>
+</tr>
+<tr>
+<td class="name">rowheight</td>
+<td class="type">integer</td>
+<td class="description">The outside height of a row </td>
+</tr>
+<tr>
+<td class="name">cellhspacing</td>
+<td class="type">integer</td>
+<td class="description">The distance each cell is from the outside border of the row </td>
+</tr>
+<tr>
+<td class="name">cellvspacing</td>
+<td class="type">integer</td>
+<td class="description">the distance each cell is from the 'border' of the cell (each cell is 2*cellvspacing from it's neighbors) </td>
+</tr>
+<tr>
+<td class="name">windowsize</td>
+<td class="type">integer</td>
+<td class="description">maximum number of data rows to display at one time (windowsize of 5 = 1 title row + 5 data rows = 6 total rows)</td>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The SQL query to be used for obtaining the data for the table.This query's result set child widgets.</td>
+</tr>
+<tr>
+<td class="name">dragcols</td>
+<td class="type">0/1</td>
+<td class="description">boolean 0/1 -- indicates whether to enable dragable columns </td>
+</tr>
+<tr>
+<td class="name">colsep</td>
+<td class="type">integer</td>
+<td class="description">size of draggable column border/2 (probably should be renamed.</td>
+</tr>
+<tr>
+<td class="name">gridinemptyrows</td>
+<td class="type">0/1</td>
+<td class="description">boolean 0/1 -- if there are empty rows at the bottom (ie, windowsize=5, 2 rows in recordset), should the grid be there or not</td>
+</tr>
+<tr>
+<td class="name">followcurrent</td>
+<td class="type">0/1</td>
+<td class="description">boolean 0/1 -- should the table ensure that when the current osrc record changes, that it is visible in the dynamic table window? </td>
+</tr>
+<tr>
+<td class="name">mode</td>
+<td class="type">integer</td>
+<td class="description">0=static, anything else=dynamic</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>

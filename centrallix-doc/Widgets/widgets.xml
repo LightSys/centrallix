@@ -877,35 +877,35 @@ myTabControl "widget/tab"
 			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 		</usage>
 		<properties>
-			<property name="background" type="string">A background image for the table. This "shows through" between table cells.</property>
+			<property name="x" type="integer">x-coordinate of the upper left corner of the table. Default is 0.</property>
+			<property name="y" type="integer">y-coordinate of the upper left corner of the table. Default is 0.</property>
+			<property name="width" type="integer">width, in pixels, of the table.The height is determined dynamically.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, to be used between table cells and rows.If neither transparent.</property>
+			<property name="background" type="string">A background image for the table. This "shows through" between table cells.</property>
 			<property name="hdr_background" type="string">A background image for the header row cells.</property>
 			<property name="hdr_bgcolor" type="string">A color, RGB or named, for the header row cells.</property>
-			<property name="inner_border" type="integer">width of the inner spacing between cells in a table. Default0.</property>
-			<property name="inner_padding" type="integer">margins within each cell, in pixels.  Default is 0 pixels.</property>
-			<property name="outer_border" type="integer">width of the outer spacing around the outside of the table, in pixels.  Default0.</property>
 			<property name="row_background1" type="string">A background image for the table row cells.</property>
 			<property name="row_bgcolor1" type="string">A color, RGB or named, for the table row cells.</property>
 			<property name="row_background2" type="string">A background image for the table row cells.  If this is specified, rows will alternate in "row_background2".</property>
 			<property name="row_bgcolor2" type="string">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate "row_bgcolor2".</property>
-			<property name="sql" type="string">The SQL query to be used for obtaining the data for the table.This query's result set child widgets.</property>
-			<property name="textcolor" type=" (string">A color, RGB or named, of the text in the normal data rows.</property>
+			<property name="row_backgroundhilight" type="integer">the background image of the highlighted row</property>
+			<property name="row_bgcolorhilight" type="integer">the background color of the hilighted row</property>
 			<property name="titlecolor" type=" (string">A color, RGB or named, of the text in the header row.  If unset, defaults to textcolor.</property>
-			<property name="width" type="integer">width, in pixels, of the table.The height is determined dynamically.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the table. Default is 0.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the table. Default is 0.</property>
-			<property name="windowsize" type="integer"></property>
-			<property name="rowheight" type="integer"></property>
-			<property name="cellhspacing" type="integer"></property>
-			<property name="cellvspacing" type="integer"></property>
-			<property name="dragcols" type="integer"></property>
-			<property name="colsep" type="integer"></property>
-			<property name="gridinemptyrows" type="integer"></property>
-			<property name="followcurrent" type="integer"></property>
-			<property name="mode" type="integer"></property>
-			<property name="row_backgroundhilight" type="integer"></property>
-			<property name="row_bgcolorhilight" type="integer"></property>
-			<property name="textcolorhilight" type="integer"></property>
+			<property name="textcolor" type=" (string">A color, RGB or named, of the text in the normal data rows.</property>
+			<property name="textcolorhilight" type="integer">the text color of the hilighted row</property>
+			<property name="inner_border" type="integer">width of the inner spacing between cells in a table. Default0.</property>
+			<property name="inner_padding" type="integer">margins within each cell, in pixels.  Default is 0 pixels.</property>
+			<property name="outer_border" type="integer">width of the outer spacing around the outside of the table, in pixels.  Default0.</property>
+			<property name="rowheight" type="integer">The outside height of a row </property>
+			<property name="cellhspacing" type="integer">The distance each cell is from the outside border of the row </property>
+			<property name="cellvspacing" type="integer">the distance each cell is from the 'border' of the cell (each cell is 2*cellvspacing from it's neighbors) </property>
+			<property name="windowsize" type="integer">maximum number of data rows to display at one time (windowsize of 5 = 1 title row + 5 data rows = 6 total rows)</property>
+			<property name="sql" type="string">The SQL query to be used for obtaining the data for the table.This query's result set child widgets.</property>
+			<property name="dragcols" type="0/1">boolean 0/1 -- indicates whether to enable dragable columns </property>
+			<property name="colsep" type="integer">size of draggable column border/2 (probably should be renamed.</property>
+			<property name="gridinemptyrows" type="0/1">boolean 0/1 -- if there are empty rows at the bottom (ie, windowsize=5, 2 rows in recordset), should the grid be there or not</property>
+			<property name="followcurrent" type="0/1">boolean 0/1 -- should the table ensure that when the current osrc record changes, that it is visible in the dynamic table window? </property>
+			<property name="mode" type="integer">0=static, anything else=dynamic</property>
 		</properties>
 		<children>
 			<child type="any">
