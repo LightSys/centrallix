@@ -94,6 +94,10 @@ dnl Shell osdriver support.
 AH_TEMPLATE([USE_SHELL], [Define for Shell osdriver support])
 CENTRALLIX_CHECK_SHELL_OS
 
+dnl BerkeleyDB osdriver support.
+AH_TEMPLATE([USE_BERK], [Define for BerkeleyDB osdriver support])
+CENTRALLIX_CHECK_BERK_OS
+
 dnl NFS netdriver support.
 AH_TEMPLATE([USE_NETNFS], [Define for NFS netdriver support])
 CENTRALLIX_CHECK_NET_NFS

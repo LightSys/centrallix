@@ -441,6 +441,33 @@ AC_DEFUN(CENTRALLIX_CHECK_SHELL_OS,
     ]
 )
 
+dnl Test for the BerkeleyDB os driver.
+AC_DEFUN(CENTRALLIX_CHECK_BERK_OS,
+    [
+	AC_MSG_CHECKING(if BerkeleyDB osdriver support is desired)
+
+	AC_ARG_ENABLE(berkeleydb-os,
+	    AC_HELP_STRING([--enable-berkeleydb-os],
+		[enable berkeleydb osdriver support]
+	    ),
+	    WITH_BERK="$enableval", 
+	    WITH_BERK="no"
+	)
+ 
+	if test "$WITH_BERK" = "yes"; then
+	    AC_DEFINE(USE_BERK)
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_berk.so"
+	    else
+		OBJDRIVERS="$OBJDRIVERS objdrv_berk.o"
+	    fi
+	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(berk, berk)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+    ]
+)
 
 dnl Test for the XML os driver.
 AC_DEFUN(CENTRALLIX_CHECK_XML_OS,

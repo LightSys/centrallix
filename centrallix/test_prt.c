@@ -58,10 +58,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.20 2003/06/27 21:19:47 gbeeley Exp $
+    $Id: test_prt.c,v 1.21 2003/08/05 16:45:12 affert Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.21  2003/08/05 16:45:12  affert
+    Initial Berkeley DB support.
+
     Revision 1.20  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -1009,6 +1012,7 @@ start(void* v)
 	qytInitialize();
 	/*rptInitialize();*/
 	datInitialize();
+	/*berkInitialize();*/
 	/*uxpInitialize();*/
 	uxuInitialize();
 	audInitialize();

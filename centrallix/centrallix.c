@@ -52,10 +52,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.22 2003/07/15 01:57:51 gbeeley Exp $
+    $Id: centrallix.c,v 1.23 2003/08/05 16:45:12 affert Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.23  2003/08/05 16:45:12  affert
+    Initial Berkeley DB support.
+
     Revision 1.22  2003/07/15 01:57:51  gbeeley
     Adding an independent DHTML scrollbar widget that will be used to
     control scrolling/etc on other widgets.
@@ -433,6 +436,7 @@ cxInitialize(void* v)
 	rptInitialize();			/* report writer driver */
 	uxpInitialize();			/* UNIX printer access driver */
 	datInitialize();			/* flat ascii datafile (CSV, etc) */
+	/*berkInitialize();*/			/* Berkeley Database support */
 	uxuInitialize();			/* UNIX users list driver */
 	audInitialize();			/* Audio file player driver */
 

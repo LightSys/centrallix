@@ -385,6 +385,9 @@ osdrivers/objdrv_xml.so: osdrivers/objdrv_xml.c
 osdrivers/objdrv_gzip.so: osdrivers/objdrv_gzip.c
 	$(CC) $(CFLAGS) @GZIP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @GZIP_LIBS@ -o $@
 
+osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
+	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@
+
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 	
