@@ -58,10 +58,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_graphics.c,v 1.1 2003/03/18 04:06:25 gbeeley Exp $
+    $Id: prtmgmt_v3_graphics.c,v 1.2 2003/03/19 18:24:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_graphics.c,v $
 
     $Log: prtmgmt_v3_graphics.c,v $
+    Revision 1.2  2003/03/19 18:24:40  gbeeley
+    Added simple greyscale support via matrix dithering.
+
     Revision 1.1  2003/03/18 04:06:25  gbeeley
     Added basic image (picture/bitmap) support; only PNG images supported
     at present.  Moved image and border (rectangles) functionality into a
@@ -364,6 +367,7 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	png_set_strip_alpha(libpng_png_ptr);
 	color_type &= ~PNG_COLOR_MASK_ALPHA;
 	png_set_swap(libpng_png_ptr);
+	png_set_bgr(libpng_png_ptr);
 	png_set_packswap(libpng_png_ptr);
 	png_set_palette_to_rgb(libpng_png_ptr);
 	if (bit_depth == 8 && color_type == PNG_COLOR_TYPE_RGB) 

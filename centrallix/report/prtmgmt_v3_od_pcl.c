@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.10 2003/03/18 04:06:25 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.11 2003/03/19 18:24:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.11  2003/03/19 18:24:40  gbeeley
+    Added simple greyscale support via matrix dithering.
+
     Revision 1.10  2003/03/18 04:06:25  gbeeley
     Added basic image (picture/bitmap) support; only PNG images supported
     at present.  Moved image and border (rectangles) functionality into a
@@ -134,8 +137,25 @@
  ***/
 #define PRT_PCLOD_STATICCOLOR
 
+/*** dither table; make it *very* simple for now ***/
+/*** increasing the table size to maybe 16x16 is probably ideal ***/
+#define PRT_PCLOD_DITHERROWS	3
+#define PRT_PCLOD_DITHERCOLS	3
+#define PRT_PCLOD_DITHERTOTAL	18
+/*unsigned char prt_pclod_dithertable[PRT_PCLOD_DITHERROWS][PRT_PCLOD_DITHERCOLS] =
+    {
+	{1, 7},
+	{5, 3},
+    };*/
+unsigned char prt_pclod_dithertable[PRT_PCLOD_DITHERROWS][PRT_PCLOD_DITHERCOLS] =
+    {
+	{1,   11,  7  },
+	{13,  3,   17 },
+	{9,   15,  5  },
+    };
+
 /*** our list of resolutions ***/
-PrtResolution prt_pcl_resolutions[] =
+PrtResolution prt_pclod_resolutions[] =
     {
     {75,75,PRT_COLOR_T_FULL},
     {100,100,PRT_COLOR_T_FULL},
@@ -225,10 +245,10 @@ prt_pclod_Open(pPrtSession s)
 	xaInit(&(context->SupportedResolutions), 16);
 
 	/** Right now, just support 75, 100, 150, and 300 dpi **/
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pcl_resolutions+0));
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pcl_resolutions+1));
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pcl_resolutions+2));
-	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pcl_resolutions+3));
+	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pclod_resolutions+0));
+	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pclod_resolutions+1));
+	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pclod_resolutions+2));
+	xaAddItem(&(context->SupportedResolutions), (void*)(prt_pclod_resolutions+3));
 
 	/** Setup base text style **/
 	context->SelectedStyle.Attr = 0;
@@ -559,44 +579,86 @@ prt_pclod_WriteRasterData(void* context_v, pPrtImage img, double width, double h
     unsigned char* rowbuf;
     unsigned char* colptr;
     unsigned char* origcolptr;
-    int rows,cols,y,x,b,color;
+    int rows,cols,y,x,b,color,p,planes;
     double actual_height;
+    int planeshift[4] = {0, 24, 16, 8};
+    int rowlen;
 
 	/** How many raster rows/cols are we looking at here? **/
 	actual_height = (context->CurVPos + height <= next_y)?height:(next_y - context->CurVPos);
 	rows = actual_height/6.0*(context->SelectedResolution->Yres);
 	cols = width/10.0*(context->SelectedResolution->Xres);
+	/*if (context->SelectedResolution->Colors == PRT_COLOR_T_FULL)
+	    planes = 4;
+	else
+	    planes = 1;*/
+	/** grb - disabling color printing for now because I haven't gotten it right and
+	 ** am lacking in documentation
+	 **/
+	planes = 1;
 
 	/** Build and print the raster graphics command header **/
-	snprintf(pclbuf,sizeof(pclbuf),"\33&f0S\33*r1U\33*r0F\33*t%dR\33*r%dT\33*r%dS\33*r1A",
-		context->SelectedResolution->Yres, rows,cols);
+	snprintf(pclbuf,sizeof(pclbuf),"\33&f0S\33*r%dU\33*r0F\33*t%dR\33*r%dT\33*r%dS",
+		(planes == 4)?-4:1, context->SelectedResolution->Yres, rows,cols);
 	prt_pclod_Output(context, pclbuf, -1);
 
-	/** Send each row **/
-	rowbuf = (unsigned char*)nmSysMalloc(20 + (cols+7)/8);
-	sprintf(rowbuf, "\33*b%dW", (cols+7)/8);
-	colptr = strchr(rowbuf,'\0');
-	for(y=0;y<rows;y++)
+	/** Build the configure raster data command **/
+	if (planes > 1)
 	    {
-	    for(x=0;x<(cols+7)/8;x++)
+	    snprintf(pclbuf,sizeof(pclbuf), "\33*g26W%c%c" "%c%c%c%c%c%c" "%c%c%c%c%c%c" "%c%c%c%c%c%c" "%c%c%c%c%c%c",
+		2 , planes,
+		context->SelectedResolution->Xres>>8, context->SelectedResolution->Xres&0xFF,
+		    context->SelectedResolution->Yres>>8, context->SelectedResolution->Yres&0xFF, 0, 2,
+		context->SelectedResolution->Xres>>8, context->SelectedResolution->Xres&0xFF,
+		    context->SelectedResolution->Yres>>8, context->SelectedResolution->Yres&0xFF, 0, 2,
+		context->SelectedResolution->Xres>>8, context->SelectedResolution->Xres&0xFF,
+		    context->SelectedResolution->Yres>>8, context->SelectedResolution->Yres&0xFF, 0, 2,
+		context->SelectedResolution->Xres>>8, context->SelectedResolution->Xres&0xFF,
+		    context->SelectedResolution->Yres>>8, context->SelectedResolution->Yres&0xFF, 0, 2);
+	    prt_pclod_Output(context, pclbuf, 32);
+	    }
+	prt_pclod_Output(context, "\33*r1A", 5);
+
+	/** Send each row **/
+	rowlen = ((cols+7)/8);
+	rowbuf = (unsigned char*)nmSysMalloc(20 + rowlen);
+	sprintf(rowbuf, "\33*b%dW", rowlen);
+	colptr = strchr(rowbuf,'\0');
+	for(p=0;p<planes;p++)
+	    {
+	    for(y=0;y<rows;y++)
 		{
-		colptr[x] = '\0';
-		for(b=0;b<8;b++)
+		for(x=0;x<rowlen;x++)
 		    {
-		    color = prt_internal_GetPixel(img, ((double)(x*8+b))/cols, (((double)y)/rows)*((actual_height/height))*(1.0-img->Hdr.YOffset) + img->Hdr.YOffset);
-		    if ((color&0xFF) + ((color>>8)&0xFF) + ((color>>16)&0xFF) < 0x180)
+		    colptr[x] = '\0';
+		    for(b=0;b<8;b++)
 			{
-			colptr[x] |= ((unsigned int)0x80)>>b;
-			/*printf("*");*/
-			}
-		    else
-			{
-			/*printf(" ");*/
+			color = prt_internal_GetPixel(img, ((double)(x*8+b))/cols, (((double)y)/rows)*((actual_height/height))*(1.0-img->Hdr.YOffset) + img->Hdr.YOffset);
+			if (planes == 1)
+			    {
+			    color = (color&0xFF) + ((color>>8)&0xFF) + ((color>>16)&0xFF);
+			    color = (PRT_PCLOD_DITHERTOTAL-1) - (color / (0x300 / PRT_PCLOD_DITHERTOTAL));
+			    }
+			else
+			    {
+			    color = prt_pclod_RGBtoCMYK(color);
+			    color = (color>>(planeshift[p]))&0xFF;
+			    color = (color / (0x100 / PRT_PCLOD_DITHERTOTAL));
+			    }
+			if (color >= prt_pclod_dithertable[y%PRT_PCLOD_DITHERROWS][(x*8+b)%PRT_PCLOD_DITHERCOLS])
+			    {
+			    colptr[x] |= ((unsigned int)0x80)>>b;
+			    /*printf("*");*/
+			    }
+			else
+			    {
+			    /*printf(" ");*/
+			    }
 			}
 		    }
+		/*printf("\n");*/
+		prt_pclod_Output(context, rowbuf, (colptr-rowbuf) + rowlen);
 		}
-	    /*printf("\n");*/
-	    prt_pclod_Output(context, rowbuf, colptr-rowbuf + (cols+7)/8);
 	    }
 	img->Hdr.YOffset += (1.0 - img->Hdr.YOffset)*(actual_height/height);
 	nmSysFree(rowbuf);
