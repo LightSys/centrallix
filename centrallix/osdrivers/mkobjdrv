@@ -1,0 +1,21 @@
+gcc -pg -I../include -g  \
+	-INONE/include \
+	-DBUILD=1 \
+	-DYEARS=\"1998-2002\" \
+	-DVERSION=\"0.0.1\" \
+	-DNHT_ENABLE \
+	-DDBMAGIC \
+	-DNM_USE_SYSMALLOC \
+	-DHAS_IOPUTC \
+	-DSTABILITY=\"DEVELOPMENT\" \
+	-DHAVE_CONFIG_H \
+	-Wall \
+	-Wno-implicit-function-declaration \
+	-g \
+	-DMODULE \
+	-Wno-unused \
+	-shared \
+	-fPIC \
+	$1
+
+#echo mv a.out `cut -d"." -f1 "$1"`.so
