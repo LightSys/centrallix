@@ -52,10 +52,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.20 2003/07/09 18:13:20 gbeeley Exp $
+    $Id: centrallix.c,v 1.21 2003/07/12 04:14:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.21  2003/07/12 04:14:34  gbeeley
+    Initial rough beginnings of a calendar widget.
+
     Revision 1.20  2003/07/09 18:13:20  gbeeley
     Further polishing/work on the table output in the report writer.  Re-
     enabled uxprint OSD once its dependence on prtmgmt was removed.
@@ -508,6 +511,7 @@ cxHtInit()
 	htdtInitialize();			/* datetime htdrv module */
 	httxInitialize();			/* textarea htdrv module */
 	htclInitialize();			/* clock htdrv module */
+	htcaInitialize();			/* calendar module */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
