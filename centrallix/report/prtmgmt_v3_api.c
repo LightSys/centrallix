@@ -49,10 +49,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.3 2002/10/18 22:01:38 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.4 2002/10/21 22:55:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.4  2002/10/21 22:55:11  gbeeley
+    Added font/size test in test_prt to test the alignment of different fonts
+    and sizes on one line or on separate lines.  Fixed lots of bugs in the
+    font baseline alignment logic.  Added prt_internal_Dump() to debug the
+    document's structure.  Fixed a YSort bug where it was not sorting the
+    YPrev/YNext pointers but the Prev/Next ones instead, and had a loop
+    condition problem causing infinite looping as well.  Fixed some problems
+    when adding an empty obj to a stream of objects and then modifying
+    attributes which would change the object's geometry.
+
+    There are still some glitches in the line spacing when different font
+    sizes are used, however.
+
     Revision 1.3  2002/10/18 22:01:38  gbeeley
     Printing of text into an area embedded within a page now works.  Two
     testing options added to test_prt: text and printfile.  Use the "output"
@@ -225,11 +238,18 @@ prtSetTextStyle(int handle_id, pPrtTextStyle style)
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
 	/** Add an empty string object to contain the attr change. **/
-	set_obj = prt_internal_AddEmptyObj(obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    set_obj = prt_internal_CreateEmptyObj(obj);
+	else
+	    set_obj = prt_internal_AddEmptyObj(obj);
 
 	/** Set the style. **/
 	memcpy(&(set_obj->TextStyle), style, sizeof(PrtTextStyle));
 	set_obj->LineHeight = style->FontSize/12.0;
+	set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    obj->LayoutMgr->AddObject(obj,set_obj);
 
     return 0;
     }
@@ -319,10 +339,19 @@ prtSetFont(int handle_id, char* fontname)
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
 	/** Add an empty string object to contain the attr change. **/
-	set_obj = prt_internal_AddEmptyObj(obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    set_obj = prt_internal_CreateEmptyObj(obj);
+	else
+	    set_obj = prt_internal_AddEmptyObj(obj);
+
+	/** Set the font id, and recalc the height/baseline **/
 	newid = prtLookupFont(fontname);
 	if (newid < 0) return -1;
 	set_obj->TextStyle.FontID = newid; 
+	set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    obj->LayoutMgr->AddObject(obj,set_obj);
 
     return 0;
     }
@@ -367,9 +396,18 @@ prtSetFontSize(int handle_id, int fontsize)
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
 	/** Add an empty string object to contain the attr change. **/
-	set_obj = prt_internal_AddEmptyObj(obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    set_obj = prt_internal_CreateEmptyObj(obj);
+	else
+	    set_obj = prt_internal_AddEmptyObj(obj);
+
+	/** Set the size and recalc the height/baseline **/
 	set_obj->TextStyle.FontSize = fontsize;
 	set_obj->LineHeight = fontsize/12.0;
+	set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    obj->LayoutMgr->AddObject(obj,set_obj);
 
     return 0;
     }

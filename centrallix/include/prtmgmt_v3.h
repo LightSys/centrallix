@@ -35,10 +35,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.3 2002/10/18 22:01:38 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.4 2002/10/21 22:55:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.4  2002/10/21 22:55:11  gbeeley
+    Added font/size test in test_prt to test the alignment of different fonts
+    and sizes on one line or on separate lines.  Fixed lots of bugs in the
+    font baseline alignment logic.  Added prt_internal_Dump() to debug the
+    document's structure.  Fixed a YSort bug where it was not sorting the
+    YPrev/YNext pointers but the Prev/Next ones instead, and had a loop
+    condition problem causing infinite looping as well.  Fixed some problems
+    when adding an empty obj to a stream of objects and then modifying
+    attributes which would change the object's geometry.
+
+    There are still some glitches in the line spacing when different font
+    sizes are used, however.
+
     Revision 1.3  2002/10/18 22:01:38  gbeeley
     Printing of text into an area embedded within a page now works.  Two
     testing options added to test_prt: text and printfile.  Use the "output"
@@ -362,6 +375,8 @@ int prt_internal_FreeTree(pPrtObjStream obj);
 int prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page);
 pPrtObjStream prt_internal_GetPage(pPrtObjStream obj);
 pPrtObjStream prt_internal_AddEmptyObj(pPrtObjStream container);
+pPrtObjStream prt_internal_CreateEmptyObj(pPrtObjStream container);
+int prt_internal_Dump(pPrtObjStream obj);
 
 /** Strict-formatter to output-driver interfacing **/
 pPrtOutputDriver prt_strictfm_AllocDriver();

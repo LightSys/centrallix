@@ -58,10 +58,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.5 2002/10/21 20:22:11 gbeeley Exp $
+    $Id: test_prt.c,v 1.6 2002/10/21 22:55:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.6  2002/10/21 22:55:11  gbeeley
+    Added font/size test in test_prt to test the alignment of different fonts
+    and sizes on one line or on separate lines.  Fixed lots of bugs in the
+    font baseline alignment logic.  Added prt_internal_Dump() to debug the
+    document's structure.  Fixed a YSort bug where it was not sorting the
+    YPrev/YNext pointers but the Prev/Next ones instead, and had a loop
+    condition problem causing infinite looping as well.  Fixed some problems
+    when adding an empty obj to a stream of objects and then modifying
+    attributes which would change the object's geometry.
+
+    There are still some glitches in the line spacing when different font
+    sizes are used, however.
+
     Revision 1.5  2002/10/21 20:22:11  gbeeley
     Text foreground color attribute now basically operational.  Range of
     colors is limited however.  Tested on PCL output driver, on hp870c
@@ -159,6 +172,8 @@ start(void* v)
     void* outputarg;
     int t;
     int r,g,b;
+    int i,j;
+    char* fontnames[] = {"courier","helvetica","times"};
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -429,6 +444,52 @@ start(void* v)
 		printf("colors: prtEndObject(area) returned %d\n", rval);
 		rval = prtCloseSession(prtsession);
 		printf("colors: prtCloseSession returned %d\n", rval);
+		}
+	    else if (!strcmp(cmdname,"fonts"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: fonts <mime type> 'text'\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		printf("fonts: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (!prtsession)
+		    {
+		    continue;
+		    }
+		pagehandle = prtGetPageRef(prtsession);
+		printf("fonts: prtGetPageRef returned page handle %d\n", pagehandle);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		printf("fonts: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+		
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: fonts <mime type> 'text'\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+
+		/** loop through the three fonts, and through five sizes **/
+		for(i=0;i<=2;i++) /* fonts 0, 1, and 2 */
+		    {
+		    rval = prtSetFont(areahandle, fontnames[i]);
+		    printf("fonts: prtSetFont returned %d\n", rval);
+		    for(j=8; j<=16; j+=2) /* pt sizes 8, 10, 12, 14, and 16 */
+			{
+			rval = prtSetFontSize(areahandle, j);
+			printf("fonts: prtSetFontSize returned %d\n", rval);
+			rval = prtWriteString(areahandle, ptr);
+			printf("fonts: prtWriteString returned %d\n", rval);
+			}
+		    }
+		rval = prtEndObject(areahandle);
+		printf("fonts: prtEndObject(area) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("fonts: prtCloseSession returned %d\n", rval);
 		}
 	    else
 		{

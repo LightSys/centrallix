@@ -47,10 +47,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.4 2002/10/18 22:01:38 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.5 2002/10/21 22:55:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.5  2002/10/21 22:55:11  gbeeley
+    Added font/size test in test_prt to test the alignment of different fonts
+    and sizes on one line or on separate lines.  Fixed lots of bugs in the
+    font baseline alignment logic.  Added prt_internal_Dump() to debug the
+    document's structure.  Fixed a YSort bug where it was not sorting the
+    YPrev/YNext pointers but the Prev/Next ones instead, and had a loop
+    condition problem causing infinite looping as well.  Fixed some problems
+    when adding an empty obj to a stream of objects and then modifying
+    attributes which would change the object's geometry.
+
+    There are still some glitches in the line spacing when different font
+    sizes are used, however.
+
     Revision 1.4  2002/10/18 22:01:38  gbeeley
     Printing of text into an area embedded within a page now works.  Two
     testing options added to test_prt: text and printfile.  Use the "output"
@@ -295,8 +308,8 @@ prt_internal_FreeObj(pPrtObjStream obj)
 int
 prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream* last_obj)
     {
-    pPrtObjStream notquite_first_obj;
-    pPrtObjStream notquite_last_obj;
+    pPrtObjStream subtree_first_obj;
+    pPrtObjStream subtree_last_obj;
     pPrtObjStream objptr;
 
 	/** Set first obj to the obj itself for now. **/
@@ -319,12 +332,12 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
 	for(objptr=obj->ContentHead;objptr;objptr=objptr->Next)
 	    {
 	    /** Do the subtree **/
-	    prt_internal_YSetup_r(objptr, &notquite_first_obj, &notquite_last_obj);
+	    prt_internal_YSetup_r(objptr, &subtree_first_obj, &subtree_last_obj);
 
 	    /** Add the subtree to the list. **/
-	    (*last_obj)->YNext = notquite_first_obj;
+	    (*last_obj)->YNext = subtree_first_obj;
 	    (*last_obj)->YNext->YPrev = *last_obj;
-	    *last_obj = notquite_last_obj;
+	    *last_obj = subtree_last_obj;
 	    }
 	(*last_obj)->YNext = NULL;
 	(*first_obj)->YPrev = NULL;
@@ -360,24 +373,24 @@ prt_internal_YSort(pPrtObjStream obj)
 	 **/
 	do  {
 	    did_swap = 0;
-	    for(sortptr= &first;*sortptr && (*sortptr)->Next;sortptr=&((*sortptr)->Next))
+	    for(sortptr= &first;*sortptr && (*sortptr)->YNext;sortptr=&((*sortptr)->YNext))
 		{
-		if ((*sortptr)->PageY > (*sortptr)->Next->PageY || (*sortptr)->PageX > (*sortptr)->Next->PageX)
+		if ((*sortptr)->PageY > (*sortptr)->YNext->PageY || ((*sortptr)->PageY == (*sortptr)->YNext->PageY && (*sortptr)->PageX > (*sortptr)->YNext->PageX))
 		    {
 		    /** Do the swap.  Tricky, but doable :) **/
 		    did_swap = 1;
 		    tmp1 = (*sortptr);
-		    tmp2 = (*sortptr)->Next;
+		    tmp2 = (*sortptr)->YNext;
 
 		    /** forward pointers **/
 		    (*sortptr) = tmp2;
-		    tmp1->Next = tmp2->Next;
-		    tmp2->Next = tmp1;
+		    tmp1->YNext = tmp2->YNext;
+		    tmp2->YNext = tmp1;
 
 		    /** Backwards pointers **/
-		    tmp2->Prev = tmp1->Prev;
-		    tmp1->Prev = tmp2;
-		    if (tmp1->Next) tmp1->Next->Prev = tmp1;
+		    tmp2->YPrev = tmp1->YPrev;
+		    tmp1->YPrev = tmp2;
+		    if (tmp1->YNext) tmp1->YNext->YPrev = tmp1;
 		    }
 		}
 	    } while(did_swap);
@@ -462,6 +475,30 @@ prt_internal_GetPage(pPrtObjStream obj)
     }
 
 
+/*** prt_internal_CreateEmptyObj() - creates an empty object but does not 
+ *** add it to the container.
+ ***/
+pPrtObjStream
+prt_internal_CreateEmptyObj(pPrtObjStream container)
+    {
+    pPrtObjStream obj,prev_obj;
+
+	if (container->ObjType->TypeID != PRT_OBJ_T_AREA)
+	    return NULL;
+
+	obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
+	obj->Session = container->Session;
+	obj->Content = nmSysStrdup("");
+	obj->Width = 0.0;
+	prev_obj = (container->ContentTail)?(container->ContentTail):container;
+	prt_internal_CopyAttrs(prev_obj, obj);
+	obj->Height = prt_internal_GetFontHeight(prev_obj);
+	obj->YBase = prt_internal_GetFontBaseline(prev_obj);
+
+    return obj;
+    }
+
+
 /*** prt_internal_AddEmptyObj() - adds an empty text string object to an area
  *** so that the font and so forth attributes can be changed.  For non-AREA
  *** containers, this routine simply returns a reference to the most appropriate
@@ -470,20 +507,13 @@ prt_internal_GetPage(pPrtObjStream obj)
 pPrtObjStream
 prt_internal_AddEmptyObj(pPrtObjStream container)
     {
-    pPrtObjStream obj,prev_obj;
+    pPrtObjStream obj;
 
 	/** Is this an area? **/
 	if (container->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    {
 	    /** yes - add an empty string object. **/
-	    obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
-	    obj->Session = container->Session;
-	    obj->Content = nmSysStrdup("");
-	    obj->Width = 0.0;
-	    prev_obj = (container->ContentTail)?(container->ContentTail):container;
-	    prt_internal_CopyAttrs(prev_obj, obj);
-	    obj->Height = prt_internal_GetFontHeight(prev_obj);
-	    obj->YBase = prt_internal_GetFontBaseline(prev_obj);
+	    obj = prt_internal_CreateEmptyObj(container);
 	    container->LayoutMgr->AddObject(container, obj);
 	    }
 	else
@@ -499,3 +529,34 @@ prt_internal_AddEmptyObj(pPrtObjStream container)
     }
 
 
+/*** prt_internal_Dump() - debugging printout of an entire subtree.
+ ***/
+int
+prt_internal_Dump_r(pPrtObjStream obj, int level)
+    {
+    pPrtObjStream subobj;
+
+	printf("%*.*s", level*4, level*4, "");
+	switch(obj->ObjType->TypeID)
+	    {
+	    case PRT_OBJ_T_PAGE: printf("PAGE: "); break;
+	    case PRT_OBJ_T_AREA: printf("AREA: "); break;
+	    case PRT_OBJ_T_STRING: printf("STRG(%s): ", obj->Content); break;
+	    }
+	printf("x=%.3g y=%.3g w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g\n",
+		obj->X, obj->Y, obj->Width, obj->Height,
+		obj->PageX, obj->PageY, obj->YBase, obj->TextStyle.FontSize,
+		obj->Y + obj->YBase);
+	for(subobj=obj->ContentHead;subobj;subobj=subobj->Next)
+	    {
+	    prt_internal_Dump_r(subobj, level+1);
+	    }
+
+    return 0;
+    }
+
+int
+prt_internal_Dump(pPrtObjStream obj)
+    {
+    return prt_internal_Dump_r(obj,0);
+    }

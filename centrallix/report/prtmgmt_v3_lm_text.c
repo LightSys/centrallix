@@ -52,10 +52,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.4 2002/10/21 20:22:12 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.5 2002/10/21 22:55:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.5  2002/10/21 22:55:11  gbeeley
+    Added font/size test in test_prt to test the alignment of different fonts
+    and sizes on one line or on separate lines.  Fixed lots of bugs in the
+    font baseline alignment logic.  Added prt_internal_Dump() to debug the
+    document's structure.  Fixed a YSort bug where it was not sorting the
+    YPrev/YNext pointers but the Prev/Next ones instead, and had a loop
+    condition problem causing infinite looping as well.  Fixed some problems
+    when adding an empty obj to a stream of objects and then modifying
+    attributes which would change the object's geometry.
+
+    There are still some glitches in the line spacing when different font
+    sizes are used, however.
+
     Revision 1.4  2002/10/21 20:22:12  gbeeley
     Text foreground color attribute now basically operational.  Range of
     colors is limited however.  Tested on PCL output driver, on hp870c
@@ -242,7 +255,7 @@ prt_textlm_UpdateLineY(pPrtObjStream starting_point, double y_offset)
 	    }
 
 	/** Now scan backwards **/
-	for(scan=starting_point; scan; scan=scan->Prev)
+	for(scan=starting_point->Prev; scan; scan=scan->Prev)
 	    {
 	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND)) 
 		{
@@ -335,6 +348,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		if (y < top && !(objptr->Flags & PRT_OBJ_F_YSET))
 		    {
 		    prt_textlm_UpdateLineY(this->ContentTail, top - y);
+		    y = top;
 		    }
 
 		/*if (objptr->Height > bottom - top)

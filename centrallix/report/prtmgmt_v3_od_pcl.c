@@ -50,10 +50,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.5 2002/10/21 20:22:12 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.6 2002/10/21 22:55:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.6  2002/10/21 22:55:11  gbeeley
+    Added font/size test in test_prt to test the alignment of different fonts
+    and sizes on one line or on separate lines.  Fixed lots of bugs in the
+    font baseline alignment logic.  Added prt_internal_Dump() to debug the
+    document's structure.  Fixed a YSort bug where it was not sorting the
+    YPrev/YNext pointers but the Prev/Next ones instead, and had a loop
+    condition problem causing infinite looping as well.  Fixed some problems
+    when adding an empty obj to a stream of objects and then modifying
+    attributes which would change the object's geometry.
+
+    There are still some glitches in the line spacing when different font
+    sizes are used, however.
+
     Revision 1.5  2002/10/21 20:22:12  gbeeley
     Text foreground color attribute now basically operational.  Range of
     colors is limited however.  Tested on PCL output driver, on hp870c
@@ -185,7 +198,10 @@ prt_pclod_Open(pPrtSession s)
 	context->SelectedStyle.FontID = PRT_FONT_T_MONOSPACE;
 	context->SelectedStyle.Color = 0x00FFFFFF; /* black */
 
-	/** Send the document init string to the output channel **/
+	/** Send the document init string to the output channel.
+	 ** This includes a reset (esc-e) and a command to select
+	 ** the RGB palette.
+	 **/
 	prt_pclod_Output(context, "\33E\33*r-3U", -1);
 
     return (void*)context;
@@ -199,7 +215,7 @@ prt_pclod_Close(void* context_v)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
 
-	/** Send document end string to the output channel **/
+	/** Send document end string to the output channel (esc-e reset) **/
 	prt_pclod_Output(context, "\33E", -1);
 
 	/** Free the context structure **/
