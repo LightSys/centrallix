@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.25 2002/07/17 15:32:17 pfinley Exp $
+    $Id: htdrv_page.c,v 1.26 2002/07/17 18:59:57 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.26  2002/07/17 18:59:57  pfinley
+    The flag parameter (f) of pg_addarea() was not being used, so I put it to use. If
+    the flag is set to 0, it will not draw the box around the area when it has mouse
+    focus; any other value and it will.
+
     Revision 1.25  2002/07/17 15:32:17  pfinley
     Changed losefocushandler so that it is only called when another layer other than itself is clicked (getfocushandler is still called).
 
@@ -354,11 +359,14 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"            {\n"
 		"            if (pg_curarea == pg_arealist[i]) break;\n"
 		"            pg_curarea = pg_arealist[i];\n"
-		"            var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
-		"            var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
-		"            var w = pg_curarea.width;\n"
-		"            var h = pg_curarea.height;\n"
-		"            pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);\n"
+		"            if (pg_curarea.flags == 0)\n"
+		"                {\n"
+		"                var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
+		"                var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
+		"                var w = pg_curarea.width;\n"
+		"                var h = pg_curarea.height;\n"
+		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);\n"
+		"                }\n"
 		"            break;\n"
 		"            }\n"
 		"        }\n" );
@@ -370,7 +378,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
-		"    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer)\n"
+		"    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer && pg_curarea.flags == 0)\n"
 		"        {\n"
 		"        pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
