@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_calendar.c,v 1.1 2003/07/12 04:14:34 gbeeley Exp $
+    $Id: htdrv_calendar.c,v 1.2 2003/11/12 22:16:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_calendar.c,v $
 
     $Log: htdrv_calendar.c,v $
+    Revision 1.2  2003/11/12 22:16:51  gbeeley
+    Trying to improve performance on calendar.
+
     Revision 1.1  2003/07/12 04:14:34  gbeeley
     Initial rough beginnings of a calendar widget.
 
@@ -95,9 +98,9 @@ htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     pObjQuery qy;
 
 	/** Verify user-agent's capabilities allow us to continue... **/
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
-	    mssError(1,"HTCA","Netscape 4.x DOM support required");
+	    mssError(1,"HTCA","Netscape 4.x DOM support or W3C HTML DOM1/CSS1 support required");
 	    return -1;
 	    }
 
@@ -178,7 +181,7 @@ htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	name[63] = 0;
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ca%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#ca%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -215,11 +218,22 @@ htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    "\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = ca_init(%s.layers.ca%dbase, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d);\n",
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s, "    %s = ca_init(%s.layers.ca%dbase, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d);\n",
 		nptr, parentname, id, 
 		main_bg, cell_bg, textcolor, dispmode,
 		eventdatefield, eventdescfield, eventnamefield, eventpriofield,
-		minpriority, w);
+		minpriority, w, h);
+	    }
+	else /** W3C **/
+	    {
+	    htrAddScriptInit_va(s, "    %s = ca_init(document.getElementById('ca%dbase'), \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d);\n",
+		nptr, id, 
+		main_bg, cell_bg, textcolor, dispmode,
+		eventdatefield, eventdescfield, eventnamefield, eventpriofield,
+		minpriority, w, h);
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"ca%dbase\"><BODY %s text='%s'>\n",id, main_bg, textcolor);
