@@ -936,7 +936,8 @@ function pg_reveal_register_listener(l)
 
     // Add us to the triggerer
     if (trigger_layer && trigger_layer.__pg_reveal) trigger_layer.__pg_reveal.push(l);
-    return trigger_layer.__pg_reveal_visible && trigger_layer.__pg_reveal_parent_visible;
+    l.__pg_reveal_listener_visible = trigger_layer.__pg_reveal_visible && trigger_layer.__pg_reveal_parent_visible;
+    return l.__pg_reveal_listener_visible;
     }
 
 // pg_reveal_register_triggerer() - when a layer/div states that it can
@@ -1117,6 +1118,8 @@ function pg_reveal_send_events(t, e)
     listener_e.triggerer = t;
     for (var i=0; i<t.__pg_reveal.length; i++)
 	{
+	if ((e == 'Reveal') == t.__pg_reveal[i].__pg_reveal_listener_visible) continue;
+	t.__pg_reveal[i].__pg_reveal_listener_visible = (e == 'Reveal');
 	pg_debug('    -- sending ' + e + ' to ' + t.__pg_reveal[i].name + '\n');
 	pg_addsched_fn(t.__pg_reveal[i], "__pg_reveal_listener_fn", new Array(listener_e));
 	}
