@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.10 2002/08/16 03:05:38 jorupp Exp $
+    $Id: mtask.c,v 1.11 2002/09/20 20:38:08 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.11  2002/09/20 20:38:08  jorupp
+     * netAcceptTCP now sets the returned pFile to non-blocking IO
+
     Revision 1.10  2002/08/16 03:05:38  jorupp
      * added checks for shadow passwords and endservent() to allow build under cygwin
        -- this has been tested under cygwin, and it works pretty well
@@ -2249,6 +2252,7 @@ netAcceptTCP(pFile net_filedesc, int flags)
     struct sockaddr_in remoteaddr;
     int addrlen;
     int v;
+    int arg;
 
     	/** Check to see if a connection is pending **/
 	addrlen = sizeof(struct sockaddr_in);
@@ -2322,6 +2326,9 @@ netAcceptTCP(pFile net_filedesc, int flags)
 	    v = 1;
 	    setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, &v, sizeof(v));
 	    }
+
+	arg=1;
+	ioctl(connected_fd->FD,FIONBIO,&arg);
 
     return connected_fd;
     }
