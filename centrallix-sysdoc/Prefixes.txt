@@ -11,6 +11,7 @@ htcb    HTDriver - Checkbox
 htconn	HTDriver - event-action connector
 hteb	HTDriver - edit box
 htex	HTDriver - exec method
+htform	HTDriver - form
 hthtml	HTDriver - HTML document pane
 htibtn	HTDriver - image button
 htmenu	HTDriver - menu
