@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.21 2002/07/20 19:44:25 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.22 2002/07/20 20:16:52 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.22  2002/07/20 20:16:52  lkehresman
+    Added ToggleVisibility event connector to the window widget
+
     Revision 1.21  2002/07/20 19:44:25  lkehresman
     Event handlers now have the variable "ly" defined as the target layer
     and it will be global for all the events.  We were finding that nearly
@@ -489,6 +492,7 @@ htwinInitialize()
 	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add the 'set visibility' action **/
+	htrAddAction(drv,"ToggleVisibility");
 	htrAddAction(drv,"SetVisibility");
 	htrAddParam(drv,"SetVisibility","IsVisible",DATA_T_INTEGER);
 	htrAddParam(drv,"SetVisibility","NoInit",DATA_T_INTEGER);

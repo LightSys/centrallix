@@ -32,6 +32,7 @@ function wn_init(l,ml,h)
 	}
     wn_bring_top(l);
     l.ActionSetVisibility = wn_setvisibility;
+    l.ActionToggleVisibility = wn_togglevisibility;
     l.RegisterOSRC = wn_register_osrc;
     return l;
     }
@@ -60,6 +61,19 @@ function wn_windowshade(layer)
 	{
 	wn_clicked = 1;
 	setTimeout("wn_unset_windowshade()", 1200);//2sec delay
+	}
+    }
+
+function wn_togglevisibility(aparam)
+    {
+    if (this.visibility == 'hide')
+	{
+	aparam.IsVisible = 1;
+	this.ActionSetVisibility(aparam);
+	}
+    else
+	{
+	this.visibility = 'hide';
 	}
     }
 
