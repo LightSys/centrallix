@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.18 2002/07/11 20:08:00 lkehresman Exp $
+    $Id: lsmain.c,v 1.19 2002/07/18 04:38:13 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.19  2002/07/18 04:38:13  mattphillips
+    Added '-d' option to centrallix to fork centrallix into the background on
+    startup.  Also adding final support for the centrallix init script.
+
     Revision 1.18  2002/07/11 20:08:00  lkehresman
     Put quotes around the default path.  Was throwing parse errors otherwise.
 
@@ -159,6 +163,53 @@ start(void* v)
     }
 
 
+/*** go_background - this function is used to drop a process into the
+ *** background (become a daemon). The process will fork at this point, and
+ *** the foreground process will exit successfully.
+ ***/
+static void
+go_background()
+    {
+    pid_t pid;     
+
+	/** stdin is already closed. **/     
+	if (fclose(stdout)) 
+	    {
+	    printf("Can't close stdout\n");
+	    exit(1);
+	    }
+	open("/dev/null", O_WRONLY);
+	if (fclose(stderr)) 
+	    {
+	    printf("Can't close stderr\n");
+	    exit(1);
+	    }
+	open("/dev/null", O_WRONLY);
+
+	pid = fork();
+
+	if (pid == -1) 
+	    {
+	    printf("Can't fork\n");
+	    exit(1);
+	    }
+	if (pid != 0)
+	    {
+	    /** parent **/
+	    exit(0);
+	    }
+	else
+	    {
+	    /** child **/
+	    if (setsid() == -1) 
+		{
+		printf("setsid() error\n");
+		exit(1);
+		}
+	    }
+    }
+
+
 /*** main - called from the C runtime to start the program.
  ***/
 int 
@@ -173,12 +224,16 @@ main(int argc, char* argv[])
 	CxGlobals.ModuleList = NULL;
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"hc:q")) > 0)
+	while ((ch=getopt(argc,argv,"hdc:q")) > 0)
 	    {
 	    switch (ch)
 	        {
 		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
 				CxGlobals.ConfigFileName[255] = '\0';
+				break;
+
+		case 'd':	CxGlobals.QuietInit = 1;
+				go_background();
 				break;
 
 		case 'q':	CxGlobals.QuietInit = 1;
