@@ -26,6 +26,8 @@ void cxsecVerifyDS(unsigned long* start, unsigned long* end, char* filename, int
 void cxsecUpdateDS(unsigned long* start, unsigned long* end, char* filename, int linenum);
 void cxsecInitialize();
 
+int cxsecVerifySymbol(char* sym);
+
 #ifdef CXLIB_SECH
 
 /*** function entry/exit dynamic stack canary checking.  We put the 

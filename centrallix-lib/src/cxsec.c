@@ -4,6 +4,7 @@
 #include "cxsec.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -19,7 +20,8 @@
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	March 31, 2003    					*/
 /* Description:	This module implements some security hardening features	*/
-/*		that are optional for application functioning.		*/
+/*		that are optional for application functioning, as well	*/
+/*		as some just common sense stuff.			*/
 /************************************************************************/
 
 
@@ -100,5 +102,38 @@ cxsecUpdateDS(unsigned long* start, unsigned long* end, char* file, int line)
     cksum ^= cxsec_key;
     end[-1] = cksum;
     return;
+    }
+
+
+/*** cxsecVerifySymbol() - makes sure that a string that is supposed to
+ *** represent a symbol contains the correct types of characters. Returns
+ *** -1 on failure, or 0 on success.
+ ***
+ *** In regex notation, this routine matches:
+ ***
+ ***     ^[A-Za-z_][A-Za-z0-9_]*$
+ ***/
+int
+cxsecVerifySymbol(char* sym)
+    {
+
+	/** First char must be alpha or underscore, and must exist (len >= 1).
+	 ** We don't use isalpha() et al here because symbols need to conform to
+	 ** the normal 'C' locale ascii charset!!!  To do otherwise can cause
+	 ** significant security risks in the event of a locale mismatch!!
+	 **/
+	if (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z'))
+	    return -1;
+
+	/** Next chars may be 1) end of string, 2) digits, 3) alpha, or 4) underscore **/
+	sym++;
+	while(*sym)
+	    {
+	    if (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z') && (*sym < '0' || *sym > '9'))
+		return -1;
+	    sym++;
+	    }
+
+    return 0;
     }
 
