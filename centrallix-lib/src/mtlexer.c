@@ -29,10 +29,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.3 2002/06/20 15:57:05 gbeeley Exp $
+    $Id: mtlexer.c,v 1.4 2002/08/05 19:51:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.4  2002/08/05 19:51:23  gbeeley
+    Adding only "mildly tested" support for getting/setting the seek offset
+    while in a lexer session.  The lexer does blocked/buffered I/O, so it
+    is otherwise difficult to know 'where' in the document one is at.  Note
+    that the offsets returned from mlxGetOffset and mlxGetCurOffset are
+    relative to the *start* of the lexer processing.  If data was read from
+    the file/object *before* processing with the lexer, that data is *not*
+    included in the seek counts/offsets.
+
     Revision 1.3  2002/06/20 15:57:05  gbeeley
     Fixed some compiler warnings.  Repaired improper buffer handling in
     mtlexer's mlxReadLine() function.
@@ -93,6 +102,8 @@ mlxOpenSession(pFile fd, int flags)
 	this->LineNumber = 0;
 	this->ReadArg = (void*)fd;
 	this->ReadFn = fdRead;
+	this->BytesRead = 0;
+	this->TokStartOffset = 0;
 	this->Magic = MGK_LXSESSION;
 
     return this;
@@ -118,6 +129,7 @@ mlxStringSession(char* str, int flags)
 	this->BufPtr = this->Buffer;
 	this->InpCnt = strlen(str);
 	this->InpPtr = str;
+	this->InpStartPtr = str;
 	this->ReservedWords = NULL;
 	this->Flags = flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
 		MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
@@ -138,6 +150,8 @@ mlxStringSession(char* str, int flags)
 	this->LineNumber = 1;
 	this->ReadArg = NULL;
 	this->ReadFn = NULL;
+	this->TokStartOffset = 0;
+	this->BytesRead = 0;
 
     return this;
     }
@@ -176,6 +190,8 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
 	this->LineNumber = 0;
 	this->ReadArg = src;
 	this->ReadFn = read_fn;
+	this->BytesRead = 0;
+	this->TokStartOffset = 0;
 	this->Magic = MGK_LXSESSION;
 
     return this;
@@ -232,12 +248,18 @@ mlxReadLine(pLxSession s, char* buf, int maxlen)
 		    }
 	    	if (n>maxlen-1-bufpos) n=maxlen-1-bufpos;
 	    	memcpy(buf+bufpos, s->InpPtr, n);
+
+		/** Add data retrieved so far to the BytesRead value for
+		 ** offset tracking.
+		 **/
+		s->BytesRead += n;
+		
 		bufpos += n;
 		s->InpCnt -= n;
 		s->InpPtr += n;
 		continue;
 		}
-	    
+
 	    /** Ok, get more data. **/
 	    if (s->Flags & MLX_F_NOFILE)
 		{
@@ -337,6 +359,7 @@ mlxNextToken(pLxSession this)
 	    this->Flags &= ~MLX_F_INSTRING;
 	    }
 
+
 	/** Loop until we get a token **/
 	while(1)
 	    {
@@ -387,6 +410,7 @@ mlxNextToken(pLxSession this)
 		}
 
 	    /** At end of buffer?  Read another line. **/
+	    this->TokStartOffset = this->BytesRead - ((this->Buffer + this->BufCnt) - ptr);
 	    if (!*ptr)
 	        {
 		if ((this->Flags & MLX_F_FOUNDEOL) || !(this->Flags & MLX_F_EOL))
@@ -417,6 +441,9 @@ mlxNextToken(pLxSession this)
 		    }
 		continue;
 	        }
+
+	    /** Ok, not an EOL/EOF token; reset tokstart. **/
+	    this->TokStartOffset = this->BytesRead - ((this->Buffer + this->BufCnt) - ptr);
 
 	    /** Ok, we're at something.  What is it? **/
 	    if (this->Flags & MLX_F_LINEONLY)
@@ -1112,3 +1139,119 @@ mlxNotePosition(pLxSession this)
     mssError(0,"MLX","Error at line %d", this->LineNumber);
     return 0;
     }
+
+
+/*** mlxGetOffset() - figure out how many bytes into the file or object we have
+ *** read so far (as of the *beginning* of the _current_token_ that was just
+ *** returned by mlxNextToken).  The idea is, you can do an mlxSetOffset() to
+ *** restart the parsing at exactly the most recent token returned.
+ ***/
+unsigned long
+mlxGetOffset(pLxSession this)
+    {
+
+	ASSERTMAGIC(this,MGK_LXSESSION);
+
+	/** Some error conditions that don't allow us to properly determine
+	 ** the seek offset.
+	 **/
+	if (this->BufCnt < 0) return this->BytesRead;
+
+    return this->TokStartOffset;
+    }
+
+
+/*** mlxGetCurOffset() - like the above, but returns the current offset, not
+ *** the start offset of the current token.
+ ***/
+unsigned long
+mlxGetCurOffset(pLxSession this)
+    {
+
+	ASSERTMAGIC(this,MGK_LXSESSION);
+
+	/** Some error conditions that don't allow us to properly determine
+	 ** the seek offset.
+	 **/
+	if (this->BufCnt <= 0) return this->BytesRead;
+
+    return this->BytesRead - ((this->Buffer + this->BufCnt) - this->BufPtr);
+    }
+
+
+/*** mlxSetOffset() - allows us to set the offset to continue the tokenizing
+ *** at.  This only works on pFiles and pObjects that support FD_U_SEEK (or,
+ *** OBJ_U_SEEK which is the same flag for pObject's).  It also works on
+ *** StringSession's (opened by mlxStringSession).
+ ***
+ *** WARNING: line numbering is RESET when an mlxSetOffset() is done.
+ ***/
+int
+mlxSetOffset(pLxSession this, unsigned long new_offset)
+    {
+    char nullbuf[1];
+
+	ASSERTMAGIC(this,MGK_LXSESSION);
+
+	/** Ok, if this is a string session, just reset the bufptr. **/
+	if (!this->ReadFn)
+	    {
+	    if (new_offset < 0 || new_offset > strlen(this->InpStartPtr)) return -1;
+
+	    /** Set up the session structure **/
+	    this->TokType = MLX_TOK_BEGIN;
+	    this->BufCnt = 0;
+	    this->BufPtr = this->Buffer;
+	    this->InpCnt = strlen(this->InpStartPtr);
+	    this->InpPtr = this->InpStartPtr + new_offset;
+	    this->Flags = this->Flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
+		    MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
+		    MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW |
+		    MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SYMBOLMODE | 
+		    MLX_F_CCOMM | MLX_F_TOKCOMM | MLX_F_NOUNESC |
+		    MLX_F_SSTRING);
+	    this->Flags |= MLX_F_NOFILE;
+
+	    /** Read the first line. **/
+	    this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
+	    if (this->BufCnt <= 0)
+		{
+		this->TokType = MLX_TOK_ERROR;
+		}
+	    this->BufPtr = this->Buffer;
+	    this->LineNumber = 1;
+	    this->TokStartOffset = new_offset;
+	    this->BytesRead = new_offset;
+	    }
+	else
+	    {
+	    /** Ok, either fd or generic session.  Seek and you shall find :) **/
+	    if (new_offset < 0) return -1;
+
+	    /** Do an empty read to force the seek offset to what we need. 
+	     ** We use FD_U_SEEK here, but OBJ_U_SEEK is the same thing.
+	     **/
+	    if (this->ReadFn(this->ReadArg, nullbuf, 0, new_offset, FD_U_SEEK) < 0) return -1;
+
+	    /** Set up the session structure **/
+	    this->TokType = MLX_TOK_BEGIN;
+	    this->BufCnt = 0;
+	    this->BufPtr = this->Buffer;
+	    this->InpCnt = 0;
+	    this->InpPtr = this->InpBuf;
+	    this->Flags = this->Flags & (MLX_F_ICASE | MLX_F_POUNDCOMM | 
+		    MLX_F_SEMICOMM | MLX_F_CPPCOMM | MLX_F_DASHCOMM |
+		    MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW |
+		    MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SYMBOLMODE | 
+		    MLX_F_CCOMM | MLX_F_TOKCOMM | MLX_F_NOUNESC |
+		    MLX_F_SSTRING);
+	    this->Flags |= MLX_F_FOUNDEOL;
+	    this->Buffer[0] = 0;
+	    this->LineNumber = 0;
+	    this->BytesRead = new_offset;
+	    this->TokStartOffset = new_offset;
+	    }
+
+    return 0;
+    }
+

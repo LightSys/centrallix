@@ -21,12 +21,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.h,v 1.1 2001/08/13 18:04:19 gbeeley Exp $
+    $Id: mtlexer.h,v 1.2 2002/08/05 19:51:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtlexer.h,v $
 
     $Log: mtlexer.h,v $
-    Revision 1.1  2001/08/13 18:04:19  gbeeley
-    Initial revision
+    Revision 1.2  2002/08/05 19:51:22  gbeeley
+    Adding only "mildly tested" support for getting/setting the seek offset
+    while in a lexer session.  The lexer does blocked/buffered I/O, so it
+    is otherwise difficult to know 'where' in the document one is at.  Note
+    that the offsets returned from mlxGetOffset and mlxGetCurOffset are
+    relative to the *start* of the lexer processing.  If data was read from
+    the file/object *before* processing with the lexer, that data is *not*
+    included in the seek counts/offsets.
+
+    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
     Initial checkin of centrallix-lib
@@ -47,8 +56,11 @@ typedef struct _LX
     char		Delimiter;	/* string delim. */
     int			Flags;
     char		InpBuf[2049];	/* input buffer */
+    char*		InpStartPtr;	/* start of data, for strings */
     char*		InpPtr;
     int			InpCnt;
+    unsigned long	BytesRead;	/* for offset tracking */
+    unsigned long	TokStartOffset;	/* for offset tracking */
     char		TokString[256];	/* string val */
     int			TokStrCnt;	/* counter for string value */
     int			TokInteger;	/* int val */
@@ -78,6 +90,8 @@ int mlxUnsetOptions(pLxSession this, int options);
 int mlxSetReservedWords(pLxSession this, char** res_words);
 int mlxNoteError(pLxSession this);
 int mlxNotePosition(pLxSession this);
+unsigned long mlxGetOffset(pLxSession this);
+int mlxSetOffset(pLxSession this, unsigned long new_offset);
 
 /** Token types **/
 #define	MLX_TOK_BEGIN		0	/* beginning of input stream */
