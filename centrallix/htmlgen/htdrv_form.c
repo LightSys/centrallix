@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.33  2002/05/30 04:10:02  jorupp
+     * shows what I get for not actually testing my code.....
+
     Revision 1.32  2002/05/30 04:07:08  jorupp
      * changed interface with form elements to use enablemodify (for enable for modification)
         and enablenew (for enable for new data entry) -- useful for the disableable editbox
@@ -755,7 +758,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    for(var i in this.elements)\n"
 		"        {\n"
-		"        if(this.elements[i].enablemodify);\n"
+		"        if(this.elements[i].enablemodify)\n"
 		"            this.elements[i].enablemodify();\n"
 		"        else\n"
 		"            this.elements[i].enable();\n"
@@ -768,7 +771,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    for(var i in this.elements)\n"
 		"        {\n"
-		"        if(this.elements[i].enablenew);\n"
+		"        if(this.elements[i].enablenew)\n"
 		"            this.elements[i].enablenew();\n"
 		"        else\n"
 		"            this.elements[i].enable();\n"
