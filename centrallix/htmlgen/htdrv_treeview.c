@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.16 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_treeview.c,v 1.17 2002/07/31 14:45:58 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.17  2002/07/31 14:45:58  lkehresman
+    * Added standard events to treeview
+    * Standardized x.document.layer and x.mainlayer to point to the rigth layers
+
     Revision 1.16  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -229,11 +233,13 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddEventHandler(s, "document","CLICK","tv",
 		"    if (e.target != null && e.target.kind == 'tv' && e.target.href != null)\n"
 		"        {\n"
+		"        cn_activate(ly, 'Click');\n"
 		"        return tv_click(e);\n"
 		"        }\n");
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tv",
+		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseDown');\n"
 		"    if (e.target != null && e.target.kind=='tv' && e.target.href == null)\n"
 		"        {\n"
 		"        if (e.which == 3)\n"
@@ -248,6 +254,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","tv",
+		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseUp');\n"
 		"    if (e.target != null && e.target.kind == 'tv' && e.which == 3) return false;\n"
 		"    if (tv_target_img != null && tv_target_img.kind == 'tv')\n"
 		"        {\n"
@@ -262,6 +269,10 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            return l.collapse();\n"
 		"            }\n"
 		"        }\n");
+
+	htrAddEventHandler(s,"document","MOUSEOVER","tv","   if (ly.kind == 'tv') cn_activate(ly, 'MouseOver');\n");
+	htrAddEventHandler(s,"document","MOUSEMOVE","tv","   if (ly.kind == 'tv') cn_activate(ly, 'MouseMove');\n");
+	htrAddEventHandler(s,"document","MOUSEOUT","tv", "   if (ly.kind == 'tv') cn_activate(ly, 'MouseOut');\n");
 
 	/** Check for more sub-widgets within the treeview. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
@@ -300,6 +311,12 @@ httreeInitialize()
 	/** Add the 'click item' event **/
 	htrAddEvent(drv,"ClickItem");
 	htrAddParam(drv,"ClickItem","Pathname",DATA_T_STRING);
+	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
 
 	/** Add the 'rightclick item' event **/
 	htrAddEvent(drv,"RightClickItem");

@@ -18,7 +18,7 @@ function tv_show_obj(obj)
     }
 */
 
-function tv_new_layer(width,pdoc)
+function tv_new_layer(width,pdoc,l)
     {
     var nl;
     if (pdoc.tv_layer_cache != null)
@@ -33,6 +33,9 @@ function tv_new_layer(width,pdoc)
 	nl = new Layer(width,pdoc.tv_layer_tgt);
 	tv_alloc_cnt++;
 	}
+    nl.kind = 'tv';
+    nl.document.layer = l;
+    nl.mainlayer = l;
     return nl;
     }
 
@@ -223,7 +226,7 @@ function tv_loaded(e)
 	}
     for (i=1;i<=linkcnt;i++)
 	{
-	one_layer = tv_new_layer(tv_tgt_layer.clip.width,tv_tgt_layer.pdoc);
+	one_layer = tv_new_layer(tv_tgt_layer.clip.width,tv_tgt_layer.pdoc,l);
 	one_layer.parent=l;
 	one_layer.collapse=one_layer.parent.collapse;
 	one_layer.expand=one_layer.parent.expand;
@@ -355,6 +358,8 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     l.kind = 'tv';
     l.pdoc = pdoc;
     l.ld = loader;
+    l.document.layer = l;
+    l.mainlayer = l;
     //l.ld.parent = l;
     l.root = l;
     pdoc.tv_layer_cache = null;
