@@ -16,18 +16,42 @@ function ht_loadpage(aparam)
     this.source = aparam.Source;
     }
 
+function ht_setvalue(aparam)
+    {
+    this.mainlayer.content = aparam.Value;
+    if (aparam.ContentType) this.mainlayer.content_type = aparam.ContentType;
+    }
 function ht_addtext(aparam)
     {
     this.mainlayer.content += aparam.Text;
-    }
-function ht_addtext_bh()
-    {
-    pg_resize(this.mainlayer.parentLayer);
+    if (aparam.ContentType && aparam.ContentType != this.mainlayer.content_type)
+	{
+	// remove all current content if changing type
+	this.mainlayer.content = aparam.Text;
+	this.mainlayer.content_type = aparam.ContentType;
+	}
     }
 function ht_showtext(aparam)
     {
-    this.document.write("<pre>" + this.mainlayer.content + "</pre>\n");
-    this.document.close();
+    if (this.mainlayer.content_type == 'text/plain')
+	{
+	// special case for text/plain due to buggy NS4
+	this.document.open('text/html', 'replace');
+	this.document.write('<pre>');
+	var htmltxt = this.mainlayer.content.replace(/&/g,'&amp;');
+	htmltxt = htmltxt.replace(/>/g,'&gt;');
+	htmltxt = htmltxt.replace(/</g,'&lt;');
+	this.document.write(htmltxt);
+	this.document.write('</pre>');
+	this.document.close();
+	}
+    else
+	{
+	this.document.open(this.mainlayer.content_type, 'replace');
+	this.document.write(this.mainlayer.content);
+	this.document.close();
+	}
+    this.clip.height = this.document.height;
     pg_resize(this.mainlayer.parentLayer);
     }
 
@@ -99,7 +123,7 @@ function ht_reloaded(e)
     e.target.visibility = 'inherit';
     if (htutil_url_cmp(e.target.mainlayer.source, document.location.href))
 	{
-	for(i=0;i<e.target.document.links.length;i++)
+	for(var i=0;i<e.target.document.links.length;i++)
 	    {
 	    e.target.document.links[i].layer = e.target.mainlayer;
 	    e.target.document.links[i].kind = 'ht';
@@ -134,6 +158,7 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
     l.faderLayer = fl;
     l.LSParent = p;
     l.content = '';
+    l.content_type = 'text/html';
     if (h != -1)
 	{
 	l.clip.height = h;
@@ -157,6 +182,7 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
     l.ActionLoadPage = ht_loadpage;
     l.ActionAddText = ht_addtext;
     l.ActionShowText = ht_showtext;
+    l.ActionSetValue = ht_setvalue;
     l.watch('source', ht_sourcechanged);
     }
 
