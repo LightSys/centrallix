@@ -20,10 +20,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: datatypes.h,v 1.3 2003/05/30 17:40:42 gbeeley Exp $
+    $Id: datatypes.h,v 1.4 2004/02/24 05:08:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/datatypes.h,v $
 
     $Log: datatypes.h,v $
+    Revision 1.4  2004/02/24 05:08:26  gbeeley
+    - lengthen Value in DateTime datatype to 'long long' (64 bit).
+    - Add pTObjData (PTOD) as more descriptive of an atomic data element,
+      including data type and is-null status.
+
     Revision 1.3  2003/05/30 17:40:42  gbeeley
     - make magic number assertion tell us the bad pointer address
 
@@ -53,7 +58,7 @@ typedef union _DT
         unsigned int    Year:12;
         }
         Part;
-    unsigned long Value;
+    long long		Value;
     }
     DateTime, *pDateTime;
 
@@ -109,6 +114,19 @@ typedef union _POD
     ObjData, *pObjData;
 
 #define POD(x)  ((pObjData)(x))
+
+/** typed POD structure, PTOD **/
+typedef struct _TPOD
+    {
+    ObjData	Data;
+    unsigned char DataType;
+    unsigned char Flags;
+    }
+    TObjData, *pTObjData;
+
+#define DATA_TF_NULL		1	/* data value is NULL */
+   
+#define PTOD(x)	((pTObjData)(x))
 
 
 #endif /* _DATATYPES_H */
