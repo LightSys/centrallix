@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.12 2002/07/30 19:04:45 lkehresman Exp $
+    $Id: htdrv_tab.c,v 1.13 2002/08/13 01:43:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.13  2002/08/13 01:43:56  gbeeley
+    Updating htdrv_tab to use the new OSML API for objGetAttrValue().
+
     Revision 1.12  2002/07/30 19:04:45  lkehresman
     * Added standard events to tab widget
     * Converted tab widget to use standard mainlayer and layer properties
@@ -151,21 +154,21 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTTAB.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
-	    mssError(1,"HTTAB","Tab widget must have a 'width' property");
+	    mssError(0,"HTTAB","Tab widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0)
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
-	    mssError(1,"HTTAB","Tab widget must have a 'height' property");
+	    mssError(0,"HTTAB","Tab widget must have a 'height' property");
 	    return -1;
 	    }
 
 	/** Which tab is selected? **/
-	if (objGetAttrValue(w_obj,"selected",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"selected",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    snprintf(sel,128,"%s",ptr);
 	    }
@@ -175,9 +178,9 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Background color/image? **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"bgcolor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
@@ -191,13 +194,13 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    strcpy(inactive_bg,"");*/
 
 	/** Text color? **/
-	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(tab_txt,"%.127s",ptr);
 	else
 	    strcpy(tab_txt,"black");
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63]=0;
 
@@ -253,10 +256,10 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    while((tabpage_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(tabpage_obj,"outer_type",POD(&ptr));
+		objGetAttrValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/tabpage"))
 		    {
-		    objGetAttrValue(tabpage_obj,"name",POD(&ptr));
+		    objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 		    tabcnt++;
 		    htrAddBodyItem_va(s,"<DIV ID=\"tc%dtab%d\">\n",id,tabcnt);
 		    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 %s>\n", main_bg);
@@ -265,13 +268,13 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		        htrAddBodyItem(s,"        <TR><TD><IMG SRC=/sys/images/tab_lft2.gif name=tb></TD>\n");
 		    else
 		        htrAddBodyItem(s,"        <TR><TD><IMG SRC=/sys/images/tab_lft3.gif name=tb></TD>\n");
-		    if (objGetAttrType(tabpage_obj,"title") == DATA_T_STRING && objGetAttrValue(tabpage_obj,"title",POD(&ptr)) == 0)
+		    if (objGetAttrValue(tabpage_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
 		        {
 		        htrAddBodyItem_va(s,"            <TD valign=middle><FONT COLOR=%s>%s</FONT></TD>\n", tab_txt, ptr);
 			}
 		    else
 		        {
-			objGetAttrValue(tabpage_obj,"name",POD(&ptr));
+			objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 		        htrAddBodyItem_va(s,"            <TD valign=middle><FONT COLOR=%s><B>&nbsp;%s&nbsp;</B></FONT></TD>\n", tab_txt, ptr);
 			}
 		    htrAddBodyItem(s,"            <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD></TR>\n    </TABLE>\n");
@@ -302,11 +305,11 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    while((tabpage_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(tabpage_obj,"outer_type",POD(&ptr));
+		objGetAttrValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/tabpage"))
 		    {
 		    /** First, render the tabpage and add stuff for it **/
-		    objGetAttrValue(tabpage_obj,"name",POD(&ptr));
+		    objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 		    tabcnt++;
 
 		    /** Add stylesheet headers for the layers (tab and tabpage) **/
