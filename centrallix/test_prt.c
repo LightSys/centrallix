@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.17 2003/03/18 04:06:22 gbeeley Exp $
+    $Id: test_prt.c,v 1.18 2003/04/04 22:38:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.18  2003/04/04 22:38:26  gbeeley
+    Added HTML formatter for new print subsystem, with just basic output
+    capabilities at present.
+
     Revision 1.17  2003/03/18 04:06:22  gbeeley
     Added basic image (picture/bitmap) support; only PNG images supported
     at present.  Moved image and border (rectangles) functionality into a
@@ -310,6 +314,7 @@ start(void* v)
 	mqjInitialize();
 
 	prtInitialize();
+	prt_htmlfm_Initialize();
 	prt_strictfm_Initialize();
 	prt_pclod_Initialize();
 	prt_textod_Initialize();

@@ -162,6 +162,7 @@ RPTMODS=$(patsubst %,report/%,$(XRPTMODS))
 
 # V3 reporting subsystem
 XV3RPTMODS=prtmgmt_v3_api.o \
+	   prtmgmt_v3_fm_html.o \
 	   prtmgmt_v3_fm_strict.o \
 	   prtmgmt_v3_graphics.o \
 	   prtmgmt_v3_internal.o \
