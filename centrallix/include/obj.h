@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: obj.h,v 1.3 2001/10/02 15:43:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.3  2001/10/02 15:43:13  gbeeley
+    Updated data type conversion functions.  Converting to string now can
+    properly escape quotes in the string.  Converting double to string now
+    formats the double a bit better.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -110,6 +115,8 @@ extern char* obj_default_null_fmt;
 
 /** Datatype conversion functions - flags **/
 #define DATA_F_QUOTED		1
+#define DATA_F_SINGLE		2
+#define DATA_F_NORMALIZE	4
 
 
 /** Presentation Hints structure ---

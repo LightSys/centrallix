@@ -45,12 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.1 2001/08/13 18:00:58 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.2 2001/10/02 15:43:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
-    Revision 1.1  2001/08/13 18:00:58  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/02 15:43:12  gbeeley
+    Updated data type conversion functions.  Converting to string now can
+    properly escape quotes in the string.  Converting double to string now
+    formats the double a bit better.
+
+    Revision 1.1.1.1  2001/08/13 18:00:58  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -652,6 +657,8 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
     pIntVec iv;
     char* ptr = sbuf;
     int new_len,i;
+    char* tmpptr;
+    char quote = (flags & DATA_F_SINGLE)?'\'':'"';
 
     	/** Check for a NULL. **/
 	if (data_ptr == NULL)
@@ -676,13 +683,25 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	    case DATA_T_STRING:
 	        if (flags & DATA_F_QUOTED)
 		    {
-		    new_len = strlen((char*)data_ptr) + 5;
+		    new_len = strlen((char*)data_ptr)*2 + 5;
 		    if (!alloc_str || new_len > alloc_len)
 		        {
 		        if (alloc_str) nmSysFree(alloc_str);
 		        alloc_str = (char*)nmSysMalloc(new_len);
 			}
-		    sprintf(alloc_str," \"%s\" ",(char*)data_ptr);
+		    tmpptr = (char*)data_ptr;
+		    ptr = alloc_str;
+		    *(ptr++) = ' ';
+		    *(ptr++) = quote;
+		    while(*tmpptr)
+		        {
+			if (*tmpptr == quote || *tmpptr == '\\')
+			    *(ptr++) = '\\';
+			*(ptr++) = *(tmpptr++);
+			}
+		    *(ptr++) = quote;
+		    *(ptr++) = ' ';
+		    *(ptr) = '\0';
 		    ptr = alloc_str;
 		    }
 		else
@@ -692,10 +711,25 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		break;
 
 	    case DATA_T_DOUBLE:
+	        /** sbuf is 80 chars, plenty for our purposes here. **/
 	        if (flags & DATA_F_QUOTED)
-	            sprintf(sbuf," %f ", *(double*)data_ptr);
+	            sprintf(sbuf," %.15g ", *(double*)data_ptr);
 		else
-	            sprintf(sbuf,"%f", *(double*)data_ptr);
+	            sprintf(sbuf,"%.15g", *(double*)data_ptr);
+		ptr = sbuf+strlen(sbuf)-1;
+
+		/** Do zero suppression, but only if decimal pt present. **/
+		if (strchr(sbuf,'.'))
+		    {
+		    /** Eliminate extraneous zeros right of decimal **/
+		    while (ptr > sbuf && *ptr == '0' && ptr[-1] != '.') *(ptr--) = '\0';
+		    }
+		else
+		    {
+		    /** Otherwise, add decimal point for 'proper form' **/
+		    strcpy(ptr,".0");
+		    }
+		ptr = sbuf;
 		break;
 
 	    case DATA_T_MONEY:
