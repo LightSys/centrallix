@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.13 2003/05/30 17:39:50 gbeeley Exp $
+    $Id: multiquery.c,v 1.14 2003/08/03 01:00:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.14  2003/08/03 01:00:53  gbeeley
+    Suppress attr-not-found warnings for certain attrs in mq.
+
     Revision 1.13  2003/05/30 17:39:50  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -1822,6 +1825,9 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	    }
 	if (id == -1)
 	    {
+	    /** Suppress the error message on certain attrs **/
+	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
+	        return -1;
 	    mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
 	    return -1;
 	    }
