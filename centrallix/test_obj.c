@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.24 2003/03/31 23:23:39 gbeeley Exp $
+    $Id: test_obj.c,v 1.25 2003/04/03 21:41:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.25  2003/04/03 21:41:07  gbeeley
+    Fixed xstring modification problem in test_obj as well as const path
+    modification problem in the objOpen process.  Both were causing the
+    cxsec stuff in xstring to squawk.
+
     Revision 1.24  2003/03/31 23:23:39  gbeeley
     Added facility to get additional data about an object, particularly
     with regard to its ability to have subobjects.  Added the feature at
@@ -389,6 +394,7 @@ int handle_tab(int unused_1, int unused_2)
     pObjQuery qry;
     int count=0;
     short secondtab=0;
+    pObjectInfo info;
 
 #define DOUBLE_TAB_DELAY 50
     
@@ -454,7 +460,11 @@ int handle_tab(int unused_1, int unused_2)
     xsPrintf(xstrQueryString,"substring(:name,0,%d)=\"%s\"",xstrPartialName->Length,xstrPartialName->String);
 
     /** open the query **/
-    qry=objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL);
+    info = objInfo(obj);
+    if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
+	qry = objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL);
+    else
+	qry = NULL;
 
     /** fetch and compare **/
     while(qry && (qobj=objQueryFetch(qry,O_RDONLY)))
@@ -474,8 +484,7 @@ int handle_tab(int unused_1, int unused_2)
 	    {
 	    if(ptr[i]!=xstrMatched->String[i])
 		{
-		xstrMatched->String[i]='\0';
-		xstrMatched->Length=strlen(xstrMatched->String);
+		xsSubst(xstrMatched, i, -1, "", 0);
 		}
 	    }
 	/** if this isn't the first returned object, output it unless second tab.. **/
@@ -521,7 +530,11 @@ int handle_tab(int unused_1, int unused_2)
 	if(obj2)
 	    {
 	    /** see if there are any subobjects -- only need to fetch 1 to check **/
-	    qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL);
+	    info = objInfo(obj2);
+	    if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
+		qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL);
+	    else
+		qry=NULL;
 	    if(qry && (qobj=objQueryFetch(qry,O_RDONLY)))
 		{
 		rl_insert_text("/");

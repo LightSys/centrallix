@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.6 2003/03/31 23:23:40 gbeeley Exp $
+    $Id: obj_object.c,v 1.7 2003/04/03 21:41:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.7  2003/04/03 21:41:08  gbeeley
+    Fixed xstring modification problem in test_obj as well as const path
+    modification problem in the objOpen process.  Both were causing the
+    cxsec stuff in xstring to squawk.
+
     Revision 1.6  2003/03/31 23:23:40  gbeeley
     Added facility to get additional data about an object, particularly
     with regard to its ability to have subobjects.  Added the feature at
@@ -173,10 +178,12 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
     char* startptr;
     pStruct inf;
     int element_cnt = 0;
+    char* mypath_segment;
 
     	/** Scan through, breaking at '/' characters **/
+	mypath_segment = nmSysStrdup(path_segment);
 	bufendptr = strchr(pathinfo->Pathbuf,'\0');
-	ptr = strtok(path_segment,"/");
+	ptr = strtok(mypath_segment,"/");
 	while(ptr)
 	    {
 	    /** Replace the '\0' with a '/' again? **/
@@ -209,6 +216,7 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 		/** User trying to .. past root?  We check against 1 because first element is '.' **/
 		if (pathinfo->nElements == 1)
 		    {
+		    nmSysFree(mypath_segment);
 		    mssError(1,"OSML","Invalid attempt to reference parent directory of /");
 		    return -1;
 		    }
@@ -274,6 +282,7 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 	    ptr = strtok(NULL, "/");
 	    element_cnt++;
 	    }
+	nmSysFree(mypath_segment);
 
 	*bufendptr = '\0';
 
