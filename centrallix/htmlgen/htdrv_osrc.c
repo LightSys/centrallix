@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.19 2002/04/27 22:47:45 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.20 2002/04/28 06:00:38 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.20  2002/04/28 06:00:38  jorupp
+     * added htrAddScriptCleanup* stuff
+     * added cleanup stuff to osrc
+
     Revision 1.19  2002/04/27 22:47:45  jorupp
      * re-wrote form and osrc interaction -- more happens now in the form
      * lots of fun stuff in the table....check form.app for an example (not completely working yet)
@@ -582,7 +586,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        if(this.qid)\n"
       "            {\n"
       "            this.onload=osrc_close_query;\n"
-      "            this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "            this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
       "            }\n"
       "        this.pending=false;\n"
       "        return 0;\n"
@@ -768,7 +772,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "            if(this.qid)\n"
       "                {\n"
       "                this.onload=osrc_open_query_startat;\n"
-      "                this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "                this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
       "                }\n"
       "            else\n"
       "                {\n"
@@ -853,6 +857,18 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    this.MoveToRecord(this.CurrentRecord-replicasize);\n"
       "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_cleanup", "\n"
+      "function osrc_cleanup()\n"
+      "    {\n"
+      "    if(this.qid)\n"
+      "        {\n" /* why does the browser load a blank page when you try to move away? */
+      "        this.onLoad=null;\n"
+      "        this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "        this.qid=null\n"
+      "        }\n"
+      "    }\n",0);
+
+
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
       "function osrc_init(loader,ra,rs,sql,filter)\n"
@@ -893,6 +909,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    loader.ActionNextPage = osrc_move_next_page;\n"
 
       "    loader.InitQuery = osrc_init_query;\n"
+      "    loader.cleanup = osrc_cleanup;\n"
       
       "    return loader;\n"
       "    }\n", 0);
@@ -900,6 +917,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
    /** Script initialization call. **/
    htrAddScriptInit_va(s,"    osrc_current=osrc_init(%s.layers.osrc%dloader,%i,%i,'%s','%s');\n", parentname, id,readahead,replicasize,sql,filter);
+   htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItem_va(s,"    <DIV ID=\"osrc%dloader\"></DIV>\n",id);

@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.6 2002/04/25 22:51:30 gbeeley Exp $
+    $Id: ht_render.h,v 1.7 2002/04/28 06:00:38 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.7  2002/04/28 06:00:38  jorupp
+     * added htrAddScriptCleanup* stuff
+     * added cleanup stuff to osrc
+
     Revision 1.6  2002/04/25 22:51:30  gbeeley
     Added vararg versions of some key htrAddThingyItem() type of routines
     so that all of this sbuf stuff doesn't have to be done, as we have
@@ -173,6 +177,7 @@ typedef struct
     XHashTable	NameGlobals;		/* Name-to-global map */
     XArray	Globals;		/* List of globals. */
     XArray	Inits;			/* List of init strings */
+    XArray	Cleanups;		/* List of cleanup strings */
     XArray	HtmlBody;		/* html body page buffers */
     pObject	HtmlBodyFile;		/* output file if too big */
     XArray	HtmlHeader;		/* html header page buffers */
@@ -209,6 +214,8 @@ int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
 int htrAddScriptInit(pHtSession s, char* init_text);
 int htrAddScriptInit_va(pHtSession s, char* fmt, ... );
+int htrAddScriptCleanup(pHtSession s, char* init_text);
+int htrAddScriptCleanup_va(pHtSession s, char* fmt, ... );
 int htrAddScriptInclude(pHtSession s, char* filename, int flags);
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);

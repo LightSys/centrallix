@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.7 2002/04/28 03:19:53 gbeeley Exp $
+    $Id: ht_render.c,v 1.8 2002/04/28 06:00:38 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.8  2002/04/28 06:00:38  jorupp
+     * added htrAddScriptCleanup* stuff
+     * added cleanup stuff to osrc
+
     Revision 1.7  2002/04/28 03:19:53  gbeeley
     Fixed a bit of a bug in ht_render where it did not properly set the
     length on the StrValue structures when adding script functions.  This
@@ -324,6 +328,22 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     return 0;
     }
 
+/*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a 
+ *** formatted string to startup function of the document.
+ ***/
+int
+htrAddScriptCleanup_va(pHtSession s, char* fmt, ... )
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddScriptCleanup, fmt, va);
+	va_end(va);
+
+    return 0;
+    }
+
+
 
 /*** htrAddScriptInclude -- adds a script src= type entry between the html
  *** header and html body.
@@ -412,6 +432,14 @@ htrAddScriptInit(pHtSession s, char* init_text)
     return htr_internal_AddTextToArray(&(s->Page.Inits), init_text);
     }
 
+/*** htrAddScriptCleanup -- adds some initialization text that runs outside of a
+ *** function context in the HTML JavaScript.
+ ***/
+int 
+htrAddScriptCleanup(pHtSession s, char* init_text)
+    {
+    return htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text);
+    }
 
 /*** htrAddEventHandler - adds an event handler script code segment for a
  *** given event on a given object (usually the 'document').
@@ -624,6 +652,7 @@ htrRender(pFile output, pObject appstruct)
 	xhInit(&(s->Page.NameGlobals),127,0);
 	xaInit(&(s->Page.Globals),64);
 	xaInit(&(s->Page.Inits),64);
+	xaInit(&(s->Page.Cleanups),64);
 	xaInit(&(s->Page.HtmlBody),64);
 	xaInit(&(s->Page.HtmlHeader),64);
 	xaInit(&(s->Page.HtmlBodyParams),16);
@@ -736,6 +765,17 @@ htrRender(pFile output, pObject appstruct)
 	fdWrite(output,"    events();\n", 14,0,0);
 	fdWrite(output,"    }\n",6,0,0);
 
+	/** Write the cleanup lines **/
+	fdWrite(output,"\nfunction cleanup()\n    {\n",26,0,0);
+	for(i=0;i<s->Page.Cleanups.nItems;i++)
+	    {
+	    ptr = (char*)(s->Page.Cleanups.Items[i]);
+	    n = *(int*)ptr;
+	    fdWrite(output, ptr+8, n,0,0);
+	    }
+	fdWrite(output,"    }\n",6,0,0);
+
+
 	/** If the body part is disabled, skip over body section generation **/
 	if (s->DisableBody == 0)
 	    {
@@ -747,7 +787,7 @@ htrRender(pFile output, pObject appstruct)
 	        n = *(int*)ptr;
 	        fdWrite(output, ptr+8, n,0,0);
 	        }
-	    fdWrite(output, " onLoad=\"startup();\">\n", 22,0,0);
+	    fdWrite(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n", 43,0,0);
 	    }
 	else
 	    {
@@ -803,6 +843,8 @@ htrRender(pFile output, pObject appstruct)
 	xhDeInit(&(s->Page.NameGlobals));
 	for(i=0;i<s->Page.Inits.nItems;i++) nmFree(s->Page.Inits.Items[i],2048);
 	xaDeInit(&(s->Page.Inits));
+	for(i=0;i<s->Page.Cleanups.nItems;i++) nmFree(s->Page.Cleanups.Items[i],2048);
+	xaDeInit(&(s->Page.Cleanups));
 	for(i=0;i<s->Page.HtmlBody.nItems;i++) nmFree(s->Page.HtmlBody.Items[i],2048);
 	xaDeInit(&(s->Page.HtmlBody));
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++) nmFree(s->Page.HtmlHeader.Items[i],2048);
