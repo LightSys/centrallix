@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.10 2002/08/10 02:09:44 gbeeley Exp $
+    $Id: multiquery.c,v 1.11 2002/11/14 03:46:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.11  2002/11/14 03:46:39  gbeeley
+    Updated some files that were depending on the old xaAddItemSorted() to
+    use xaAddItemSortedInt32() because these uses depend on sorting on a
+    binary integer field, which changes its physical byte ordering based
+    on the architecture of the machine's CPU.
+
     Revision 1.10  2002/08/10 02:09:44  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -1980,7 +1986,7 @@ mqRegisterQueryDriver(pQueryDriver drv)
     {
 
     	/** Add the thing to the global XArray. **/
-	xaAddItemSorted(&MQINF.Drivers, (void*)drv,((char*)&(drv->Precedence))-((char*)(drv)),4);
+	xaAddItemSortedInt32(&MQINF.Drivers, (void*)drv,((char*)&(drv->Precedence))-((char*)(drv)));
 
     return 0;
     }

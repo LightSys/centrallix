@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_indexfile.c,v 1.3 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_indexfile.c,v 1.4 2002/11/14 03:46:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_indexfile.c,v $
 
     $Log: objdrv_indexfile.c,v $
+    Revision 1.4  2002/11/14 03:46:39  gbeeley
+    Updated some files that were depending on the old xaAddItemSorted() to
+    use xaAddItemSortedInt32() because these uses depend on sorting on a
+    binary integer field, which changes its physical byte ordering based
+    on the architecture of the machine's CPU.
+
     Revision 1.3  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -948,7 +954,7 @@ idx_internal_FlushCache(pIdxTableData tdata)
 		}
 
 	    /** Ok, add the current page to the list. **/
-	    xaAddItemSorted(&sorted_pages, (void*)pg, 4, 4);
+	    xaAddItemSortedInt32(&sorted_pages, (void*)pg, 4);
 	    cur_tdata = pg->TData;
 	    }
 

@@ -46,12 +46,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.1 2001/08/13 18:00:54 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.2 2002/11/14 03:46:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
-    Revision 1.1  2001/08/13 18:00:54  gbeeley
-    Initial revision
+    Revision 1.2  2002/11/14 03:46:39  gbeeley
+    Updated some files that were depending on the old xaAddItemSorted() to
+    use xaAddItemSortedInt32() because these uses depend on sorting on a
+    binary integer field, which changes its physical byte ordering based
+    on the architecture of the machine's CPU.
+
+    Revision 1.1.1.1  2001/08/13 18:00:54  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
