@@ -556,6 +556,7 @@ function osrc_give_all_current_record()
     //confirm('give_all_current_record start');
     for(var i in this.children)
 	this.children[i].ObjectAvailable(this.replica[this.CurrentRecord]);
+    cn_activate(this,"DataFocusChanged");
     //confirm('give_all_current_record done');
     }
 
