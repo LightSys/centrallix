@@ -52,13 +52,12 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.6 2002/08/12 17:30:14 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.7 2002/08/12 17:38:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
-    Revision 1.6  2002/08/12 17:30:14  lkehresman
-    * Added support for parsing group email addresses
-    * Improved the internal debugging function mime_internal_ParseHdrPrintAddr()
+    Revision 1.7  2002/08/12 17:38:00  lkehresman
+    Added support for To, Cc, and From lists of email addresses
 
     Revision 1.5  2002/08/10 02:34:52  lkehresman
     * Removed duplicated StrTrim fuction calls
@@ -891,6 +890,10 @@ mime_internal_SetSubject(pMimeData inf, char *buf)
 int
 mime_internal_SetFrom(pMimeData inf, char *buf)
     {
+    inf->Message->FromList = (pXArray)nmMalloc(sizeof(XArray));
+    xaInit(inf->Message->FromList, sizeof(EmailAddr));
+    mime_internal_HdrParseAddrList(buf, inf->Message->FromList);
+    if (MIME_DEBUG) mime_internal_PrintAddrList(inf->Message->FromList, 0);
     return 0;
     }
 
@@ -902,6 +905,10 @@ mime_internal_SetFrom(pMimeData inf, char *buf)
 int
 mime_internal_SetCc(pMimeData inf, char *buf)
     {
+    inf->Message->CcList = (pXArray)nmMalloc(sizeof(XArray));
+    xaInit(inf->Message->CcList, sizeof(EmailAddr));
+    mime_internal_HdrParseAddrList(buf, inf->Message->CcList);
+    if (MIME_DEBUG) mime_internal_PrintAddrList(inf->Message->CcList, 0);
     return 0;
     }
 
@@ -913,11 +920,10 @@ mime_internal_SetCc(pMimeData inf, char *buf)
 int
 mime_internal_SetTo(pMimeData inf, char *buf)
     {
-    XArray xary;
-
-    xaInit(&xary, sizeof(EmailAddr));
-    mime_internal_HdrParseAddrList(buf, &xary);
-    if (MIME_DEBUG) mime_internal_PrintAddrList(&xary, 0);
+    inf->Message->ToList = (pXArray)nmMalloc(sizeof(XArray));
+    xaInit(inf->Message->ToList, sizeof(EmailAddr));
+    mime_internal_HdrParseAddrList(buf, inf->Message->ToList);
+    if (MIME_DEBUG) mime_internal_PrintAddrList(inf->Message->ToList, 0);
     return 0;
     }
 
