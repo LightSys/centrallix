@@ -2,7 +2,7 @@ $Version=2$
 wholePage "widget/page" 
     {
     alerter "widget/alerter" {}
-    title = "Jonathan's Test Page";
+    title = "Form, osrc, and widget test page";
     bgcolor = "#1f1f1f";
     textcolor = black;
 
