@@ -241,7 +241,7 @@ function dd_scroll(t)
 	if (t==null)
 	    {
 	    if (d<=0) ti.thum.y=18;
-	    else ti.thum.y=20+(-v*(ly.y/d));
+	    else ti.thum.y=20+(-v*((ly.y-2)/d));
 	    }
 	}
     else if (px>0 && ht1<0) // up
@@ -252,7 +252,7 @@ function dd_scroll(t)
 	if (t==null)
 	    {
 	    if (d<=0) ti.thum.y=18;
-	    else ti.thum.y=20+(-v*(ly.y/d));
+	    else ti.thum.y=20+(-v*((ly.y-2)/d));
 	    }
 	}
     }
