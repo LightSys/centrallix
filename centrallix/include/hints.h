@@ -4,6 +4,7 @@
 #include "obj.h"
 #include "stparse.h"
 #include "xstring.h"
+#include "ptod.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

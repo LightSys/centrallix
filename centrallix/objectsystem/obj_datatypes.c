@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.9 2004/02/24 20:11:00 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.10 2004/05/04 18:23:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.10  2004/05/04 18:23:00  gbeeley
+    - Adding DATA_T_BINARY data type for counted (non-zero-terminated)
+      strings of data.
+
     Revision 1.9  2004/02/24 20:11:00  gbeeley
     - fixing some date/time related problems
     - efficiency improvement for net_http allowing browser to actually
@@ -622,6 +626,11 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	        xsConcatenate(dest, tmpstr, -1);
 		break;
 
+	    case DATA_T_BINARY:
+		tmpstr = objDataToStringTmp(DATA_T_BINARY, data_ptr, flags);
+	        xsConcatenate(dest, tmpstr, -1);
+		break;
+
 	    case DATA_T_DOUBLE:
 	        if (flags & DATA_F_QUOTED)
 	            sprintf(sbuf," %f ", *(double*)data_ptr);
@@ -803,6 +812,9 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
     int new_len,i;
     char* tmpptr;
     char quote = (flags & DATA_F_SINGLE)?'\'':'"';
+    pBinary bn;
+    char* str_ptr = data_ptr;
+    int len_limit = 0x7FFFFFFF;
 
     	/** Check for a NULL. **/
 	if (data_ptr == NULL)
@@ -824,20 +836,44 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	            sprintf(sbuf,"%d",*(int*)data_ptr);
 		break;
 
+	    case DATA_T_BINARY:
+		bn = (pBinary)data_ptr;
+		if (!(flags & DATA_F_QUOTED))
+		    {
+		    new_len = bn->Size+1;
+		    if (!alloc_str || new_len > alloc_len)
+			{
+			if (alloc_str) nmSysFree(alloc_str);
+			alloc_str = (char*)nmSysMalloc(new_len);
+			}
+		    ptr = alloc_str;
+		    memcpy(ptr, (char*)(bn->Data), bn->Size);
+		    ptr[bn->Size] = '\0';
+		    break;
+		    }
+		else
+		    {
+		    str_ptr = bn->Data;
+		    len_limit = bn->Size;
+		    }
+		/* fallthrough */
 	    case DATA_T_STRING:
 	        if (flags & DATA_F_QUOTED)
 		    {
-		    new_len = strlen((char*)data_ptr)*2 + 5;
+		    if (len_limit < 0x7FFFFFFF)
+			new_len = len_limit*2+5;
+		    else
+			new_len = strlen((char*)str_ptr)*2 + 5;
 		    if (!alloc_str || new_len > alloc_len)
 		        {
 		        if (alloc_str) nmSysFree(alloc_str);
 		        alloc_str = (char*)nmSysMalloc(new_len);
 			}
-		    tmpptr = (char*)data_ptr;
+		    tmpptr = (char*)str_ptr;
 		    ptr = alloc_str;
 		    *(ptr++) = ' ';
 		    *(ptr++) = quote;
-		    while(*tmpptr)
+		    while(*tmpptr && (tmpptr - str_ptr) < len_limit)
 		        {
 			if (flags & DATA_F_CONVSPECIAL)
 			    {

@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.30 2004/02/24 20:25:40 gbeeley Exp $
+    $Id: test_obj.c,v 1.31 2004/05/04 18:22:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.31  2004/05/04 18:22:59  gbeeley
+    - Adding DATA_T_BINARY data type for counted (non-zero-terminated)
+      strings of data.
+
     Revision 1.30  2004/02/24 20:25:40  gbeeley
     - misc changes: runclient check in evaltree in stparse, eval() function
       rejected in sybase driver, update version in centrallix.conf, .cmp
@@ -346,6 +350,7 @@ testobj_show_attr(pObject obj, char* attrname)
     int i;
     pStringVec sv;
     pIntVec iv;
+    Binary bn;
 
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) 
@@ -367,6 +372,20 @@ testobj_show_attr(pObject obj, char* attrname)
 		    printf("  %20.20s: NULL\n",attrname);
 		else
 		    printf("  %20.20s: \"%s\"\n",attrname, stringval);
+		break;
+
+	    case DATA_T_BINARY:
+		if (objGetAttrValue(obj,attrname,DATA_T_BINARY,POD(&bn)) == 1)
+		    printf("  %20.20s: NULL\n", attrname);
+		else
+		    {
+		    printf("  %20.20s: %d bytes: ", bn.Size);
+		    for(i=0;i<bn.Size;i++)
+			{
+			printf("%2.2x  ", bn.Data[i]);
+			}
+		    printf("\n");
+		    }
 		break;
 
 	    case DATA_T_DATETIME:
@@ -664,8 +683,9 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     char mname[64];
     char mparam[256];
     char* mptr;
-    int t;
+    int t,i;
     pObjectInfo info;
+    Binary bn;
 
 	    /** Open a lexer session **/
 	    ls = mlxStringSession(cmd,MLX_F_ICASE | MLX_F_EOF);
@@ -744,6 +764,19 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 				    printf("Attribute: [%s]  DOUBLE  NULL\n", attrname);
 				else
 				    printf("Attribute: [%s]  DOUBLE  %g\n", attrname, dblval);
+				break;
+			    case DATA_T_BINARY:
+				if (objGetAttrValue(obj,attrname,DATA_T_BINARY,POD(&bn)) == 1)
+				    printf("  %20.20s: NULL\n", attrname);
+				else
+				    {
+				    printf("  %20.20s: %d bytes: ", bn.Size);
+				    for(i=0;i<bn.Size;i++)
+					{
+					printf("%2.2x  ", bn.Data[i]);
+					}
+				    printf("\n");
+				    }
 				break;
 			    case DATA_T_DATETIME:
 			        if (objGetAttrValue(obj,attrname,DATA_T_DATETIME,POD(&dt)) == 1)
