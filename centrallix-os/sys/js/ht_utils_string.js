@@ -11,7 +11,7 @@
 
 function htutil_strpad(str, pad, len) {
     str = new String(str);
-    tmp = '';
+    var tmp = '';
     for (var i=0; i < len-str.length; i++)
 	tmp = pad+tmp;
     return tmp+str;
@@ -28,8 +28,8 @@ function htutil_unpack(str) {
 }
 
 function htutil_encode(s) {
-    rs = '';
-    for(i=0;i<s.length;i++) {
+    var rs = '';
+    for(var i=0;i<s.length;i++) {
 	if (s[i] == '<') rs += '&lt;';
 	else if (s[i] == '>') rs += '&gt;';
 	else if (s[i] == '&') rs += '&amp;';
@@ -46,7 +46,7 @@ function htutil_subst_last(str,subst) {
 }
 
 function htutil_rtrim(str) {
-    for (var i=str.length-1; str.charAt(i) == ' ' || str.charAt(i)=='\t' || str.charAt(i)=='\xCA'; i--);
+    for (var i=str.length-1; i>=0 && (str.charAt(i) == ' ' || str.charAt(i)=='\t' || str.charAt(i)=='\xCA'); i--);
     return str.substring(0, i+1);
 }
 

@@ -21,8 +21,8 @@ function ibeam_init()
 	text_metric.visibility = 'hidden';
 	text_metric.document.write('<pre>xx</pre>');
 	text_metric.document.close();
-	w2 = text_metric.clip.width;
-	h1 = text_metric.clip.height;
+	var w2 = text_metric.clip.width;
+	var h1 = text_metric.clip.height;
 	text_metric.document.write('<pre>x\nx</pre>');
 	text_metric.document.close();
 	text_metric.charHeight = text_metric.clip.height - h1;
