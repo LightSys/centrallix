@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.19 2003/04/16 01:58:48 jorupp Exp $
+    $Id: net_nfs.c,v 1.20 2003/04/16 02:14:36 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.20  2003/04/16 02:14:36  nehresma
+    reopen_inode and close_inode support added.
+
     Revision 1.19  2003/04/16 01:58:48  jorupp
      * _basic_ read support, and support for fetching file sizes (VERY slow)
 
@@ -1974,6 +1977,60 @@ pObject nnfs_internal_open_inode(fhandle fh)
     return obj->obj;
     }
 
+/***
+ *** update last used time stamp
+ ***/
+int nnfs_internal_reopen_inode(fhandle fh)
+    {
+    pObjectUse obj;
+    int i;
+    union
+	{
+	int fhi;
+	fhandle fhc;
+	} fhandle_c;
+
+    strncpy(fhandle_c.fhc,fh,FHSIZE);
+    for(i=0;i<xaCount(NNFS.openObjects);i++)
+	{
+	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
+	if (obj->inode==fhandle_c.fhi)
+	    {
+	    gettimeofday(&(obj->lastused), NULL);
+	    return 0;
+	    }
+	}
+    return -1;
+    }
+
+/***
+ *** Usually you should let an object expire from the cache, but this function
+ *** is provided just in case.
+ ***/
+int nnfs_internal_close_inode(fhandle fh)
+    {
+    pObjectUse obj;
+    int i;
+    union
+	{
+	int fhi;
+	fhandle fhc;
+	} fhandle_c;
+
+    strncpy(fhandle_c.fhc,fh,FHSIZE);
+    for(i=0;i<xaCount(NNFS.openObjects);i++)
+	{
+	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
+	if (obj->inode==fhandle_c.fhi)
+	    {
+	    xaRemoveItem(NNFS.openObjects,i);
+	    objClose(obj->obj);
+	    nmFree(obj,sizeof(ObjectUse));
+	    return 0;
+	    }
+	}
+    return -1;
+    }
 
 /*** nnfsShutdownHandler - shutdown the NFS driver
 ***/
