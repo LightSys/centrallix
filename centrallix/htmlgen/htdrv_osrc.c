@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.43 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_osrc.c,v 1.44 2002/07/31 16:17:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.44  2002/07/31 16:17:55  gbeeley
+    OSRC relies upon ht_utils_string.js now, so I added a script include
+    line to link that one in.  Before, the rtrim thing broke xml_test.app.
+
     Revision 1.43  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -340,6 +344,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
+   htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
    htrAddScriptInit_va(s,"    %s.oldosrc=osrc_current;\n",name);
    htrAddScriptInit_va(s,"    osrc_current=%s;\n",name);
