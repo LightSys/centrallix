@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.29 2002/08/05 19:43:37 lkehresman Exp $
+    $Id: htdrv_table.c,v 1.30 2002/08/13 04:36:29 anoncvs_obe Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.30  2002/08/13 04:36:29  anoncvs_obe
+    Changed the 't' table inf structure to be dynamically allocated to
+    save the 1.2k that was used on the stack.
+
     Revision 1.29  2002/08/05 19:43:37  lkehresman
     Fixed the static table to reference the standard ".layer" rather than ".Layer"
 
@@ -261,7 +265,7 @@ httblVerify()
 
 
 int
-httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj, httbl_struct t)
+httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj, httbl_struct* t)
     {
 	int colid;
 	int colw;
@@ -271,19 +275,19 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	pObjQuery qy;
 
 	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t.id,t.x,t.y,t.w-18,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t.id,t.x+t.w-18,t.y+t.rowheight,t.h-t.rowheight,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; HEIGHT:18; Z-INDEX:%d; }\n",t.id,z+2);
+	htrAddStylesheetItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t->id,t->x,t->y,t->w-18,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t->id,t->x+t->w-18,t->y+t->rowheight,t->h-t->rowheight,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; HEIGHT:18; Z-INDEX:%d; }\n",t->id,z+2);
 
 	/** HTML body <DIV> element for the layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dpane\"></DIV>\n",t.id);
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dscroll\">\n",t.id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dpane\"></DIV>\n",t->id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dscroll\">\n",t->id);
 	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
 	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
-	htrAddBodyItem_va(s,"<TR><TD height=%d></TD></TR>\n",t.h-2*18-t.rowheight-t.cellvspacing);
+	htrAddBodyItem_va(s,"<TR><TD height=%d></TD></TR>\n",t->h-2*18-t->rowheight-t->cellvspacing);
 	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
 	htrAddBodyItem(s,"</TABLE>\n");
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t.id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);
 	htrAddBodyItem(s,"</DIV>\n");
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
@@ -294,16 +298,16 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
 	htrAddScriptInit_va(s,"    %s = tbld_init('%s',%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%i,%i,%i,%i,new Array(",
-		t.name,t.name,parentname,t.id,parentname,t.id,t.id,t.name,t.h,t.w-18,t.inner_padding,
-		t.inner_border,t.windowsize,t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor, 
-		t.textcolorhighlight, t.titlecolor,t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh,t.hdr_bgnd,
-		t.followcurrent,t.dragcols,t.colsep,t.gridinemptyrows);
+		t->name,t->name,parentname,t->id,parentname,t->id,t->id,t->name,t->h,t->w-18,t->inner_padding,
+		t->inner_border,t->windowsize,t->rowheight,t->cellvspacing, t->cellhspacing,t->textcolor, 
+		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,t->row_bgndhigh,t->hdr_bgnd,
+		t->followcurrent,t->dragcols,t->colsep,t->gridinemptyrows);
 	
-	for(colid=0;colid<t.ncols;colid++)
+	for(colid=0;colid<t->ncols;colid++)
 	    {
-	    stAttrValue(stLookup(t.col_infs[colid],"title"),NULL,&coltitle,0);
-	    stAttrValue(stLookup(t.col_infs[colid],"width"),&colw,NULL,0);
-	    htrAddScriptInit_va(s,"new Array(\"%s\",\"%s\",%d),",t.col_infs[colid]->Name,coltitle,colw);
+	    stAttrValue(stLookup(t->col_infs[colid],"title"),NULL,&coltitle,0);
+	    stAttrValue(stLookup(t->col_infs[colid],"width"),&colw,NULL,0);
+	    htrAddScriptInit_va(s,"new Array(\"%s\",\"%s\",%d),",t->col_infs[colid]->Name,coltitle,colw);
 	    }
 
 	htrAddScriptInit(s,"null));\n");
@@ -315,7 +319,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	        {
 		objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
 		if (strcmp(ptr,"widget/table-column") != 0) //got columns earlier
-		    htrRenderWidget(s, sub_w_obj, z+3, "", t.name);
+		    htrRenderWidget(s, sub_w_obj, z+3, "", t->name);
 		objClose(sub_w_obj);
 		}
 	    objQueryClose(qy);
@@ -476,7 +480,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 
 int
-httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj, httbl_struct t)
+httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj, httbl_struct* t)
     {
     pObject qy_obj;
     pObjQuery qy;
@@ -492,10 +496,10 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
-	if (t.w != -1) snprintf(tmpbuf,64,"width=%d",t.w - (t.outer_border + (t.outer_border?1:0))*2); else tmpbuf[0] = 0;
-	htrAddBodyItem_va(s,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, t.outer_border, t.tbl_bgnd);
-	if (t.w != -1) snprintf(tmpbuf,64,"width=%d",t.w - (t.outer_border + (t.outer_border?1:0))*2); else tmpbuf[0] = 0;
-	htrAddBodyItem_va(s,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%d cellpadding=%d %s>\n", t.inner_border, t.inner_padding, tmpbuf);
+	if (t->w != -1) snprintf(tmpbuf,64,"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
+	htrAddBodyItem_va(s,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, t->outer_border, t->tbl_bgnd);
+	if (t->w != -1) snprintf(tmpbuf,64,"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
+	htrAddBodyItem_va(s,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%d cellpadding=%d %s>\n", t->inner_border, t->inner_padding, tmpbuf);
 	if (objGetAttrValue(w_obj,"sql",POD(&sql)) != 0)
 	    {
 	    mssError(1,"HTTBL","Static datatable must have SQL property");
@@ -513,64 +517,64 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 	    if (rowid == 0)
 		{
 		/** Do table header if header data provided. **/
-		htrAddBodyItem_va(s,"    <TR %s>", t.hdr_bgnd);
-		if (t.ncols == 0)
+		htrAddBodyItem_va(s,"    <TR %s>", t->hdr_bgnd);
+		if (t->ncols == 0)
 		    {
 		    for(colid=0,attr = objGetFirstAttr(qy_obj); attr; colid++,attr = objGetNextAttr(qy_obj))
 			{
 			if (colid==0)
 			    {
-			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t.name, "");
+			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t->name, "");
 			    }
 			else
 			    htrAddBodyItem(s,"<TH align=left>");
-			if (*t.titlecolor)
+			if (*(t->titlecolor))
 			    {
-			    htrAddBodyItem_va(s,"<FONT color='%s'>",t.titlecolor);
+			    htrAddBodyItem_va(s,"<FONT color='%s'>",t->titlecolor);
 			    }
 			htrAddBodyItem(s,attr);
-			if (*t.titlecolor) htrAddBodyItem(s,"</FONT>");
+			if (*(t->titlecolor)) htrAddBodyItem(s,"</FONT>");
 			htrAddBodyItem(s,"</TH>");
 			}
 		    }
 		else
 		    {
-		    for(colid = 0; colid < t.ncols; colid++)
+		    for(colid = 0; colid < t->ncols; colid++)
 			{
-			attr = t.col_infs[colid]->Name;
+			attr = t->col_infs[colid]->Name;
 			if (colid==0)
 			    {
-			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t.name, "");
+			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t->name, "");
 			    }
 			else
 			    {
 			    htrAddBodyItem(s,"<TH align=left>");
 			    }
-			if (*t.titlecolor)
+			if (*(t->titlecolor))
 			    {
-			    htrAddBodyItem_va(s,"<FONT color='%s'>",t.titlecolor);
+			    htrAddBodyItem_va(s,"<FONT color='%s'>",t->titlecolor);
 			    }
-			if (stAttrValue(stLookup(t.col_infs[colid],"title"), NULL, &ptr, 0) == 0)
+			if (stAttrValue(stLookup(t->col_infs[colid],"title"), NULL, &ptr, 0) == 0)
 			    htrAddBodyItem(s,ptr);
 			else
 			    htrAddBodyItem(s,attr);
-			if (*t.titlecolor) htrAddBodyItem(s,"</FONT>");
+			if (*(t->titlecolor)) htrAddBodyItem(s,"</FONT>");
 			htrAddBodyItem(s,"</TH>");
 			}
 		    }
 		htrAddBodyItem(s,"</TR>\n");
 		}
-	    htrAddBodyItem_va(s,"    <TR %s>", (rowid&1)?((*t.row_bgnd2)?t.row_bgnd2:t.row_bgnd1):t.row_bgnd1);
+	    htrAddBodyItem_va(s,"    <TR %s>", (rowid&1)?((*(t->row_bgnd2))?t->row_bgnd2:t->row_bgnd1):t->row_bgnd1);
 
 	    /** Build the row contents -- loop through attrs and convert to strings **/
 	    colid = 0;
-	    if (t.ncols == 0)
+	    if (t->ncols == 0)
 		attr = objGetFirstAttr(qy_obj);
 	    else
-		attr = t.col_infs[colid]->Name;
+		attr = t->col_infs[colid]->Name;
 	    while(attr)
 		{
-		if (t.ncols && stAttrValue(stLookup(t.col_infs[colid],"width"),&n,NULL,0) == 0 && n >= 0)
+		if (t->ncols && stAttrValue(stLookup(t->col_infs[colid],"width"),&n,NULL,0) == 0 && n >= 0)
 		    {
 		    htrAddBodyItem_va(s,"<TD width=%d nowrap>",n*7);
 		    }
@@ -597,24 +601,24 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 		    }
 		if (colid==0)
 		    {
-		    htrAddBodyItem_va(s,"<IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t.name, str?str:"");
+		    htrAddBodyItem_va(s,"<IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t->name, str?str:"");
 		    }
-		if (*t.textcolor)
+		if (*(t->textcolor))
 		    {
-		    htrAddBodyItem_va(s,"<FONT COLOR=%s>",t.textcolor);
+		    htrAddBodyItem_va(s,"<FONT COLOR=%s>",t->textcolor);
 		    }
 		if (str) htrAddBodyItem(s,str);
-		if (*t.textcolor)
+		if (*(t->textcolor))
 		    {
 		    htrAddBodyItem(s,"</FONT>");
 		    }
 		htrAddBodyItem(s,"</TD>");
 
 		/** Next attr **/
-		if (t.ncols == 0)
+		if (t->ncols == 0)
 		    attr = objGetNextAttr(qy_obj);
 		else
-		    attr = (colid < t.ncols-1)?(t.col_infs[++colid]->Name):NULL;
+		    attr = (colid < t->ncols-1)?(t->col_infs[++colid]->Name):NULL;
 		}
 	    htrAddBodyItem(s,"</TR>\n");
 	    objClose(qy_obj);
@@ -625,7 +629,7 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 
 	
 	/** Call init function **/
- 	htrAddScriptInit_va(s,"    tbls_init(%s.layer,\"%s\",%d,%d,%d);\n",parentname,t.name,t.w,t.inner_padding,t.inner_border);
+ 	htrAddScriptInit_va(s,"    tbls_init(%s.layer,\"%s\",%d,%d,%d);\n",parentname,t->name,t->w,t->inner_padding,t->inner_border);
  
     return 0;
     }
@@ -641,122 +645,131 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char* str;
     pStructInf attr_inf;
     int n;
-    httbl_struct t;
+    httbl_struct* t;
     char *nptr;
+    int rval;
 
-	t.tbl_bgnd[0]='\0';
-	t.hdr_bgnd[0]='\0';
-	t.row_bgnd1[0]='\0';
-	t.row_bgnd2[0]='\0';
-	t.row_bgndhigh[0]='\0';
-	t.textcolor[0]='\0';
-	t.textcolorhighlight[0]='\0';
-	t.titlecolor[0]='\0';
-	t.x=-1;
-	t.y=-1;
-	t.mode=0;
-	t.outer_border=0;
-	t.inner_border=0;
-	t.inner_padding=0;
-	t.followcurrent=1;
+	t = (httbl_struct*)nmMalloc(sizeof(httbl_struct));
+	if (!t) return -1;
+
+	t->tbl_bgnd[0]='\0';
+	t->hdr_bgnd[0]='\0';
+	t->row_bgnd1[0]='\0';
+	t->row_bgnd2[0]='\0';
+	t->row_bgndhigh[0]='\0';
+	t->textcolor[0]='\0';
+	t->textcolorhighlight[0]='\0';
+	t->titlecolor[0]='\0';
+	t->x=-1;
+	t->y=-1;
+	t->mode=0;
+	t->outer_border=0;
+	t->inner_border=0;
+	t->inner_padding=0;
+	t->followcurrent=1;
     
     	/** Get an id for thit. **/
-	t.id = (HTTBL.idcnt++);
+	t->id = (HTTBL.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&t.x)) != 0) t.x = -1;
-	if (objGetAttrValue(w_obj,"y",POD(&t.y)) != 0) t.y = -1;
-	if (objGetAttrValue(w_obj,"width",POD(&t.w)) != 0) t.w = -1;
-	if (objGetAttrValue(w_obj,"height",POD(&t.h)) != 0) t.h = -1;
-	if (objGetAttrValue(w_obj,"windowsize",POD(&t.windowsize)) != 0) t.windowsize = -1;
-	if (objGetAttrValue(w_obj,"rowheight",POD(&t.rowheight)) != 0) t.rowheight = 15;
-	if (objGetAttrValue(w_obj,"cellhspacing",POD(&t.cellhspacing)) != 0) t.cellhspacing = 1;
-	if (objGetAttrValue(w_obj,"cellvspacing",POD(&t.cellvspacing)) != 0) t.cellvspacing = 1;
+	if (objGetAttrValue(w_obj,"x",POD(&(t->x))) != 0) t->x = -1;
+	if (objGetAttrValue(w_obj,"y",POD(&(t->y))) != 0) t->y = -1;
+	if (objGetAttrValue(w_obj,"width",POD(&(t->w))) != 0) t->w = -1;
+	if (objGetAttrValue(w_obj,"height",POD(&(t->h))) != 0) t->h = -1;
+	if (objGetAttrValue(w_obj,"windowsize",POD(&(t->windowsize))) != 0) t->windowsize = -1;
+	if (objGetAttrValue(w_obj,"rowheight",POD(&(t->rowheight))) != 0) t->rowheight = 15;
+	if (objGetAttrValue(w_obj,"cellhspacing",POD(&(t->cellhspacing))) != 0) t->cellhspacing = 1;
+	if (objGetAttrValue(w_obj,"cellvspacing",POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
 
-	if (objGetAttrValue(w_obj,"dragcols",POD(&t.dragcols)) != 0) t.dragcols = 1;
-	if (objGetAttrValue(w_obj,"colsep",POD(&t.colsep)) != 0) t.colsep = 1;
-	if (objGetAttrValue(w_obj,"gridinemptyrows",POD(&t.gridinemptyrows)) != 0) t.gridinemptyrows = 1;
+	if (objGetAttrValue(w_obj,"dragcols",POD(&(t->dragcols))) != 0) t->dragcols = 1;
+	if (objGetAttrValue(w_obj,"colsep",POD(&(t->colsep))) != 0) t->colsep = 1;
+	if (objGetAttrValue(w_obj,"gridinemptyrows",POD(&(t->gridinemptyrows))) != 0) t->gridinemptyrows = 1;
 
 	/** Should we follow the current record around? **/
 	if (objGetAttrValue(w_obj,"followcurrent",POD(&ptr)) == 0)
 	    {
-	    if (!strcmp(ptr,"false")) t.followcurrent = 0;
+	    if (!strcmp(ptr,"false")) t->followcurrent = 0;
 	    }
 
 
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	memccpy(t.name,ptr,0,63);
-	t.name[63] = 0;
+	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) 
+	    {
+	    nmFree(t, sizeof(httbl_struct));
+	    return -1;
+	    }
+	memccpy(t->name,ptr,0,63);
+	t->name[63] = 0;
 
 	/** Write named global **/
-	nptr=nmMalloc(strlen(t.name)+1);
-	strcpy(nptr,t.name);
+	nptr=nmMalloc(strlen(t->name)+1);
+	strcpy(nptr,t->name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Mode of table operation.  Defaults to 0 (static) **/
 	if (objGetAttrValue(w_obj,"mode",POD(&ptr)) == 0)
 	    {
-	    if (!strcmp(ptr,"static")) t.mode = 0;
-	    else if (!strcmp(ptr,"dynamicpage")) t.mode = 1;
-	    else if (!strcmp(ptr,"dynamicrow")) t.mode = 2;
+	    if (!strcmp(ptr,"static")) t->mode = 0;
+	    else if (!strcmp(ptr,"dynamicpage")) t->mode = 1;
+	    else if (!strcmp(ptr,"dynamicrow")) t->mode = 2;
 	    else
 	        {
-		mssError(1,"HTTBL","Widget '%s' mode '%s' is invalid.",t.name,ptr);
+		mssError(1,"HTTBL","Widget '%s' mode '%s' is invalid.",t->name,ptr);
+		nmFree(t, sizeof(httbl_struct));
 		return -1;
 		}
 	    }
 
 	/** Get background color/image for table header **/
 	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
-	    sprintf(t.tbl_bgnd,"background='%.110s'",ptr);
+	    sprintf(t->tbl_bgnd,"background='%.110s'",ptr);
 	else if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
-	    sprintf(t.tbl_bgnd,"bgColor='%.40s'",ptr);
+	    sprintf(t->tbl_bgnd,"bgColor='%.40s'",ptr);
 
 	/** Get background color/image for header row **/
 	if (objGetAttrValue(w_obj,"hdr_background",POD(&ptr)) == 0)
-	    sprintf(t.hdr_bgnd,"background='%.110s'",ptr);
+	    sprintf(t->hdr_bgnd,"background='%.110s'",ptr);
 	else if (objGetAttrValue(w_obj,"hdr_bgcolor",POD(&ptr)) == 0)
-	    sprintf(t.hdr_bgnd,"bgColor='%.40s'",ptr);
+	    sprintf(t->hdr_bgnd,"bgColor='%.40s'",ptr);
 
 	/** Get background color/image for rows **/
 	if (objGetAttrValue(w_obj,"row_background1",POD(&ptr)) == 0)
-	    sprintf(t.row_bgnd1,"background='%.110s'",ptr);
+	    sprintf(t->row_bgnd1,"background='%.110s'",ptr);
 	else if (objGetAttrValue(w_obj,"row_bgcolor1",POD(&ptr)) == 0)
-	    sprintf(t.row_bgnd1,"bgColor='%.40s'",ptr);
+	    sprintf(t->row_bgnd1,"bgColor='%.40s'",ptr);
 
 	if (objGetAttrValue(w_obj,"row_background2",POD(&ptr)) == 0)
-	    sprintf(t.row_bgnd2,"background='%.110s'",ptr);
+	    sprintf(t->row_bgnd2,"background='%.110s'",ptr);
 	else if (objGetAttrValue(w_obj,"row_bgcolor2",POD(&ptr)) == 0)
-	    sprintf(t.row_bgnd2,"bgColor='%.40s'",ptr);
+	    sprintf(t->row_bgnd2,"bgColor='%.40s'",ptr);
 
 	if (objGetAttrValue(w_obj,"row_backgroundhighlight",POD(&ptr)) == 0)
-	    sprintf(t.row_bgndhigh,"background='%.110s'",ptr);
+	    sprintf(t->row_bgndhigh,"background='%.110s'",ptr);
 	else if (objGetAttrValue(w_obj,"row_bgcolorhighlight",POD(&ptr)) == 0)
-	    sprintf(t.row_bgndhigh,"bgColor='%.40s'",ptr);
+	    sprintf(t->row_bgndhigh,"bgColor='%.40s'",ptr);
 
 	/** Get borders and padding information **/
-	objGetAttrValue(w_obj,"outer_border",POD(&t.outer_border));
-	objGetAttrValue(w_obj,"inner_border",POD(&t.inner_border));
-	objGetAttrValue(w_obj,"inner_padding",POD(&t.inner_padding));
+	objGetAttrValue(w_obj,"outer_border",POD(&(t->outer_border)));
+	objGetAttrValue(w_obj,"inner_border",POD(&(t->inner_border)));
+	objGetAttrValue(w_obj,"inner_padding",POD(&(t->inner_padding)));
 
 	/** Text color information **/
 	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
-	    sprintf(t.textcolor,"%.63s",ptr);
+	    sprintf(t->textcolor,"%.63s",ptr);
 
 	/** Text color information **/
 	if (objGetAttrValue(w_obj,"textcolorhighlight",POD(&ptr)) == 0)
-	    sprintf(t.textcolorhighlight,"%.63s",ptr);
+	    sprintf(t->textcolorhighlight,"%.63s",ptr);
 
 	/** Title text color information **/
 	if (objGetAttrValue(w_obj,"titlecolor",POD(&ptr)) == 0)
-	    sprintf(t.titlecolor,"%.63s",ptr);
-	if (!*t.titlecolor) strcpy(t.titlecolor,t.textcolor);
+	    sprintf(t->titlecolor,"%.63s",ptr);
+	if (!*t->titlecolor) strcpy(t->titlecolor,t->textcolor);
 
 
 	/** Get column data **/
-	t.ncols = 0;
+	t->ncols = 0;
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
 	if (qy)
 	    {
@@ -766,33 +779,35 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		if (!strcmp(ptr,"widget/table-column") != 0)
 		    {
 		    objGetAttrValue(sub_w_obj, "name", POD(&ptr));
-		    t.col_infs[t.ncols] = stCreateStruct(ptr, "widget/table-column");
-		    attr_inf = stAddAttr(t.col_infs[t.ncols], "width");
+		    t->col_infs[t->ncols] = stCreateStruct(ptr, "widget/table-column");
+		    attr_inf = stAddAttr(t->col_infs[t->ncols], "width");
 		    if (objGetAttrValue(sub_w_obj, "width", POD(&n)) == 0)
 		        stAddValue(attr_inf, NULL, n);
 		    else
 		        stAddValue(attr_inf, NULL, -1);
-		    attr_inf = stAddAttr(t.col_infs[t.ncols], "title");
+		    attr_inf = stAddAttr(t->col_infs[t->ncols], "title");
 		    if (objGetAttrValue(sub_w_obj, "title", POD(&ptr)) == 0)
 		        {
 			str = nmSysStrdup(ptr);
 		        stAddValue(attr_inf, str, 0);
 			}
 		    else
-		        stAddValue(attr_inf, t.col_infs[t.ncols]->Name, 0);
-		    t.ncols++;
+		        stAddValue(attr_inf, t->col_infs[t->ncols]->Name, 0);
+		    t->ncols++;
 		    }
 		objClose(sub_w_obj);
 		}
 	    objQueryClose(qy);
 	    }
-	if(t.mode==0)
+	if(t->mode==0)
 	    {
-	    return httblRenderStatic(s, w_obj, z, parentname, parentobj, t);
+	    rval = httblRenderStatic(s, w_obj, z, parentname, parentobj, t);
+	    nmFree(t, sizeof(httbl_struct));
 	    }
 	else
 	    {
-	    return httblRenderDynamic(s, w_obj, z, parentname, parentobj, t);
+	    rval = httblRenderDynamic(s, w_obj, z, parentname, parentobj, t);
+	    nmFree(t, sizeof(httbl_struct));
 	    }
 #if 0
 	/** Check for more sub-widgets within the table. **/
@@ -809,6 +824,8 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    objQueryClose(qy);
 	    }
 #endif
+
+    return rval;
     }
 
 
