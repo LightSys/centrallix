@@ -39,12 +39,18 @@
 /* Description:	HTML Widget driver for a single-line editbox.		*/
 /************************************************************************/
 
+/*This file was based on the edit box file revision 1.2*/
+
+
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_spinner.c,v 1.3 2002/03/16 02:45:46 bones120 Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.3  2002/03/16 02:45:46  bones120
+    Making the spinner interact with the form without dying!
+
     Revision 1.2  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -75,22 +81,22 @@ static struct
     {
     int		idcnt;
     }
-    HTSP;
+    HTSPNR;
 
 
-/*** htspVerify - not written yet.
+/*** htspnrVerify - not written yet.
  ***/
 int
-htspVerify()
+htspnrVerify()
     {
     return 0;
     }
 
 
-/*** htspRender - generate the HTML code for the spinner widget.
+/*** htspnrRender - generate the HTML code for the spinner widget.
  ***/
 int
-htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -106,19 +112,19 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     int maxchars;
 
     	/** Get an id for this. **/
-	id = (HTSP.idcnt++);
+	id = (HTSPNR.idcnt++);
 
     	/** Get x,y,w,h of this object **/
 	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
 	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
 	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) 
 	    {
-	    mssError(1,"HTSP","Spinner widget must have a 'width' property");
+	    mssError(1,"HTSPNR","Spinner widget must have a 'width' property");
 	    return -1;
 	    }
 	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0)
 	    {
-	    mssError(1,"HTSP","Spinner widget must have a 'height' property");
+	    mssError(1,"HTSPNR","Spinner widget must have a 'height' property");
 	    return -1;
 	    }
 	
@@ -162,9 +168,9 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddHeaderItem(s,sbuf);
 	snprintf(sbuf,512,"\t#sp%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#sp_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",x+w-12,y,w,z);
+	snprintf(sbuf,512,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",x+w-12,y,w,z);
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#sp_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",x+w-12,y+9,w,z);
+	snprintf(sbuf,512,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",x+w-12,y+9,w,z);
 	htrAddHeaderItem(s,sbuf);
 	snprintf(sbuf,512,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
@@ -175,45 +181,52 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Global for ibeam cursor layer **/
-	htrAddScriptGlobal(s, "sp_ibeam", "null", 0);
-	htrAddScriptGlobal(s, "sp_metric", "null", 0);
-	htrAddScriptGlobal(s, "sp_current", "null", 0);
+	htrAddScriptGlobal(s, "spnr_ibeam", "null", 0);
+	htrAddScriptGlobal(s, "spnr_metric", "null", 0);
+	htrAddScriptGlobal(s, "spnr_current", "null", 0);
 
 	/** Get value function **/
-	htrAddScriptFunction(s, "sp_getvalue", "\n"
-		"function sp_getvalue()\n"
+	htrAddScriptFunction(s, "spnr_getvalue", "\n"
+		"function spnr_getvalue()\n"
 		"    {\n"
 		"    return parseFloat(this.content);\n"
 		"    }\n", 0);
 
 	/** Set value function **/
-	htrAddScriptFunction(s, "sp_setvalue", "\n"
-		"function sp_setvalue(v,f)\n"
+	htrAddScriptFunction(s, "spnr_setvalue", "\n"
+		"function spnr_setvalue(v,f)\n"
 		"    {\n"
-		"    sp_settext(this,v);\n"
+		"    if(this.form) this.form.DataNotify(this);\n"
+		"    spnr_settext(this,v);\n"
 		"    }\n", 0);
 
 	/** Enable control function **/
-	htrAddScriptFunction(s, "sp_enable", "\n"
-		"function sp_enable()\n"
+	htrAddScriptFunction(s, "spnr_enable", "\n"
+		"function spnr_enable()\n"
 		"    {\n"
 		"    }\n", 0);
 
 	/** Disable control function **/
-	htrAddScriptFunction(s, "sp_disable", "\n"
-		"function sp_disable()\n"
+	htrAddScriptFunction(s, "spnr_disable", "\n"
+		"function spnr_disable()\n"
 		"    {\n"
 		"    }\n", 0);
 
 	/** Readonly-mode function **/
-	htrAddScriptFunction(s, "sp_readonly", "\n"
-		"function sp_readonly()\n"
+	htrAddScriptFunction(s, "spnr_readonly", "\n"
+		"function spnr_readonly()\n"
+		"    {\n"
+		"    }\n", 0);
+
+	/** Clear value function **/
+	htrAddScriptFunction(s, "spnr_clearvalue", "\n"
+		"function spnr_clearvalue()\n"
 		"    {\n"
 		"    }\n", 0);
 
 	/** Editbox set-text-value function **/
-	htrAddScriptFunction(s, "sp_settext", "\n"
-		"function sp_settext(l,txt)\n"
+	htrAddScriptFunction(s, "spnr_settext", "\n"
+		"function spnr_settext(l,txt)\n"
 		"    {\n"
 		"    l.HiddenLayer.document.write('<PRE>' + txt + '</PRE> ');\n"
 		"    l.HiddenLayer.document.close();\n"
@@ -228,11 +241,11 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Editbox keyboard handler **/
-	htrAddScriptFunction(s, "sp_keyhandler", "\n"
-		"function sp_keyhandler(l,e,k)\n"
+	htrAddScriptFunction(s, "spnr_keyhandler", "\n"
+		"function spnr_keyhandler(l,e,k)\n"
 		"    {\n"
 		"    txt = l.content;\n"
-		"    if (k >= 32 && k < 127)\n"
+		"    if (k >= 49 && k < 58)\n"
 		"        {\n"
 		"        newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);\n"
 		"        l.cursorCol++;\n"
@@ -246,49 +259,49 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        {\n"
 		"        return true;\n"
 		"        }\n"
-		"    sp_ibeam.visibility = 'hidden';\n"
-		"    sp_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*sp_metric.charWidth, l.ContentLayer.pageY);\n"
-		"    sp_settext(l,newtxt);\n"
+		"    spnr_ibeam.visibility = 'hidden';\n"
+		"    spnr_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*spnr_metric.charWidth, l.ContentLayer.pageY);\n"
+		"    spnr_settext(l,newtxt);\n"
 		"    adj = 0;\n"
-		"    if (sp_ibeam.pageX < l.pageX + 1)\n"
-		"        adj = l.pageX + 1 - sp_ibeam.pageX;\n"
-		"    else if (sp_ibeam.pageX > l.pageX + l.clip.width - 1)\n"
-		"        adj = (l.pageX + l.clip.width - 1) - sp_ibeam.pageX;\n"
+		"    if (spnr_ibeam.pageX < l.pageX + 1)\n"
+		"        adj = l.pageX + 1 - spnr_ibeam.pageX;\n"
+		"    else if (spnr_ibeam.pageX > l.pageX + l.clip.width - 1)\n"
+		"        adj = (l.pageX + l.clip.width - 1) - spnr_ibeam.pageX;\n"
 		"    if (adj != 0)\n"
 		"        {\n"
-		"        sp_ibeam.pageX += adj;\n"
+		"        spnr_ibeam.pageX += adj;\n"
 		"        l.ContentLayer.pageX += adj;\n"
 		"        l.HiddenLayer.pageX += adj;\n"
 		"        }\n"
-		"    sp_ibeam.visibility = 'inherit';\n"
+		"    spnr_ibeam.visibility = 'inherit';\n"
 		"    return false;\n"
 		"    }\n", 0);
 
 	/** Set focus to a new editbox **/
-	htrAddScriptFunction(s, "sp_select", "\n"
-		"function sp_select(x,y,l,c,n)\n"
+	htrAddScriptFunction(s, "spnr_select", "\n"
+		"function spnr_select(x,y,l,c,n)\n"
 		"    {\n"
-		"    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/sp_metric.charWidth);\n"
+		"    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/spnr_metric.charWidth);\n"
 		"    if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;\n"
-		"    if (sp_current) sp_current.cursorlayer = null;\n"
-		"    sp_current = l;\n"
-		"    sp_current.cursorlayer = sp_ibeam;\n"
-		"    sp_ibeam.visibility = 'hidden';\n"
-		"    sp_ibeam.moveAbove(sp_current);\n"
-		"    sp_ibeam.moveToAbsolute(sp_current.ContentLayer.pageX + sp_current.cursorCol*sp_metric.charWidth, sp_current.ContentLayer.pageY);\n"
-		"    sp_ibeam.zIndex = sp_current.zIndex + 2;\n"
-		"    sp_ibeam.visibility = 'inherit';\n"
+		"    if (spnr_current) spnr_current.cursorlayer = null;\n"
+		"    spnr_current = l;\n"
+		"    spnr_current.cursorlayer = spnr_ibeam;\n"
+		"    spnr_ibeam.visibility = 'hidden';\n"
+		"    spnr_ibeam.moveAbove(spnr_current);\n"
+		"    spnr_ibeam.moveToAbsolute(spnr_current.ContentLayer.pageX + spnr_current.cursorCol*spnr_metric.charWidth, spnr_current.ContentLayer.pageY);\n"
+		"    spnr_ibeam.zIndex = spnr_current.zIndex + 2;\n"
+		"    spnr_ibeam.visibility = 'inherit';\n"
 		"    l.form.focusnotify(l);\n"
 		"    return 1;\n"
 		"    }\n", 0);
 
 	/** Take focus away from editbox **/
-	htrAddScriptFunction(s, "sp_deselect", "\n"
-		"function sp_deselect()\n"
+	htrAddScriptFunction(s, "spnr_deselect", "\n"
+		"function spnr_deselect()\n"
 		"    {\n"
-		"    sp_ibeam.visibility = 'hidden';\n"
-		"    if (sp_current) sp_current.cursorlayer = null;\n"
-		"    sp_current = null;\n"
+		"    spnr_ibeam.visibility = 'hidden';\n"
+		"    if (spnr_current) spnr_current.cursorlayer = null;\n"
+		"    spnr_current = null;\n"
 		"    return true;\n"
 		"    }\n", 0);
 
@@ -307,8 +320,8 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"\n");
 
 	/** Spinner box initializer **/
-	htrAddScriptFunction(s, "sp_init", "\n"
-		"function sp_init(main,l,c1,c2)\n"
+	htrAddScriptFunction(s, "spnr_init", "\n"
+		"function spnr_init(main,l,c1,c2)\n"
 		"    {\n"
 		"    l.content = 0;\n"
 		"    l.mainlayer=main;\n"
@@ -319,55 +332,57 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.HiddenLayer = c2;\n"
 		"    l.HiddenLayer.document.write('0');\n"
 		"    l.HiddenLayer.document.close();\n"
-		"    if (!sp_ibeam || !sp_metric)\n"
+		"    l.form=fm_current;\n"
+		"    if (!spnr_ibeam || !spnr_metric)\n"
 		"        {\n"
-		"        sp_metric = new Layer(24);\n"
-		"        sp_metric.visibility = 'hidden';\n"
-		"        sp_metric.document.write('<pre>xx</pre>');\n"
-		"        sp_metric.document.close();\n"
-		"        w2 = sp_metric.clip.width;\n"
-		"        h1 = sp_metric.clip.height;\n"
-		"        sp_metric.document.write('<pre>x\\nx</pre>');\n"
-		"        sp_metric.document.close();\n"
-		"        sp_metric.charHeight = sp_metric.clip.height - h1;\n"
-		"        sp_metric.charWidth = w2 - sp_metric.clip.width;\n"
-		"        sp_ibeam = new Layer(1);\n"
-		"        sp_ibeam.visibility = 'hidden';\n"
-		"        sp_ibeam.document.write('<body bgcolor=' + page.dtcolor1 + '></body>');\n"
-		"        sp_ibeam.document.close();\n"
-		"        sp_ibeam.resizeTo(1,sp_metric.charHeight);\n"
+		"        spnr_metric = new Layer(24);\n"
+		"        spnr_metric.visibility = 'hidden';\n"
+		"        spnr_metric.document.write('<pre>xx</pre>');\n"
+		"        spnr_metric.document.close();\n"
+		"        w2 = spnr_metric.clip.width;\n"
+		"        h1 = spnr_metric.clip.height;\n"
+		"        spnr_metric.document.write('<pre>x\\nx</pre>');\n"
+		"        spnr_metric.document.close();\n"
+		"        spnr_metric.charHeight = spnr_metric.clip.height - h1;\n"
+		"        spnr_metric.charWidth = w2 - spnr_metric.clip.width;\n"
+		"        spnr_ibeam = new Layer(1);\n"
+		"        spnr_ibeam.visibility = 'hidden';\n"
+		"        spnr_ibeam.document.write('<body bgcolor=' + page.dtcolor1 + '></body>');\n"
+		"        spnr_ibeam.document.close();\n"
+		"        spnr_ibeam.resizeTo(1,spnr_metric.charHeight);\n"
 		"        }\n"
 		"    c1.mainlayer = main;\n"
 		"    c2.mainlayer = main;\n"
 		"    c1.kind = 'spinner';\n"
 		"    c2.kind = 'spinner';\n"
 		"    main.kind = 'spinner';\n"
-		"    main.layers.sp_button_up.document.images[0].kind='spinner';\n"
-		"    main.layers.sp_button_down.document.images[0].kind='spinner';\n"
-		"    main.layers.sp_button_up.document.images[0].subkind='up';\n"
-		"    main.layers.sp_button_down.document.images[0].subkind='down';\n"
-		"    main.layers.sp_button_up.document.images[0].eb_layers=l;\n"
-		"    main.layers.sp_button_down.document.images[0].eb_layers=l;\n"
-		"    l.keyhandler = sp_keyhandler;\n"
-		"    l.getfocushandler = sp_select;\n"
-		"    l.losefocushandler = sp_deselect;\n"
-		"    l.getvalue = sp_getvalue;\n"
-		"    l.setvalue = sp_setvalue;\n"
+		"    main.layers.spnr_button_up.document.images[0].kind='spinner';\n"
+		"    main.layers.spnr_button_down.document.images[0].kind='spinner';\n"
+		"    main.layers.spnr_button_up.document.images[0].subkind='up';\n"
+		"    main.layers.spnr_button_down.document.images[0].subkind='down';\n"
+		"    main.layers.spnr_button_up.document.images[0].eb_layers=l;\n"
+		"    main.layers.spnr_button_down.document.images[0].eb_layers=l;\n"
+		"    l.keyhandler = spnr_keyhandler;\n"
+		"    l.getfocushandler = spnr_select;\n"
+		"    l.losefocushandler = spnr_deselect;\n"
+		"    l.getvalue = spnr_getvalue;\n"
+		"    l.setvalue = spnr_setvalue;\n"
 		"    l.setoptions = null;\n"
-		"    l.enable = sp_enable;\n"
-		"    l.disable = sp_disable;\n"
-		"    l.readonly = sp_readonly;\n"
+		"    l.enable = spnr_enable;\n"
+		"    l.disable = spnr_disable;\n"
+		"    l.readonly = spnr_readonly;\n"
+		"    l.clearvalue = spnr_clearvalue;\n"
 		"    l.isFormStatusWidget = false;\n"
 		"    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', 1);\n"
-		"    c1.y = ((l.clip.height - sp_metric.charHeight)/2);\n"
-		"    c2.y = ((l.clip.height - sp_metric.charHeight)/2);\n"
+		"    c1.y = ((l.clip.height - spnr_metric.charHeight)/2);\n"
+		"    c2.y = ((l.clip.height - spnr_metric.charHeight)/2);\n"
 		"    if (fm_current) fm_current.Register(l);\n"
 		"    if (fm_current) l.form = fm_current;\n"
 		"    return l;\n"
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,512,"    %s = sp_init(%s.layers.sp%dmain, %s.layers.sp%dmain.layers.sp%dbase, %s.layers.sp%dmain.layers.sp%dbase.document.layers.sp%dcon1, %s.layers.sp%dmain.layers.sp%dbase.document.layers.sp%dcon2);\n",
+	snprintf(sbuf,512,"    %s = spnr_init(%s.layers.sp%dmain, %s.layers.sp%dmain.layers.sp%dbase, %s.layers.sp%dmain.layers.sp%dbase.document.layers.sp%dcon1, %s.layers.sp%dmain.layers.sp%dbase.document.layers.sp%dcon2);\n",
 		nptr, parentname, id, 
                 parentname, id, id,
 		parentname, id, id, id, 
@@ -406,19 +421,19 @@ htspRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "</DIV>\n");
 	/*Add the spinner buttons*/
-	snprintf(sbuf,512, "<DIV ID=\"sp_button_up\"><IMG SRC=\"/sys/images/sp_up.gif\"></DIV>\n");
+	snprintf(sbuf,512, "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
 	htrAddBodyItem(s,sbuf);
-	snprintf(sbuf,512, "<DIV ID=\"sp_button_down\"><IMG SRC=\"/sys/images/sp_down.gif\"></DIV>\n");
+	snprintf(sbuf,512, "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
 	htrAddBodyItem(s,sbuf);
   	htrAddBodyItem(s, "</DIV>\n"); 
     return 0;
     }
 
 
-/*** htspInitialize - register with the ht_render module.
+/*** htspnrInitialize - register with the ht_render module.
  ***/
 int
-htspInitialize()
+htspnrInitialize()
     {
     pHtDriver drv;
 
@@ -429,8 +444,8 @@ htspInitialize()
 	/** Fill in the structure. **/
 	strcpy(drv->Name,"DHTML Spinner Box Driver");
 	strcpy(drv->WidgetName,"spinner");
-	drv->Render = htspRender;
-	drv->Verify = htspVerify;
+	drv->Render = htspnrRender;
+	drv->Verify = htspnrVerify;
 
 	/** Add a 'set value' action **/
 	htrAddAction(drv,"SetValue");
@@ -445,7 +460,7 @@ htspInitialize()
 	/** Register. **/
 	htrRegisterDriver(drv);
 
-	HTSP.idcnt = 0;
+	HTSPNR.idcnt = 0;
 
     return 0;
     }
