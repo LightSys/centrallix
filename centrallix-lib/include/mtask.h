@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.16 2005/02/26 04:32:02 gbeeley Exp $
+    $Id: mtask.h,v 1.17 2005/03/14 20:33:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.17  2005/03/14 20:33:36  gbeeley
+    - changing the interface to the get thread list function so that we can
+      better identify a specific thread from one call to another.
+
     Revision 1.16  2005/02/26 04:32:02  gbeeley
     - moving include file install directory to include a "cxlib/" prefix
       instead of just putting 'em all in /usr/include with everything else.
@@ -410,7 +414,7 @@ int thMultiWait(int event_cnt, pEventReq event_req[]);
 char* thGetName(pThread thr);
 pThread thCurrent();
 int thSetName(pThread thr, const char* new_name);
-int thGetThreadList(int max_cnt, char* names[], int stati[], int flags[]);
+int thGetThreadList(int max_cnt, int ids[], char* names[], int stati[], int flags[]);
 pThread thGetByName(const char* name);
 int thGetPrio(pThread thr);
 int thSetPrio(pThread thr, int prio);

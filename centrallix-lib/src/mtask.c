@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.29 2005/02/06 02:35:41 gbeeley Exp $
+    $Id: mtask.c,v 1.30 2005/03/14 20:33:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.30  2005/03/14 20:33:35  gbeeley
+    - changing the interface to the get thread list function so that we can
+      better identify a specific thread from one call to another.
+
     Revision 1.29  2005/02/06 02:35:41  gbeeley
     - Adding 'mkrpm' script for automating the RPM build process for this
       package (script is portable to other packages).
@@ -1725,7 +1729,7 @@ thSetName(pThread thr, const char* name)
  *** be set upon return, NOT COPIED TO.
  ***/
 int
-thGetThreadList(int max_cnt, char* names[], int stati[], int flags[])
+thGetThreadList(int max_cnt, int ids[], char* names[], int stati[], int flags[])
     {
     register int i,cnt;
 
@@ -1735,6 +1739,7 @@ thGetThreadList(int max_cnt, char* names[], int stati[], int flags[])
 	/** Scan the table and build the arrays. **/
     	for(i=cnt=0;cnt<max_cnt;i++) if (MTASK.ThreadTable[i])
 	    {
+	    ids[cnt] = i;
 	    names[cnt] = MTASK.ThreadTable[i]->Name;
 	    stati[cnt] = MTASK.ThreadTable[i]->Status;
 	    flags[cnt] = MTASK.ThreadTable[i]->Flags;
