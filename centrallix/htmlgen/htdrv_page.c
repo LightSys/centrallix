@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.54 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_page.c,v 1.55 2003/06/21 23:54:41 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.55  2003/06/21 23:54:41  jorupp
+     * fixex up a few problems I found with the version I committed (like compilation...)
+     * removed some code that was commented out
+
     Revision 1.54  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -370,7 +374,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char *nptr;
     char name[64];
     int attract = 0;
-    HtPageStruct t;
     pObject sub_w_obj;
     pObjQuery qy;
     int watchdogtimer;
@@ -576,7 +579,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
 	
 	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0);
-	htrAddBodyItemLayerEnd(s,0);
+	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
 	if(s->Capabilities.Dom1HTML)
@@ -681,9 +684,9 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Set colors for the focus layers **/
-	htrAddScriptInit_va(s, "    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",t.kbfocus1,t.kbfocus2);
-	htrAddScriptInit_va(s, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",t.msfocus1,t.msfocus2);
-	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",t.dtfocus1,t.dtfocus2);
+	htrAddScriptInit_va(s, "    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",kbfocus1,kbfocus2);
+	htrAddScriptInit_va(s, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",msfocus1,msfocus2);
+	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
 
 	htrAddScriptInit(s, "    pg_togglecursor();\n");

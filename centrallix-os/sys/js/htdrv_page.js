@@ -16,7 +16,20 @@ function pg_ping_init(l,i)
 
 function pg_ping_recieve()
     {
-    if(this.document.links[0].target!=='OK')
+    var link;
+    if(cx__capabilities.Dom1HTML)
+	{
+	link = this.getElementsByTagName("a")[0];
+	}
+    else if(cx__capabilities.Dom0NS)
+	{
+	link = this.document.links[0];
+	}
+    else
+	{
+	return false;
+	}
+    if(link.target!=='OK')
 	{
 	clearInterval(this.tid);
 	confirm('you have been disconnected from the server');
@@ -27,7 +40,14 @@ function pg_ping_send(p)
     {
     //confirm('sending');
     p.onload=pg_ping_recieve;
-    p.src='/INTERNAL/ping';
+    if(cx__capabilities.Dom1HTML)
+	{
+	p.setAttribute('src','/INTERNAL/ping');
+	}
+    else if(cx__capabilities.Dom0NS)
+	{
+	p.src='/INTERNAL/ping';
+	}
     }
 
 

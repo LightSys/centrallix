@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.36 2003/06/21 23:07:26 jorupp Exp $
+    $Id: ht_render.c,v 1.37 2003/06/21 23:54:41 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.37  2003/06/21 23:54:41  jorupp
+     * fixex up a few problems I found with the version I committed (like compilation...)
+     * removed some code that was commented out
+
     Revision 1.36  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -240,10 +244,6 @@ struct
     {
     XArray	Drivers;		/* simple driver listing. */
     XHashTable	Classes;		/* classes of widget sets */
-#if 0
-    XHashTable	WidgetDrivers[HTR_MAX_USERAGENTS];/* widget -> driver map */
-    XArray	UAreg[HTR_MAX_USERAGENTS]; /* xarrays of regex's for browsers */
-#endif
     }
     HTR;
 
@@ -533,93 +533,6 @@ htr_internal_GetBrowserCapabilities(char *browser, pHtClass class)
     return cap;
     }
 
-
-#if 0
-/*** htrRegisterUserAgents - creates a bunch of regular expressions that
- *** will be used to do lookups for detecting the user agent.
- ***/
-int
-htrRegisterUserAgents()
-    {
-    regex_t *reg;
-
-	/** We will need to regfree the compiled regular expressions at
-	 ** deinitialization of the HTML generator.  Currently this 
-	 ** (regfree'ing) is not implemented 
-	 **/
-
-	/** Netscape 4.7x regular expressions **/
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Mozilla\\/4\\.(7[5-9]|8)", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_NETSCAPE_47]), (void *)reg);
-
-	/** Mozilla regular expressions **/
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:0\\.9\\.[7-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.0\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.1a", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.1\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.2\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Galeon\\/1.[0-9].[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
-
-	/** Internet Explorer regular expressions **/
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "MSIE 5.0[0-9]{0,5}", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MSIE]), (void *)reg);
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "MSIE 5.5[0-9]{0,5}", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MSIE]), (void *)reg);
-	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "MSIE 6.0[0-9]{0,5}", REG_EXTENDED|REG_NOSUB|REG_ICASE))
-	    xaAddItem(&(HTR.UAreg[HTR_UA_MSIE]), (void *)reg);
-
-    return 0;
-    }
-
-
-/*** htr_internal_GetBrowserMask - figger out what browser is on the other end
- *** of the connection by running its user-agent string past the various and
- *** sundry regex's we have installed.
- ***/
-int
-htr_internal_GetBrowserMask(char *browser)
-    {
-    int count;
-    int i,user_agent,user_agent_mask=0;
-    regex_t *reg;
-
-	/** Check all regexes... **/
-	for(user_agent=0;user_agent<HTR_MAX_USERAGENTS;user_agent++)
-	    {
-	    count = xaCount(&(HTR.UAreg[user_agent]));
-	    for(i=0;i<count;i++) 
-		{
-		if ((reg = (regex_t*)xaGetItem(&(HTR.UAreg[user_agent]),i))) 
-		    {
-		    /** 0 signifies a match, REG_NOMATCH signifies the opposite **/
-		    if (regexec(reg, browser, (size_t)0, NULL, 0) == 0)
-			{
-			user_agent_mask |= (1<<user_agent);
-			break;
-			}
-		    }
-		}
-	    }
-
-    return user_agent_mask;
-    }
-#endif
 
 /*** htr_internal_AddTextToArray - adds a string of text to an array of 
  *** buffer blocks, allocating new blocks in the XArray if necessary.
@@ -1393,15 +1306,6 @@ htrRender(pFile output, pObject appstruct)
 	else	
 	    s->Class = NULL;
 
-	/** Which widget set do we use? **/
-#if 0
-	s->BrowserMask = htr_internal_GetBrowserMask(agent);
-	if (class)
-	    s->WidgetClasses = class->UAmask;
-	else
-	    s->WidgetClasses = HTR_CLASS_ALL;
-#endif
-	
 	/** find the right capabilities for the class we're using **/
 	if(s->Class)
 	    {
@@ -1449,28 +1353,6 @@ htrRender(pFile output, pObject appstruct)
 		memset(&(s->Capabilities),0,sizeof(HtCapabilities));
 		}
 	    }
-
-#if 0
-	s->WidgetSet = -1;
-	for(i=0;i<HTR_MAX_USERAGENTS;i++)
-	    {
-	    if (s->BrowserMask & s->WidgetClasses & (1<<i))
-		{
-		s->WidgetSet = i;
-		break;
-		}
-	    }
-	if (s->WidgetSet == -1)
-	    {
-	    mssError(1, "HTR", "No widget set avaiable for your user-agent / class combination");
-	    if (!class)
-		fdPrintf(output,"Your browser (%s) is not supported by any Centrallix widget sets.  Sorry!\r\n", agent);
-	    else
-		fdPrintf(output,"Your browser (%s) is not supported by the Centrallix widget set class '%s'.\r\n", agent, class);
-	    nmFree(s, sizeof(HtSession));
-	    return -1;
-	    }
-#endif
 
 	/** Setup the page structures **/
 	s->Tmpbuf = nmSysMalloc(512);
@@ -1644,19 +1526,6 @@ htrRender(pFile output, pObject appstruct)
 	/** Write the initialization lines **/
 	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
 	htr_internal_writeCxCapabilities(s,output);
-#if 0
-	fdWrite(output,"    cn_browser = new Object();\n",31,0,FD_U_PACKET);
-	if(s->WidgetSet == HTR_UA_MOZILLA)
-	    {
-	    fdWrite(output,"    cn_browser.netscape47 = false;\n",35,0,FD_U_PACKET);
-	    fdWrite(output,"    cn_browser.mozilla = true;\n",31,0,FD_U_PACKET);
-	    }
-	else
-	    {
-	    fdWrite(output,"    cn_browser.netscape47 = true;\n",34,0,FD_U_PACKET);
-	    fdWrite(output,"    cn_browser.mozilla = false;\n",32,0,FD_U_PACKET);
-	    }
-#endif
 
 	fdWrite(output,"    if(typeof(pg_status_init)=='function')pg_status_init();\n",60,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Inits.nItems;i++)
@@ -1817,29 +1686,9 @@ htrAllocDriver()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
-#if 0
-	drv->Target = 0;
-#endif
-
     return drv;
     }
 
-
-#if 0
-/*** htrAddSupport - adds support for a user agent / class to a driver's
- *** descriptor structure
- ***/
-int
-htrAddSupport(pHtDriver drv, int user_agent)
-    {
-    
-
-	/** Add it to the bitmask **/
-	drv->Target |= (1<<user_agent);
-
-    return 0;
-    }
-#endif
 
 /*** htrAddSupport - adds support for a class to a driver (by telling the class)
  ***   note: _must_ be called after the driver registers
@@ -1864,27 +1713,8 @@ htrAddSupport(pHtDriver drv, char* className)
 int 
 htrRegisterDriver(pHtDriver drv)
     {
-#if 0
-    pXHashTable lookupHash;
-    int i;
-#endif
-
     	/** Add to the drivers listing and the widget name map. **/
 	xaAddItem(&(HTR.Drivers),(void*)drv);
-
-#if 0
-	/** Add the driver to all widget sets it supports **/
-	for(i=0;i<HTR_MAX_USERAGENTS;i++) if (drv->Target & (1<<i))
-	    {
-	    lookupHash = &(HTR.WidgetDrivers[i]);
-	    if (!lookupHash) 
-		{
-		mssError(1,"HTR","Bark! Widget set not found for User-Agent:style combination of %d on driver %s",drv->Target,drv->Name);
-		return -1;
-		}
-	    xhAdd(lookupHash,drv->WidgetName,(char*)drv);
-	    }
-#endif
 
     return 0;
     }
@@ -1896,31 +1726,9 @@ htrRegisterDriver(pHtDriver drv)
 int
 htrInitialize()
     {
-#if 0
-    pHtClass class;
-    int i;
-#endif
-
     	/** Initialize the global hash tables and arrays **/
 	xaInit(&(HTR.Drivers),64);
 	xhInit(&(HTR.Classes), 63, 0);
-
-#if 0
-	/** Init the list of classes **/
-	class = (pHtClass)nmMalloc(sizeof(HtClass));
-	strcpy(class->ClassName,"dhtml");
-	class->UAmask = HTR_UA_NETSCAPE_47 | HTR_UA_MOZILLA | HTR_UA_MSIE;
-	xhAdd(&(HTR.Classes), (char*)(class->ClassName), (void*)class);
-#endif
-
-#if 0
-	/** Init our arrays of user agent regular expressions **/
-	for(i=0;i<HTR_MAX_USERAGENTS;i++) 
-	    {
-	    xaInit(&(HTR.UAreg[i]),4);
-	    xhInit(&(HTR.WidgetDrivers[i]), 257, 0);
-	    }
-#endif
 
 	/** Register the classes, user agents and the regular expressions to match them.  **/
 	htrRegisterUserAgents();
