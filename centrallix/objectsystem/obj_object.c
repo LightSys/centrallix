@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.20 2004/12/31 04:39:51 gbeeley Exp $
+    $Id: obj_object.c,v 1.21 2005/01/22 06:15:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.21  2005/01/22 06:15:16  gbeeley
+    - I broke it.  This fixes it back.
+
     Revision 1.20  2004/12/31 04:39:51  gbeeley
     - I think this is what we want.  make sure Type is set correctly on
       object open, even when openas is not used.
@@ -745,7 +748,9 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    this->Session = s;
 	    this->LinkCnt = 1;
 	    this->Mode = mode;
-	    this->Type = ck_type;
+
+	    /** Set object type **/
+	    if (used_openas) this->Type = ck_type;
 
 	    /** Driver requested transactions? **/
 	    if ((this->Driver->Capabilities & OBJDRV_C_TRANS) && OSYS.TransLayer)
@@ -778,7 +783,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		}
 	    }
 
-	/** Check for content-type? **/
+	/** Set object type **/
 	if (name && !this->Type) this->Type = obj_internal_TypeFromName(name);
 
 	/** Cache the upper-level node for this object? **/
