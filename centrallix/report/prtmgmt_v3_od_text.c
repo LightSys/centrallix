@@ -47,10 +47,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.5 2003/04/21 21:00:48 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.6 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.6  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.5  2003/04/21 21:00:48  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -107,6 +116,8 @@ typedef struct _PTEXT
     unsigned char	PageBuf[PRT_TEXTOD_MAXROWS][PRT_TEXTOD_MAXCOLS+1];
     double		LineY[PRT_TEXTOD_MAXROWS];
     int			MaxLine;
+    double		MarginTop;
+    double		MarginLeft;
     }
     PrtTextodInf, *pPrtTextodInf;
 
@@ -242,6 +253,8 @@ prt_textod_Open(pPrtSession s)
 	context->CurHPos = 0;
 	context->CurPhysHPos = 0;
 	context->MaxLine = -1;
+	context->MarginTop = 0.0;
+	context->MarginLeft = 0.0;
 	for(i=0;i<PRT_TEXTOD_MAXROWS;i++) 
 	    {
 	    memset(context->PageBuf[i], 0, PRT_TEXTOD_MAXCOLS+1);
@@ -288,6 +301,20 @@ prt_textod_SetResolution(void* context_v, pPrtResolution r)
     /*pPrtTextodInf context = (pPrtTextodInf)context_v;*/
 
     return -1;
+    }
+
+
+/*** prt_textod_SetPageGeom() - set the size of the page.  Ignored.
+ ***/
+int
+prt_textod_SetPageGeom(void* context_v, double width, double height, double tm, double bm, double lm, double rm)
+    {
+    pPrtTextodInf context = (pPrtTextodInf)context_v;
+
+	context->MarginTop = tm;
+	context->MarginLeft = lm;
+
+    return 0;
     }
 
 
@@ -353,6 +380,10 @@ prt_textod_SetHPos(void* context_v, double x)
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     int d,t;
 
+	/** Adjust for left margin **/
+	x -= context->MarginLeft;
+	if (x < 0) x = 0;
+
 	/** Emit enough spaces to move us to the correct column **/
 	t = x + 0.00001;
 	if (t < context->CurPhysHPos) 
@@ -384,6 +415,10 @@ prt_textod_SetVPos(void* context_v, double y)
     {
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     int n;
+
+	/** Adjust for top margin **/
+	y -= context->MarginTop;
+	if (y < 0) y = 0;
 
 	/** Use newlines... **/
 	n = y + 0.00001;
@@ -521,6 +556,7 @@ prt_textod_Initialize()
 	drv->Close = prt_textod_Close;
 	drv->GetResolutions = prt_textod_GetResolutions;
 	drv->SetResolution = prt_textod_SetResolution;
+	drv->SetPageGeom = prt_textod_SetPageGeom;
 	drv->GetNearestFontSize = prt_textod_GetNearestFontSize;
 	drv->GetCharacterMetric = prt_textod_GetCharacterMetric;
 	drv->GetCharacterBaseline = prt_textod_GetCharacterBaseline;

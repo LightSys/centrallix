@@ -49,10 +49,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.7 2003/04/21 21:00:43 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.8 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.8  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.7  2003/04/21 21:00:43  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -305,6 +314,11 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 	else
 	    res = best_res;
 	drv->SetResolution(drvdata, res);
+
+	/** Tell output driver the size of the page **/
+	drv->SetPageGeom(drvdata, page_obj->Width, page_obj->Height, 
+		page_obj->MarginTop, page_obj->MarginBottom, 
+		page_obj->MarginLeft, page_obj->MarginRight);
 
 	/** Ok, follow the object chain on the page, generating the bits and pieces **/
 	memcpy(&cur_style, &(page_obj->TextStyle), sizeof(PrtTextStyle));

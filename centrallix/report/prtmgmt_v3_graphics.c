@@ -58,10 +58,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_graphics.c,v 1.4 2003/07/09 18:10:02 gbeeley Exp $
+    $Id: prtmgmt_v3_graphics.c,v 1.5 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_graphics.c,v $
 
     $Log: prtmgmt_v3_graphics.c,v $
+    Revision 1.5  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.4  2003/07/09 18:10:02  gbeeley
     Further fixes and enhancements to prtmgmt layer, particularly regarding
     visual layout of graphical borders around objects; border/shadow
@@ -580,8 +589,8 @@ prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset)
     int color,x,y,bit,datawidth;
 
 	/** Find the real X and Y in the image **/
-	x = xoffset*img->Hdr.Width;
-	y = yoffset*img->Hdr.Height;
+	x = (xoffset*(img->Hdr.Width) + 0.5);
+	y = (yoffset*(img->Hdr.Height) + 0.5);
 	if (x < 0) x = 0;
 	else if (x >= img->Hdr.Width) x = img->Hdr.Width-1;
 	if (y < 0) y = 0;

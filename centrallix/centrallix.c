@@ -53,10 +53,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.32 2004/12/31 04:35:14 gbeeley Exp $
+    $Id: centrallix.c,v 1.33 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.33  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.32  2004/12/31 04:35:14  gbeeley
     - Adding the Object Canvas widget, an objectsource client which allows
       data to be displayed visually on a canvas (useful with maps and diagrams
@@ -586,6 +595,7 @@ cxInitialize(void* v)
 	prt_strictfm_Initialize();
 	prt_pclod_Initialize();
 	prt_textod_Initialize();
+	prt_psod_Initialize();
 
 	/** Initialize the wgtr module **/
 	wgtrInitialize();

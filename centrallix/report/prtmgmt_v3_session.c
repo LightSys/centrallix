@@ -47,10 +47,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.9 2003/09/02 15:37:13 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.10 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.10  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.9  2003/09/02 15:37:13  gbeeley
     - Added enhanced command line interface to test_obj.
     - Enhancements to v3 report writer.
@@ -172,10 +181,14 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	page_os->Flags &= ~PRT_OBJ_UFLAGMASK;
 	page_os->Flags |= (page_flags & PRT_OBJ_UFLAGMASK);
 	page_os->Flags &= ~PRT_OBJ_F_REQCOMPLETE;   /* disallow reqcomplete on a page */
-	page_os->Width = 80;
-	page_os->Height = 60;
-	page_os->ConfigWidth = 80;
-	page_os->ConfigHeight = 60;
+	page_os->Width = this->PageWidth;
+	page_os->Height = this->PageHeight;
+	page_os->ConfigWidth = this->PageWidth;
+	page_os->ConfigHeight = this->PageHeight;
+	page_os->MarginLeft = 2.5;
+	page_os->MarginRight = 2.5;
+	page_os->MarginTop = 3.0;
+	page_os->MarginBottom = 3.0;
 	prt_internal_Add(this->StreamHead, page_os);
 
 	/** Create a handle for the initial page. **/

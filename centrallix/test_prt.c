@@ -58,10 +58,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.21 2003/08/05 16:45:12 affert Exp $
+    $Id: test_prt.c,v 1.22 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.22  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.21  2003/08/05 16:45:12  affert
     Initial Berkeley DB support.
 
@@ -1026,6 +1035,7 @@ start(void* v)
 	prt_strictfm_Initialize();
 	prt_pclod_Initialize();
 	prt_textod_Initialize();
+	prt_psod_Initialize();
 
 	/** Disable tab complete until we have a function to do something useful with it. **/
 	rl_bind_key ('\t', rl_insert);
@@ -1104,6 +1114,11 @@ start(void* v)
 		    {
 		    printf("quit\n");
 		    break;
+		    }
+
+		if (inbuf[0] == '#')
+		    {
+		    continue;
 		    }
 
 		if (!strcmp(inbuf,"quit"))

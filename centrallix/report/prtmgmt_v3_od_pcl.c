@@ -50,10 +50,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.14 2003/09/02 15:37:13 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.15 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.15  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.14  2003/09/02 15:37:13  gbeeley
     - Added enhanced command line interface to test_obj.
     - Enhancements to v3 report writer.
@@ -198,6 +207,12 @@ typedef struct _PPCL
     pPrtSession		Session;
     PrtTextStyle	SelectedStyle;
     double		CurVPos;
+    double		MarginTop;
+    double		MarginBottom;
+    double		MarginLeft;
+    double		MarginRight;
+    double		PageWidth;
+    double		PageHeight;
     }
     PrtPclodInf, *pPrtPclodInf;
 
@@ -329,6 +344,30 @@ prt_pclod_SetResolution(void* context_v, pPrtResolution r)
 
 	/** Set it. **/
 	context->SelectedResolution = r;
+
+    return 0;
+    }
+
+
+/*** prt_pclod_SetPageGeom() - ignored for now.
+ ***/
+int
+prt_pclod_SetPageGeom(void* context_v, double width, double height, double t, double b, double l, double r)
+    {
+    pPrtPclodInf context = (pPrtPclodInf)context_v;
+    char pclbuf[40];
+
+	context->MarginTop = t;
+	context->MarginBottom = b;
+	context->MarginLeft = l;
+	context->MarginRight = r;
+	context->PageWidth = width;
+	context->PageHeight = height;
+
+	snprintf(pclbuf, sizeof(pclbuf), "\33&l%.2fE\33&l%.2fF", 
+		context->MarginTop,
+		context->PageHeight - context->MarginTop - context->MarginBottom);
+	prt_pclod_Output(context, pclbuf, -1);
 
     return 0;
     }
@@ -761,6 +800,7 @@ prt_pclod_Initialize()
 	drv->Close = prt_pclod_Close;
 	drv->GetResolutions = prt_pclod_GetResolutions;
 	drv->SetResolution = prt_pclod_SetResolution;
+	drv->SetPageGeom = prt_pclod_SetPageGeom;
 	drv->GetNearestFontSize = prt_pclod_GetNearestFontSize;
 	drv->GetCharacterMetric = prt_pclod_GetCharacterMetric;
 	drv->GetCharacterBaseline = prt_pclod_GetCharacterBaseline;

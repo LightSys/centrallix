@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.2 2003/07/09 18:10:02 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.3 2005/02/24 05:44:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.3  2005/02/24 05:44:32  gbeeley
+    - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
+    - Special Thanks to Tim Irwin who participated in the Apex NC CODN
+      Code-a-Thon on Feb 5, 2005, for much of the initial research on the
+      PostScript support!!  See http://www.codn.net/
+    - More formats (maybe PNG?) should be easy to add.
+    - TODO: read the *real* font metric files to get font geometries!
+    - TODO: compress the images written into the .ps file!
+
     Revision 1.2  2003/07/09 18:10:02  gbeeley
     Further fixes and enhancements to prtmgmt layer, particularly regarding
     visual layout of graphical borders around objects; border/shadow
@@ -316,6 +325,7 @@ typedef struct _PD
     int			(*Close)();
     pXArray		(*GetResolutions)();
     int			(*SetResolution)();
+    int			(*SetPageGeom)();
     int			(*SetTextStyle)();
     int			(*GetNearestFontSize)();
     double		(*GetCharacterMetric)();

@@ -192,7 +192,8 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_formbar.o \
 	   htdrv_objcanvas.o \
 
-HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
+HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS)) \
+	   utility/iface_html.o
 
 # Multiquery subsystem, SQL parser, and query drivers.
 XQYDRIVERS=multiq_tablegen.o \
@@ -235,6 +236,7 @@ XV3RPTMODS=prtmgmt_v3_api.o \
 	   prtmgmt_v3_main.o \
 	   prtmgmt_v3_od_pcl.o \
 	   prtmgmt_v3_od_text.o \
+	   prtmgmt_v3_od_ps.o \
 	   prtmgmt_v3_session.o
 V3RPTMODS=$(patsubst %,report/%,$(XV3RPTMODS))
 
