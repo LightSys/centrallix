@@ -42,12 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.1 2001/08/13 18:00:50 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.2 2002/02/23 19:35:28 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
-    Revision 1.1  2001/08/13 18:00:50  gbeeley
-    Initial revision
+    Revision 1.2  2002/02/23 19:35:28  lkehresman
+    * Radio button widget is now forms aware.
+    * Fixes a couple of oddities in the checkbox.
+    * Fixed some formatting issues in the form.
+
+    Revision 1.1.1.1  2001/08/13 18:00:50  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -77,7 +82,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char title[64];
    char sbuf[1024];
    char sbuf2[200];
-   char bigbuf[1024];
+   char bigbuf[4096];
    char textcolor[32];
    char main_bg[128];
    char outline_bg[64];
@@ -154,6 +159,9 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    sprintf(sbuf,"\t#radiobuttonpanelbuttonunsetpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            5,5,12,12,z+2,12,12);
    htrAddHeaderItem(s,sbuf);
+   sprintf(sbuf,"\t#radiobuttonpanelvaluepane       { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+           5,5,12,12,z+2,12,12);
+   htrAddHeaderItem(s,sbuf);
    sprintf(sbuf,"\t#radiobuttonpanellabelpane       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            27,2,w-(2*3 +2+27+1),24,z+2,w-(2*3 +2+27+1),24);
    htrAddHeaderItem(s,sbuf);
@@ -180,6 +188,35 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    sprintf(sbuf,"    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
 
+   htrAddScriptFunction(s, "rb_getvalue", "\n"
+      "   function rb_getvalue() {\n"
+      "       return this.selectedOption.layers.radiobuttonpanelvaluepane.document.anchors[0].name;\n"
+      "   }\n",0);
+
+   /*
+    *  Luke (02/22/02) -
+    *  We made a design decision.  If "" is passed into setvalue for the radio buttons,
+    *  then all buttons are deselected.  Otherwise if the passed-in value is in the list
+    *  of available options, that gets set.  If a non-'' value is passed that isn't in 
+    *  the list, a warning is displayed and no values are changed.
+    */
+   htrAddScriptFunction(s, "rb_setvalue", "\n"
+      "   function rb_setvalue(v) {\n"
+      "       optsLayerArray = this.layers[0].document.layers[0].document.layers;\n"
+      "       if (v != '') {\n"
+      "           for (var i=0; i < optsLayerArray.length; i++) {\n"
+      "               if (optsLayerArray[i].layers.radiobuttonpanelvaluepane.document.anchors[0].name == v) {\n"
+      "                   radiobutton_toggle(optsLayerArray[i]);\n"
+      "                   return;\n"
+      "               }\n"
+      "           }\n"
+      "           alert('Warning: \"'+v+'\" is not in the radio button list.');\n"
+      "       } else if (this.selectedOption) {\n"
+      "           this.selectedOption.unsetPane.visibility = 'inherit';\n"
+      "           this.selectedOption.setPane.visibility = 'hidden';\n"
+      "           this.selectedOption = null;\n"
+      "       }\n"
+      "   }\n",0);
 
    htrAddScriptFunction(s, "add_radiobutton", "\n"
       "   function add_radiobutton(optionPane, parentPane, selected) {\n"
@@ -220,19 +257,27 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
          "      parentPane.layers.radiobuttonpanel%dborderpane.bgColor='%s';\n"
          "      parentPane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.%s;\n"
          "      parentPane.layers.radiobuttonpanel%dtitlepane.%s;\n"
+	 "      parentPane.setvalue = rb_setvalue;\n"
+	 "      parentPane.getvalue = rb_getvalue;\n"
+	 "      if (fm_current) fm_current.Register(parentPane);\n"
          "   }\n",
          main_bg, id, outline_bg, id, id, main_bg, id, main_bg);
    } else {
       sprintf(bigbuf, "\n"
          "   function radiobuttonpanel_init(parentPane) {\n"
+	 "      parentPane.setvalue = rb_setvalue;\n"
+	 "      parentPane.getvalue = rb_getvalue;\n"
+	 "      if (fm_current) fm_current.Register(parentPane);\n"
          "   }\n");
    }
    htrAddScriptFunction(s, "radiobuttonpanel_init", bigbuf, 0);
 
    htrAddScriptFunction(s, "radiobutton_toggle", "\n"
       "   function radiobutton_toggle(layer) {\n"
-      "      layer.optionPane.parentPane.selectedOption.unsetPane.visibility = 'inherit';\n"
-      "      layer.optionPane.parentPane.selectedOption.setPane.visibility = 'hidden';\n"
+      "      if (layer.optionPane.parentPane.selectedOption) {\n"
+      "          layer.optionPane.parentPane.selectedOption.unsetPane.visibility = 'inherit';\n"
+      "          layer.optionPane.parentPane.selectedOption.setPane.visibility = 'hidden';\n"
+      "      }\n"
       "      layer.optionPane.setPane.visibility = 'inherit';\n"
       "      layer.optionPane.unsetPane.visibility = 'hidden';\n"
       "      layer.optionPane.parentPane.selectedOption = layer.optionPane;\n"
@@ -245,8 +290,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "   }\n");
 
    /** Script initialization call. **/
-   sprintf(sbuf,"    radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane);\n",
-      parentname, id);
+   sprintf(sbuf,"    radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane);\n", parentname, id);
    htrAddScriptInit(s, sbuf);
 
    /*
@@ -297,11 +341,16 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
             sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
             htrAddBodyItem(s, sbuf);
 
+	    objGetAttrValue(radiobutton_obj,"value",POD(&ptr));
+	    strcpy(sbuf2,ptr);
+            sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);
+            htrAddBodyItem(s, sbuf);
+	    
             objGetAttrValue(radiobutton_obj,"label",POD(&ptr));
             strcpy(sbuf2,ptr);
-
             sprintf(sbuf,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
-            htrAddBodyItem(s, sbuf);
+            
+	    htrAddBodyItem(s, sbuf);
             sprintf(sbuf,"            </DIV>\n");
             htrAddBodyItem(s, sbuf);
             i++;

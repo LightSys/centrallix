@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.4  2002/02/23 19:35:28  lkehresman
+    * Radio button widget is now forms aware.
+    * Fixes a couple of oddities in the checkbox.
+    * Fixed some formatting issues in the form.
+
     Revision 1.3  2002/02/23 04:28:29  jorupp
     bug fixes in form, I-bar in editbox is reset on a setvalue()
 
@@ -233,10 +238,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_change_mode", "\n"
 		"function form_change_mode(form,newmode)\n"
 		"    {\n"
-		"    alert(\"Form is going from \"+form.mode+\" to \"+newmode+\" mode.\");\n"
 		"    for(var i in form.elements)\n"
 		"        {\n"
-		"        form.elements[i].setvalue(\"\");\n"
+		"        form.elements[i].setvalue('');\n"
 		"        }\n"
 		"    form.oldmode = form.mode;\n"
 		"    form.mode = \"query\";\n"
@@ -320,7 +324,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	//nmFree(sbuf3,800);
 
 	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"        %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,%s);\n",
+	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,%s);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name);
 	htrAddScriptInit(s,sbuf3);
 	nmFree(sbuf3,200);
@@ -356,7 +360,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	//htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z);	/* non-visual, don't consume a z level */
 	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);	/* non-visual, don't consume a z level */
 	
-	htrAddScriptInit(s,"    fm_current = null;");
+	htrAddScriptInit(s,"    fm_current = null;\n\n");
 
     return 0;
     }

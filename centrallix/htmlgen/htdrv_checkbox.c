@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.4 2002/02/23 03:50:41 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.5 2002/02/23 19:35:28 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.5  2002/02/23 19:35:28  lkehresman
+    * Radio button widget is now forms aware.
+    * Fixes a couple of oddities in the checkbox.
+    * Fixed some formatting issues in the form.
+
     Revision 1.4  2002/02/23 03:50:41  lkehresman
     Implemented the setvalue() function (previously a stub).  If anything that
     would be evaluated as TRUE get sent, the checkbox gets checked.  Otherwise
@@ -107,21 +112,25 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptFunction(s, "checkbox_getvalue", "\n"
       "function checkbox_getvalue()\n"
       "    {\n"
-	  "    return this.is_checked;\n"
+      "    return this.is_checked;\n"
       "    }\n",0);
 
    /** Set value function **/
    htrAddScriptFunction(s, "checkbox_setvalue", "\n"
       "function checkbox_setvalue(v)\n"
       "    {\n"
-	  "    if (v)\n"
-	  "        {\n"
-	  "        this.document.images[0].src = this.document.images[0].checkedImage.src;\n"
-	  "        }\n"
-	  "    else\n"
-	  "        {\n"
-	  "        this.document.images[0].src = this.document.images[0].uncheckedImage.src;\n"
-	  "        }\n"
+      "    if (v)\n"
+      "        {\n"
+      "        this.document.images[0].src = this.document.images[0].checkedImage.src;\n"
+      "        this.document.images[0].is_checked = 1;\n"
+      "        this.is_checked = 1;\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        this.document.images[0].src = this.document.images[0].uncheckedImage.src;\n"
+      "        this.document.images[0].is_checked = 0;\n"
+      "        this.is_checked = 0;\n"
+      "        }\n"
       "    }\n",0);
 
    /** Checkbox initializer **/
@@ -168,7 +177,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "\n");
 
    /** Script initialization call. **/
-   sprintf(sbuf,"   checkbox_init(%s.layers.cb%dmain);\n", parentname, id);
+   sprintf(sbuf,"    checkbox_init(%s.layers.cb%dmain);\n", parentname, id);
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/
