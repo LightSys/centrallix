@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.29 2004/08/04 20:03:11 mmcgill Exp $
+    $Id: htdrv_textbutton.c,v 1.30 2004/08/17 03:47:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.30  2004/08/17 03:47:18  gbeeley
+    - got textbutton appearance and functionality consistent across MSIE, Moz,
+      and NS4.
+
     Revision 1.29  2004/08/04 20:03:11  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -318,6 +322,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     char* nptr;
     int is_enabled = 1;
     pExpression code;
+    int box_offset;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -354,6 +359,12 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
+
+	/** box adjustment... arrgh **/
+	if (s->Capabilities.CSSBox)
+	    box_offset = 1;
+	else
+	    box_offset = 0;
 
 	/** User requesting expression for enabled? **/
 	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
@@ -410,9 +421,10 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
+	/** Include the javascript code for the textbutton **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
 
-	if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+	if(s->Capabilities.Dom0NS)
 	    {
 	    /** Ok, write the style header items. **/
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
@@ -430,7 +442,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    	htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dpane3,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
 		    nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
 		}
-	    else if(s->Capabilities.Dom0IE)
+	    /*else if(s->Capabilities.Dom0IE)
 	        {
 		if(strstr(parentname,"document")!=NULL)
 		    {
@@ -444,7 +456,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		      htrAddScriptInit_va(s, "    tb_init(%s,%s.document.getElementById(\"tb%dpane2\"),%s.document.getElementById(\"tb%dpane3\"),%s.document.getElementById(\"tb%dtop\"),%s.document.getElementById(\"tb%dbtm\"),%s.document.getElementById(\"tb%drgt\"),%s.document.getElementById(\"tb%dlft\"),%d,%d,%s,%d,\"%s\");\n",
 					  nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
 		    }
-	        }
+	        }*/
 
 	    /** HTML body <DIV> elements for the layers. **/
 	    if (h >= 0)
@@ -465,29 +477,33 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dlft\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h<0)?1:h);
 	    htrAddBodyItem_va(s,"</DIV>\n");
 	    }
-	else if(s->Capabilities.Dom2CSS)
+	else if(s->Capabilities.CSS2)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
 	    if(h >=0 )
 		{
-		htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { height: %dpx;}\n",id,id,id,h);
+		htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; OVERFLOW:hidden; clip:rect(%dpx %dpx %dpx %dpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset,h-1-2*box_offset,0);
+		htrAddStylesheetItem_va(s,"\t#tb%dpane2, #tb%dpane3 { height: %dpx;}\n",id,id,h-3);
+		htrAddStylesheetItem_va(s,"\t#tb%dpane { height: %dpx;}\n",id,h-1-2*box_offset);
 		}
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { font-weight: 600; text-align: center; }\n",id,id,id);
+	    else
+		{
+		htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; OVERFLOW:hidden; clip:rect(%dpx %dpx auto %dpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset,0);
+		}
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { text-align: center; }\n",id,id,id);
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane { %s border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane { color: %s; }\n",id,fgcolor2);
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane2 { color: %s; VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:-1px; top: -1px; width:%dpx; }\n",id,fgcolor1,is_enabled?"inherit":"hidden",z+1,w-1);
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane3 { color: %s; VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:0px; top: 0px; width:%dpx; }\n",id,disable_color,is_enabled?"hidden":"inherit",z+1,w-1);
+	    /*htrAddStylesheetItem_va(s,"\t#tb%dpane { color: %s; }\n",id,fgcolor2);*/
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane2 { VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:-1px; top: -1px; width:%dpx; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane3 { VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:0px; top: 0px; width:%dpx; }\n",id,is_enabled?"hidden":"inherit",z+1,w-3);
 
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><center><table><tr><td height=%d valign=middle align=center>%s</td></tr></table></center>\n",id,h,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\"><center><table><tr><td height=%d valign=middle align=center>%s</td></tr></table></center></DIV>\n",id,h,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\"><center><table><tr><td height=%d valign=middle align=center>%s</td></tr></table></center></DIV>\n",id,h,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%d valign=middle align=center><font color=%s><b>%s</b></font</td></tr></table></center>\n",id,h-3,fgcolor2,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%d valign=middle align=center><font color=%s><b>%s</b></font></td></tr></table></center></DIV>\n",id,h-3,fgcolor1,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%d valign=middle align=center><font color=%s><b>%s</b></font></td></tr></table></center></DIV>\n",id,h-3,disable_color,text);
 	    htrAddBodyItem_va(s,"</DIV>");
 
 	    /** Script initialization call. **/
 	    htrAddScriptInit_va(s, "    %s = document.getElementById('tb%dpane');\n",nptr, id);
 	    htrAddScriptInit_va(s, "    tb_init(%s,document.getElementById('tb%dpane2'),document.getElementById('tb%dpane3'),null,null,null,null,%d,%d,%s,%d,\"%s\");\n",
 		    nptr, id, id, w, h, parentobj,is_ts, nptr);
-
 	    }
 	else
 	    {
@@ -496,74 +512,19 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    }
 
 	/** Add the event handling scripts **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","tb",
-		"    if (ly.kind == 'tb' && ly.enabled)\n"
-		"        {\n"
-		"        moveBy(ly,1,1);\n"
-		"        tb_setmode(ly,2);\n"
-		"        cn_activate(ly, 'MouseDown');\n"
-		"        }\n");
+	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "tb", "tb_mousedown");
+	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "tb", "tb_mouseup");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "tb", "tb_mouseover");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "tb", "tb_mouseout");
+	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "tb", "tb_mousemove");
 
-	htrAddEventHandler(s, "document","MOUSEUP","tb",
-		"    if (ly.kind == 'tb' && ly.enabled)\n"
-		"        {\n"
-		"        moveBy(ly,-1,-1);\n"
-		"        if (e.pageX >= getPageX(ly) &&\n"
-		"            e.pageX < getPageX(ly) + getClipWidth(ly) &&\n"
-		"            e.pageY >= getPageY(ly) &&\n"
-		"            e.pageY < getPageY(ly) + getClipHeight(ly))\n"
-		"            {\n"
-		"            tb_setmode(ly,1);\n"
-		"            cn_activate(ly, 'Click');\n"
-		"            cn_activate(ly, 'MouseUp');\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            tb_setmode(ly,0);\n"
-		"            }\n"
-		"        }\n" );
-
-	htrAddEventHandler(s, "document","MOUSEOVER","tb",
-		"    if (ly.kind == 'tb' && ly.enabled)\n"
-		"        {\n"
-		"        if(cx__capabilities.Dom2CSS)\n"
-		"            {\n"
-		"            if (ly.mode != 2) tb_setmode(ly,1);\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            if (e.target.mode != 2) tb_setmode(e.target,1);\n"
-		"            }\n"
-		"        cn_activate(ly, 'MouseOver');\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEOUT","tb",
-		"    if (ly.kind == 'tb' && ly.enabled)\n"
-		"        {\n"
-		"        if(cx__capabilities.Dom2CSS)\n"
-		"            {\n"
-		"            if (ly.mode != 2) tb_setmode(ly,0);\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            if (e.target.mode != 2) tb_setmode(e.target,0);\n"
-		"            }\n"
-		"        cn_activate(ly, 'MouseOut');\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEMOVE","tb",
-		"    if (ly.kind == 'tb' && ly.enabled)\n"
-		"        {\n"
-		"        cn_activate(ly, 'MouseMove');\n"
-		"        }\n");
-
-
-
+	/** IE handles dblclick strangely **/
+	if (s->Capabilities.Dom0IE)
+	    htrAddEventHandlerFunction(s, "document", "DBLCLICK", "tb", "tb_dblclick");
 
 	/** Check for more sub-widgets within the textbutton. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+3, parentname, nptr);
-
 
     return 0;
     }
