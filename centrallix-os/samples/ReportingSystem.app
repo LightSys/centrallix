@@ -148,7 +148,7 @@ ReportingSystem "widget/page"
 		{
 		mode=dynamic
 		x=0 y=0 width=576
-		source = "http://glaptop:800/samples/Samples.rpt"
+		source = "http://localhost:800/samples/Samples.rpt"
 		}
 	    }
 	}
@@ -194,7 +194,7 @@ ReportingSystem "widget/page"
 		        {
 			mode=dynamic
 			x=0 y=0 width=576
-			source = "http://glaptop:800/samples/Samples.rpt?ls__type=text%2fplain"
+			source = "http://localhost:800/samples/Samples.rpt?ls__type=text%2fplain"
 			}
 		    }
 		}
