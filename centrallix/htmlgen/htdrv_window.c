@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.26 2002/08/14 20:16:38 pfinley Exp $
+    $Id: htdrv_window.c,v 1.27 2002/08/15 13:58:16 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.27  2002/08/15 13:58:16  pfinley
+    Made graphical window closing and shading properties of the window widget,
+    rather than globally of the page.
+
     Revision 1.26  2002/08/14 20:16:38  pfinley
     Added some visual effets for the window:
      - graphical window shading (enable by setting gshade="true")
@@ -219,6 +223,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     int has_titlebar = 1;
     char title[128];
     int is_dialog_style = 0;
+    int gshade = 0;
+    int closetype = 0;
 
     	/** Get an id for this. **/
 	id = (HTWIN.idcnt++);
@@ -283,6 +289,18 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** Dialog or window style? **/
 	if (objGetAttrValue(w_obj,"style",POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
 	    is_dialog_style = 1;
+
+	/** Graphical window shading? **/
+	if (objGetAttrValue(w_obj,"gshade",POD(&ptr)) == 0 && !strcmp(ptr,"true"))
+	    gshade = 1;
+
+	/** Graphical window close? **/
+	if (objGetAttrValue(w_obj,"closetype",POD(&ptr)) == 0)
+	    {
+	    if (!strcmp(ptr,"shrink1")) closetype = 1;
+	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
+	    else if (!strcmp(ptr,"shrink3")) closetype = 1 & 2;
+	    }
 
 	/** Compute titlebar width & height - includes edge below titlebar. **/
 	if (has_titlebar)
@@ -408,8 +426,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain);\n", 
-		name,parentname,id,parentname,id,id);
+	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d,%d);\n", 
+		name,parentname,id,parentname,id,id,gshade,closetype);
 
 	/** HTML body <DIV> elements for the layers. **/
 	/** This is the top white edge of the window **/

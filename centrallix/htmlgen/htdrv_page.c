@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.47 2002/08/14 20:16:38 pfinley Exp $
+    $Id: htdrv_page.c,v 1.48 2002/08/15 13:58:16 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.48  2002/08/15 13:58:16  pfinley
+    Made graphical window closing and shading properties of the window widget,
+    rather than globally of the page.
+
     Revision 1.47  2002/08/14 20:16:38  pfinley
     Added some visual effets for the window:
      - graphical window shading (enable by setting gshade="true")
@@ -347,8 +351,6 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
     char *nptr;
     char name[64];
     int attract = 0;
-    int gshade = 0;
-    int closetype = 0;
 
 	strcpy(t->kbfocus1,"#ffffff");	/* kb focus = 3d raised */
 	strcpy(t->kbfocus2,"#7a7a7a");
@@ -428,24 +430,10 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	    memccpy(t->dtfocus2,ptr,0,63);
 	    t->dtfocus2[63]=0;
 	    }
-
    
 	/** Cx windows attract to browser edges? if so, by how much **/
 	if (objGetAttrValue(w_obj,"attract",POD(&ptr)) == 0)
 	    attract = (int)ptr;
-
-	/** Graphical window shading? **/
-	if (objGetAttrValue(w_obj,"gshade",POD(&ptr)) == 0 && !strcmp(ptr,"true"))
-	    gshade = 1;
-
-	/** Graphical window close? **/
-	if (objGetAttrValue(w_obj,"closetype",POD(&ptr)) == 0)
-	    {
-	    if (!strcmp(ptr,"shrink1")) closetype = 1;
-	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
-	    else if (!strcmp(ptr,"shrink3")) closetype = 3;
-	    }
-
 
 	/** Add global for page metadata **/
 	htrAddScriptGlobal(s, "page", "new Object()", 0);
@@ -482,7 +470,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d,%d,%d);\n", name, parentname, attract, gshade, closetype);
+	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d);\n", name, parentname, attract);
 
     return 0;
     }

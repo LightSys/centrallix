@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function wn_init(l,ml)
+function wn_init(l,ml,gs,ct)
     {
     l.keep_kbd_focus = true;
     l.oldwin=window_current;
@@ -32,6 +32,8 @@ function wn_init(l,ml)
     l.orig_height = l.clip.height;
     l.orig_bottom = l.clip.bottom;
     l.orig_top = l.clip.top;
+    l.gshade = gs;
+    l.closetype = ct;
     l.working = false;
     l.shaded = false;
     l.kind = 'wn';
@@ -69,7 +71,7 @@ function wn_windowshade(l)
 //	st = new Date();
 	if (!l.shaded && !l.working)
 	    {
-	    if (pg_gshade)
+	    if (l.gshade)
 		{
 		var size = Math.ceil((l.clip.height-24)*speed/duration);
 		l.working = true;
@@ -83,7 +85,7 @@ function wn_windowshade(l)
 	    }
 	else if (!l.working)
 	    {
-	    if (pg_gshade)
+	    if (l.gshade)
 		{
 		var size = Math.ceil((l.orig_height-24)*speed/duration);
 		l.working = true;
@@ -145,7 +147,7 @@ function wn_graphical_shade(l,to,speed,size)
 
 function wn_close(l,type)
     {
-    if (pg_closetype == 0) l.visibility = 'hidden';
+    if (l.closetype == 0) l.visibility = 'hidden';
     else
         {
 	st = new Date();
@@ -153,12 +155,12 @@ function wn_close(l,type)
 	var duration = 150;
 	var sizeX = 0;
 	var sizeY = 0;
-	if (pg_closetype & 1)
+	if (l.closetype & 1)
 	    {
 	    var toX = Math.ceil(l.clip.width/2);
 	    sizeX = Math.ceil(toX*speed/duration);
 	    }
-	if (pg_closetype & 2)
+	if (l.closetype & 2)
 	    {
 	    var toY = Math.ceil(l.clip.height/2);
 	    sizeY = Math.ceil(toY*speed/duration);

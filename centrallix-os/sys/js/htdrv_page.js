@@ -290,8 +290,6 @@ function pg_init(l,a,gs,ct)
     {
     l.ActionLoadPage = pg_load_page;
     pg_attract = a;
-    pg_gshade = gs;
-    pg_closetype = ct;
     return l;
     }
 
