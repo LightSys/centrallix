@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.51 2004/08/13 18:46:13 mmcgill Exp $
+    $Id: ht_render.c,v 1.52 2004/08/14 20:28:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.52  2004/08/14 20:28:29  gbeeley
+    - fix for windowsize-getter script to work with IE.
+
     Revision 1.51  2004/08/13 18:46:13  mmcgill
     *   Differentiated between non-visual widgets and widgets without associated
         objects during the rendering process. Widgets without associated objects
@@ -1576,7 +1579,10 @@ htr_internal_GetGeom(pFile output)
 			 "        loc += '&';\n"
 			 "    else\n"
 			 "        loc += '?';\n"
-			 "    loc += 'cx__width=' + window.innerWidth + '&cx__height=' + window.innerHeight;\n"
+			 "    if (window.document.body && window.document.body.clientWidth)\n"
+			 "        loc += 'cx__width=' + window.document.body.clientWidth + '&cx__height=' + window.document.body.clientHeight;\n"
+			 "    else\n"
+			 "        loc += 'cx__width=' + window.innerWidth + '&cx__height=' + window.innerHeight;\n"
 			 "    window.location.href = loc;\n"
 			 "    }\n");
 	fdPrintf(output, "</script><body onload='startup();'>Please Wait...</body></html>\n");
