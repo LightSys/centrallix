@@ -30,28 +30,42 @@ FourTabs "widget/page"
 	TabTwo "widget/tabpage" { }
 	TabThree "widget/tabpage" { }
 	}
-    TabCtlThree "widget/tab"
+    TabWindow "widget/htmlwindow"
 	{
-	tab_location = left;
-	tab_width = 80;
-	x = 320; y = 34; width=300; height=100;
-	bgcolor = "#c0c0e0";
-	inactive_bgcolor = "#b0b0d0";
+	x = 320; y = 10; width=400; height=124;
+	title="Tab Number Three";
+	bgcolor="#808080";
+	hdr_bgcolor="#a0a0a0";
+	style=dialog;
+	TabCtlThree "widget/tab"
+	    {
+	    tab_location = left;
+	    tab_width = 80;
+	    x=10;y=5;width=300;height=90;
+	    bgcolor = "#c0c0e0";
+	    inactive_bgcolor = "#b0b0d0";
 
-	TabOne "widget/tabpage" { }
-	TabTwo "widget/tabpage" { }
-	TabThree "widget/tabpage" { }
+	    TabOne "widget/tabpage" { }
+	    TabTwo "widget/tabpage" { }
+	    TabThree "widget/tabpage" { }
+	    }
 	}
-    TabCtlFour "widget/tab"
+    TabPane "widget/pane"
 	{
-	tab_location = right;
-	tab_width = 80;
-	x = 320; y = 168; width=300; height=100;
-	bgcolor = "#c0e0c0";
-	inactive_bgcolor = "#b0d0b0";
+	x = 320; y = 144; width=400; height=124;
+	style=raised;
+	bgcolor="#e0e0e0";
+	TabCtlFour "widget/tab"
+	    {
+	    x=10;y=10;width=300;height=100;
+	    tab_location = right;
+	    tab_width = 80;
+	    bgcolor = "#c0e0c0";
+	    inactive_bgcolor = "#b0d0b0";
 
-	TabOne "widget/tabpage" { }
-	TabTwo "widget/tabpage" { }
-	TabThree "widget/tabpage" { }
+	    TabOne "widget/tabpage" { }
+	    TabTwo "widget/tabpage" { }
+	    TabThree "widget/tabpage" { }
+	    }
 	}
     }
