@@ -28,6 +28,9 @@
 #include <rpc/xdr.h>
 #include <rpc/rpc_msg.h>
 
+/** XRingQueue **/
+#include "xringqueue.h"
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -62,10 +65,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.12 2003/03/12 00:28:56 jorupp Exp $
+    $Id: net_nfs.c,v 1.13 2003/03/29 08:55:44 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.13  2003/03/29 08:55:44  jorupp
+     * switched to an XRingQueue for internal queueing
+     * added (experimental) code to (recursively) decode what fhandle a request needs
+     * added inode 'locking' to a specific thread, and it seems to work pretty well
+       -- note: any ideas how to test this well?
+          I just added a thSleep(3000) (sleep for 3 seconds) to the nfsstat procedure
+          and wached the requests back up on that thread's queue as they came in --
+          any good ideas on how to do it better than that?
+
     Revision 1.12  2003/03/12 00:28:56  jorupp
      * add the output of the 'nextFileHandle' to the inode.map file
      * fix a minor bug with the error handling while reading in values from inode.map
@@ -135,6 +147,8 @@
 
 #define MAX_PACKET_SIZE 16384
 
+typedef unsigned int inode;
+
 typedef struct
     {
     struct sockaddr_in source;
@@ -146,8 +160,9 @@ typedef struct
 
 typedef struct
     {
-    fhandle lockedFH;
-    XArray waitingList;
+    inode lockedInode;
+    XRingQueue waitingRequests;
+    pThread thread;
     } ThreadInfo, *pThreadInfo;
 
 /** definition for the exports listed in the config file **/
@@ -171,9 +186,7 @@ struct
     {
     int numThreads;
     int queueSize;
-    pQueueEntry* queue;
-    int nextIn;
-    int nextOut;
+    XRingQueue queue;
     pSemaphore semaphore;
     pFile nfsSocket;
     pXArray exportList;
@@ -182,6 +195,7 @@ struct
     pXHashTable pathToFh;
     int nextFileHandle;
     char *inodeFile;
+    pThreadInfo threads;
     }
     NNFS;
 
@@ -493,13 +507,13 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     if (!f)
 	{
 	printf("mount point %s is not exported\n",*param);
-	retval->status = 1;
+	retval->status = ENODEV;
 	return retval;
 	}
     
     i=nnfs_internal_get_fhandle(retval->fhstatus_u.directory, *param);
     if(i==-1)
-	retval->status = 1; /** this should be the UNIX error **/
+	retval->status = ENODEV;
     else
 	retval->status = 0;
     
@@ -766,7 +780,8 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     retval = (statfsres*)nmMalloc(sizeof(statfsres));
     /** do work here **/
 
-    retval->status = 1;
+    /** not implimented **/
+    retval->status = ENOSYS;
     
     return retval;
     }
@@ -915,12 +930,59 @@ nnfs_internal_dump_inode_map()
     }
 
 /***
+**** nnfs_internal_get_inode - given a pointer to an XDR structure and a reference
+****   to the XDR function that created it, returns the inode referenced in the
+****   request (0 if there is none)
+***/
+inode
+nnfs_internal_get_inode(void* data, xdrproc_t func)
+    {
+    if(func==(xdrproc_t)xdr_void)
+	return 0;
+    if(func==(xdrproc_t)xdr_fhandle)
+	return *(inode*)data;
+    if(func==(xdrproc_t)xdr_sattrargs)
+	return nnfs_internal_get_inode(&((sattrargs*)data)->file,(xdrproc_t)xdr_fhandle);
+    if(func==(xdrproc_t)(xdrproc_t)xdr_diropargs)
+	return nnfs_internal_get_inode(&((diropargs*)data)->dir,(xdrproc_t)xdr_fhandle);
+    if(func==(xdrproc_t)(xdrproc_t)xdr_readargs)
+	return nnfs_internal_get_inode(&((readargs*)data)->file,(xdrproc_t)xdr_fhandle);
+    if(func==(xdrproc_t)(xdrproc_t)xdr_writeargs)
+	return nnfs_internal_get_inode(&((writeargs*)data)->file,(xdrproc_t)xdr_fhandle);
+    if(func==(xdrproc_t)(xdrproc_t)xdr_createargs)
+	return 0;
+    /** may have problems with destination on some of these -- not sure how to handle **/
+    if(func==(xdrproc_t)(xdrproc_t)xdr_renameargs)
+	return nnfs_internal_get_inode(&((renameargs*)data)->from,(xdrproc_t)xdr_diropargs);
+    if(func==(xdrproc_t)(xdrproc_t)xdr_linkargs)
+	return nnfs_internal_get_inode(&((linkargs*)data)->from,(xdrproc_t)xdr_fhandle);
+    if(func==(xdrproc_t)(xdrproc_t)xdr_symlinkargs)
+	return nnfs_internal_get_inode(&((symlinkargs*)data)->from,(xdrproc_t)xdr_diropargs);
+    if(func==(xdrproc_t)(xdrproc_t)xdr_readdirargs)
+	return nnfs_internal_get_inode(&((readdirargs*)data)->dir,(xdrproc_t)xdr_fhandle);
+    mssError("NNFS",0,"Error getting inode from %p (%p)\n",data,func);
+    return 0;
+    }
+
+/***
+**** nnfs_internal_destroy_queueentry - frees all memory used by a queueentry
+***/
+void
+nnfs_internal_destroy_queueentry(pQueueEntry entry)
+    {
+    xdr_free(nfs_program[entry->procedure].param,(char*)entry->param);
+    nmFree(entry->param,nfs_program[entry->procedure].param_size);
+    nmFree(entry,sizeof(QueueEntry));
+    }
+
+/***
 **** nnfs_internal_request_handler - waits for and processes queued nfs requests
 ***/
 void
 nnfs_internal_request_handler(void* v)
     {
     int threadNum = *(int*)v;
+    pThreadInfo cThread = &NNFS.threads[threadNum];
     char name[32];
 
     nmFree(v,sizeof(int));
@@ -935,61 +997,91 @@ nnfs_internal_request_handler(void* v)
 	pQueueEntry entry;
 	char *buf;
 	XDR xdr_out;
+	inode requestInode;
+
 	memset(&msg_out,0,sizeof(struct rpc_msg));
 
 	/** block until there's a request in the queue **/
 	syGetSem(NNFS.semaphore,1,0);
 
-	printf("getting request # %i\n",NNFS.nextOut);
-
 	/** get the request **/
-	entry = NNFS.queue[NNFS.nextOut];
-	NNFS.queue[NNFS.nextOut++]=NULL;
-	NNFS.nextOut%=NNFS.queueSize;
+	entry = xrqDequeue(&NNFS.queue);
 
 	printf("entry: %p\n",entry);
 	printf("xid: %x\n",entry->xid);
 
-	/** scan the threads checking for another thread that has the object we want locked **/
-	// not sure how to get the fhandle out of all the requests
-
-	/** wait for requests to batch together **/
-	//thYield();
-
-	printf("procedure: %i\n",entry->procedure);
-	msg_out.rm_xid = entry->xid;
-	msg_out.rm_direction = REPLY;
-	msg_out.rm_reply.rp_stat = MSG_ACCEPTED;
-	msg_out.rm_reply.rp_acpt.ar_stat = SUCCESS;
-	msg_out.rm_reply.rp_acpt.ar_results.where = nfs_program[entry->procedure].func(entry->param);
-	msg_out.rm_reply.rp_acpt.ar_results.proc = nfs_program[entry->procedure].ret;
-
-	buf = (char*)nmMalloc(MAX_PACKET_SIZE);
-	xdrmem_create(&xdr_out,buf,MAX_PACKET_SIZE,XDR_ENCODE);
-	if(!xdr_replymsg(&xdr_out,&msg_out))
-	    {
-	    mssError(0,"NNFS","unable to create message to send");
-	    }
-	else
+	/** get the inode of the request **/
+	requestInode = nnfs_internal_get_inode(entry->param,nfs_program[entry->procedure].param);
+	if(requestInode)
 	    {
 	    int i;
-	    i = xdr_getpos(&xdr_out);
-//	    nnfs_internal_dump_buffer(buf,i);
-	    if(netSendUDP(NNFS.nfsSocket,buf,i,0,&(entry->source),NULL,0) == -1)
+	    for(i=0;i<NNFS.numThreads;i++)
 		{
-		mssError(0,"NNFS","unable to send message: %s",strerror(errno));
+		if(NNFS.threads[i].lockedInode==requestInode)
+		    {
+		    /** thread 'i' has it locked -- give it up **/
+		    if(xrqEnqueue(&NNFS.threads[i].waitingRequests,entry)!=0)
+			mssError("NNFS",1,"Unable to give request on inode %i to thread %i",requestInode,i);
+		    else
+			printf("successfully gave request on %i to %i\n",requestInode,i);
+		    entry = NULL;
+		    break;
+		    }
 		}
 	    }
+	/** if we gave away the request (entry is null), jump back to the top of the while loop **/
+	if(!entry)
+	    continue;
 
-	xdr_free((xdrproc_t)xdr_replymsg,(char*)&msg_out);
-	/** free the return value of the function we called**/
-	nmFree(msg_out.rm_reply.rp_acpt.ar_results.where,nfs_program[entry->procedure].ret_size);
-	xdr_destroy(&xdr_out);
-	nmFree(buf,MAX_PACKET_SIZE);
-	nmFree(entry,sizeof(QueueEntry));
+	/** enqueue the initial request (this makes processing easier) **/
+	if(xrqEnqueue(&(cThread->waitingRequests),entry)!=0)
+	    {
+	    mssError("NNFS",1,"Unable to enqueue request on %i",threadNum);
+	    nnfs_internal_destroy_queueentry(entry);
+	    continue;
+	    }
 
+	/** lock the inode **/
+	cThread->lockedInode = requestInode;
+	printf("%i locked %i\n",threadNum,requestInode);
+
+	/** grab elements off the top of the queue until there are no more **/
+	while((entry = xrqDequeue(&(cThread->waitingRequests))) != NULL)
+	    {
+	    printf("procedure: %i\n",entry->procedure);
+	    msg_out.rm_xid = entry->xid;
+	    msg_out.rm_direction = REPLY;
+	    msg_out.rm_reply.rp_stat = MSG_ACCEPTED;
+	    msg_out.rm_reply.rp_acpt.ar_stat = SUCCESS;
+	    msg_out.rm_reply.rp_acpt.ar_results.where = nfs_program[entry->procedure].func(entry->param);
+	    msg_out.rm_reply.rp_acpt.ar_results.proc = nfs_program[entry->procedure].ret;
+
+	    buf = (char*)nmMalloc(MAX_PACKET_SIZE);
+	    xdrmem_create(&xdr_out,buf,MAX_PACKET_SIZE,XDR_ENCODE);
+	    if(!xdr_replymsg(&xdr_out,&msg_out))
+		{
+		mssError(0,"NNFS","unable to create message to send");
+		}
+	    else
+		{
+		int i;
+		i = xdr_getpos(&xdr_out);
+		//nnfs_internal_dump_buffer(buf,i);
+		if(netSendUDP(NNFS.nfsSocket,buf,i,0,&(entry->source),NULL,0) == -1)
+		    {
+		    mssError(0,"NNFS","unable to send message: %s",strerror(errno));
+		    }
+		}
+
+	    xdr_free((xdrproc_t)xdr_replymsg,(char*)&msg_out);
+	    /** free the return value of the function we called**/
+	    nmFree(msg_out.rm_reply.rp_acpt.ar_results.where,nfs_program[entry->procedure].ret_size);
+	    xdr_destroy(&xdr_out);
+	    nmFree(buf,MAX_PACKET_SIZE);
+	    nnfs_internal_destroy_queueentry(entry);
+	    }
+	cThread->lockedInode = 0;
 	}
-    
     }
 
 /*** nnfs_internal_nfs_listener - listens for and processes nfs requests
@@ -1078,6 +1170,7 @@ nnfs_internal_nfs_listener(void* v)
 		//printf("auth flavor: %i\n",msg_in.rm_call.cb_cred.oa_flavor);
 		//printf("bytes of auth data: %u\n",msg_in.rm_call.cb_cred.oa_length);
 		entry->xid = msg_out.rm_xid = msg_in.rm_xid;
+#if 0
 		if(NNFS.nextIn < NNFS.nextOut)
 		    {
 		    for(i=NNFS.nextOut;i<NNFS.queueSize;i++)
@@ -1090,6 +1183,7 @@ nnfs_internal_nfs_listener(void* v)
 		for(i=NNFS.nextOut;i<NNFS.nextIn;i++)
 		    if(NNFS.queue[i]->xid == entry->xid)
 			isDup = 1;
+#endif
 		if(isDup==0)
 		    {
 		    msg_out.rm_direction = REPLY;
@@ -1107,12 +1201,9 @@ nnfs_internal_nfs_listener(void* v)
 				    memset(entry->param,0,nfs_program[entry->procedure].param_size);
 				    if(nfs_program[entry->procedure].param(&xdr_in,(char*)entry->param))
 					{
-					if((NNFS.nextIn+1)%NNFS.queueSize!=NNFS.nextOut)
+					if(xrqCount(&NNFS.queue)<NNFS.queueSize && xrqEnqueue(&NNFS.queue,entry)==0)
 					    {
-					    wasError = 0;
-					    /** add message to the queue **/
-					    NNFS.queue[NNFS.nextIn++]=entry;
-					    NNFS.nextIn%=NNFS.queueSize;
+					    wasError=0;
 					    syPostSem(NNFS.semaphore,1,0);
 					    }
 					else
@@ -1518,7 +1609,7 @@ nnfsInitialize()
 	    /** Got the config.  Now lookup how many threads to use **/
 	    if (stAttrValue(stLookup(my_config, "num_threads"), &(NNFS.numThreads), NULL, 0) < 0)
 		{
-		NNFS.numThreads = 1;
+		NNFS.numThreads = 10;
 		}
 	    /** Now lookup how big the queue is **/
 	    if (stAttrValue(stLookup(my_config, "queue_size"), &(NNFS.queueSize), NULL, 0) < 0)
@@ -1538,10 +1629,11 @@ nnfsInitialize()
 	    NNFS.inodeFile=NULL;
 	    }
 
-	NNFS.queue = (pQueueEntry*)nmMalloc(NNFS.queueSize*sizeof(pQueueEntry));
-	memset(NNFS.queue,0,NNFS.queueSize*sizeof(pQueueEntry));
-	NNFS.nextIn=0;
-	NNFS.nextOut=0;
+	//NNFS.queue = (pQueueEntry*)nmMalloc(NNFS.queueSize*sizeof(pQueueEntry));
+	//memset(NNFS.queue,0,NNFS.queueSize*sizeof(pQueueEntry));
+	//NNFS.nextIn=0;
+	//NNFS.nextOut=0;
+	xrqInit(&NNFS.queue,16);
 	NNFS.semaphore = syCreateSem(0,0);
 	/** 0 is reserved **/
 	NNFS.nextFileHandle=1;
@@ -1561,13 +1653,22 @@ nnfsInitialize()
 	/** Start the nfs listener. **/
 	thCreate(nnfs_internal_nfs_listener, 0, NULL);
 
+	NNFS.threads = (pThreadInfo)nmMalloc(NNFS.numThreads*sizeof(ThreadInfo));
+	if(!NNFS.threads)
+	    {
+	    mssError("NNFS",1,"Unable to get memory for threads");
+	    return -1;
+	    }
+
 	/** Start the request handler(s) **/
 	for(i=0;i<NNFS.numThreads;i++)
 	    {
 	    int *j;
 	    j=(int*)nmMalloc(sizeof(int));
 	    *j=i;
-	    thCreate(nnfs_internal_request_handler, 0, j);
+	    NNFS.threads[i].lockedInode=0;
+	    xrqInit(&(NNFS.threads[i].waitingRequests),4);
+	    NNFS.threads[i].thread=thCreate(nnfs_internal_request_handler, 0, j);
 	    }
 
     return 0;
