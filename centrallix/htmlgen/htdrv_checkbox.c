@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.19 2002/07/20 19:44:25 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.20 2002/07/24 20:51:24 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.20  2002/07/24 20:51:24  pfinley
+    updated to incorporate the change to cn_activate (reduce redundant code)
+
     Revision 1.19  2002/07/20 19:44:25  lkehresman
     Event handlers now have the variable "ly" defined as the target layer
     and it will be global for all the events.  We were finding that nearly
@@ -158,9 +161,18 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    int x=-1,y=-1,checked=0;
    int id;
    char *ptr;
+   pObject sub_w_obj;
+   pObjQuery qy;
+   char name[64];
+   char* nptr;
 
    /** Get an id for this. **/
    id = (HTCB.idcnt++);
+
+   /** Get name **/
+   if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+   memccpy(name,ptr,0,63);
+   name[63] = 0;
 
    /** Get x,y of this object **/
    if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
@@ -175,20 +187,47 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    else
       checked = 1;
 
+   /** Write named global **/
+   nptr = (char*)nmMalloc(strlen(name)+1);
+   strcpy(nptr,name);
+   htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
+   htrAddScriptInclude(s,"/sys/js/ht_utils_debug.js",0);
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "checkbox", 
       "\n"
       "    if (ly.kind == 'checkbox' && ly.enabled)\n"
       "       {\n"
-      "       checkbox_toggleMode(ly);\n"
+      "       checkbox_toggleMode(e.target);\n"
+      "       cn_activate(ly, 'MouseDown');\n"
       "       }\n"
       "\n");
+   
+   htrAddEventHandler(s, "document","MOUSEUP", "checkbox", 
+      "\n"
+      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseUp');\n"
+      "\n");
 
+   htrAddEventHandler(s, "document","MOUSEOVER", "checkbox", 
+      "\n"
+      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseOver');\n"
+      "\n");
+   
+   htrAddEventHandler(s, "document","MOUSEOUT", "checkbox", 
+      "\n"
+      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseOut');\n"
+      "\n");
+   
+   htrAddEventHandler(s, "document","MOUSEMOVE", "checkbox", 
+      "\n"
+      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseMove');\n"
+      "\n");
+   
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", parentname, id,fieldname,checked);
+   htrAddScriptInit_va(s,"    %s=checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", nptr, parentname, id,fieldname,checked);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItem_va(s,"   <DIV ID=\"cb%dmain\">\n",id);
@@ -197,6 +236,19 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    else
       htrAddBodyItem_va(s,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
    htrAddBodyItem_va(s,"   </DIV>\n");
+
+   /** Check for more sub-widgets within the imagebutton. **/
+   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+   if (qy)
+	{
+	while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
+	    {
+	    htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
+	    objClose(sub_w_obj);
+	    }
+	objQueryClose(qy);
+	}
+
    return 0;
 }
 
@@ -219,7 +271,7 @@ int htcbInitialize() {
    strcpy(drv->Target,"Netscape47x:default");
    /** Register. **/
    htrRegisterDriver(drv);
-
+   
 
    /** Allocate the driver **/
    drv = htrAllocDriver();
@@ -231,6 +283,16 @@ int htcbInitialize() {
    drv->Render = htcbMozDefRender;
    drv->Verify = htcbVerify;
    strcpy(drv->Target,"Mozilla:default");
+
+   /** Events **/
+   htrAddEvent(drv,"Click");
+   htrAddEvent(drv,"MouseUp");	// same as Click
+   htrAddEvent(drv,"MouseDown");
+   htrAddEvent(drv,"MouseOver");
+   htrAddEvent(drv,"MouseOut");
+   htrAddEvent(drv,"MouseMove");
+   htrAddEvent(drv,"OnChange");
+   
    /** Register. **/
    htrRegisterDriver(drv);
 

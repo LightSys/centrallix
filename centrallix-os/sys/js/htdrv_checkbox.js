@@ -94,6 +94,7 @@ function checkbox_init(l,fieldname,checked)
     l.document.images[0].kind = 'checkbox';
     l.document.images[0].form = l.form;
     l.document.images[0].parentLayer = l;
+    l.document.images[0].layer = l;
     l.document.images[0].is_checked = l.is_checked;
     l.document.images[0].enabled = l.enabled;
     l.document.images[0].uncheckedImage = new Image();
@@ -114,6 +115,7 @@ function checkbox_init(l,fieldname,checked)
     l.readonly   = checkbox_readonly;
     l.disable    = checkbox_disable;
     if (fm_current) fm_current.Register(l);
+    return l;
     }
 
 function checkbox_toggleMode(layer) 
@@ -134,5 +136,12 @@ function checkbox_toggleMode(layer)
 	{
 	layer.src = layer.checkedImage.src;
 	layer.is_checked = 1;
+	}
+    if (layer.parentLayer.EventOnChange != null)
+	{
+	var eparam = new Object();
+	eparam.Caller = layer.parentLayer;
+	cn_activate(layer.parentLayer, 'OnChange', eparam);
+	delete eparam;
 	}
     }
