@@ -79,7 +79,7 @@ wholePage "widget/page"
 	style = "floating";
 	x = 95; y = 0; width = 600; height = 400;
 	osrc1 "widget/osrc"
-	{
+	    {
 	    sql = "SELECT :name, :full_name, :num_days FROM /samples/Months.csv/rows";
 	    readahead=1;
 	    replicasize=6;
