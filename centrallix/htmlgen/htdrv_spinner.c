@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.7 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_spinner.c,v 1.8 2002/07/25 18:08:36 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.8  2002/07/25 18:08:36  mcancel
+    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
+
     Revision 1.7  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -194,125 +197,7 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "spnr_metric", "null", 0);
 	htrAddScriptGlobal(s, "spnr_current", "null", 0);
 
-	/** Get value function **/
-	htrAddScriptFunction(s, "spnr_getvalue", "\n"
-		"function spnr_getvalue()\n"
-		"    {\n"
-		"    return parseFloat(this.content);\n"
-		"    }\n", 0);
-
-	/** Set value function **/
-	htrAddScriptFunction(s, "spnr_setvalue", "\n"
-		"function spnr_setvalue(v,f)\n"
-		"    {\n"
-		"    if(this.form) this.form.DataNotify(this);\n"
-		"    spnr_settext(this,v);\n"
-		"    }\n", 0);
-
-	/** Enable control function **/
-	htrAddScriptFunction(s, "spnr_enable", "\n"
-		"function spnr_enable()\n"
-		"    {\n"
-		"    }\n", 0);
-
-	/** Disable control function **/
-	htrAddScriptFunction(s, "spnr_disable", "\n"
-		"function spnr_disable()\n"
-		"    {\n"
-		"    }\n", 0);
-
-	/** Readonly-mode function **/
-	htrAddScriptFunction(s, "spnr_readonly", "\n"
-		"function spnr_readonly()\n"
-		"    {\n"
-		"    }\n", 0);
-
-	/** Clear value function **/
-	htrAddScriptFunction(s, "spnr_clearvalue", "\n"
-		"function spnr_clearvalue()\n"
-		"    {\n"
-		"    }\n", 0);
-
-	/** Editbox set-text-value function **/
-	htrAddScriptFunction(s, "spnr_settext", "\n"
-		"function spnr_settext(l,txt)\n"
-		"    {\n"
-		"    l.HiddenLayer.document.write('<PRE>' + txt + '</PRE> ');\n"
-		"    l.HiddenLayer.document.close();\n"
-		"    l.HiddenLayer.visibility = 'inherit';\n"
-		"    l.ContentLayer.visibility = 'hidden';\n"
-		"    tmp = l.ContentLayer;\n"
-		"    l.ContentLayer = l.HiddenLayer;\n"
-		"    l.HiddenLayer = tmp;\n"
-		"    if(!txt)\n"
-		"        txt=0;\n"
-		"    l.content= new String(txt);\n"
-		"    }\n", 0);
-
-	/** Editbox keyboard handler **/
-	htrAddScriptFunction(s, "spnr_keyhandler", "\n"
-		"function spnr_keyhandler(l,e,k)\n"
-		"    {\n"
-		"    txt = l.content;\n"
-		"    if (k >= 49 && k < 58)\n"
-		"        {\n"
-		"        newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);\n"
-		"        l.cursorCol++;\n"
-		"        }\n"
-		"    else if (k == 8 && l.cursorCol > 0)\n"
-		"        {\n"
-		"        newtxt = txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol,txt.length);\n"
-		"        l.cursorCol--;\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        return true;\n"
-		"        }\n"
-		"    spnr_ibeam.visibility = 'hidden';\n"
-		"    spnr_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*spnr_metric.charWidth, l.ContentLayer.pageY);\n"
-		"    spnr_settext(l,newtxt);\n"
-		"    adj = 0;\n"
-		"    if (spnr_ibeam.pageX < l.pageX + 1)\n"
-		"        adj = l.pageX + 1 - spnr_ibeam.pageX;\n"
-		"    else if (spnr_ibeam.pageX > l.pageX + l.clip.width - 1)\n"
-		"        adj = (l.pageX + l.clip.width - 1) - spnr_ibeam.pageX;\n"
-		"    if (adj != 0)\n"
-		"        {\n"
-		"        spnr_ibeam.pageX += adj;\n"
-		"        l.ContentLayer.pageX += adj;\n"
-		"        l.HiddenLayer.pageX += adj;\n"
-		"        }\n"
-		"    spnr_ibeam.visibility = 'inherit';\n"
-		"    return false;\n"
-		"    }\n", 0);
-
-	/** Set focus to a new editbox **/
-	htrAddScriptFunction(s, "spnr_select", "\n"
-		"function spnr_select(x,y,l,c,n)\n"
-		"    {\n"
-		"    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/spnr_metric.charWidth);\n"
-		"    if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;\n"
-		"    if (spnr_current) spnr_current.cursorlayer = null;\n"
-		"    spnr_current = l;\n"
-		"    spnr_current.cursorlayer = spnr_ibeam;\n"
-		"    spnr_ibeam.visibility = 'hidden';\n"
-		"    spnr_ibeam.moveAbove(spnr_current);\n"
-		"    spnr_ibeam.moveToAbsolute(spnr_current.ContentLayer.pageX + spnr_current.cursorCol*spnr_metric.charWidth, spnr_current.ContentLayer.pageY);\n"
-		"    spnr_ibeam.zIndex = spnr_current.zIndex + 2;\n"
-		"    spnr_ibeam.visibility = 'inherit';\n"
-		"    l.form.focusnotify(l);\n"
-		"    return 1;\n"
-		"    }\n", 0);
-
-	/** Take focus away from editbox **/
-	htrAddScriptFunction(s, "spnr_deselect", "\n"
-		"function spnr_deselect()\n"
-		"    {\n"
-		"    spnr_ibeam.visibility = 'hidden';\n"
-		"    if (spnr_current) spnr_current.cursorlayer = null;\n"
-		"    spnr_current = null;\n"
-		"    return true;\n"
-		"    }\n", 0);
+   	htrAddScriptInclude(s,"/sys/js/htdrv_spinner.js",0);
 
 	htrAddEventHandler(s, "document","MOUSEDOWN", "spnr", 
 		"\n"
@@ -327,68 +212,6 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"      }\n"
 		"   }\n"
 		"\n");
-
-	/** Spinner box initializer **/
-	htrAddScriptFunction(s, "spnr_init", "\n"
-		"function spnr_init(main,l,c1,c2)\n"
-		"    {\n"
-		"    l.content = 0;\n"
-		"    l.mainlayer=main;\n"
-		"    l.document.Layer = l;\n"
-		"    main.ContentLayer = c1;\n"
-		"    main.ContentLayer.document.write('0');\n"
-		"    main.ContentLayer.document.close();\n"
-		"    main.HiddenLayer = c2;\n"
-		"    main.HiddenLayer.document.write('0');\n"
-		"    main.HiddenLayer.document.close();\n"
-		"    main.form=fm_current;\n"
-		"    if (!spnr_ibeam || !spnr_metric)\n"
-		"        {\n"
-		"        spnr_metric = new Layer(24);\n"
-		"        spnr_metric.visibility = 'hidden';\n"
-		"        spnr_metric.document.write('<pre>xx</pre>');\n"
-		"        spnr_metric.document.close();\n"
-		"        w2 = spnr_metric.clip.width;\n"
-		"        h1 = spnr_metric.clip.height;\n"
-		"        spnr_metric.document.write('<pre>x\\nx</pre>');\n"
-		"        spnr_metric.document.close();\n"
-		"        spnr_metric.charHeight = spnr_metric.clip.height - h1;\n"
-		"        spnr_metric.charWidth = w2 - spnr_metric.clip.width;\n"
-		"        spnr_ibeam = new Layer(1);\n"
-		"        spnr_ibeam.visibility = 'hidden';\n"
-		"        spnr_ibeam.document.write('<body bgcolor=' + page.dtcolor1 + '></body>');\n"
-		"        spnr_ibeam.document.close();\n"
-		"        spnr_ibeam.resizeTo(1,spnr_metric.charHeight);\n"
-		"        }\n"
-		"    c1.mainlayer = main;\n"
-		"    c2.mainlayer = main;\n"
-		"    c1.kind = 'spinner';\n"
-		"    c2.kind = 'spinner';\n"
-		"    main.kind = 'spinner';\n"
-		"    main.layers.spnr_button_up.document.images[0].kind='spinner';\n"
-		"    main.layers.spnr_button_down.document.images[0].kind='spinner';\n"
-		"    main.layers.spnr_button_up.document.images[0].subkind='up';\n"
-		"    main.layers.spnr_button_down.document.images[0].subkind='down';\n"
-		"    main.layers.spnr_button_up.document.images[0].eb_layers=main;\n"
-		"    main.layers.spnr_button_down.document.images[0].eb_layers=main;\n"
-		"    l.keyhandler = spnr_keyhandler;\n"
-		"    l.getfocushandler = spnr_select;\n"
-		"    l.losefocushandler = spnr_deselect;\n"
-		"    main.getvalue = spnr_getvalue;\n"
-		"    main.setvalue = spnr_setvalue;\n"
-		"    main.setoptions = null;\n"
-		"    main.enable = spnr_enable;\n"
-		"    main.disable = spnr_disable;\n"
-		"    main.readonly = spnr_readonly;\n"
-		"    main.clearvalue = spnr_clearvalue;\n"
-		"    main.isFormStatusWidget = false;\n"
-		"    pg_addarea(main, -1,-1,main.clip.width+1,main.clip.height+1, 'spinner', 'spinner', 1);\n"
-		"    c1.y = ((l.clip.height - spnr_metric.charHeight)/2);\n"
-		"    c2.y = ((l.clip.height - spnr_metric.charHeight)/2);\n"
-		"    if (fm_current) fm_current.Register(main);\n"
-		"    if (fm_current) main.form = fm_current;\n"
-		"    return main;\n"
-		"    }\n", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    %s = spnr_init(%s.layers.spnr%dmain, %s.layers.spnr%dmain.layers.spnr%dbase, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon1, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon2);\n",

@@ -42,6 +42,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.11  2002/07/25 18:08:36  mcancel
+    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
+
     Revision 1.10  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -183,25 +186,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-#if 0
-	/** Label text encoding function **/
-	htrAddScriptFunction(s, "lbl_encode", "\n"
-		"function lbl_encode(s)\n"
-		"    {\n"
-		"    var rs = '';\n"
-		"    for(var i=0;i<s.length;i++)\n"
-		"        {\n"
-		"        if (s[i] == '<') rs += '&lt;';\n"
-		"        else if (s[i] == '>') rs += '&gt;';\n"
-		"        else if (s[i] == '&') rs += '&amp;';\n"
-		"        else if (s[i] == ' ') rs += '&nbsp;';\n"
-		"        else rs += s[i];\n"
-		"        }\n"
-		"    return rs;\n"
-		"    }\n", 0);
 
-#endif
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"lbl%d\">\n",id);

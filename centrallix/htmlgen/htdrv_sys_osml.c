@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_sys_osml.c,v 1.3 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_sys_osml.c,v 1.4 2002/07/25 18:08:36 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_sys_osml.c,v $
 
     $Log: htdrv_sys_osml.c,v $
+    Revision 1.4  2002/07/25 18:08:36  mcancel
+    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
+
     Revision 1.3  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -122,19 +125,13 @@ htosmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
+	htrAddScriptInclude(s,"/sys/js/htdrv_sys_osml.js",0);
+
 	/** Add a script init to install the connector **/
 	sprintf(sbuf,"    %s = new cn_init(%s);\n    %s.RunEvent = cn_%d;\n", nptr, parentobj, nptr, id);
 	htrAddScriptInit(s, sbuf);
 	sprintf(sbuf,"    %s.Event%s = %s.RunEvent;\n", parentobj, event, nptr);
 	htrAddScriptInit(s, sbuf);
-
-	/** Add function to instantiate objects **/
-	htrAddScriptFunction(s, "cn_init", "\n"
-		"function cn_init(p)\n"
-		"    {\n"
-		"    this.type = 'cn';\n"
-		"    this.LSParent = p;\n"
-		"    }\n", 0);
 
 	/** Add the connector function **/
 	xsInit(&xs);

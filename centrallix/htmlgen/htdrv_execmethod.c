@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.6 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.7 2002/07/25 18:08:35 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.7  2002/07/25 18:08:35  mcancel
+    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
+
     Revision 1.6  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -135,39 +138,8 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
-
-	/** Set timer **/
-	htrAddScriptFunction(s, "ex_action_domethod", "\n"
-		"function ex_action_domethod(aparam)\n"
-		"    {\n"
-		"    o = aparam.Objname?aparam.Objname:this.Objname;\n"
-		"    m = aparam.Method?aparam.Method:this.Methodname;\n"
-		"    p = aparam.Parameter?aparam.Parameter:this.Methodparam;\n"
-		"    if (!o || !m || !p) return false;\n"
-		"    this.HiddenLayer.load(o + '?ls__mode=execmethod&ls__methodname=' + (escape(m).replace(/\\//g,'%2f')) + '&ls__methodparam=' + (escape(p).replace(/\\//g,'%2f')), 64);\n"
-		"    return true;\n"
-		"    }\n", 0);
-
-	/** Timer initializer **/
-	htrAddScriptFunction(s, "ex_init", "\n"
-		"function ex_init(o,m,p)\n"
-		"    {\n"
-		"    ex = new Object();\n"
-		"    ex.Objname = o;\n"
-		"    ex.Methodname = m;\n"
-		"    ex.Methodparam = p;\n"
-		"    ex.ActionExecuteMethod = ex_action_domethod;\n"
-		"    ex.HiddenLayer = new Layer(64);\n"
-		"    return ex;\n"
-		"    }\n", 0);
-
-	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = ex_init('%s', '%s', '%s');\n", nptr, objname, methodname, methodparam);
-
-	/** Check for objects within the timer. **/
-	snprintf(sbuf, HT_SBUF_SIZE, "%s.document",nptr);
-	snprintf(sbuf2,160,"%s",nptr);
-	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
+ 
+	htrAddScriptInclude(s,"/sys/js/htdrv_execmethod.js",0);
 
     return 0;
     }

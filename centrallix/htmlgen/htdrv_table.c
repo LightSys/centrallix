@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.26 2002/07/25 16:54:18 pfinley Exp $
+    $Id: htdrv_table.c,v 1.27 2002/07/25 18:08:36 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.27  2002/07/25 18:08:36  mcancel
+    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
+
     Revision 1.26  2002/07/25 16:54:18  pfinley
     completely undoing the change made yesterday with aliasing of click events
     to mouseup... they are now two separate events. don't believe the lies i said
@@ -612,46 +615,6 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 	htrAddBodyItem(s,"</TABLE></TD></TR></TABLE>\n");
 
 	
-	/** Function to handle clicking of a table row **/
-	htrAddScriptFunction(s, "tbls_rowclick", "\n"
-		"function tbls_rowclick(x,y,l,cls,nm)\n"
-		"    {\n"
-		"    //alert(cls + ':' + nm);\n"
-		"    return 3;\n"
-		"    }\n", 0);
-
-	htrAddScriptFunction(s, "tbls_rowunclick", "\n"
-		"function tbls_rowunclick()\n"
-		"    {\n"
-		"    return true;\n"
-		"    }\n", 0);
-
-	/** Function to enable clickable table rows **/
-	htrAddScriptFunction(s, "tbls_init", "\n"
-		"function tbls_init(pl, nm, w, cp, cs)\n"
-		"    {\n"
-		"    if (w == -1) w = pl.clip.width;\n"
-		"    ox = -1;\n"
-		"    oy = -1;\n"
-		"    nmstr = 'xy_' + nm;\n"
-		"    for(i=0;i<pl.document.images.length;i++)\n"
-		"        {\n"
-		"        if (pl.document.images[i].name.substr(0,nmstr.length) == nmstr)\n"
-		"            {\n"
-		"            img = pl.document.images[i];\n"
-		"            imgnm = pl.document.images[i].name.substr(nmstr.length+1,255);\n"
-		"            if (ox != -1)\n"
-		"                {\n"
-		"                pl.getfocushandler = tbls_rowclick;\n"
-		"                pl.losefocushandler = tbls_rowunclick;\n"
-		"                pg_addarea(pl,img.x-cp-1,img.y-cp-1,w-(cs-1)*2,(img.y-oy)-(cs-1),nm,imgnm,3);\n"
-		"                }\n"
-		"            ox = img.x;\n"
-		"            oy = img.y;\n"
-		"            }\n"
-		"        }\n"
-		"    }\n", 0);
-
 	/** Call init function **/
  	htrAddScriptInit_va(s,"    tbls_init(%s.Layer,\"%s\",%d,%d,%d);\n",parentname,t.name,t.w,t.inner_padding,t.inner_border);
  

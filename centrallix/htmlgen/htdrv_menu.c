@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_menu.c,v 1.7 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_menu.c,v 1.8 2002/07/25 18:08:36 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_menu.c,v $
 
     $Log: htdrv_menu.c,v $
+    Revision 1.8  2002/07/25 18:08:36  mcancel
+    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
+
     Revision 1.7  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -187,61 +190,8 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "mn_top_z", "1500", 0);
 	htrAddScriptGlobal(s, "mn_clear", "0", 0);
 
-	/** Function to handle nonfixed menu activation **/
-	htrAddScriptFunction(s, "mn_activate", "\n"
-		"function mn_activate(aparam)\n"
-		"    {\n"
-		"    x = aparam.X;\n"
-		"    y = aparam.Y;\n"
-		"    if (x == null) x = mn_last_x;\n"
-		"    if (y == null) y = mn_last_y;\n"
-		"    this.moveToAbsolute(x,y);\n"
-		"    this.visibility = 'visible';\n"
-		"    this.zIndex = (mn_top_z++);\n"
-		"    mn_current = this;\n"
-		"    }\n", 0);
 
-	/** Our initialization processor function. **/
-	htrAddScriptFunction(s, "mn_init", "\n"
-		"function mn_init(l,is_p,is_h,po)\n"
-		"    {\n"
-	     	/*"    l.nofocus = true;\n" */
-		"    l.LSParent = po;\n"
-		"    l.kind = 'mn';\n"
-		"    l.ActionActivate = mn_activate;\n"
-		"    if (is_h == 0)\n"
-		"        {\n"
-		"        w=50;\n"
-		"        y = 0;\n"
-		"        for(i=0;i<l.document.layers.length;i++)\n"
-		"            {\n"
-		"            cl=l.document.layers[i];\n"
-		"            if (cl.clip.width > w) w = cl.clip.width;\n"
-		"            cl.top = y;\n"
-		"            cl.left = 0;\n"
-		"            y=y+cl.clip.height;\n"
-		"            }\n"
-		"        l.clip.height = y+1;\n"
-		"        l.clip.width = w+1;\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        x = 0;\n"
-		"        h=20;\n"
-		"        for(i=0;i<l.document.layers.length;i++)\n"
-		"            {\n"
-		"            cl=l.document.layers[i];\n"
-		"            if (cl.clip.height > h) h = cl.clip.height;\n"
-		"            cl.left = x;\n"
-		"            cl.top = 0;\n"
-		"            x=x+cl.clip.width;\n"
-		"            }\n"
-		"        if (l.clip.width < x+1) l.clip.width = x+1;\n"
-		"        l.clip.height = h+1;\n"
-		"        }\n"
-		"    if (is_p == 1) l.visibility = 'visible';\n"
-		"    }\n" ,0);
-
+	htrAddScriptInclude(s,"/sys/js/htdrv_menu.js",0);
 
 	/** Script initialization call.   Do this part before the child objs init. **/
 	htrAddScriptInit_va(s,"    %s = %s.layers.mn%dpane;\n",nptr, parentname, id);

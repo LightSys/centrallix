@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_remotectl.c,v 1.6 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_remotectl.c,v 1.7 2002/07/25 18:08:36 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_remotectl.c,v $
 
     $Log: htdrv_remotectl.c,v $
+    Revision 1.7  2002/07/25 18:08:36  mcancel
+    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
+
     Revision 1.6  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -150,106 +153,7 @@ htrmtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
         htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Function that gets run when we got a block of cmds from the channel **/
-	htrAddScriptFunction(s, "rc_loaded", "\n"
-		"function rc_loaded()\n"
-		"    {\n"
-		"    }\n", 0);
     
-	/** Function to initialize the remote ctl server **/
-	htrAddScriptFunction(s, "rc_init", "\n"
-		"function rc_init(l,c,s)\n"
-		"    {\n"
-		"    l.channel = c;\n"
-		"    l.server = s;\n"
-		"    l.address = 'http://' + s + '/?ls__mode=readchannel&ls__channel=' + c;\n"
-		"    l.onload = rc_loaded;\n"
-		"    l.source = l.address;\n"
-		"    return l;\n"
-		"    }\n", 0);
-
-            /** This function handles the 'LoadPage' action **/
-            htrAddScriptFunction(s, "ht_loadpage", "\n"
-                    "function ht_loadpage(aparam)\n"
-                    "    {\n"
-                    "    this.source = aparam.Source;\n"
-                    "    }\n", 0);
-    
-            /** This function gets run when the user assigns to the 'source' property **/
-            htrAddScriptFunction(s, "ht_sourcechanged", "\n"
-                    "function ht_sourcechanged(prop,oldval,newval)\n"
-                    "    {\n"
-                    "    if (newval.substr(0,5)=='http:')\n"
-                    "        {\n"
-		    "        tmpl = this.curLayer;\n"
-		    "        tmpl.visibility = 'hidden';\n"
-		    "        this.curLayer = this.altLayer;\n"
-		    "        this.altLayer = tmpl;\n"
-                    "        this.curLayer.onload = ht_reloaded;\n"
-                    "        this.curLayer.bgColor = null;\n"
-                    "        this.curLayer.load(newval,this.clip.width);\n"
-                    "        }\n"
-                    "    return newval;\n"
-                    "    }\n", 0);
-    
-            /** This function is called when the layer is reloaded. **/
-            htrAddScriptFunction(s, "ht_reloaded", "\n"
-                    "function ht_reloaded(e)\n"
-                    "    {\n"
-                    "    e.target.mainLayer.watch('source',ht_sourcechanged);\n"
-                    "    e.target.clip.height = e.target.document.height;\n"
-		    "    e.target.visibility = 'inherit';\n"
-                    /*"    e.target.document.captureEvents(Event.CLICK);\n"
-                    "    e.target.document.onclick = ht_click;\n"*/
-                    "    for(i=0;i<e.target.document.links.length;i++)\n"
-                    "        {\n"
-                    "        e.target.document.links[i].layer = e.target.mainLayer;\n"
-		    "        e.target.document.links[i].kind = 'ht';\n"
-                    "        }\n"
-                    "    pg_resize(e.target.mainLayer.parentLayer);\n"
-                    "    }\n", 0);
-    
-            /** This function is called when the user clicks on a link in the html pane **/
-            htrAddScriptFunction(s, "ht_click", "\n"
-                    "function ht_click(e)\n"
-                    "    {\n"
-		    "    e.target.layer.source = e.target.href;\n"
-                    "    return false;\n"
-                    "    }\n", 0);
-    
-            /** Our initialization processor function. **/
-            htrAddScriptFunction(s, "ht_init", "\n"
-                    "function ht_init(l,l2,source,pdoc,w,h,p)\n"
-                    "    {\n"
-		    "    l.mainLayer = l;\n"
-		    "    l2.mainLayer = l;\n"
-		    "    l.curLayer = l;\n"
-		    "    l.altLayer = l2;\n"
-                    "    l.LSParent = p;\n"
-                    "    l.kind = 'ht';\n"
-                    "    l2.kind = 'ht';\n"
-                    "    l.pdoc = pdoc;\n"
-                    "    l2.pdoc = pdoc;\n"
-                    "    if (h != -1)\n"
-		    "        {\n"
-		    "        l.clip.height = h;\n"
-		    "        l2.clip.height = h;\n"
-		    "        }\n"
-                    "    if (w != -1)\n"
-		    "        {\n"
-		    "        l.clip.width = w;\n"
-		    "        l2.clip.width = w;\n"
-		    "        }\n"
-                    "    if (source.substr(0,5) == 'http:')\n"
-                    "        {\n"
-                    "        l.onload = ht_reloaded;\n"
-                    "        l.load(source,w);\n"
-                    "        }\n"
-                    "    l.source = source;\n"
-                    "    l.watch('source', ht_sourcechanged);\n"
-                    "    l.ActionLoadPage = ht_loadpage;\n"
-		    "    l.document.Layer = l;\n"
-		    "    l2.document.Layer = l2;\n"
-                    "    }\n" ,0);
 
 	    /** Event handler for click-on-link. **/
 	    htrAddEventHandler(s, "document","CLICK","ht",
