@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.26 2002/07/17 18:59:57 pfinley Exp $
+    $Id: htdrv_page.c,v 1.27 2002/07/17 19:45:44 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.27  2002/07/17 19:45:44  pfinley
+    fixed a javascript error that i created
+
     Revision 1.26  2002/07/17 18:59:57  pfinley
     The flag parameter (f) of pg_addarea() was not being used, so I put it to use. If
     the flag is set to 0, it will not draw the box around the area when it has mouse
@@ -378,9 +381,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
-		"    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer && pg_curarea.flags == 0)\n"
+		"    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer)\n"
 		"        {\n"
-		"        pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
+		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOVER", "pg",
@@ -410,9 +413,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
 		"        var w = pg_curarea.width;\n"
 		"        var h = pg_curarea.height;\n"
-		"        if (pg_curlayer != pg_curkbdlayer)\n"
+		"        if (pg_curkbdlayer && pg_curlayer != pg_curkbdlayer)\n"
 		"            {\n"
-		"            if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
+		"            if (pg_curkbdlayer.losefocushandler)\n"
 		"                {\n"
 		"                if (!pg_curkbdlayer.losefocushandler()) return true;\n"
 		"                pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
