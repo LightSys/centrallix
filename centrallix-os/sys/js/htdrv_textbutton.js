@@ -24,6 +24,7 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
 	btm.nofocus = true;
 	lft.nofocus = true;
 	}
+    l.buttonName = nm;
 
     l.l2 = l2;
     l.l3 = l3;
