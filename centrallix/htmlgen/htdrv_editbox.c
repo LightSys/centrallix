@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.32 2004/03/17 20:31:10 jasonyip Exp $
+    $Id: htdrv_editbox.c,v 1.33 2004/03/25 03:08:54 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.33  2004/03/25 03:08:54  jasonyip
+
+    Added htrGetBackground support for the table tag.
+
     Revision 1.32  2004/03/17 20:31:10  jasonyip
 
     A bug in the table tag - bgColor was missed.
@@ -386,9 +390,11 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		fieldname, is_readonly, main_bg);
 	    }
 
+	htrGetBackground(w_obj, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
+
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);
-	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 bgColor=%s>\n",w,main_bg);
+	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
 	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
