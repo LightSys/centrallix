@@ -141,6 +141,8 @@ function tx_insertRow(l, index, txt)
     r.hiddenLayer.mainlayer = l;
     r.contentLayer.kind = 'tx';
     r.hiddenLayer.kind = 'tx';
+    r.contentLayer.document.layer = l;
+    r.hiddenLayer.document.layer = l;
     r.contentLayer.document.write('<PRE>' + htutil_encode(txt) + '</PRE> ');
     r.contentLayer.document.close();
     r.changed = 1;
@@ -379,6 +381,7 @@ function tx_keyhandler(l,e,k)
         }
     ibeam_current.moveToAbsolute(l.rows[l.cursorRow].contentLayer.pageX + l.cursorCol*text_metric.charWidth, l.rows[l.cursorRow].contentLayer.pageY);
     ibeam_current.visibility = 'inherit';
+    cn_activate(l, 'DataChange');
     return false;
     }
 
@@ -403,6 +406,7 @@ function tx_select(x,y,l,c,n)
     ibeam_current.moveToAbsolute(l.rows[0].contentLayer.pageX + l.cursorCol*text_metric.charWidth, l.rows[0].contentLayer.pageY + l.cursorRow*text_metric.charHeight);
     ibeam_current.zIndex = l.zIndex + 2;
     ibeam_current.visibility = 'inherit';
+    cn_activate(l, 'GetFocus');
     return 1;
     }
 
@@ -411,6 +415,7 @@ function tx_deselect()
     {
     ibeam_current.visibility = 'hidden';
     if (tx_current) tx_current.cursorlayer = null;
+    cn_activate(tx_current, 'LoseFocus');
     tx_current = null;
     return true;
     }
@@ -420,7 +425,9 @@ function tx_init(l,fieldname,is_readonly,main_bg)
     {
     if (!main_bg) l.bg = "bgcolor='#c0c0c0'";
     else l.bg = main_bg;
-    l.kind = 'textarea';
+    l.kind = 'tx';
+    l.mainlayer = l;
+    l.document.layer = l;
     l.fieldname = fieldname;
     ibeam_init();
     l.rowCharLimit = Math.floor((l.clip.width-2)/text_metric.charWidth);

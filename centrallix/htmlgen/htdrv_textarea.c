@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.10 2002/07/19 14:54:22 pfinley Exp $
+    $Id: htdrv_textarea.c,v 1.11 2002/07/30 21:38:37 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.11  2002/07/30 21:38:37  pfinley
+    Added events: MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,DataChange,
+    GetFocus,LoseFocus to textarea widget.
+
     Revision 1.10  2002/07/19 14:54:22  pfinley
     - Modified the page mousedown & mouseover handlers so that the cursor ibeam
     "can't" be clicked on (only supports the global cursor).
@@ -102,6 +106,8 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
+    pObject sub_w_obj;
+    pObjQuery qy;
 
     	/** Get an id for this. **/
 	id = (HTTX.idcnt++);
@@ -172,11 +178,48 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
 	htrAddScriptGlobal(s, "tx_current", "null", 0);
+	htrAddScriptGlobal(s, "tx_cur_mainlayer", "null", 0);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_textarea.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 
+	htrAddEventHandler(s, "document","MOUSEUP", "tx", 
+	    "\n"
+	    "    if (ly.kind == 'tx') cn_activate(ly.mainlayer, 'MouseUp');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEDOWN", "tx",
+	    "\n"
+	    "    if (ly.kind == 'tx') cn_activate(ly.mainlayer, 'MouseDown');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEOVER", "tx", 
+	    "\n"
+	    "    if (ly.kind == 'tx')\n"
+	    "        {\n"
+	    "        if (!tx_cur_mainlayer)\n"
+	    "            {\n"
+	    "            cn_activate(ly.mainlayer, 'MouseOver');\n"
+	    "            tx_cur_mainlayer = ly.mainlayer;\n"
+	    "            }\n"
+	    "        }\n"
+	    "\n");
+
+//	htrAddEventHandler(s, "document","MOUSEOUT", "tx", 
+//	    "\n"
+//	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEMOVE", "tx", 
+	    "\n"
+	    "   if (tx_cur_mainlayer && ly.kind != 'tx')\n"			// 
+	    "      {\n"								//
+	    "      cn_activate(tx_cur_mainlayer, 'MouseOut');\n"		// This is MouseOut Detection!
+	    "      tx_cur_mainlayer = null;\n"					// 
+	    "      }\n"								//
+	    "   if (ly.kind == 'tx') cn_activate(ly.mainlayer, 'MouseMove');\n"
+	    "\n");
+	    
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = tx_init(%s.layers.tx%dbase, \"%s\", %d, \"%s\");\n",
 		nptr, parentname, id, 
@@ -195,11 +238,17 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
 
-	/** Check for objects within the editbox. **/
-	/** The editbox can have no subwidgets **/
-	/*sprintf(sbuf,"%s.mainlayer.document",nptr);*/
-	/*sprintf(sbuf2,"%s.mainlayer",nptr);*/
-	/*htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);*/
+	/** Check for more sub-widgets **/
+	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+	if (qy)
+	    {
+	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
+		{
+		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
+		objClose(sub_w_obj);
+		}
+	    objQueryClose(qy);
+	    }
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</BODY></DIV>\n");
@@ -235,7 +284,18 @@ httxInitialize()
 	htrAddEvent(drv,"Modified");
 	htrAddParam(drv,"Modified","NewValue",DATA_T_STRING);
 	htrAddParam(drv,"Modified","OldValue",DATA_T_STRING);
-	
+
+	/** Events **/ 
+	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
+	htrAddEvent(drv,"DataChange");
+	htrAddEvent(drv,"GetFocus");
+	htrAddEvent(drv,"LoseFocus");
+
 	/** Register. **/
 	htrRegisterDriver(drv);
 
