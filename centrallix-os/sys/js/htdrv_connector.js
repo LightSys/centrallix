@@ -11,13 +11,22 @@
 
 function cn_activate(t,f,eparam)
     {
+    if (!t['Event'+f]) {return;}
+    if (!eparam)
+	{
+	eparam = new Object();
+	eparam.Caller = t;
+	var del = 1;
+	}
     if (t['Event' + f].constructor == Array)
 	{
 	for(var fn in t['Event' + f])
 	    x = t['Event' + f][fn](eparam);
+	if (del) delete eparam;
 	return x;
 	}
     else
+	if (del) delete eparam;
 	return t['Event' + f](eparam);
     }
 
