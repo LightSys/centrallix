@@ -133,15 +133,21 @@ function radiobuttonpanel_init(parentPane,fieldname,flag,borderpane,coverpane,ti
 	parentPane.document.layer = parentPane;
 	parentPane.mainlayer = parentPane;
 	parentPane.kind = 'radiobutton';
-	borderpane.document.layer = borderpane;
-	borderpane.mainlayer = parentPane;
-	borderpane.kind = 'radiobutton';
-	coverpane.document.layer = coverpane;
-	coverpane.mainlayer = parentPane;
-	coverpane.kind = 'radiobutton';
-	titlepane.document.layer = titlepane;
-	titlepane.mainlayer = parentPane;
-	titlepane.kind = 'radiobutton';
+	if (borderpane) {
+		borderpane.document.layer = borderpane;
+		borderpane.mainlayer = parentPane;
+		borderpane.kind = 'radiobutton';
+	}
+	if (coverpane) {
+		coverpane.document.layer = coverpane;
+		coverpane.mainlayer = parentPane;
+		coverpane.kind = 'radiobutton';
+	}
+	if (titlepane) {
+		titlepane.document.layer = titlepane;
+		titlepane.mainlayer = parentPane;
+		titlepane.kind = 'radiobutton';
+	}
 	if (fm_current) fm_current.Register(parentPane);
 	return parentPane;
 }
