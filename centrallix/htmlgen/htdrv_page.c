@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.57 2003/07/20 03:41:17 jorupp Exp $
+    $Id: htdrv_page.c,v 1.58 2003/11/12 22:15:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.58  2003/11/12 22:15:56  gbeeley
+    Formal Launch action declaration
+
     Revision 1.57  2003/07/20 03:41:17  jorupp
      * got window mostly working in Mozilla
 
@@ -773,6 +776,11 @@ htpageInitialize()
 	/** Actions **/
 	htrAddAction(drv, "LoadPage");
 	htrAddParam(drv, "LoadPage", "Source", DATA_T_STRING);
+	htrAddAction(drv, "Launch");
+	htrAddParam(drv, "Launch", "Source", DATA_T_STRING);
+	htrAddParam(drv, "Launch", "Width", DATA_T_INTEGER);
+	htrAddParam(drv, "Launch", "Height", DATA_T_INTEGER);
+	htrAddParam(drv, "Launch", "Name", DATA_T_STRING);
 	
 	/** Register. **/
 	htrRegisterDriver(drv);
