@@ -31,10 +31,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.13 2003/04/25 15:57:18 gbeeley Exp $
+    $Id: xstring.c,v 1.14 2004/02/24 05:10:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.14  2004/02/24 05:10:17  gbeeley
+    - Adding %X to xsPrintf and related routines.  Also affects fdPrintf
+      which uses the xstring mechanism under the hood.
+
     Revision 1.13  2003/04/25 15:57:18  gbeeley
     Minor tweak to cxsec implementation in xstring.
 
@@ -281,10 +285,12 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
     char* str;
     char nbuf[32];
     int i;
+    long long il;
     int field_width= -999;
     int precision= -999;
     char* nptr;
     int found_field_width=0;
+    int data_type_len = 0;
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
@@ -388,21 +394,75 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		    found_field_width=0;
 		    field_width = -999;
 		    precision = -999;
+		    data_type_len = 0;
 		    break;
-		case 'd':
-		    i = va_arg(vl, int);
-		    if (precision > 0)
+		case 'X':
+		    if (data_type_len == 2)
 			{
-			if (precision >= 31) precision=30;
-			sprintf(nbuf,"%.*d",precision,i);
-			precision=-999;
+			il = va_arg(vl, long long);
+			if (precision > 0)
+			    {
+			    if (precision >= 31) precision=30;
+			    sprintf(nbuf,"%.*llX",precision,il);
+			    precision=-999;
+			    }
+			else
+			    {
+			    sprintf(nbuf,"%llX",il);
+			    }
 			}
 		    else
 			{
-			sprintf(nbuf,"%d",i);
+			i = va_arg(vl, int);
+			if (precision > 0)
+			    {
+			    if (precision >= 31) precision=30;
+			    sprintf(nbuf,"%.*X",precision,i);
+			    precision=-999;
+			    }
+			else
+			    {
+			    sprintf(nbuf,"%X",i);
+			    }
 			}
 		    str = nbuf;
 		    goto do_as_string; /* next section up */
+		    
+		case 'd':
+		    if (data_type_len == 2)
+			{
+			il = va_arg(vl, long long);
+			if (precision > 0)
+			    {
+			    if (precision >= 31) precision=30;
+			    sprintf(nbuf,"%.*lld",precision,il);
+			    precision=-999;
+			    }
+			else
+			    {
+			    sprintf(nbuf,"%lld",il);
+			    }
+			}
+		    else
+			{
+			i = va_arg(vl, int);
+			if (precision > 0)
+			    {
+			    if (precision >= 31) precision=30;
+			    sprintf(nbuf,"%.*d",precision,i);
+			    precision=-999;
+			    }
+			else
+			    {
+			    sprintf(nbuf,"%d",i);
+			    }
+			}
+		    str = nbuf;
+		    goto do_as_string; /* next section up */
+		case 'l':
+		    data_type_len++;
+		    ptr++;
+		    continue; /* loop continue */
 		default:
 		    cur_pos = ptr+2;
 		    break;
