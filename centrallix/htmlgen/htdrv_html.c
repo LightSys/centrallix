@@ -4,10 +4,10 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.23 2004/09/02 03:27:20 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.24 2005/02/26 06:32:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.24  2005/02/26 06:32:21  gbeeley
+    - Get HTML widget working in Mozilla.
+
     Revision 1.23  2004/09/02 03:27:20  gbeeley
     - first (imperfect) cut at conversion of html widget
 
@@ -358,6 +361,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	        htrAddStylesheetItem_va(s,"\t#ht%dpane { overflow:hidden; }\n",id);
 	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { overflow:hidden; }\n",id);
 	        htrAddStylesheetItem_va(s,"\t#ht%dfader { overflow:hidden; }\n",id);
+		htrAddStylesheetItem_va(s,"\t#ht%dloader { overflow:hidden; visibility:hidden; position:absolute; top:0; left:0; width:0; height:0; }\n", id);
 		}
 
             /** Write named global **/
@@ -383,12 +387,21 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddEventHandler(s,"document","MOUSEUP",  "ht", "    if (ly.kind == 'ht') cn_activate(ly.mainlayer,'MouseUp');\n");
 
             /** Script initialization call. **/
-            htrAddScriptInit_va(s,"    %s = ht_init(%s.cxSubElement(\"ht%dpane\"),%s.cxSubElement(\"ht%dpane2\"),%s.cxSubElement(\"ht%dfader\"),\"%s\",%s,%d,%d,%s);\n",
+	    if (s->Capabilities.Dom0NS)
+		htrAddScriptInit_va(s,"    %s = ht_init(%s.cxSubElement(\"ht%dpane\"),%s.cxSubElement(\"ht%dpane2\"),%s.cxSubElement(\"ht%dfader\"),\"%s\",%s,%d,%d,%s,null);\n",
                     nptr, parentname, id, parentname, id, parentname, id, 
 		    src, parentname, w,h, parentobj);
+	    else
+		htrAddScriptInit_va(s,"    %s = ht_init(%s.cxSubElement(\"ht%dpane\"),%s.cxSubElement(\"ht%dpane2\"),%s.cxSubElement(\"ht%dfader\"),\"%s\",%s,%d,%d,%s,%s.cxSubElement(\"ht%dloader\"));\n",
+                    nptr, parentname, id, parentname, id, parentname, id, 
+		    src, parentname, w,h, parentobj, parentname, id);
     
             /** HTML body <DIV> element for the layer. **/
-            htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV><DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id,id);
+            htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV>",id);
+	    htrAddBodyItemLayer_va(s, 0, "ht%dpane2", id, "");
+	    if (!s->Capabilities.Dom0NS)
+		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%dloader", id, "");
+	    htrAddBodyItemLayerStart(s, 0, "ht%dpane", id);
 	    }
 	else
 	    {
@@ -441,16 +454,12 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    nptr = parentobj;
 	    }
 
-
-
-
 	/** render subwidgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+3, sbuf, nptr);
 
-
         /** End the containing layer. **/
-        if (mode == 1) htrAddBodyItem(s, "</DIV>\n");
+        if (mode == 1) htrAddBodyItemLayerEnd(s, 0);
 
     return 0;
     }
