@@ -82,7 +82,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTDT.idcnt++);
 
 	/** Get x,y,w,h of this object **/
-	if (objG
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0)
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have an 'x' property");
 	    return -1;
@@ -300,10 +300,14 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.23 2003/06/03 19:27:09 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.24 2003/06/03 20:29:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.24  2003/06/03 20:29:11  gbeeley
+    Fix to CSV driver due to uninitialized memory causing a segfault when
+    opening CSV files from time to time.
+
     Revision 1.23  2003/06/03 19:27:09  gbeeley
     Updates to properties mostly relating to true/false vs. yes/no
 

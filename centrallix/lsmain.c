@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.28 2003/05/30 17:39:47 gbeeley Exp $
+    $Id: lsmain.c,v 1.29 2003/06/03 20:29:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.29  2003/06/03 20:29:10  gbeeley
+    Fix to CSV driver due to uninitialized memory causing a segfault when
+    opening CSV files from time to time.
+
     Revision 1.28  2003/05/30 17:39:47  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -376,7 +380,7 @@ main(int argc, char* argv[])
 
 	/** Init the multithreading module to start the first thread **/
 	/** 'start' is the name of the function to be the first thread **/
-	mtInitialize(0, start);
+	mtInitialize(MT_F_NOYIELD, start);
 
     return 0; /* never reached */
     }

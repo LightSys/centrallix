@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.11 2003/05/30 17:39:52 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.12 2003/06/03 20:29:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.12  2003/06/03 20:29:12  gbeeley
+    Fix to CSV driver due to uninitialized memory causing a segfault when
+    opening CSV files from time to time.
+
     Revision 1.11  2003/05/30 17:39:52  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -1541,6 +1545,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    if (!dn->TableInf)
 	        {
 		dn->TableInf = (pDatTableInf)nmMalloc(sizeof(DatTableInf));
+		memset(dn->TableInf, 0, sizeof(DatTableInf));
 		dn->TableInf->ColBuf = NULL;
 		dn->HeaderCols.ColBuf = NULL;
 		}
