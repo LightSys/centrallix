@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.11 2002/03/23 05:09:16 gbeeley Exp $
+    $Id: net_http.c,v 1.12 2002/03/23 05:34:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.12  2002/03/23 05:34:26  gbeeley
+    Added "pragma: no-cache" headers to the "osml" mode responses to help
+    avoid browser caching of that dynamic data.
+
     Revision 1.11  2002/03/23 05:09:16  gbeeley
     Fixed a logic error in net_http's ls__startat osml feature.  Improved
     OSML error text.
@@ -668,6 +672,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	    {
 	    ptr = (char*)objOpenSession(req_inf->StrVal);
 	    snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)ptr);
@@ -685,6 +690,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	        {
 	        objCloseSession(objsess);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    0);
@@ -700,6 +706,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		mask = strtol(ptr,NULL,0);
 		obj = objOpen(objsess, req_inf->StrVal, mode, mask, usrtype);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)obj);
@@ -714,6 +721,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		obj = (pObject)strtol(ptr+1,NULL,16);
 		objClose(obj);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    0);
@@ -724,6 +732,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
 		qy = objMultiQuery(objsess, ptr);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)qy);
@@ -739,6 +748,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__orderby"),&orderby);
 		qy = objOpenQuery(obj,where,orderby,NULL,NULL);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)qy);
@@ -760,6 +770,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		    start = strtol(ptr,NULL,0) - 1;
 		if (start < 0) start = 0;
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
@@ -781,6 +792,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		qy = (pObjQuery)strtol(ptr+1,NULL,16);
 		objQueryClose(qy);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    0);
@@ -799,6 +811,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		else
 		    o = strtol(ptr,NULL,0);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>",
 		    0);
@@ -823,6 +836,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
@@ -876,6 +890,12 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 			    }
 			}
 		    }
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
+	    		 "\r\n"
+			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
+		         0);
+	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 		}
 	    }
 	
