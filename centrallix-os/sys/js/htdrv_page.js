@@ -611,8 +611,8 @@ function pg_area(pl,x,y,w,h,cls,nm,f)
 /** Function to resize a given page area **/
 function pg_resize_area(a,w,h)
     {
-    var x=getPageX(a.layer)+getRelativeX(a);
-    var y=getPageY(a.layer)+getRelativeY(a);
+    var x=getPageX(a.layer)+a.x;
+    var y=getPageY(a.layer)+a.y;
     var tl=document.layers.pgtop;
     var bl=document.layers.pgbtm;
     var ll=document.layers.pglft;
