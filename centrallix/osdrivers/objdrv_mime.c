@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.1 2002/08/09 01:55:05 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.2 2002/08/09 02:38:49 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.2  2002/08/09 02:38:49  jorupp
+     * added basic attribute support to mime driver
+     * set obj->SubCnt=1 in mimeOpen() <-- let the OSML the mime driver is processing one level of the path
+
     Revision 1.1  2002/08/09 01:55:05  lkehresman
     Removing the old "mailmsg" driver which wasn't working anyway, and added the
     shell for the mime driver.  It still needs a lot of work, but initial headers
@@ -101,6 +105,7 @@ typedef struct
     char	Pathname[256];
     char*	AttrValue; /* GetAttrValue has to return a refence to memory that won't be free()ed */
     pMimeMsg	Message;
+    int		NextAttr;
     }
     MimeData, *pMimeData;
 
@@ -117,8 +122,10 @@ char *TypeStrings[7] =
     };
 
 #define MIME(x) ((pMimeData)(x))
-//#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER)
-#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER | MIME_DBG_FUNC1 | MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)
+#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER)
+//#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER | MIME_DBG_FUNC1 | MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)
+
+//#define MIME_DEBUG 0x00000000
 
 #define MIME_DBG_HDRPARSE    1
 #define MIME_DBG_HDRREAD     2
@@ -720,6 +727,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeOpen() called.\n");
     if (MIME_DEBUG & MIME_DBG_PARSER) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
 
+    if(MIME_DEBUG) printf("objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
+	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
     /*
     **  Handle the content-type: message/rfc822
     */
@@ -758,7 +767,13 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	}
 
     if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeOpen() closing.\n");
-    if (MIME_DEBUG) fprintf(stderr, "\n");
+    if (MIME_DEBUG) fprintf(stderr, "inf = %08x\n",(int)inf);
+
+    /** assume we're only going to handle one level **/
+    obj->SubCnt=1;
+
+    if(MIME_DEBUG) printf("objdrv_mime.c is taking: (%i,%i,%i) %s\n",obj->SubPtr,
+	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
 
     return (void*)inf;
     }
@@ -772,7 +787,7 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
     {
     pMimeData inf = MIME(inf_v);
 
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeClose() called.\n");
+    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeClose(%08x) called.\n",inf);
     /** free any memory used to return an attribute **/
     if(inf->AttrValue)
 	{
@@ -874,13 +889,17 @@ mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetAttrType() called.\n");
+    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetAttrType(\"%s\") called.\n",attrname);
 
     if (!strcmp(attrname, "name")) return DATA_T_STRING;
     if (!strcmp(attrname, "content_type")) return DATA_T_STRING;
     if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
     if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
     if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
+    if (!strcmp(attrname, "subject")) return DATA_T_STRING;
+    if (!strcmp(attrname, "charset")) return DATA_T_STRING;
+    if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
+    if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
 
     if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetAttrType() closing.\n");
     return -1;
@@ -896,9 +915,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
     pMimeData inf = MIME(inf_v);
     char tmp[32];
 
-    return 0;
-
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetAttrValue() called.\n");
+    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetAttrValue(\"%s\") called.\n",attrname);
     if (inf->AttrValue)
 	{
 	free(inf->AttrValue);
@@ -915,13 +932,35 @@ mimeGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	}
     if (!strcmp(attrname, "content_type"))
 	{
-	//snprintf(tmp, 32, "%s/%s", TypeStrings[inf->Message->ContentMainType], inf->Message->ContentSubType);
-	//*((char**)val) = tmp;
+	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
+	inf->AttrValue = (char*)malloc(128);
+	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Message->ContentMainType], inf->Message->ContentSubType);
+	*((char**)val) = inf->AttrValue;
+	return 0;
+	}
+    if (!strcmp(attrname, "subject"))
+	{
+	*((char**)val) = inf->Message->Subject;
+	return 0;
+	}
+    if (!strcmp(attrname, "charset"))
+	{
+	*((char**)val) = inf->Message->Charset;
+	return 0;
+	}
+    if (!strcmp(attrname, "transfer_encoding"))
+	{
+	*((char**)val) = inf->Message->TransferEncoding;
+	return 0;
+	}
+    if (!strcmp(attrname, "mime_version"))
+	{
+	*((char**)val) = inf->Message->MIMEVersion;
 	return 0;
 	}
     if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetAttrValue() closing.\n");
 
-    return 0;
+    return -1;
     }
 
 
@@ -931,9 +970,18 @@ mimeGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 char*
 mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
+    pMimeData inf = MIME(inf_v);
     if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetNextAttr() called.\n");
+    switch (inf->NextAttr++)
+	{
+	case 0: return "content_type";
+	case 1: return "subject";
+	case 2: return "charset";
+	case 3: return "transfer_encoding";
+	case 4: return "mime_version";
+	}
     if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetNextAttr() closing.\n");
-    return 0;
+    return NULL;
     }
 
 
@@ -943,9 +991,12 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 char*
 mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
+    pMimeData inf = MIME(inf_v);
     if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetFirstAttr() called.\n");
+    inf->NextAttr=0;
+    return mimeGetNextAttr(inf,oxt);
     if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetFirstAttr() closing.\n");
-    return 0;
+    return NULL;
     }
 
 
