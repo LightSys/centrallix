@@ -77,6 +77,7 @@ libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end)
     msg->Charset[0] = 0;
     msg->TransferEncoding[0] = 0;
     msg->MIMEVersion[0] = 0;
+    msg->Mailer[0] = 0;
     msg->HdrSeekStart = 0;
     msg->MsgSeekStart = 0;
     msg->MsgSeekEnd = 0;
@@ -102,7 +103,7 @@ libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end)
 	xsInit(&xsbuf);
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
 	xsRTrim(&xsbuf);
-	if (MIME_DEBUG) printf("MIME: Got Token (%s)\n", xsbuf.String);
+	//if (MIME_DEBUG) printf("MIME: Got Token (%s)\n", xsbuf.String);
 	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
 	/* otherwise parse the header elements */
 	if (!strlen(xsbuf.String))
@@ -131,6 +132,7 @@ libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end)
 		else if (!strcasecmp(hdrnme, "Subject")) err = libmime_SetSubject(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Date")) err = libmime_SetDate(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "MIME-Version")) err = libmime_SetMIMEVersion(msg, hdrbdy);
+		else if (!strcasecmp(hdrnme, "X-Mailer")) err = libmime_SetMailer(msg, hdrbdy);
 
 		if (err < 0)
 		    {
@@ -186,6 +188,25 @@ libmime_LoadExtendedHeader(pMimeMsg msg, pXString xsbuf, pLxSession lex)
     /** Set all tabs, NL's, CR's to spaces **/
     for(i=0;i<strlen(xsbuf->String);i++) if (strchr("\t\r\n",xsbuf->String[i])) xsbuf->String[i]=' ';
 
+    return 0;
+    }
+
+/*  libmime_SetMailer
+**
+**  Parses the "X-Mailer" header element and fills in the MimeMsg data structure
+**  with the data accordingly.
+*/
+int
+libmime_SetMailer(pMimeMsg msg, char *buf)
+    {
+    strncpy(msg->Mailer, buf, 79);
+    msg->MIMEVersion[79] = 0;
+
+    if (MIME_DEBUG)
+	{
+	printf("MIME Parser (X-Mailer)\n");
+	printf("  X-MAILER    : \"%s\"\n", msg->Mailer);
+	}
     return 0;
     }
 

@@ -1,3 +1,36 @@
+#ifndef _MIME_H
+#define _MIME_H
+
+/************************************************************************/
+/* Centrallix Application Server System 				*/
+/* Centrallix Core       						*/
+/* 									*/
+/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* 									*/
+/* This program is free software; you can redistribute it and/or modify	*/
+/* it under the terms of the GNU General Public License as published by	*/
+/* the Free Software Foundation; either version 2 of the License, or	*/
+/* (at your option) any later version.					*/
+/* 									*/
+/* This program is distributed in the hope that it will be useful,	*/
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
+/* GNU General Public License for more details.				*/
+/* 									*/
+/* You should have received a copy of the GNU General Public License	*/
+/* along with this program; if not, write to the Free Software		*/
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  		*/
+/* 02111-1307  USA							*/
+/*									*/
+/* A copy of the GNU General Public License has been included in this	*/
+/* distribution in the file "COPYING".					*/
+/* 									*/
+/* Module: 	libmime							*/
+/* Author:	Luke Ehresman(LME)					*/
+/* Creation:	August 12, 2002						*/
+/* Description:	Provides declarations for the MIME parser		*/
+/************************************************************************/
+
 /** Structure used to represent an email address **/
 typedef struct
     {
@@ -22,6 +55,7 @@ typedef struct _MM
     char	Charset[32];
     char	TransferEncoding[32];
     char	MIMEVersion[16];
+    char	Mailer[80];
     DateTime	Date;
     long	HdrSeekStart;
     long	MsgSeekStart;
@@ -37,7 +71,16 @@ typedef struct _MM
 /*** Possible Main Content Types ***/
 extern char* TypeStrings[];
 
-#define MIME_DEBUG 0
+#define MIME_DEBUG            1
+
+#define MIME_ST_NORM          0
+#define MIME_ST_QUOTE         1
+#define MIME_ST_COMMENT       2
+#define MIME_ST_GROUP         3
+
+#define MIME_ST_ADR_HOST      0
+#define MIME_ST_ADR_MAILBOX   1
+#define MIME_ST_ADR_DISPLAY   2
 
 /** mime_parse.c **/
 int libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end);
@@ -67,3 +110,4 @@ int libmime_StringTrim(char *str);
 int libmime_StringFirstCaseCmp(char *c1, char *c2);
 int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
+#endif /** _MIME_H **/

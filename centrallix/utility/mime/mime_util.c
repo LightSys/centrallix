@@ -133,7 +133,7 @@ libmime_StringFirstCaseCmp(char *s1, char *s2)
 **  libmime_PrintAddrList
 */
 int
-libmime_PrintAddrList(pXArray ary, int level)
+libmime_PrintAddressList(pXArray ary, int level)
     {
     int i,j;
     pEmailAddr itm;
@@ -149,14 +149,15 @@ libmime_PrintAddrList(pXArray ary, int level)
 	    }
 	if (itm->Group == NULL)
 	    {
+	    printf("%s@%s", itm->Mailbox, itm->Host);
 	    if (strlen(itm->Display))
-		printf("\"%s\" ", itm->Display);
-	    printf("%s@%s\n", itm->Mailbox, itm->Host);
+		printf(" (%s)", itm->Display);
+	    printf("\n");
 	    }
 	else
 	    {
 	    printf("GROUP: \"%s\"\n", itm->Display);
-	    libmime_PrintAddrList(itm->Group, level+1);
+	    libmime_PrintAddressList(itm->Group, level+1);
 	    }
 	}
     if (level==0) printf("-----------------------------------------------------\n");

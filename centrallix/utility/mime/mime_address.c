@@ -61,15 +61,10 @@
 **         noted by a comment.
 */
 
-#define MIME_ST_NORM    0
-#define MIME_ST_QUOTE   1
-#define MIME_ST_COMMENT 2
-#define MIME_ST_GROUP   3
-
 int
 libmime_ParseAddressList(char *buf, pXArray xary)
     {
-    int count=0, state=MIME_ST_NORM, flag=0, cnest=0, err=0;
+    int count=0, state=MIME_ST_NORM, flag=0, cnest=0, err=0, gnest=0;
     char *s_ptr, *e_ptr, *t_str;
     char ch;
     pEmailAddr p_addr;
@@ -96,6 +91,7 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 		    }
 		else if (ch == ':' && buf[count-1] != '\\')
 		    {
+		    gnest++;
 		    state = MIME_ST_GROUP;
 		    }
 		else if ((state == MIME_ST_NORM && (ch == ',' || count == strlen(buf))) ||
@@ -110,10 +106,15 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 			{
 			p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
 			/**  Decide if we should hand this to the group parser or the address parser **/
-			if (state == MIME_ST_GROUP)
+			if (state == MIME_ST_GROUP && gnest == 1)
+			    {
 			    err = libmime_HdrParseGroup(t_str, p_addr);
+			    gnest--;
+			    }
 			else
+			    {
 			    err = libmime_ParseAddress(t_str, p_addr);
+			    }
 			if (!err)
 			    xaAddItem(xary, p_addr);
 			else
@@ -189,7 +190,11 @@ libmime_HdrParseGroup(char *buf, pEmailAddr addr)
     strncpy(addr->AddressLine, buf, 255);
     addr->AddressLine[255] = 0;
 
-    /**  Parse out the displayable name of this group  **/
+    /**  Parse out the displayable name of this group  
+     **  A group should be in the following format or similar, according to
+     **  RFC2822, section 3.4 (Address Specification):
+     **    "Group Name": addr1@myhost.com, addr2@myhost.com;
+     **/
     s_ptr = buf;
     e_ptr = strchr(buf, ':');
     if (e_ptr - s_ptr > 0)
@@ -256,10 +261,6 @@ libmime_HdrParseGroup(char *buf, pEmailAddr addr)
 **         individual email address or a group of addresses up into their various
 **         parts.  and return an EmailAddr structure.
 */
-
-#define MIME_ST_ADR_HOST      0
-#define MIME_ST_ADR_MAILBOX   1
-#define MIME_ST_ADR_DISPLAY   2
 
 int
 libmime_ParseAddress(char *buf, pEmailAddr addr)
