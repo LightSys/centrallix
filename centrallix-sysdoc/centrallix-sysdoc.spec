@@ -8,6 +8,7 @@ Source: centrallix-sysdoc-%{version}.tgz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
 URL: http://www.centrallix.net/
 Vendor: LightSys (http://www.lightsys.org)
+BuildArch: noarch
 
 %description
 This package provides internal developer documentation for Centrallix.  If
@@ -24,7 +25,6 @@ true
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}/SystemDocs
 cp -r * $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}/SystemDocs/
-rm -r $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}/SystemDocs/CVS
 rm $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}/SystemDocs/centrallix-sysdoc.spec
 rm $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}/SystemDocs/mkrpm
 
