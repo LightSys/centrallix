@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.13 2002/07/20 20:00:25 lkehresman Exp $
+    $Id: htdrv_textbutton.c,v 1.14 2002/07/24 18:12:03 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.14  2002/07/24 18:12:03  pfinley
+    Updated Click events to be MouseUp events. Now all Click events must be
+    specified as MouseUp within the Widget's event handler, or they will not
+    work propery (Click can still be used as a event connector to the widget).
+
     Revision 1.13  2002/07/20 20:00:25  lkehresman
     Added a mousemove event connector to textbutton
 
@@ -266,13 +271,13 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.pageY < ly.pageY + ly.clip.height)\n"
 		"            {\n"
 		"            tb_setmode(ly,1);\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            if (ly.EventClick != null)\n"
-		"                cn_activate(ly, 'Click', eparam);\n"
 		"            if (ly.EventMouseUp != null)\n"
+		"                {\n"
+		"                eparam = new Object();\n"
+		"                eparam.Caller = ly;\n"
 		"                cn_activate(ly, 'MouseUp', eparam);\n"
-		"            delete eparam;\n"
+		"                delete eparam;\n"
+		"                }\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"

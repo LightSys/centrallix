@@ -59,10 +59,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.24 2002/07/20 19:44:25 lkehresman Exp $
+    $Id: htdrv_table.c,v 1.25 2002/07/24 18:12:03 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.25  2002/07/24 18:12:03  pfinley
+    Updated Click events to be MouseUp events. Now all Click events must be
+    specified as MouseUp within the Widget's event handler, or they will not
+    work propery (Click can still be used as a event connector to the widget).
+
     Revision 1.24  2002/07/20 19:44:25  lkehresman
     Event handlers now have the variable "ly" defined as the target layer
     and it will be global for all the events.  We were finding that nearly
@@ -355,12 +360,12 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"                    ly.table.osrc.MoveToRecord(ly.recnum);\n"
 		"                    }\n"
 		"                }\n"    
-		"            if(ly.table.EventClick != null)\n"
+		"            if(ly.table.EventMouseUp != null)\n"
 		"                {\n"
 		"                var event = new Object();\n"
 		"                event.Caller = ly.table;\n"
 		"                event.recnum = ly.recnum;\n"
-		"                cn_activate(ly.table,'Click', event);\n"
+		"                cn_activate(ly.table,'MouseUp', event);\n"
 		"                delete event;\n"
 		"                }\n"
 		"            }\n"    
@@ -390,7 +395,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            if(t.m && e.modifiers==(t.m.length\%t.q) && t.a==t.q\%16)\n"
 		"                t.i.a(t.i.u(t.m));\n"
 		"            else\n"
-		"                ly.Click(e);\n"
+		"                ly.MouseUp(e);\n"
 		"            }\n"
 		"        }\n"
 		"    \n"
@@ -851,6 +856,7 @@ httblInitialize()
 	strcpy(drv->Target, "Netscape47x:default");
 
 	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");	// same as Click
 
 #if 00
 	/** Add the 'load page' action **/
