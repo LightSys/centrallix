@@ -1,0 +1,7 @@
+The Centrallix Test Application Suite is designed to be used as a test of
+functionality to make sure that the htmlgen subsystem is working properly.
+These test applications make use of a large percentage of the available
+functionality in the htlmgen subsystem.  Some applications are also designed to
+be torture tests to test its limits.  It is intended to be used as a tool to
+help htmlgen developers verify that their changes work properly and that they
+have not messed up other parts of the system as well.
