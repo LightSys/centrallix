@@ -106,6 +106,11 @@ AC_SUBST(STATIC_CFLAGS)
 AC_SUBST(STATIC_LIBS)
 AC_SUBST(PROFILE)
 
+dnl Check security hardening facilities
+CHECK_HARDENING
+
+dnl Check optimization
+CHECK_OPTIMIZE
     
 dnl Define WITH_DYNAMIC_LOAD in config.h
 if test "$WITH_DYNAMIC_LOAD" = "yes"; then

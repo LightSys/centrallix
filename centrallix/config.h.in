@@ -3,6 +3,9 @@
 /* Location of the centrallix config file */
 #undef CENTRALLIX_CONFIG
 
+/* defined to 1 if -DCXLIB_SECH is being passed to the compiler */
+#undef CXLIB_SECURITY_HARDENING
+
 /* Define to 1 if you have the `basename' function. */
 #undef HAVE_BASENAME
 
@@ -167,6 +170,13 @@
 
 /* Define for XML support */
 #undef USE_XML
+
+/* defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless
+   optimization is in use */
+#undef USING_DBMAGIC
+
+/* defined to 1 if -On is being passed to the compiler */
+#undef USING_OPTIMIZATION
 
 /* Use dynamic loading */
 #undef WITH_DYNAMIC_LOAD
