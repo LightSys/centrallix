@@ -11,6 +11,7 @@ AC_PROG_AWK
 AC_PATH_PROG([STRIP], [strip], [])
 AC_PATH_PROG([SED], [sed], [])
 AC_PROG_INSTALL
+AC_CACHE_SAVE
 
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lcrypt:
@@ -21,6 +22,7 @@ dnl Replace `main' with a function in -lm:
 AC_CHECK_LIB(m, main)
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
+AC_CACHE_SAVE
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
@@ -34,6 +36,7 @@ AC_STRUCT_TM
 dnl Checks for library functions.
 AC_FUNC_MEMCMP
 AC_CHECK_FUNCS(gethostname mkdir rmdir socket strdup strspn strstr strtod strtol)
+AC_CACHE_SAVE
 
 dnl Readline support
 CENTRALLIX_CHECK_READLINE
@@ -43,6 +46,7 @@ CENTRALLIX_CHECK_CENTRALLIX
 AH_TEMPLATE([CENTRALLIX_CONFIG], [Full path of config file])
 CENTRALLIX_CONF_FILE
 CENTRALLIX_OS_DIR
+AC_CACHE_SAVE
 
 dnl HTTP osdriver support.
 AH_TEMPLATE([USE_HTTP], [Define for HTTP support])

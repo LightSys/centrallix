@@ -244,10 +244,26 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 	else
 	    AC_MSG_RESULT(yes)
 
-	    AC_CHECK_PROGS(xmlconfig, 
-		xml2-config xml-config,
-		neither
+	    AC_ARG_ENABLE(libxml2,
+		AC_HELP_STRING([--disable-libxml2],
+		    [ignore libxml2 even if installed]
+		),
+		USE_XML2="$enableval",
+		USE_XML2="yes"
 	    )
+
+	    if test "$USE_XML2" = "no"; then
+		AC_CHECK_PROG(xmlconfig, 
+		    xml-config,
+		    xml-config,
+		    no
+		)
+	    else
+		AC_CHECK_PROGS(xmlconfig, 
+		    xml2-config xml-config,
+		    no
+		)
+	    fi
 
 	    if test "$xmlconfig" = "no"; then
 		WITH_XML="neither"
