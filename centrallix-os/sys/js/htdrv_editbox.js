@@ -136,14 +136,14 @@ function eb_select(x,y,l,c,n)
 function eb_deselect()
     {
     eb_ibeam.visibility = 'hidden';
-    if (eb_current) eb_current.cursorlayer = null;
-    if(eb_current && eb_current.changed)
+    if (eb_current)
 	{
-	eb_current.changed=false;
+	eb_current.cursorlayer = null;
+	if (eb_current.changed) eb_current.changed=false;
+	eb_current.ContentLayer.pageX = eb_current.pageX+1;
+	eb_current.HiddenLayer.pageX = eb_current.pageX+1;
+	eb_current = null;
 	}
-    eb_current.ContentLayer.pageX = eb_current.pageX;
-    eb_current.HiddenLayer.pageX = eb_current.pageX;
-    eb_current = null;
     return true;
     }
 
