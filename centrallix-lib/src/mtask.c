@@ -19,6 +19,7 @@
 #ifdef LINUX22
 #include <ioctls.h>
 #endif
+#include <grp.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.12 2002/09/24 18:59:17 gbeeley Exp $
+    $Id: mtask.c,v 1.13 2002/11/12 00:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.13  2002/11/12 00:26:49  gbeeley
+    Updated MTASK approach to user/group security when using system auth.
+    The module now handles group ID's as well.  Changes should have no
+    effect when running as non-root with altpasswd auth.
+
     Revision 1.12  2002/09/24 18:59:17  gbeeley
     Fixed some problems relating to non-blocking netConnectTCP() operations
     (where FD_U_NOBLOCK was specified).  MTask was not correctly retrieving
@@ -148,6 +154,7 @@ typedef struct _MTS
     int		TicksPerSec;
     int		StartUserID;
     int		CurUserID;
+    int		CurGroupID;
     unsigned long LastTick;
     }
     MTSystem, *pMTSystem;
@@ -428,6 +435,7 @@ pThread
 mtInitialize(int flags, void (*start_fn)())
     {
     int i;
+    gid_t grouplist[1];
 
     	/** Initialize the thread table. **/
 	MTASK.nThreads = 0;
@@ -436,6 +444,15 @@ mtInitialize(int flags, void (*start_fn)())
 	/** Initialize the system-event-wait table **/
 	MTASK.nEvents = 0;
 	for(i=0;i<MAX_EVENTS;i++) MTASK.EventWaitTable[i] = NULL;
+
+	/** If we are running as root, clear the supplementary groups
+	 ** list.  This isn't optimal, but solves the security issue for
+	 ** the time being.  Otherwise, threads running as other users
+	 ** end up with root's supplementary groups.  When not running as
+	 ** root you can't switch to other users anyhow so it isn't an
+	 ** issue there.
+	 **/
+	if (geteuid() == 0 || getuid() == 0) setgroups(0,grouplist);
 
 	/** Create the first thread. **/
 	MTASK.CurrentThread = (pThread)nmMalloc(sizeof(Thread));
@@ -452,6 +469,7 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.CurrentThread->UserID = geteuid();
 	MTASK.StartUserID = geteuid();
 	MTASK.CurUserID = geteuid();
+	MTASK.CurGroupID = getegid();
 
 	/** Add it to the table **/
 	MTASK.nThreads = 1;
@@ -465,10 +483,10 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.FirstTick = mtTicks();
 	MTASK.TickCnt = 0;
 
-#ifdef CLK_TCK
-	MTASK.TicksPerSec = CLK_TCK;
-#else
+#ifdef _SC_CLK_TCK
 	MTASK.TicksPerSec = sysconf(_SC_CLK_TCK);
+#else
+	MTASK.TicksPerSec = CLK_TCK;
 #endif
 	
 	/** Initialize the thread creation jmp buffer **/
@@ -924,6 +942,12 @@ mtSched()
 	    if (lowest_run_thr->UserID != 0) seteuid(lowest_run_thr->UserID);
 	    MTASK.CurUserID = lowest_run_thr->UserID;
 	    }
+	if (lowest_run_thr->GroupID != MTASK.CurGroupID)
+	    {
+	    if (MTASK.CurGroupID != 0) setegid(0);
+	    if (lowest_run_thr->GroupID != 0) setegid(lowest_run_thr->GroupID);
+	    MTASK.CurGroupID = lowest_run_thr->GroupID;
+	    }
 
 	/** Jump into the thread... **/
 	if (lowest_run_thr->Flags & THR_F_STARTING)
@@ -973,6 +997,7 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->StartFn = start_fn;
 	thr->StartParam = start_param;
 	thr->UserID = MTASK.CurUserID;
+	thr->GroupID = MTASK.CurGroupID;
 	thr->ThrParam = MTASK.CurrentThread->ThrParam;
 
 	/** Add to the thread table. **/
@@ -1502,6 +1527,47 @@ thGetUserID(pThread thr)
 	if (!thr) thr = MTASK.CurrentThread;
 
     return thr->UserID;
+    }
+
+
+/*** THSETGROUPID sets the group id of the given thread, or current thread
+ *** if thr is null.
+ ***/
+int
+thSetGroupID(pThread thr, int new_gid)
+    {
+
+	/** Setting current thread? **/
+	if (!thr) thr = MTASK.CurrentThread;
+
+	/** Verify permissions **/
+	if (MTASK.CurrentThread->UserID != 0) return -1;
+
+	/** Switch to it. **/
+	if (thr->GroupID != new_gid)
+	    {
+	    setegid(new_gid);
+	    MTASK.CurGroupID = new_gid;
+	    }
+
+	/** Set this ID **/
+	thr->GroupID = new_gid;
+
+    return 0;
+    }
+
+
+/*** THGETGROUPID returns the current group id or the group id of the given
+ *** thread if not null.
+ ***/
+int
+thGetGroupID(pThread thr)
+    {
+
+	/** Checking current thread? **/
+	if (!thr) thr = MTASK.CurrentThread;
+
+    return thr->GroupID;
     }
 
 

@@ -39,10 +39,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.8 2002/08/16 20:01:20 gbeeley Exp $
+    $Id: mtsession.c,v 1.9 2002/11/12 00:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.9  2002/11/12 00:26:49  gbeeley
+    Updated MTASK approach to user/group security when using system auth.
+    The module now handles group ID's as well.  Changes should have no
+    effect when running as non-root with altpasswd auth.
+
     Revision 1.8  2002/08/16 20:01:20  gbeeley
     Various autoconf fixes.  I hope I didn't break anything with this, being
     an autoconf rookie ;)
@@ -324,10 +329,17 @@ mssAuthenticate(char* username, char* password)
 
 	/** Set the session information **/
 	if (!strcmp(MSS.AuthMethod,"system"))
+	    {
 	    s->UserID = pw->pw_uid;
+	    s->GroupID = pw->pw_gid;
+	    }
 	else
+	    {
 	    s->UserID = geteuid();
+	    s->GroupID = getegid();
+	    }
 	thSetParam(NULL,"mss",(void*)s);
+	thSetGroupID(NULL,s->GroupID);
 	thSetUserID(NULL,s->UserID);
 
 	/** Initialize the error info **/

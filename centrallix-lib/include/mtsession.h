@@ -20,10 +20,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.h,v 1.2 2002/02/14 00:41:54 gbeeley Exp $
+    $Id: mtsession.h,v 1.3 2002/11/12 00:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtsession.h,v $
 
     $Log: mtsession.h,v $
+    Revision 1.3  2002/11/12 00:26:49  gbeeley
+    Updated MTASK approach to user/group security when using system auth.
+    The module now handles group ID's as well.  Changes should have no
+    effect when running as non-root with altpasswd auth.
+
     Revision 1.2  2002/02/14 00:41:54  gbeeley
     Added configurable logging and authentication to the mtsession module,
     and made sure mtsession cleared MtSession data structures when it is
@@ -49,6 +54,7 @@
 typedef struct
     {
     int		UserID;
+    int		GroupID;
     char	UserName[32];
     char	Password[32];
     XArray	ErrList;

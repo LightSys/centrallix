@@ -23,10 +23,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.7 2002/08/16 20:01:20 gbeeley Exp $
+    $Id: mtask.h,v 1.8 2002/11/12 00:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.8  2002/11/12 00:26:49  gbeeley
+    Updated MTASK approach to user/group security when using system auth.
+    The module now handles group ID's as well.  Changes should have no
+    effect when running as non-root with altpasswd auth.
+
     Revision 1.7  2002/08/16 20:01:20  gbeeley
     Various autoconf fixes.  I hope I didn't break anything with this, being
     an autoconf rookie ;)
@@ -141,6 +146,7 @@ typedef struct _THR
     int		Status;				/* THR_S_xxx */
     int		Flags;				/* one or more of THR_F_xxx */
     int		UserID;				/* ID of user of this thread */
+    int		GroupID;			/* primary group of user */
 #if 0
     pThrExt	ThrParam[16];			/* Structure extension */
 #else
@@ -340,6 +346,8 @@ int thUnlock();
 int thSleep(int msec);
 int thSetUserID(pThread thr, int new_uid);
 int thGetUserID(pThread thr);
+int thSetGroupID(pThread thr, int new_gid);
+int thGetGroupID(pThread thr);
 int thSetParam(pThread thr, const char* name, void* param);
 void* thGetParam(pThread thr, const char* name);
 int thSetFlags(pThread thr, int flags);
