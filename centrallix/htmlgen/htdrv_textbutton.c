@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.14 2002/07/24 18:12:03 pfinley Exp $
+    $Id: htdrv_textbutton.c,v 1.15 2002/07/25 16:54:18 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.15  2002/07/25 16:54:18  pfinley
+    completely undoing the change made yesterday with aliasing of click events
+    to mouseup... they are now two separate events. don't believe the lies i said
+    yesterday :)
+
     Revision 1.14  2002/07/24 18:12:03  pfinley
     Updated Click events to be MouseUp events. Now all Click events must be
     specified as MouseUp within the Widget's event handler, or they will not
@@ -271,6 +276,13 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.pageY < ly.pageY + ly.clip.height)\n"
 		"            {\n"
 		"            tb_setmode(ly,1);\n"
+		"            if (ly.EventClick != null)\n"
+		"                {\n"
+		"                eparam = new Object();\n"
+		"                eparam.Caller = ly;\n"
+		"                cn_activate(ly, 'Click', eparam);\n"
+		"                delete eparam;\n"
+		"                }\n"
 		"            if (ly.EventMouseUp != null)\n"
 		"                {\n"
 		"                eparam = new Object();\n"

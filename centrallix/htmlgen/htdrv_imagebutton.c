@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.17 2002/07/24 18:12:03 pfinley Exp $
+    $Id: htdrv_imagebutton.c,v 1.18 2002/07/25 16:54:18 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.18  2002/07/25 16:54:18  pfinley
+    completely undoing the change made yesterday with aliasing of click events
+    to mouseup... they are now two separate events. don't believe the lies i said
+    yesterday :)
+
     Revision 1.17  2002/07/24 18:12:03  pfinley
     Updated Click events to be MouseUp events. Now all Click events must be
     specified as MouseUp within the Widget's event handler, or they will not
@@ -295,6 +300,13 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.pageY < e.target.layer.pageY + e.target.layer.clip.height)\n"
 		"            {\n"
 		"            e.target.src = e.target.layer.pImage.src;\n"
+		"            if (e.target.layer.EventClick != null)\n"
+		"                {\n"
+		"                var eparam = new Object();\n"
+		"                eparam.Caller = e.target.layer;\n"
+		"                cn_activate(e.target.layer, 'Click', eparam);\n"
+		"                delete eparam;\n"
+		"                }\n"
 		"            if (e.target.layer.EventMouseUp != null)\n"
 		"                {\n"
 		"                var eparam = new Object();\n"
