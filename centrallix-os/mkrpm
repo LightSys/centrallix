@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+
+RPMBUILDDIR="/usr/src/redhat"
+export RPMBUILDDIR
+
+PKGNAME=`basename "$PWD" | sed 's/-[0-9._-]*$//'`
+export PKGNAME
+
+VERSION=`grep Version: $PKGNAME.spec | sed 's/^Version: //'`
+export VERSION
+
+# to avoid getting the prompt, pass pkgname to this program.
+echo "Building RPM packages for package '$PKGNAME' version '$VERSION'..."
+if [ "$1" != "$PKGNAME" -a "$1" != "all" ]; then
+    echo -n "ENTER to build packages, or CTL-C to cancel: "
+    read ANS
+fi
+
+[ -f Makefile ] && make distclean
+
+/bin/ln -s . "$PKGNAME-$VERSION" || exit 1
+tar -czhf "$PKGNAME-$VERSION.tgz" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION.tgz" "$PKGNAME-$VERSION" || exit 1
+/bin/rm "$PKGNAME-$VERSION" || exit 1
+
+/bin/cp "$PKGNAME-$VERSION.tgz" "$RPMBUILDDIR"/SOURCES/ || exit 1
+/bin/cp "$PKGNAME.spec" "$RPMBUILDDIR"/SPECS/ || exit 1
+
+/bin/rm "$PKGNAME-$VERSION.tgz" || exit 1
+
+rpmbuild -ba "$RPMBUILDDIR"/SPECS/"$PKGNAME.spec" || exit 1
