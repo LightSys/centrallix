@@ -49,3 +49,22 @@ function htutil_rtrim(str) {
     for (var i=str.length-1; str.charAt(i) == ' ' || str.charAt(i)=='\t' || str.charAt(i)=='\xCA'; i--);
     return str.substring(0, i+1);
 }
+
+/** return common part of string **/
+function htutil_common(str1,str2) {
+    var cnt = 0;
+    if (!str1 || !str2) return "";
+    for (var i=0;i<str1.length;i++) if (str1.charAt(i) != str2.charAt(i)) break; else cnt++;
+    return str1.substring(0,cnt);
+}
+
+/** compare two URL's for same server **/
+function htutil_url_cmp(str1,str2) {
+    var common = htutil_common(str1,str2);
+    var cmp_re = /^http:\/+[a-zA-Z._0-9:]+\//i;
+    if (common.search(cmp_re) >= 0)
+	return true;
+    else
+	return false;
+}
+
