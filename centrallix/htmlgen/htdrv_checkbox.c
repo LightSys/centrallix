@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.3 2002/02/23 03:32:24 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.4 2002/02/23 03:50:41 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.4  2002/02/23 03:50:41  lkehresman
+    Implemented the setvalue() function (previously a stub).  If anything that
+    would be evaluated as TRUE get sent, the checkbox gets checked.  Otherwise
+    it will be unchecked.
+
     Revision 1.3  2002/02/23 03:32:24  lkehresman
     ...all theories are made to be broken.  Just like this checkbox was before
     I remapped a couple functions to work properly.
@@ -107,8 +112,16 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Set value function **/
    htrAddScriptFunction(s, "checkbox_setvalue", "\n"
-      "function checkbox_setvalue(v,f)\n"
+      "function checkbox_setvalue(v)\n"
       "    {\n"
+	  "    if (v)\n"
+	  "        {\n"
+	  "        this.document.images[0].src = this.document.images[0].checkedImage.src;\n"
+	  "        }\n"
+	  "    else\n"
+	  "        {\n"
+	  "        this.document.images[0].src = this.document.images[0].uncheckedImage.src;\n"
+	  "        }\n"
       "    }\n",0);
 
    /** Checkbox initializer **/
