@@ -80,6 +80,7 @@ typedef struct
 
     
 #define HTTP(x) ((pHttpData)(x))
+#define HTTP_OS_DEBUG 0
 
 /*** Structure used by queries for this driver. ***/
 typedef struct
@@ -227,7 +228,7 @@ http_internal_GetPageStream(pHttpData inf)
 	    }
 	}
 
-    //printf("requesting: %s\n",fullpath);
+    if(HTTP_OS_DEBUG) printf("requesting: %s\n",fullpath);
 
     /** Set up connection **/
     if(inf->ProxyServer[0])
@@ -269,16 +270,20 @@ http_internal_GetPageStream(pHttpData inf)
 	    inf->Socket=netConnectTCP(inf->Server,"80",0);
 	if(!inf->Socket)
 	    return (int)http_internal_Cleanup(inf,"could not connect to server");
+	if(HTTP_OS_DEBUG) printf("connected\n");
 	sprintf(buf,"GET %s HTTP/1.1\n",fullpath);
+	if(HTTP_OS_DEBUG) printf("%s\n",buf);
 	fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	if(inf->Port[0])
 	    {
 	    sprintf(buf,"Host: %s:%s\n",inf->Server,inf->Port);
+	    if(HTTP_OS_DEBUG) printf("%s\n",buf);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	    }
 	else
 	    {
 	    sprintf(buf,"Host: %s\n",inf->Server);
+	    if(HTTP_OS_DEBUG) printf("%s\n",buf);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	    }
 	if(inf->AuthLine[0])
@@ -289,6 +294,7 @@ http_internal_GetPageStream(pHttpData inf)
 	fdWrite(inf->Socket,"\n",1,0,FD_U_PACKET);
 	}
 
+    if(HTTP_OS_DEBUG) printf("Opening lexer session\n");
     lex=mlxOpenSession(inf->Socket,MLX_F_LINEONLY | MLX_F_NODISCARD);
     if(!lex)
 	http_internal_Cleanup(inf,"Unable to open Lexer Session");
@@ -296,7 +302,9 @@ http_internal_GetPageStream(pHttpData inf)
     flag=1;	// Normal status
     while(flag)
 	{
+	if(HTTP_OS_DEBUG) printf("getting token....\n");
 	toktype=mlxNextToken(lex);
+	if(HTTP_OS_DEBUG) printf("got it!\n");
 	if(toktype==MLX_TOK_ERROR)
 	    {
 	    mlxCloseSession(lex);
@@ -304,6 +312,7 @@ http_internal_GetPageStream(pHttpData inf)
 	    }
 	alloc=0;
 	ptr2=ptr=mlxStringVal(lex,&alloc);
+	if(HTTP_OS_DEBUG) printf("got token(%02x%02x%02x%02x): %s\n",ptr[0],ptr[1],ptr[2],ptr[3],ptr);
 	if(ptr[0]=='\n' || (ptr[0]=='\r' && ptr[1]=='\n'))
 	    flag=0;
 	else
@@ -352,7 +361,12 @@ http_internal_GetPageStream(pHttpData inf)
 
 			COPY_FROM_PMATCH(inf->Path,4);
 
-			inf->Redirected=1;
+			/** apparently a server sending a '302 found' doesn't necessarily mean
+			 **   it actually has the file -- it would just rather you requested
+			 **   it differently....
+			 ** Try requesting /news/news.rdf/item from freebsd.org and see....
+			 **/
+			//inf->Redirected=1;
 			return 2; //unsuccessfull -- try again with updated params
 			}
 		    }
@@ -384,6 +398,7 @@ http_internal_GetPageStream(pHttpData inf)
 		{   /** Look for HTTP -- first line of header if server is >=HTTP/1.0 **/
 		if(regexec(&HTTP_INF.httpheader,ptr,0,NULL,0)==0)
 		    {
+		    if(HTTP_OS_DEBUG) printf("regex match on HTTP header\n");
 		    p1=ptr;
 		    while(p1[0]!=' ' && p1-ptr<strlen(ptr)) p1++;
 		    if(p1-ptr==strlen(ptr)) return -1;
@@ -424,6 +439,7 @@ http_internal_GetPageStream(pHttpData inf)
 	if(alloc) nmSysFree(ptr);
 	}
     mlxCloseSession(lex);
+    if(HTTP_OS_DEBUG) printf("stream established\n");
 
     return 1;
 
@@ -474,7 +490,8 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	(i)=(char*)malloc(strlen(ptr)+1); \
 	if(!(i))\
 	    return http_internal_Cleanup(inf,"malloc failure");\
-	strcpy((i),ptr);
+	strcpy((i),ptr); \
+	if(HTTP_OS_DEBUG) printf("%s: %s\n",s,i);	
 
 	HTTP_PARAM_INIT(inf->ProxyServer,"proxyserver");
 	HTTP_PARAM_INIT(inf->ProxyPort,"proxyport");
@@ -498,7 +515,9 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    return http_internal_Cleanup(inf,"either supply both proxyserver and proxyport, or neither");
 	inf->Attr=stCreateStruct("","");
 	while((rval=http_internal_GetPageStream(inf))==2)
-	    printf("retrying...%i\n",inf->Redirected);
+	    {
+	    if(HTTP_OS_DEBUG) printf("trying again...(redirected: %i)\n",inf->Redirected);
+	    }
 	if(rval==0)
 	    return http_internal_Cleanup(inf,"failed to load target");
 
@@ -548,6 +567,17 @@ int
 httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
+    if(!inf->Socket || (flags & FD_U_SEEK && offset==0))
+	{
+	/** if there's no connection or we're told to seek to 0, reinit the connection **/
+	int rval;
+	while((rval=http_internal_GetPageStream(inf))==2)
+	    {
+	    if(HTTP_OS_DEBUG) printf("trying again...(redirected: %i)\n",inf->Redirected);
+	    }
+	if(rval==0)
+	    return -1;
+	}
     if(!inf->Socket) return -1;
     return fdRead(inf->Socket,buffer,maxcnt,offset,flags);
     }
