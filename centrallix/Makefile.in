@@ -251,6 +251,7 @@ all:	centrallix mods config
 
 install: all modules_install
 	@mkdir -p $(sbindir)
+	@mkdir -p $(sysconfdir)
 	$(INSTALL) centrallix $(sbindir)
 	$(INSTALL) -m 644 $(CONFFILES) $(sysconfdir)
 	#$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
