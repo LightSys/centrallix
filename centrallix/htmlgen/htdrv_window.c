@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.24 2002/08/01 19:22:25 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.25 2002/08/12 17:51:16 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.25  2002/08/12 17:51:16  pfinley
+    - added an attract option to the page widget. if this is set, centrallix
+      windows will attract to the edges of the browser window. set to how many
+      pixels from border to attract.
+    - also fixed a mainlayer issue with the window widget which allowed for
+      the contents of a window to be draged and shaded (very interesting :)
+
     Revision 1.24  2002/08/01 19:22:25  lkehresman
     Renamed what was previously known as mainlayer (aka ml) to be ContentLayer
     so that it is more descriptive and doesn't conflict with other mainlayer
@@ -331,9 +338,9 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (ly.kind == 'wn')\n"
 		"        {\n"
 		"        if (e.target.name == 'close') e.target.src = '/sys/images/02close.gif';\n"
-		"        else if (e.pageY < ly.pageY + 20)\n"
+		"        else if (e.pageY < ly.mainlayer.pageY + 20)\n"
 		"            {\n"
-		"            wn_current = ly;\n"
+		"            wn_current = ly.mainlayer;\n"
 		"            wn_msx = e.pageX;\n"
 		"            wn_msy = e.pageY;\n"
 		"            wn_newx = null;\n"
@@ -393,7 +400,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
+	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d);\n", 
 		name,parentname,id,parentname,id,id,h);
 
 	/** HTML body <DIV> elements for the layers. **/

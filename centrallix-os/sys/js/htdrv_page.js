@@ -286,9 +286,10 @@ function pg_status_close()
     pg_status.visibility = 'hide';
     }
 
-function pg_init(l)
+function pg_init(l,a)
     {
     l.ActionLoadPage = pg_load_page;
+    pg_attract = a;
     return l;
     }
 

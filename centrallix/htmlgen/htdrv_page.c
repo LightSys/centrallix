@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.44 2002/08/08 16:23:07 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.45 2002/08/12 17:51:16 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.45  2002/08/12 17:51:16  pfinley
+    - added an attract option to the page widget. if this is set, centrallix
+      windows will attract to the edges of the browser window. set to how many
+      pixels from border to attract.
+    - also fixed a mainlayer issue with the window widget which allowed for
+      the contents of a window to be draged and shaded (very interesting :)
+
     Revision 1.44  2002/08/08 16:23:07  lkehresman
     Added backwards compatible page area handling because the datetime widget
     needs to do some funky stuff with page areas (areas inside of areas) that
@@ -324,6 +331,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
     char *ptr;
     char *nptr;
     char name[64];
+    int attract;
 
 	strcpy(t->kbfocus1,"#ffffff");	/* kb focus = 3d raised */
 	strcpy(t->kbfocus2,"#7a7a7a");
@@ -418,12 +426,19 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "pg_lastmodifiers", "null", 0);
 	htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0);
 	htrAddScriptGlobal(s, "pg_modallayer", "null", 0);
+	htrAddScriptGlobal(s, "pg_attract", "null", 0);
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
+
+	/** Cx windows attract to browser edges? if so, by how much **/
+	if (objGetAttrValue(w_obj,"attract",POD(&ptr)) == 0)
+	    attract = (int)ptr;
+	else
+	    attract = 0;
 
 	/** Add script include to get function declarations **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
@@ -436,7 +451,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop);\n", name, parentname);
+	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d);\n", name, parentname, attract);
 
     return 0;
     }

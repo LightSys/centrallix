@@ -106,11 +106,17 @@ function wn_domove()
         var ha=(document.height-window.innerHeight-2)>=0?15:0;
         var va=(document.width-window.innerWidth-2)>=0?15:0;
         var newx,newy;
-        if (wn_newx+wn_current.document.width<25) newx = 25-wn_current.document.width;
-        else if (wn_newx > window.innerWidth - 35-ha) newx = window.innerWidth - 35-ha;
-        else newx = wn_newx;
+        if (wn_newx < pg_attract && wn_newx > -pg_attract) newx = 0;
+        else if (wn_newx+wn_current.clip.width > window.innerWidth-ha-pg_attract && wn_newx+wn_current.clip.width < window.innerWidth-ha+pg_attract)
+		newx = window.innerWidth-ha-wn_current.clip.width;
+        else if (wn_newx+wn_current.clip.width < 25) newx = 25-wn_current.clip.width;
+        else if (wn_newx > window.innerWidth-35-ha) newx = window.innerWidth-35-ha;
+	else newx = wn_newx;
         if (wn_newy<0) newy = 0;
-        else if (wn_newy > window.innerHeight - 12-va) newy = window.innerHeight - 12-va;
+        else if (wn_newy > window.innerHeight-12-va) newy = window.innerHeight-12-va;
+        else if (wn_newy < pg_attract) newy = 0;
+        else if (wn_newy+wn_current.clip.height > window.innerHeight-va-pg_attract && wn_newy+wn_current.clip.height < window.innerHeight-va+pg_attract)
+		newy = window.innerHeight-va-wn_current.clip.height;
         else newy = wn_newy;
         wn_current.moveToAbsolute(newx,newy);
         }
