@@ -9,16 +9,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function form_cb_register(aparam)
+function form_cb_register(element)
     {
-    if(aparam.kind=="formstatus")
+    if(element.kind=="formstatus")
 	{
-	this.statuswidgets.push(aparam);
-	aparam.setvalue(this.mode);
+	this.statuswidgets.push(element);
+	element.setvalue(this.mode);
 	}
     else
 	{
-	this.elements.push(aparam);
+	this.elements.push(element);
 	}
     }
 
@@ -55,7 +55,7 @@ function form_cb_focus_notify(control)
 function form_cb_tab_notify(control)
     {
     var ctrlnum;
-    for(i=0;i<this.elements.length;i++)
+    for(var i=0;i<this.elements.length;i++)
 	{
 	if(this.elements[i].name==control.name)
 	    {
@@ -187,6 +187,7 @@ function form_cb_object_available(data)
 	    if(this.elements[i]._form_fieldid!=null && this.data[this.elements[i]._form_fieldid].value)
 		{
 		this.elements[i].setvalue(this.data[this.elements[i]._form_fieldid].value);
+		cx_set_hints(this.elements[i], this.data[this.elements[i]._form_fieldid].hints, 'data');
 		}
 	    else
 		{
@@ -414,7 +415,7 @@ function form_action_new(aparam)
 	case "View":
 	case "Modify":
 	    this.ChangeMode("New");
-	    this.ClearAll();
+	    //this.ClearAll(); -- GRB this is done in change_mode now because of pres hints stuff
 	    /* if there was a query run, fill in it's values... */
 	    break;
 	}
@@ -470,14 +471,7 @@ function form_change_mode(newmode)
     else if (newmode == 'NoData' && !this.allownodata)
 	return;
 
-    // Set focus to initial control
-    if ((newmode == 'Query' || newmode == 'New' || newmode == 'Modify') && this.elements[0] && !pg_curkbdlayer)
-	{
-	if (pg_removekbdfocus())
-	    {
-	    pg_setkbdfocus(this.elements[0], null, null);
-	    }
-	}
+    if (newmode == this.mode) return;
 
     // Control button behavior
     this.is_discardable = (newmode == 'Query' || newmode == 'New' || newmode == 'Modify');
@@ -501,6 +495,15 @@ function form_change_mode(newmode)
     this.IsUnsaved = false;
     this.is_savable = false;
     
+    // Set focus to initial control
+    if ((newmode == 'Query' || newmode == 'New' || newmode == 'Modify') && this.elements[0] && !pg_curkbdlayer)
+	{
+	if (pg_removekbdfocus())
+	    {
+	    pg_setkbdfocus(this.elements[0], null, null);
+	    }
+	}
+
     if(this.mode=='Query')
 	{
 	this.ClearAll();
@@ -526,11 +529,33 @@ function form_change_mode(newmode)
     if(this.mode=='Query' || this.mode=='New')
 	{
 	this.EnableNewAll();
+	this.ClearAll();
 	}
     for(var i in this.statuswidgets)
 	{
 	this.statuswidgets[i].setvalue(this.mode);
 	}
+
+    // on New or Modify, call appropriate hints routines
+    if (newmode == 'New')
+	{
+	for(var e in this.elements)
+	    {
+	    if (this.elements[e].cx_hints) 
+		{
+		cx_hints_setup(this.elements[e]);
+		cx_hints_startnew(this.elements[e]);
+		}
+	    }
+	}
+    else if (newmode == 'Modify')
+	{
+	for(var e in this.elements)
+	    {
+	    if (this.elements[e].cx_hints) cx_hints_startmodify(this.elements[e]);
+	    }
+	}
+
     this.SendEvent('StatusChange');
     this.SendEvent(this.mode);
     return 1;
