@@ -105,3 +105,5 @@ if test "$WITH_DYNAMIC_LOAD" = "yes"; then
 fi
 
 AC_OUTPUT(Makefile, echo timestamp > stamp-h)
+
+CENTRALLIX_OUTPUT_SUMMARY

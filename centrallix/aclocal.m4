@@ -1,3 +1,13 @@
+dnl Maintain the list of drivers to build (one day this may expand to do a bit
+dnl more than this...
+AC_DEFUN(CENTRALLIX_ADD_DRIVER,
+    [
+	DRIVERLIST="$DRIVERLIST $1"
+	drivernames="$drivernames|$2"
+	AC_SUBST(DRIVERLIST)
+    ]
+)
+	
 dnl Test for readline support.  Some versions of readline also require
 dnl ncurses, so test for that if necessary.
 AC_DEFUN(CENTRALLIX_CHECK_READLINE,
@@ -170,19 +180,8 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		SYBASE_CFLAGS="-I$sybase_incdir"
 		temp=$LIBS
 		LIBS="$LIBS -L$sybase_libdir"
-		AC_CHECK_LIB(ct, ct_connect, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no", -lcomn -lsybtcl -linsck -lintl)
-		AC_CHECK_LIB(comn, comn_str_to_ascii, WITH_SYBASE_COMN="yes", WITH_SYBASE_COMN="no", -lintl)
-		AC_CHECK_LIB(intl, intl_open, WITH_SYBASE_INTL="yes", WITH_SYBASE_INTL="no")
-		AC_CHECK_LIB(sybtcl, netp_init_driver_poll, WITH_SYBASE_SYBTCL="yes", WITH_SYBASE_SYBTCL="no", -lcomn -linsck -lintl)
-		AC_CHECK_LIB(cs, cs_time, WITH_SYBASE_CS="yes", WITH_SYBASE_CS="no", -lcomn -lintl)
-		AC_CHECK_LIB(insck, bsd_tcp, WITH_SYBASE_INSCK="yes", WITH_SYBASE_INSCK="no", -lcomn -lintl)
-		if test "$WITH_SYBASE_CT" = "no" \
-		    -o "$WITH_SYBASE_COMN" = "no" \
-		    -o "$WITH_SYBASE_INTL" = "no" \
-		    -o "$WITH_SYBASE_SYBTCL" = "no" \
-		    -o "$WITH_SYBASE_CS" = "no" \
-		    -o "$WITH_SYBASE_CS" = "no" \
-		    -o "$WITH_SYBASE_INSCK" = "no"; then
+		AC_CHECK_LIB(ct, ct_connect, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no", -lct -lcomn -lsybtcl -linsck -lintl -lcs)
+		if test "$WITH_SYBASE_CT" = "no"; then
 		    WITH_SYBASE="no"
 		else
 		    SYBASE_LIBS="-L$sybase_libdir -lct -lcomn -lintl -lsybtcl -lcs -linsck"
@@ -201,6 +200,7 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		    OBJDRIVERS="$OBJDRIVERS objdrv_sybase.o"
 		fi
 		AC_MSG_RESULT(yes)
+		CENTRALLIX_ADD_DRIVER(sybd, [Sybase Database])
 	    else
 		AC_MSG_RESULT(no)
 	    fi
@@ -281,6 +281,7 @@ AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
 		OBJDRIVERS="$OBJDRIVERS objdrv_gzip.o"
 	    fi
 	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(gzip, GZip)
 	else
 	    AC_MSG_RESULT(no)
 	fi
@@ -311,6 +312,7 @@ AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
 		OBJDRIVERS="$OBJDRIVERS objdrv_http.o"
 	    fi
 	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(http, HTTP)
 	else
 	    AC_MSG_RESULT(no)
 	fi
@@ -338,6 +340,7 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
 		OBJDRIVERS="$OBJDRIVERS objdrv_mime.o"
 	    fi
 	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(mime, [MIME encoding])
 	else
 	    AC_MSG_RESULT(no)
 	fi
@@ -365,6 +368,7 @@ AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
 		OBJDRIVERS="$OBJDRIVERS objdrv_dbl.o"
 	    fi
 	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(dbl, DBL)
 	else
 	    AC_MSG_RESULT(no)
 	fi
@@ -392,6 +396,7 @@ AC_DEFUN(CENTRALLIX_CHECK_MBOX_OS,
 		OBJDRIVERS="$OBJDRIVERS objdrv_mbox.o"
 	    fi
 	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(mbox, mbox)
 	else
 	    AC_MSG_RESULT(no)
 	fi
@@ -420,6 +425,7 @@ AC_DEFUN(CENTRALLIX_CHECK_SHELL_OS,
 	    fi
 	    AC_MSG_RESULT(yes)
 	    AC_WARN(The shell driver can be _very_ insecure!!!)
+	    CENTRALLIX_ADD_DRIVER(shell, shell)
 	else
 	    AC_MSG_RESULT(no)
 	fi
@@ -568,6 +574,7 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 		OBJDRIVERS="$OBJDRIVERS objdrv_xml.o"
 	    fi
 	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(xml, XML)
 	else
 	    AC_MSG_RESULT(no)
 	fi
@@ -580,40 +587,66 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 dnl check if gcc allows -fPIC and -pg at the same time
 AC_DEFUN(CHECK_PROFILE,
     [
-    AC_MSG_CHECKING(if -fPIC and -pg can be used at the same time)
-    temp="$CFLAGS"
-    CFLAGS="-fPIC -pg -Werror"
-    dnl AC_TRY_COMPILE([int main(){return 0;}],
-    AC_TRY_COMPILE(,,
-	PROFILE="-pg",
-	PROFILE=""
-    )
-    if test "$PROFILE" = "-pg"; then
-	AC_MSG_RESULT(yes)
-    else
-	AC_MSG_RESULT(no)
-    fi
-    CFLAGS="$temp"
+	AC_MSG_CHECKING(if -fPIC and -pg can be used at the same time)
+	temp="$CFLAGS"
+	CFLAGS="-fPIC -pg -Werror"
+	dnl AC_TRY_COMPILE([int main(){return 0;}],
+	AC_TRY_COMPILE(,,
+	    PROFILE="-pg",
+	    PROFILE=""
+	)
+	if test "$PROFILE" = "-pg"; then
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+	CFLAGS="$temp"
     ]
 )
 
 dnl check if ld allows -export-dynamic
 AC_DEFUN(CHECK_EXPORT_DYNAMIC,
     [
-    AC_MSG_CHECKING(if -export-dynamic can be given to ld)
-    temp="$CFLAGS"
-    CFLAGS="-Wl,-export-dynamic"
-    AC_TRY_RUN([int main(){return 0;}],
-	EXPORT_DYNAMIC="-export-dynamic",
-	EXPORT_DYNAMIC="" 
-    )
-    if test "$EXPORT_DYNAMIC" = "-export-dynamic"; then
-	EXPORT_DYNAMIC=",$EXPORT_DYNAMIC"
-	AC_MSG_RESULT(yes)
-    else
-	AC_MSG_RESULT(no)
-    fi
-    CFLAGS="$temp"
-    AC_SUBST(EXPORT_DYNAMIC)
+	AC_MSG_CHECKING(if -export-dynamic can be given to ld)
+	temp="$CFLAGS"
+	CFLAGS="-Wl,-export-dynamic"
+	AC_TRY_RUN([int main(){return 0;}],
+	    EXPORT_DYNAMIC="-export-dynamic",
+	    EXPORT_DYNAMIC="" 
+	)
+	if test "$EXPORT_DYNAMIC" = "-export-dynamic"; then
+	    EXPORT_DYNAMIC=",$EXPORT_DYNAMIC"
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+	CFLAGS="$temp"
+	AC_SUBST(EXPORT_DYNAMIC)
     ]
 )
+
+dnl print a nice summary for the end of the configure script
+AC_DEFUN(CENTRALLIX_OUTPUT_SUMMARY,
+    [
+	echo
+	echo
+	echo "Configuration Summary:"
+	echo
+	echo "               Install to: $prefix"
+	echo "Centrallix libraries from: $centrallix_libdir"
+	if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+	    echo "      Using shared libraries"
+	else
+	    echo "      Not using shared libraries"
+	fi
+	echo
+	echo -n "The following drivers will be built:"
+	temp=$IFS
+	IFS="|"
+	for i in $drivernames; do
+	    echo "    $i"
+	done
+	IFS=$temp
+    ]
+)
+
