@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: expression.h,v 1.4 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.4  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.3  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -239,7 +244,7 @@ pExpression expPodToExpression(pObjData pod, int type);
 int expExpressionToPod(pExpression this, pObjData pod);
 
 /*** Generator functions ***/
-int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char);
+int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language);
 
 /*** Internal Functions ***/
 pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);

@@ -45,12 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt.c,v 1.1 2001/08/13 18:01:14 gbeeley Exp $
+    $Id: prtmgmt.c,v 1.2 2002/06/19 23:29:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt.c,v $
 
     $Log: prtmgmt.c,v $
-    Revision 1.1  2001/08/13 18:01:14  gbeeley
-    Initial revision
+    Revision 1.2  2002/06/19 23:29:34  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
+    Revision 1.1.1.1  2001/08/13 18:01:14  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -591,7 +596,7 @@ prtExecuteSection(pPrtSession this)
     pPrtCommand colptrs[16];
     pPrtCommand origcolptrs[16];
     pPrtCommand oldendptr;
-    int i,nlines,curline,wrote_data,oldattr;
+    int i,nlines,curline,wrote_data=0,oldattr;
     int prevline,maxline;
 
     	/** Print until we get to a section-terminating command **/
@@ -711,7 +716,10 @@ prtExecuteSection(pPrtSession this)
 
 	/** Ok -- adjust the CurRelLine on post-nlptr commands **/
 	cmdptr = this->CmdStream;
-	if (cmdptr) prevline = cmdptr->CurRelLine;
+	if (cmdptr) 
+	    prevline = cmdptr->CurRelLine;
+	else
+	    prevline = 0;
 	maxline = 0;
 	while(cmdptr)
 	    {
@@ -1661,7 +1669,7 @@ prtDisengageTable(pPrtSession this)
 	    sepcmd = prtAllocCommand(PRT_CMD_TABLESEP, NULL, 0);
 	    if (!sepcmd)
 	        { 
-		prtFreeCommand(cmd);
+		/*prtFreeCommand(cmd);*/
 		return -1;
 	        }
 	    sepcmd->StartLineX = 0;
@@ -2020,7 +2028,7 @@ prtConvertHTML(int (*read_fn)(), void* read_arg, pPrtSession s)
     {
     pHtmlSession hts;
     char* ptr;
-    int t,enabled=0,v1,v2,v3,v4, intable,attr,n;
+    int t,enabled=0,v1,v2,v3,v4, intable=0,attr,n;
     int was_enabled = 0;
     int insert_space = 0;
     int in_title = 0;
@@ -2391,7 +2399,7 @@ pPrtSession
 prtOpenSession(char* content_type, int (*write_fn)(), void* write_arg, int flags)
     {
     pPrtSession this;
-    pPrintDriver drv;
+    pPrintDriver drv=NULL;
     int i;
 
     	/** Allocate the session data **/

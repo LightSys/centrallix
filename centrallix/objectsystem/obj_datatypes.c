@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.4 2002/04/25 04:26:07 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.5 2002/06/19 23:29:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.5  2002/06/19 23:29:34  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.4  2002/04/25 04:26:07  gbeeley
     Basic overhaul of objdrv_sybase to fix some security issues, improve
     robustness with key data in particular, and so forth.  Added a new
@@ -621,6 +626,10 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 	        sv = (pStringVec)data_ptr;
 		if (sv->nStrings == 0) v = 0; else v = strtol(sv->Strings[0],NULL,0);
 		break;
+	    
+	    default:
+		mssError(1,"OBJ","Warning: could not convert data type %d to integer", data_type);
+		return 0;
 	    }
 
     return v;
@@ -1379,7 +1388,7 @@ objDataToWords(int data_type, void* data_ptr)
     static char* teens[9] = { "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen" };
     static char* tens[9] = { "Ten","Twenty","Thirty","Fourty","Fifty","Sixty","Seventy","Eighty","Ninety" };
     static char* multiples[] = { "", "Thousand","Million","Billion","Trillion","Quadrillion" };
-    unsigned long integer_part, fraction_part;
+    unsigned long integer_part, fraction_part = 0;
     int multiple_cnt, n, i;
     pMoneyType m;
     char nbuf[16];
@@ -1427,6 +1436,11 @@ objDataToWords(int data_type, void* data_ptr)
 		integer_part = m->WholePart;
 		fraction_part = m->FractionPart;
 		}
+	    }
+	else
+	    {
+	    mssError(1,"OBJ","Warning: can only 'convert to words' integer and money types");
+	    return "";
 	    }
 
 	/** Ok, take it in chunks of three digits **/

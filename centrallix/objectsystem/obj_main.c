@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.2 2002/02/14 00:55:20 gbeeley Exp $
+    $Id: obj_main.c,v 1.3 2002/06/19 23:29:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.3  2002/06/19 23:29:34  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.2  2002/02/14 00:55:20  gbeeley
     Added configuration file centrallix.conf capability.  You now MUST have
     this file installed, default is /usr/local/etc/centrallix.conf, in order
@@ -181,7 +186,6 @@ objInitialize()
     pLxSession s;
     pContentType ct,parent_ct;
     char* ptr;
-    char sbuf[128];
     char* filename;
 
 	/** Zero the globals **/
@@ -348,11 +352,10 @@ objInitialize()
 	    return -1;
 	    }
 	OSYS.RootType = NULL;
-	sbuf[i] = 0;
 	ct = (pContentType)xhLookup(&OSYS.Types, ptr);
 	if (!ct)
 	    {
-	    mssError(1,"OSML","Unknown type '%s' for rootnode",sbuf);
+	    mssError(1,"OSML","Unknown type '%s' for rootnode",ptr);
 	    return -1;
 	    }
 	OSYS.RootType = ct;

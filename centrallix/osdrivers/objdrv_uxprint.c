@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_uxprint.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: objdrv_uxprint.c,v 1.4 2002/06/19 23:29:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_uxprint.c,v $
 
     $Log: objdrv_uxprint.c,v $
+    Revision 1.4  2002/06/19 23:29:34  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.3  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -400,7 +405,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pSnNode node = NULL;
     char sbuf[256];
     int is_new = 0;
-    pLprPrintQueue pq;
+    /*pLprPrintQueue pq;*/
 
         /** Determine node path and attempt to open node. **/
 	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
@@ -478,7 +483,8 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** If print job, make sure it exists first in the printer's queue. **/
 	if (inf->Type == UXP_T_PRINTJOB)
 	    {
-	    if (uxp_internal_FindQueueItem(pq, obj_internal_PathPart(obj->Pathname, obj->SubPtr, 0)) == NULL)
+	    /** GRB - no queue items for now - queue not being loaded **/
+	    /*if (uxp_internal_FindQueueItem(pq, obj_internal_PathPart(obj->Pathname, obj->SubPtr, 0)) == NULL)*/
 	        {
 		nmFree(inf, sizeof(UxpData));
 		return NULL;

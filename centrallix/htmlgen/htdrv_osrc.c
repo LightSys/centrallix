@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.36 2002/06/10 21:47:45 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.37 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.37  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.36  2002/06/10 21:47:45  jorupp
      * bit of code cleanup
      * added movable borders to the dynamic table
@@ -253,7 +258,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       replicasize=6;
    if (objGetAttrValue(w_obj,"readahead",POD(&readahead)) != 0)
       readahead=replicasize/2;
-   if (objGetAttrValue(w_obj,"scrollahead",POD(&readahead)) != 0)
+   if (objGetAttrValue(w_obj,"scrollahead",POD(&scrollahead)) != 0)
       scrollahead=readahead;
 
    /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
@@ -276,6 +281,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    else
       {
       mssError(1,"HTOSRC","You must give a sql parameter");
+      return -1;
       }
 
    if (objGetAttrValue(w_obj,"filter",POD(&ptr)) == 0)

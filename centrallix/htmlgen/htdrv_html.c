@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_html.c,v 1.7 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.7  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.6  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -113,8 +118,8 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     pObjQuery qy;
     int x=-1,y=-1,w,h;
     int id,cnt;
-    int mode;
-    char* nptr;
+    int mode = 0;
+    char* nptr = NULL;
     pObject content_obj;
 
     	/** Get an id for this. **/

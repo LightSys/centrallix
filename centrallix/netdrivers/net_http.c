@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.22 2002/06/14 15:13:42 jorupp Exp $
+    $Id: net_http.c,v 1.23 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.23  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.22  2002/06/14 15:13:42  jorupp
      * store the entire User-Agent line for comparison, not just the first word
 
@@ -278,7 +283,6 @@ int
 nht_internal_UnlinkSess(pNhtSessionData sess)
     {
     pXString errmsg;
-    int i;
     pNhtConnTrigger trg;
 
 	/** Bump the link cnt down **/
@@ -319,7 +323,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 		if (trg->LinkCnt <= 0)
 		    {
 		    syDestroySem(trg->TriggerSem,SEM_U_HARDCLOSE);
-		    xaRemoveItem(&(sess->Triggers), i);
+		    xaRemoveItem(&(sess->Triggers), 0);
 		    nmFree(trg, sizeof(NhtConnTrigger));
 		    }
 		}
@@ -434,7 +438,7 @@ nht_internal_Watchdog(void* v)
 		    {
 		    expired_timer->ExpireFn(expired_timer->ExpireArg, expired_timer->Handle);
 		    xhnFreeHandle(&(NHT.TimerHctx), expired_timer->Handle);
-		    nmFree(t, sizeof(NhtTimer));
+		    nmFree(expired_timer, sizeof(NhtTimer));
 		    }
 		}
 		while(expired_timer); /* end do loop */
@@ -1051,8 +1055,8 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
     char* ptr;
     char* newptr;
     pObjSession objsess;
-    pObject obj;
-    pObjQuery qy;
+    pObject obj = NULL;
+    pObjQuery qy = NULL;
     char* sid = NULL;
     char sbuf[256];
     char hexbuf[3];
@@ -2012,7 +2016,7 @@ void
 nht_internal_ConnHandler(void* conn_v)
     {
     pFile conn = (pFile)conn_v;
-    pLxSession s;
+    pLxSession s = NULL;
     int toktype;
     char method[16];
     char* urlptr;
@@ -2022,86 +2026,76 @@ nht_internal_ConnHandler(void* conn_v)
     char* useragent = 0;
     char dest[256] = "";
     char hdr[64];
-    char* msg;
+    char* msg = "";
     char* ptr;
-    Exception e;
     char* usrname;
-    char* passwd;
+    char* passwd = NULL;
     pNhtSessionData nsess = NULL;
     pStruct url_inf,find_inf;
     int size=-1;
     int did_alloc = 1;
     int tid = -1;
-    handle_t w_timer, i_timer;
+    handle_t w_timer = XHN_INVALID_HANDLE, i_timer = XHN_INVALID_HANDLE;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Connection Handler");
 
-        /** Handle parsing exceptions... **/
-	Catch(e)
-	    {
-	    mlxCloseSession(s);
-	    mssError(1,"NHT","Failed to parse HTTP request, exiting thread.");
-	    snprintf(sbuf,160,"HTTP/1.0 400 Request Error\n\n%s\n",msg);
-	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
-	    netCloseTCP(conn,1000,0);
-	    thExit();
-	    }
-
     	/** Initialize a lexical analyzer session... **/
 	s = mlxOpenSession(conn, MLX_F_NODISCARD | MLX_F_DASHKW | MLX_F_ICASE |
 		MLX_F_EOL | MLX_F_EOF);
 
-	/** Read in the main request header. **/
-	if (mlxNextToken(s) != MLX_TOK_KEYWORD) msg="Invalid method syntax",Throw(e);
+	/** Read in the main request header.  Note - error handler is at function
+	 ** tail, as in standard goto-based error handling.
+	 **/
+	if (mlxNextToken(s) != MLX_TOK_KEYWORD) { msg="Invalid method syntax"; goto error; }
 	mlxCopyToken(s,method,16);
 	mlxSetOptions(s,MLX_F_IFSONLY);
-	if (mlxNextToken(s) != MLX_TOK_STRING) msg="Invalid url syntax",Throw(e);
+	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Invalid url syntax"; goto error; }
 	/*strcpy(url,mlxStringVal(s,NULL));*/
 	did_alloc = 1;
 	urlptr = mlxStringVal(s, &did_alloc);
 	mlxNextToken(s);
-	if (mlxNextToken(s) != MLX_TOK_EOL) msg="Expected EOL after version",Throw(e);
+	if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after version"; goto error; }
 	mlxUnsetOptions(s,MLX_F_IFSONLY);
 
 	/** Read in the various header parameters. **/
 	while((toktype = mlxNextToken(s)) != MLX_TOK_EOL)
 	    {
 	    if (toktype == MLX_TOK_EOF) break;
-	    if (toktype != MLX_TOK_KEYWORD) msg="Expected HTTP header item",Throw(e);
+	    if (toktype != MLX_TOK_KEYWORD) { msg="Expected HTTP header item"; goto error; }
 	    /*ptr = mlxStringVal(s,NULL);*/
 	    mlxCopyToken(s,hdr,64);
-	    if (mlxNextToken(s) != MLX_TOK_COLON) msg="Expected : after HTTP header",Throw(e);
+	    if (mlxNextToken(s) != MLX_TOK_COLON) { msg="Expected : after HTTP header"; goto error; }
 
 	    /** Got a header item.  Pick an appropriate type. **/
 	    if (!strcmp(hdr,"destination"))
 	        {
 		/** Copy next IFS-only token to destination value **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected filename after dest.",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected filename after dest."; goto error; }
 		mlxCopyToken(s,dest,256);
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOF) msg="Expected EOL after filename",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_EOF) { msg="Expected EOL after filename"; goto error; }
 		}
 	    else if (!strcmp(hdr,"authorization"))
 	        {
 		/** Get 'Basic' then the auth string in base64 **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected auth type",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected auth type"; goto error; }
 		ptr = mlxStringVal(s,NULL);
-		if (strcasecmp(ptr,"basic")) msg="Can only handle BASIC auth",Throw(e);
-		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected auth after Basic",Throw(e);
+		if (strcasecmp(ptr,"basic")) { msg="Can only handle BASIC auth"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected auth after Basic"; goto error; }
 		nht_internal_Decode64(auth,mlxStringVal(s,NULL),160);
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) msg="Expected EOL after auth",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after auth"; goto error; }
 		}
 	    else if (!strcmp(hdr,"cookie"))
 	        {
 		/** Copy whole thing. **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected str after Cookie:",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Cookie:"; goto error; }
 		mlxCopyToken(s,cookie,160);
 		while((toktype = mlxNextToken(s)))
 		    {
@@ -2112,15 +2106,15 @@ nht_internal_ConnHandler(void* conn_v)
 	    else if (!strcmp(hdr,"content-length"))
 	        {
 		/** Get the integer. **/
-		if (mlxNextToken(s) != MLX_TOK_INTEGER) msg="Expected content-length",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_INTEGER) { msg="Expected content-length"; goto error; }
 		size = mlxIntVal(s);
-		if (mlxNextToken(s) != MLX_TOK_EOL) msg="Expected EOL after length",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after length"; goto error; }
 		}
 	    else if (!strcmp(hdr,"user-agent"))
 	        {
 		/** Copy whole User-Agent. **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected str after User-Agent:",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after User-Agent:"; goto error; }
 		/** NOTE: This needs to be freed up at the end of the session.  Is that taken
 		          care of by mssEndSession?  I don't think it is, since xhClear is passed
 			  a NULL function for free_fn.  This will be a 160 byte memory leak for
@@ -2154,6 +2148,7 @@ nht_internal_ConnHandler(void* conn_v)
 
 	/** Ok, done parsing.  Close the lexer session. **/
 	mlxCloseSession(s);
+	s = NULL;
 
 	/** Did client send authentication? **/
 	if (!*auth)
@@ -2205,6 +2200,10 @@ nht_internal_ConnHandler(void* conn_v)
 		w_timer = nsess->WatchdogTimer;
 		i_timer = nsess->InactivityTimer;
 		}
+	    }
+	else
+	    {
+	    nsess = NULL;
 	    }
 
 	/** Watchdog ping? **/
@@ -2313,6 +2312,7 @@ nht_internal_ConnHandler(void* conn_v)
 			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    netCloseTCP(conn,1000,0);
+	    conn = NULL;
 	    }
 	nht_internal_ConstructPathname(url_inf);
 
@@ -2396,12 +2396,21 @@ nht_internal_ConnHandler(void* conn_v)
 	if (url_inf) stFreeInf_ne(url_inf);
 	if (did_alloc) nmSysFree(urlptr);
 	netCloseTCP(conn,1000,0);
+	conn = NULL;
 
 	/** End a trigger? **/
 	if (tid != -1) nht_internal_EndTrigger(nsess,tid);
 
 	nht_internal_UnlinkSess(nsess);
 
+    thExit();
+
+    error:
+	if (s) mlxCloseSession(s);
+	mssError(1,"NHT","Failed to parse HTTP request, exiting thread.");
+	snprintf(sbuf,160,"HTTP/1.0 400 Request Error\n\n%s\n",msg);
+	fdWrite(conn,sbuf,strlen(sbuf),0,0);
+	if (conn) netCloseTCP(conn,1000,0);
     thExit();
     }
 

@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.5 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_execmethod.c,v 1.6 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.6  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.5  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -110,16 +115,16 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     int id;
     char* nptr;
     char* objname;
-    char* methodname;
-    char* methodparam;
+    char* methodname = NULL;
+    char* methodparam = NULL;
 
     	/** Get an id for this. **/
 	id = (HTEX.idcnt++);
 
 	/** Get params. **/
 	if (objGetAttrValue(w_obj,"object",POD(&objname)) != 0) objname="";
-	if (objGetAttrValue(w_obj,"method",POD(&objname)) != 0) methodname="";
-	if (objGetAttrValue(w_obj,"parameter",POD(&objname)) != 0) methodparam="";
+	if (objGetAttrValue(w_obj,"method",POD(&methodname)) != 0) methodname="";
+	if (objGetAttrValue(w_obj,"parameter",POD(&methodparam)) != 0) methodparam="";
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;

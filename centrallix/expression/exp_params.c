@@ -46,12 +46,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.1 2001/08/13 18:00:48 gbeeley Exp $
+    $Id: exp_params.c,v 1.2 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
-    Revision 1.1  2001/08/13 18:00:48  gbeeley
-    Initial revision
+    Revision 1.2  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
+    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -198,7 +203,7 @@ expRemoveParamFromList(pParamObjects this, char* name)
 int 
 expModifyParam(pParamObjects this, char* name, pObject replace_obj)
     {
-    int slot_id;
+    int slot_id = -1;
     int i;
 
     	/** Pick the slot id.  If name is NULL, use current. **/
@@ -215,6 +220,7 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 		break;
 		}
 	    }
+	if (slot_id == -1) return -1;
 
 	/** Replace the object. **/
 	this->Objects[slot_id] = replace_obj;

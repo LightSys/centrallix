@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.4 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.5 2002/06/19 23:29:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.5  2002/06/19 23:29:34  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.4  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -1242,15 +1247,15 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
     {
     pDatNode dn;
     char nodefile[256];
-    char* dot_pos;
-    char* slash_pos;
+    char* dot_pos = NULL;
+    char* slash_pos = NULL;
     int is_datafile = 0;
     char* ptr;
     int i,n;
     pStructInf col_inf;
     int use_mode;
     int new_node = 0;
-    pDatTableInf tdata;
+    pDatTableInf tdata = NULL;
 
     	/** Determine the datafile and specfile names **/
 	strcpy(nodefile,filename);
@@ -2605,6 +2610,13 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    return NULL;
 		    }
 	        break;
+
+	    default:
+		if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
+		inf->Pathname.OpenCtlBuf = NULL;
+		nmFree(inf,sizeof(DatData));
+		mssError(1,"DAT","Bark!  Internal object type not allowed (%d)", qy->ObjInf->Type);
+		return NULL;
 	    }
 
 	/** Build the filename. **/

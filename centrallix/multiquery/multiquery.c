@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.8 2002/04/30 23:27:45 gbeeley Exp $
+    $Id: multiquery.c,v 1.9 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.9  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.8  2002/04/30 23:27:45  gbeeley
     Fixed a bug which caused a segfault on update of the last record if
     the query had already been closed.
@@ -543,7 +548,7 @@ mq_internal_SyntaxParse(pLxSession lxs)
     /* pQueryStructure delete_cls=NULL, update_cls=NULL;*/
     pQueryStructure limit_cls = NULL;
     ParserState state = LookForClause;
-    ParserState next_state;
+    ParserState next_state = ParseError;
     int t,parenlevel;
     char* ptr;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",

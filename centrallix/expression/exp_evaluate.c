@@ -66,10 +66,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.5 2002/04/05 06:10:11 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.6 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.6  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.5  2002/04/05 06:10:11  gbeeley
     Updating works through a multiquery when "FOR UPDATE" is specified at
     the end of the query.  Fixed a reverse-eval bug in the expression
@@ -342,6 +347,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
 	    case DATA_T_INTVEC: dptr = &(i1->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr = &(i1->Types.StrVec); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type for operand #2 of '*': %d",i1->DataType);
+		return -1;
 	    }
 
 	/** Do the computation based on the datatype of the first operand **/
@@ -575,6 +583,9 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
 	    case DATA_T_INTVEC: dptr = &(i1->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr = &(i1->Types.StrVec); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type for operand #2 of '+': %d",i1->DataType);
+		return -1;
 	    }
 
 	/** If first is an Integer, do integer addition. **/
@@ -727,7 +738,7 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 int
 expRevEvalAnd(pExpression tree, pParamObjects objlist)
     {
-    int i,s;
+    int i, s = -1;
     pExpression subtree;
     	
 	/** If the AND is FALSE, then we really can't do anything. **/
@@ -754,7 +765,7 @@ expRevEvalAnd(pExpression tree, pParamObjects objlist)
 int
 expRevEvalOr(pExpression tree, pParamObjects objlist)
     {
-    int i,s;
+    int i, s = -1;
     pExpression subtree;
     	
 	/** If the OR is TRUE, then we really can't do anything. **/
@@ -811,6 +822,9 @@ expEvalCompare(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr0 = &(i0->Types.Date); break;
 	    case DATA_T_INTVEC: dptr0 = &(i0->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr0 = &(i0->Types.StrVec); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type in LHS of comparison: %d", i0->DataType);
+		return -1;
 	    }
 
 	/** Get a data ptr to the 2nd data type value **/
@@ -823,6 +837,9 @@ expEvalCompare(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr1 = &(i1->Types.Date); break;
 	    case DATA_T_INTVEC: dptr1 = &(i1->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr1 = &(i1->Types.StrVec); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type in RHS of comparison: %d", i1->DataType);
+		return -1;
 	    }
 
 	/** Compare as strings or integers **/
@@ -966,7 +983,7 @@ expRevEvalObject(pExpression tree, pParamObjects objlist)
 int
 expEvalProperty(pExpression tree, pParamObjects objlist)
     {
-    int t,v=-1,n,id;
+    int t,v=-1,n, id = 0;
     pObject obj;
     char* ptr;
     void* vptr;
@@ -1297,6 +1314,9 @@ expEvalIn(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr0 = &(i0->Types.Date); break;
 	    case DATA_T_INTVEC: dptr0 = &(i0->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr0 = &(i0->Types.StrVec); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type in LHS of IN operator: %d", i0->DataType);
+		return -1;
 	    }
 
 	/** Loop through the items in the list **/
@@ -1313,6 +1333,9 @@ expEvalIn(pExpression tree, pParamObjects objlist)
 	        case DATA_T_DATETIME: dptr1 = &(itmp->Types.Date); break;
 	        case DATA_T_INTVEC: dptr1 = &(itmp->Types.IntVec); break;
 	        case DATA_T_STRINGVEC: dptr1 = &(itmp->Types.StrVec); break;
+		default:
+		    mssError(1,"EXP","Unexpected data type in list item #%d of IN operator: %d", i, itmp->DataType);
+		    return -1;
 		}
 	    v = objDataCompare(i0->DataType, dptr0, itmp->DataType, dptr1);
 	    if (v == -2)

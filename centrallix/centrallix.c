@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.1 2002/05/02 01:14:56 gbeeley Exp $
+    $Id: centrallix.c,v 1.2 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.2  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.1  2002/05/02 01:14:56  gbeeley
     Added dynamic module loading support in Centrallix, starting with the
     Sybase driver, using libdl.
@@ -295,7 +300,7 @@ cxInitialize(void* v)
     }
 
 
-
+#ifndef CX_NO_HTMLGEN
 int
 cxHtInit()
     {
@@ -335,8 +340,9 @@ cxHtInit()
 
     return 0;
     }
+#endif
 
-
+#ifndef CX_NO_NETWORK
 int
 cxNetworkInit()
     {
@@ -356,4 +362,4 @@ cxNetworkInit()
 
     return 0;
     }
-
+#endif

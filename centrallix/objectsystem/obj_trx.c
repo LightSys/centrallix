@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: obj_trx.c,v 1.3 2002/06/19 23:29:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.3  2002/06/19 23:29:34  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -253,6 +258,11 @@ oxt_internal_FindOxt(pObject obj, pObjTrxTree* oxt, pObjTrxTree* new_oxt)
     pObjTrxTree* pass_oxt;
     pObjTrxTree tmp_oxt;
     int prefix_cnt, new_cnt, i;
+
+	/** Another gcc warning suppression.  tmp_oxt is not used uninitialized,
+	 ** but gcc can't seem to see that.
+	 **/
+	tmp_oxt = NULL;
 
 	/** Transaction in progress?  If so, and prefix matches, make a new oxt. **/
 	if (*oxt)
@@ -582,12 +592,18 @@ oxtSetAttrValue(void* this_v, char* attrname, void* val, pObjTrxTree* oxt)
  *** reading and/or writing to its content.
  ***/
 void*
-oxtOpenAttr(pObject obj, char* attrname, pObjTrxTree* oxt)
+oxtOpenAttr(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
-    pObjTrxPtr this;
+    pObjTrxPtr this = (pObjTrxPtr)this_v;
+    pObjTrxPtr new_this;
     pObjTrxTree* pass_oxt;
     pObjTrxTree new_oxt=NULL;
     void* rval;
+
+	/** GRB This interface is a kludge.  We'll probably be removing this
+	 ** in the future.  for now, just error out.
+	 **/
+	return NULL;
 
     	/** Are we in a transaction? **/
 	if (this->Trx)
@@ -605,7 +621,7 @@ oxtOpenAttr(pObject obj, char* attrname, pObjTrxTree* oxt)
 	    }
     
 	/** Call the low level driver **/
-	rval = obj->LowLevelDriver->OpenAttr(obj,attrname,pass_oxt);
+	rval = this->Obj->LowLevelDriver->OpenAttr(this->Obj,attrname,pass_oxt);
 
 	/** Completion? **/
 	if (*pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -625,11 +641,11 @@ oxtOpenAttr(pObject obj, char* attrname, pObjTrxTree* oxt)
 	/** Did the call succeed? **/
 	if (rval)
 	    {
-	    this = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
+	    new_this = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
 	    if (!this) rval = NULL;
-	    this->LLParam = rval;
-	    this->Trx = *pass_oxt;
-	    this->Obj = obj;
+	    new_this->LLParam = rval;
+	    new_this->Trx = *pass_oxt;
+	    new_this->Obj = this->Obj;
 	    }
 	else if (new_oxt)
 	    {

@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.3 2001/10/22 17:36:05 gbeeley Exp $
+    $Id: stparse.c,v 1.4 2002/06/19 23:29:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.4  2002/06/19 23:29:34  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.3  2001/10/22 17:36:05  gbeeley
     Beginning to add support for JS scripting facilities.
 
@@ -805,7 +810,7 @@ st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
 		}
 	    else
 		{
-		mssError(1,"ST","Structure file group/attr name for '%s' is missing", subinf->Name);
+		mssError(1,"ST","Structure file subgroup/attr name in '%s' is missing", inf->Name);
 		mlxNotePosition(s);
 		return -1;
 		}
@@ -1141,14 +1146,14 @@ st_internal_GenerateAttr(pStructInf info, pXString xs, int level, pParamObjects 
 	/** Output the various expressions. **/
 	if (info->Value->NodeType != EXPR_N_LIST)
 	    {
-	    expGenerateText(info->Value, objlist, xsWrite, xs, '\0');
+	    expGenerateText(info->Value, objlist, xsWrite, xs, '\0', "cxsql");
 	    }
 	else
 	    {
 	    for(i=0;i<info->Value->Children.nItems;i++)
 	        {
 		exp = (pExpression)(info->Value->Children.Items[i]);
-		expGenerateText(exp, objlist, xsWrite, xs, '\0');
+		expGenerateText(exp, objlist, xsWrite, xs, '\0', "cxsql");
 		if (i != info->Value->Children.nItems-1) xsConcatenate(xs,", ",2);
 		}
 	    }

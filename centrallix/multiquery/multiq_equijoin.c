@@ -45,12 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.1 2001/08/13 18:00:54 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.2 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
-    Revision 1.1  2001/08/13 18:00:54  gbeeley
-    Initial revision
+    Revision 1.2  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
+    Revision 1.1.1.1  2001/08/13 18:00:54  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -112,13 +117,13 @@ int
 mqjAnalyze(pMultiQuery mq)
     {
     pQueryElement qe;
-    pQueryElement master,slave;
+    pQueryElement master=NULL,slave=NULL;
     pQueryStructure from_qs = NULL;
     pQueryStructure select_qs = NULL;
     pQueryStructure where_qs = NULL;
     pQueryStructure select_item;
     pQueryStructure where_item;
-    pQueryStructure from_item;
+    pQueryStructure from_item=NULL;
     int i,n=0,j,found,m;
     pExpression new_exp;
     unsigned short join_mask[16];
@@ -408,6 +413,12 @@ mqjAnalyze(pMultiQuery mq)
 		    }
 
 		/** Add the master and slave below this qe **/
+		if (!master || !slave)
+		    {
+		    mssError(1,"MQJ","Bark!  Could not locate master/slave query component(s)!");
+		    mq_internal_FreeQE(qe);
+		    return -1;
+		    }
 		xaAddItem(&qe->Children,(void*)master);
 		xaAddItem(&qe->Children,(void*)slave);
 		mq->Tree = qe;

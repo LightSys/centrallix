@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.4 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.4  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.3  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -98,6 +103,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     int was_unary = 0;
     int was_prefix_unary = 0;
     char* sptr;
+
+	/** This is to suppress a rather unintelligent compiler warning about
+	 ** eptr being used uninitialized.
+	 **/
+	eptr = NULL;
 
 	/** Loop through the tokens **/
 	while (!err)

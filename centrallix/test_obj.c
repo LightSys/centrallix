@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.10 2002/06/13 15:21:04 mattphillips Exp $
+    $Id: test_obj.c,v 1.11 2002/06/19 23:29:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.11  2002/06/19 23:29:33  gbeeley
+    Misc bugfixes, corrections, and 'workarounds' to keep the compiler
+    from complaining about local variable initialization, among other
+    things.
+
     Revision 1.10  2002/06/13 15:21:04  mattphillips
     Adding autoconf support to centrallix
 
@@ -611,8 +616,12 @@ start(void* v)
 			    case DATA_T_DOUBLE: dblval = objDataToDouble(DATA_T_STRING,(void*)stringval); pod = POD(&dblval); break;
 			    case DATA_T_DATETIME: dt = &dtval; objDataToDateTime(DATA_T_STRING,(void*)stringval,dt,NULL); pod = POD(&dt); break;
 			    case DATA_T_MONEY: m = &mval; objDataToMoney(DATA_T_STRING,(void*)stringval, m); pod = POD(&m); break;
+			    default:
+				printf("create: warning - invalid attribute type for attr '%s'\n", attrname);
+				pod = NULL;
+				break;
 			    }
-			objSetAttrValue(obj,attrname,pod);
+			if (pod) objSetAttrValue(obj,attrname,pod);
 			}
 		    }
 		if (objClose(obj) < 0) mssPrintError(StdOut);
