@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.3 2002/05/03 03:46:29 gbeeley Exp $
+    $Id: mtask.c,v 1.4 2002/06/18 16:25:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.4  2002/06/18 16:25:49  gbeeley
+    Fixed a couple of warnings that showed up with -O2.  Fixed an MTASK bug
+    related to thMultiWait().
+
     Revision 1.3  2002/05/03 03:46:29  gbeeley
     Modifications to xhandle to support clearing the handle list.  Added
     a param to xhClear to provide support for xhnClearHandles.  Added a
@@ -239,7 +243,7 @@ evRemoveIdx(int idx)
 int
 evRemove(pEventReq event)
     {
-    int i,j,k;
+    int i, j, k = -1;
 
     	for(i=0;i<MTASK.nEvents;i++) if (MTASK.EventWaitTable[i] == event)
 	    {
@@ -515,7 +519,7 @@ mtSched()
     int ticks_used;
     pThread thr_sleep_init = NULL; /* if thread just did a thSleep */
     pEventReq event;
-    int k;
+    int k = 0;
 
     	dbg_write(0,"x",1);
 
@@ -795,8 +799,10 @@ mtSched()
 	/** If locked, we need to continue with that thread. **/
 	if (locked_thr) lowest_run_thr = locked_thr;
 
+#if 0
 	if (k==0) dbg_write(0,"0",1);
 	if (k==1) dbg_write(0,"1",1);
+#endif
 
 	/** Check for any waits on this thread. **/
 	for(i=0;i<MTASK.nEvents;i++) if (MTASK.EventWaitTable[i]->Object == lowest_run_thr)
@@ -1122,6 +1128,7 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 	        code = PMTOBJECT(event_req[i]->Object)->EventCkFn(event_req[i]->EventType,event_req[i]->Object);
 		}
 	    if (code == -1) event_req[i]->Status = EV_S_ERROR;
+	    if (code == 1) event_req[i]->Status = EV_S_COMPLETE;
 	    if (code == -1 || code == 1) break;
 	    }
 
@@ -1148,7 +1155,8 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 	    		if (event_req[i]->EventType == EV_T_MT_TIMER) break;
 			code = PMTOBJECT(event_req[i]->Object)->EventCkFn(event_req[i]->EventType,event_req[i]->Object);
 			if (code == 1) event_req[i]->Status = EV_S_COMPLETE;
-			if (code == -1) event_req[i]->Status = EV_S_ERROR;
+			else if (code == -1) event_req[i]->Status = EV_S_ERROR;
+			else event_req[i]->Status = EV_S_INPROC;
 	    		if (code == -1 || code == 1) break;
 	    		}
 		    }
