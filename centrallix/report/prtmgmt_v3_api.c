@@ -50,10 +50,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.12 2003/03/07 06:16:12 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.13 2003/03/12 20:51:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.13  2003/03/12 20:51:36  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.12  2003/03/07 06:16:12  gbeeley
     Added border-drawing functionality, and converted the multi-column
     layout manager to use that for column separators.  Added border
@@ -665,6 +674,7 @@ prtWriteString(int handle_id, char* str)
 
 	    /** Format it and add it to the container **/
 	    string_obj->Content = nmSysMalloc(len+2);
+	    string_obj->ContentSize = len+2;
 	    strncpy(string_obj->Content, str, len);
 	    string_obj->Content[len] = 0;
 	    prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,string_obj);
@@ -739,6 +749,7 @@ prtWriteNL(int handle_id)
 	if (!nl_obj) return -1;
 	nl_obj->Session = obj->Session;
 	nl_obj->Content = nmSysMalloc(2);
+	nl_obj->ContentSize = 2;
 	nl_obj->Content[0] = '\0';
 	nl_obj->Width = 0.0;
 	nl_obj->ConfigWidth = 0.0;
@@ -825,7 +836,7 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	prt_internal_CopyAttrs(obj, new_obj);
 	new_obj->Session = obj->Session;
 	va_start(va, flags);
-	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj, va);
+	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj, NULL, va);
 	va_end(va);
 
 	/** Bolt a handle onto the new object... **/

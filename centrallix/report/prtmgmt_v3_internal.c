@@ -49,10 +49,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.12 2003/03/07 06:16:12 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.13 2003/03/12 20:51:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.13  2003/03/12 20:51:36  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.12  2003/03/07 06:16:12  gbeeley
     Added border-drawing functionality, and converted the multi-column
     layout manager to use that for column separators.  Added border
@@ -652,6 +661,7 @@ prt_internal_CreateEmptyObj(pPrtObjStream container)
 	obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
 	obj->Session = container->Session;
 	obj->Content = nmSysMalloc(2);
+	obj->ContentSize = 2;
 	obj->Content[0] = '\0';
 	obj->Width = 0.0;
 	prev_obj = (container->ContentTail)?(container->ContentTail):container;
@@ -708,11 +718,15 @@ prt_internal_Dump_r(pPrtObjStream obj, int level)
 	    case PRT_OBJ_T_STRING: printf("STRG(%s): ", obj->Content); break;
 	    case PRT_OBJ_T_SECTION: printf("SECT: "); break;
 	    case PRT_OBJ_T_SECTCOL: printf("COLM: "); break;
+	    case PRT_OBJ_T_TABLE: printf("TABL: "); break;
+	    case PRT_OBJ_T_TABLEROW: printf("TROW: "); break;
+	    case PRT_OBJ_T_TABLECELL: printf("TCEL: "); break;
+	    case PRT_OBJ_T_RECT: printf("RECT: "); break;
 	    }
-	printf("x=%.3g y=%.3g w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g flg=%d\n",
+	printf("x=%.3g y=%.3g w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g flg=%d id=%d\n",
 		obj->X, obj->Y, obj->Width, obj->Height,
 		obj->PageX, obj->PageY, obj->YBase, obj->TextStyle.FontSize,
-		obj->Y + obj->YBase, obj->Flags);
+		obj->Y + obj->YBase, obj->Flags, obj->ObjID);
 	for(subobj=obj->ContentHead;subobj;subobj=subobj->Next)
 	    {
 	    prt_internal_Dump_r(subobj, level+1);
@@ -730,11 +744,60 @@ prt_internal_Dump(pPrtObjStream obj)
 
 /*** prt_internal_Duplicate() - duplicate an entire object, including
  *** its content etc if "with_content" is set.
+ ***
+ *** GRB note - currently with_content is ignored.
  ***/
 pPrtObjStream
 prt_internal_Duplicate(pPrtObjStream obj, int with_content)
     {
     pPrtObjStream new_obj = NULL;
+    pPrtObjStream child_obj;
+
+	/** Duplicate the object itself **/
+	new_obj = prt_internal_AllocObjByID(obj->ObjType->TypeID);
+	if (!new_obj) return NULL;
+	prt_internal_CopyAttrs(obj, new_obj);
+	prt_internal_CopyGeom(obj, new_obj);
+	if (!with_content)
+	    {
+	    /** If we are copying with the content, we want the actual height,
+	     ** not the configured height.  Otherwise, if no content, we use the
+	     ** configured height.
+	     **/
+	    new_obj->Height = obj->ConfigHeight;
+	    new_obj->Width = obj->ConfigWidth;
+	    }
+	new_obj->Flags = obj->Flags;
+	new_obj->Session = obj->Session;
+	new_obj->LMData = NULL;
+
+	/** Init the object as a container if needed **/
+	if (new_obj->LayoutMgr)
+	    new_obj->LayoutMgr->InitContainer(new_obj, obj->LMData, NULL);
+
+	/** If object has content (for strings and images), copy it **/
+	new_obj->ContentSize = obj->ContentSize;
+	if (obj->Content && obj->ContentSize)
+	    {
+	    new_obj->Content = nmSysMalloc(obj->ContentSize);
+	    memcpy(new_obj->Content, obj->Content, obj->ContentSize);
+	    }
+
+	/** Now take care of child objects within the object **/
+	if (with_content)
+	    {
+	    child_obj = obj->ContentHead;
+	    while(child_obj && (child_obj->Flags & PRT_OBJ_F_PERMANENT)) 
+		{
+		child_obj = child_obj->Next;
+		}
+	    while(child_obj)
+		{
+		prt_internal_Add(new_obj, prt_internal_Duplicate(child_obj, 1));
+		child_obj = child_obj->Next;
+		}
+	    }
+
     return new_obj;
     }
 

@@ -53,10 +53,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.4 2003/03/07 06:16:12 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.5 2003/03/12 20:51:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.5  2003/03/12 20:51:37  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.4  2003/03/07 06:16:12  gbeeley
     Added border-drawing functionality, and converted the multi-column
     layout manager to use that for column separators.  Added border
@@ -89,6 +98,7 @@
 
 #define PRT_TABLM_F_ISHEADER		1	/* row is a header that repeats */
 #define PRT_TABLM_F_ISFOOTER		2	/* row is a repeating footer */
+#define PRT_TABLM_F_INNEROUTER		4	/* user inner/outer bdr instead of l/r/t/b */
 
 #define PRT_TABLM_DEFAULT_FLAGS		(0)
 #define PRT_TABLM_DEFAULT_COLSEP	1.0	/* column separation */
@@ -109,6 +119,8 @@ typedef struct _PTB
     PrtBorder		BottomBorder;
     PrtBorder		LeftBorder;
     PrtBorder		RightBorder;
+    PrtBorder		InnerBorder;	/* used only by cells in lieu of others */
+    PrtBorder		OuterBorder;	/* used only by cells in lieu of others */
     PrtBorder		Shadow;		/* only valid on table as a whole */
     }
     PrtTabLMData, *pPrtTabLMData;
@@ -121,7 +133,74 @@ typedef struct _PTB
 int
 prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     {
-    return -1;
+    pPrtObjStream new_parent, cur_parent, new_obj;
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
+    pPrtTabLMData new_lm_inf;
+
+	/** Is this object allowed to break? **/
+	if (!(this->Flags & PRT_OBJ_F_ALLOWBREAK)) return -1;
+
+	/** Object already has a continuing point? **/
+	if (this->LinkNext)
+	    {
+	    *new_this = this->LinkNext;
+	    prtUpdateHandleByPtr(this, this->LinkNext);
+	    return 0;
+	    }
+
+	/** If this is a cell, it only breaks with its row. **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLECELL || this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+	    {
+	    new_obj = prt_internal_Duplicate(this,0);
+	    cur_parent = this->Parent;
+	    prtUpdateHandleByPtr(this, new_obj);
+	    if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		{
+		/** Row won't break, so neither will the cell. **/
+		prtUpdateHandleByPtr(new_obj, this);
+		new_obj->LayoutMgr->DeinitContainer(new_obj);
+		prt_internal_FreeObj(new_obj);
+		return -1;
+		}
+	    }
+	else if (this->ObjType->TypeID == PRT_OBJ_T_TABLE)
+	    {
+	    /** Table.  We need to break it, but also include the header if there is one. **/
+	    new_obj = prt_internal_Duplicate(this,0);
+	    new_lm_inf = (pPrtTabLMData)(new_obj->LMData);
+	    cur_parent = this->Parent;
+	    prtUpdateHandleByPtr(this, new_obj);
+	    if (lm_inf->HeaderRow)
+		{
+		new_lm_inf->HeaderRow = prt_internal_Duplicate(lm_inf->HeaderRow, 1);
+		prt_internal_Add(new_obj, new_lm_inf->HeaderRow);
+		}
+	    if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		{
+		/** Row won't break, so neither will the cell. **/
+		prtUpdateHandleByPtr(new_obj, this);
+		prt_internal_FreeTree(new_obj);
+		return -1;
+		}
+	    }
+	else
+	    {
+	    /** What kind of object is this? **/
+	    return -1;
+	    }
+
+	/** Add our duplicated (continuation) cell object to the row on the new page **/
+	new_parent->LayoutMgr->AddObject(new_parent, new_obj);
+	*new_this = new_obj;
+
+	/** Link to previous/next containers if the page was not ejected yet **/
+	if (new_parent->LinkPrev || (new_parent->Parent && new_parent->Parent->LinkPrev))
+	    {
+	    this->LinkNext = new_obj;
+	    new_obj->LinkPrev = this;
+	    }
+
+    return 0;
     }
 
 
@@ -144,7 +223,93 @@ prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
 int
 prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
-    return -1;
+    pPrtObjStream table_obj, new_parent, old_parent;
+    double new_height;
+
+	/** Allow width resizes on a limited basis **/
+	if ((child->ObjType->TypeID == PRT_OBJ_T_TABLE || child->ObjType->TypeID == PRT_OBJ_T_TABLEROW ||
+		 child->ObjType->TypeID == PRT_OBJ_T_TABLECELL || 
+		 child->X + req_width > this->Width - this->MarginLeft - this->MarginRight) &&
+		req_width != child->Width)
+	    {
+	    /** Wouldn't fit, or is a table/row/cell object and can't resize its width. **/
+	    return -1;
+	    }
+
+	/** Height resize? **/
+	if (req_height != child->Height)
+	    {
+	    /** Fits? **/
+	    new_height = child->Y + req_height + this->MarginTop + this->MarginBottom;
+	    if (new_height <= this->Height)
+		return 0;
+
+	    /** Doesn't fit.  Try to resize ourselves. **/
+	    if (this->LayoutMgr->Resize(this, this->Width, new_height) >= 0)
+		{
+		/** Resize succeeded. **/
+		return 0;
+		}
+
+	    /** Ok, couldn't resize.  If we are in the header row, or in the first
+	     ** data row, try moving the table to the next page altogether.
+	     **/
+	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+		{
+		if (!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER))
+		    {
+		    table_obj = this->Parent;
+		    new_parent = NULL;
+		    old_parent = table_obj->Parent;
+		    prt_internal_MakeOrphan(table_obj);
+
+		    /** We use Break rather than ChildBreakReq here because we are asking the
+		     ** parent to break, instead of requesting *permission* for ourselves to
+		     ** break.  There's a difference :)
+		     **/
+		    if (old_parent->LayoutMgr->Break(old_parent, &new_parent) >= 0)
+			{
+			/** break succeeded, now re-add table to new parent. **/
+			new_parent->LayoutMgr->AddObject(new_parent, table_obj);
+
+			/** Try to resize once again. **/
+			return this->LayoutMgr->Resize(this, this->Width, new_height);
+			}
+		    else
+			{
+			/** break failed, re-add to old container.  Bad news though. **/
+			old_parent->LayoutMgr->AddObject(old_parent, table_obj);
+			return -1;
+			}
+		    }
+		}
+
+	    /** If we are inside a row, and row cannot break, break table and move
+	     ** entire row to next page.
+	     **/
+	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && !(this->Flags & PRT_OBJ_F_ALLOWBREAK))
+		{
+		table_obj = this->Parent;
+		prt_internal_MakeOrphan(this);
+		if (table_obj->LayoutMgr->Break(table_obj, &new_parent) >= 0)
+		    {
+		    /** Break worked.  Re-add row to new table and attempt to resize. **/
+		    new_parent->LayoutMgr->AddObject(new_parent, this);
+		    return this->LayoutMgr->Resize(this, this->Width, new_height);
+		    }
+		else
+		    {
+		    /** break failed, re-add to old container.  Bad news though. **/
+		    table_obj->LayoutMgr->AddObject(table_obj, this);
+		    return -1;
+		    }
+		}
+
+	    /** Failed **/
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -154,7 +319,17 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 int
 prt_tablm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width, double old_height)
     {
-    return -1;
+
+	/** If child was a row object, and not the last one, we need to request a reflow
+	 ** here because the other rows need to be repositioned and one or more may no
+	 ** longer fit on the page.  Bummer.
+	 **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE && child != this->ContentTail)
+	    {
+	    prt_internal_ScheduleEvent(PRTSESSION(this), this, PRT_EVENT_T_REFLOW, NULL);
+	    }
+
+    return 0;
     }
 
 
@@ -163,16 +338,196 @@ prt_tablm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width
 int
 prt_tablm_Resize(pPrtObjStream this, double new_width, double new_height)
     {
-    return -1;
+    double ow, oh;
+    pPrtObjStream peers;
+
+	/** Can we resize? **/
+	if (this->Flags & PRT_OBJ_F_FIXEDSIZE) return -1;
+
+	/** Get permission from parent container **/
+	if (this->Parent->LayoutMgr->ChildResizeReq(this->Parent, this, new_width, new_height) < 0)
+	    {
+	    /** Failed for some reason, probably because it wouldn't fit **/
+	    return -1;
+	    }
+
+	/** Do the resize **/
+	ow = this->Width;
+	oh = this->Height;
+	this->Width = new_width;
+	this->Height = new_height;
+
+	/** Notify parent **/
+	this->Parent->LayoutMgr->ChildResized(this->Parent, this, ow, oh);
+
+	/** Resize the rest of our peer cells, if this was a cell. **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+	    {
+	    peers = this->Parent->ContentHead;
+	    while(peers)
+		{
+		if (peers != this) 
+		    {
+		    peers->Height = new_height;
+		    }
+		peers = peers->Next;
+		}
+	    }
+
+    return 0;
     }
 
 
-/*** prt_tablm_AddObject() - used to add a new object to the table.
+/*** prt_tablm_AddObject() - used to add a new object to the table, row, or
+ *** cell.  We need to mainly make sure that the added object is valid in its
+ *** container, as well as make any final settings.  The object will have
+ *** been initialized (via InitContainer), if appropriate, *before* this 
+ *** routine is called.
  ***/
 int
 prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
-    return -1;
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(new_child_obj->LMData);
+    pPrtTabLMData parent_lm_inf = (pPrtTabLMData)(this->LMData);
+    pPrtObjStream new_parent;
+    int i;
+
+	/** Make sure the types are OK **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE && new_child_obj->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
+	    {
+	    mssError(1,"TABLM","Tables may only contain table-row objects");
+	    return -1;
+	    }
+	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLEROW && this->ObjType->TypeID != PRT_OBJ_T_TABLE)
+	    {
+	    mssError(1,"TABLM","Table-row objects may only be contained within a table");
+	    return -1;
+	    }
+	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL && this->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
+	    {
+	    mssError(1,"TABLM","Table-cell objects may only be contained within a table-row");
+	    return -1;
+	    }
+
+	/** Determine geometries and propagate config data. **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE)
+	    {
+	    /** parent is a table; child is a row object. **/
+	    new_child_obj->X = 0.0;
+	    new_child_obj->Y = (this->ContentTail)?(this->ContentTail->Y + this->ContentTail->Height):0.0;
+	    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight;
+	    if (new_child_obj->Height < 0) new_child_obj->Height = 0.0;
+	    if (lm_inf->ColWidths[0] < 0.0)
+		{
+		lm_inf->nColumns = parent_lm_inf->nColumns;
+		for(i=0;i<lm_inf->nColumns;i++)
+		    {
+		    lm_inf->ColWidths[i] = parent_lm_inf->ColWidths[i];
+		    lm_inf->ColX[i] = parent_lm_inf->ColX[i];
+		    }
+		lm_inf->ColSep = parent_lm_inf->ColSep;
+		}
+	    if (this->ContentTail)
+		new_child_obj->ObjID = this->ContentTail->ObjID+1;
+	    else
+		new_child_obj->ObjID = 0;
+
+	    /** Check for a header/footer **/
+	    if (lm_inf->Flags & PRT_TABLM_F_ISHEADER)
+		parent_lm_inf->HeaderRow = new_child_obj;
+	    else if (lm_inf->Flags & PRT_TABLM_F_ISFOOTER)
+		parent_lm_inf->FooterRow = new_child_obj;
+	    }
+	else if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+	    {
+	    /** parent is a row object; child may be a cell, or may be something else. **/
+	    if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+		{
+		/** Position the cell correctly within the row... **/
+		if (this->ContentHead && this->ContentHead->ObjType->TypeID != PRT_OBJ_T_TABLECELL)
+		    {
+		    mssError(1,"TABLM","Cannot mix cell and non-cell objects in the same table-row");
+		    return -1;
+		    }
+		if (parent_lm_inf->CurColID >= parent_lm_inf->nColumns)
+		    {
+		    mssError(1,"TABLM","Too many cells in table-row.  Maximum is %d.", parent_lm_inf->nColumns);
+		    return -1;
+		    }
+		new_child_obj->X = parent_lm_inf->ColX[parent_lm_inf->CurColID];
+		new_child_obj->Width = parent_lm_inf->ColWidths[parent_lm_inf->CurColID];
+		if (new_child_obj->Height < 0)
+		    new_child_obj->Height = this->Height - this->MarginTop -  this->MarginBottom;
+		new_child_obj->Y = 0.0;
+		new_child_obj->ObjID = parent_lm_inf->CurColID;
+		parent_lm_inf->CurColID++;
+		}
+	    else
+		{
+		/** Position the object within the row... **/
+		if (this->ContentHead && this->ContentHead->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+		    {
+		    mssError(1,"TABLM","Cannot mix cell and non-cell objects in the same table-row");
+		    return -1;
+		    }
+		if (new_child_obj->Width < 0) 
+		    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight - new_child_obj->X;
+		if (new_child_obj->Height < 0) 
+		    new_child_obj->Height = this->Height - this->MarginTop -  this->MarginBottom - new_child_obj->Y;
+		}
+	    }
+	else if (this->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+	    {
+	    /** Parent is table cell object.  Pretty much anything goes here. **/
+	    if (new_child_obj->Width < 0) 
+		new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight - new_child_obj->X;
+	    if (new_child_obj->Height < 0) 
+		new_child_obj->Height = this->Height - this->MarginTop -  this->MarginBottom - new_child_obj->Y;
+	    }
+
+	/** Ok, geometry now set.  Now see if the thing will actually fit. **/
+	if (new_child_obj->Width + new_child_obj->X > this->Width - this->MarginLeft - this->MarginRight)
+	    {
+	    /** Too wide.  Not much we can do about this in a table. **/
+	    mssError(1,"TABLM","Object too wide; extends off of right edge of table/row/cell.");
+	    return -1;
+	    }
+	if (new_child_obj->Height + new_child_obj->Y > this->Height - this->MarginTop - this->MarginBottom)
+	    {
+	    /** Too tall.  Attempt to resize to meet the occasion. **/
+	    new_parent = NULL;
+	    if (this->LayoutMgr->Resize(this, this->Width, new_child_obj->Y + new_child_obj->Height + this->MarginTop + this->MarginBottom) < 0)
+		{
+		/** Resize denied.  Try a break if we can. **/
+		if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent))
+		    {
+		    /** Break also denied???  Oops... **/
+		    return -1;
+		    }
+		}
+
+	    /** Bumped to new parent container? **/
+	    if (new_parent && this != new_parent)
+		{
+		/** Point to new container **/
+		this = new_parent;
+
+		/** Re-check height sizing; new parent may need to be resized. **/
+		if (new_child_obj->Height + new_child_obj->Y > this->Height - this->MarginTop - this->MarginBottom)
+		    {
+		    if (this->LayoutMgr->Resize(this, this->Width, new_child_obj->Y + new_child_obj->Height + this->MarginTop + this->MarginBottom) < 0)
+			{
+			/** Could not fit even in new container? **/
+			return -1;
+			}
+		    }
+		}
+	    }
+
+	/** Ok, it should fit nicely now.  Go ahead and add it **/
+	prt_internal_Add(this, new_child_obj);
+
+    return 0;
     }
 
 
@@ -180,22 +535,25 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
  *** table row objects but nothing else.
  ***/
 int
-prt_tablm_InitTable(pPrtObjStream this, va_list va)
+prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
     {
-    pPrtTabLMData lm_inf;
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
     int i;
     double totalwidth;
     char* attrname;
+    pPrtBorder b;
 
-	/** Allocate our lm-specific data **/
-	lm_inf = (pPrtTabLMData)nmMalloc(sizeof(PrtTabLMData));
-	if (!lm_inf) return -ENOMEM;
-	this->LMData = (void*)lm_inf;
-	memset(lm_inf, 0, sizeof(PrtTabLMData));
+	/** Info already provided? **/
+	if (old_lm_data)
+	    {
+	    memcpy(lm_inf, old_lm_data, sizeof(PrtTabLMData));
+	    lm_inf->CurColID = 0;
+	    return 0;
+	    }
 
 	/** Set up the defaults **/
 	lm_inf->nColumns = 1;
-	lm_inf->CurColID = 1;
+	lm_inf->CurColID = 0;
 	lm_inf->HeaderRow = NULL;
 	lm_inf->FooterRow = NULL;
 	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
@@ -238,6 +596,46 @@ prt_tablm_InitTable(pPrtObjStream this, va_list va)
 		    mssError(1,"TABLM","Column separation amount (colsep) must not be negative");
 		    return -EINVAL;
 		    }
+		}
+	    else if (!strcmp(attrname, "border"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b)
+		    {
+		    memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		    }
+		}
+	    else if (!strcmp(attrname, "shadow"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->Shadow), b, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "topborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->TopBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "bottomborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->BottomBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "leftborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->LeftBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "rightborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
 		}
 	    }
 
@@ -291,8 +689,132 @@ prt_tablm_InitTable(pPrtObjStream this, va_list va)
  *** such as an area, or even another table.
  ***/
 int
-prt_tablm_InitRow(pPrtObjStream row, va_list va)
+prt_tablm_InitRow(pPrtObjStream row, pPrtTabLMData old_lm_data, va_list va)
     {
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(row->LMData);
+    char* attrname;
+    int i;
+    pPrtBorder b;
+
+	/** Info already provided? **/
+	if (old_lm_data)
+	    {
+	    memcpy(lm_inf, old_lm_data, sizeof(PrtTabLMData));
+	    lm_inf->CurColID = 0;
+	    return 0;
+	    }
+
+	/** Set up the defaults **/
+	lm_inf->nColumns = -1;
+	lm_inf->CurColID = 0;
+	lm_inf->HeaderRow = NULL;
+	lm_inf->FooterRow = NULL;
+	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
+	lm_inf->ColSep = PRT_TABLM_DEFAULT_COLSEP;
+	lm_inf->ColWidths[0] = -1.0;
+
+	/** Get params from the caller **/
+	while(va && (attrname = va_arg(va, char*)) != NULL)
+	    {
+	    if (!strcmp(attrname, "header"))
+		{
+		if (va_arg(va, int) != 0)
+		    lm_inf->Flags |= PRT_TABLM_F_ISHEADER;
+		else
+		    lm_inf->Flags &= ~PRT_TABLM_F_ISHEADER;
+		}
+	    else if (!strcmp(attrname, "footer"))
+		{
+		if (va_arg(va, int) != 0)
+		    lm_inf->Flags |= PRT_TABLM_F_ISFOOTER;
+		else
+		    lm_inf->Flags &= ~PRT_TABLM_F_ISFOOTER;
+		}
+	    else if (!strcmp(attrname, "numcols"))
+		{
+		/** set number of columns; default = get data from parent table object **/
+		lm_inf->nColumns = va_arg(va, int);
+		if (lm_inf->nColumns > PRT_TABLM_MAXCOLS || lm_inf->nColumns < 1)
+		    {
+		    nmFree(lm_inf, sizeof(PrtTabLMData));
+		    row->LMData = NULL;
+		    mssError(1,"TABLM","Invalid number of columns (numcols=%d) for a table row; max is %d", lm_inf->nColumns, PRT_TABLM_MAXCOLS);
+		    return -EINVAL;
+		    }
+		}
+	    else if (!strcmp(attrname, "colwidths"))
+		{
+		/** Set widths of columns; default = 1 column and full width **/
+		for(i=0;i<lm_inf->nColumns;i++)
+		    {
+		    lm_inf->ColWidths[i] = va_arg(va, double);
+		    lm_inf->ColWidths[i] = prtUnitX(row->Session, lm_inf->ColWidths[i]);
+		    }
+		}
+	    else if (!strcmp(attrname, "colsep"))
+		{
+		/** Set separation between columns; default = 1.0 internal unit (0.1 inch) **/
+		lm_inf->ColSep = va_arg(va, double);
+		lm_inf->ColSep = prtUnitX(row->Session, lm_inf->ColSep);
+		if (lm_inf->ColSep < 0.0)
+		    {
+		    nmFree(lm_inf, sizeof(PrtTabLMData));
+		    row->LMData = NULL;
+		    mssError(1,"TABLM","Column separation amount (colsep) must not be negative");
+		    return -EINVAL;
+		    }
+		}
+	    else if (!strcmp(attrname, "border"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b)
+		    {
+		    memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		    }
+		}
+	    else if (!strcmp(attrname, "topborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->TopBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "bottomborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->BottomBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "leftborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->LeftBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "rightborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "innerborder"))
+		{
+		lm_inf->Flags |= PRT_TABLM_F_INNEROUTER;
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "outerborder"))
+		{
+		lm_inf->Flags |= PRT_TABLM_F_INNEROUTER;
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->OuterBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->OuterBorder), 0, sizeof(PrtBorder));
+		}
+	    }
+
     return 0;
     }
 
@@ -301,8 +823,77 @@ prt_tablm_InitRow(pPrtObjStream row, va_list va)
  *** only by table row objects and which can contain most anything.
  ***/
 int
-prt_tablm_InitCell(pPrtObjStream cell, va_list va)
+prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
     {
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(cell->LMData);
+    char* attrname;
+    pPrtBorder b;
+
+	/** Info already provided? **/
+	if (old_lm_data)
+	    {
+	    memcpy(lm_inf, old_lm_data, sizeof(PrtTabLMData));
+	    return 0;
+	    }
+
+	/** Set up the defaults **/
+	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
+	lm_inf->ColSep = PRT_TABLM_DEFAULT_COLSEP;
+
+	/** Get params from the caller **/
+	while(va && (attrname = va_arg(va, char*)) != NULL)
+	    {
+	    if (!strcmp(attrname, "border"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b)
+		    {
+		    memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
+		    memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		    }
+		}
+	    else if (!strcmp(attrname, "topborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->TopBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "bottomborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->BottomBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "leftborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->LeftBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "rightborder"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "innerborder"))
+		{
+		lm_inf->Flags |= PRT_TABLM_F_INNEROUTER;
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
+		}
+	    else if (!strcmp(attrname, "outerborder"))
+		{
+		lm_inf->Flags |= PRT_TABLM_F_INNEROUTER;
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->OuterBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->OuterBorder), 0, sizeof(PrtBorder));
+		}
+	    }
+
     return 0;
     }
 
@@ -311,24 +902,33 @@ prt_tablm_InitCell(pPrtObjStream cell, va_list va)
  *** uses this layout manager.
  ***/
 int
-prt_tablm_InitContainer(pPrtObjStream this, va_list va)
+prt_tablm_InitContainer(pPrtObjStream this, void* lmdata, va_list va)
     {
+    pPrtTabLMData lm_inf;
+    pPrtTabLMData old_lm_inf = (pPrtTabLMData)lmdata;
+
+	/** Allocate our lm-specific data **/
+	lm_inf = (pPrtTabLMData)nmMalloc(sizeof(PrtTabLMData));
+	if (!lm_inf) return -ENOMEM;
+	this->LMData = (void*)lm_inf;
+	memset(lm_inf, 0, sizeof(PrtTabLMData));
 
 	/** Init which kind of container? **/
 	switch (this->ObjType->TypeID)
 	    {
 	    case PRT_OBJ_T_TABLE:
-		return prt_tablm_InitTable(this, va);
+		return prt_tablm_InitTable(this, old_lm_inf, va);
 
 	    case PRT_OBJ_T_TABLEROW:
-		return prt_tablm_InitRow(this, va);
+		return prt_tablm_InitRow(this, old_lm_inf, va);
 
 	    case PRT_OBJ_T_TABLECELL:
-		return prt_tablm_InitCell(this, va);
+		return prt_tablm_InitCell(this, old_lm_inf, va);
 
 	    default:
 		mssError(1,"TABLM","Bark!  Object of type '%s' is not handled by this layout manager!", 
 			this->ObjType->TypeName);
+		nmFree(lm_inf, sizeof(PrtTabLMData));
 		return -EINVAL;
 	    }
 
@@ -342,6 +942,10 @@ prt_tablm_InitContainer(pPrtObjStream this, va_list va)
 int
 prt_tablm_DeinitContainer(pPrtObjStream this)
     {
+
+	if (this->LMData) nmFree(this->LMData, sizeof(PrtTabLMData));
+	this->LMData = NULL;
+
     return 0;
     }
 

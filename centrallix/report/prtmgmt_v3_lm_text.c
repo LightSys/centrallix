@@ -53,10 +53,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.17 2003/03/07 06:16:12 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.18 2003/03/12 20:51:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.18  2003/03/12 20:51:38  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.17  2003/03/07 06:16:12  gbeeley
     Added border-drawing functionality, and converted the multi-column
     layout manager to use that for column separators.  Added border
@@ -209,19 +218,19 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    {
 	    /** Duplicate the object... without the content. **/
 	    new_object = prt_internal_AllocObjByID(this->ObjType->TypeID);
-	    prt_internal_CopyAttrs(this, new_object);
+	    /*prt_internal_CopyAttrs(this, new_object);
 	    prt_internal_CopyGeom(this, new_object);
 	    new_object->Height = this->ConfigHeight;
 	    new_object->Width = this->ConfigWidth;
 	    new_object->Session = this->Session;
-	    new_object->Flags = this->Flags;
+	    new_object->Flags = this->Flags;*/
+	    new_object = prt_internal_Duplicate(this,0);
+
+	    /** Init the new object. **/
+	    /*new_object->LayoutMgr->InitContainer(new_object, this->LMData, NULL);*/
 
 	    /** Update the handle so that later adds go to the correct place. **/
 	    prtUpdateHandleByPtr(this, new_object);
-
-	    /** Init the new object. **/
-	    new_object->LayoutMgr->InitContainer(new_object, NULL);
-	    memcpy(new_object->LMData, this->LMData, sizeof(pPrtTextLMData));
 
 	    /** Request break from parent, which may eject the page...
 	     ** (which is why we copied our data from 'this' ahead of time) 
@@ -569,6 +578,7 @@ prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, doubl
 	 **/
 	n = strlen(stringobj->Content+splitpt+splitlen);
 	split_obj->Content = nmSysMalloc(n+2);
+	split_obj->ContentSize = n+2;
 	strcpy(split_obj->Content, stringobj->Content+splitpt+splitlen);
 
 	/** Truncate the first string to give the first part. **/
@@ -837,6 +847,7 @@ prt_textlm_Setup(pPrtObjStream this)
 	first_obj = prt_internal_AllocObj("string");
 	prt_internal_CopyAttrs(this, first_obj);
 	first_obj->Content = nmSysMalloc(2);
+	first_obj->ContentSize = 2;
 	first_obj->Content[0] = '\0';
 	first_obj->X = 0.0;
 	first_obj->Y = 0.0;
@@ -1047,7 +1058,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
  *** font settings, line height, and so forth.
  ***/
 int
-prt_textlm_InitContainer(pPrtObjStream this, va_list va)
+prt_textlm_InitContainer(pPrtObjStream this, pPrtTextLMData old_lm_inf, va_list va)
     {
     pPrtTextLMData lm_inf;
     char* attrname;
@@ -1060,13 +1071,20 @@ prt_textlm_InitContainer(pPrtObjStream this, va_list va)
 	memset(lm_inf, 0, sizeof(PrtTextLMData));
 
 	/** Params from the user? **/
-	while(va && (attrname = va_arg(va, char*)) != NULL)
+	if (!old_lm_inf)
 	    {
-	    if (!strcmp(attrname,"border"))
+	    while(va && (attrname = va_arg(va, char*)) != NULL)
 		{
-		b = va_arg(va, pPrtBorder);
-		if (b) memcpy(&(lm_inf->AreaBorder), b, sizeof(PrtBorder));
+		if (!strcmp(attrname,"border"))
+		    {
+		    b = va_arg(va, pPrtBorder);
+		    if (b) memcpy(&(lm_inf->AreaBorder), b, sizeof(PrtBorder));
+		    }
 		}
+	    }
+	else
+	    {
+	    memcpy(lm_inf, old_lm_inf, sizeof(PrtTextLMData));
 	    }
 
 	prt_textlm_Setup(this);

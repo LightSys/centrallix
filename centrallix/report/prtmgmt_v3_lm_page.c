@@ -52,10 +52,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.6 2003/03/06 02:52:35 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.7 2003/03/12 20:51:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.7  2003/03/12 20:51:36  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.6  2003/03/06 02:52:35  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -115,14 +124,15 @@ prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
 	    if (!(this->Flags & PRT_OBJ_F_ALLOWBREAK)) return -1;
 
 	    /** Build the new page. **/
-	    next_page = prt_internal_AllocObj("page");
+	    /*next_page = prt_internal_AllocObj("page");
 	    if (!next_page) return -1;
 	    prt_internal_CopyAttrs(this, next_page);
 	    prt_internal_CopyGeom(this, next_page);
 	    next_page->Height = this->ConfigHeight;
 	    next_page->Width = this->ConfigWidth;
 	    next_page->Session = this->Session;
-	    next_page->Flags = this->Flags;
+	    next_page->Flags = this->Flags;*/
+	    next_page = prt_internal_Duplicate(this, 0);
 	    prt_internal_Add(this->Parent, next_page);
 
 	    /** Increment the page number **/
@@ -242,7 +252,7 @@ prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
  *** to it.
  ***/
 int
-prt_pagelm_InitContainer(pPrtObjStream this, va_list va)
+prt_pagelm_InitContainer(pPrtObjStream this, void* old_lm_inf, va_list va)
     {
     pPrtObjStream page_obj;
 

@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.12 2003/03/07 06:16:11 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.13 2003/03/12 20:51:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.13  2003/03/12 20:51:34  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.12  2003/03/07 06:16:11  gbeeley
     Added border-drawing functionality, and converted the multi-column
     layout manager to use that for column separators.  Added border
@@ -214,6 +223,7 @@ typedef struct _POS
     double		MarginBottom;
     double		LineHeight;		/* Height of lines... */
     unsigned char*	Content;		/* Text content or image bitmap */
+    int			ContentSize;		/* total memory allocated for the content */
     }
     PrtObjStream, *pPrtObjStream;
 

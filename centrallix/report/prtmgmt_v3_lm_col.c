@@ -52,10 +52,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.8 2003/03/07 06:16:12 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.9 2003/03/12 20:51:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.9  2003/03/12 20:51:36  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.8  2003/03/07 06:16:12  gbeeley
     Added border-drawing functionality, and converted the multi-column
     layout manager to use that for column separators.  Added border
@@ -176,20 +185,21 @@ prt_collm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    /** Duplicate the object... without the content... but with the
 	     ** column child objects.
 	     **/
-	    new_object = prt_internal_AllocObjByID(parent->ObjType->TypeID);
+	    /*new_object = prt_internal_AllocObjByID(parent->ObjType->TypeID);
 	    prt_internal_CopyAttrs(parent, new_object);
 	    prt_internal_CopyGeom(parent, new_object);
 	    new_object->Height = parent->ConfigHeight;
 	    new_object->Width = parent->ConfigWidth;
 	    new_object->Session = parent->Session;
-	    new_object->Flags = parent->Flags;
+	    new_object->Flags = parent->Flags;*/
 
 	    /** Allocate layout manager specific info **/
-	    new_lm_inf = (pPrtColLMData)nmMalloc(sizeof(PrtColLMData));
+	    /*new_lm_inf = (pPrtColLMData)nmMalloc(sizeof(PrtColLMData));
 	    if (!new_lm_inf) return -ENOMEM;
 	    memcpy(new_lm_inf, lm_inf, sizeof(PrtColLMData));
 	    new_object->LMData = new_lm_inf;
-	    prt_collm_CreateCols(new_object);
+	    prt_collm_CreateCols(new_object);*/
+	    new_object = prt_internal_Duplicate(parent,0);
 
 	    /** Update the handle so that later adds go to the correct place. **/
 	    prtUpdateHandleByPtr(parent, new_object);
@@ -298,7 +308,6 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	     **/
 	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom;
 	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && this != parent->ContentTail &&
-		    /*new_h <= parent->ContentTail->Height + this->LineHeight &&*/
 		    new_h <= parent->ContentTail->Height &&
 		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
 		return 0;
@@ -347,7 +356,6 @@ prt_collm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width
 	    while(reflow_obj)
 		{
 		prt_internal_ScheduleEvent(PRTSESSION(this), reflow_obj, PRT_EVENT_T_REFLOW, NULL);
-		/*prt_internal_Reflow(reflow_obj);*/
 		reflow_obj = reflow_obj->Next;
 		}
 	    }
@@ -406,10 +414,6 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 	 **/
 	ow = this->Width;
 	oh = this->Height;
-	/*for(col_obj = this->ContentHead; col_obj; col_obj=col_obj->Next)
-	    {
-	    col_obj->Height += (new_height - oh);
-	    }*/
 	this->Width = new_width;
 	this->Height = new_height;
 
@@ -499,7 +503,7 @@ prt_collm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
  *** column that is configured.
  ***/
 int
-prt_collm_InitContainer(pPrtObjStream this, va_list va)
+prt_collm_InitContainer(pPrtObjStream this, pPrtColLMData old_lm_inf, va_list va)
     {
     pPrtColLMData lm_inf;
     char* attrname;
@@ -517,6 +521,14 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 	if (!lm_inf) return -ENOMEM;
 	memset(lm_inf, 0, sizeof(PrtColLMData));
 	this->LMData = lm_inf;
+
+	/** Params provided from another lm_inf? **/
+	if (old_lm_inf)
+	    {
+	    memcpy(lm_inf, old_lm_inf, sizeof(PrtColLMData));
+	    prt_collm_CreateCols(this);
+	    return 0;
+	    }
 
 	/** Set up some defaults **/
 	lm_inf->nColumns = PRT_COLLM_DEFAULT_COLS;

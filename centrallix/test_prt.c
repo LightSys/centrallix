@@ -58,10 +58,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.14 2003/03/07 06:16:12 gbeeley Exp $
+    $Id: test_prt.c,v 1.15 2003/03/12 20:51:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.15  2003/03/12 20:51:35  gbeeley
+    Tables now working, but borders on tables not implemented yet.
+    Completed the prt_internal_Duplicate routine and reworked the
+    API interface to InitContainer on the layout managers.  Not all
+    features/combinations on tables have been tested.  Footers on
+    tables not working but (repeating) headers are.  Added a new
+    prt obj stream field called "ContentSize" which provides the
+    allocated memory size of the "Content" field.
+
     Revision 1.14  2003/03/07 06:16:12  gbeeley
     Added border-drawing functionality, and converted the multi-column
     layout manager to use that for column separators.  Added border
@@ -220,7 +229,7 @@ start(void* v)
     int log_all_errors;
     pPrtSession prtsession;
     int rval;
-    int pagehandle, areahandle, sectionhandle, recthandle;
+    int pagehandle, areahandle, sectionhandle, recthandle, tablehandle, tablerowhandle, tablecellhandle;
     int rcnt;
     void* outputfn;
     void* outputarg;
@@ -355,8 +364,95 @@ start(void* v)
 		       "  printfile   - output contents of a file into a whole-page area\n"
 		       "  rectangle   - draws a rectangle\n"
 		       "  session     - test open/close of a session for a given content type\n"
+		       "  table       - do a simple test of a table\n"
 		       "  text        - puts a given string of text in a given content type\n"
 		      );
+		}
+	    else if (!strcmp(cmdname,"table"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: table <mime type>\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
+		printf("table: prtOpenSession returned %8.8X\n", (int)prtsession);
+		pagehandle = prtGetPageRef(prtsession);
+		printf("table: prtGetPageRef returned page handle %d\n", pagehandle);
+		tablehandle = prtAddObject(pagehandle, PRT_OBJ_T_TABLE, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", 2, NULL);
+		printf("table: prtAddObject(table) returned table handle %d\n", tablehandle);
+		tablerowhandle = prtAddObject(tablehandle, PRT_OBJ_T_TABLEROW, 0, 0, 0, 0, 0, "header", 1, NULL);
+		printf("table: prtAddObject(tablerow) returned table-row handle %d\n", tablerowhandle);
+		rval = prtSetMargins(tablerowhandle, 0.0, 1.0, 0.0, 0.0);
+		printf("table: prtSetMargins(tablerow) returned %d\n", rval);
+		
+		/** first header cell **/
+		tablecellhandle = prtAddObject(tablerowhandle, PRT_OBJ_T_TABLECELL, 0, 0, 0, 0, 0, NULL);
+		printf("table: prtAddObject(tablecell) returned table-cell handle %d\n", tablecellhandle);
+		areahandle = prtAddObject(tablecellhandle, PRT_OBJ_T_AREA, 0, 0, -1, 1, 0, NULL);
+		printf("table: prtAddObject(area) returned area handle %d\n", areahandle);
+		snprintf(sbuf, 256, "Row Number:");
+		rval = prtWriteString(areahandle, sbuf);
+		printf("table: prtWriteString returned %d\n", rval);
+		rval = prtEndObject(areahandle);
+		printf("table: prtEndObject(area) returned %d\n", rval);
+		rval = prtEndObject(tablecellhandle);
+		printf("table: prtEndObject(tablecell) returned %d\n", rval);
+
+		/** Second header **/
+		tablecellhandle = prtAddObject(tablerowhandle, PRT_OBJ_T_TABLECELL, 0, 0, 0, 0, 0, NULL);
+		printf("table: prtAddObject(tablecell) returned table-cell handle %d\n", tablecellhandle);
+		areahandle = prtAddObject(tablecellhandle, PRT_OBJ_T_AREA, 0, 0, -1, 1, 0, NULL);
+		printf("table: prtAddObject(area) returned area handle %d\n", areahandle);
+		snprintf(sbuf, 256, "Description:");
+		rval = prtWriteString(areahandle, sbuf);
+		printf("table: prtWriteString returned %d\n", rval);
+		rval = prtEndObject(areahandle);
+		printf("table: prtEndObject(area) returned %d\n", rval);
+		rval = prtEndObject(tablecellhandle);
+		printf("table: prtEndObject(tablecell) returned %d\n", rval);
+
+		rval = prtEndObject(tablerowhandle);
+		printf("table: prtEndObject(tablerow) returned %d\n", rval);
+		for(i=0;i<70;i++)
+		    {
+		    tablerowhandle = prtAddObject(tablehandle, PRT_OBJ_T_TABLEROW, 0, 0, 0, 0, 0, NULL);
+		    printf("table: prtAddObject(tablerow) returned table-row handle %d\n", tablerowhandle);
+
+		    /** First cell **/
+		    tablecellhandle = prtAddObject(tablerowhandle, PRT_OBJ_T_TABLECELL, 0, 0, 0, 0, 0, NULL);
+		    printf("table: prtAddObject(tablecell) returned table-cell handle %d\n", tablecellhandle);
+		    areahandle = prtAddObject(tablecellhandle, PRT_OBJ_T_AREA, 0, 0, -1, 1, 0, NULL);
+		    printf("table: prtAddObject(area) returned area handle %d\n", areahandle);
+		    snprintf(sbuf, 256, "-- Number %d --\n--test--", i);
+		    rval = prtWriteString(areahandle, sbuf);
+		    printf("table: prtWriteString returned %d\n", rval);
+		    rval = prtEndObject(areahandle);
+		    printf("table: prtEndObject(area) returned %d\n", rval);
+		    rval = prtEndObject(tablecellhandle);
+		    printf("table: prtEndObject(tablecell) returned %d\n", rval);
+
+		    /** Second cell **/
+		    tablecellhandle = prtAddObject(tablerowhandle, PRT_OBJ_T_TABLECELL, 0, 0, 0, 0, 0, NULL);
+		    printf("table: prtAddObject(tablecell) returned table-cell handle %d\n", tablecellhandle);
+		    areahandle = prtAddObject(tablecellhandle, PRT_OBJ_T_AREA, 0, 0, -1, 1, 0, NULL);
+		    printf("table: prtAddObject(area) returned area handle %d\n", areahandle);
+		    snprintf(sbuf, 256, "This is\nthe description\nfor line %d", i);
+		    rval = prtWriteString(areahandle, sbuf);
+		    printf("table: prtWriteString returned %d\n", rval);
+		    rval = prtEndObject(areahandle);
+		    printf("table: prtEndObject(area) returned %d\n", rval);
+		    rval = prtEndObject(tablecellhandle);
+		    printf("table: prtEndObject(tablecell) returned %d\n", rval);
+
+		    rval = prtEndObject(tablerowhandle);
+		    printf("table: prtEndObject(tablerow) returned %d\n", rval);
+		    }
+		rval = prtEndObject(tablehandle);
+		printf("table: prtEndObject(table) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("table: prtCloseSession returned %d\n", rval);
 		}
 	    else if (!strcmp(cmdname,"rectangle"))
 		{
@@ -368,7 +464,7 @@ start(void* v)
 		    }
 		ptr = mlxStringVal(ls,NULL);
 		prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-		printf("columns: prtOpenSession returned %8.8X\n", (int)prtsession);
+		printf("rectangle: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (!prtsession)
 		    {
 		    continue;
@@ -603,7 +699,7 @@ start(void* v)
 		printf("text: prtGetPageRef returned page handle %d\n", pagehandle);
 		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"border"))
 		    {
-		    bdr = prtAllocBorder(2,0.2,0.2,0x000000,0.05,0x000000);
+		    bdr = prtAllocBorder(2,0.2,0.2,0x0000FF,0.05,0x00FFFF);
 		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, "border", bdr, NULL);
 		    prtSetMargins(areahandle,1.0,1.0,1.0,1.0);
 		    prtFreeBorder(bdr);
