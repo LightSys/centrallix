@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.6 2002/03/16 04:26:25 gbeeley Exp $
+    $Id: net_http.c,v 1.7 2002/03/16 06:50:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.7  2002/03/16 06:50:20  gbeeley
+    Changed some sprintfs to snprintfs, just for safety's sake.
+
     Revision 1.6  2002/03/16 04:26:25  gbeeley
     Added functionality in net_http's object access routines so that it,
     when appropriate, sends the metadata attributes also, including the
@@ -289,13 +292,13 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	xaRemoveItem(&nsess->ErrorList, 0);
 
 	/** Format the error and print it as HTML. **/
-	sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
+	snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
 		     "<HTML><BODY><PRE>",NHT.ServerString);
 	fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
 	fdWrite(net_conn,errmsg->String,strlen(errmsg->String),0,0);
-	sprintf(sbuf,"</PRE></BODY></HTML>\r\n");
+	snprintf(sbuf,256,"</PRE></BODY></HTML>\r\n");
 	fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
 
 	/** Discard the string **/
@@ -644,7 +647,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	if (!strcmp(request,"opensession"))
 	    {
 	    ptr = (char*)objOpenSession(req_inf->StrVal);
-	    sprintf(sbuf,"Content-Type: text/html\r\n"
+	    snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)ptr);
@@ -661,7 +664,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	    if (!strcmp(request,"closesession"))
 	        {
 	        objCloseSession(objsess);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    0);
@@ -676,7 +679,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmask"),&ptr) < 0) return -1;
 		mask = strtol(ptr,NULL,0);
 		obj = objOpen(objsess, req_inf->StrVal, mode, mask, usrtype);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)obj);
@@ -690,7 +693,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
 		objClose(obj);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    0);
@@ -700,7 +703,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	        {
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
 		qy = objMultiQuery(objsess, ptr);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)qy);
@@ -715,7 +718,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__where"),&where);
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__orderby"),&orderby);
 		qy = objOpenQuery(obj,where,orderby,NULL,NULL);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    (unsigned int)qy);
@@ -731,7 +734,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		    n = 0x7FFFFFFF;
 		else
 		    n = strtol(ptr,NULL,0);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
@@ -747,7 +750,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__qid"),&ptr) < 0) return -1;
 		qy = (pObjQuery)strtol(ptr+1,NULL,16);
 		objQueryClose(qy);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		    0);
@@ -765,7 +768,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		    o = -1;
 		else
 		    o = strtol(ptr,NULL,0);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>",
 		    0);
@@ -789,7 +792,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	        {
 		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
-	        sprintf(sbuf,"Content-Type: text/html\r\n"
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
@@ -967,7 +970,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	if (!target_obj)
 	    {
 	    nht_internal_GenerateError(nsess);
-	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
+	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
@@ -997,7 +1000,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	/** Ok, issue the HTTP header for this one. **/
 	if (nsess->IsNewCookie)
 	    {
-	    sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
+	    snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n", 
 		     NHT.ServerString,nsess->Cookie);
@@ -1005,7 +1008,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    }
 	else
 	    {
-	    sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
+	    snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n",NHT.ServerString);
 	    }
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -1026,7 +1029,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset"))
 	        {
 		/*fdSetOptions(conn, FD_UF_WRCACHE);*/
-		sprintf(sbuf,"Content-Type: text/html\r\n\r\n");
+		snprintf(sbuf,256,"Content-Type: text/html\r\n\r\n");
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	        htrRender(conn, target_obj);
 	        }
@@ -1038,7 +1041,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    ptr = "text/html";
 		    convert_text = 1;
 		    }
-		sprintf(sbuf,"Content-Type: %s\r\n\r\n", ptr);
+		snprintf(sbuf,256,"Content-Type: %s\r\n\r\n", ptr);
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		if (convert_text) fdWrite(conn,"<HTML><PRE>",11,0,FD_U_PACKET);
 		bufptr = (char*)nmMalloc(4096);
@@ -1062,9 +1065,9 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
-		sprintf(sbuf,"Content-Type: text/html\r\n\r\n");
+		snprintf(sbuf,256,"Content-Type: text/html\r\n\r\n");
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
-		sprintf(sbuf,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
+		snprintf(sbuf,256,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		dptr = url_inf->StrVal;
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
@@ -1072,7 +1075,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    {
 		    objGetAttrValue(sub_obj, "name", POD(&ptr));
 		    objGetAttrValue(sub_obj, "annotation", POD(&aptr));
-		    sprintf(sbuf,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
+		    snprintf(sbuf,256,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
 		    	(dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
 		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		    objClose(sub_obj);
@@ -1089,7 +1092,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	else if (!strcmp(find_inf->StrVal,"query"))
 	    {
 	    /** Change directory to appropriate query root **/
-	    sprintf(sbuf,"Content-Type: text/html\r\n\r\n");
+	    snprintf(sbuf,256,"Content-Type: text/html\r\n\r\n");
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    strcpy(cur_wd, objGetWD(nsess->ObjSess));
 	    objSetWD(nsess->ObjSess, target_obj);
@@ -1185,7 +1188,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
 	if (!target_obj)
 	    {
-	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
+	    snprintf(sbuf,160,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
@@ -1257,7 +1260,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    {
 	    if (already_exist)
 	        {
-	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
+	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
@@ -1265,7 +1268,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 		}
 	    else
 	        {
-	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
+	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
@@ -1277,14 +1280,14 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    {
 	    if (already_exist)
 	        {
-	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
+	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
 		}
 	    else
 	        {
-	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
+	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
@@ -1311,7 +1314,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
 	if (!source_obj)
 	    {
-	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
+	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>404 Source Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
@@ -1339,7 +1342,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC | O_CREAT, 0600, "text/html");
 	if (!target_obj)
 	    {
-	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
+	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>404 Target Not Found</H1>\r\n",NHT.ServerString);
@@ -1371,7 +1374,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    {
 	    if (already_exist)
 	        {
-	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
+	        snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
@@ -1379,7 +1382,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 		}
 	    else
 	        {
-	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
+	        snprintf(sbuf,256,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
@@ -1391,14 +1394,14 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    {
 	    if (already_exist)
 	        {
-	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
+	        snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,dest);
 		}
 	    else
 	        {
-	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
+	        snprintf(sbuf,256,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,dest);
@@ -1447,7 +1450,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    {
 	    mlxCloseSession(s);
 	    mssError(1,"NHT","Failed to parse HTTP request, exiting thread.");
-	    sprintf(sbuf,"HTTP/1.0 400 Request Error\n\n%s\n",msg);
+	    snprintf(sbuf,160,"HTTP/1.0 400 Request Error\n\n%s\n",msg);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    netCloseTCP(conn,1000,0);
 	    thExit();
@@ -1537,7 +1540,7 @@ nht_internal_ConnHandler(void* conn_v)
 	/** Did client send authentication? **/
 	if (!*auth)
 	    {
-	    sprintf(sbuf,"HTTP/1.0 401 Unauthorized\r\n"
+	    snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
 	    		 "Server: %s\r\n"
 			 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 			 "\r\n"
@@ -1552,7 +1555,7 @@ nht_internal_ConnHandler(void* conn_v)
 	if (usrname) passwd = strtok(NULL,"\r\n");
 	if (!usrname || !passwd) 
 	    {
-	    sprintf(sbuf,"HTTP/1.0 400 Bad Request\r\n"
+	    snprintf(sbuf,160,"HTTP/1.0 400 Bad Request\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>400 Bad Request</H1>\r\n",NHT.ServerString);
@@ -1570,7 +1573,7 @@ nht_internal_ConnHandler(void* conn_v)
 	        {
 		if (strcmp(nsess->Username,usrname) || strcmp(passwd,nsess->Password))
 		    {
-	    	    sprintf(sbuf,"HTTP/1.0 401 Unauthorized\r\n"
+	    	    snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
 		    		 "Server: %s\r\n"
 				 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 				 "\r\n"
@@ -1589,7 +1592,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    {
 	    if (mssAuthenticate(usrname, passwd) < 0)
 	        {
-	        sprintf(sbuf,"HTTP/1.0 401 Unauthorized\r\n"
+	        snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
 			     "Server: %s\r\n"
 			     "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 			     "\r\n"
@@ -1616,7 +1619,7 @@ nht_internal_ConnHandler(void* conn_v)
 	url_inf = htsParseURL(urlptr);
 	if (!url_inf)
 	    {
-	    sprintf(sbuf,"HTTP/1.0 500 Internal Server Error\r\n"
+	    snprintf(sbuf,160,"HTTP/1.0 500 Internal Server Error\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
@@ -1644,7 +1647,7 @@ nht_internal_ConnHandler(void* conn_v)
 		find_inf = stLookup_ne(url_inf,"ls__destination");
 		if (!find_inf || !(find_inf->StrVal))
 		    {
-	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
+	            snprintf(sbuf,160,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>400 Method Error - include ls__destination for copy</H1>\r\n",NHT.ServerString);
@@ -1661,7 +1664,7 @@ nht_internal_ConnHandler(void* conn_v)
 		find_inf = stLookup_ne(url_inf,"ls__content");
 		if (!find_inf || !(find_inf->StrVal))
 		    {
-	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
+	            snprintf(sbuf,160,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>400 Method Error - include ls__content for put</H1>\r\n",NHT.ServerString);
@@ -1692,7 +1695,7 @@ nht_internal_ConnHandler(void* conn_v)
 	        }
 	    else
 	        {
-	        sprintf(sbuf,"HTTP/1.0 501 Not Implemented\r\n"
+	        snprintf(sbuf,160,"HTTP/1.0 501 Not Implemented\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>501 Method Not Implemented</H1>\r\n",NHT.ServerString);
