@@ -50,16 +50,13 @@ VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:repor
 #XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
 #BASIC=$(patsubst %,utility/%,$(XBASIC))
 
-# MIME utility stuff
-XMIME= mime/mime_parse.o \
-	 mime/mime_address.o \
-	 mime/mime_util.o
-
 # Support modules -- basic and advanced utilities.
 XSUPPORT=stparse.o \
 	 st_node.o \
 	 htmlparse.o \
-	 ${XMIME}
+	 mime/mime_parse.o \
+	 mime/mime_address.o \
+	 mime/mime_util.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 
@@ -353,7 +350,7 @@ osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 osdrivers/objdrv_http.so: osdrivers/objdrv_http.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
-osdrivers/objdrv_mime.so: osdrivers/objdrv_mime.c ${XMIME}
+osdrivers/objdrv_mime.so: osdrivers/objdrv_mime.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
 osdrivers/objdrv_dbl.so: osdrivers/objdrv_dbl.c
