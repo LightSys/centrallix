@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.12 2004/09/01 02:36:27 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.13 2004/12/31 04:25:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.13  2004/12/31 04:25:49  gbeeley
+    - allow querytree 'text' objects to have readable content (this helps in
+      situations like the index.app sample file).
+
     Revision 1.12  2004/09/01 02:36:27  gbeeley
     - get rid of last_modification warnings on qyt static elements by setting
       static element last_modification to that of the node itself.
@@ -160,6 +164,7 @@ typedef struct
     pStructInf	NodeData;
     pSnNode	BaseNode;
     pObject	LLObj;
+    int		Offset;
     }
     QytData, *pQytData;
 
@@ -458,6 +463,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	memset(inf,0,sizeof(QytData));
 	inf->BaseNode = node;
 	inf->LLObj = NULL;
+	inf->Offset = 0;
 
 	/** Create the object parameter list... **/
         objlist = expCreateParamList();
@@ -652,6 +658,7 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** Set object params. **/
 	inf->BaseNode = node;
 	inf->BaseNode->OpenCnt++;
+	inf->Offset = 0;
 
     return (void*)inf;
     }
@@ -743,6 +750,44 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
     }
 
 
+/*** qyt_internal_ReadText() - attempt to read data from a 'text' type object
+ *** that might have a 'content' property giving the object's content.
+ ***/
+int
+qyt_internal_ReadText(pQytData inf, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
+    {
+    pStructInf content_inf;
+    int len;
+    char* ptr;
+
+	/** do we have content? **/
+	content_inf = stLookup(inf->NodeData, "content");
+	if (!content_inf)
+	    {
+	    mssError(1,"QYT","Text querytree object has no content");
+	    return -1;
+	    }
+
+	/** ok, get our bearings... **/
+	if (stGetAttrValue(content_inf, DATA_T_STRING, POD(&ptr), 0) != 0)
+	    {
+	    mssError(1,"QYT","Could not read content from text querytree object");
+	    return -1;
+	    }
+	len = strlen(ptr);
+	if (flags & OBJ_U_SEEK)
+	    inf->Offset = offset;
+	if (inf->Offset < 0) inf->Offset = 0;
+	if (inf->Offset > len) inf->Offset = len;
+	if (inf->Offset + maxcnt > len) maxcnt = len - inf->Offset;
+	if (maxcnt <= 0) return 0;
+	memcpy(buffer, ptr+inf->Offset, maxcnt);
+	inf->Offset += maxcnt;
+
+    return maxcnt;
+    }
+
+
 /*** qytRead - Attempt to read from the underlying object.
  ***/
 int
@@ -754,8 +799,7 @@ qytRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     	/** If no actual pathname (presented path was a text="") ... **/
 	if (inf->LLObj == NULL) 
 	    {
-	    mssError(1,"QYT","Cannot read content from a text='' querytree object");
-	    return -1;
+	    return qyt_internal_ReadText(inf, buffer, maxcnt, offset, flags, oxt);
 	    }
 
 	/** Otherwise, attempt the read operation. **/
@@ -1147,6 +1191,7 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->NodeData = qy->ObjInf->NodeData->SubInf[cur_id];
 	inf->BaseNode->OpenCnt++;
 	inf->Obj = obj;
+	inf->Offset = 0;
 	obj_internal_PathPart(obj->Pathname,0,0);
 
     return (void*)inf;
@@ -1202,6 +1247,7 @@ int
 qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pQytData inf = QYT(inf_v);
+    pStructInf content_inf;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1258,7 +1304,17 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    val->String = "system/void";
+	    if (stLookup(inf->NodeData, "content"))
+		{
+		if ((content_inf = stLookup(inf->NodeData, "content_type")) != NULL)
+		    stGetAttrValue(content_inf, DATA_T_STRING, val, 0);
+		else
+		    val->String = "text/plain";
+		}
+	    else
+		{
+		val->String = "system/void";
+		}
 	    return 0;
 	    }
 
