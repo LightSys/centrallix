@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -36,10 +39,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.7 2002/08/16 03:05:38 jorupp Exp $
+    $Id: mtsession.c,v 1.8 2002/08/16 20:01:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.8  2002/08/16 20:01:20  gbeeley
+    Various autoconf fixes.  I hope I didn't break anything with this, being
+    an autoconf rookie ;)
+
+        * allowed config.h to really be included by adding @DEFS@ to the
+          cflags in makefile.in.
+        * moved config.h to include/cxlibconfig.h to prevent confusion
+          between the various packages' config.h files.  Also, makedepend
+          picks it up now because it is in the include directory.
+        * fixed make depend to re-run when any source files have changed,
+          just to be sure (the includes in the source files may have been
+          modified if the timestamp has changed).
+
     Revision 1.7  2002/08/16 03:05:38  jorupp
      * added checks for shadow passwords and endservent() to allow build under cygwin
        -- this has been tested under cygwin, and it works pretty well

@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.5 2002/08/16 03:05:37 jorupp Exp $
+## $Id: Makefile.in,v 1.6 2002/08/16 20:01:18 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -48,8 +48,8 @@ LIBS = @LIBS@
 ## compilation.  DO NOT OPTIMIZE MTASK!!!!  It will cause it to
 ## stop working!!!
 ##
-CFLAGS=@CFLAGS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg -g
-MTCFLAGS=@CFLAGS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg -g
+CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg -g
+MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg -g
 
 XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
@@ -104,18 +104,21 @@ distclean: clean
 	@rm -f config.status config.cache config.log
 	@rm -rf autom4te-2.5x.cache/
 	@rm -f config.h
+	@rm -f include/cxlibconfig.h
 	@rm -f Makefile stamp-h
 	@rm -f .depend
 
 distreallyclean: distclean
 	@rm -f configure
 	@rm -f config.h.in
+	@rm -f include/cxlibconfig.h.in
 	@rm -f install-sh
 
 .PHONY: depend
 depend: .depend
 
-.depend:
-	makedepend -I include -f - src/*.c >.depend 2>/dev/null
+.depend: */*.[ch]
+	@echo "Rebuilding dependencies..."
+	@makedepend -I include -f - src/*.c >.depend 2>/dev/null
 
 include .depend

@@ -23,10 +23,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.6 2002/08/13 02:30:59 gbeeley Exp $
+    $Id: mtask.h,v 1.7 2002/08/16 20:01:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.7  2002/08/16 20:01:20  gbeeley
+    Various autoconf fixes.  I hope I didn't break anything with this, being
+    an autoconf rookie ;)
+
+        * allowed config.h to really be included by adding @DEFS@ to the
+          cflags in makefile.in.
+        * moved config.h to include/cxlibconfig.h to prevent confusion
+          between the various packages' config.h files.  Also, makedepend
+          picks it up now because it is in the include directory.
+        * fixed make depend to re-run when any source files have changed,
+          just to be sure (the includes in the source files may have been
+          modified if the timestamp has changed).
+
     Revision 1.6  2002/08/13 02:30:59  gbeeley
     Made several of the changes recommended by dman.  Most places where
     const char* would be appropriate have been updated to reflect that,
@@ -71,7 +84,7 @@
 #include <netinet/in.h>
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include "cxlibconfig.h"
 #else
 #define HAVE_LIBZ 1
 #endif
