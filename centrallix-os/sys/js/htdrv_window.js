@@ -14,7 +14,7 @@ function wn_init(l,ml,gs,ct,titlebar)
     htr_init_layer(l,l,"wn");
     htr_init_layer(ml,l,"wn");
     /** NS4 version doesn't use a separate div for the title bar **/
-    if(cx__capabilities.Dom1HTML)
+    if(cx__capabilities.Dom1HTML && titlebar)
 	{
 	htr_init_layer(titlebar,l,"wn");
 	titlebar.subkind = 'titlebar';
@@ -49,10 +49,13 @@ function wn_init(l,ml,gs,ct,titlebar)
     l.shaded = false;
 
     /** make sure the images are set up **/
+    l.has_titlebar = 0;
     for(var i=0;i<pg_images(titlebar).length;i++)
 	{
 	pg_images(titlebar)[i].layer = l;
 	pg_images(titlebar)[i].kind = 'wn';
+	if (pg_images(titlebar)[i].name == 'close')
+	    l.has_titlebar = 1;
 	}
 
     wn_bring_top(l);
@@ -139,59 +142,64 @@ function wn_unset_windowshade(l)
         l = wn_layer;
         }
     l.clicked = 0;
+    l.tid = null;
     }
 
-function wn_windowshade(l)
+function wn_windowshade_ie(l)
+    {
+    wn_windowshade(l);
+    }
+
+function wn_windowshade_ns_moz(l)
     {
     if (l.clicked == 1)
 	{
-	clearTimeout(l.tid);
+	if (l.tid) clearTimeout(l.tid);
+	l.tid = null;
 	l.clicked = 0;
-	var duration = 200;
-	var speed = 30;
-//	st = new Date();
-	if (!l.shaded && !l.working)
-	    {
-	    if (l.gshade)
-		{
-		var size = Math.ceil((getClipHeight(l)-24)*speed/duration);
-		l.working = true;
-		wn_graphical_shade(l,24,speed,size);
-		}
-	    else
-		{
-		setClipHeight(l, 24);
-		}
-	    l.shaded = true;
-	    }
-	else if (!l.working)
-	    {
-	    if (l.gshade)
-		{
-		var size = Math.ceil((l.orig_height-24)*speed/duration);
-		l.working = true;
-		wn_graphical_shade(l,l.orig_height,speed,size);
-		}
-	    else
-		{
-		setClipHeight(l, l.orig_height);
-		}
-	    l.shaded = false;
-	    }
+	wn_windowshade(l);
 	}
     else
 	{
 	l.clicked = 1;
-	clearTimeout(l.tid);
-	if (cx__capabilities.Dom0IE)
+	if (l.tid) clearTimeout(l.tid);
+	l.tid = setTimeout(wn_unset_windowshade, 500, l);
+	}
+    }
+
+function wn_windowshade(l)
+    {
+    // for IE we use the dbl click event, for NS and Moz we use two mousedown's
+    var duration = 200;
+    var speed = 30;
+//  st = new Date();
+    if (!l.shaded && !l.working)
+	{
+	if (l.gshade)
 	    {
-	    wn_layer = l;
-	    wn_layer.tid = setTimeout(wn_unset_windowshade, 500);
+	    var size = Math.ceil((getClipHeight(l)-24)*speed/duration);
+	    l.working = true;
+	    wn_graphical_shade(l,24,speed,size);
 	    }
 	else
 	    {
-	    l.tid = setTimeout(wn_unset_windowshade, 500, l);
+	    setClipHeight(l, 24);
 	    }
+	l.shaded = true;
+	}
+    else if (!l.working)
+	{
+	if (l.gshade)
+	    {
+	    var size = Math.ceil((l.orig_height-24)*speed/duration);
+	    l.working = true;
+	    wn_graphical_shade(l,l.orig_height,speed,size);
+	    }
+	else
+	    {
+	    setClipHeight(l, l.orig_height);
+	    }
+	l.shaded = false;
 	}
     }
 
@@ -388,10 +396,8 @@ function wn_mousedown(e)
         {
         if (e.target.name == 'close')
             pg_set(e.target,'src','/sys/images/02close.gif');
-        else if (
-                (cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
-                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' )
-             )
+        else if ((ly.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' ))
             {
             wn_current = ly.mainlayer;
             wn_msx = e.pageX;
@@ -399,11 +405,24 @@ function wn_mousedown(e)
             wn_newx = null;
             wn_newy = null;
             wn_moved = 0;
-            wn_windowshade(ly.mainlayer);
-            }
+	    if (!cx__capabilities.Dom0IE) wn_windowshade_ns_moz(ly.mainlayer);
+	    }
         cn_activate(ly.mainlayer, 'MouseDown');
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function wn_dblclick(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.kind == 'wn')
+	{
+        if ((ly.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' ))
+            {
+            if (cx__capabilities.Dom0IE) wn_windowshade_ie(ly.mainlayer);
+            }
+	}
     }
 
 function wn_mouseup(e)
@@ -436,11 +455,14 @@ function wn_mousemove(e)
         wn_current.clicked = 0;
         if (cx__capabilities.Dom0IE)
             {
-            clearTimeout(wn_layer.tid);
+            if (wn_current.tid) clearTimeout(wn_current.tid);
+	    wn_current.tid = null;
             }
         else
             {
-            clearTimeout(ly.mainlayer.tid);
+            if (ly.mainlayer.tid) clearTimeout(ly.mainlayer.tid);
+	    ly.mainlayer.tid = null;
+	    ly.mainlayer.clicked = 0;
             }
         if (wn_newx == null)
             {
