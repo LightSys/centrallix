@@ -485,7 +485,7 @@ function tx_init(l,fieldname,is_readonly,main_bg)
         l.enabled = 'full';
         }
     l.isFormStatusWidget = false;
-    pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'tbox', 'tbox', is_readonly);
+    pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'tbox', 'tbox', is_readonly?0:3);
     if (fm_current) fm_current.Register(l);
     l.form = fm_current;
     l.changed = false;

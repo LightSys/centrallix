@@ -49,7 +49,7 @@ function sp_init(l,aname,tname,p)
     tlayer.mainlayer = l;
     alayer.kind = 'sp';
     tlayer.kind = 'sp';
-    alayer.mainlayer
+    alayer.mainlayer = l;
     l.document.layer = l;
     l.mainlayer = l;
     l.kind = 'sp';

@@ -87,7 +87,7 @@ function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	}
 	dt_drawmonth(l.PaneLayer, l.DateObj);
 	if (fm_current) fm_current.Register(l);
-	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dt', 'dt', 0);
+	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dt', 'dt', 3);
 	return l;
 }
 
@@ -137,7 +137,7 @@ function dt_drawmonth(l, d) {
 		if (i%7==0) {v+='<TR>\n';r++}
 		v+='<TD width=25 height=20 valign=middle align=right>';
 		if (i>=col && dy<num) {
-			l.HidLayer.Areas[dy]=pg_addarea(l.HidLayer, 1+((i%7)*25), (1+(r*20)), 25, 20, 'dt', 'dt', 0);
+			l.HidLayer.Areas[dy]=pg_addarea(l.HidLayer, 1+((i%7)*25), (1+(r*20)), 25, 20, 'dt', 'dt', 3);
 			var q=new Date(TmpDate);
 			q.setDate(dy+1);
 			l.HidLayer.Areas[dy].DateVal = q;

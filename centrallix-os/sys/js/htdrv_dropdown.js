@@ -411,7 +411,7 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.mainlayer = l;
     l.kind = 'dd';
     htutil_tag_images(l.document,'dd',l,l);
-    l.area = pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dd', 'dd', 0);
+    l.area = pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dd', 'dd', 3);
     if (fm_current) fm_current.Register(l);
     return l;
     }
