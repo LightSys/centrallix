@@ -8,6 +8,12 @@
 #include <grp.h>
 #include <time.h>
 #include <errno.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#ifdef TM_IN_SYS_TIME
+#include <sys/time.h>
+#endif
 #include "obj.h"
 #include "mtask.h"
 #include "xarray.h"
@@ -48,10 +54,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.4 2002/08/01 08:25:21 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.4  2002/08/01 08:25:21  mattphillips
+    Include sys/time.h if configure tells us that struct tm is defined there.
+
     Revision 1.3  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends

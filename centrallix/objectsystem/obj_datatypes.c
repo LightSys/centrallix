@@ -5,6 +5,12 @@
 #include <time.h>
 #include <stdlib.h>
 #include <math.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#ifdef TM_IN_SYS_TIME
+#include <sys/time.h>
+#endif
 #include "obj.h"
 #include "xstring.h"
 #include "mtsession.h"
@@ -45,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.5 2002/06/19 23:29:34 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.6 2002/08/01 08:25:21 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.6  2002/08/01 08:25:21  mattphillips
+    Include sys/time.h if configure tells us that struct tm is defined there.
+
     Revision 1.5  2002/06/19 23:29:34  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
