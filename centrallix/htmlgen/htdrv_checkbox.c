@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.26 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_checkbox.c,v 1.27 2004/05/07 01:19:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.27  2004/05/07 01:19:18  gbeeley
+    - Fixes and updates to checkbox widget including tri-state support and
+      'enabled' property support
+
     Revision 1.26  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -188,6 +192,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    pObjQuery qy;
    char name[64];
    char* nptr;
+   int enabled = 0;
 
    if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
       {
@@ -211,10 +216,11 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    else 
       fieldname[0]='\0';
 
-   if (objGetAttrValue(w_obj,"checked",DATA_T_STRING,POD(&ptr)) == 0 && ptr && (!strcasecmp(ptr,"yes") || !strcasecmp(ptr,"no")))
-      checked = 1;
-   else
-      checked = 0;
+   /** Is it checked? **/
+   checked = htrGetBoolean(w_obj, "checked", -1);
+
+   /** Is it enabled? **/
+   enabled = htrGetBoolean(w_obj, "enabled", 1);
 
    /** Write named global **/
    nptr = (char*)nmMalloc(strlen(name)+1);
@@ -224,6 +230,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
+   htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js",0);
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "checkbox", 
       "\n"
@@ -257,19 +264,28 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Script initialization call. **/
    if(s->Capabilities.Dom1HTML)
        {
-       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.getElementById('cb%dmain'),\"%s\",%d);\n", nptr, parentname, id,fieldname,checked);
+       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.getElementById('cb%dmain'),\"%s\",%d,%d);\n", nptr, parentname, id,fieldname,checked,enabled);
        }
    else if(s->Capabilities.Dom0NS)
        {
-       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", nptr, parentname, id,fieldname,checked);
+       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.layers.cb%dmain,\"%s\",%d,%d);\n", nptr, parentname, id,fieldname,checked,enabled);
        }
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItemLayerStart(s, 0, "cb%dmain", id);
-   if (checked)
-      htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_checked.gif\">\n");
-   else
-      htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_unchecked.gif\">\n");
+   switch(checked)
+	{
+	case 1:
+	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_checked%s.gif\">\n",enabled?"":"_dis");
+	    break;
+	case 0:
+	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_unchecked%s.gif\">\n",enabled?"":"_dis");
+	    break;
+	case -1: /* null */
+	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_null%s.gif\">\n",enabled?"":"_dis");
+	    break;
+	}
+
    htrAddBodyItemLayerEnd(s, 0);
 
    /** Check for more sub-widgets **/
