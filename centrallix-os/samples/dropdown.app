@@ -5,8 +5,9 @@ in_main "widget/page" {
     form1 "widget/form" {
         dda "widget/dropdown" {
             x=15;y=15;
-            height=20;width=120;
+            width=120;
             bgcolor="#afafaf";
+	    hilight="#cfcfcf";
 
             ddb "widget/dropdownitem" {
                label="Trees";
@@ -28,8 +29,9 @@ in_main "widget/page" {
 
         dd "widget/dropdown" {
             x=180;y=15;
-            height=20;width=75;
+            width=75;
             bgcolor="#afafaf";
+	    hilight="#cfcfcf";
 
             dd1 "widget/dropdownitem" {
                label="Male";
