@@ -4,6 +4,11 @@ facilities to maintain our SourceForge website.
 The pages on the website are distributed under a BSD license.  For the
 details, see the following license agreement.
 
+Please note that the majority of the Centrallix system itself is under 
+the GNU General Public License version 2.  This license file only
+applies to the website pages themselves; please see the appropriate
+license files in the other packages for more information.
+
 ------------------------------------------------------------------------
 
 Copyright (c) 1998-2001, LightSys Technology Services, Inc.
