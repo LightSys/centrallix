@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.5 2002/08/10 02:34:52 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.6 2002/08/12 17:30:14 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.6  2002/08/12 17:30:14  lkehresman
+    * Added support for parsing group email addresses
+    * Improved the internal debugging function mime_internal_ParseHdrPrintAddr()
+
     Revision 1.5  2002/08/10 02:34:52  lkehresman
     * Removed duplicated StrTrim fuction calls
     * Added rfc2822 complient address-list parsing
@@ -177,10 +181,7 @@ char *TypeStrings[7] =
     };
 
 #define MIME(x) ((pMimeData)(x))
-//#define MIME_DEBUG 0
-//#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER)
-//#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER | MIME_DBG_FUNC1 | MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)
-#define MIME_DEBUG 0x00000000
+#define MIME_DEBUG 0
 
 #define MIME_DBG_HDRPARSE    1
 #define MIME_DBG_HDRREAD     2
@@ -201,7 +202,6 @@ char *TypeStrings[7] =
 void*
 mime_internal_Cleanup(pMimeData inf, char *str)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (3): mime_internal_Cleanup() called.\n");
     if (inf->Message)
 	{
 	nmFree(inf->Message, sizeof(MimeMsg));
@@ -212,7 +212,6 @@ mime_internal_Cleanup(pMimeData inf, char *str)
 	if (MIME_DEBUG) fprintf(stderr, "MIME: ERROR!! DANGER WILL ROBINSON!!  \"%s\"\n", str);
 	mssError(0, "MIME", str);
 	}
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (3): mime_internal_Cleanup() closing.\n");
     return NULL;
     }
 
@@ -409,7 +408,9 @@ mime_internal_HdrParseAddrList(char *buf, pXArray xary)
     char ch;
     pEmailAddr p_addr;
 
+    mime_internal_StrTrim(buf);
     s_ptr = buf;
+    if (MIME_DEBUG) printf("PARSING (%s)\n", buf);
     while (flag == 0)
 	{
 	ch = buf[count];
@@ -447,7 +448,6 @@ mime_internal_HdrParseAddrList(char *buf, pXArray xary)
 			    err = mime_internal_HdrParseGroup(t_str, p_addr);
 			else
 			    err = mime_internal_HdrParseAddr(t_str, p_addr);
-
 			if (!err)
 			    xaAddItem(xary, p_addr);
 			else
@@ -481,7 +481,6 @@ mime_internal_HdrParseAddrList(char *buf, pXArray xary)
 	    flag = 1;
 	count++;
 	}
-    mime_internal_PrintAddrList(xary, 0);
     return 0;
     }
 
@@ -507,22 +506,73 @@ mime_internal_HdrParseAddrList(char *buf, pXArray xary)
 int
 mime_internal_HdrParseGroup(char *buf, pEmailAddr addr)
     {
-    int count=0, state=MIME_ST_NORM, flag=0, cnest=0;
+    int count=0, state=MIME_ST_NORM, flag=0, ncount=0, len, err;
     char *s_ptr, *e_ptr, *t_str;
     char ch;
     pEmailAddr p_addr;
+    pXArray p_xary;
 
     mime_internal_StrTrim(buf);
-    //printf("GROUP: (%s)\n", buf);
-    return 0;
+    if (MIME_DEBUG) printf("PARSEGROUP (%s)\n", buf);
+    p_xary = (pXArray)nmMalloc(sizeof(XArray));
+    xaInit(p_xary, sizeof(EmailAddr));
 
+    addr->Host[0] = 0;
+    addr->Mailbox[0] = 0;
+    addr->Display[0] = 0;
+    addr->Group = p_xary;
+    strncpy(addr->AddressLine, buf, 255);
+    addr->AddressLine[255] = 0;
+
+    /**  Parse out the displayable name of this group  **/
     s_ptr = buf;
-    while (flag == 0)
+    e_ptr = strchr(buf, ':');
+    if (e_ptr - s_ptr > 0)
 	{
-	ch = buf[count];
-	
+	len = (e_ptr-s_ptr<127?e_ptr-s_ptr:127);
+	strncpy(addr->Display, s_ptr, len);
+	addr->Display[len] = 0;
+	mime_internal_StrTrim(addr->Display);
 	}
-    return 0;
+    else
+	{
+	return 0;
+	}
+    if (addr->Display[0] == '"')
+	{
+	t_str = (char*)nmMalloc(strlen(addr->Display)+1);
+	count = 1;
+	ncount = 0;
+	while (flag == 0 && count < strlen(addr->Display))
+	    {
+	    ch = addr->Display[count];
+	    if (ch == '\\' && count+1<strlen(addr->Display))
+		{
+		t_str[ncount++] = addr->Display[count+1];
+		count++;
+		}
+	    else if (ch == '"')
+		{
+		flag = 1;
+		}
+	    else
+		{
+		t_str[ncount++] = addr->Display[count];
+		}
+	    count++;
+	    }
+	strncpy(addr->Display, t_str, 127);
+	addr->Display[127] = 0;
+	nmFree(t_str, strlen(addr->Display)+1);
+	}
+
+    /**  Parse out the individual addresses  **/
+    t_str = (char*)nmMalloc(strlen(e_ptr+1)+1);
+    strncpy(t_str, e_ptr+1, strlen(e_ptr+1));
+    t_str[strlen(e_ptr+1)+1] = 0;
+    err = mime_internal_HdrParseAddrList(t_str, addr->Group);
+    nmFree(t_str, strlen(e_ptr+1)+1);
+    return err;
     }
 
 /*
@@ -562,11 +612,6 @@ mime_internal_HdrParseAddr(char *buf, pEmailAddr addr, int type)
     addr->Group = NULL;
     strncpy(addr->AddressLine, buf, 255);
     addr->AddressLine[255] = 0;
-
-    if (!strchr(buf, '<'))
-	{
-	display = 0;
-	}
 
     /*
     **  First, get the email address itself which can be displayed in two forms,
@@ -690,6 +735,8 @@ mime_internal_PrintAddrList(pXArray ary, int level)
     int i,j;
     pEmailAddr itm;
 
+    if (level > 8) return 0;
+    if (level==0) printf("-----------------------------------------------------\n");
     for (i=0; i < ary->nItems; i++)
 	{
 	itm = (pEmailAddr)xaGetItem(ary, i);
@@ -699,14 +746,17 @@ mime_internal_PrintAddrList(pXArray ary, int level)
 	    }
 	if (itm->Group == NULL)
 	    {
-	    printf("H[%s] M[%s] P[%s]\n", itm->Host, itm->Mailbox, itm->Display);
+	    if (strlen(itm->Display))
+		printf("\"%s\" ", itm->Display);
+	    printf("%s@%s\n", itm->Mailbox, itm->Host);
 	    }
 	else
 	    {
-	    printf("GROUP[%s]\n", itm->Display);
+	    printf("GROUP: \"%s\"\n", itm->Display);
 	    mime_internal_PrintAddrList(itm->Group, level+1);
 	    }
 	}
+    if (level==0) printf("-----------------------------------------------------\n");
     return 0;
     }
 
@@ -752,7 +802,6 @@ mime_internal_LoadExtendedHeader(pMimeData inf, pXString xsbuf, pLxSession lex)
     unsigned long offset;
     char *ptr;
 
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_LoadExtendedHeader() called.\n");
     while (1)
 	{
 	offset = mlxGetCurOffset(lex);
@@ -772,7 +821,6 @@ mime_internal_LoadExtendedHeader(pMimeData inf, pXString xsbuf, pLxSession lex)
     /** Set all tabs, NL's, CR's to spaces **/
     for(i=0;i<strlen(xsbuf->String);i++) if (strchr("\t\r\n",xsbuf->String[i])) xsbuf->String[i]=' ';
 
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_LoadExtendedHeader() closing.\n");
     return 0;
     }
 
@@ -784,16 +832,14 @@ mime_internal_LoadExtendedHeader(pMimeData inf, pXString xsbuf, pLxSession lex)
 int
 mime_internal_SetMIMEVersion(pMimeData inf, char *buf)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetMIMEVersion() called.\n");
     strncpy(inf->Message->MIMEVersion, buf, 15);
     inf->Message->MIMEVersion[15] = 0;
 
-    if (MIME_DEBUG & MIME_DBG_HDRPARSE)
+    if (MIME_DEBUG)
 	{
 	printf("MIME Parser (MIME-Version)\n");
 	printf("  MIME-VERSION: \"%s\"\n", inf->Message->MIMEVersion);
 	}
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetMIMEVersion() closing.\n");
     return 0;
     }
 
@@ -805,7 +851,6 @@ mime_internal_SetMIMEVersion(pMimeData inf, char *buf)
 int
 mime_internal_SetDate(pMimeData inf, char *buf)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetDate() called.\n");
     /** Get the date **/
 
     /** FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME:
@@ -814,7 +859,6 @@ mime_internal_SetDate(pMimeData inf, char *buf)
      **/
     // objDataToDateTime(DATA_T_STRING, xsptr->String, &msg->PartDate, NULL);
 
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetDate() closing.\n");
     return 0;
     }
 
@@ -826,18 +870,16 @@ mime_internal_SetDate(pMimeData inf, char *buf)
 int
 mime_internal_SetSubject(pMimeData inf, char *buf)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetSubject() called.\n");
     /** Get the date **/
     strncpy(inf->Message->Subject, buf, 79);
     inf->Message->Subject[79] = 0;
 
-    if (MIME_DEBUG & MIME_DBG_HDRPARSE)
+    if (MIME_DEBUG)
 	{
 	printf("MIME Parser (Subject)\n");
 	printf("  SUBJECT     : \"%s\"\n", inf->Message->Subject);
 	}
 
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetSubject() closing.\n");
     return 0;
     }
 
@@ -849,8 +891,6 @@ mime_internal_SetSubject(pMimeData inf, char *buf)
 int
 mime_internal_SetFrom(pMimeData inf, char *buf)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetFrom() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetFrom() closing.\n");
     return 0;
     }
 
@@ -862,8 +902,6 @@ mime_internal_SetFrom(pMimeData inf, char *buf)
 int
 mime_internal_SetCc(pMimeData inf, char *buf)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetCc() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetCc() closing.\n");
     return 0;
     }
 
@@ -877,10 +915,9 @@ mime_internal_SetTo(pMimeData inf, char *buf)
     {
     XArray xary;
 
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetTo() called.\n");
     xaInit(&xary, sizeof(EmailAddr));
     mime_internal_HdrParseAddrList(buf, &xary);
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetTo() closing.\n");
+    if (MIME_DEBUG) mime_internal_PrintAddrList(&xary, 0);
     return 0;
     }
 
@@ -892,18 +929,14 @@ mime_internal_SetTo(pMimeData inf, char *buf)
 int
 mime_internal_SetTransferEncoding(pMimeData inf, char *buf)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetTransferEncoding() called.\n");
-
     strncpy(inf->Message->TransferEncoding, buf, 31);
     inf->Message->TransferEncoding[31] = 0;
 
-    if (MIME_DEBUG & MIME_DBG_HDRPARSE)
+    if (MIME_DEBUG)
 	{
 	printf("MIME Parser (Content-Transfer-Encoding)\n");
 	printf("  TRANSFER ENCODING: \"%s\"\n", inf->Message->TransferEncoding);
 	}
-
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetTransferEncoding() closing.\n");
     return 0;
     }
 
@@ -916,8 +949,6 @@ int
 mime_internal_SetContentDisp(pMimeData inf, char *buf)
     {
     char *ptr, *cptr;
-
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetContentDisp() called.\n");
 
     /** get the display main type **/
     if (!(ptr=strtok_r(buf, ": ", &buf))) return 0;
@@ -938,13 +969,12 @@ mime_internal_SetContentDisp(pMimeData inf, char *buf)
 	    }
 	}
 
-    if (MIME_DEBUG & MIME_DBG_HDRPARSE)
+    if (MIME_DEBUG)
 	{
 	printf("MIME Parser (Content-Disposition)\n");
 	printf("  CONTENT DISP: \"%s\"\n", inf->Message->ContentDisp);
 	printf("  FILENAME    : \"%s\"\n", inf->Message->ContentDispFilename);
 	}
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetContentDisp() closing.\n");
 
     return 0;
     }
@@ -960,8 +990,6 @@ mime_internal_SetContentType(pMimeData inf, char *buf)
     char *ptr, *cptr;
     char maintype[32], tmpname[128];
     int len,i;
-
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetContentType() called.\n");
 
     /** Get the disp main type and subtype **/
     if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
@@ -1022,7 +1050,7 @@ mime_internal_SetContentType(pMimeData inf, char *buf)
 	    }
 	}
 
-    if (MIME_DEBUG & MIME_DBG_HDRPARSE)
+    if (MIME_DEBUG)
 	{
 	printf("MIME Parser (Content-Type)\n");
 	printf("  TYPE:       : \"%s\"\n", TypeStrings[inf->Message->ContentMainType]);
@@ -1033,7 +1061,6 @@ mime_internal_SetContentType(pMimeData inf, char *buf)
 	printf("  CHARSET     : \"%s\"\n", inf->Message->Charset);
 	}
 
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetContentType() closing.\n");
     return 0;
     }
 
@@ -1053,7 +1080,6 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
     XString xsbuf;
     char *hdrnme, *hdrbdy;
 
-    if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_ParseMessage() called.\n");
     /** Initialize the message structure **/
     inf->Message->ContentDisp[0] = 0;
     inf->Message->ContentDispFilename[0] = 0;
@@ -1092,7 +1118,7 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
 	xsInit(&xsbuf);
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
 	xsRTrim(&xsbuf);
-	if (MIME_DEBUG & MIME_DBG_HDRREAD) printf("MIME: Got Token (%s)\n", xsbuf.String);
+	if (MIME_DEBUG) printf("MIME: Got Token (%s)\n", xsbuf.String);
 	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
 	/* otherwise parse the header elements */
 	if (!strlen(xsbuf.String))
@@ -1125,12 +1151,12 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
 
 		if (err < 0)
 		    {
-		    if (MIME_DEBUG & MIME_DBG_HDRPARSE) fprintf(stderr, "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
+		    if (MIME_DEBUG) fprintf(stderr, "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
 		    }
 		}
 	    else
 		{
-		if (MIME_DEBUG & MIME_DBG_HDRPARSE) fprintf(stderr, "ERROR PARSING: %s\n", xsbuf.String);
+		if (MIME_DEBUG) fprintf(stderr, "ERROR PARSING: %s\n", xsbuf.String);
 		}
 	    }
 	}
@@ -1139,7 +1165,6 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
     inf->Message->HdrSeekStart = start;
 //    msg->MsgSeekStart = mlxGetOffset(lex);
 
-    if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_ParseMessage() closing.\n");
     return 0;
     }
 
@@ -1158,10 +1183,9 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pMimeMsg msg;
 
     if (MIME_DEBUG) fprintf(stderr, "\n");
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeOpen() called.\n");
-    if (MIME_DEBUG & MIME_DBG_PARSER) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
-
-    if(MIME_DEBUG) printf("objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
+    if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
+    if (MIME_DEBUG) fprintf(stderr, "objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
+    
 	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
     /*
     **  Handle the content-type: message/rfc822
@@ -1188,7 +1212,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
 	if (strstr(inf->Message->MIMEVersion, "1.0"))
 	    {
-	    if (MIME_DEBUG & (MIME_DBG_PARSER)) fprintf(stderr, "MIME: We have a MIME Message, version 1.0\n");
 	    }
 	}
 
@@ -1199,8 +1222,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
              !strcasecmp(systype->Name, "multipart/alternative"))
 	{
 	}
-
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeOpen() closing.\n");
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;
@@ -1220,14 +1241,12 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
     {
     pMimeData inf = MIME(inf_v);
 
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeClose() called.\n");
     /** free any memory used to return an attribute **/
     if(inf->AttrValue)
 	{
 	free(inf->AttrValue);
 	inf->AttrValue=NULL;
 	}
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeClose() closing.\n");
     return 0;
     }
 
@@ -1238,8 +1257,6 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
 int
 mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeCreate() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeCreate() closing.\n");
     return 0;
     }
 
@@ -1250,8 +1267,6 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 int
 mimeDelete(pObject obj, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeDelete() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeDelete() closing.\n");
     return 0;
     }
 
@@ -1262,8 +1277,6 @@ mimeDelete(pObject obj, pObjTrxTree* oxt)
 int
 mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeRead() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeRead() closing.\n");
     return 0;
     }
 
@@ -1274,8 +1287,6 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 int
 mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeWrite() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeWrite() closing.\n");
     return 0;
     }
 
@@ -1286,8 +1297,6 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 void*
 mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeOpenQuery() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeOpenQuery() closing.\n");
     return 0;
     }
 
@@ -1298,8 +1307,6 @@ mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 void*
 mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeQueryFetch() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeQueryFetch() closing.\n");
     return 0;
     }
 
@@ -1310,8 +1317,6 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 int
 mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeQueryClose() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeQueryClose() closing.\n");
     return 0;
     }
 
@@ -1322,7 +1327,6 @@ mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetAttrType(\"%s\") called.\n",attrname);
 
     if (!strcmp(attrname, "name")) return DATA_T_STRING;
     if (!strcmp(attrname, "content_type")) return DATA_T_STRING;
@@ -1334,7 +1338,6 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
     if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
 
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetAttrType() closing.\n");
     return -1;
     }
 
@@ -1348,7 +1351,6 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
     pMimeData inf = MIME(inf_v);
     char tmp[32];
 
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetAttrValue(\"%s\") called.\n",attrname);
     if (inf->AttrValue)
 	{
 	free(inf->AttrValue);
@@ -1356,7 +1358,17 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	}
     if (!strcmp(attrname, "inner_type"))
 	{
-	return mimeGetAttrValue(inf_v, "content_type", val, oxt);
+	return mimeGetAttrValue(inf_v, "content_type", DATA_T_STRING, val, oxt);
+	}
+    if (!strcmp(attrname, "annotation"))
+	{
+	*(char**)val = "";
+	return 0;
+	}
+    if (!strcmp(attrname, "name"))
+	{
+	*(char**)val = "";
+	return 0;
 	}
     if (!strcmp(attrname, "outer_type"))
 	{
@@ -1391,7 +1403,6 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	*((char**)val) = inf->Message->MIMEVersion;
 	return 0;
 	}
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetAttrValue() closing.\n");
 
     return -1;
     }
@@ -1404,7 +1415,6 @@ char*
 mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeData inf = MIME(inf_v);
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetNextAttr() called.\n");
     switch (inf->NextAttr++)
 	{
 	case 0: return "content_type";
@@ -1413,7 +1423,6 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	case 3: return "transfer_encoding";
 	case 4: return "mime_version";
 	}
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetNextAttr() closing.\n");
     return NULL;
     }
 
@@ -1425,10 +1434,8 @@ char*
 mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeData inf = MIME(inf_v);
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetFirstAttr() called.\n");
     inf->NextAttr=0;
     return mimeGetNextAttr(inf,oxt);
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetFirstAttr() closing.\n");
     return NULL;
     }
 
@@ -1439,8 +1446,6 @@ mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 int
 mimeSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeSetAttrValue() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeSetAttrValue() closing.\n");
     return 0;
     }
 
@@ -1451,8 +1456,6 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 int
 mimeAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeAddAttr() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeAddAttr() closing.\n");
     return -1;
     }
 
@@ -1463,8 +1466,6 @@ mimeAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 void*
 mimeOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeOpenAttr() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeOpenAttr() closing.\n");
     return NULL;
     }
 
@@ -1475,8 +1476,6 @@ mimeOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
 char*
 mimeGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetFirstMethod() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetFirstMethod() closing.\n");
     return NULL;
     }
 
@@ -1487,8 +1486,6 @@ mimeGetFirstMethod(void* inf_v, pObjTrxTree oxt)
 char*
 mimeGetNextMethod(void* inf_v, pObjTrxTree oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeGetNextMethod() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeGetNextMethod() closing.\n");
     return NULL;
     }
 
@@ -1499,8 +1496,6 @@ mimeGetNextMethod(void* inf_v, pObjTrxTree oxt)
 int
 mimeExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
     {
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeExecuteMethod() called.\n");
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeExecuteMethod() closing.\n");
     return -1;
     }
 
@@ -1513,7 +1508,6 @@ mimeInitialize()
     {
     pObjDriver drv;
 
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeInitialize() called.\n");
     drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
     if (!drv) return -1;
     memset(drv, 0, sizeof(ObjDriver));
@@ -1544,10 +1538,12 @@ mimeInitialize()
     drv->Capabilities = 0;
     xaInit(&(drv->RootContentTypes), 16);
     xaAddItem(&(drv->RootContentTypes), "message/rfc822");
+    xaAddItem(&(drv->RootContentTypes), "multipart/mixed");
+    xaAddItem(&(drv->RootContentTypes), "multipart/alternative");
+    xaAddItem(&(drv->RootContentTypes), "multipart/form-data");
 
     if (objRegisterDriver(drv) < 0) return -1;
 
-    if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeInitialize() closing.\n");
     return 0;
     }
 
