@@ -52,10 +52,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.21 2002/06/10 00:21:00 nehresma Exp $
+    $Id: net_http.c,v 1.22 2002/06/14 15:13:42 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.22  2002/06/14 15:13:42  jorupp
+     * store the entire User-Agent line for comparison, not just the first word
+
     Revision 1.21  2002/06/10 00:21:00  nehresma
     Much cleaner (and safer) way of copying multiple lexer tokens into a buffer.
     Should have been doing this all along.  :)
@@ -893,8 +896,6 @@ nht_internal_Decode64(char* dst, char* src, int maxdst)
 int
 nht_internal_CreateCookie(char* ck)
     {
-    /*int i;
-    	printf("CreateCk called, stack ptr = %8.8X\n",&i);*/
     sprintf(ck,"LSID=LS-%6.6X%4.4X", (((int)(time(NULL)))&0xFFFFFF), (((int)(lrand48()))&0xFFFF));
     return 0;
     }
@@ -1006,6 +1007,7 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	xsConcatenate(&xs,dptr,-1);
 	xsConcatenate(&xs,"</A>\n",5);
 	fdWrite(conn,xs.String,strlen(xs.String),0,0);
+	//printf("%s",xs.String);
 	xsDeInit(&xs);
 
     return 0;
@@ -1063,6 +1065,8 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
     double dbl;
     char* where;
     char* orderby;
+    int retval;		/** FIXME FIXME FIXME FIXME FIXME FIXME **/
+    
     handle_t session_handle;
     handle_t query_handle;
     handle_t obj_handle;
@@ -1393,26 +1397,26 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 			    {
 			    case DATA_T_INTEGER:
 			        n = objDataToInteger(DATA_T_STRING, subinf->StrVal, NULL);
-				objSetAttrValue(obj,subinf->Name,POD(&n));
+				retval=objSetAttrValue(obj,subinf->Name,POD(&n));
 				break;
 
 			    case DATA_T_DOUBLE:
 			        dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal);
-				objSetAttrValue(obj,subinf->Name,POD(&dbl));
+				retval=objSetAttrValue(obj,subinf->Name,POD(&dbl));
 				break;
 
 			    case DATA_T_STRING:
-			        objSetAttrValue(obj,subinf->Name,POD(&(subinf->StrVal)));
+			        retval=objSetAttrValue(obj,subinf->Name,POD(&(subinf->StrVal)));
 				break;
 
 			    case DATA_T_DATETIME:
 			        objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
-				objSetAttrValue(obj,subinf->Name,POD(&dt));
+				retval=objSetAttrValue(obj,subinf->Name,POD(&dt));
 				break;
 
 			    case DATA_T_MONEY:
 			        objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
-				objSetAttrValue(obj,subinf->Name,POD(&m));
+				retval=objSetAttrValue(obj,subinf->Name,POD(&m));
 				break;
 
 			    case DATA_T_STRINGVEC:
@@ -1420,6 +1424,7 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 			    case DATA_T_UNAVAILABLE: 
 			        return -1;
 			    }
+			//printf("%i\n",retval);
 			}
 		    }
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
@@ -1539,6 +1544,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     int rowid;
     int tid = -1;
     int convert_text = 0;
+
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
         /** If we're opening the "errorstream", pass of processing to err handler **/
@@ -2124,7 +2130,14 @@ nht_internal_ConnHandler(void* conn_v)
 		useragent = (char*)nmMalloc(160);
 		mlxCopyToken(s,useragent,160);
 		while((toktype=mlxNextToken(s)))
+		    {
+		    if(toktype == MLX_TOK_STRING && strlen(useragent)<158)
+			{
+			strcat(useragent+strlen(useragent)," ");
+			mlxCopyToken(s,useragent+strlen(useragent),160-strlen(useragent));
+			}
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
+		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
 		}
 	    else
@@ -2283,6 +2296,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    xaAddItem(&(NHT.Sessions), (void*)nsess);
 	    }
 
+	//printf("%s\n",urlptr);
 	nht_internal_LinkSess(nsess);
 
 	/** Set the session's UserAgent if one was found in the headers. **/
