@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.24 2002/05/30 00:03:07 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.25 2002/05/30 05:01:31 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.25  2002/05/30 05:01:31  jorupp
+     * OSRC has a Sync Action (best used to tie two OSRCs together on a table selection)
+     * NOTE: with multiple tables in an app file, netscape seems to like to hang (the JS engine at least)
+        while rendering the page.  uncomment line 1109 in htdrv_table.c to fix it (at the expense of extra alerts)
+        -- I tried to figure this out, but was unsuccessful....
+
     Revision 1.24  2002/05/30 00:03:07  jorupp
      * this ^should^ allow nesting of the osrc and form, but who knows.....
 
@@ -360,6 +366,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    //var win=window.open();\n"
       "    //win.document.write(\"<PRE>\"+q+\"</PRE>\");\n"
       "    //win.document.close();\n"
+      "    this.easyquery=q;\n"
       "    this.pendingquery=String(escape(q)).replace(\"/\",\"%2F\",\"g\");\n"
       "    this.pending=true;\n"
       "    var someunsaved=false;\n"
@@ -487,7 +494,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    //  this is here to protect against form1 vetoing the move, then form2 reporting it is ready to go\n"
       "    if(!this.pending) return 0;\n"
       "    //Current form ready\n"
-      "    o._osrc_ready = true;\n"
+      "    if(o)\n"
+      "    	o._osrc_ready = true;\n"
       "    //If all other forms are ready then go\n"
       "    for(var i in this.children)\n"
       "         {\n"
@@ -739,16 +747,20 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddScriptFunction(s, "osrc_give_all_current_record", "\n"
       "function osrc_give_all_current_record()\n"
       "    {\n"
+      "    //confirm('give_all_current_record start');\n"
       "    for(var i in this.children)\n"
       "        this.children[i].ObjectAvailable(this.replica[this.CurrentRecord]);\n"
+      "    //confirm('give_all_current_record done');\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_tell_all_replica_moved", "\n"
       "function osrc_tell_all_replica_moved()\n"
       "    {\n"
+      "    //confirm('tell_all_replica_moved start');\n"
       "    for(var i in this.children)\n"
       "        if(this.children[i].ReplicaMoved)\n"
       "            this.children[i].ReplicaMoved();\n"
+      "    //confirm('tell_all_replica_moved done');\n"
       "    }\n",0);
 
 
@@ -999,6 +1011,36 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        }\n"
       "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_action_sync", "\n"
+      "function osrc_action_sync(param)\n"
+      "    {\n"
+      "    this.parentosrc=param.ParentOSRC;\n"
+      "    this.ParentKey=new Array();\n"
+      "    this.ChildKey=new Array();\n"
+      "    var query = new Array();\n"
+      "    query.oid=null;\n"
+      "    var p=this.parentosrc.CurrentRecord;\n"
+      "    for(var i=1;i<10;i++)\n"
+      "        {\n"
+      "        this.ParentKey[i]=eval('param.ParentKey'+i);\n"
+      "        this.ChildKey[i]=eval('param.ChildKey'+i);\n"
+      "        if(this.ParentKey[i])\n"
+      "            {\n"
+      "            for(var j in this.parentosrc.replica[p])\n"
+      "                {\n"
+      "                if(this.parentosrc.replica[p][j].oid==this.ParentKey[i])\n"
+      "                    {\n"
+      "                    var t = new Object();\n"
+      "                    t.oid=this.ChildKey[i];\n"
+      "                    t.value=this.parentosrc.replica[p][j].value;\n"
+      "                    t.type=this.parentosrc.replica[p][j].type;\n"
+      "                    query.push(t);\n"
+      "                    }\n"
+      "                }\n"
+      "            }\n"
+      "        }\n"
+      "    this.ActionQueryObject(query,null);\n"
+      "    }\n",0);
 
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
@@ -1046,6 +1088,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
       "    loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;\n"
 
+      "    loader.ActionSync = osrc_action_sync;\n"
       "    loader.InitQuery = osrc_init_query;\n"
       "    loader.cleanup = osrc_cleanup;\n"
       
@@ -1104,6 +1147,8 @@ int htosrcInitialize() {
    htrAddAction(drv,"Create");
    htrAddAction(drv,"Modify");
 
+   htrAddAction(drv,"Sync");
+   htrAddAction(drv,"ReverseSync");
 
 #if 00
    /** Add the 'load page' action **/

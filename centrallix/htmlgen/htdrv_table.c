@@ -59,10 +59,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.12 2002/05/30 03:55:21 lkehresman Exp $
+    $Id: htdrv_table.c,v 1.13 2002/05/30 05:01:31 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.13  2002/05/30 05:01:31  jorupp
+     * OSRC has a Sync Action (best used to tie two OSRCs together on a table selection)
+     * NOTE: with multiple tables in an app file, netscape seems to like to hang (the JS engine at least)
+        while rendering the page.  uncomment line 1109 in htdrv_table.c to fix it (at the expense of extra alerts)
+        -- I tried to figure this out, but was unsuccessful....
+
     Revision 1.12  2002/05/30 03:55:21  lkehresman
     editbox:  * added readonly flag so the editbox is always only readonly
               * made disabled appear visually
@@ -189,6 +195,9 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	int colid;
 	int colw;
 	char *coltitle;
+	char *ptr;
+	pObject sub_w_obj;
+	pObjQuery qy;
 
 	/** STYLE for the layer **/
 	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
@@ -353,6 +362,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_mouseover", "\n"
 		"function tbld_mouseover()\n"
 		"    {\n"
+		"    if(this.fg.recnum==null) return 0;\n"
 		"    if(this.subkind=='headerrow') return 0;\n"
 		"    else this.bgColor=0;\n"
 		"    return 0;\n"
@@ -483,7 +493,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        else\n"
 		"            delete t.cols[i];\n"
 		"        }\n"
-		"    if(!osrc_current || t.colcount<0)\n"
+		"    if(!osrc_current || !(t.colcount>0))\n"
 		"        {\n"
 		"        alert('this is useless without an OSRC and some columns');\n"
 		"        return t;\n"
@@ -501,6 +511,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    t.subkind='table';\n"
 		"    t.document.layer=t;\n"
 		"    var voffset=0;\n"
+		"    //alert('a'); // HANG ALERT -- UNCOMMENT THIS IF NETSCAPE HANGS!!\n"
 		/** build layers **/
 		"    for(var i=0;i<t.windowsize+1;i++)\n"
 		"        {\n"
@@ -582,7 +593,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    return t;\n"
 		"    }\n",0);
 
-	htrAddScriptInit_va(s,"   %s = tbld_init(%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%i,new Array(",
+	htrAddScriptInit_va(s,"    %s = tbld_init(%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%i,new Array(",
 		t.name,parentname,t.id,parentname,t.id,t.id,t.name,t.h,t.w-18,t.inner_padding,t.inner_border,t.windowsize, 
 		t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor, t.textcolorhighlight, t.titlecolor,
 		t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh,t.hdr_bgnd,t.followcurrent);
@@ -596,6 +607,18 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 	htrAddScriptInit(s,"null));\n");
 
+	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+	if (qy)
+	    {
+	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
+	        {
+		objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+		if (strcmp(ptr,"widget/table-column") != 0) //got columns earlier
+		    htrRenderWidget(s, sub_w_obj, z+3, "", t.name);
+		objClose(sub_w_obj);
+		}
+	    objQueryClose(qy);
+	    }
 
 	htrAddEventHandler(s,"document","MOUSEOVER","tabledynamic",
 		"\n"
@@ -629,11 +652,21 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            {\n"    
 		"            if(targetLayer.row) targetLayer=targetLayer.row;\n"
 		"            if(targetLayer.fg) targetLayer=targetLayer.fg;\n"
-		"            if(targetLayer.table.osrc.CurrentRecord!=targetLayer.recnum)\n"    
+		"            if(targetLayer.table.osrc.CurrentRecord!=targetLayer.recnum)\n"
 		"                {\n"    
-		"                if(targetLayer.recnum)\n"    
-		"                    targetLayer.table.osrc.MoveToRecord(targetLayer.recnum);\n"    
+		"                if(targetLayer.recnum)\n"
+		"                    {\n"
+		"                    targetLayer.table.osrc.MoveToRecord(targetLayer.recnum);\n"
+		"                    }\n"
 		"                }\n"    
+		"            if(targetLayer.table.EventClick != null)\n"
+		"                {\n"
+		"                var event = new Object();\n"
+		"                event.Caller = targetLayer.table;\n"
+		"                event.recnum = targetLayer.recnum;\n"
+		"                cn_activate(targetLayer.table,'Click', event);\n"
+		"                delete event;\n"
+		"                }\n"
 		"            }\n"    
 		"        if(targetLayer.subkind=='headercell')\n"
 		"            {\n"
@@ -1058,6 +1091,8 @@ httblInitialize()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+
+	htrAddEvent(drv,"Click");
 
 #if 00
 	/** Add the 'load page' action **/
