@@ -9,22 +9,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-
 /** Set timer **/
 function ex_action_domethod(aparam)
     {
-    o = aparam.Objname?aparam.Objname:this.Objname;
-    m = aparam.Method?aparam.Method:this.Methodname;
-    p = aparam.Parameter?aparam.Parameter:this.Methodparam;
+    var o = aparam.Objname?aparam.Objname:this.Objname;
+    var m = aparam.Method?aparam.Method:this.Methodname;
+    var p = aparam.Parameter?aparam.Parameter:this.Methodparam;
     if (!o || !m || !p) return false;
-    this.HiddenLayer.load(o + '?ls__mode=execmethod&ls__methodname=' + (escape(m).replace(/\//g,'%2f')) + '&ls__methodparam=' + (escape(p).replace(/\//g,'%2f')), 64);
+    var url = o + '?ls__mode=execmethod&ls__methodname=' + (escape(m).replace(/\//g,'%2f')) + '&ls__methodparam=' + (escape(p).replace(/\//g,'%2f'));
+    pg_serialized_load(this.HiddenLayer, url, null);
     return true;
     }
 
 /** Timer initializer **/
 function ex_init(o,m,p)
     {
-    ex = new Object();
+    var ex = new Object();
     ex.Objname = o;
     ex.Methodname = m;
     ex.Methodparam = p;
