@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.3 2001/10/08 04:17:14 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.4 2001/10/09 01:14:52 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.4  2001/10/09 01:14:52  lkehresman
+    Made a few modifications to the behavior of windowshading.  It now forgets
+    clicks that do other things such as raising windows--it won't count that as
+    the first click of a double-click.
+
     Revision 1.3  2001/10/08 04:17:14  lkehresman
      * Cleaned up the generated code for windowshading (Beely-standard Complient)
      * Testing out emailing CVS commits
@@ -245,7 +250,10 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    return l;\n"
 		"    }\n",0);
 
-	/** Action handler for WindowShade**/
+	/* Action handlers for WindowShade
+	**   * added by Luke Ehresman (lehresma@css.tayloru.edu)
+	**   * October 7, 2001
+	**/
 	htrAddScriptFunction(s, "wn_unset_windowshade", "\n"
 		"function wn_unset_windowshade()\n"
 		"    {\n"
@@ -266,7 +274,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    else\n"
 		"        {\n"
 		"        wn_clicked = 1;\n"
-		"        setTimeout(\"wn_unset_windowshade()\", 1200);\n"
+		"        setTimeout(\"wn_unset_windowshade()\", 1200);\n" // 2 second delay
 		"        }\n"
 		"    }\n", 0);
 
@@ -290,6 +298,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"function wn_domove()\n"
 		"    {\n"
 		"    if (wn_current != null) wn_current.moveTo((wn_newx<0)?0:wn_newx,(wn_newy<0)?0:wn_newy);\n"
+		"    wn_clicked = 0;\n"
 		"    return true;\n"
 		"    }\n",0);
 
@@ -304,6 +313,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n"
 		"    if (zi > 0) l.zIndex += zi;\n"
 		"    if (l.zIndex > wn_top_z) wn_top_z = l.zIndex;\n"
+		"    wn_clicked = 0;\n"
 		"    return true;\n"
 		"    }\n", 0);
 
@@ -314,6 +324,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (wn_topwin == l) return true;\n"
 		"    wn_adjust_z(l, wn_top_z - l.zIndex + 4);\n"
 		"    wn_topwin = l;\n"
+		"    wn_clicked = 0;\n"
 		"    }\n", 0);
 
 	/** Event handler for mousedown -- initial click **/
@@ -352,6 +363,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddEventHandler(s, "document","MOUSEMOVE","wn",
 		"    if (wn_current != null)\n"
 		"        {\n"
+		"        wn_clicked = 0;\n"
 		"        clearTimeout();\n"
 		"        if (wn_newx == null)\n"
 		"            {\n"
