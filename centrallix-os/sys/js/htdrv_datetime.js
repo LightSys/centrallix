@@ -46,6 +46,8 @@ function dt_disable() {
 
 function dt_init(l,lp,c1,c2,c3,c4,c5,c6,id,bg,fg,fn,w) {
 	this.enabled = 'full';
+	c1.mainlayer = l;
+	c2.mainlayer = l;
 	l.setvalue   = dt_setvalue;
 	l.getvalue   = dt_getvalue;
 	l.enable     = dt_enable;
