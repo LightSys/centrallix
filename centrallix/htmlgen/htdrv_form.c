@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.19  2002/03/23 00:32:13  jorupp
+     * osrc now can move to previous and next records
+     * form now loads it's basequery automatically, and will not load if you don't have one
+     * modified form test page to be a bit more interesting
+
     Revision 1.18  2002/03/20 21:13:12  jorupp
      * fixed problem in imagebutton point and click handlers
      * hard-coded some values to get a partially working osrc for the form
@@ -217,7 +222,10 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
 	    snprintf(basequery,300,"%s",ptr);
 	else
-	    strcpy(basequery,"");
+	    {
+	    mssError(1,"HTFORM","Form must have a 'basequery' property");
+	    return -1;
+	    }
 	
 	if (objGetAttrValue(w_obj,"basewhere",POD(&ptr)) == 0)
 	    snprintf(basewhere,300,"%s",ptr);
@@ -299,7 +307,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_data_available", "\n"
 		"function form_cb_data_available(aparam)\n"
 		"    {\n"
-		"    this.dataincoming=true;\n"
 		"    this.cb[\"DataAvailable\"].run();\n"
 		"    }\n", 0);
 
@@ -858,6 +865,17 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.osrc.update(obj);\n"
 		"    }\n", 0);
 
+	/** Send Initial Query */
+	htrAddScriptFunction(s, "form_init_query", "\n"
+		"function form_init_query()\n"
+		"    {\n"
+		"    this.Pending=true;\n"
+		"    this.IsUnsaved=false;\n"
+		"    this.cb['DataAvailable'].add(this,new Function('this.osrc.ActionFirst(this)'));\n"
+		"    this.osrc.ActionQuery(this.currentquery)\n"
+		"    }\n", 0);
+
+
 	/** Helper function to build a query */
 	htrAddScriptFunction(s, "form_build_query", "\n"
 		"function form_build_query(base,where)\n"
@@ -1014,6 +1032,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.EnableAll = form_enable_all;\n"
 		"    form.ReadOnlyAll = form_readonly_all;\n"
 		"    form.ChangeMode = form_change_mode;\n"
+		"    form.InitQuery = form_init_query;\n"
 		"    return form;\n"
 		"    }\n",0);
 	//nmFree(sbuf3,800);
@@ -1033,6 +1052,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** non-visual, don't consume a z level **/
 	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
 	
+
+	htrAddScriptInit(s,"    fm_current.InitQuery();");
+
 	/** Make sure we don't claim orphans **/
 	htrAddScriptInit(s,"    fm_current = null;\n\n");
 

@@ -242,13 +242,58 @@ wholePage "widget/page"
 				}
 			    d2 "widget/dropdownitem"
 				{
-				value="sdf";
-				label="sdf";
+				value="February";
+				label="February";
 				}
 			    d3 "widget/dropdownitem"
 				{
-				value="asf";
-				label="asf";
+				value="March";
+				label="March";
+				}
+			    d4 "widget/dropdownitem"
+				{
+				value="April";
+				label="April";
+				}
+			    d5 "widget/dropdownitem"
+				{
+				value="May";
+				label="May";
+				}
+			    d6 "widget/dropdownitem"
+				{
+				value="June";
+				label="June";
+				}
+			    d7 "widget/dropdownitem"
+				{
+				value="July";
+				label="July";
+				}
+			    d8 "widget/dropdownitem"
+				{
+				value="August";
+				label="August";
+				}
+			    d9 "widget/dropdownitem"
+				{
+				value="September";
+				label="September";
+				}
+			    d10 "widget/dropdownitem"
+				{
+				value="October";
+				label="October";
+				}
+			    d11 "widget/dropdownitem"
+				{
+				value="November";
+				label="November";
+				}
+			    d12 "widget/dropdownitem"
+				{
+				value="December";
+				label="December";
 				}
 			    }
 //			testspin "widget/spinner"

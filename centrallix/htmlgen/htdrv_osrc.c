@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.11 2002/03/20 21:13:12 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.12 2002/03/23 00:32:13 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.12  2002/03/23 00:32:13  jorupp
+     * osrc now can move to previous and next records
+     * form now loads it's basequery automatically, and will not load if you don't have one
+     * modified form test page to be a bit more interesting
+
     Revision 1.11  2002/03/20 21:13:12  jorupp
      * fixed problem in imagebutton point and click handlers
      * hard-coded some values to get a partially working osrc for the form
@@ -166,12 +171,11 @@ int htosrcVerify() {
       "    //Is discard ready\n"
       "    //if(!formobj.IsDiscardReady()) return 0;\n"
       "    //Send query as GET request\n"
+      "    //this.formobj = formobj;\n"
       "    this.query = escape(q);\n"
-      "    this.formobj = formobj;\n"
-      "    //this.query = 'select%20%3Aid%2C%20%3Afull_name%2C%20%3Anum_days%20from%20Months.csv'\n"
-      "    //this.query = escape(\"SELECT :full_name, :num_days FROM /Months.csv/rows\");\n"
-      "    //this.query = escape(\"select :full_name, :num_days from /samples/Months.csv/rows\");\n"
       "    this.query=String(this.query).replace(\"/\",\"%2F\",\"g\");\n"
+      "    if(this.replica) delete this.replica;\n"
+      "    this.CurrentRecord=this.LastRecord=0;\n"
       "    this.replica=new Array();\n"
       "    this.OpenSession();\n"
       "    }\n",0);
@@ -302,8 +306,13 @@ int htosrcVerify() {
       "    {\n"
       "    //alert('qid ' + this.document.links[0].target);\n"
       "    this.qid=this.document.links[0].target;\n"
-      "    this.onLoad = osrc_fetch_next;\n"
-      "    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
+      "    this.CurrentRecord=0;\n"
+      "    this.LastRecord=0;\n"
+      "    for(var i in this.children)\n"
+      "        this.children[i].DataAvailable();\n"
+      /** Don't actually load the data...just let children know that the data is available **/
+      "    //this.onLoad = osrc_fetch_next;\n"
+      "    //this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_fetch_next", "\n"
@@ -311,38 +320,57 @@ int htosrcVerify() {
       "    {\n"
       "    var lnk=this.document.links;\n"
       "    var lc=lnk.length;\n"
-      "    //alert('fetch-next ' + this.document.links[1].target);\n"
-      "    //alert('fetch-next ' + this.document.links[1].text);\n"
-      "    //alert('fetch-next ' + this.document.links[2].target);\n"
-      "    //alert('fetch-next ' + this.document.links[2].text);\n"
       "    if(lc < 2)\n"
       "        {\n"	// query over
-      "        this.onLoad=osrc_close_query;\n"	//don't need to trap this...
-      "        this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
-      "        this.formobj.OperationComplete();\n"
+      "        //alert('query over '+this.LastRecord+' '+this.CurrentRecord);\n"
+      "        \n"
+      "        //this.formobj.OperationComplete();\n" /* don't need this...I think....*/
+      "        this.CurrentRecord=this.LastRecord;\n" /* return the last record as the current one */
+      "        this.GiveAllCurrentRecord();\n"
+      "        //this.onLoad=osrc_close_query;\n"	//don't need to trap this...
+      "        //this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
       "        return 0;\n"
       "        }\n"
-      "    var dataobj=new Array();\n"
-      "    var row=lnk[1].target;\n"
-      "    this.oid = lnk[1].target;\n"
+      "    var row='';\n"
+      "    var colnum=0;\n"
       "    for (var i = 1; i < lc; i++)\n"
       "        {\n"
-      "        dataobj[i] = new Array();\n"
-      "        dataobj[i]['value'] = lnk[i].text\n"
-      "        dataobj[i]['type'] = lnk[i].hash.substr(1);\n"
-      "        dataobj[i]['oid'] = lnk[i].host;\n"
+      "        if(row!=lnk[i].target)\n"
+      "            {\n"	/** This is a different (or 1st) row of the result set **/
+      "            row=lnk[i].target;\n"
+      "            this.LastRecord++;\n"
+      "            this.replica[this.LastRecord]=new Array();\n"
+      "            this.replica[this.LastRecord].oid=row;\n"
+      "            if(this.LastRecord-this.FirstRecord>=this.replicasize)\n"
+      "                {\n"
+      "                delete this.replica[this.FirstRecord];\n"
+      "                this.FirstRecord++;\n"
+      "                }\n"
+      "            colnum=0;\n"
+      "            //alert('New row: '+row+'('+this.LastRecord+')');\n"
+      "            }\n"
+      "        colnum++;\n"
+      "        this.replica[this.LastRecord][colnum] = new Array();\n"
+      "        this.replica[this.LastRecord][colnum]['value'] = lnk[i].text\n"
+      "        this.replica[this.LastRecord][colnum]['type'] = lnk[i].hash.substr(1);\n"
+      "        this.replica[this.LastRecord][colnum]['oid'] = lnk[i].host;\n"
       "        }\n"
-      "    this.replica[1]=dataobj;\n"
-      "    //this.onLoad = osrc_fetch_next;\n"
-      "    //this.onLoad = osrc_store_replica;\n"
-      "    this.formobj.DataAvailable();\n"
-      "    //this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
+      "    if(this.LastRecord<this.CurrentRecord)\n"
+      "        {\n"
+      "        this.onLoad = osrc_fetch_next;\n"
+      "        this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        this.GiveAllCurrentRecord();\n"
+      "        }\n"
       "    }\n",0);
       
    htrAddScriptFunction(s, "osrc_close_query", "\n"
       "function osrc_close_query()\n"
       "    {\n"
       "    //Close Query\n"
+      "    alert('Query closed');\n"
       "    this.onLoad = osrc_close_object;\n"
       "    this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid;\n"
       "    }\n",0);
@@ -369,64 +397,68 @@ int htosrcVerify() {
    htrAddScriptFunction(s, "osrc_move_first", "\n"
       "function osrc_move_first(formobj)\n"
       "    {\n"
-      "    this.currentRecord = 1;\n"
-      "    formobj.ObjectAvailable(this.replica[this.currentRecord]);\n"
+      "    this.MoveToRecord(1);\n"
+      "    //formobj.ObjectAvailable(this.replica[this.currentRecord]);\n"
       "    //formobj.ObjectAvailable(data.attributes[this.num][1]);\n"
       "    //formobj.ObjectAvailable(data.attributes[this.num][2]);\n"
       "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_give_all_current_record", "\n"
+      "function osrc_give_all_current_record()\n"
+      "    {\n"
+      "    for(var i in this.children)\n"
+      "        this.children[i].ObjectAvailable(this.replica[this.CurrentRecord]);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_move_to_record", "\n"
+      "function osrc_move_to_record(recnum)\n"
+      "    {\n"
+      "    if(recnum<1)\n"
+      "        {\n"
+      "        alert(\"Already at the beginning.\");\n"
+      "        return 0;\n"
+      "        }\n"
+      "    this.CurrentRecord=recnum;\n"
+      "    if(this.CurrentRecord <= this.LastRecord)\n"
+      "        {\n"
+      "        this.GiveAllCurrentRecord();\n"
+      "        return 1;\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        this.onload=osrc_fetch_next;\n"
+      "        this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
+      "        return 0;\n"
+      "        }\n"
+      "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_move_next", "\n"
       "function osrc_move_next(formobj)\n"
       "    {\n"
-      "    if((this.currentRecord+1) == replica.length)\n"
-      "         {\n"
-      "         //Last Record\n"
-      "         alert('last record');\n"
-      "         }\n"
-      "    else\n"
-      "         {\n"
-      "         this.currentRecord += 1;\n"
-      "         formobj.ObjectAvailable(replica[this.currentRecord]);\n"
-      "         //formobj.ObjectAvailable(data.attributes[this.currentRecord][1]);\n"
-      "         //formobj.ObjectAvailable(data.attributes[this.currentRecord][2]);\n"
-      "         }\n"
+      "    this.MoveToRecord(this.CurrentRecord+1);\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_move_prev", "\n"
       "function osrc_move_prev(formobj)\n"
       "    {\n"
-      "    if((this.currentRecord-1) == 1)\n"
-      "         {\n"
-      "         //First Record\n"
-      "         alert('first record');\n"
-      "         return 0;\n"
-      "         }\n"
-      "    else\n"
-      "         {\n"
-      "         this.currentRecord -= 1;\n"
-      "         formobj.ObjectAvailable(replica[this.currentRecord]);\n"
-      "         //formobj.ObjectAvailable(data.attributes[this.currentRecord][1]);\n"
-      "         //formobj.ObjectAvailable(data.attributes[this.currentRecord][2]);\n"
-      "         }\n"
+      "    this.MoveToRecord(this.CurrentRecord-1);\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_move_last", "\n"
       "function osrc_move_last(formobj)\n"
       "    {\n"
-      "    this.currentRecord = replica.length\n"
-      "    formobj.ObjectAvailable(replica[replica.length]);\n"
-      "    //formobj.ObjectAvailable(data.attributes[data.length][1]);\n"
-      "    //formobj.ObjectAvailable(data.attributes[data.length][2]);\n"
+      "    alert(\"do YOU know where the end is? I sure don't.\");\n"
       "    }\n",0);
-
-
 
 
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
       "function osrc_init(loader)\n"
       "    {\n"
+      "    loader.readahead=1;\n"
+      "    loader.replicasize=6;\n"
+      "    loader.GiveAllCurrentRecord=osrc_give_all_current_record;\n"
+      "    loader.MoveToRecord=osrc_move_to_record;\n"
       "    loader.children = new Array();\n"
       "    loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
