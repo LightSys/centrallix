@@ -31,10 +31,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.11 2003/04/03 21:38:31 gbeeley Exp $
+    $Id: xstring.c,v 1.12 2003/04/04 03:18:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.12  2003/04/04 03:18:20  gbeeley
+    Added CXSEC_ENTRY and CXSEC_EXIT examples to xstring.
+
     Revision 1.11  2003/04/03 21:38:31  gbeeley
     Adding xsSubst() to the xstring library.  Does a replacement of a
     string with another based on position, not content.
@@ -92,6 +95,7 @@
 
  **END-CVSDATA***********************************************************/
 
+#define XS_FN_KEY	(MGK_XSTRING & 0xFFFF00FF)
 
 /*** xsInit - initialize an existing XString structure.  The structure
  *** MUST be allocated first.
@@ -99,6 +103,7 @@
 int 
 xsInit(pXString this)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     	
 	/** Initialize the various fields. **/
 	this->String = this->InitBuf;
@@ -108,6 +113,7 @@ xsInit(pXString this)
 	SETMAGIC(this, MGK_XSTRING);
 	CXSEC_INIT(*this);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -118,6 +124,7 @@ xsInit(pXString this)
 int 
 xsDeInit(pXString this)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
@@ -127,6 +134,7 @@ xsDeInit(pXString this)
 	this->AllocLen = 256;
 	this->String = this->InitBuf;
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -138,6 +146,7 @@ xsDeInit(pXString this)
 int 
 xsCheckAlloc(pXString this, int addl_needed)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     int	new_cnt = 0;
     char* ptr;
 
@@ -153,7 +162,11 @@ xsCheckAlloc(pXString this, int addl_needed)
 	    if (this->AllocLen == XS_BLK_SIZ)
 	        {
 		ptr = (char*)nmSysMalloc(new_cnt);
-		if (!ptr) return -1;
+		if (!ptr) 
+		    {
+		    CXSEC_EXIT(XS_FN_KEY);
+		    return -1;
+		    }
 		memcpy(ptr,this->InitBuf,XS_BLK_SIZ);
 		CXSEC_VERIFY(*this);
 		this->String = ptr;
@@ -163,7 +176,11 @@ xsCheckAlloc(pXString this, int addl_needed)
 	    else
 	        {
 		ptr = (char*)nmSysRealloc(this->String, new_cnt);
-		if (!ptr) return -1;
+		if (!ptr)
+		    {
+		    CXSEC_EXIT(XS_FN_KEY);
+		    return -1;
+		    }
 		CXSEC_VERIFY(*this);
 		this->String = ptr;
 		this->AllocLen = new_cnt;
@@ -171,6 +188,7 @@ xsCheckAlloc(pXString this, int addl_needed)
 		}
 	    }
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -182,6 +200,7 @@ xsCheckAlloc(pXString this, int addl_needed)
 int 
 xsConcatenate(pXString this, char* text, int len)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
@@ -190,7 +209,11 @@ xsConcatenate(pXString this, char* text, int len)
 	if (len == -1) len = strlen(text);
 
     	/** Check memory **/
-	if (xsCheckAlloc(this,len) < 0) return -1;
+	if (xsCheckAlloc(this,len) < 0) 
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return -1;
+	    }
 
 	/** Copy to end of string. **/
 	CXSEC_VERIFY(*this);
@@ -199,6 +222,7 @@ xsConcatenate(pXString this, char* text, int len)
 	this->String[this->Length] = '\0';
 	CXSEC_UPDATE(*this);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -210,6 +234,7 @@ xsConcatenate(pXString this, char* text, int len)
 int 
 xsCopy(pXString this, char* text, int len)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
@@ -217,8 +242,13 @@ xsCopy(pXString this, char* text, int len)
 	/** Reset length to 0 and concatenate. **/
 	this->Length = 0;
 	CXSEC_UPDATE(*this);
-	if (xsConcatenate(this,text,len) < 0) return -1;
+	if (xsConcatenate(this,text,len) < 0) 
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return -1;
+	    }
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -230,8 +260,10 @@ xsCopy(pXString this, char* text, int len)
 char* 
 xsStringEnd(pXString this)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    CXSEC_EXIT(XS_FN_KEY);
     return this->String + this->Length;
     }
 
@@ -239,6 +271,7 @@ xsStringEnd(pXString this)
 int
 xs_internal_Printf(pXString this, char* fmt, va_list vl)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     char* cur_pos;
     char* ptr;
     int n;
@@ -383,6 +416,7 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 	this->String[this->Length] = '\0';
 	CXSEC_UPDATE(*this);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -394,6 +428,7 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 int
 xsConcatPrintf(pXString this, char* fmt, ...)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     va_list vl;
 
 	ASSERTMAGIC(this, MGK_XSTRING);
@@ -403,6 +438,7 @@ xsConcatPrintf(pXString this, char* fmt, ...)
 	xs_internal_Printf(this, fmt, vl);
 	va_end(vl);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -414,6 +450,7 @@ xsConcatPrintf(pXString this, char* fmt, ...)
 int
 xsPrintf(pXString this, char* fmt, ...)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     va_list vl;
 
 	ASSERTMAGIC(this, MGK_XSTRING);
@@ -425,6 +462,7 @@ xsPrintf(pXString this, char* fmt, ...)
 	xs_internal_Printf(this, fmt, vl);
 	va_end(vl);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -439,6 +477,7 @@ xsPrintf(pXString this, char* fmt, ...)
 int
 xsWrite(pXString this, char* buf, int len, int offset, int flags)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
@@ -463,6 +502,7 @@ xsWrite(pXString this, char* buf, int len, int offset, int flags)
 	    CXSEC_UPDATE(*this);
 	    }
 
+    CXSEC_EXIT(XS_FN_KEY);
     return len;
     }
 
@@ -473,6 +513,7 @@ xsWrite(pXString this, char* buf, int len, int offset, int flags)
 int
 xsRTrim(pXString this)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     int i;
 
 	ASSERTMAGIC(this, MGK_XSTRING);
@@ -487,6 +528,7 @@ xsRTrim(pXString this)
 	this->Length = i+1;
 	CXSEC_UPDATE(*this);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -496,6 +538,7 @@ xsRTrim(pXString this)
 int
 xsLTrim(pXString this)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     int i;
 
 	ASSERTMAGIC(this, MGK_XSTRING);
@@ -511,6 +554,7 @@ xsLTrim(pXString this)
 	this->String[this->Length] = '\0';
 	CXSEC_UPDATE(*this);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -519,6 +563,7 @@ xsLTrim(pXString this)
 int
 xsTrim(pXString this)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
@@ -526,6 +571,7 @@ xsTrim(pXString this)
 	xsLTrim(this);
 	xsRTrim(this);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -535,6 +581,7 @@ xsTrim(pXString this)
 int
 xsFind(pXString this,char* find,int findlen, int offset)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
     if(findlen==-1) findlen=strlen(find);
@@ -549,9 +596,13 @@ xsFind(pXString this,char* find,int findlen, int offset)
 		    break;
 		}
 	    if(i==findlen)
+		{
+		CXSEC_EXIT(XS_FN_KEY);
 		return offset;
+		}
 	    }
 	}
+    CXSEC_EXIT(XS_FN_KEY);
     return -1;
     }
 
@@ -561,6 +612,7 @@ xsFind(pXString this,char* find,int findlen, int offset)
 int
 xsFindRev(pXString this,char* find,int findlen, int offset)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
     if(findlen==-1) findlen=strlen(find);
@@ -576,9 +628,13 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
 		    break;
 		}
 	    if(i==findlen)
+		{
+		CXSEC_EXIT(XS_FN_KEY);
 		return offset;
+		}
 	    }
 	}
+    CXSEC_EXIT(XS_FN_KEY);
     return -1;
     }
 
@@ -590,12 +646,17 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
 int
 xsSubst(pXString this, int offset, int len, char* rep, int replen)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
 
 	/** Figure some default lengths **/
-	if (offset > this->Length || offset < 0) return -1;
+	if (offset > this->Length || offset < 0) 
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return -1;
+	    }
 	if (len == -1) len = strlen(this->String + offset);
 	if (replen == -1) replen = strlen(rep);
 
@@ -608,6 +669,7 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 	this->Length += (replen - len);
 	CXSEC_UPDATE(*this);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
 
@@ -618,12 +680,17 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 int
 xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
     if(findlen==-1) findlen=strlen(find);
     if(replen==-1) replen=strlen(rep);
     offset=xsFind(this,find,findlen,offset);
-    if(offset < 0) return -1;
+    if(offset < 0) 
+	{
+	CXSEC_EXIT(XS_FN_KEY);
+	return -1;
+	}
     if(findlen>=replen)
 	{
 	memcpy(&(this->String[offset]),rep,replen);
@@ -643,6 +710,7 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
 	}
     this->String[this->Length] = '\0';
     CXSEC_UPDATE(*this);
+    CXSEC_EXIT(XS_FN_KEY);
     return offset;
     }
 
@@ -651,14 +719,20 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
 int
 xsInsertAfter(pXString this, char* ins, int inslen, int offset)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
     if(inslen==-1) inslen=strlen(ins);
-    if(xsCheckAlloc(this,inslen)==-1) return -1;
+    if(xsCheckAlloc(this,inslen)==-1) 
+	{
+	CXSEC_EXIT(XS_FN_KEY);
+	return -1;
+	}
     memmove(this->String+offset+inslen,this->String+offset,this->Length-offset+1);
     memcpy(this->String+offset,ins,inslen);
     this->Length+=inslen;
     CXSEC_UPDATE(*this);
+    CXSEC_EXIT(XS_FN_KEY);
     return offset+inslen;
     }
 
@@ -675,6 +749,7 @@ xsInsertAfter(pXString this, char* ins, int inslen, int offset)
 int
 xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, va_list va)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     va_list orig_va;
     char* mybuf = NULL;
     int mybuf_size = 0;
@@ -692,7 +767,11 @@ xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, co
 	    buf_size = &mybuf_size;
 	    *buf_size = XS_PRINTF_BUFSIZ;
 	    *buf = (char*)nmSysMalloc(*buf_size);
-	    if (!*buf) return -ENOMEM;
+	    if (!*buf) 
+		{
+		CXSEC_EXIT(XS_FN_KEY);
+		return -ENOMEM;
+		}
 	    }
 
 	/** Try to print the formatted string. **/
@@ -708,7 +787,11 @@ xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, co
 		new_buf_size = (*buf_size)*2;
 		while(new_buf_size < len) new_buf_size *= 2;
 		new_buf = (char*)nmSysMalloc(new_buf_size);
-		if (!new_buf) return -ENOMEM;
+		if (!new_buf) 
+		    {
+		    CXSEC_EXIT(XS_FN_KEY);
+		    return -ENOMEM;
+		    }
 		*buf = new_buf;
 		*buf_size = new_buf_size;
 		va = orig_va;
@@ -724,12 +807,14 @@ xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, co
 	if (mybuf) nmSysFree(mybuf);
 	if (rval != len) rval = -EIO; /* oops!!! routine ignored FD_U_PACKET! */
 
+    CXSEC_EXIT(XS_FN_KEY);
     return rval;
     }
 
 int
 xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, ...)
     {
+    CXSEC_ENTRY(XS_FN_KEY);
     va_list va;
     int rval;
 
@@ -737,6 +822,7 @@ xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const
 	rval = xsGenPrintf_va(write_fn, write_arg, buf, buf_size, fmt, va);
 	va_end(va);
 
+    CXSEC_EXIT(XS_FN_KEY);
     return rval;
     }
 
