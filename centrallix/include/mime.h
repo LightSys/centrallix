@@ -31,8 +31,8 @@
 /* Description:	Provides declarations for the MIME parser		*/
 /************************************************************************/
 
-#define MIME_DEBUG            0
-#define MIME_DEBUG_ADDR       0
+#define MIME_DEBUG            1
+#define MIME_DEBUG_ADDR       1
 
 #define MIME_ST_NORM          0
 #define MIME_ST_QUOTE         1
@@ -119,10 +119,10 @@ extern char* TypeStrings[];
 extern char* EncodingStrings[];
 
 /** mime_parse.c **/
-int libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex);
+int libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end);
 int libmime_ParseHeaderElement(char *buf, char *element);
-int libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex);
-int libmime_LoadExtendedHeader(pMimeHeader msg, pXString xsbuf, pLxSession lex);
+int libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end);
+int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf);
 int libmime_SetMIMEVersion(pMimeHeader msg, char *buf);
 int libmime_SetDate(pMimeHeader msg, char *buf);
 int libmime_SetSubject(pMimeHeader msg, char *buf);
@@ -134,7 +134,7 @@ int libmime_SetContentDisp(pMimeHeader msg, char *buf);
 int libmime_SetContentType(pMimeHeader msg, char *buf);
 void libmime_PrintEntityContent(pMimeHeader msg, pLxSession lex);
 int libmime_GetEntityContent(long start, long end, pLxSession lex);
-int libmime_ReadPart(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags);
+int libmime_ReadPart(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags);
 
 /** mime_address.c **/
 int libmime_ParseAddressList(char *buf, pXArray xary);

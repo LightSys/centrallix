@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.19 2002/08/29 16:23:03 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.20 2002/08/29 19:24:59 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.20  2002/08/29 19:24:59  lkehresman
+    standardized the function headers a bit, and removed some unnecessary
+    parameters.
+
     Revision 1.19  2002/08/29 16:23:03  lkehresman
     * Fixed bug that wasn't correctly setting the end seek point for the
       message.
@@ -247,34 +251,34 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     inf->Mask = mask;
     inf->InternalSeek = 0;
     lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
-    if (libmime_ParseHeader(obj, msg, 0, 0, lex) < 0)
+    if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
 	{
 	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message header in mimeOpen().\n");
 	mlxCloseSession(lex);
 	return NULL;
 	}
-    if (libmime_ParseMultipartBody(obj, msg, msg->MsgSeekStart, msg->MsgSeekEnd, lex) < 0)
+    if (libmime_ParseMultipartBody(lex, msg, msg->MsgSeekStart, msg->MsgSeekEnd) < 0)
 	{
 	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message entity in mimeOpen().\n");
 	mlxCloseSession(lex);
 	return NULL;
 	}
-
-    /*
-    fprintf(stderr, "\n-----------------------------------------------------------------\n");
-    for (i=0; i < xaCount(&msg->Parts); i++)
+    if (MIME_DEBUG)
 	{
-	tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
-	fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
-	buffer = (char*)nmMalloc(1024);
-	size = libmime_PartRead(inf->MimeDat, tmp, buffer, 80, 0, FD_U_SEEK);
-	buffer[size] = 0;
-	printf("--%d--%s--\n", size,buffer);
-	nmFree(buffer, 1024);
+	fprintf(stderr, "\n-----------------------------------------------------------------\n");
+	for (i=0; i < xaCount(&msg->Parts); i++)
+	    {
+	    tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
+	    fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
+	    buffer = (char*)nmMalloc(1024);
+	    size = libmime_PartRead(inf->MimeDat, tmp, buffer, 1023, 500, FD_U_SEEK);
+	    buffer[size] = 0;
+	    printf("--%d--%s--\n", size,buffer);
+	    nmFree(buffer, 1024);
+	    }
+	fprintf(stderr, "-----------------------------------------------------------------\n\n");
 	}
-    fprintf(stderr, "-----------------------------------------------------------------\n\n");
     mlxCloseSession(lex);
-    */
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;

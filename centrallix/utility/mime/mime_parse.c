@@ -68,9 +68,9 @@ char* EncodingStrings[] =
 **  and end reading.
 */
 int
-libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex)
+libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     {
-    int flag, toktype, alloc, err, size, len;
+    int flag, toktype, alloc, err, len;
     XString xsbuf;
     char *hdrnme, *hdrbdy;
 
@@ -121,7 +121,7 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 	    }
 	else
 	    {
-	    if (libmime_LoadExtendedHeader(msg, &xsbuf, lex) < 0)
+	    if (libmime_LoadExtendedHeader(lex, msg, &xsbuf) < 0)
 		{
 		return -1;
 		}
@@ -199,7 +199,7 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 */
 
 int
-libmime_LoadExtendedHeader(pMimeHeader msg, pXString xsbuf, pLxSession lex)
+libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
     {
     int toktype, i;
     unsigned long offset;
@@ -607,7 +607,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 
 /*
 **  int
-**  libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex)
+**  libmime_ParseMultipartBody
 **
 **  Parses the body of a multipart message.  This fills in the Parts section of the
 **  pMimeHeader data structure.  It will start parsing at the "start" location, and
@@ -615,7 +615,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 **  has been reached.
 */
 int
-libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex)
+libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     {
     XString xsbuf;
     pMimeHeader l_msg;
@@ -655,7 +655,7 @@ libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLx
 		if (l_pos != 0)
 		    {
 		    l_msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
-		    libmime_ParseHeader(obj, l_msg, l_pos+s, p_count, lex);
+		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);
 		    }
 		s=strlen(xsbuf.String);
@@ -677,7 +677,7 @@ libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLx
 
 /*
 **  int
-**  libmime_PartRead(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset)
+**  libmime_PartRead
 **
 **  Using nearly the same interface as objRead (except for the first
 **  parameter), this function will read an arbitrary number of bytes from a
@@ -687,7 +687,7 @@ libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLx
 int
 libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags)
     {
-    int size=0, bytes_left, len, rem=0, left, end;
+    int size=0, bytes_left, len, rem=0, end;
     int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
     char *ptr, *bptr, *tptr;
 
