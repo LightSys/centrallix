@@ -79,19 +79,31 @@ AC_DEFUN(CHECK_MTASK_DEBUG,
 AC_DEFUN(CHECK_HARDENING,
     [
 	AC_MSG_CHECKING(if application-level hardening desired)
-	AC_ARG_ENABLE(hardening,
-	    AC_HELP_STRING([--enable-hardening],
-		[enable support for application-level security hardening; large performance hit]
+	AC_ARG_WITH(hardening,
+	    AC_HELP_STRING([--with-hardening],
+		[enable support for application-level security hardening.   Can have a large performance hit.  Values: none, low, medium, high; default: none]
 	    ),
-	    WITH_HARDENING="$enableval",
-	    WITH_HARDENING="no"
+	    WITH_HARDENING="$withval",
+	    WITH_HARDENING="none"
 	)
-	if test "$WITH_HARDENING" = "no"; then
-	    AC_MSG_RESULT(no)
-	else
-	    AC_MSG_RESULT(yes)
-	    DEFS="$DEFS -DCXLIB_SECH"
+	if test "$WITH_HARDENING" = "none"; then
+	    AC_MSG_RESULT(none)
+	    CFLAGS="$CFLAGS -DNDEBUG"
+	elif test "$WITH_HARDENING" = "low"; then
+	    AC_MSG_RESULT([low: magic number checking])
+	    CFLAGS="$CFLAGS -DNDEBUG -DDBMAGIC"
+	    AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless optimization is in use])
+	elif test "$WITH_HARDENING" = "medium"; then
+	    AC_MSG_RESULT([medium: magic number checking and assertions])
+	    CFLAGS="$CFLAGS -DDBMAGIC"
+	    AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless optimization is in use])
+	elif test "$WITH_HARDENING" = "high"; then
+	    AC_MSG_RESULT([high: magic number checking, assertions, and data structure verification])
+	    CFLAGS="$CFLAGS -DDBMAGIC -DCXLIB_SECH"
+	    AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless optimization is in use])
 	    AC_DEFINE(CXLIB_SECURITY_HARDENING,1,[defined to 1 if -DCXLIB_SECH is being passed to the compiler])
+	else
+	    AC_MSG_ERROR([invalid setting for --with-hardening; values=none,low,medium,high])
 	fi
     ]
 )
@@ -105,17 +117,17 @@ AC_DEFUN(CHECK_OPTIMIZE,
     AC_MSG_CHECKING(if this build should be optimized)
     AC_ARG_ENABLE(optimization,
 	AC_HELP_STRING([--enable-optimization],
-	    [turn on build optimization; incompatible with the --enable-hardening option]
+	    [turn on build optimization; incompatible with the --with-hardening=high option]
 	),
 	WITH_OPTIMIZATION="$enableval",
 	WITH_OPTIMIZATION="no"
     )
     if test "$WITH_OPTIMIZATION" = "no"; then
 	AC_MSG_RESULT(no)
-	DEFS="$DEFS -DDBMAGIC"
-	AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless optimization is in use])
+dnl	DEFS="$DEFS -DDBMAGIC"
+dnl	AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless optimization is in use])
     else
-	if test "$WITH_HARDENING" = "yes"; then
+	if test "$WITH_HARDENING" = "high"; then
 	    AC_MSG_ERROR([Optimization and security hardening are mutually exclusive; please at most specify one or the other but not both])
 	else
 	    AC_MSG_RESULT(yes)

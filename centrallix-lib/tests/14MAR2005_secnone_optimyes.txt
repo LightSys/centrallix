@@ -1,0 +1,20 @@
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_00baseline.c libCentrallix.a -o tests/test_00baseline.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_01.c libCentrallix.a -o tests/test_smmalloc_01.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_02.c libCentrallix.a -o tests/test_smmalloc_02.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_03.c libCentrallix.a -o tests/test_smmalloc_03.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_04.c libCentrallix.a -o tests/test_smmalloc_04.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_05.c libCentrallix.a -o tests/test_smmalloc_05.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_06.c libCentrallix.a -o tests/test_smmalloc_06.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_07.c libCentrallix.a -o tests/test_smmalloc_07.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_08.c libCentrallix.a -o tests/test_smmalloc_08.bin
+Test Name                                                         Ops/sec
+----------------------------------------------------------------  ----------
+BASELINE                                                          680272108
+smmalloc-01 create/destroy region                                 28328
+smmalloc-02 malloc/free 1024 bytes                                588235
+smmalloc-03 malloc/free 1MB, free order = LIFO, size=1K           586746
+smmalloc-04 malloc/free 1MB, free order = FIFO, size=1K           169883
+smmalloc-05 malloc/free 1MB, free order = random, size=1K         515343
+smmalloc-06 malloc/free 1MB, free order=random, size=[1-8192]     459706
+smmalloc-07 reference counting (randomized free order)            819871
+smmalloc-08 block realloc to 512K of 1M - 128 1K blocks           46376

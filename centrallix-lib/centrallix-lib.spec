@@ -1,6 +1,6 @@
 Summary: A base functionality library developed for the Centrallix server.
 Name: centrallix-lib
-Version: 0.7.4
+Version: 0.7.4a
 Release: 2
 License: LGPL
 Group: System Environment/Libraries
@@ -29,7 +29,7 @@ applications which have already been linked against centrallix-lib.
 %setup -q
 
 %build
-./configure --prefix=$RPM_BUILD_ROOT/usr --enable-optimization
+./configure --prefix=$RPM_BUILD_ROOT/usr --enable-optimization --with-hardening=low
 make
 
 %install

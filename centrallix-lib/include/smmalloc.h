@@ -19,21 +19,32 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: smmalloc.h,v 1.1 2005/02/06 05:08:01 gbeeley Exp $
+    $Id: smmalloc.h,v 1.2 2005/03/14 20:41:24 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/smmalloc.h,v $
 
     $Log: smmalloc.h,v $
+    Revision 1.2  2005/03/14 20:41:24  gbeeley
+    - changed configuration to allow different levels of hardening (mainly, so
+      asserts can be enabled without enabling the ds checksum stuff).
+    - initial working version of the smmalloc (shared memory malloc) module.
+    - test suite for smmalloc "make test".
+    - results from test suite run on 1.4GHz Athlon, GCC 2.96, RH73
+    - smmalloc not actually tested between two processes yet.
+    - TO-FIX: smmalloc interprocess locking needs to be reworked to prefer
+      spinlocks where doable instead of using sysv semaphores which are SLOW.
+
     Revision 1.1  2005/02/06 05:08:01  gbeeley
     - Adding interface spec for shared memory management
 
  **END-CVSDATA***********************************************************/
 
-#include <types.h>
+#include <ctype.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
 typedef struct _SM_T SmRegion, *pSmRegion;
 typedef void (*pSmFinalizeFn)(void*, size_t);
+typedef int (*pSmFreeReqFn)(pSmRegion, size_t);
 typedef long long SmHandle;
 
 #define SM_HANDLE_NONE		((SmHandle)(0LL))
@@ -54,7 +65,9 @@ void smDestroy(pSmRegion rgn);
 /*** Shared memory management functions ***/
 pSmRegion smInit(void* ptr, size_t size);
 void* smMalloc(pSmRegion rgn, size_t size);
+void* smRealloc(void* ptr, size_t new_size);
 void smSetFinalize(void* ptr, pSmFinalizeFn fn);
+void smSetFreeReq(pSmRegion rgn, pSmFreeReqFn fn);
 void* smLinkTo(void* ptr);
 void smFree(void* ptr);
 void smDeInit(pSmRegion rgn);

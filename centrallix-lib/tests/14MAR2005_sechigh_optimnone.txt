@@ -1,0 +1,11 @@
+Test Name                                                         Ops/sec
+----------------------------------------------------------------  ----------
+BASELINE                                                          273224043
+smmalloc-01 create/destroy region                                 25125
+smmalloc-02 malloc/free 1024 bytes                                158730
+smmalloc-03 malloc/free 1MB, free order = LIFO, size=1K           164527
+smmalloc-04 malloc/free 1MB, free order = FIFO, size=1K           64078
+smmalloc-05 malloc/free 1MB, free order = random, size=1K         141569
+smmalloc-06 malloc/free 1MB, free order=random, size=[1-8192]     132291
+smmalloc-07 reference counting (randomized free order)            287919
+smmalloc-08 block realloc to 512K of 1M - 128 1K blocks           22574
