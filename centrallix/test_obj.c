@@ -5,6 +5,7 @@
 #include "mtask.h"
 #include "mtlexer.h"
 #include "obj.h"
+#include "centrallix.h"
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -48,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.5 2001/11/12 20:43:43 gbeeley Exp $
+    $Id: test_obj.c,v 1.6 2002/02/14 01:05:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.6  2002/02/14 01:05:07  gbeeley
+    Fixed test_obj so that it works with the new config file stuff.
+
     Revision 1.5  2001/11/12 20:43:43  gbeeley
     Added execmethod nonvisual widget and the audio /dev/dsp device obj
     driver.  Added "execmethod" ls__mode in the HTTP network driver.
@@ -80,6 +84,12 @@
  **END-CVSDATA***********************************************************/
 
 void* my_ptr;
+
+
+/*** Instantiate the globals from centrallix.h 
+ ***/
+CxGlobals_t CxGlobals;
+
 
 void
 start(void* v)
@@ -124,11 +134,46 @@ start(void* v)
     char mname[64];
     char mparam[256];
     char* mptr;
+    pFile cxconf;
+    pStructInf mss_conf;
+    char* authmethod;
+    char* authmethodfile;
+    char* logmethod;
+    char* logprog;
+    int log_all_errors;
+
+	/** Load the configuration file **/
+	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
+	if (!cxconf)
+	    {
+	    printf("centrallix: could not open config file '%s'\n", CxGlobals.ConfigFileName);
+	    thExit();
+	    }
+	CxGlobals.ParsedConfig = stParseMsg(cxconf, 0);
+	if (!CxGlobals.ParsedConfig)
+	    {
+	    printf("centrallix: error parsing config file '%s'\n", CxGlobals.ConfigFileName);
+	    thExit();
+	    }
+	fdClose(cxconf, 0);
+
+	/** Init the session handler.  We have to extract the config data for this 
+	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't
+	 ** use the new stparse module's routines.
+	 **/
+	mss_conf = stLookup(CxGlobals.ParsedConfig, "mtsession");
+	if (stAttrValue(stLookup(mss_conf,"auth_method"),NULL,&authmethod,0) < 0) authmethod = "system";
+	if (stAttrValue(stLookup(mss_conf,"altpasswd_file"),NULL,&authmethodfile,0) < 0) authmethodfile = "/usr/local/etc/cxpasswd";
+	if (stAttrValue(stLookup(mss_conf,"log_method"),NULL,&logmethod,0) < 0) logmethod = "stdout";
+	if (stAttrValue(stLookup(mss_conf,"log_progname"),NULL,&logprog,0) < 0) logprog = "centrallix";
+	log_all_errors = 0;
+	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
 
 	/** Initialize the various parts **/
+	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
 	nmInitialize();
 	expInitialize();
-	objInitialize();
+	if (objInitialize() < 0) exit(1);
 	snInitialize();
 	uxdInitialize();
 	sybdInitialize();
@@ -155,7 +200,8 @@ start(void* v)
 	/** Authenticate **/
 	printf("Username: "); gets(user);
 	pwd = getpass("Password: ");
-	mssAuthenticate(user,pwd);
+	if (mssAuthenticate(user,pwd) < 0)
+	    puts("Warning: auth failed, running outside session context.");
 	StdOut = fdOpen("/dev/tty", O_RDWR, 0600);
 
 	/** Open a session **/
@@ -643,7 +689,36 @@ start(void* v)
     }
 
 
-int main()
+int 
+main(int argc, char* argv[])
     {
+    int ch;
+
+	/** Default global values **/
+	strcpy(CxGlobals.ConfigFileName, "/usr/local/etc/centrallix.conf");
+	CxGlobals.QuietInit = 0;
+	CxGlobals.ParsedConfig = NULL;
+    
+	/** Check for config file options on the command line **/
+	while ((ch=getopt(argc,argv,"hc:q")) > 0)
+	    {
+	    switch (ch)
+	        {
+		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
+				CxGlobals.ConfigFileName[255] = '\0';
+				break;
+
+		case 'q':	CxGlobals.QuietInit = 1;
+				break;
+
+		case 'h':	printf("Usage:  test_obj [-c <config-file>]\n");
+				exit(0);
+
+		case '?':
+		default:	printf("Usage:  test_obj [-c <config-file>]\n");
+				exit(1);
+		}
+	    }
+
     mtInitialize(0, start);
     }
