@@ -18,7 +18,7 @@ function eb_update_cursor(eb,val)
     {
     if(eb.cursorCol>val.length);
 	{
-	eb.cursorCol=val.length;
+	eb.cursorCol=0;
 	}
     if(eb.cursorlayer == eb_ibeam)
 	{
@@ -74,7 +74,10 @@ function eb_keyhandler(l,e,k)
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
     if(eb_current.form) eb_current.form.DataNotify(eb_current);
+    adj = 0;
     txt = l.content;
+    var charClip = Math.ceil((l.pageX - l.ContentLayer.pageX) / eb_metric.charWidth);
+    var relPos = l.cursorCol - charClip;
     if (k == 9)
 	{
 	if(l.form) l.form.TabNotify(this)
@@ -82,35 +85,34 @@ function eb_keyhandler(l,e,k)
     if (k >= 32 && k < 127)
 	{
 	newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);
-	eb_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*eb_metric.charWidth, l.ContentLayer.pageY);
 	l.cursorCol++;
-	l.changed=true;
+	if (relPos >= l.charWidth) adj = -eb_metric.charWidth; 
 	}
     else if (k == 8 && l.cursorCol > 0)
 	{
 	newtxt = txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol,txt.length);
 	l.cursorCol--;
-	l.changed=true;
+	if (relPos <= 1 && charClip > 0)
+	    {
+	    if (charClip < l.charWidth) adj = charClip * eb_metric.charWidth;
+	    else adj = l.charWidth * eb_metric.charWidth;
+	    }
+	}
+    else if (k == 127 && l.cursorCol < txt.length)
+	{
+	newtxt = txt.substr(0,l.cursorCol) + txt.substr(l.cursorCol+1,txt.length);
 	}
     else
 	{
 	return true;
 	}
     eb_ibeam.visibility = 'hidden';
-    eb_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*eb_metric.charWidth, l.ContentLayer.pageY);
     eb_settext(l,newtxt);
-    adj = 0;
-    if (eb_ibeam.pageX < l.pageX + 1)
-	adj = l.pageX + 1 - eb_ibeam.pageX;
-    else if (eb_ibeam.pageX > l.pageX + l.clip.width - 1)
-	adj = (l.pageX + l.clip.width - 1) - eb_ibeam.pageX;
-    if (adj != 0)
-	{
-	eb_ibeam.pageX += adj;
-	l.ContentLayer.pageX += adj;
-	l.HiddenLayer.pageX += adj;
-	}
+    l.ContentLayer.pageX += adj;
+    l.HiddenLayer.pageX += adj;
+    eb_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*eb_metric.charWidth, l.ContentLayer.pageY);
     eb_ibeam.visibility = 'inherit';
+    l.changed=true;
     return false;
     }
 
@@ -139,6 +141,8 @@ function eb_deselect()
 	{
 	eb_current.changed=false;
 	}
+    eb_current.ContentLayer.pageX = eb_current.pageX;
+    eb_current.HiddenLayer.pageX = eb_current.pageX;
     eb_current = null;
     return true;
     }
@@ -176,6 +180,7 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	eb_ibeam.document.close();
 	eb_ibeam.resizeTo(1,eb_metric.charHeight);
 	}
+    l.charWidth = Math.floor((l.clip.width-2)/eb_metric.charWidth);
     c1.mainlayer = l;
     c2.mainlayer = l;
     c1.kind = 'eb';
