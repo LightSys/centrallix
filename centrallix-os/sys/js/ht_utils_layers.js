@@ -9,10 +9,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function htutil_tag_images(d,t,l)
+function htutil_tag_images(d,t,l,ml)
     {
     for (i=0; i < d.images.length; i++) {
 	d.images[i].kind = t;
 	d.images[i].layer = l;
+	if (ml) d.images[i].mainlayer = ml;
 	}
     }
