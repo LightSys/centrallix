@@ -11,6 +11,7 @@ centrallix "system/config"
     useragent_config = "##SYSCONFDIR##/useragent.cfg";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/rootnode";
+    iface_dir = "/sys/ifc";	    // this is an OSML path
     
     // Configuration for various modules follows....
 
