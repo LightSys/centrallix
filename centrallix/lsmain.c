@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.29 2003/06/03 20:29:10 gbeeley Exp $
+    $Id: lsmain.c,v 1.30 2003/06/04 00:23:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.30  2003/06/04 00:23:13  gbeeley
+    Turned MT_F_NOYIELD back off because it was causing centrallix to hang
+    on session expire.
+
     Revision 1.29  2003/06/03 20:29:10  gbeeley
     Fix to CSV driver due to uninitialized memory causing a segfault when
     opening CSV files from time to time.
@@ -380,7 +384,7 @@ main(int argc, char* argv[])
 
 	/** Init the multithreading module to start the first thread **/
 	/** 'start' is the name of the function to be the first thread **/
-	mtInitialize(MT_F_NOYIELD, start);
+	mtInitialize(0, start);
 
     return 0; /* never reached */
     }
