@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.25 2004/01/15 14:34:06 jorupp Exp $
+    $Id: centrallix.c,v 1.26 2004/02/24 19:59:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.26  2004/02/24 19:59:31  gbeeley
+    - adding component-declaration widget driver
+    - adding image widget driver
+    - adding app-level presentation hints pseudo-widget driver
+
     Revision 1.25  2004/01/15 14:34:06  jorupp
      * switch to using MTask's signal handlers instead of 'real' signal handlers
 
@@ -522,12 +527,16 @@ cxHtInit()
 	htclInitialize();			/* clock htdrv module */
 	htcaInitialize();			/* calendar module */
 	htsbInitialize();			/* scrollbar module */
+	htimgInitialize();			/* image widget */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
 	htalrtInitialize();			/* alert module */
 	htlblInitialize();			/* label module */
 	httermInitialize();			/* terminal module */
+	hthintInitialize();			/* pres. hints module */
+
+	htcmpdInitialize();			/* component declaration */
 
 	/** Load any htdriver modules **/
 	cx_internal_LoadModules("htdriver");
