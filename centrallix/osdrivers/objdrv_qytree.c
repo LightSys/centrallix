@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.5 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.6 2003/06/04 19:17:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.6  2003/06/04 19:17:44  gbeeley
+    Fixed bug in querytree relating to the use of string query criteria.
+
     Revision 1.5  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -898,7 +901,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 			    break;
 
 			case DATA_T_STRING:
-			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_INTEGER,POD(&sptr)) == 1)
+			    if (objGetAttrValue(qy->ObjInf->LLObj, attrname, DATA_T_STRING,POD(&sptr)) == 1)
 			        {
 				subst_types[n_subst] = -1;
 				len += 6;
