@@ -3,6 +3,9 @@
 /* Location of the centrallix config file */
 #undef CENTRALLIX_CONFIG
 
+/* Define to 1 if you have the `basename' function. */
+#undef HAVE_BASENAME
+
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
 #undef HAVE_DIRENT_H
@@ -24,6 +27,9 @@
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL
+
+/* Define to 1 if you have the <libgen.h> header file. */
+#undef HAVE_LIBGEN_H
 
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
@@ -140,3 +146,6 @@
 
 /* Define for XML support */
 #undef USE_XML
+
+/* Use dynamic loading */
+#undef WITH_DYNAMIC_LOAD

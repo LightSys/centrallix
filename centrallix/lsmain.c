@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#ifdef HAVE_LIBGEN_H
 #include <libgen.h>
+#endif
 #include <unistd.h>
 #include <fcntl.h>
 #ifdef HAVE_CONFIG_H
@@ -51,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.21 2002/08/12 09:16:26 mattphillips Exp $
+    $Id: lsmain.c,v 1.22 2002/08/16 03:09:44 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.22  2002/08/16 03:09:44  jorupp
+     * added the ability to disable the dynamic loading modules -- needed under cygwin
+       -- centrallix now compiles and runs under cygwin (without dynamic loading modules)
+
     Revision 1.21  2002/08/12 09:16:26  mattphillips
     Added -V for version, and more helpful (and standard) usage message.
 
@@ -268,7 +274,11 @@ main(int argc, char* argv[])
 	CxGlobals.ModuleList = NULL;
 
 	/** Check for config file options on the command line **/
+#ifdef HAVE_BASENAME
 	name = basename(argv[0]);
+#else
+	name = argv[0];
+#endif
 	while ((ch=getopt(argc,argv,"Vhdc:q")) > 0)
 	    {
 	    switch (ch)

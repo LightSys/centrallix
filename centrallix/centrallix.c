@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.7 2002/08/12 09:14:28 mattphillips Exp $
+    $Id: centrallix.c,v 1.8 2002/08/16 03:09:44 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.8  2002/08/16 03:09:44  jorupp
+     * added the ability to disable the dynamic loading modules -- needed under cygwin
+       -- centrallix now compiles and runs under cygwin (without dynamic loading modules)
+
     Revision 1.7  2002/08/12 09:14:28  mattphillips
     Use the built-in PACKAGE_VERSION instead of VERSION to get the current version
     number to be more standard.  PACKAGE_VERSION is set by autoconf, but read from
@@ -101,6 +105,7 @@ int CxSupportedInterfaces[] = {1, 0};
 int
 cx_internal_LoadModules(char* type)
     {
+#ifdef WITH_DYNAMIC_LOAD
     pStructInf modules_inf;
     pStructInf one_module;
     char* modtype;
@@ -216,6 +221,7 @@ cx_internal_LoadModules(char* type)
 	    }
 
 	if (!CxGlobals.QuietInit && n_loaded > 0) printf("\n");
+#endif
 
     return 0;
     }
@@ -312,6 +318,31 @@ cxInitialize(void* v)
 	pclInitialize();			/* PCL report generator */
 	htpInitialize();			/* HTML report generator */
 	fxpInitialize();			/* Epson FX report generator */
+
+#ifndef WITH_DYNAMIC_LOAD
+	/** Init the modules being used if dynamic loading is disabled **/
+	
+#ifdef USE_DBL
+	dblInitialize();
+#endif
+
+#ifdef USE_HTTP
+	httpInitialize();
+#endif
+
+#ifdef USE_MIME
+	mimeInitialize();
+#endif
+
+#ifdef USE_SYBASE
+	sybdInitialize();
+#endif
+
+#ifdef USE_XML
+	xmlInitialize();
+#endif
+
+#endif
 
 	/** Load any osdriver and querydriver modules. **/
 	cx_internal_LoadModules("osdriver");

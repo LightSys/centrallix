@@ -97,6 +97,32 @@ AC_DEFUN(CENTRALLIX_OS_DIR,
     ]
 )
 
+dnl Check for dynamic loading
+AC_DEFUN(BUILD_DYNAMIC,
+    [
+	AC_MSG_CHECKING(if dynamic loading is desired)
+	AC_ARG_ENABLE(dynamic-load,
+	    AC_HELP_STRING([--disable-dynamic-load],
+		[disable dynamic loading]
+	    ),
+	    WITH_DYNAMIC_LOAD="$enableval",
+	    WITH_DYNAMIC_LOAD="auto"
+	)
+	if test "$WITH_DYNAMIC_LOAD" = "auto"; then
+	    AC_MSG_RESULT(autodetecting)
+	    AC_MSG_CHECKING(if dynamic loading can be enabled)
+	    dnl This isn't the _correct_ way to check, but it works for cygwin
+	    if test "$HAVE_LIBDL"; then
+		WITH_DYNAMIC_LOAD="yes"
+	    else
+		WITH_DYNAMIC_LOAD="no"
+	    fi
+	    AC_MSG_RESULT($WITH_DYNAMIC_LOAD)
+	else
+	    AC_MSG_RESULT($WITH_DYNAMIC_LOAD)
+	fi
+    ]
+)
 
 dnl Test for the Sybase libraries.
 AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
@@ -167,7 +193,13 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 	    AC_MSG_CHECKING(if Sybase support can be enabled)
 	    if test "$WITH_SYBASE" = "yes"; then
 		AC_DEFINE(USE_SYBASE)
-		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_sybase.so"
+		if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_sybase.so"
+		else
+		    STATIC_CFLAGS="$STATIC_CFLAGS $SYBASE_CFLAGS"
+		    STATIC_LIBS="$STATIC_LIBS $SYBASE_LIBS"
+		    OBJDRIVERS="$OBJDRIVERS objdrv_sybase.o"
+		fi
 		AC_MSG_RESULT(yes)
 	    else
 		AC_MSG_RESULT(no)
@@ -194,7 +226,11 @@ AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
  
 	if test "$WITH_HTTP" = "yes"; then
 	    AC_DEFINE(USE_HTTP)
-	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_http.so"
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_http.so"
+	    else
+		OBJDRIVERS="$OBJDRIVERS objdrv_http.o"
+	    fi
 	    AC_MSG_RESULT(yes)
 	else
 	    AC_MSG_RESULT(no)
@@ -217,7 +253,11 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
  
 	if test "$WITH_MIME" = "yes"; then
 	    AC_DEFINE(USE_MIME)
-	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_mime.so"
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_mime.so"
+	    else
+		OBJDRIVERS="$OBJDRIVERS objdrv_mime.o"
+	    fi
 	    AC_MSG_RESULT(yes)
 	else
 	    AC_MSG_RESULT(no)
@@ -240,7 +280,11 @@ AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
  
 	if test "$WITH_DBL" = "yes"; then
 	    AC_DEFINE(USE_DBL)
-	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_dbl.so"
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_dbl.so"
+	    else
+		OBJDRIVERS="$OBJDRIVERS objdrv_dbl.o"
+	    fi
 	    AC_MSG_RESULT(yes)
 	else
 	    AC_MSG_RESULT(no)
@@ -382,7 +426,13 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 	AC_MSG_CHECKING(if XML support can be enabled)
 	if test "$WITH_XML" = "yes"; then
 	    AC_DEFINE(USE_XML)
-	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_xml.so"
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_xml.so"
+	    else
+		STATIC_CFLAGS="$STATIC_CFLAGS $XML_CFLAGS"
+		STATIC_LIBS="$STATIC_LIBS $XML_LIBS"
+		OBJDRIVERS="$OBJDRIVERS objdrv_xml.o"
+	    fi
 	    AC_MSG_RESULT(yes)
 	else
 	    AC_MSG_RESULT(no)

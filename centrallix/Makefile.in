@@ -82,8 +82,10 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_uxprint.o \
 	    objdrv_qytree.o \
 	    objdrv_datafile.o \
-	    objdrv_audio.o
+	    objdrv_audio.o \
+	    @OBJDRIVERS@
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
+
 XOBJDRIVERMODULES=@OBJDRIVERMODULES@
 OBJDRIVERMODULES=$(patsubst %,osdrivers/%,$(XOBJDRIVERMODULES))
 
@@ -204,9 +206,9 @@ YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
 VERSION=$(shell cat .version)
 
 CXLIBDIR=@CXLIBDIR@
-CFLAGS=$(PROFILE) -I./include -I. @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g
+CFLAGS=$(PROFILE) -I./include -I. @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
-LIBS=@LIBS@ -lCentrallix
+LIBS=@LIBS@ -lCentrallix @STATIC_LIBS@
 
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
@@ -347,18 +349,12 @@ backup:
 osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SYBASE_LIBS@ -o $@
 
-osdrivers/objdrv_http.so: osdrivers/objdrv_http.c
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-
-osdrivers/objdrv_mime.so: osdrivers/objdrv_mime.c
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-
-osdrivers/objdrv_dbl.so: osdrivers/objdrv_dbl.c
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-
 osdrivers/objdrv_xml.so: osdrivers/objdrv_xml.c
 	$(CC) $(CFLAGS) @XML_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @XML_LIBS@ -o $@
 
+%.so: %.c
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+	
 # Dependencies made by "make depend"
 include .depend
 

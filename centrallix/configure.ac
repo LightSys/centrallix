@@ -7,7 +7,7 @@ AC_PREFIX_DEFAULT(/usr/local)
 
 dnl Checks for programs.
 AC_PROG_CC
-CFLAGS=${CFLAGS/-O2}
+CFLAGS="${CFLAGS/-O2} -pg"
 AC_PROG_MAKE_SET
 AC_PROG_AWK
 AC_PATH_PROG([STRIP], [strip], [])
@@ -30,18 +30,21 @@ dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h unistd.h readline/readline.h readline/history.h)
+AC_CHECK_HEADERS(fcntl.h unistd.h readline/readline.h readline/history.h libgen.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_STRUCT_TM
 
 dnl Checks for library functions.
 AC_FUNC_MEMCMP
-AC_CHECK_FUNCS(gethostname mkdir rmdir socket strdup strspn strstr strtod strtol)
+AC_CHECK_FUNCS(gethostname mkdir rmdir socket strdup strspn strstr strtod strtol basename)
 AC_CACHE_SAVE
 
 dnl Readline support
 CENTRALLIX_CHECK_READLINE
+
+dnl Dynamically loaded modules
+BUILD_DYNAMIC
 
 dnl Centrallix specific tests.
 CENTRALLIX_CHECK_CENTRALLIX
@@ -72,4 +75,13 @@ AH_TEMPLATE([USE_LIBXML1], [Define for backward compatibility with libxml1])
 CENTRALLIX_CHECK_XML_OS
 
 AC_SUBST(OBJDRIVERMODULES)
+AC_SUBST(OBJDRIVERS)
+AC_SUBST(STATIC_CFLAGS)
+AC_SUBST(STATIC_LIBS)
+
+dnl Define WITH_DYNAMIC_LOAD in config.h
+if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+    AC_DEFINE(WITH_DYNAMIC_LOAD,1,[Use dynamic loading])
+fi
+
 AC_OUTPUT(Makefile, echo timestamp > stamp-h)
