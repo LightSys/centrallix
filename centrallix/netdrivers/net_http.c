@@ -63,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.47 2004/08/28 06:48:08 jorupp Exp $
+    $Id: net_http.c,v 1.48 2004/08/29 04:19:40 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.48  2004/08/29 04:19:40  jorupp
+     * make the URL rewriting with the client dimensions a bit more robust.
+
     Revision 1.47  2004/08/28 06:48:08  jorupp
      * remove some unneed printfs
      * add a check to make sure we get the right cookie, in case there is one for another application on the same server
@@ -2260,6 +2263,16 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 	fdPrintf(output, "function startup()\n"
 			 "    {\n"
 			 "    var loc = window.location.href;\n"
+			 "    var re1 = new RegExp('cx__[^&]*');\n"
+			 "    var re2 = new RegExp('([?&])&*');\n"
+			 "    while(loc.match(re1))\n"
+			 "        {\n"
+			 "        loc = loc.replace(re1,'');\n"
+			 "        }\n"
+			 "    while(loc.match(re2))\n"
+			 "        {\n"
+			 "        loc = loc.replace(re2,'');\n"
+			 "        }\n"
 			 "    if (loc.indexOf('?') >= 0)\n"
 			 "        loc += '&';\n"
 			 "    else\n"
