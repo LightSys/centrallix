@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.27 2004/08/04 20:03:09 mmcgill Exp $
+    $Id: htdrv_pane.c,v 1.28 2004/08/15 03:55:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.28  2004/08/15 03:55:38  gbeeley
+    - set overflow to hidden on pane div's.  Can someone PLEASE explain to me
+      why on earth IE changes its box model for a div when you set overflow to
+      hidden?  Does W3C call for that???
+
     Revision 1.27  2004/08/04 20:03:09  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -299,6 +304,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     char* nptr;
     char* c1;
     char* c2;
+    int box_offset;
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
@@ -350,6 +356,12 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    {
 	    strcpy(main_bg,"");
 	    }
+
+	/** figure out box offset fudge factor... stupid box model... **/
+	if (s->Capabilities.CSSBox)
+	    box_offset = 1;
+	else
+	    box_offset = 0;
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -408,12 +420,12 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    {
 	    if (style == 2) /* flat */
 		{
-		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 		htrAddStylesheetItem_va(s,"\t#pn%dmain { %s}\n",id,main_bg);
 		}
 	    else /* lowered or raised */
 		{
-		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w-2,h-2,z);
+		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
 		htrAddStylesheetItem_va(s,"\t#pn%dmain { border-style: solid; border-width: 1px; border-color: %s %s %s %s; %s}\n",id,c1,c2,c2,c1,main_bg);
 		}
 	    }
