@@ -56,10 +56,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.7 2002/08/04 20:16:13 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.8 2002/08/04 20:25:16 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.8  2002/08/04 20:25:16  jorupp
+     * fixed a bug with the retrieving of the value of the attribute for the purpose of determining the type
+        -- was causing the type to be returned as integer when it should have string
+
     Revision 1.7  2002/08/04 20:16:13  jorupp
      * changed from name/0, name/1 style naming to name|0, name|1 -- hopefully the documentation explains it
      * removed the code that makes outer_type return content_type
@@ -859,14 +863,18 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if(pHE->type==XML_ATTR)
 		{
 		ap=(xmlAttrPtr)pHE->ptr;
-		ptr2=(char*)xml_internal_GetChildren(ap);
+		/*ptr2=(char*)xml_internal_GetChildren(ap);*/
+		/* I consider this a hack -- I can't figure out where to get the text! */
+		ptr2=xmlGetProp(ap->parent,ap->name);
 		if(ptr2)
 		    {
 		    (void)strtol(ptr2,&ptr,10);
 		    if(ptr && !*ptr)
 			{
+			free(ptr2);
 			return DATA_T_INTEGER;
 			}
+		    free(ptr2);
 		    return DATA_T_STRING;
 		    }
 		}
