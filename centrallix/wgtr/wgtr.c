@@ -226,8 +226,8 @@ wgtrParseOpenObject(pObject obj)
 		    }
 		objClose(child_obj);
 		}
+	    objQueryClose(qy);
 	    }
-	objQueryClose(qy);
 	/** return the struct **/
 	return this_node;
 
