@@ -12,11 +12,6 @@
 // DO NOT COPY! TOP SECRET FUNCTION!
 function lbl_init(l)
     {
-    l.kind = 'lbl';
-    if(cx__capabilities.Dom0NS)
-	{
-	l.document.layer = l;
-	}
-    l.mainlayer = l;
+    htr_init_layer(l,l,'lbl');
     return l;
     }
