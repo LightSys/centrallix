@@ -50,7 +50,7 @@ char* TypeStrings[] =
     "video"
     };
 
-/*  libmime_ParseMessage
+/*  libmime_ParseHeader
 **
 **  Parses a message (located at obj->Prev) starting at the "start" byte, and ending
 **  at the "end" byte.  This creates the MimeMsg data structure and recursively
@@ -59,14 +59,15 @@ char* TypeStrings[] =
 **  and end reading.
 */
 int
-libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end)
+libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end)
     {
     pLxSession lex;
-    int flag, toktype, alloc, err;
+    int flag, toktype, alloc, err, size;
     XString xsbuf;
-    char *hdrnme, *hdrbdy;
+    char *hdrnme, *hdrbdy, *buf;
 
     /** Initialize the message structure **/
+    msg->ContentLength = 0;
     msg->ContentDisp[0] = 0;
     msg->ContentDispFilename[0] = 0;
     msg->ContentMainType = 0;
@@ -103,7 +104,7 @@ libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end)
 	xsInit(&xsbuf);
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
 	xsRTrim(&xsbuf);
-	//if (MIME_DEBUG) printf("MIME: Got Token (%s)\n", xsbuf.String);
+	if (MIME_DEBUG) printf("MIME: Got Token (%s)\n", xsbuf.String);
 	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
 	/* otherwise parse the header elements */
 	if (!strlen(xsbuf.String))
@@ -121,11 +122,12 @@ libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end)
 	    hdrnme = (char*)nmMalloc(64);
 	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
 	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String));
-	    if (libmime_ParseHeader(hdrbdy, hdrnme) == 0)
+	    if (libmime_ParseHeaderElement(hdrbdy, hdrnme) == 0)
 		{
 		if      (!strcasecmp(hdrnme, "Content-Type")) err = libmime_SetContentType(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Content-Disposition")) err = libmime_SetContentDisp(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Content-Transfer-Encoding")) err = libmime_SetTransferEncoding(msg, hdrbdy);
+		else if (!strcasecmp(hdrnme, "Content-Length")) err = libmime_SetContentLength(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "To")) err = libmime_SetTo(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "Cc")) err = libmime_SetCc(msg, hdrbdy);
 		else if (!strcasecmp(hdrnme, "From")) err = libmime_SetFrom(msg, hdrbdy);
@@ -146,10 +148,27 @@ libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end)
 	    }
 	}
     xsDeInit(&xsbuf);
-    mlxCloseSession(lex);
     msg->HdrSeekStart = start;
-    //msg->MsgSeekStart = mlxGetOffset(lex);
+    msg->MsgSeekStart = mlxGetOffset(lex) + 1;
 
+    flag = 1;
+    start = 0;
+    mlxSetOffset(lex, msg->MsgSeekStart);
+    while (flag)
+	{
+	size = objRead(obj->Prev, buf, MIME_BUFSIZE, 0, 0);
+	start += size;
+	if (!size)
+	    {
+	    flag = 0;
+	    }
+	else
+	    {
+	    }
+	}
+    msg->MsgSeekEnd = size;
+
+    mlxCloseSession(lex);
     return 0;
     }
 
@@ -204,7 +223,6 @@ libmime_SetMailer(pMimeMsg msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("MIME Parser (X-Mailer)\n");
 	printf("  X-MAILER    : \"%s\"\n", msg->Mailer);
 	}
     return 0;
@@ -223,7 +241,6 @@ libmime_SetMIMEVersion(pMimeMsg msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("MIME Parser (MIME-Version)\n");
 	printf("  MIME-VERSION: \"%s\"\n", msg->MIMEVersion);
 	}
     return 0;
@@ -262,7 +279,6 @@ libmime_SetSubject(pMimeMsg msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("MIME Parser (Subject)\n");
 	printf("  SUBJECT     : \"%s\"\n", msg->Subject);
 	}
 
@@ -314,6 +330,23 @@ libmime_SetTo(pMimeMsg msg, char *buf)
     return 0;
     }
 
+/*  libmime_SetContentLength
+**
+**  Parses the "Content-Length" header element and fills in the MimeMsg data structure
+**  with the data accordingly.  If certain elements are not there, defaults are used.
+*/
+int
+libmime_SetContentLength(pMimeMsg msg, char *buf)
+    {
+    msg->ContentLength = atoi(buf);
+
+    if (MIME_DEBUG)
+	{
+	printf("  CONTENT-LEN : %d\n", msg->ContentLength);
+	}
+    return 0;
+    }
+
 /*  libmime_SetTransferEncoding
 **
 **  Parses the "Content-Transfer-Encoding" header element and fills in the MimeMsg data structure
@@ -327,8 +360,7 @@ libmime_SetTransferEncoding(pMimeMsg msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("MIME Parser (Content-Transfer-Encoding)\n");
-	printf("  TRANSFER ENCODING: \"%s\"\n", msg->TransferEncoding);
+	printf("  TRANS-ENC   : \"%s\"\n", msg->TransferEncoding);
 	}
     return 0;
     }
@@ -445,8 +477,7 @@ libmime_SetContentType(pMimeMsg msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("MIME Parser (Content-Type)\n");
-	printf("  TYPE:       : \"%s\"\n", TypeStrings[msg->ContentMainType]);
+	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType]);
 	printf("  SUBTYPE     : \"%s\"\n", msg->ContentSubType);
 	printf("  BOUNDARY    : \"%s\"\n", msg->Boundary);
 	printf("  NAME        : \"%s\"\n", msg->PartName);
@@ -459,7 +490,7 @@ libmime_SetContentType(pMimeMsg msg, char *buf)
 
 /*
 **  int
-**  libmime_ParseHeader(char* buf, char* hdr);
+**  libmime_ParseHeaderElement(char* buf, char* hdr);
 **     Parameters:
 **         (char*) buf     A string of characters with no CRLF's in it.  This
 **                         string should represent the whole header, including any
@@ -487,7 +518,7 @@ libmime_SetContentType(pMimeMsg msg, char *buf)
 */
 
 int
-libmime_ParseHeader(char *buf, char* hdr)
+libmime_ParseHeaderElement(char *buf, char* hdr)
     {
     int count=0, state=0;
     char *ptr;

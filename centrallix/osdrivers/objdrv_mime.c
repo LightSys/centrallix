@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.8 2002/08/12 19:27:17 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.9 2002/08/14 14:24:18 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.9  2002/08/14 14:24:18  lkehresman
+    Coded the mimeRead() function so that content can be read from a message.
+
     Revision 1.8  2002/08/12 19:27:17  lkehresman
     Split the MIME support out into separate files that are now located in
     the utility/mime/ directory.  This will help keep the MIME driver nice
@@ -134,6 +137,7 @@ typedef struct
     char*	AttrValue; /* GetAttrValue has to return a refence to memory that won't be free()ed */
     pMimeMsg	Message;
     int		NextAttr;
+    int		InternalSeek;
     }
     MimeData, *pMimeData;
 
@@ -155,33 +159,28 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     if (MIME_DEBUG) fprintf(stderr, "\n");
     if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
     if (MIME_DEBUG) fprintf(stderr, "objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
-    
 	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
+
     /*
     **  Handle the content-type: message/rfc822
     */
     if (!strcasecmp(systype->Name, "message/rfc822"))
 	{
-
 	/** Allocate and initialize the MIME structure **/
 	inf = (pMimeData)nmMalloc(sizeof(MimeData));
 	msg = (pMimeMsg)nmMalloc(sizeof(MimeMsg));
 	if (!inf) return NULL;
 	memset(inf,0,sizeof(MimeData));
-
 	/** Set object parameters **/
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
 	inf->Message = msg;
 	inf->Obj = obj;
 	inf->Mask = mask;
-	if (libmime_ParseMessage(obj, msg, 0, 0) < 0)
+	inf->InternalSeek = 0;
+	if (libmime_ParseHeader(obj, msg, 0, 0) < 0)
 	    {
 	    if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error somewhere so I'm returning NULL from mimeOpen().\n");
 	    return NULL;
-	    }
-
-	if (strstr(inf->Message->MIMEVersion, "1.0"))
-	    {
 	    }
 	}
 
@@ -195,10 +194,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;
-
     if(MIME_DEBUG) printf("objdrv_mime.c is taking: (%i,%i,%i) %s\n",obj->SubPtr,
 	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
-
     return (void*)inf;
     }
 
@@ -247,7 +244,18 @@ mimeDelete(pObject obj, pObjTrxTree* oxt)
 int
 mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    return 0;
+    int size;
+    pMimeData inf = (pMimeData)inf_v;
+
+    if (!offset && !inf->InternalSeek)
+	inf->InternalSeek = inf->Message->MsgSeekStart;
+    else if (offset)
+	inf->InternalSeek = inf->Message->MsgSeekStart + offset;
+
+    size = objRead(inf->Obj->Prev, buffer, maxcnt, inf->InternalSeek, FD_U_SEEK);
+    inf->InternalSeek += size;
+
+    return size;
     }
 
 

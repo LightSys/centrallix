@@ -45,6 +45,7 @@ typedef struct
 /** information structure for MIME msg **/
 typedef struct _MM
     {
+    int		ContentLength;
     int		ContentMainType;
     char	ContentSubType[80];
     char	ContentDisp[80];
@@ -72,7 +73,7 @@ typedef struct _MM
 extern char* TypeStrings[];
 
 #define MIME_DEBUG            0
-#define MIME_DEBUG_ADDR       1
+#define MIME_DEBUG_ADDR       0
 
 #define MIME_ST_NORM          0
 #define MIME_ST_QUOTE         1
@@ -83,8 +84,10 @@ extern char* TypeStrings[];
 #define MIME_ST_ADR_MAILBOX   1
 #define MIME_ST_ADR_DISPLAY   2
 
+#define MIME_BUFSIZE          64
+
 /** mime_parse.c **/
-int libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end);
+int libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end);
 int libmime_ParseHeaderElement(char *buf, char *element);
 int libmime_LoadExtendedHeader(pMimeMsg msg, pXString xsbuf, pLxSession lex);
 int libmime_SetMIMEVersion(pMimeMsg msg, char *buf);
