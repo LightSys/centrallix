@@ -11,7 +11,11 @@
 #include "mtsession.h"
 /** module definintions **/
 #include "centrallix.h"
+#ifdef USE_LIBXML1
+#include <gnome-xml/parser.h>
+#else
 #include <libxml/parser.h>
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -46,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.1 2002/07/29 01:34:52 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.2 2002/07/31 16:20:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.2  2002/07/31 16:20:44  gbeeley
+    Added libxml 1.x compatibility.  Define USE_LIBXML1 in order to make it
+    work.  This involved primarily changing the way that children were
+    referenced from an XML node.  See http://xmlsoft.org/upgrade.html for
+    details on the differences between libxml 1.x and 2.x.  XML driver now
+    works on legacy RH 6.2 systems.
+
     Revision 1.1  2002/07/29 01:34:52  jorupp
      * initial commit of XML support
 
@@ -183,6 +194,22 @@ struct
     }
     XML_INF;
 
+
+/*** xml_internal_GetChildren - obtains a reference to the children/childs
+ *** object in an XML tree structure.  libxml 1.x called it "childs" [sic]
+ *** while libxml 2.x calls it "children".
+ ***/
+xmlNodePtr
+xml_internal_GetChildren(xmlNodePtr parent)
+    {
+#ifdef USE_LIBXML1
+    return parent->childs;
+#else
+    return parent->children;
+#endif
+    }
+
+
 #if 0
 /*** xml_internal_DetermineType - determine the object type being opened and
  *** setup the table, row, etc. pointers. 
@@ -243,7 +270,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
     if(obj->Pathname->nElements<obj->SubPtr+obj->SubCnt)
 	return;
     
-    p=inf->CurNode->children;
+    p= xml_internal_GetChildren(inf->CurNode);
     if(p)
 	{
 	int i=0; /* Number of nodes that match */
@@ -313,7 +340,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 		    {
 		    /** there was only one match, and there wasn't a number at the next level
 		     **  -- return the one match **/
-		    p=inf->CurNode->children;
+		    p=xml_internal_GetChildren(inf->CurNode);
 		    do
 			{
 			if(!strcmp(p->name,searchElement))
@@ -379,7 +406,9 @@ xmlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** Set object params. **/
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
 
+#ifndef USE_LIBXML1
 	xmlKeepBlanksDefault (0);
+#endif
 	/** parse the document **/
 	ptr=malloc(XML_BLOCK_SIZE);
 	ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
@@ -526,7 +555,7 @@ xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     int i;
 
     /** get the data from the tree **/
-    buf=xmlNodeListGetString(inf->CurNode->doc,inf->CurNode->xmlChildrenNode,1);
+    buf=xmlNodeListGetString(inf->CurNode->doc,xml_internal_GetChildren(inf->CurNode),1);
 
     if(!buf)
 	return -1;
@@ -584,7 +613,7 @@ xmlOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    /** we're returning element names, not individual elements **/
 	    xmlNodePtr p;
-	    p=inf->CurNode->children;
+	    p=xml_internal_GetChildren(inf->CurNode);
 	    qy->Elements=(pXHashTable)nmMalloc(sizeof(XHashTable));
 	    memset(qy->Elements, 0, sizeof(XHashTable));
 	    xhInit(qy->Elements,17,0);
@@ -637,7 +666,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	do
 	    {
 	    if(!qy->NextNode)
-		qy->NextNode=qy->Data->CurNode->children;
+		qy->NextNode=xml_internal_GetChildren(qy->Data->CurNode);
 	    else
 		qy->NextNode=qy->NextNode->next;
 	    if(!qy->NextNode) 
@@ -767,7 +796,7 @@ xml_internal_BuildSubNodeHashTable(pXmlData inf)
 	/** if we've built this once already, there's no need to build it all over again... **/
 	/**   we're noting element names, not individual elements **/
 	/**   in GetNextAttr, we'll only use records from here where the count was 1 **/
-	p=inf->CurNode->children;
+	p=xml_internal_GetChildren(inf->CurNode);
 	inf->Elements=(pXHashTable)nmMalloc(sizeof(XHashTable));
 	memset(inf->Elements, 0, sizeof(XHashTable));
 	xhInit(inf->Elements,17,sizeof(int*));
@@ -846,11 +875,11 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	if(inf->Elements && (pHE=(int*)xhLookup(inf->Elements,attrname)) && *pHE==1)
 	    {
 	    xmlNodePtr p;
-	    p=inf->CurNode->children;
+	    p=xml_internal_GetChildren(inf->CurNode);
 	    while(p && strcmp(p->name,attrname)) p=p->next;
 	    if(p)
 		{
-		ptr=xmlNodeListGetString(p->doc,p->xmlChildrenNode,1);
+		ptr=xmlNodeListGetString(p->doc,xml_internal_GetChildren(p),1);
 		if(ptr)
 		    {
 		    strncpy(inf->AttrValue,ptr,XML_ATTR_SIZE);
@@ -943,7 +972,7 @@ xmlGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 	/** Set the current attribute. **/
 	inf->CurAttr = 0;
 	inf->CurXmlAttr=inf->CurNode->properties;
-	inf->CurSubNode=inf->CurNode->children;
+	inf->CurSubNode=xml_internal_GetChildren(inf->CurNode);
 
 	/** Return the next one. **/
 	ptr = xmlGetNextAttr(inf_v, oxt);
