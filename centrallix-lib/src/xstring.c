@@ -26,10 +26,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.2 2001/10/03 15:31:32 gbeeley Exp $
+    $Id: xstring.c,v 1.3 2001/10/03 15:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.3  2001/10/03 15:48:09  gbeeley
+    Added xsWrite() function to mimic fdWrite/objWrite for XStrings.
+
     Revision 1.2  2001/10/03 15:31:32  gbeeley
     Added xsPrintf and xsConcatPrintf functions to the xstring library.
     They currently support %s and %d with field width and precision.
@@ -334,6 +337,40 @@ xsPrintf(pXString this, char* fmt, ...)
 	va_end(vl);
 
     return 0;
+    }
+
+
+/*** xsWrite - writes data into an XString using the standard fdWrite/
+ *** objWrite type of API.  This function can thus be used as a 
+ *** write_fn for those functions that require it (such as the 
+ *** expGenerateText() function).  WARNING: XStrings can hold
+ *** more or less unlimited data.  Don't use this function if the
+ *** calling API might write nearly unlimited data to it.
+ ***/
+int
+xsWrite(pXString this, char* buf, int len, int offset, int flags)
+    {
+
+	/** If offset not specified, just a simple concat. **/
+	if (!(flags & XS_U_SEEK))
+	    {
+	    xsConcatenate(this, buf, len);
+	    }
+	else
+	    {
+	    /** Check to see if end is overflowed. **/
+	    if (offset+len > this->Length)
+		{
+		xsCheckAlloc(this, (offset+len) - this->Length);
+		this->Length = offset+len;
+		this->String[this->Length] = '\0';
+		}
+	    
+	    /** Copy the data to the appropriate string position **/
+	    memcpy(this->String + offset, buf, len);
+	    }
+
+    return len;
     }
 
 

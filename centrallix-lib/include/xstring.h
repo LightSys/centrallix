@@ -20,10 +20,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.2 2001/10/03 15:31:31 gbeeley Exp $
+    $Id: xstring.h,v 1.3 2001/10/03 15:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.3  2001/10/03 15:48:09  gbeeley
+    Added xsWrite() function to mimic fdWrite/objWrite for XStrings.
+
     Revision 1.2  2001/10/03 15:31:31  gbeeley
     Added xsPrintf and xsConcatPrintf functions to the xstring library.
     They currently support %s and %d with field width and precision.
@@ -59,6 +62,9 @@ int xsCopy(pXString this, char* text, int len);
 char* xsStringEnd(pXString this);
 int xsPrintf(pXString this, char* fmt, ...);
 int xsConcatPrintf(pXString this, char* fmt, ...);
+int xsWrite(pXString this, char* buf, int len, int offset, int flags);
+
+#define XS_U_SEEK	2
 
 #endif /* _XSTRING_H */
 
