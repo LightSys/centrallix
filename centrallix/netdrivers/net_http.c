@@ -63,10 +63,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.52 2004/08/30 03:18:20 gbeeley Exp $
+    $Id: net_http.c,v 1.53 2004/12/31 04:37:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.53  2004/12/31 04:37:26  gbeeley
+    - oops - need a pragma no-cache on the execmethod call
+    - pass error and null information on attributes to the client
+
     Revision 1.52  2004/08/30 03:18:20  gbeeley
     - directory indexing (default document) now supported via net_http.
     - need some way to make objOpen less noisy when we *know* that it is OK
@@ -1538,8 +1542,8 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 
 	/** Write the HTML output. **/
 	xsInit(&xs);
-	xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>", 
-		tgt, attrname, hints.String, coltypenames[type]);
+	xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>%s:", 
+		tgt, attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
 	if (encode)
 	    nht_internal_Escape(&xs, dptr);
 	else
@@ -2740,6 +2744,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__methodname");
 	    find_inf2 = stLookup_ne(url_inf,"ls__methodparam");
+	    fdPrintf(conn, "Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
 	    if (!find_inf || !find_inf2)
 	        {
 		mssError(1,"NHT","Invalid call to execmethod - requires name and param");
