@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.11 2003/06/05 04:22:53 jorupp Exp $
+    $Id: mtask.h,v 1.12 2004/02/24 05:09:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.12  2004/02/24 05:09:10  gbeeley
+    - fixed error in mtask's handling of group id.
+    - renamed WRCACHE/RDCACHE to WRBUF/RDBUF.
+
     Revision 1.11  2003/06/05 04:22:53  jorupp
      * added support for mTask-based signal handlers
        - go ahead greg -- pick apart my implimentation.....
@@ -218,9 +222,9 @@ typedef struct _FD
 #define FD_F_WRERR	8		/* FD cannot be written -- err/eof */
 #define FD_F_RD		16		/* FD open for reading */
 #define FD_F_WR		32		/* FD open for writing */
-#define FD_UF_WRCACHE	64		/* Enable write-cache buffering */
-#define FD_UF_RDCACHE	128		/* Enable read-cache buffering */
-#define FD_UF_GZIP		256		/* Enable Gzip compression */
+#define FD_UF_WRBUF	64		/* Enable write buffering */
+#define FD_UF_RDBUF	128		/* Enable read buffering */
+#define FD_UF_GZIP	256		/* Enable Gzip compression */
 #define FD_F_UDP	512		/* is a UDP socket */
 #define FD_F_CONNECTED	1024		/* is a 'connected' UDP socket */
 

@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.22 2003/06/05 04:22:54 jorupp Exp $
+    $Id: mtask.c,v 1.23 2004/02/24 05:09:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.23  2004/02/24 05:09:10  gbeeley
+    - fixed error in mtask's handling of group id.
+    - renamed WRCACHE/RDCACHE to WRBUF/RDBUF.
+
     Revision 1.22  2003/06/05 04:22:54  jorupp
      * added support for mTask-based signal handlers
        - go ahead greg -- pick apart my implimentation.....
@@ -1245,8 +1249,9 @@ mtSched()
 	    }
 	if (lowest_run_thr->GroupID != MTASK.CurGroupID)
 	    {
-	    if (MTASK.CurGroupID != 0) setegid(0);
+	    if (MTASK.CurUserID != 0) seteuid(0);
 	    if (lowest_run_thr->GroupID != 0) setegid(lowest_run_thr->GroupID);
+	    if (MTASK.CurUserID != 0) seteuid(MTASK.CurUserID);
 	    MTASK.CurGroupID = lowest_run_thr->GroupID;
 	    }
 
@@ -1852,7 +1857,7 @@ thSetGroupID(pThread thr, int new_gid)
 	if (MTASK.CurrentThread->UserID != 0) return -1;
 
 	/** Switch to it. **/
-	if (thr->GroupID != new_gid)
+	if (MTASK.CurGroupID != new_gid)
 	    {
 	    setegid(new_gid);
 	    MTASK.CurGroupID = new_gid;
@@ -1968,17 +1973,17 @@ fdSetOptions(pFile filedesc, int options)
     {
     int old_options;
     old_options = filedesc->Flags;
-    filedesc->Flags |= (options & (FD_UF_RDCACHE | FD_UF_WRCACHE | FD_UF_GZIP));
+    filedesc->Flags |= (options & (FD_UF_RDBUF | FD_UF_WRBUF | FD_UF_GZIP));
 #ifdef HAVE_LIBZ
-    if ((old_options & FD_UF_WRCACHE) && (options & FD_UF_GZIP))
+    if ((old_options & FD_UF_WRBUF) && (options & FD_UF_GZIP))
 	{
 	if (filedesc->WrCacheBuf && filedesc->WrCacheLen > 0)
 	    {
-	    filedesc->Flags &= ~(FD_UF_WRCACHE | FD_UF_GZIP);
+	    filedesc->Flags &= ~(FD_UF_WRBUF | FD_UF_GZIP);
 	    fdWrite(filedesc, filedesc->WrCacheBuf, filedesc->WrCacheLen, 0, FD_U_PACKET);
 	    filedesc->WrCacheLen = 0;
 	    filedesc->WrCachePtr = filedesc->WrCacheBuf;
-	    filedesc->Flags |= (FD_UF_WRCACHE | FD_UF_GZIP);
+	    filedesc->Flags |= (FD_UF_WRBUF | FD_UF_GZIP);
 	    }
 	}
 
@@ -2000,10 +2005,10 @@ fdUnSetOptions(pFile filedesc, int options)
     int old_options;
 
     	old_options = filedesc->Flags;
-        filedesc->Flags &= ~(options & (FD_UF_RDCACHE | FD_UF_WRCACHE | FD_UF_GZIP));
+        filedesc->Flags &= ~(options & (FD_UF_RDBUF | FD_UF_WRBUF | FD_UF_GZIP));
     	
 	/** Make sure we flush the write-cache. **/
-	if ((old_options & FD_UF_WRCACHE) && (options & FD_UF_WRCACHE))
+	if ((old_options & FD_UF_WRBUF) && (options & FD_UF_WRBUF))
 	    {
 	    if (filedesc->WrCacheBuf && filedesc->WrCacheLen > 0)
 	        {
@@ -2331,7 +2336,7 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 	    return fd_internal_WritePkt(filedesc, buffer, length, offset, flags & ~FD_U_PACKET);
 
 	/** Allocate the buffer? **/
-	if ((filedesc->Flags & FD_UF_WRCACHE) && filedesc->WrCacheBuf == NULL)
+	if ((filedesc->Flags & FD_UF_WRBUF) && filedesc->WrCacheBuf == NULL)
 	    {
 	    filedesc->WrCacheBuf = (char*)nmMalloc(MT_FD_CACHE_SIZE);
 	    filedesc->WrCachePtr = filedesc->WrCacheBuf;
@@ -2341,15 +2346,15 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 	/** If seek set, flush the buffer **/
 	if ((flags & FD_U_SEEK) && filedesc->WrCacheBuf && filedesc->WrCacheLen > 0)
 	    {
-	    filedesc->Flags &= ~FD_UF_WRCACHE;
+	    filedesc->Flags &= ~FD_UF_WRBUF;
 	    fdWrite(filedesc, filedesc->WrCacheBuf, filedesc->WrCacheLen, 0, FD_U_PACKET);
 	    filedesc->WrCacheLen = 0;
 	    filedesc->WrCachePtr = filedesc->WrCacheBuf;
-	    filedesc->Flags |= FD_UF_WRCACHE;
+	    filedesc->Flags |= FD_UF_WRBUF;
 	    }
 
 	/** Cache mode writes? **/
-	if ((filedesc->Flags & FD_UF_WRCACHE) && !(flags & FD_U_SEEK))
+	if ((filedesc->Flags & FD_UF_WRBUF) && !(flags & FD_U_SEEK))
 	    {
 	    /** Will it fit in the buffer? **/
 	    if (MT_FD_CACHE_SIZE - filedesc->WrCacheLen >= length)
@@ -2363,11 +2368,11 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 	    /** Ok, no fit.  Write the buffer first. **/
 	    if (filedesc->WrCacheLen > 0)
 	        {
-		filedesc->Flags &= ~FD_UF_WRCACHE;
+		filedesc->Flags &= ~FD_UF_WRBUF;
 		fdWrite(filedesc, filedesc->WrCacheBuf, filedesc->WrCacheLen, 0, FD_U_PACKET);
 		filedesc->WrCacheLen = 0;
 		filedesc->WrCachePtr = filedesc->WrCacheBuf;
-		filedesc->Flags |= FD_UF_WRCACHE;
+		filedesc->Flags |= FD_UF_WRBUF;
 		}
 
 	    /** Now will it fit? **/
@@ -2380,9 +2385,9 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 		}
 
 	    /** Ok, won't ever fit.  Write it as one big block **/
-	    filedesc->Flags &= ~FD_UF_WRCACHE;
+	    filedesc->Flags &= ~FD_UF_WRBUF;
 	    fdWrite(filedesc, buffer, length, 0, FD_U_PACKET);
-	    filedesc->Flags |= FD_UF_WRCACHE;
+	    filedesc->Flags |= FD_UF_WRBUF;
 	    return length;
 	    }
 
@@ -2540,7 +2545,7 @@ fdClose(pFile filedesc, int flags)
 #endif
     
 	/** Need to flush the WrCacheBuf? **/
-	fdUnSetOptions(filedesc, FD_UF_WRCACHE);
+	fdUnSetOptions(filedesc, FD_UF_WRBUF);
 
 #ifdef MTASK_DEBUG
 	if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
