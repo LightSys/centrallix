@@ -95,9 +95,9 @@ wholePage "widget/page"
 		    {
 		    x=250;y=5;
 		    width=20; height=20;
-		    image = "sys/images/ico16aa.gif";
-		    pointimage = "sys/images/ico16ab.gif";
-		    clickimage = "sys/images/ico16ac.gif";
+		    image = "/sys/images/ico16aa.gif";
+		    pointimage = "/sys/images/ico16ab.gif";
+		    clickimage = "/sys/images/ico16ac.gif";
 		    cn1 "widget/connector"
 			{
 			event="Click";
@@ -109,9 +109,9 @@ wholePage "widget/page"
 		    {
 		    x=270;y=5;
 		    width=20; height=20;
-		    image = "sys/images/ico16ba.gif";
-		    pointimage = "sys/images/ico16bb.gif";
-		    clickimage = "sys/images/ico16bc.gif";
+		    image = "/sys/images/ico16ba.gif";
+		    pointimage = "/sys/images/ico16bb.gif";
+		    clickimage = "/sys/images/ico16bc.gif";
 		    cn1 "widget/connector"
 			{
 			event="Click";
@@ -123,9 +123,9 @@ wholePage "widget/page"
 		    {
 		    x=290;y=5;
 		    width=20; height=20;
-		    image = "sys/images/ico16ca.gif";
-		    pointimage = "sys/images/ico16cb.gif";
-		    clickimage = "sys/images/ico16cc.gif";
+		    image = "/sys/images/ico16ca.gif";
+		    pointimage = "/sys/images/ico16cb.gif";
+		    clickimage = "/sys/images/ico16cc.gif";
 		    cn1 "widget/connector"
 			{
 			event="Click";
@@ -137,9 +137,9 @@ wholePage "widget/page"
 		    {
 		    x=310;y=5;
 		    width=20; height=20;
-		    image = "sys/images/ico16da.gif";
-		    pointimage = "sys/images/ico16db.gif";
-		    clickimage = "sys/images/ico16dc.gif";
+		    image = "/sys/images/ico16da.gif";
+		    pointimage = "/sys/images/ico16db.gif";
+		    clickimage = "/sys/images/ico16dc.gif";
 		    cn1 "widget/connector"
 			{
 			event="Click";
