@@ -1,0 +1,16 @@
+This is the license for the /sys directory and its contents (images
+and javascript files).  Note that the /samples directory in this
+package and other Centrallix components are under different 
+licenses.  See the LICENSE or LICENSE.txt files in each package for
+more information.
+
+This library is made available under the GNU Lesser General Public
+License, version 2.1.  See the file "COPYING" provided with this
+library in the /sys directory for more details.
+
+Copyright (C) 1998-2002 LightSys Technology Services, Inc.
+
+You may download the source to this library at:
+
+http://centrallix.sourceforge.net/
+
