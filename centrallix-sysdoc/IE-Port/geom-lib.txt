@@ -1,0 +1,321 @@
+Centrallix Geometry Library
+Author: Jason Yip
+Date: 2/26/2004
+
+This geometry library is written to solve all the cross browser problems between Internet Explorer and Netscape. By using the APIs provided by this library and include the appropiate file (i.e. ht_gemo_dom0ie.js for Internet Explorer; ht_gemo_dom0ns.js for Netscape or Geko). Centrallix should be able to handle this for you, but it is always good to have this concept in mind.
+
+The global function names are the same in the IE and NS library, so by using this library your javascript code can write once and use anywhere (assume that you have the right js file included).
+
+The description of all the APIs are as follows (note that I used some C-style function declaration for clarity). Some of the definition are derived from Netscape's Javascript 1.3 reference.
+
+Given that a clipping layer can be specified with:
+rect:clip(top, right, bottom, left)
+
+***************************************************************************************************************
+int getClipWidth(l);
+
+input: l - a layer reference
+output: _width - the clip width
+
+This function takes a reference of a layer and returns the width of the clipping layer in pixels.
+
+NS Equivalence: l.clip.width
+
+****************************************************************************************************************
+void setClipWidth(l, value);
+
+input: l - a layer reference
+input: value - the new clip width
+
+This function takes a reference of a layer and a new value of the width. It sets the dimension of the clipping layer to the new width.
+
+NS Equivalence: l.clip.width = value
+
+****************************************************************************************************************
+int getClipHeight(l);
+
+input: l - a layer reference
+output: _height - the clip height
+
+This function takes a reference of a layer and returns the height of the clipping layer in pixels.
+
+NS Equivalence: l.clip.height
+
+****************************************************************************************************************
+void setClipHeight(l, value);
+
+input: l - a layer reference
+input: value - the new clip height
+
+This function takes a reference of a layer and a new value of the height. It sets the dimension of the clipping layer to the new height.
+
+NS Equivalence: l.clip.height = value
+
+****************************************************************************************************************
+int getClipTop(l);
+
+input: l - a layer reference
+output: _top - the clip top
+
+This function takes a reference of a layer and returns the top boundary of the clipping layer in pixels.
+
+NS Equivalence: l.clip.top
+
+****************************************************************************************************************
+void setClipTop(l, value);
+
+input: l - a layer reference
+input: value - the new clip top value
+
+This function takes a reference of a layer and a new value of the top. It sets the top boundary of the clipping layer to the new value.
+
+NS Equivalence: l.clip.top = value
+
+****************************************************************************************************************
+int getClipBottom(l);
+
+input: l - a layer reference
+output: _bottom - the clip bottom
+
+This function takes a reference of a layer and returns the bottom boundary of the clipping layer in pixels.
+
+NS Equivalence: l.clip.bottom
+
+****************************************************************************************************************
+void setClipBottom(l, value);
+
+input: l - a layer reference
+input: value - the new clip bottom value
+
+This function takes a reference of a layer and a new value of the bottom. It sets the bottom boundary of the clipping layer to the new value.
+
+NS Equivalence: l.clip.bottom = value
+
+****************************************************************************************************************
+int getClipLeft(l);
+
+input: l - a layer reference
+output: _left - the clip left
+
+This function takes a reference of a layer and returns the left boundary of the clipping layer in pixels.
+
+NS Equivalence: l.clip.left
+
+****************************************************************************************************************
+void setClipLeft(l, value);
+
+input: l - a layer reference
+input: value - the new clip left value
+
+This function takes a reference of a layer and a new value of the left. It sets the left boundary of the clipping layer to the new value.
+
+NS Equivalence: l.clip.left = value
+
+****************************************************************************************************************
+int getClipRight(l);
+
+input: l - a layer reference
+output: _left - the clip right
+
+This function takes a reference of a layer and returns the right boundary of the clipping layer in pixels.
+
+NS Equivalence: l.clip.right
+
+
+****************************************************************************************************************
+void setClipRight(l, value);
+
+input: l - a layer reference
+input: value - the new clip right value
+
+This function takes a reference of a layer and a new value of the right. It sets the right boundary of the clipping layer to the new value.
+
+NS Equivalence: l.clip.right = value
+
+****************************************************************************************************************
+int getPageX(l);
+
+input: l - a layer/event reference
+
+This function takes a reference of a layer/event and return the absolute x-coordinate of the layer/event relative to the page.
+
+NS Equivalence: l.pageX/e.pageX
+
+****************************************************************************************************************
+void setPageX(l, value);
+
+input: l - a layer reference
+input: value - the/event new x position
+
+This function takes a reference of a layer/event and a new value of the x-coordinate. It sets the x-coordinate of the layer/event to the new value.
+
+NS Equivalence: l.pageX = value/e.pageX = value
+
+****************************************************************************************************************
+int getPageY(l);
+
+input: l - a layer/event reference
+
+This function takes a reference of a layer and return the absolute y-coordinate of the event or the layer relative to the page.
+
+NS Equivalence: l.pageY/e.pageY
+
+****************************************************************************************************************
+void setPageY(l, value);
+
+input: l - a layer reference
+input: value - the/event new x position
+
+This function takes a reference of a layer/event and a new value of the x-coordinate. It sets the y-coordinate of the layer/event to the new value.
+
+NS Equivalence: l.pageY = value/e.pageY = value
+
+****************************************************************************************************************
+int getInnerHeight();
+
+This function returns the height of the window's content area in pixels.
+
+NS Equivalence: window.innerHeight
+
+****************************************************************************************************************
+int getInnerWidth();
+
+This function returns the width of the window's content area in pixels.
+
+NS Equivalence: window.innerWidth
+
+****************************************************************************************************************
+int getpageXOffset();
+
+This function returns the current x-coordinate of a window's viewd page in pixels.
+
+NS Equivalence: window.pageXOffset
+
+****************************************************************************************************************
+int getpageYOffset();
+
+This function returns the current y-coordinate of a window's viewd page in pixels.
+
+NS Equivalence: window.pageYOffset
+
+****************************************************************************************************************
+int getRelativeX(l);
+
+input: l - a layer reference
+
+This function returns the horizontal position of the layer's left edge relative to the origin of its parent layer in pixels.
+
+NS Equivalence: l.x
+
+****************************************************************************************************************
+void setRelativeX(l, value);
+
+input: l - a layer reference
+input: value - the new value
+
+This function sets the horizontal position of the layer's left edge relative to the origin of its parent layer to the new value in pixels.
+
+NS Equivalence: l.x = value
+
+****************************************************************************************************************
+void getRelativeY(l);
+
+input: l - a layer reference
+
+This function returns the vertical position of the layer's left edge relative to the origin of its parent layer in pixels.
+
+NS Equivalence: l.y
+
+****************************************************************************************************************
+void setRelativeY(l, value);
+
+input: l - a layer reference
+input: value - the new value
+
+This function sets the vertical position of the layer's left edge relative to the origin of its parent layer to the new value in pixels.
+
+NS Equivalence: l.y = value
+
+****************************************************************************************************************
+int getdocWidth();
+
+This functions returns the width of the current document.
+
+NS Equivalence: document.width
+
+****************************************************************************************************************
+int getdocHeight();
+
+This function returns the height of the current document.
+
+NS Equivalence: document.height
+
+****************************************************************************************************************;
+void moveToAbsolute(l, x, y);
+
+input: l - a layer reference
+input: x - the new x-coordinate
+input: y - the new y-coordinate
+
+This function moves a layer to the new specified absolute co-orindate (x, y) relative to the page.
+
+NS Equivalence: l.moveToAbsolute(x,y)
+
+****************************************************************************************************************
+void moveTo(l, x, y);
+
+input: l - a layer reference
+input: x - the new x-coordinate
+input: y - the new y-coordinate
+
+This function moves a layer to the new specified co-orindate (x, y) relative to the parent container.
+
+NS Equivalence: l.move(x,y)
+
+****************************************************************************************************************
+void moveBy(l, x, y);
+
+input: l - a layer reference
+input: x - the new x-offset
+input: y - the new y-offset
+
+This function moves a layer by the offset of x and y specified.
+
+NS Equivalence: l.moveBy(x,y)
+
+****************************************************************************************************************    
+void resizeTo(l, w, h);
+
+input: l - a layer reference
+input: w - the new width
+input: h - the new height
+
+This function resize the dimension of a layer to the new width w and the new height h.
+
+NS Equivalence: l.resizeTo(x,y)
+
+****************************************************************************************************************    
+void moveAbove(lb, lt);
+
+input: lt - the top layer reference
+input: lb - the bottom layer reference
+
+This function stacks the bottom layer (lb) above the top layer (lt). After re-stacking, both layers will share the same parent layer.
+
+NS Equivalence: lb.moveAbove(lt)
+
+****************************************************************************************************************    
+void moveBelow(lt, lb);
+
+input: lt - the top layer reference
+input: lb - the bottom layer reference
+
+This function stacks the top layer (lt) below the bottom layer (lb). After re-stacking, both layers will share the same parent layer.
+
+NS Equivalence: lt.moveBelow(lb)
+
+****************************************************************************************************************
+
+Reference:
+Javascript 1.3 Reference:
+http://devedge.netscape.com/library/manuals/2000/javascript/1.3/reference/
