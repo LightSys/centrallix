@@ -160,6 +160,32 @@ function getRuntimeClipArray(l)
     {
     return l.runtimeStyle.clip.split("rect(")[1].split(")")[0].split("px")
     }
+
+function setClipItem(l,side,value)
+    {
+    switch(side)
+	{
+	case 'left': return setClipLeft(l,value);
+	case 'right': return setClipRight(l,value);
+	case 'top': return setClipTop(l,value);
+	case 'bottom': return setClipBottom(l,value);
+	case 'width': return setClipWidth(l,value);
+	case 'height': return setClipHeight(l,value);
+	}
+    }
+
+function getClipItem(l,side)
+    {
+    switch(side)
+	{
+	case 'left': return getClipLeft(l);
+	case 'right': return getClipRight(l);
+	case 'top': return getClipTop(l);
+	case 'bottom': return getClipBottom(l);
+	case 'width': return getClipWidth(l);
+	case 'height': return getClipHeight(l);
+	}
+    }
     
 // Page X
 function getPageX(l) 

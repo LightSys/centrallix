@@ -1248,7 +1248,8 @@ function pg_reveal_register_listener(l)
 	    trigger_layer = trigger_layer.parentLayer;
 	else 
 	    trigger_layer = trigger_layer.parentNode;
-	} while (!trigger_layer.__pg_reveal_is_triggerer && trigger_layer != window && trigger_layer != document);
+	} while (trigger_layer && !trigger_layer.__pg_reveal_is_triggerer && trigger_layer != window && trigger_layer != document);
+    if (!trigger_layer) trigger_layer = window;
 
     // Add us to the triggerer
     if (trigger_layer && trigger_layer.__pg_reveal) trigger_layer.__pg_reveal.push(l);

@@ -77,6 +77,16 @@ function setClipRight(l, value)
     l.clip.right = value; 
     }
 
+function setClipItem(l, side, value)
+    {
+    l.clip[side] = value;
+    }
+
+function getClipItem(l, side)
+    {
+    return l.clip[side];
+    }
+
 // Page X
 function getPageX(l) 
     { 
@@ -157,6 +167,12 @@ function moveToAbsolute(l, x, y)
 function moveTo(l, x, y)
     {
     l.moveTo(x, y);
+    }
+
+
+function moveBy(l, xo, yo)
+    {
+    l.moveBy(xo,yo);
     }
 
     

@@ -11,13 +11,13 @@
 
 function pn_init(l,ml)
     {
-    if(!cx__capabilities.Dom0NS && cx__capabilities.CSS1)
+    if((!cx__capabilities.Dom0NS) && cx__capabilities.CSS1)
 	{
 	ml = l;
 	}
 
     htr_init_layer(ml,ml,"pn");
-    htr_init_layer(l,ml,"pn");
+    if (ml != l) htr_init_layer(l,ml,"pn");
     
     ml.maxheight = getClipHeight(l)-2;
     ml.maxwidth = getClipWidth(l)-2;

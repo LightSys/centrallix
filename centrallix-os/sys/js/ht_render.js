@@ -212,9 +212,9 @@ function htr_get_watch_newval(e)
 function htr_init_layer(l,ml,kind)
     {
     if (l.document)
-    {
+	{
 	l.document.layer = l;
-    }
+	}
     else
 	l.layer = l;
 	
@@ -225,6 +225,21 @@ function htr_init_layer(l,ml,kind)
     l.kind = kind;
     l.cxSubElement = htr_get_subelement;
     if (l.document) l.document.cxSubElement = htr_get_subelement;
+    }
+
+function htr_search_element(e,id)
+    {
+    var sl = e.firstChild;
+    var ck_sl = null;
+    while(sl)
+	{
+	if ((sl.tagName == 'DIV' || sl.tagName == 'IFRAME') && sl.id == id)
+	    return sl;
+	if (sl.tagName == 'TABLE' || sl.tagName == 'TBODY' || sl.tagName == 'TR' || sl.tagName == 'TD')
+	    if ((ck_sl = htr_search_element(sl, id)))
+		return ck_sl;
+	sl = sl.nextSibling;
+	}
     }
 
 function htr_get_subelement(id)
@@ -239,13 +254,7 @@ function htr_get_subelement(id)
     else if (cx__capabilities.Dom1HTML)
 	{
 	if (!this.tagName) return this.getElementById(id);
-	var sl = this.firstChild;
-	while(sl)
-	    {
-	    if ((sl.tagName == 'DIV' || sl.tagName == 'IFRAME') && sl.id == id)
-		return sl;
-	    sl = sl.nextSibling;
-	    }
+	return htr_search_element(this, id);
 	}
     return null;
     }
@@ -388,6 +397,8 @@ function htr_getzindex(l)
     {
     if (cx__capabilities.Dom0NS)
 	return l.zIndex;
+    else if (cx__capabilities.Dom0IE)
+	return parseInt(l.currentStyle.zIndex);
     else if (cx__capabilities.Dom1HTML)
 	return parseInt(l.style.zIndex);
     return null;
@@ -397,6 +408,8 @@ function htr_setzindex(l,v)
     {
     if (cx__capabilities.Dom0NS)
 	l.zIndex = v;
+    else if (cx__capabilities.Dom0IE)
+	l.runtimeStyle.zIndex = v;
     else if (cx__capabilities.Dom1HTML)
 	l.style.zIndex = v;
     return null;

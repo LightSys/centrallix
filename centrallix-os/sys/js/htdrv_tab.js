@@ -24,7 +24,7 @@ function tc_makecurrent()
 	    t.marker_image.src = '/sys/images/tab_lft3.gif';
 	    setPageY(t, getPageY(t)+this.tabctl.yo);
 	    setPageX(t, getPageX(t)+this.tabctl.xo);
-	    pg_set_style(t, this.tabctl.cl, pg_get_style(this, this.tabctl.cl) + this.tabctl.ci);
+	    setClipItem(t,t.tabctl.cl, getClipItem(t,t.tabctl.cl) + t.tabctl.ci);
 	    if (this.tabctl.inactive_bgColor) htr_setbgcolor(t,this.tabctl.inactive_bgColor);
 	    if (this.tabctl.inactive_bgnd) htr_setbgimage(t,this.tabctl.inactive_bgnd);
 	    }
@@ -37,7 +37,7 @@ function tc_makecurrent()
     this.marker_image.src = '/sys/images/tab_lft2.gif';
     setPageY(this, getPageY(this)-this.tabctl.yo);
     setPageX(this, getPageX(this)-this.tabctl.xo);
-    pg_set_style(this, this.tabctl.cl, pg_get_style(this, this.tabctl.cl) - this.tabctl.ci);
+    setClipItem(this,this.tabctl.cl, getClipItem(this,this.tabctl.cl) - this.tabctl.ci);
     htr_unwatch(this.tabctl,"selected","tc_selection_changed");
     htr_unwatch(this.tabctl,"selected_index","tc_selection_changed");
     this.tabctl.selected_index = this.tabindex;
@@ -89,15 +89,16 @@ function tc_addtab(l_tab, l_page, l, nm)
 	{
 	newx += l.xo;
 	newy += l.yo;
-	if (cx__capabilities.Dom0NS)
-	    {
-	    l_tab.clip[l.cl] += l.ci;
-	    }
-	else
-	    {
-	    l.cl = "clip." + l.cl;
-	    pg_set_style(l_tab, l.cl, pg_get_style(l_tab, l.cl)+l.ci);
-	    }
+	//if (cx__capabilities.Dom0NS)
+	//    {
+	//    l_tab.clip[l.cl] += l.ci;
+	//    }
+	//else
+	//    {
+	//    l.cl = "clip." + l.cl;
+	//    pg_set_style(l_tab, l.cl, pg_get_style(l_tab, l.cl)+l.ci);
+	//    }
+	setClipItem(l_tab, l.cl, getClipItem(l_tab, l.cl) + l.ci);
 	if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
 	else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
 	if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
