@@ -62,10 +62,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.11 2003/03/11 03:16:33 jorupp Exp $
+    $Id: net_nfs.c,v 1.12 2003/03/12 00:28:56 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.12  2003/03/12 00:28:56  jorupp
+     * add the output of the 'nextFileHandle' to the inode.map file
+     * fix a minor bug with the error handling while reading in values from inode.map
+
     Revision 1.11  2003/03/11 03:16:33  jorupp
      * Mike and I got dumping and reloading of the inode mapping working
 
@@ -775,6 +779,7 @@ nnfs_internal_create_inode_map()
     {
     pFile inFile;
     pStructInf stInode;
+    pStructInf nextHandle;
     int i;
 
     if(!NNFS.inodeFile)
@@ -796,6 +801,10 @@ nnfs_internal_create_inode_map()
 	return;
 	}
 
+    nextHandle = stLookup(stInode,"nextFileHandle");
+    if(!nextHandle || stGetAttrValue(nextHandle,DATA_T_INTEGER,POD(&NNFS.nextFileHandle),0)<0)
+	mssError(1,"NNFS","Unable to read nextFileHandle");
+
     for(i=0;i<stInode->nSubInf;i++)
 	{
 	pStructInf group,entry;
@@ -805,16 +814,16 @@ nnfs_internal_create_inode_map()
 	int inode;
 
 	group = stInode->SubInf[i];
-	if(group)
+	if(group && strcmp(group->Name,"nextFileHandle"))
 	    {
 	    entry = stLookup(group,"path");
-	    if(entry && stGetAttrValue(entry,DATA_T_STRING,POD(&name),0)!=0)
+	    if(!entry || stGetAttrValue(entry,DATA_T_STRING,POD(&name),0)<0)
 		{
 		mssError(0,"NNFS","Unable to read inode");
 		continue;
 		}
 	    entry = stLookup(group,"inode");
-	    if(entry && stGetAttrValue(entry,DATA_T_INTEGER,POD(&inode),0)!=0)
+	    if(!entry || stGetAttrValue(entry,DATA_T_INTEGER,POD(&inode),0)<0)
 		{
 		mssError(0,"NNFS","Unable to read inode for: %s",name);
 		continue;
@@ -842,6 +851,7 @@ nnfs_internal_dump_inode_map()
     {
     pFile outFile;
     pStructInf stInode;
+    pStructInf nextHandle;
     int i;
 
     if(!NNFS.inodeFile)
@@ -864,6 +874,10 @@ nnfs_internal_dump_inode_map()
 	}
     /** how do we tell it to create version 2 structure files? **/
     //stInode->Flags |= ST_F_VERSION2;
+
+    nextHandle = stAddAttr(stInode,"nextFileHandle");
+    if(!nextHandle || stSetAttrValue(nextHandle, DATA_T_INTEGER, POD(&NNFS.nextFileHandle), 0) <0 )
+	mssError(1,"NNFS","Unable to create nextFileHandle attribute");
 
     for(i=0;i<NNFS.fhToPath->nRows;i++)
 	{
