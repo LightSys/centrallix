@@ -52,10 +52,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.2 2002/08/09 02:38:49 jorupp Exp $
+    $Id: objdrv_mime.c,v 1.3 2002/08/09 20:01:34 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.3  2002/08/09 20:01:34  lkehresman
+    * Cleaned up the string manipulation in several functions so the original
+      header information is not changed.
+    * Implemented (at least the shell of) functions to handle RFC[2]822 parsing
+      of generic structured header elements based on sections 3 and 4 of rfc2822.
+      These handle header folding, whitespaces, and soon will handle comments
+      within header fields as well.
+    * Created data structures for handling email addresses and lists, and created
+      and documented function stubs to handle the parsing of these fields (To,
+      Cc, From, Sender, etc).
+    * Removed some erronious debugging information
+    * Restructured the controlling header parsing function so that it makes it
+      easier to perform data validation and data scrubbing on the header fields.
+
     Revision 1.2  2002/08/09 02:38:49  jorupp
      * added basic attribute support to mime driver
      * set obj->SubCnt=1 in mimeOpen() <-- let the OSML the mime driver is processing one level of the path
@@ -109,6 +123,16 @@ typedef struct
     }
     MimeData, *pMimeData;
 
+/** Structure used to represent an email address **/
+typedef struct
+    {
+    char	Host[128];
+    char	Mailbox[128];
+    char	Personal[128];
+    char	AddressLine[256];
+    }
+    EmailAddr, *pEmailAddr;
+
 /*** Possible Main Content Types ***/
 char *TypeStrings[7] =
     {
@@ -122,10 +146,10 @@ char *TypeStrings[7] =
     };
 
 #define MIME(x) ((pMimeData)(x))
-#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER)
+//#define MIME_DEBUG 0
+//#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER)
 //#define MIME_DEBUG            (MIME_DBG_HDRPARSE | MIME_DBG_PARSER | MIME_DBG_FUNC1 | MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)
-
-//#define MIME_DEBUG 0x00000000
+#define MIME_DEBUG 0x00000000
 
 #define MIME_DBG_HDRPARSE    1
 #define MIME_DBG_HDRREAD     2
@@ -218,7 +242,6 @@ mime_internal_StrTrim(char *str)
 **  Checks if the first part of the given string matches the second string.
 **  This function is case insensitive.
 */
-
 int
 mime_internal_StrFirstCaseCmp(char *s1, char *s2)
     {
@@ -240,11 +263,136 @@ mime_internal_StrFirstCaseCmp(char *s1, char *s2)
     return 0;
     }
 
+/*
+**  int
+**  mime_internal_HdrParse(char* buf, char* hdr);
+**     Parameters:
+**         (char*) buf     A string of characters with no CRLF's in it.  This
+**                         string should represent the whole header, including any
+**                         folded header elements below itself.  This string will
+**                         be modified to contain the main part of the header.
+**         (char*) hdr     This string will be overwritten with a string that 
+**                         is the name of the header element (To, From, Sender...)
+**     Returns:
+**         This function returns 0 on success, and -1 on failure.  It modifies
+**         the "buf" parameter and sends its work back in this way.  This
+**         function will return a string of characters that is properly
+**         formatted according to RFC822.  The header tag will be stripped away
+**         from the beginning ("X-Header"), all extra whitespace will be
+**         removed, and all comments will be removed as well.  This will be a
+**         clean header line.
+**
+**     State Definitions:
+**         0 == We have only seen non-space, non-tab, and non-colon characters
+**              up to this point.  As soon as one of those characters is seen,
+**              the state will change.
+**         1 == We have seen a whitespace character, thus only a colon or more
+**              whitespace should be visible.  If not, return an error.
+**         2 == We have seen the colon!  The next character is the beginning of
+**              the header content.  Trim and return that string.
+*/
+
+int
+mime_internal_HdrParse(char *buf, char* hdr)
+    {
+    int count=0, state=0;
+    char *ptr;
+    char ch;
+
+    while (count < strlen(buf))
+	{
+	ch = buf[count];
+	/**  STATE 0 (no spaces or colons have been seen) **/
+	if (state == 0)
+	    {
+	    if (ch == ':')
+		{
+		ptr = buf+count+1;
+		state = 2;
+		}
+	    else if (ch==' ' || ch=='\t')
+		{
+		state = 1;
+		}
+	    }
+	/** STATE 1 (space has been seen, only spaces and a colon should follow) **/
+	else if (state == 1)
+	    {
+	    if (ch == ':')
+		{
+		ptr = buf+count+1;
+		state = 2;
+		}
+	    else if (ch!=' ' && ch!='\t')
+		{
+		return -1;
+		}
+	    }
+	/** STATE 2 (the colon has been spotted, left side is header, right is body **/
+	else if (state == 2)
+	    {
+	    memcpy(hdr, buf, (count-1>79?79:count-1));
+	    memcpy(buf, &buf[count+1], strlen(&buf[count+1])+1);
+	    mime_internal_StrTrim(hdr);
+	    mime_internal_StrTrim(buf);
+	    return 0;
+	    }
+	count++;
+	}
+    return -1;
+    }
+
+/*
+**  int
+**  mime_internal_HdrParseAddrList(char* buf, XArray *ary);
+**     Parameters:
+**         (char*) buf     A string that has been cleaned up by the HdrParse
+**                         function.  It is assumed that this string is clean and
+**                         that it conforms to the standards in RFC822.
+**         (XArray*) ary   A pointer to an XArray data structure.  This XArray will
+**                         be populated with pEmailAddr structures that represent
+**                         individual email addresses or groups of addresses.
+**     Returns:
+**         This function returns -1 on failure, and 0 on success.  It will split
+**         addresses out into the desired data structure and will place it in the
+**         second parameter.
+*/
+
+int
+mime_internal_HdrParseAddrList(char *buf, pXArray *ary)
+    {
+    return 0;
+    }
+
+/*
+**  int
+**  mime_internal_HdrParseAddr(char *buf, EmailAddr* addr);
+**     Parameters:
+**         (char*) buf     A string that represents a single email address.  This 
+**                         is usually one of the XArray elements that was returned
+**                         from the HdrParseAddrSplit function.
+**         (EmailAddr*) addr
+**                         An email address data structure that will be filled in 
+**                         by this function.  These properties will be stripped of
+**                         all their quotes and extranious whitespace.--
+**     Returns:
+**         This function returns -1 on failure and 0 on success.  It will split an
+**         individual email address or a group of addresses up into their various
+**         parts.  and return an EmailAddr structure.  Note that if this is a group
+**         of addresses, this call is recursive.
+*/
+
+int
+mime_internal_HdrParseAddr(char *buf, pEmailAddr addr)
+    {
+    return 0;
+    }
+
+
 /*  mime_internal_Unquote
 **
 **  Internal function used to unquote strings if they are quoted.
 */
-
 char*
 mime_internal_Unquote(char *str)
     {
@@ -279,7 +427,8 @@ mime_internal_Unquote(char *str)
 int
 mime_internal_LoadExtendedHeader(pMimeData inf, pXString xsbuf, pLxSession lex)
     {
-    int offset, alloc=1, toktype, i;
+    int alloc=1, toktype, i;
+    unsigned long offset;
     char *ptr;
 
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_LoadExtendedHeader() called.\n");
@@ -294,7 +443,8 @@ mime_internal_LoadExtendedHeader(pMimeData inf, pXString xsbuf, pLxSession lex)
 	    }
 	ptr = mlxStringVal(lex, NULL);
 	if (!strchr(" \t", ptr[0])) break;
-	xsConcatPrintf(xsbuf, "%s", ptr);
+	mime_internal_StrTrim(ptr);
+	xsConcatPrintf(xsbuf, " %s", ptr);
 	}
     /** Be kind, rewind! (resetting the offset because we don't use the last string it fetched) **/
     mlxSetOffset(lex, offset);
@@ -311,21 +461,17 @@ mime_internal_LoadExtendedHeader(pMimeData inf, pXString xsbuf, pLxSession lex)
 **  with the data accordingly.
 */
 int
-mime_internal_SetMIMEVersion(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetMIMEVersion(pMimeData inf, char *buf)
     {
-    char *ptr;
-
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetMIMEVersion() called.\n");
-    if (!(ptr=strpbrk(xsbuf->String, ":"))) return 0;
-    ptr++;
-    mime_internal_StrTrim(ptr);
-    strncpy(inf->Message->MIMEVersion, ptr, 15);
+    mime_internal_StrTrim(buf);
+    strncpy(inf->Message->MIMEVersion, buf, 15);
     inf->Message->MIMEVersion[15] = 0;
 
     if (MIME_DEBUG & MIME_DBG_HDRPARSE)
 	{
 	printf("MIME Parser (MIME-Version)\n");
-	printf("  MIME-VERSION: \"%s\"\n", ptr);
+	printf("  MIME-VERSION: \"%s\"\n", inf->Message->MIMEVersion);
 	}
     if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetMIMEVersion() closing.\n");
     return 0;
@@ -337,17 +483,11 @@ mime_internal_SetMIMEVersion(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetDate(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetDate(pMimeData inf, char *buf)
     {
-    XString xsptr;
-    char *ptr, *cptr;
-    int i;
-
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetDate() called.\n");
     /** Get the date **/
-    if (!(ptr=strpbrk(xsbuf->String, ":"))) return 0;
-    ptr++;
-    mime_internal_StrTrim(ptr);
+    mime_internal_StrTrim(buf);
 
     /** FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME:
      **   objDataToDateTime does not currently behave properly.  When that function
@@ -365,16 +505,12 @@ mime_internal_SetDate(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetSubject(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetSubject(pMimeData inf, char *buf)
     {
-    char *ptr;
-
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetSubject() called.\n");
     /** Get the date **/
-    if (!(ptr=strpbrk(xsbuf->String, ":"))) return 0;
-    ptr++;
-    mime_internal_StrTrim(ptr);
-    strncpy(inf->Message->Subject, ptr, 79);
+    mime_internal_StrTrim(buf);
+    strncpy(inf->Message->Subject, buf, 79);
     inf->Message->Subject[79] = 0;
 
     if (MIME_DEBUG & MIME_DBG_HDRPARSE)
@@ -393,7 +529,7 @@ mime_internal_SetSubject(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetFrom(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetFrom(pMimeData inf, char *buf)
     {
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetFrom() called.\n");
     if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetFrom() closing.\n");
@@ -406,7 +542,7 @@ mime_internal_SetFrom(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetCc(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetCc(pMimeData inf, char *buf)
     {
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetCc() called.\n");
     if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetCc() closing.\n");
@@ -419,7 +555,7 @@ mime_internal_SetCc(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetTo(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetTo(pMimeData inf, char *buf)
     {
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetTo() called.\n");
     if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetTo() closing.\n");
@@ -432,19 +568,12 @@ mime_internal_SetTo(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetTransferEncoding(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetTransferEncoding(pMimeData inf, char *buf)
     {
-    char *ptr, *cptr, *buf;
-
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetTransferEncoding() called.\n");
-    /** Make sure we have the entire content-transfer-encoding line (why would it span **/
-    /** multiple lines??  I don't know but there are some crazy mailers out there) **/
-    if (mime_internal_LoadExtendedHeader(inf, xsbuf, lex) < 0) return -1;
-    buf = xsbuf->String; /** FIXME FIXME FIXME FIXME FIXME FIXME : i can't copy the string, so i pointed it **/
 
-    if (!(ptr=strtok_r(buf, ": ", &buf))) return 0;
-    if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
-    strncpy(inf->Message->TransferEncoding, ptr, 31);
+    mime_internal_StrTrim(buf);
+    strncpy(inf->Message->TransferEncoding, buf, 31);
     inf->Message->TransferEncoding[31] = 0;
 
     if (MIME_DEBUG & MIME_DBG_HDRPARSE)
@@ -463,14 +592,11 @@ mime_internal_SetTransferEncoding(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetContentDisp(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetContentDisp(pMimeData inf, char *buf)
     {
-    char *ptr, *cptr, *buf;
+    char *ptr, *cptr;
 
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetContentDisp() called.\n");
-    /** Make sure we have the entire content-display line **/
-    if (mime_internal_LoadExtendedHeader(inf, xsbuf, lex) < 0) return -1;
-    buf = xsbuf->String; /** FIXME FIXME FIXME FIXME FIXME FIXME : i can't copy the string, so i pointed it **/
 
     /** get the display main type **/
     if (!(ptr=strtok_r(buf, ": ", &buf))) return 0;
@@ -508,15 +634,13 @@ mime_internal_SetContentDisp(pMimeData inf, XString *xsbuf, pLxSession lex)
 **  with the data accordingly.  If certain elements are not there, defaults are used.
 */
 int
-mime_internal_SetContentType(pMimeData inf, XString *xsbuf, pLxSession lex)
+mime_internal_SetContentType(pMimeData inf, char *buf)
     {
-    char *ptr, *cptr, *buf;
+    char *ptr, *cptr;
     char maintype[32], tmpname[128];
     int len,i;
 
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetContentType() called.\n");
-    if (mime_internal_LoadExtendedHeader(inf, xsbuf, lex) < 0) return -1;
-    buf = xsbuf->String; /** FIXME FIXME FIXME FIXME FIXME FIXME : i can't copy the string, so i pointed it **/
 
     /** Get the disp main type and subtype **/
     if (!(ptr=strtok_r(buf, ": ", &buf))) return 0;
@@ -607,6 +731,7 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
     pLxSession lex;
     int flag, toktype, alloc, err;
     XString xsbuf;
+    char *hdrnme, *hdrbdy;
 
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_ParseMessage() called.\n");
     /** Initialize the message structure **/
@@ -656,47 +781,36 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
 	    }
 	else
 	    {
-	    if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "Content-Disposition"))
+	    if (mime_internal_LoadExtendedHeader(inf, &xsbuf, lex) < 0)
 		{
-		err = mime_internal_SetContentDisp(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "Content-Type"))
-		{
-		err = mime_internal_SetContentType(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "Content-Transfer-Encoding"))
-		{
-		err = mime_internal_SetTransferEncoding(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "MIME-Version"))
-		{
-		err = mime_internal_SetMIMEVersion(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "To"))
-		{
-		err = mime_internal_SetTo(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "Cc"))
-		{
-		err = mime_internal_SetCc(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "From"))
-		{
-		err = mime_internal_SetFrom(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "Subject"))
-		{
-		err = mime_internal_SetSubject(inf, &xsbuf, lex);
-		}
-	    else if (!mime_internal_StrFirstCaseCmp(xsbuf.String, "Date"))
-		{
-		err = mime_internal_SetDate(inf, &xsbuf, lex);
+		mlxCloseSession(lex);
+		mime_internal_Cleanup(inf, "Error parsing extended headers");
+		return -1;
 		}
 
-	    if (err < 0)
+	    hdrnme = (char*)nmMalloc(64);
+	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
+	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String));
+	    if (mime_internal_HdrParse(hdrbdy, hdrnme) == 0)
 		{
-		mime_internal_Cleanup(inf, "Error in the Lexer");
-		return -1;
+		if      (!strcasecmp(hdrnme, "Content-Type")) err = mime_internal_SetContentType(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "Content-Disposition")) err = mime_internal_SetContentDisp(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "Content-Transfer-Encoding")) err = mime_internal_SetTransferEncoding(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "To")) err = mime_internal_SetTo(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "Cc")) err = mime_internal_SetCc(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "From")) err = mime_internal_SetFrom(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "Subject")) err = mime_internal_SetSubject(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "Date")) err = mime_internal_SetDate(inf, hdrbdy);
+		else if (!strcasecmp(hdrnme, "MIME-Version")) err = mime_internal_SetMIMEVersion(inf, hdrbdy);
+
+		if (err <= 0)
+		    {
+		    if (MIME_DEBUG & MIME_DBG_HDRPARSE) fprintf(stderr, "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
+		    }
+		}
+	    else
+		{
+		if (MIME_DEBUG & MIME_DBG_HDRPARSE) fprintf(stderr, "ERROR PARSING: %s\n", xsbuf.String);
 		}
 	    }
 	}
@@ -767,7 +881,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	}
 
     if (MIME_DEBUG & (MIME_DBG_FUNC1 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (1): mimeOpen() closing.\n");
-    if (MIME_DEBUG) fprintf(stderr, "inf = %08x\n",(int)inf);
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;
@@ -787,7 +900,7 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
     {
     pMimeData inf = MIME(inf_v);
 
-    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeClose(%08x) called.\n",inf);
+    if (MIME_DEBUG & MIME_DBG_FUNC1) fprintf(stderr, "MIME (1): mimeClose() called.\n");
     /** free any memory used to return an attribute **/
     if(inf->AttrValue)
 	{
