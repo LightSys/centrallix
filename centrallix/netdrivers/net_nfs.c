@@ -59,10 +59,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.6 2003/03/09 05:38:03 nehresma Exp $
+    $Id: net_nfs.c,v 1.7 2003/03/09 06:10:13 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.7  2003/03/09 06:10:13  nehresma
+    - changed dump and export implementations to use malloc instead of nmMalloc
+      and then let the xdr_* functions handle the freeing of the lists, rather
+      than handling it myself (per jorupp's suggestion).
+    - mountd will no longer exit its thread when it doesn't have proper config
+      information.  instead it listens for incoming connections, but then reject
+      the mount request.
+
     Revision 1.6  2003/03/09 05:38:03  nehresma
     moved globals to help prevent possible namespace issues
 
@@ -482,17 +490,23 @@ mountlist* nnfs_internal_mountproc_dump(void* param)
     pMount mnt;
     int i;
 
+    /** malloc instead of nmMalloc so since the xdr_* functions will do the freeing **/
+    head=(mountlist*)malloc(sizeof(mountlist));
+    *head=NULL;
+
     for (i=0;i<xaCount(NNFS.mountList);i++)
 	{
 	mnt=xaGetItem(NNFS.mountList,i);
-	cur=(mountlist_item*)nmMalloc(sizeof(mountlist_item));
-	cur->hostname=mnt->host;
-	cur->directory=mnt->path;
+	cur=(mountlist_item*)malloc(sizeof(mountlist_item));
+	cur->hostname=(name)malloc(sizeof(mnt->host)+1);
+	cur->directory=(dirpath)malloc(sizeof(mnt->path)+1);
+	strcpy(cur->hostname,mnt->host);
+	strcpy(cur->directory,mnt->path);
 	cur->nextentry=NULL;
 	if (prev)
 	    prev->nextentry=cur;
 	else
-	    head=&cur;
+	    *head=cur;
 	prev=cur;
 	}
     
@@ -521,11 +535,16 @@ exportlist* nnfs_internal_mountproc_export(void* param)
     pExports exp;
     int i;
 
+    /** malloc instead of nmMalloc so since the xdr_* functions will do the freeing **/
+    head=(exportlist*)malloc(sizeof(exportlist));
+    *head=NULL;
+
     for (i=0;i<xaCount(NNFS.exportList);i++)
 	{
 	exp=(pExports)xaGetItem(NNFS.exportList,i);
-	cur=(exportlist)nmMalloc(sizeof(exportlist_item));
-	cur->filesys=exp->path;
+	cur=(exportlist)malloc(sizeof(exportlist_item));
+	cur->filesys=(dirpath)malloc(sizeof(exp->path)+1);
+	strcpy(cur->filesys,exp->path);
 	/** FIXME **/
 	cur->groups=NULL;
 	/** END FIXME **/
@@ -533,7 +552,7 @@ exportlist* nnfs_internal_mountproc_export(void* param)
 	if (prev)
 	    prev->next=cur;
 	else
-	    head=&cur;
+	    *head=cur;
 	prev=cur;
 	}
     
@@ -1064,7 +1083,6 @@ nnfs_internal_mount_listener(void* v)
 	if (!my_config)
 	    {
 	    mssError(1,"NNFS","No configuration for net_nfs in config file.");
-	    thExit();
 	    }
 
 	/** Got the config.  Now lookup what the UDP port is that we listen on **/
@@ -1088,7 +1106,6 @@ nnfs_internal_mount_listener(void* v)
 	if (!mp_config)
 	    {
 	    mssError(1,"NNFS","No mount points defined in config file");
-	    thExit();
 	    }
 	nnfs_internal_get_exports(mp_config);
 	NNFS.fhToPath=(pXHashTable)nmMalloc(sizeof(XHashTable));
@@ -1262,37 +1279,8 @@ nnfs_internal_mount_listener(void* v)
 		    }
 		xdr_free((xdrproc_t)&xdr_replymsg,(char*)&msg_out);
 		//xdr_destroy(&xdr_in);
-
-		/** if it was a dump call, free up the linked list **/
-		if (msg_in.rm_call.cb_proc == MOUNTPROC_DUMP)
-		    {
-		    mountlist* mylist=(mountlist*)ret;
-		    mountlist next=*mylist;
-		    while(next!=NULL)
-			{
-			mountlist_item* item=next;
-			next=item->nextentry;
-			nmFree(item,sizeof(mountlist_item));
-			}
-		    /** shouldn't need to free up ret because of the way nnfs_internal_mountproc_dump works **/
-		    }
-		else if (msg_in.rm_call.cb_proc == MOUNTPROC_EXPORT)
-		    {
-		    exportlist* mylist=(exportlist*)ret;
-		    exportlist next=*mylist;
-		    while(next!=NULL)
-			{
-			exportlist_item* item=next;
-			next=item->next;
-			nmFree(item,sizeof(exportlist_item));
-			}
-		    /** shouldn't need to free up ret because of the way nnfs_internal_mountproc_export works **/
-		    }
-		else
-		    {
-		    if(ret && ret_size>0)
-			nmFree(ret,ret_size);
-		    }
+		if(ret && ret_size>0)
+		    nmFree(ret,ret_size);
 		}
 	    else if(msg_in.rm_direction==REPLY)
 		{
