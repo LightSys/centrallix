@@ -44,12 +44,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.1 2001/08/13 18:00:49 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
-    Revision 1.1  2001/08/13 18:00:49  gbeeley
-    Initial revision
+    Revision 1.2  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
+    Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -137,25 +143,49 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "eparam", "null", 0);*/
 
 	/** Add a script init to install the connector **/
-	sprintf(sbuf,"    %s = new cn_init(%s);\n    %s.RunEvent = cn_%d;\n", nptr, parentobj, nptr, id);
+	sprintf(sbuf,"    %s = new cn_init(%s,cn_%d);\n", nptr, parentobj, id);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf,"    %s.Event%s = %s.RunEvent;\n", parentobj, event, nptr);
+	sprintf(sbuf,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
 	htrAddScriptInit(s, sbuf);
+
+	/** Connector function to activate an action **/
+	htrAddScriptFunction(s, "cn_activate", "\n"
+		"function cn_activate(t,f,eparam)\n"
+		"    {\n"
+		"    if (t['Event' + f].constructor == Array)\n"
+		"        {\n"
+		"        for(var fn in t['Event' + f])\n"
+		"            x = t['Event' + f][fn](eparam);\n"
+		"        return x;\n"
+		"        }\n"
+		"    else\n"
+		"        return t['Event' + f](eparam);\n"
+		"    }\n", 0);
+
+	/** Function to add a connector to a widget's event **/
+	htrAddScriptFunction(s, "cn_add", "\n"
+		"function cn_add(w,e)\n"
+		"    {\n"
+		"    if (w['Event' + e] == null)\n"
+		"        w['Event' + e] = new Array();\n"
+		"    w['Event' + e][w['Event' + e].length] = this.RunEvent;\n"
+		"    }\n", 0);
 
 	/** Add function to instantiate objects **/
 	htrAddScriptFunction(s, "cn_init", "\n"
-		"function cn_init(p)\n"
+		"function cn_init(p,f)\n"
 		"    {\n"
+		"    this.Add = cn_add;\n"
 		"    this.type = 'cn';\n"
 		"    this.LSParent = p;\n"
+		"    this.RunEvent = f;\n"
 		"    }\n", 0);
 
 	/** Add the connector function **/
 	xsInit(&xs);
-	sprintf(sbuf,	"\n"
+	xsConcatPrintf(&xs, "\n"
 		     	"function cn_%d(eparam)\n"
 		     	"    {\n" ,id);
-	xsConcatenate(&xs,sbuf,-1);
 	xsConcatenate(&xs,"    aparam = new Object();\n",-1);
 	for(ptr = objGetFirstAttr(w_obj); ptr; ptr = objGetNextAttr(w_obj))
 	    {
@@ -189,8 +219,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    break;
 		}
 	    }
-	sprintf(sbuf,"    %s.Action%s(aparam);\n", target, action);
-	xsConcatenate(&xs,sbuf,-1);
+	xsConcatPrintf(&xs,"    %s.Action%s(aparam);\n", target, action);
 	xsConcatenate(&xs,"    delete aparam;\n",-1);
 	xsConcatenate(&xs,"    }\n\n",7);
 	sprintf(fnname, "cn_%d",id);
@@ -200,10 +229,6 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	strcpy(fnnamebuf, fnname);
 	htrAddScriptFunction(s, fnnamebuf, fnbuf, HTR_F_NAMEALLOC | HTR_F_VALUEALLOC);
 	xsDeInit(&xs);
-
-	/** Add init for param passing structures **/
-	/*htrAddScriptInit(s, "    if (eparam == null) eparam = new cn_init();\n");
-	htrAddScriptInit(s, "    if (aparam == null) aparam = new cn_init();\n");*/
 
 	/** Check for more sub-widgets within the conn entity. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);

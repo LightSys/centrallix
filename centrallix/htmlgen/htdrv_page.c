@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.2 2001/10/23 00:25:09 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.3 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.3  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
     Revision 1.2  2001/10/23 00:25:09  gbeeley
     Added rudimentary single-line editbox widget.  No data source linking
     or anything like that yet.  Fixed a few bugs and made a few changes to
@@ -234,15 +240,19 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddEventHandler(s, "document", "MOUSEDOWN", "pg",
 		"    if (pg_curarea != null)\n"
 		"        {\n"
-		"        pg_curkbdarea = pg_curarea;\n"
-		"        pg_curkbdlayer = pg_curlayer;\n"
 		"        x = pg_curarea.layer.pageX+pg_curarea.x;\n"
 		"        y = pg_curarea.layer.pageY+pg_curarea.y;\n"
 		"        w = pg_curarea.width;\n"
 		"        h = pg_curarea.height;\n"
-		"        if (pg_curarea.callback)\n"
+		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
 		"            {\n"
-		"            v=pg_curarea.callback(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
+		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
+		"            }\n"
+		"        pg_curkbdarea = pg_curarea;\n"
+		"        pg_curkbdlayer = pg_curlayer;\n"
+		"        if (pg_curkbdlayer.getfocushandler)\n"
+		"            {\n"
+		"            v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
 		"            if (v & 1)\n"
 		"                {\n"
 		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);\n"
@@ -338,24 +348,24 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Function to make a new clickable "area" **INTERNAL** **/
 	htrAddScriptFunction(s, "pg_area", "\n"
-		"function pg_area(pl,x,y,w,h,cls,nm,ckfn)\n"
+		"function pg_area(pl,x,y,w,h,cls,nm,f)\n"
 		"    {\n"
 		"    this.layer = pl;\n"
 		"    this.x = x;\n"
 		"    this.y = y;\n"
 		"    this.width = w;\n"
 		"    this.height = h;\n"
-		"    this.callback = ckfn;\n"
 		"    this.name = nm;\n"
 		"    this.cls = cls;\n"
+		"    this.flags = f;\n"
 		"    return this;\n"
 		"    }\n", 0);
 
 	/** Function to add a new area to the arealist **/
 	htrAddScriptFunction(s, "pg_addarea", "\n"
-		"function pg_addarea(pl,x,y,w,h,cls,nm,ckfn)\n"
+		"function pg_addarea(pl,x,y,w,h,cls,nm,f)\n"
 		"    {\n"
-		"    a = new pg_area(pl,x,y,w,h,cls,nm,ckfn);\n"
+		"    a = new pg_area(pl,x,y,w,h,cls,nm,f);\n"
 		"    pg_arealist.splice(0,0,a);\n"
 		"    return a;\n"
 		"    }\n", 0);
@@ -380,14 +390,23 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function pg_resize(l)\n"
 		"    {\n"
 		"    maxheight=0;\n"
+		"    maxwidth=0;\n"
 		"    for(i=0;i<l.document.layers.length;i++)\n"
 		"        {\n"
 		"        cl = l.document.layers[i];\n"
 		"        if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.y + cl.clip.height > maxheight)\n"
 		"            maxheight = cl.y + cl.clip.height;\n"
+		"        if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.x + cl.clip.width > maxwidth)\n"
+		"            maxwidth = cl.x + cl.clip.width;\n"
 		"        }\n"
+		"    if (l.maxheight && maxheight > l.maxheight) maxheight = l.maxheight;\n"
+		"    if (l.minheight && maxheight < l.minheight) maxheight = l.minheight;\n"
 		"    if (l!=window) l.clip.height = maxheight;\n"
 		"    else l.document.height = maxheight;\n"
+		"    if (l.maxwidth && maxwidth > l.maxwidth) maxwidth = l.maxwidth;\n"
+		"    if (l.minwidth && maxwidth < l.minwidth) maxwidth = l.minwidth;\n"
+		"    if (l!=window) l.clip.width = maxwidth;\n"
+		"    else l.document.width = maxwidth;\n"
 		"    }\n", 0);
 
 	/** Add a universal "is visible" function that handles inherited visibility. **/

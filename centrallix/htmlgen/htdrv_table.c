@@ -59,10 +59,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.3 2001/10/23 00:25:09 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.4 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.4  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
     Revision 1.3  2001/10/23 00:25:09  gbeeley
     Added rudimentary single-line editbox widget.  No data source linking
     or anything like that yet.  Fixed a few bugs and made a few changes to
@@ -239,7 +245,8 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"            imgnm = pl.document.images[i].name.substr(nmstr.length+1,255);\n"
 		"            if (ox != -1)\n"
 		"                {\n"
-		"                pg_addarea(pl,img.x-cp-1,img.y-cp-1,w-(cs-1)*2,(img.y-oy)-(cs-1),nm,imgnm,tl_rowclick);\n"
+		"                pl.getfocushandler = tl_rowclick;\n"
+		"                pg_addarea(pl,img.x-cp-1,img.y-cp-1,w-(cs-1)*2,(img.y-oy)-(cs-1),nm,imgnm,3);\n"
 		"                }\n"
 		"            ox = img.x;\n"
 		"            oy = img.y;\n"

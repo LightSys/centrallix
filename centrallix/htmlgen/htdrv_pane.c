@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.2 2001/10/22 17:19:42 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.3 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.3  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
     Revision 1.2  2001/10/22 17:19:42  gbeeley
     Added a few utility functions in ht_render to simplify the structure and
     authoring of widget drivers a bit.
@@ -140,9 +146,9 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Ok, write the style header items. **/
 	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	sprintf(sbuf,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
+	sprintf(sbuf,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
 	htrAddHeaderItem(s,sbuf);
 	sprintf(sbuf,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
@@ -158,6 +164,9 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    {\n"
 		"    l.mainlayer = ml;\n"
 		"    l.document.Layer = l;\n"
+		"    ml.document.Layer = ml;\n"
+		"    ml.maxheight = l.clip.height-2;\n"
+		"    ml.maxwidth = l.clip.width-2;\n"
 		"    return l;\n"
 		"    }\n", 0);
 

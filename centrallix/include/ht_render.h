@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.2 2001/10/22 17:19:41 gbeeley Exp $
+    $Id: ht_render.h,v 1.3 2001/11/03 02:09:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.3  2001/11/03 02:09:55  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
     Revision 1.2  2001/10/22 17:19:41  gbeeley
     Added a few utility functions in ht_render to simplify the structure and
     authoring of widget drivers a bit.
@@ -177,6 +183,7 @@ int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int f
 int htrAddScriptInit(pHtSession s, char* init_text);
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);
+int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
 
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
@@ -185,7 +192,6 @@ int htrRender(pFile output, pObject appstruct);
 int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
-int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
 pHtDriver htrAllocDriver();
 
 

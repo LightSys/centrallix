@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.1 2001/10/23 00:25:09 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.2  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
     Revision 1.1  2001/10/23 00:25:09  gbeeley
     Added rudimentary single-line editbox widget.  No data source linking
     or anything like that yet.  Fixed a few bugs and made a few changes to
@@ -172,6 +178,38 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    return rs;\n"
 		"    }\n", 0);
 
+	/** Get value function **/
+	htrAddScriptFunction(s, "eb_getvalue", "\n"
+		"function eb_getvalue()\n"
+		"    {\n"
+		"    return this.content;\n"
+		"    }\n", 0);
+
+	/** Set value function **/
+	htrAddScriptFunction(s, "eb_setvalue", "\n"
+		"function eb_setvalue(v,f)\n"
+		"    {\n"
+		"    eb_settext(this,v);\n"
+		"    }\n", 0);
+
+	/** Enable control function **/
+	htrAddScriptFunction(s, "eb_enable", "\n"
+		"function eb_enable()\n"
+		"    {\n"
+		"    }\n", 0);
+
+	/** Disable control function **/
+	htrAddScriptFunction(s, "eb_disable", "\n"
+		"function eb_disable()\n"
+		"    {\n"
+		"    }\n", 0);
+
+	/** Readonly-mode function **/
+	htrAddScriptFunction(s, "eb_readonly", "\n"
+		"function eb_readonly()\n"
+		"    {\n"
+		"    }\n", 0);
+
 	/** Editbox set-text-value function **/
 	htrAddScriptFunction(s, "eb_settext", "\n"
 		"function eb_settext(l,txt)\n"
@@ -237,7 +275,18 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    eb_ibeam.moveToAbsolute(eb_current.ContentLayer.pageX + eb_current.cursorCol*eb_metric.charWidth, eb_current.ContentLayer.pageY);\n"
 		"    eb_ibeam.zIndex = eb_current.zIndex + 2;\n"
 		"    eb_ibeam.visibility = 'inherit';\n"
+		"    l.form.focusnotify(l);\n"
 		"    return 1;\n"
+		"    }\n", 0);
+
+	/** Take focus away from editbox **/
+	htrAddScriptFunction(s, "eb_deselect", "\n"
+		"function eb_deselect()\n"
+		"    {\n"
+		"    eb_ibeam.visibility = 'hidden';\n"
+		"    if (eb_current) eb_current.cursorlayer = null;\n"
+		"    eb_current = null;\n"
+		"    return true;\n"
 		"    }\n", 0);
 
 	/** Editbox initializer **/
@@ -271,9 +320,20 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    c2.kind = 'eb';\n"
 		"    l.content = '';\n"
 		"    l.keyhandler = eb_keyhandler;\n"
-		"    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', eb_select, 1);\n"
+		"    l.getfocushandler = eb_select;\n"
+		"    l.losefocushandler = eb_deselect;\n"
+		"    l.getvalue = eb_getvalue;\n"
+		"    l.setvalue = eb_setvalue;\n"
+		"    l.setoptions = null;\n"
+		"    l.enable = eb_enable;\n"
+		"    l.disable = eb_disable;\n"
+		"    l.readonly = eb_readonly;\n"
+		"    l.isFormStatusWidget = false;\n"
+		"    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', 1);\n"
 		"    c1.y = ((l.clip.height - eb_metric.charHeight)/2);\n"
 		"    c2.y = ((l.clip.height - eb_metric.charHeight)/2);\n"
+		"    if (fm_current) fm_current.register(l);\n"
+		"    l.form = fm_current;\n"
 		"    return l;\n"
 		"    }\n", 0);
 

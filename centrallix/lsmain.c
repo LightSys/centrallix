@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.3 2001/10/23 00:25:09 gbeeley Exp $
+    $Id: lsmain.c,v 1.4 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.4  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
     Revision 1.3  2001/10/23 00:25:09  gbeeley
     Added rudimentary single-line editbox widget.  No data source linking
     or anything like that yet.  Fixed a few bugs and made a few changes to
@@ -142,6 +148,7 @@ start(void* v)
 	htcbInitialize();			/* checkbox module */
 	htrbInitialize();			/* radiobutton module */
 	htebInitialize();			/* editbox module */
+	httmInitialize();			/* timer nonvisual module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */

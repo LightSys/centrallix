@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.2 2001/10/22 17:19:42 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.3 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.3  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
     Revision 1.2  2001/10/22 17:19:42  gbeeley
     Added a few utility functions in ht_render to simplify the structure and
     authoring of widget drivers a bit.
@@ -310,7 +316,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                {\n"
 		"                eparam = new Object();\n"
 		"                eparam.Caller = ly;\n"
-		"                ly.EventClick(eparam);\n"
+		"                cn_activate(ly, 'Click', eparam);\n"
 		"                delete eparam;\n"
 		"                }\n"
 		"            }\n"

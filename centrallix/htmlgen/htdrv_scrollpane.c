@@ -43,12 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.1 2001/08/13 18:00:50 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
-    Revision 1.1  2001/08/13 18:00:50  gbeeley
-    Initial revision
+    Revision 1.2  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
+    Revision 1.1.1.1  2001/08/13 18:00:50  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -240,6 +246,8 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    tlayer.document.images[0].area=alayer;\n"
 		"    tlayer.document.images[0].pane=l;\n"
 		"    alayer.clip.width=l.clip.width-18;\n"
+		"    alayer.maxwidth=alayer.clip.width;\n"
+		"    alayer.minwidth=alayer.clip.width;\n"
 		"    tlayer.nofocus = true;\n"
 		"    alayer.nofocus = true;\n"
 		"    alayer.document.Layer = alayer;\n"

@@ -42,12 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.1 2001/08/13 18:00:49 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
-    Revision 1.1  2001/08/13 18:00:49  gbeeley
-    Initial revision
+    Revision 1.2  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
+    Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -131,12 +137,16 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	        htrAddHeaderItem(s,sbuf);
 	        sprintf(sbuf,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
 	        htrAddHeaderItem(s,sbuf);
+	        sprintf(sbuf,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z+1);
+	        htrAddHeaderItem(s,sbuf);
 	        }
 	    else
 	        {
 	        sprintf(sbuf,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	        htrAddHeaderItem(s,sbuf);
 	        sprintf(sbuf,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	        htrAddHeaderItem(s,sbuf);
+	        sprintf(sbuf,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z+1);
 	        htrAddHeaderItem(s,sbuf);
 	        }
 	    sprintf(sbuf,"    </STYLE>\n");
@@ -146,11 +156,13 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
             nptr = (char*)nmMalloc(strlen(name)+1);
             strcpy(nptr,name);
             htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+            htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
     
             /** This function handles the 'LoadPage' action **/
             htrAddScriptFunction(s, "ht_loadpage", "\n"
                     "function ht_loadpage(aparam)\n"
                     "    {\n"
+		    "    this.transition = aparam.Transition;\n"
                     "    this.source = aparam.Source;\n"
                     "    }\n", 0);
     
@@ -160,16 +172,67 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
                     "    {\n"
                     "    if (newval.substr(0,5)=='http:')\n"
                     "        {\n"
-		    "        tmpl = this.curLayer;\n"
-		    "        tmpl.visibility = 'hidden';\n"
-		    "        this.curLayer = this.altLayer;\n"
-		    "        this.altLayer = tmpl;\n"
-                    "        this.curLayer.onload = ht_reloaded;\n"
-                    "        this.curLayer.bgColor = null;\n"
-                    "        this.curLayer.load(newval,this.clip.width);\n"
+		    "        this.newsrc = newval;\n"
+		    "        if (this.transition && this.transition != 'normal')\n"
+		    "            {\n"
+		    "            ht_startfade(this,this.transition,'out',ht_dosourcechange);\n"
+		    "            }\n"
+		    "        else\n"
+		    "            ht_dosourcechange(this);\n"
                     "        }\n"
                     "    return newval;\n"
                     "    }\n", 0);
+
+	    /** This function completes the doc source change **/
+	    htrAddScriptFunction(s, "ht_dosourcechange", "\n"
+		    "function ht_dosourcechange(l)\n"
+		    "    {\n"
+		    "    tmpl = l.curLayer;\n"
+		    "    tmpl.visibility = 'hidden';\n"
+		    "    l.curLayer = l.altLayer;\n"
+		    "    l.altLayer = tmpl;\n"
+                    "    l.curLayer.onload = ht_reloaded;\n"
+                    "    l.curLayer.bgColor = null;\n"
+                    "    l.curLayer.load(l.newsrc,l.clip.width);\n"
+		    "    }\n", 0);
+
+	    /** This function does the intermediate fading steps **/
+	    htrAddScriptFunction(s, "ht_fadestep", "\n"
+		    "function ht_fadestep()\n"
+		    "    {\n"
+		    "    ht_fadeobj.faderLayer.background.src = '/sys/images/fade_' + ht_fadeobj.transition + '_0' + ht_fadeobj.count + '.gif';\n"
+		    "    ht_fadeobj.count++;\n"
+		    "    if (ht_fadeobj.count == 5 || ht_fadeobj.count >= 9)\n"
+		    "        {\n"
+		    "        if (ht_fadeobj.completeFn) return ht_fadeobj.completeFn(ht_fadeobj);\n"
+		    "        else return;\n"
+		    "        }\n"
+		    "    setTimeout(ht_fadestep,100);\n"
+		    "    }\n", 0);
+
+	    /** This function controls the fade transitions of a layer **/
+	    htrAddScriptFunction(s, "ht_startfade", "\n"
+		    "function ht_startfade(l,ftype,inout,fn)\n"
+		    "    {\n"
+		    "    ht_fadeobj = l;\n"
+		    "    if (l.faderLayer.clip.height < l.curLayer.clip.height)\n"
+		    "        l.faderLayer.clip.height=l.curLayer.clip.height;\n"
+		    "    if (l.faderLayer.clip.width < l.curLayer.clip.width)\n"
+		    "        l.faderLayer.clip.width=l.curLayer.clip.width;\n"
+		    "    l.faderLayer.moveAbove(l.curLayer);\n"
+		    "    l.faderLayer.visibility='inherit';\n"
+		    "    l.completeFn = fn;\n"
+		    "    if (inout == 'in')\n"
+		    "        {\n"
+		    "        l.count=5;\n"
+		    "        setTimeout(ht_fadestep,20);\n"
+		    "        }\n"
+		    "    else\n"
+		    "        {\n"
+		    "        l.count=1;\n"
+		    "        setTimeout(ht_fadestep,20);\n"
+		    "        }\n"
+		    "    };\n", 0);
     
             /** This function is called when the layer is reloaded. **/
             htrAddScriptFunction(s, "ht_reloaded", "\n"
@@ -177,6 +240,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
                     "    {\n"
                     "    e.target.mainLayer.watch('source',ht_sourcechanged);\n"
                     "    e.target.clip.height = e.target.document.height;\n"
+		    "    e.target.mainLayer.faderLayer.moveAbove(e.target);\n"
 		    "    e.target.visibility = 'inherit';\n"
                     /*"    e.target.document.captureEvents(Event.CLICK);\n"
                     "    e.target.document.onclick = ht_click;\n"*/
@@ -186,6 +250,8 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    "        e.target.document.links[i].kind = 'ht';\n"
                     "        }\n"
                     "    pg_resize(e.target.mainLayer.parentLayer);\n"
+		    "    if (e.target.mainLayer.transition && e.target.mainLayer.transition != 'normal')\n"
+		    "        ht_startfade(e.target.mainLayer,e.target.mainLayer.transition,'in',null);\n"
                     "    }\n", 0);
     
             /** This function is called when the user clicks on a link in the html pane **/
@@ -198,15 +264,18 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     
             /** Our initialization processor function. **/
             htrAddScriptFunction(s, "ht_init", "\n"
-                    "function ht_init(l,l2,source,pdoc,w,h,p)\n"
+                    "function ht_init(l,l2,fl,source,pdoc,w,h,p)\n"
                     "    {\n"
+		    "    l.faderLayer = fl;\n"
 		    "    l.mainLayer = l;\n"
 		    "    l2.mainLayer = l;\n"
+		    "    fl.mainLayer = l;\n"
 		    "    l.curLayer = l;\n"
 		    "    l.altLayer = l2;\n"
                     "    l.LSParent = p;\n"
                     "    l.kind = 'ht';\n"
                     "    l2.kind = 'ht';\n"
+		    "    fl.kind = 'ht';\n"
                     "    l.pdoc = pdoc;\n"
                     "    l2.pdoc = pdoc;\n"
                     "    if (h != -1)\n"
@@ -239,14 +308,14 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    "        }\n");
     
             /** Script initialization call. **/
-            sprintf(sbuf,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,\"%s\",%s,%d,%d,%s);\n",
-                    parentname, id, parentname, id, src, parentname, w,h, parentobj);
+            sprintf(sbuf,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,%s.layers.ht%dfader,\"%s\",%s,%d,%d,%s);\n",
+                    parentname, id, parentname, id, parentname, id, src, parentname, w,h, parentobj);
             htrAddScriptInit(s, sbuf);
             sprintf(sbuf,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
             htrAddScriptInit(s, sbuf);
     
             /** HTML body <DIV> element for the layer. **/
-            sprintf(sbuf,"<DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id);
+            sprintf(sbuf,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV><DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id,id);
             htrAddBodyItem(s, sbuf);
 	    }
 
@@ -299,7 +368,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
             {
             while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
                 {
-                htrRenderWidget(s, sub_w_obj, z+2, sbuf, nptr);
+                htrRenderWidget(s, sub_w_obj, z+3, sbuf, nptr);
                 objClose(sub_w_obj);
                 }
             objQueryClose(qy);
@@ -318,8 +387,6 @@ int
 hthtmlInitialize()
     {
     pHtDriver drv;
-    pHtEventAction action;
-    pHtParam param;
 
         /** Allocate the driver **/
         drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
@@ -336,14 +403,9 @@ hthtmlInitialize()
         xaInit(&(drv->Actions),16);
 
         /** Add the 'load page' action **/
-        action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-        strcpy(action->Name,"LoadPage");
-        xaInit(&action->Parameters,16);
-        param = (pHtParam)nmSysMalloc(sizeof(HtParam));
-        strcpy(param->ParamName,"Source");
-        param->DataType = DATA_T_STRING;
-        xaAddItem(&action->Parameters,(void*)param);
-        xaAddItem(&drv->Actions,(void*)action);
+	htrAddAction(drv,"LoadPage");
+	htrAddParam(drv,"LoadPage","Source",DATA_T_STRING);
+	htrAddParam(drv,"LoadPage","Transition",DATA_T_STRING);
 
         /** Register. **/
         htrRegisterDriver(drv);

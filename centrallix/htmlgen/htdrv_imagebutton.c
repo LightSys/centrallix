@@ -44,12 +44,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.1 2001/08/13 18:00:49 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
-    Revision 1.1  2001/08/13 18:00:49  gbeeley
-    Initial revision
+    Revision 1.2  2001/11/03 02:09:54  gbeeley
+    Added timer nonvisual widget.  Added support for multiple connectors on
+    one event.  Added fades to the html-area widget.  Corrected some
+    pg_resize() geometry issues.  Updated several widgets to reflect the
+    connector widget changes.
+
+    Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -215,7 +221,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                {\n"
 		"                eparam = new Object();\n"
 		"                eparam.Caller = e.target.layer;\n"
-		"                e.target.layer.EventClick(eparam);\n"
+		"                cn_activate(e.target.layer, 'Click', eparam);\n"
 		"                delete eparam;\n"
 		"                }\n"
 		"            }\n"
