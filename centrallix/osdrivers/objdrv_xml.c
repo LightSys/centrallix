@@ -57,10 +57,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.16 2002/08/17 20:01:17 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.17 2002/08/21 02:11:56 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.17  2002/08/21 02:11:56  jorupp
+     * will return the empty string for an attribute value if it is using a node for the value,
+     	and there is no text or children in that node
+     * will, under no condition, return the centrallix implied attributes (or the internal only internal_type)
+     	from the GetNextAttr iterator, even if they are overridden in the document (this was breaking the connector)
+
     Revision 1.16  2002/08/17 20:01:17  jorupp
      * fixed up some stuff with the new OSML API
      * removed the returing of the implict attributes from GetNextAttr()
@@ -882,7 +888,11 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    else
 		{
 		flag=1;
-		cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
+		/** the structure file driver will return the node's literal name, even if it isn't unique
+		 **   -- for now, we'll follow suit -- should we not do this?
+		 **/
+		//cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
+		cnt = snprintf(name,256,"%s",qy->NextNode->name);
 		}
 
 	    }
@@ -1010,8 +1020,8 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		}
 	    else
 		{
-		mssError(0,"XML","unable to get attribute value (and hence a type) for %s",attrname);
-		return -1;
+		/** if there's no text, we're going to return the empty string **/
+		return DATA_T_STRING;
 		}
 	    }
 
@@ -1059,7 +1069,12 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 	    {
 	    /** see if there's text there **/
 	    p=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
-	    if(np->name && p)
+	    /** add if it has a valid name and either 
+	     **  1. text (p is set)
+	     **   or
+	     **  2. no children, no text, and no attributes (np->children is null)
+	     **/
+	    if(np->name && (p || !np->children) )
 		{
 		if((pHE=(pXmlAttrObj)xhLookup(inf->Attributes,(char*)np->name)))
 		    {
@@ -1189,8 +1204,11 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    else
 		{
-		mssError(0,"XML","unable to get attribute value for %s",attrname);
-		return -1;
+		/** if there's no text, we're going to return the empty string **/
+		inf->AttrValue=(char*)malloc(1);
+		inf->AttrValue[0]='\0';
+		*((char**)val) = inf->AttrValue;
+		return -0;
 		}
 	    }
 
@@ -1234,11 +1252,15 @@ xmlGetNextAttr(void* inf_v, pObjTrxTree oxt)
     pXmlData inf = XML(inf_v);
     char *p;
     
+    /** don't return this from the iterator --
+     **   it causes problems for the connector **/
+#if 0
     switch(inf->CurAttr++)
 	{
 	case 0: return "internal_type";
 	}
-    
+#endif
+
     /** just for safety's sake -- really shouldn't be needed **/
     xml_internal_BuildAttributeHashTable(inf);
     
@@ -1257,6 +1279,14 @@ xmlGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	while(inf->CurSubNode)
 	    {
 	    if(inf->CurSubNode->name && inf->CurSubNode->name[0] && /** verify a valid name **/
+		/** _never_ return one of the 'special' attributes, even it it was overriden in the document **/
+		/** without this, connectors act wierd ... **/
+		strcmp(inf->CurSubNode->name,"outer_type") &&
+		strcmp(inf->CurSubNode->name,"inner_type") &&
+		strcmp(inf->CurSubNode->name,"content_type") &&
+		strcmp(inf->CurSubNode->name,"last_modification") &&
+		strcmp(inf->CurSubNode->name,"annotation") &&
+		strcmp(inf->CurSubNode->name,"name") &&
 		(pHE=(pXmlAttrObj)xhLookup(inf->Attributes,(char*)inf->CurSubNode->name)) && /** get AttrObj **/
 		pHE->count==1) /** only one subobject of this type **/
 		{
