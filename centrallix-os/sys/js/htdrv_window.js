@@ -65,7 +65,7 @@ function wn_init(l,ml,gs,ct,titlebar)
     l.SetVisibilityTH = wn_setvisibility_th;
     l.Reveal = wn_cb_reveal;
     pg_reveal_register_triggerer(l);
-    if (htr_getvisibility(l) == 'inherit') 
+    if (htr_getvisibility(l) == 'inherit')
 	{
 	pg_addsched_fn(window, "pg_reveal_event", new Array(l,l,'Reveal'));
 	}
@@ -75,7 +75,7 @@ function wn_init(l,ml,gs,ct,titlebar)
 
 // Called when our reveal/obscure request has been acted upon.
 // context 'c' == whether to be visible (true) or not (false).
-function wn_cb_reveal(e) 
+function wn_cb_reveal(e)
     {
     if ((e.eventName == 'RevealOK' && e.c == true) || (e.eventName == 'ObscureOK' && e.c == false))
 	this.SetVisibilityBH(e.c);
@@ -117,6 +117,10 @@ function wn_register_osrc(t)
 
 function wn_unset_windowshade(l)
     {
+    if (cx__capabilities.Dom0IE)
+        {
+        l = wn_layer;
+        }
     l.clicked = 0;
     }
 
@@ -162,7 +166,15 @@ function wn_windowshade(l)
 	{
 	l.clicked = 1;
 	clearTimeout(l.tid);
-	l.tid = setTimeout(wn_unset_windowshade, 500, l);
+	if (cx__capabilities.Dom0IE)
+	    {
+	    wn_layer = l;
+	    wn_layer.tid = setTimeout(wn_unset_windowshade, 500);
+	    }
+	else
+	    {
+	    l.tid = setTimeout(wn_unset_windowshade, 500, l);
+	    }
 	}
     }
 
@@ -183,7 +195,7 @@ function wn_graphical_shade(l,to,speed,size)
 	    l.working = false;
 	    return;
 	    }
-	else 
+	else
 	    pg_set_style(l,'clip.height',height-size);
 	pg_set_style(l.ContentLayer,'clip.top',pg_get_style(l.ContentLayer,'clip.top')+size);
 	pg_set_style(l.ContentLayer,'pageY',pg_get_style(l.ContentLayer,'pageY')-size);
@@ -196,7 +208,7 @@ function wn_graphical_shade(l,to,speed,size)
 	    l.working = false;
 	    return;
 	    }
-	else 
+	else
 	    pg_set_style(l,'clip.height',height+size);
 	pg_set_style(l.ContentLayer,'clip.top',pg_get_style(l.ContentLayer,'clip.top')-size);
 	pg_set_style(l.ContentLayer,'pageY',pg_get_style(l.ContentLayer,'pageY')+size);
@@ -216,6 +228,10 @@ function wn_close(l)
 	    {
 	    l.visibility = 'hidden';
 	    }
+	else if(cx__capabilities.Dom0IE)
+	    {
+	    l.runtimeStyle.visibility = 'hidden';
+	    }
 	else
 	    {
 	    alert("can't close");
@@ -232,12 +248,12 @@ function wn_close(l)
 	    var sizeY = 0;
 	    if (l.closetype & 1)
 		{
-		var toX = Math.ceil(l.clip.width/2);
+		var toX = Math.ceil(getClipWidht(l)/2);
 		sizeX = Math.ceil(toX*speed/duration);
 		}
 	    if (l.closetype & 2)
 		{
-		var toY = Math.ceil(l.clip.height/2);
+		var toY = Math.ceil(getClipHeight(l)/2);
 		sizeY = Math.ceil(toY*speed/duration);
 		}
 	    wn_graphical_close(l,speed,sizeX,sizeY);
@@ -255,18 +271,18 @@ function wn_graphical_close(l,speed,sizeX,sizeY)
     	{
 	l.clip.right -= sizeX;
 	l.clip.left += sizeX;
-	if (l.clip.width <= 0) var reset = true;
+	if (getClipWidht(l) <= 0) var reset = true;
 	}
     if (sizeY > 0)
     	{
 	l.clip.bottom -= sizeY;
 	l.clip.top += sizeY;
-	if (l.clip.height <= 0) var reset = true;
+	if (getClipHeight(l)<= 0) var reset = true;
 	}
     if (reset)
     	{
 	    l.visibility = 'hidden';
-	    l.clip.width = l.orig_width;
+	    setClipWidht(l, l.orig_width);
 	    l.clip.right = l.orig_right;
 	    l.clip.left = l.orig_left;
 	    l.clip.height = l.orig_height;
@@ -323,18 +339,18 @@ function wn_domove()
         var va=(document.width-window.innerWidth-2)>=0?15:0;
         var newx,newy;
         if (wn_newx < pg_attract && wn_newx > -pg_attract) newx = 0;
-        else if (wn_newx+wn_current.clip.width > window.innerWidth-ha-pg_attract && wn_newx+wn_current.clip.width < window.innerWidth-ha+pg_attract)
+        else if (wn_newx+getClipWidth(wn_current) > window.innerWidth-ha-pg_attract && wn_newx+ getClipWidth(wn_current) < window.innerWidth-ha+pg_attract)
 		newx = window.innerWidth-ha-pg_get_style(wn_current,'clip.width');
-        else if (wn_newx+wn_current.clip.width < 25) newx = 25-pg_get_style(wn_current,'clip.width');
+        else if (wn_newx+getClipWidth(wn_current) < 25) newx = 25-pg_get_style(wn_current,'clip.width');
         else if (wn_newx > window.innerWidth-35-ha) newx = window.innerWidth-35-ha;
 	else newx = wn_newx;
         if (wn_newy<0) newy = 0;
         else if (wn_newy > window.innerHeight-12-va) newy = window.innerHeight-12-va;
         else if (wn_newy < pg_attract) newy = 0;
-        else if (wn_newy+wn_current.clip.height > window.innerHeight-va-pg_attract && wn_newy+wn_current.clip.height < window.innerHeight-va+pg_attract)
+        else if (wn_newy+getClipHeight(wn_current) > window.innerHeight-va-pg_attract && wn_newy+getClipHeight(wn_current) < window.innerHeight-va+pg_attract)
 		newy = window.innerHeight-va-pg_get_style(wn_current,'clip.height');
         else newy = wn_newy;
-        wn_current.moveToAbsolute(newx,newy);
+        moveToAbsolute(wn_current,newx,newy);
     	wn_current.clicked = 0;
         }
     return true;
@@ -369,7 +385,7 @@ function wn_mousedown(e)
     var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
     if (ly.kind == 'wn')
         {
-        if (e.target.name == 'close') 
+        if (e.target.name == 'close')
             pg_set(e.target,'src','/sys/images/02close.gif');
         else if (
                 (cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
@@ -417,11 +433,18 @@ function wn_mousemove(e)
     if (wn_current != null)
         {
         wn_current.clicked = 0;
-        clearTimeout(ly.mainlayer.tid);
+        if (cx__capabilities.Dom0IE)
+            {
+            clearTimeout(wn_layer.tid);
+            }
+        else
+            {
+            clearTimeout(ly.mainlayer.tid);
+            }
         if (wn_newx == null)
             {
-            wn_newx = wn_current.pageX + e.pageX-wn_msx;
-            wn_newy = wn_current.pageY + e.pageY-wn_msy;
+            wn_newx = getPageX(wn_current) + e.pageX-wn_msx;
+            wn_newy = getPageY(wn_current) + e.pageY-wn_msy;
             }
         else
             {

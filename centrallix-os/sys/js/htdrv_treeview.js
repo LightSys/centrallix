@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -28,6 +28,10 @@ function tv_new_layer(width,pdoc,l)
 	nl.next = null;*/
 	tv_cache_cnt--;
 	nl = pdoc.tv_layer_cache.pop();
+	if (cx__capabilities.Dom1HTML)
+	    {
+	    pdoc.appendChild(nl);
+	    }
 	}
     else
 	{
@@ -38,18 +42,14 @@ function tv_new_layer(width,pdoc,l)
 	else if(cx__capabilities.Dom1HTML)
 	    {
 	    nl = document.createElement('DIV');
-	    /*nl.style.cssText = "position:absolute; width:" + width + "px; height:20px; clip:rect(0px," + width + "px, 20px, 0px); overflow:hidden; visibility:inherit";*/
-	    /*nl.style.setProperty('position','absolute','');
-	    nl.style.setProperty('width',width + 'px','');
-	    nl.style.setProperty('height','20px','');
-	    nl.style.setProperty('clip','rect(0px,' + width + 'px, 20px, 0px)','');
-	    nl.style.setProperty('overflow','hidden','');
-	    nl.style.setProperty('visibility','inherit','');*/
+	    nl.style.width = width;
+	    //setClip(0, width, 0, 0);
+	    pg_set_style(nl, 'position','relative');
 	    pdoc.appendChild(nl);
 	    }
 	else
 	    {
-	    alert('browser not supported');
+	    alert('treeview: browser not supported');
 	    }
 	tv_alloc_cnt++;
 	}
@@ -64,7 +64,7 @@ function tv_new_layer(width,pdoc,l)
 	}
     else
 	{
-	alert('browser not supported');
+	alert('treeview: browser not supported');
 	}
     nl.mainlayer = l;
     return nl;
@@ -80,31 +80,27 @@ function tv_cache_layer(l,pdoc)
     tv_cache_cnt++;
     }
 
-
-function tv_action_setfocus(aparam)
-    {
-    }
-
-function tv_action_setroot(aparam)
-    {
-    // Make sure we've collapsed the current tree
-    this.root.collapse();
-
-    // Set the root
-    if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
-    if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init(this.root,aparam.NewRoot,this.root.ld,this.root.pdoc,this.root.clip.width,this.root.LSParent,aparam.NewRootObj);
-    if (aparam.Expand == 'yes') this.root.expand();
-    }
-
 function tv_click(e)
     {
-    if (e.which == 3 || e.which == 2)
-	{
-	tv_rclick(e);
-	return false;
+    if (!cx__capabilities.Dom0IE)
+        {
+    	if (e.which == 3 || e.which == 2)
+	    {
+	    tv_rclick(e);
+	    return false;
+	    }
 	}
+    else
+        {
+    	if (e.button == 3 || e.button == 2)
+	    {
+	    tv_rclick(e);
+	    return false;
+	    }
+        }
+
     var l=e.target.layer;
+
     if(l.isjs)
 	{
 	if (l.parent)
@@ -123,7 +119,7 @@ function tv_click(e)
 		    if(confirm("Change root to here?"))
 			{
 			var nr;
-			if(l.parent.objptr[l.objn].name) 
+			if(l.parent.objptr[l.objn].name)
 			    nr = "javascript:"+l.parent.objptr[l.objn].name;
 			else
 			    nr = "javascript:"+l.objn;
@@ -153,7 +149,16 @@ function tv_click(e)
 function tv_rclick(e)
     {
     var links = pg_links(e.target.layer);
-    if (links != null && (e.which == 3 || e.which == 2))
+    var which;
+    if (!cx__capabilities.Dom0IE)
+        {
+        which = e.which;
+        }
+    else
+    	{
+    	which = e.button;
+    	}
+    if (links != null && (which == 3 || which == 2))
 	{
 	if(e.target.layer.isjs)
 	    {
@@ -203,7 +208,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold)
     {
     if(cx__capabilities.Dom0NS)
 	{
-	var tvtext = "<IMG SRC='" + img_src + "' align='left'>&nbsp;<A HREF='" + link_href + "'>" + 
+	var tvtext = "<IMG SRC='" + img_src + "' align='left'>&nbsp;<A HREF='" + link_href + "'>" +
 	    (link_bold?"<b>":"") + link_text + (link_bold?"<b>":"") + "</A>";
 	if (l.tvtext != tvtext)
 	    {
@@ -220,13 +225,13 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold)
 	    {
 	    l.removeChild(c);
 	    }
-	
+
 	/** the image **/
 	var img = document.createElement('img');
 	img.setAttribute('src',img_src);
 	img.setAttribute('align','left');
 	l.appendChild(img);
-	
+
 	/** the space **/
 	l.appendChild(document.createTextNode(" "));
 
@@ -306,7 +311,7 @@ function tv_GetLinkCnt(l)
 function tv_MakeRoom(tv_tgt_layer, linkcnt)
     {
     if (window != tv_tgt_layer.pdoc.tv_layer_tgt)
-	tv_tgt_layer.pdoc.tv_layer_tgt.clip.height += 20*(linkcnt);
+	setClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt,getClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt)+ 20*(linkcnt));
 
     var tgtTop = pg_get_style(tv_tgt_layer,"top");
     var layers = pg_layers(tv_tgt_layer.pdoc);
@@ -325,9 +330,9 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 	    }
 	else
 	    {
-	    if (sl.pageY >= tv_tgt_layer.pageY + 20 && sl != tv_tgt_layer && sl.visibility == 'inherit')
+	    if (getPageY(sl) >= getPageY(tv_tgt_layer) + 20 && sl != tv_tgt_layer && sl.visibility == 'inherit')
 		{
-		sl.pageY += 20*(linkcnt);
+		setPageY(sl, getPageY(sl) + 20*(linkcnt));
 		}
 	    }
 	}
@@ -339,9 +344,9 @@ function tv_BuildNewLayers(l, linkcnt)
     {
     /** pre-load some variables **/
     //var tgtClipWidth = tv_tgt_layer.clip.width;
-    var tgtClipWidth = tv_tgt_layer.mainlayer.setwidth - (tv_tgt_layer.x - tv_tgt_layer.mainlayer.x) - 20;
-    var tgtX = tv_tgt_layer.x;
-    var tgtY = tv_tgt_layer.y;
+    var tgtClipWidth = tv_tgt_layer.mainlayer.setwidth - (getRelativeX(tv_tgt_layer) - getRelativeX(tv_tgt_layer.mainlayer)) - 20;
+    var tgtX = getRelativeX(tv_tgt_layer);
+    var tgtY = getRelativeY(tv_tgt_layer);
 
     var jsProps = null;
     if(l.isjs)
@@ -352,12 +357,13 @@ function tv_BuildNewLayers(l, linkcnt)
 	    jsProps.push(prop);
 	    }
 	}
+
     for(var i=1;i<=linkcnt;i++)
 	{
 	var link_txt;
 	var link_href;
 	var link_bold;
-    
+
 	var link_bold = 0;
 	var one_link;
 	var one_layer = tv_new_layer(tgtClipWidth,tv_tgt_layer.pdoc,l.mainlayer);
@@ -382,8 +388,8 @@ function tv_BuildNewLayers(l, linkcnt)
 	    one_link=j + '.';
 	    if(o && (t=="object" || t=="function"))
 		{
-		/*if (window.doit)*/ one_layer.objptr=o;
-		link_txt=j+"&nbsp;("+t+"):&nbsp;";
+		one_layer.objptr=o;
+		link_txt=j+" ("+t+"): ";
 		if(t=="function")
 		    {
 		    im='01';
@@ -397,10 +403,10 @@ function tv_BuildNewLayers(l, linkcnt)
 		}
 	    else
 		{
-		if (t=='string' && o.length > 64) 
-		    link_txt = j+"&nbsp;("+t+"):&nbsp;"+o.substr(0,64) + "&nbsp;...";
+		if (t=='string' && o.length > 64)
+		    link_txt = j+" ("+t+"): "+o.substr(0,64) + " ...";
 		else
-		    link_txt=j+"&nbsp;("+t+"):&nbsp;"+o;
+		    link_txt=j+" ("+t+"): "+o;
 		one_layer.objptr=null;
 		im = '01';
 		}
@@ -415,7 +421,7 @@ function tv_BuildNewLayers(l, linkcnt)
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
 	    im = '01';
 	    if (link_txt == '' || link_txt == null) link_txt = one_link;
-	    else link_txt = one_link + '&nbsp;-&nbsp;' + link_txt;
+	    else link_txt = one_link + ' - ' + link_txt;
 	    if (one_link.lastIndexOf('/') > 0) im = '02';
 	    else one_link = one_link + '/';
 	    }
@@ -423,7 +429,14 @@ function tv_BuildNewLayers(l, linkcnt)
 	tv_build_layer(one_layer,"/sys/images/ico" + im + "b.gif",link_href,link_txt, link_bold);
 	one_layer.fname = tv_tgt_layer.fname + one_link;
 	one_layer.type = im;
-	one_layer.moveTo(tgtX + 20, tgtY + 20*i);
+	if (cx__capabilities.Dom0NS)
+	    {
+	    moveTo(one_layer, tgtX + 20, tgtY + 20*i);
+	    }
+	else if (cx__capabilities.Dom1HTML)
+	    {
+	    moveTo(one_layer, tgtX + 20, tgtY + 20);
+	    }
 	pg_set_style_string(one_layer,'visibility','inherit');
 	var images = pg_images(one_layer);
 	one_layer.img = images[images.length-1];
@@ -464,6 +477,7 @@ function tv_loaded(e)
     var linkcnt = tv_GetLinkCnt(l);
 
     if (linkcnt < 0) linkcnt = 0;
+
     tv_MakeRoom(l, linkcnt);
 
     tv_BuildNewLayers(l, linkcnt);
@@ -527,7 +541,19 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     l.kind = 'tv';
     l.pdoc = pdoc;
     l.ld = loader;
-    htr_init_layer(l,l,'tv');
+    if(cx__capabilities.Dom0NS)
+	{
+	l.document.layer = l;
+	}
+    else if(cx__capabilities.Dom1HTML)
+	{
+	l.layer = l;
+	}
+    else
+	{
+	alert('browser not supported');
+	}
+    l.mainlayer = l;
     //l.ld.parent = l;
     l.root = l;
     if (!pdoc.tv_layer_cache) pdoc.tv_layer_cache = new Array();
@@ -543,20 +569,11 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
 	{
 	alert('browser not supported');
 	}
-    l.clip.width = w;
+    setClipWidth(l, w);
     l.setwidth = w;
     l.childimgs = '';
     l.collapse=tv_collapse;
     l.expand=tv_expand;
-
-    // Actions
-    l.ActionSetRoot = tv_action_setroot;
-    l.ActionSetFocus = tv_action_setfocus;
-
-    l.is_initialized = true;
-
-    // Auto expand if not showing root, otherwise what's the use?
-    if (htr_getvisibility(l) != 'inherit') l.root.expand();
     }
 
 function tv_expand()
@@ -568,8 +585,8 @@ function tv_expand()
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src','/sys/images/ico11c.gif');
     tv_tgt_layer = l;
-    
-    
+
+
     l.expanded = 1;
     if(l.isjs)
 	{
@@ -599,8 +616,8 @@ function tv_collapse()
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src','/sys/images/ico11c.gif');
     tv_tgt_layer = l;
-    
-    
+
+
     l.expanded = 0;
     var cnt = 0;
     var lyrs = pg_layers(l.pdoc);
@@ -614,20 +631,19 @@ function tv_collapse()
 	    pg_debug('tv_collapse: caching ' + sl.fname + '\n');
 	    //alert(sl.fname);
 	    tv_cache_layer(sl,l.pdoc);
-	    //delete lyrs[i];
 	    sl.fname = null;
 	    if(cx__capabilities.Dom0NS)
-		{
-		sl.document.onmouseup = 0;
-		}
+	        {
+	        delete lyrs[i];
+	        }
 	    else if(cx__capabilities.Dom1HTML)
-		{
-		sl.onmouseup = 0;
-		}
-	    else
-		{
-		alert('browser not supported');
-		}
+	        {
+	    	lyrs[i].innerHTML ="";
+	    	lyrs[i].outerHTML ="";
+	    	len--;
+	    	}
+
+	    sl.fname = null;
 	    cnt++;
 	    }
 	//layers = pg_layers(l.pdoc);
@@ -638,9 +654,9 @@ function tv_collapse()
 	{
 	sl = lyrs[j];
 	var visibility = pg_get_style(sl,'visibility');
-	if (sl.pageY > l.pageY && (visibility == 'inherit' || visibility == 'visible') )
+	if (getPageY(sl) > getPageY(l) && (visibility == 'inherit' || visibility == 'visible') )
 	    {
-	    sl.pageY -= 20*cnt;
+	    setPageY(sl, getPageY(sl)-20*cnt);
 	    }
 	}
     if(cx__capabilities.Dom0NS)
