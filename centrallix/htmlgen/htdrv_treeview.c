@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.8 2002/03/14 22:02:58 jorupp Exp $
+    $Id: htdrv_treeview.c,v 1.9 2002/03/16 01:56:14 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.9  2002/03/16 01:56:14  jorupp
+     * code cleanup
+     * added right/middle click functionality on text -- allows you to run code on an object
+
     Revision 1.8  2002/03/14 22:02:58  jorupp
      * bugfixes, dropdown doesn't throw errors when being cleared/reset
 
@@ -227,7 +231,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "tv_click", "\n"
 		"function tv_click(e)\n"
 		"    {\n"
-		"    if (e.which == 3)\n"
+		"    if (e.which == 3 || e.which == 2)\n"
 		"        {\n"
 		"        tv_rclick(e);\n"
 		"        return false;\n"
@@ -248,51 +252,11 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                        }\n"
 		"                    break;\n"
 		"                case \"object\":\n"
-		"                case \"array\":\n"
 		"                    if(confirm(\"Change root to here?\"))\n"
 		"                        {\n"
 		"                        l.root.collapse();\n"
-#if 0
-		"                        l.root.img.realsrc=l.root.img.src;\n"
-		"                        l.root.img.src='/sys/images/ico11c.gif';\n"
-		"                        tv_tgt_layer = l;\n"
-		"                        if(l.root.expanded==1)\n"
-		"                            {\n"
-		"                            l.root.collapse();\n"
-		"                            l.root.expanded = 0;\n"
-		"                            cnt = 0;\n"
-		"                            for(i=l.root.pdoc.layers.length-1;i>=0;i--)\n"
-		"                                {\n"
-		"                                sl = l.root.pdoc.layers[i];\n"
-		"                                if (sl.fname!=null && sl!=l.root && l.root.fname==sl.fname.substring(0,l.root.fname.length))\n"
-		"                                    {\n"
-		"                                    tv_cache_layer(sl,l.root.pdoc);\n"
-		"                                    delete l.root.pdoc.layers[i];\n"
-		"                                    sl.fname = null;\n"
-		"                                    sl.document.onmouseup = 0;\n"
-		"                                    cnt++;\n"
-		"                                    }\n"
-		"                                }\n"
-		"                            for (j=0;j<l.root.pdoc.layers.length;j++)\n"
-		"                                {\n"
-		"                                sl = l.root.pdoc.layers[j];\n"
-		"                                if (sl.pageY > l.root.pageY && sl.visibility == 'inherit')\n"
-		"                                    {\n"
-		"                                    sl.pageY -= 20*cnt;\n"
-		"                                    }\n"
-		"                                }\n"
-		"                            pg_resize(l.root.parentLayer);\n"
-		"                            l.root.img.src=l.root.img.realsrc;\n"
-		"                            l.root.img.src = subst_last(l.root.img.src,'b.gif');\n"
-		"                            l.root.img.realsrc = null;\n"
-		"                            }\n"
-#endif
-
-
-		"                        //confirm(\"calling init....\");\n"
 		"                        if(l.parent.obj[l.objn].name) tv_init(l.root,\"javascript:\"+l.parent.obj[l.objn].name,l.root.ld,l.root.pdoc,l.root.clip.width,l.root.LSParent,l.parent.obj[l.objn]);\n"
 		"                        else tv_init(l.root,\"javascript:\"+l.objn,l.root.ld,l.root.pdoc,l.root.clip.width,l.root.LSParent,l.parent.obj[l.objn]);\n"
-		"                        //confirm(\"init done\");\n"
 		"                        }\n"
 		"                    break;\n"
 		"                }\n"
@@ -318,21 +282,42 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "tv_rclick", "\n"
 		"function tv_rclick(e)\n"
 		"    {\n"
-		"    if (e.target.layer.document.links != null && e.which == 3)\n"
+		"    if (e.target.layer.document.links != null && (e.which == 3 || e.which == 2))\n"
 		"        {\n"
-		"        hr = e.target.layer.document.links[0].href;\n"
-		"        eparam = new Object();\n"
-		"        eparam.Pathname = hr;\n"
-		"        eparam.Caller = e.target.layer.root;\n"
-		"        eparam.X = e.pageX;\n"
-		"        eparam.Y = e.pageY;\n"
-		"        if (e.target.layer.root.EventRightClickItem != null)\n"
+		"        if(e.target.layer.isjs)\n"
 		"            {\n"
-		"            cn_activate(e.target.layer.root, 'RightClickItem', eparam);\n"
-		"            delete eparam;\n"
+		"            var l=e.target.layer;\n"
+		"            if (l.parent)\n"
+		"                {\n"
+		"                switch(typeof(l.parent.obj[l.objn]))\n"
+		"                    {\n"
+		"                    case \"object\":\n"
+		"                        r=prompt('code to run in context of object:','');\n"
+		"                        if(r!=undefined)\n"
+		"                            {\n"
+		"                            (new Function(r)).apply(l.parent.obj[l.objn]);\n"
+		"                            }\n"
+		"                        break;\n"
+		"                    }\n"
+		"                }\n"
 		"            return false;\n"
 		"            }\n"
-		"        delete eparam;\n"
+		"        else\n"
+		"            {\n"
+		"            hr = e.target.layer.document.links[0].href;\n"
+		"            eparam = new Object();\n"
+		"            eparam.Pathname = hr;\n"
+		"            eparam.Caller = e.target.layer.root;\n"
+		"            eparam.X = e.pageX;\n"
+		"            eparam.Y = e.pageY;\n"
+		"            if (e.target.layer.root.EventRightClickItem != null)\n"
+		"                {\n"
+		"                cn_activate(e.target.layer.root, 'RightClickItem', eparam);\n"
+		"                delete eparam;\n"
+		"                return false;\n"
+		"                }\n"
+		"            delete eparam;\n"
+		"            }\n"
 		"        }\n"
 		"    return true;\n"
 		"    }\n", 0);
@@ -349,7 +334,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***   I added the ability for this widget to view the javascript DOM
 	 ***   Just start it with a source of javascript:object and it will show
 	 ***     the DOM instead of a server filesystem/database tree
-	 ***   note: functions will pop up in a new window, arrays and objects
+	 ***   note: functions will pop up in a new window, objects
 	 ***     expand and show off their properties
 	 ***/
 	
@@ -451,7 +436,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                }\n"
 		"            link_href=\"\";\n"
 		"            one_link=j;\n"
-		"            if(o && (t==\"object\" || t==\"array\" || t==\"function\"))\n"
+		"            if(o && (t==\"object\" || t==\"function\"))\n"
 		"                {\n"
 		"                one_layer.obj=o;\n"
 		"                link_txt=j+\" (\"+t+\"): \";\n"
