@@ -309,9 +309,9 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS)
 	@echo ''
 
 install: all config_install modules_install
-	@mkdir -p $(sbindir)
-	@mkdir -p $(sysconfdir)
-	@$(INSTALL) centrallix $(sbindir)
+	@mkdir -p "$(sbindir)"
+	@mkdir -p "$(sysconfdir)"
+	@$(INSTALL) centrallix "$(sbindir)"
 
 # You can call "make mods" directly to avoid getting the warning about
 # make modules_install.  However, we recommend avoiding that habit if
@@ -338,7 +338,7 @@ modules_install: mods config_install
 config: etc/rootnode etc/centrallix.conf etc/centrallix.init
 
 config_install: config
-	@mkdir -p ${sysconfdir}
+	@mkdir -p "${sysconfdir}"
 	@for CFILE in $(CONFFILES) ; do \
 		if ! [ -a "$(sysconfdir)/$${CFILE}" ] ; then \
 			echo "Installing default version of $${CFILE}" ; \

@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.12 2003/04/03 04:32:37 gbeeley Exp $
+## $Id: Makefile.in,v 1.13 2004/08/29 02:07:14 jorupp Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -104,10 +104,10 @@ libCentrallix.a:	$(STATICFILES)
 	${RANLIB} libCentrallix.a
 
 install: all
-	mkdir -p $(includedir)
-	$(INSTALL) -p $(INCLUDEFILES) $(includedir)
-	mkdir -p $(libdir)
-	$(INSTALL) -p ${FINAL_TARGETS} $(libdir)
+	mkdir -p "$(includedir)"
+	$(INSTALL) -p $(INCLUDEFILES) "$(includedir)"
+	mkdir -p "$(libdir)"
+	$(INSTALL) -p ${FINAL_TARGETS} "$(libdir)"
 	@echo ""
 	@echo "***************************************************************"
 	@echo "Libraries have been installed in $(libdir)"
