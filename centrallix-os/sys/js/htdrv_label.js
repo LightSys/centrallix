@@ -14,5 +14,6 @@ function lbl_init(l)
     {
     l.kind = 'lbl';
     l.document.layer = l;
+    l.mainlayer = l;
     return l;
     }

@@ -30,6 +30,7 @@ function ib_init(l,n,p,c,d,w,h,po,nm,enable)
     l.img.layer = l;
     l.img.kind = 'ib';
     l.kind = 'ib';
+    l.mainlayer = l;
     l.clip.width = w;
     l.buttonName = nm;
     if (h == -1) l.nImage = new Image();

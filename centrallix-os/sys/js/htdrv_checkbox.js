@@ -87,6 +87,7 @@ function checkbox_disable()
 function checkbox_init(l,fieldname,checked) 
     {
     l.kind = 'checkbox';
+    l.mainlayer = l;
     l.fieldname = fieldname;
     l.is_checked = checked;
     l.enabled = true;

@@ -23,6 +23,7 @@ function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts,nm)
     l.document.layer = l;
     l2.document.layer = l;
     l.buttonName = nm;
+    l.mainlayer = l;
     l.l2 = l2;
     l.tp = top;
     l.btm = btm;
