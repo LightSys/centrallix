@@ -15,7 +15,7 @@ index "widget/page"
 	x=0; y=80; height=66; width=620;
 	align=center;
 	fontsize=4;
-	text = "Welcome to Centrallix 0.7.4, released in December 2004.  If you're seeing this page for the first time after an installation, congratulations - you've just successfully finished the install!  Below are a few links to get you started.";
+	text = "Welcome to Centrallix 0.7.4, released in February 2005.  If you're seeing this page for the first time after an installation, congratulations - you've just successfully finished the install!  Below are a few links to get you started.";
 	}
 
     pnOptions "widget/pane"
