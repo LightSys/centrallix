@@ -43,12 +43,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_params.c,v 1.1 2001/08/13 18:00:59 gbeeley Exp $
+    $Id: obj_params.c,v 1.2 2003/05/30 17:39:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_params.c,v $
 
     $Log: obj_params.c,v $
-    Revision 1.1  2001/08/13 18:00:59  gbeeley
-    Initial revision
+    Revision 1.2  2003/05/30 17:39:52  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
+    Revision 1.1.1.1  2001/08/13 18:00:59  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:00  gbeeley
     Centrallix Core Initial Import

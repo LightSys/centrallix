@@ -42,10 +42,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.52 2002/12/24 09:41:07 jorupp Exp $
+    $Id: htdrv_page.c,v 1.53 2003/05/30 17:39:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.53  2003/05/30 17:39:50  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.52  2002/12/24 09:41:07  jorupp
      * move output of cn_browser to ht_render, also moving up above the first place where it is needed
 
@@ -472,6 +483,9 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "pg_attract", "null", 0);
 	htrAddScriptGlobal(s, "pg_gshade", "null", 0);
 	htrAddScriptGlobal(s, "pg_closetype", "null", 0);
+	htrAddScriptGlobal(s, "pg_explist", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_schedtimeout", "null", 0);
+	htrAddScriptGlobal(s, "pg_schedtimeoutlist", "new Array()", 0);
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
@@ -559,27 +573,11 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        }\n"
 		"    if (pg_curlayer != null)\n"
 		"        {\n"
-		"        for(var i=0;i<pg_arealist.length;i++) if (pg_curlayer == pg_arealist[i].layer && e.x >= pg_arealist[i].x &&\n"
-		"                e.y >= pg_arealist[i].y && e.x < pg_arealist[i].x+pg_arealist[i].width &&\n"
-		"                e.y < pg_arealist[i].y+pg_arealist[i].height && pg_curarea != pg_arealist[i])\n"
-		"            {\n"
-		"            if (pg_curarea == pg_arealist[i]) break;\n"
-		"            pg_curarea = pg_arealist[i];\n"
-		"            if (pg_curarea.flags & 1)\n"
-		"                {\n"
-		"                var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
-		"                var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
-		"                var w = pg_curarea.width;\n"
-		"                var h = pg_curarea.height;\n"
-		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);\n"
-		"                }\n"
-		"            break;\n"
-		"            }\n"
+		"        pg_setmousefocus(pg_curlayer, e.x, e.y);\n"
 		"        }\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
-		"        if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
-		"        pg_curarea = null;\n"
+		"        pg_removemousefocus();\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOUT", "pg",
 		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
@@ -596,8 +594,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
-		"        if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
-		"        pg_curarea = null;\n"
+		"        pg_removemousefocus();\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOVER", "pg",
 		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
@@ -628,60 +625,17 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
-		"        if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
-		"        pg_curarea = null;\n"
+		"        pg_removemousefocus();\n"
 		"        }\n"
 		"    if (pg_curarea != null)\n"
 		"        {\n"
-		"        var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
-		"        var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
-		"        var w = pg_curarea.width;\n"
-		"        var h = pg_curarea.height;\n"
-		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler && pg_curlayer != pg_curkbdlayer)\n"
-		"            {\n"
-		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
-		"            pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
-		"            }\n"
-		"        var prevLayer = pg_curkbdlayer;\n"
-		"        pg_curkbdarea = pg_curarea;\n"
-		"        pg_curkbdlayer = pg_curlayer;\n"
-		"        if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)\n"
-		"            {\n"
-		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name,pg_curarea);\n"
-		"            if (v & 1)\n"
-		"                {\n"
-		"                if (prevLayer != pg_curlayer)\n"
-		"                    pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
-		"                }\n"
-		"            if (v & 2)\n"
-		"                {\n"
-		"                if (pg_curlayer.pg_dttop != null)\n"
-		"                    {\n"
-		"                    pg_hidebox(pg_curlayer.pg_dttop,pg_curlayer.pg_dtbtm,pg_curlayer.pg_dtrgt,pg_curlayer.pg_dtlft);\n"
-		"                    }\n"
-		"                else\n"
-		"                    {\n"
-		"                    pg_curlayer.pg_dttop = new Layer(1152);\n"
-		"                    //pg_curlayer.pg_dttop.document.write('<IMG SRC=/sys/images/trans_1.gif width=1152 height=1>');\n"
-		"                    //pg_curlayer.pg_dttop.document.close();\n"
-		"                    pg_curlayer.pg_dtbtm = new Layer(1152);\n"
-		"                    //pg_curlayer.pg_dtbtm.document.write('<IMG SRC=/sys/images/trans_1.gif width=1152 height=1>');\n"
-		"                    //pg_curlayer.pg_dtbtm.document.close();\n"
-		"                    pg_curlayer.pg_dtrgt = new Layer(2);\n"
-		"                    //pg_curlayer.pg_dtrgt.document.write('<IMG SRC=/sys/images/trans_1.gif height=864 width=1>');\n"
-		"                    //pg_curlayer.pg_dtrgt.document.close();\n"
-		"                    pg_curlayer.pg_dtlft = new Layer(2);\n"
-		"                    //pg_curlayer.pg_dtlft.document.write('<IMG SRC=/sys/images/trans_1.gif height=864 width=1>');\n"
-		"                    //pg_curlayer.pg_dtlft.document.close();\n"
-		"                    }\n"
-		"                pg_mkbox(pg_curlayer,x-1,y-1,w+2,h+2, 1,  pg_curlayer.pg_dttop,pg_curlayer.pg_dtbtm,pg_curlayer.pg_dtrgt,pg_curlayer.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);\n"
-		"                }\n"
-		"            }\n"
+		"        if (pg_curlayer != pg_curkbdlayer)\n"
+		"            if (!pg_removekbdfocus()) return true;\n"
+		"        pg_setkbdfocus(pg_curlayer, pg_curarea, e.pageX - pg_curarea.layer.pageX, e.pageY-pg_curarea.layer.pageY);\n"
 		"        }\n"
-		"    else if (pg_curkbdlayer != null && !ly.keep_kbd_focus)\n"
+		"    else if (!ly.keep_kbd_focus)\n"
 		"        {\n"
-		"        pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
-		"        if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return true;\n"
+		"        if (!pg_removekbdfocus()) return true;\n"
 		"        pg_curkbdarea = null;\n"
 		"        pg_curkbdlayer = null;\n"
 		"        }\n");

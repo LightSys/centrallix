@@ -50,10 +50,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.6 2003/04/04 05:02:44 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.7 2003/05/30 17:39:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.7  2003/05/30 17:39:53  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.6  2003/04/04 05:02:44  gbeeley
     Added more flags to objInfo dealing with content and seekability.
     Added objInfo capability to objdrv_struct.
@@ -828,7 +839,7 @@ stxInfo(void* inf_v, pObjectInfo info)
 	/** Setup the flags, and we know the subobject count btw **/
 	info->Flags = (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
 		OBJ_INFO_F_CAN_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT |
-		OBJ_INFO_F_NO_CONTENT);
+		OBJ_INFO_F_NO_CONTENT | OBJ_INFO_F_SUPPORTS_INHERITANCE);
 	info->nSubobjects = 0;
 	for(i=0;i<inf->Data->nSubInf;i++)
 	    {

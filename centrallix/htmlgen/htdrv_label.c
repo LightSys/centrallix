@@ -42,6 +42,17 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.15  2003/05/30 17:39:49  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.14  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -242,9 +253,8 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 //	htrAddScriptInit_va(s,"    %s.layers.lbl%d.document.layer = %s;\n", parentname, id, nptr);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"lbl%d\">\n",id);
-	htrAddBodyItem_va(s, "<table border=0 width=\"%i\"><tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
-	htrAddBodyItem(s, "</DIV>\n");
+	htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "lbl%d", id, 
+	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
 
 	/** Check for more sub-widgets **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);

@@ -15,6 +15,8 @@
 #include "xarray.h"
 #include "xhash.h"
 #include "mtsession.h"
+#include "centrallix.h"
+#include "expression.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -49,10 +51,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.33 2003/03/30 22:49:23 jorupp Exp $
+    $Id: ht_render.c,v 1.34 2003/05/30 17:39:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.34  2003/05/30 17:39:49  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.33  2003/03/30 22:49:23  jorupp
      * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
 
@@ -428,6 +441,16 @@ htrAddBodyItem(pHtSession s, char* html_text)
     }
 
 
+/*** htrAddExpressionItem -- copies html text into the buffers that will 
+ *** eventually be output as the HTML body.
+ ***/
+int 
+htrAddExpressionItem(pHtSession s, char* html_text)
+    {
+    return htr_internal_AddTextToArray(&(s->Page.HtmlExpressionInit), html_text);
+    }
+
+
 /*** htrAddBodyParam -- copies html text into the buffers that will
  *** eventually be output as the HTML body.  These are simple html tag
  *** parameters (i.e., "BGCOLOR=white")
@@ -511,6 +534,22 @@ htrAddBodyItem_va(pHtSession s, char* fmt, ... )
 
 	va_start(va, fmt);
 	htr_internal_AddText(s, htrAddBodyItem, fmt, va);
+	va_end(va);
+
+    return 0;
+    }
+
+
+/*** htrAddExpressionItem_va() - use a vararg list (like sprintf, etc) to add a 
+ *** formatted string to the body of the document.
+ ***/
+int
+htrAddExpressionItem_va(pHtSession s, char* fmt, ... )
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddExpressionItem, fmt, va);
 	va_end(va);
 
     return 0;
@@ -887,7 +926,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
 	    case HTR_UA_MOZILLA:
 	    case HTR_UA_MSIE:
 		if (flags & HTR_LAYER_F_DYNAMIC)
-		    starttag = "IFRAME";
+		    starttag = "IFRAME frameBorder=\"0\"";
 		else
 		    starttag = "DIV";
 		break;
@@ -933,6 +972,58 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
 
 	/** Add it. **/
 	htrAddBodyItem_va(s, "</%s>", endtag);
+
+    return 0;
+    }
+
+
+/*** htrAddExpression - adds an expression to control a given property of
+ *** an object.  When any object reference in the expression changes, the
+ *** expression will be re-run to modify the object's property.  The
+ *** object in question can then put a watchpoint on the property, causing
+ *** actual actions to occur based on changes in the value of the expression
+ *** during application operation.
+ ***/
+int
+htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
+    {
+    int i,first;
+    XArray objs, props;
+    XString xs,exptxt;
+    char* obj;
+    char* prop;
+
+	xaInit(&objs, 16);
+	xaInit(&props, 16);
+	xsInit(&xs);
+	xsInit(&exptxt);
+	expGetPropList(exp, &objs, &props);
+
+	xsCopy(&xs,"new Array(",-1);
+	first=1;
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    obj = (char*)(objs.Items[i]);
+	    prop = (char*)(props.Items[i]);
+	    if (obj && prop)
+		{
+		xsConcatPrintf(&xs,"%snew Array('%s','%s')",first?"":",",obj,prop);
+		first = 0;
+		}
+	    }
+	xsConcatenate(&xs,")",1);
+	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript");
+	htrAddExpressionItem_va(s, "    pg_expression('%s','%s','%s',%s);\n", objname, property, exptxt.String, xs.String);
+
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    if (objs.Items[i]) nmSysFree(objs.Items[i]);
+	    if (props.Items[i]) nmSysFree(props.Items[i]);
+	    }
+	xaDeInit(&objs);
+	xaDeInit(&props);
+	xsDeInit(&xs);
+	xsDeInit(&exptxt);
 
     return 0;
     }
@@ -1050,6 +1141,7 @@ htrRender(pFile output, pObject appstruct)
 	xaInit(&(s->Page.HtmlHeader),64);
 	xaInit(&(s->Page.HtmlStylesheet),64);
 	xaInit(&(s->Page.HtmlBodyParams),16);
+	xaInit(&(s->Page.HtmlExpressionInit),16);
 	xaInit(&(s->Page.EventScripts.Array),16);
 	xhInit(&(s->Page.EventScripts.HashTable),257,0);
 	s->Page.HtmlBodyFile = NULL;
@@ -1083,7 +1175,7 @@ htrRender(pFile output, pObject appstruct)
 				     "-->\n");
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
 	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "    <META NAME=\"Generator\" CONTENT=\"Centrallix v%s\">\n", PACKAGE_VERSION);
+	snprintf(sbuf, HT_SBUF_SIZE, "    <META NAME=\"Generator\" CONTENT=\"Centrallix v%s\">\n", cx__version);
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
 
 	fdWrite(output, "    <STYLE TYPE=\"text/css\">\n", 28, 0, FD_U_PACKET);
@@ -1181,6 +1273,16 @@ htrRender(pFile output, pObject appstruct)
 	    }
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
+	/** Write the expression initializations **/
+	fdWrite(output,"\nfunction expinit()\n    {\n",26,0,FD_U_PACKET);
+	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++)
+	    {
+	    ptr = (char*)(s->Page.HtmlExpressionInit.Items[i]);
+	    n = *(int*)ptr;
+	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    }
+	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+
 	/** Write the initialization lines **/
 	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
 	fdWrite(output,"    cn_browser = new Object();\n",31,0,FD_U_PACKET);
@@ -1202,6 +1304,7 @@ htrRender(pFile output, pObject appstruct)
 	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
 	fdWrite(output,"    events();\n", 14,0,FD_U_PACKET);
+	fdWrite(output,"    expinit();\n", 15,0,FD_U_PACKET);
 	fdWrite(output,"    if(typeof(pg_status_close)=='function')pg_status_close();\n",62,0,FD_U_PACKET);
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
@@ -1293,6 +1396,8 @@ htrRender(pFile output, pObject appstruct)
 	xaDeInit(&(s->Page.HtmlStylesheet));
 	for(i=0;i<s->Page.HtmlBodyParams.nItems;i++) nmFree(s->Page.HtmlBodyParams.Items[i],2048);
 	xaDeInit(&(s->Page.HtmlBodyParams));
+	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++) nmFree(s->Page.HtmlExpressionInit.Items[i],2048);
+	xaDeInit(&(s->Page.HtmlExpressionInit));
 
 	/** Clean up the event script structure, which is multi-level. **/
 	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)

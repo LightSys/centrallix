@@ -43,10 +43,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.12 2003/03/12 03:19:08 lkehresman Exp $
+    $Id: multiquery.c,v 1.13 2003/05/30 17:39:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.13  2003/05/30 17:39:50  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.12  2003/03/12 03:19:08  lkehresman
     * Added basic presentation hint support to multiquery.  It only returns
       hints for the first result set, which is the wrong way to do it.  I went
@@ -1641,6 +1652,27 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
     }
 
 
+/*** mqQueryCreate - create a new object in the context of a running query;
+ *** this requires object creation at one or more underlying levels depending
+ *** on the nature of the query's joins and so forth.
+ ***/
+void*
+mqQueryCreate(void* qy_v, pObject new_obj, char* name, int mode, int permission_mask, pObjTrxTree *oxt)
+    {
+    pPseudoObject p;
+    pMultiQuery qy = (pMultiQuery)qy_v;
+
+	/** For now, we just fail if this involves a join operation. **/
+	if (qy->QTree->ObjList->nObjects > 1)
+	    {
+	    mssError(1,"MQ","Bark! QueryCreate() on a multi-source query is not yet supported.");
+	    return NULL;
+	    }
+
+    return (void*)p;
+    }
+
+
 /*** mqQueryClose - closes an open query and dismantles the projection and
  *** join structures in the multiquery query tree.
  ***/
@@ -1651,6 +1683,15 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 
     	/** Check the link cnt **/
 	if (--(qy->LinkCnt)) return 0;
+
+	/** Make sure the cur objlist is correct, otherwise the Finish
+	 ** routines in the drivers might close up incorrect objects.
+	 **/
+	if (qy->CurSerial != qy->CntSerial)
+	    {
+	    qy->CurSerial = qy->CntSerial;
+	    memcpy(qy->QTree->ObjList, &qy->CurObjList, sizeof(ParamObjects));
+	    }
 
 	/** Shutdown the mq drivers **/
 	qy->Tree->Driver->Finish(qy->Tree,qy);
@@ -1980,6 +2021,28 @@ mqExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree* oxt)
     }
 
 
+/*** mqCommit - commit changes.  Basically, run 'commit' on all underlying
+ *** objects for the query.
+ ***/
+int
+mqCommit(void* inf_v, pObjTrxTree* oxt)
+    {
+    pPseudoObject p = (pPseudoObject)inf_v;
+    pObject obj;
+    int i;
+
+    	/** Check to see whether we're on current object. **/
+	mq_internal_CkSetObjList(p->Query, p);
+
+	/** Commit each underlying object **/
+	for(i=0;i<p->Query->QTree->ObjList->nObjects;i++)
+	    {
+	    objCommit(p->Query->QTree->ObjList->Objects[i]);
+	    }
+
+    return 0;
+    }
+
 
 /*** The following are administrative functions -- that is, they are used to
  *** setup/initialize/maintain the multiquery system.
@@ -2051,6 +2114,7 @@ mqInitialize()
 	drv->OpenQuery = mqStartQuery;
 	drv->QueryDelete = NULL;
 	drv->QueryFetch = mqQueryFetch;
+	drv->QueryCreate = mqQueryCreate;
 	drv->QueryClose = mqQueryClose;
 	drv->Read = mqRead;
 	drv->Write = mqWrite;
@@ -2065,6 +2129,7 @@ mqInitialize()
 	drv->GetNextMethod = mqGetNextMethod;
 	drv->ExecuteMethod = mqExecuteMethod;
 	drv->PresentationHints = mqPresentationHints;
+	drv->Commit = mqCommit;
 
 	nmRegister(sizeof(QueryElement),"QueryElement");
 	nmRegister(sizeof(QueryStructure),"QueryStructure");

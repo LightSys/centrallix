@@ -34,10 +34,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.5 2003/04/24 02:13:21 gbeeley Exp $
+    $Id: expression.h,v 1.6 2003/05/30 17:39:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.6  2003/05/30 17:39:50  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.5  2003/04/24 02:13:21  gbeeley
     Added functionality to handle "domain of execution" to the expression
     module, allowing the developer to specify the nature of an expression
@@ -238,11 +249,15 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_DOMAINMASK	(EXPR_F_RUNSTATIC | EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)
 #define EXPR_F_RUNDEFAULT	(EXPR_F_RUNSTATIC)
 
+#define EXPR_F_INDETERMINATE	32768	/* Value cannot yet be known */
+
 /*** Compiler flags ***/
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */
 #define EXPR_CMP_OUTERJOIN	2	/* allow =* and *= for == */
 #define EXPR_CMP_WATCHLIST	4	/* watch for a list within () */
 #define EXPR_CMP_LATEBIND	8	/* allow late object name binding */
+#define EXPR_CMP_RUNSERVER	16	/* compile as a 'runserver' expression */
+#define EXPR_CMP_RUNCLIENT	32	/* compile as a 'runclient' expression */
 
 
 /*** Functions ***/

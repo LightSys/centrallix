@@ -42,10 +42,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.6 2002/12/04 00:19:10 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.7 2003/05/30 17:39:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.7  2003/05/30 17:39:49  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.6  2002/12/04 00:19:10  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -93,7 +104,7 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char name[64];
     char main_bg[128];
     char fgcolor1[16];
-    char fgcolor2[16];
+    char fgcolor2[16] = "";
     int shadowed = 0;
     int shadowx = 0;
     int shadowy = 0;

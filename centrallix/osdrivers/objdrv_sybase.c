@@ -63,10 +63,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.11 2003/04/03 07:39:58 jorupp Exp $
+    $Id: objdrv_sybase.c,v 1.12 2003/05/30 17:39:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.12  2003/05/30 17:39:53  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.11  2003/04/03 07:39:58  jorupp
      * make sure that the is a username and password before using them...
 
@@ -3402,7 +3413,7 @@ mqsybAnalyze(pMultiQuery mq)
 		item = (pQueryStructure)(from_qs->Children.Items[i]);
 		from_tmpobjs[i] = objOpen(mq->SessionID, item->Source, O_RDONLY, 0600, "system/directory");
 		if (from_tmpobjs[i]->Driver == SYBD_INF.ObjDriver ||
-		    (from_tmpobjs[i]->Driver == OSYS.TransLayer && from_tmpobjs[i]->LowLevelDriver == SYBD_INF.ObjDriver))
+		    (from_tmpobjs[i]->Driver == OSYS.TransLayer && from_tmpobjs[i]->TLowLevelDriver == SYBD_INF.ObjDriver))
 		    {
 		    from_sources[i] = item;
 		    }

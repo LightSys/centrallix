@@ -43,10 +43,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.47 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.48 2003/05/30 17:39:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.48  2003/05/30 17:39:50  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.47  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -287,6 +298,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    int replicasize;
    char *sql;
    char *filter;
+   char *baseobj;
    pObject sub_w_obj;
    pObjQuery qy;
 
@@ -330,6 +342,16 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       return -1;
       }
 
+   if (objGetAttrValue(w_obj,"baseobj",DATA_T_STRING,POD(&ptr)) == 0)
+      {
+      baseobj = nmMalloc(strlen(ptr)+1);
+      strcpy(baseobj, ptr);
+      }
+   else
+      {
+      baseobj = NULL;
+      }
+
    if (objGetAttrValue(w_obj,"filter",DATA_T_STRING,POD(&ptr)) == 0)
       {
       filter=nmMalloc(strlen(ptr)+1);
@@ -354,8 +376,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddStylesheetItem_va(s,"        #osrc%dloader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:1;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\");\n",
-	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter,name);
+   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\");\n",
+	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);

@@ -35,10 +35,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.20 2003/04/25 05:06:56 gbeeley Exp $
+    $Id: obj.h,v 1.21 2003/05/30 17:39:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.21  2003/05/30 17:39:50  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.20  2003/04/25 05:06:56  gbeeley
     Added insert support to OSML-over-HTTP, and very remedial Trx support
     with the objCommit API method and Commit osdriver method.  CSV datafile
@@ -301,6 +312,7 @@ typedef struct _OSD
     void*	(*OpenQuery)();
     int		(*QueryDelete)();
     void*	(*QueryFetch)();
+    void*	(*QueryCreate)();
     int		(*QueryClose)();
     int		(*Read)();
     int		(*Write)();
@@ -325,6 +337,8 @@ typedef struct _OSD
 #define OBJDRV_C_LLQUERY	4
 #define OBJDRV_C_ISTRANS	8
 #define OBJDRV_C_ISMULTIQUERY	16
+#define OBJDRV_C_INHERIT	32	/* driver desires inheritance support */
+#define OBJDRV_C_ISINHERIT	64	/* driver is the inheritance layer */
 
 /** objxact transaction tree **/
 typedef struct _OT
@@ -418,6 +432,7 @@ typedef struct _OA
 #define OBJ_INFO_F_CANT_HAVE_CONTENT	(1<<11)	/* object cannot have content */
 #define OBJ_INFO_F_HAS_CONTENT		(1<<12)	/* object actually has content, even if zero-length */
 #define OBJ_INFO_F_NO_CONTENT		(1<<13)	/* object does not have content, objRead() would fail */
+#define OBJ_INFO_F_SUPPORTS_INHERITANCE	(1<<14)	/* object can support inheritance attr cx__inherit, etc. */
 
 
 /** objectsystem open fd **/
@@ -425,7 +440,8 @@ typedef struct _OF
     {
     int		Magic;		/* Magic number for object */
     pObjDriver	Driver;		/* os-Driver handling this object */
-    pObjDriver	LowLevelDriver;	/* for transaction management */
+    pObjDriver	TLowLevelDriver; /* for transaction management */
+    pObjDriver	ILowLevelDriver; /* for inheritance mechanism */
     void*	Data;		/* context param passed to os-Driver */
     struct _OF*	Obj;		/* if this is an attribute, this is its obj */
     XArray	Attrs;		/* Attributes that are open. */
@@ -531,6 +547,7 @@ typedef struct
     int		UseCnt;			/* for LRU cache list */
     pObjDriver	TransLayer;		/* Transaction layer */
     pObjDriver	MultiQueryLayer;	/* MQ module */
+    pObjDriver	InheritanceLayer;	/* dynamic inheritance module */
     XHashTable	EventHandlers;		/* Event handlers, by class code */
     XHashTable	EventsByXData;		/* Events, by class code/xdata */
     XHashTable	EventsByPath;		/* Events, by pathname */
@@ -543,6 +560,16 @@ typedef struct
     OSYS_t;
 
 extern OSYS_t OSYS;
+
+
+/*** OSML debugging flags ***/
+#define OBJ_DEBUG_F_APITRACE	1
+
+/*** Debugging control ***/
+#define OBJ_DEBUG		(OBJ_DEBUG_F_APITRACE)
+
+/*** Debugging output macro ***/
+#define OSMLDEBUG(f,p ...) if (OBJ_DEBUG & (f)) printf(p);
 
 
 /*** ObjectSystem Driver Library - parameters structure ***/
@@ -565,8 +592,9 @@ typedef struct
 #define OBJ_O_EXCL	(O_EXCL)
 
 #define OBJ_O_AUTONAME	(1<<30)
+#define OBJ_O_NOINHERIT	(1<<29)
 
-#define OBJ_O_CXOPTS	(OBJ_O_AUTONAME)
+#define OBJ_O_CXOPTS	(OBJ_O_AUTONAME | OBJ_O_NOINHERIT)
 
 #if (OBJ_O_CXOPTS & (O_CREAT | O_TRUNC | O_ACCMODE | O_EXCL))
 #error "Conflict in objectsystem OBJ_O_xxx options, sorry!!!"
@@ -603,6 +631,7 @@ pObjQuery objMultiQuery(pObjSession session, char* query);
 pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp);
 int objQueryDelete(pObjQuery this);
 pObject objQueryFetch(pObjQuery this, int mode);
+pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
 int objQueryClose(pObjQuery this);
 
 /** objectsystem content functions **/

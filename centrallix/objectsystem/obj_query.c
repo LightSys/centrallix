@@ -47,10 +47,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: obj_query.c,v 1.5 2003/05/30 17:39:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.5  2003/05/30 17:39:52  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.4  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -211,6 +222,8 @@ objMultiQuery(pObjSession session, char* query)
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objMultiQuery(%8.8X,%s)... ", (int)session, query);
+
     	/** Allocate a query structure **/
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
 	if (!this) return NULL;
@@ -225,11 +238,14 @@ objMultiQuery(pObjSession session, char* query)
 	if (!this->Data)
 	    {
 	    nmFree(this,sizeof(ObjQuery));
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE," null\n");
 	    return NULL;
 	    }
 
 	/** Add to session open queries... **/
 	xaAddItem(&(session->OpenQueries),(void*)this);
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE," %8.8X\n", (int)this);
 
     return this;
     }
@@ -254,6 +270,8 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpenQuery(%8.8X:%3.3s:%s,'%s','%s')... ", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf, query, order_by);
+
 	/** Allocate a query object **/
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
 	if (!this) return NULL;
@@ -274,6 +292,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	        {
 	        nmFree(this,sizeof(ObjQuery));
 		mssError(0,"OSML","Query search criteria is invalid");
+		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
 	        return NULL;
 		}
 	    this->Flags |= OBJ_QY_F_ALLOCTREE;
@@ -313,17 +332,8 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    this->SortBy[0] = NULL;
 	    }
 
-	/** Issue to driver if capable; otherwise do query ourselves **/
-	if ((obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) || 
-	    ((obj->Driver->Capabilities & OBJDRV_C_LLQUERY) &&
-	     (obj->LowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY)))
-	    {
-	    this->Data = obj->Driver->OpenQuery(obj->Data,this,&(obj->Session->Trx));
-	    }
-	else
-	    {
-	    this->Data = obj->Driver->OpenQuery(obj->Data,this,&(obj->Session->Trx));
-	    }
+	/** Issue to driver **/
+	this->Data = obj->Driver->OpenQuery(obj->Data,this,&(obj->Session->Trx));
 
 	if (!(this->Data))
 	    {
@@ -331,6 +341,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    if (this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
 	    nmFree(this,sizeof(ObjQuery));
 	    mssError(0,"OSML","Either queries not supported on this object or query failed");
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
 	    return NULL;
 	    }
 
@@ -462,6 +473,8 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    this->Flags |= OBJ_QY_F_FROMSORT;
 	    }
 
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8X\n", (int)this);
+
     return this;
     }
 
@@ -484,7 +497,7 @@ objQueryDelete(pObjQuery this)
 	/** Intelligent query support in driver? **/
 	if ((this->Obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) ||
 	    ((this->Obj->Driver->Capabilities & OBJDRV_C_LLQUERY) &&
-	     (this->Obj->LowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY)))
+	     (this->Obj->TLowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY)))
 	    {
 	    rval = this->Obj->Driver->QueryDelete(this->Data, &(this->Obj->Session->Trx));
 	    }
@@ -510,9 +523,11 @@ objQueryFetch(pObjQuery this, int mode)
     pObject obj;
     void* obj_data;
     char* name;
-    char buf[256];
+    char buf[OBJSYS_MAX_PATH];
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryFetch(%8.8X:%3.3s)...", (int)this, this->Drv->Name);
 
     	/** Multiquery? **/
 	if (this->Drv) 
@@ -522,10 +537,12 @@ objQueryFetch(pObjQuery this, int mode)
 	    if ((obj->Data = this->Drv->QueryFetch(this->Data, mode)) == NULL)
 	        {
 		nmFree(obj,sizeof(Object));
+		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
 		return NULL;
 		}
 	    obj->Driver = this->Drv;
-	    obj->LowLevelDriver = NULL;
+	    obj->TLowLevelDriver = NULL;
+	    obj->ILowLevelDriver = NULL;
 	    obj->Session = this->QySession;
 	    obj->LinkCnt = 1;
 	    obj->Pathname = NULL;
@@ -538,6 +555,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    obj->Type = NULL;
 	    xaInit(&obj->Attrs,4);
             xaAddItem(&(this->QySession->OpenObjects),(void*)obj);
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
 
@@ -545,8 +563,9 @@ objQueryFetch(pObjQuery this, int mode)
 	if (this->Flags & OBJ_QY_F_FROMSORT)
 	    {
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
-	    sprintf(buf,"%s/%s",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
+	    snprintf(buf,256,"%s/%s",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
 	    obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
 
@@ -554,7 +573,8 @@ objQueryFetch(pObjQuery this, int mode)
 	obj = (pObject)nmMalloc(sizeof(Object));
 	if (!obj) return NULL;
 	obj->Driver = this->Obj->Driver;
-	obj->LowLevelDriver = this->Obj->LowLevelDriver;
+	obj->ILowLevelDriver = this->Obj->ILowLevelDriver;
+	obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
 	obj->Obj = NULL;
 	xaInit(&(obj->Attrs),4);
 	obj->Mode = mode;
@@ -586,12 +606,13 @@ objQueryFetch(pObjQuery this, int mode)
 		/*nmFree(obj->Pathname,sizeof(Pathname));*/
 		obj_internal_FreePath(obj->Pathname);
                 nmFree(obj,sizeof(Object));
+		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
 		return NULL;
 		}
             obj->Data = obj_data;
     
             this->Obj->Driver->GetAttrValue(obj_data, "name", DATA_T_STRING, &name, NULL);
-            if (strlen(name) + strlen(this->Obj->Pathname->Pathbuf) + 1 > 255) 
+            if (strlen(name) + strlen(this->Obj->Pathname->Pathbuf) + 2 > OBJSYS_MAX_PATH) 
                 {
 		this->Obj->Driver->Close(obj_data, &(obj->Session->Trx));
 		objClose(obj->Prev); /* unlink */
@@ -600,6 +621,7 @@ objQueryFetch(pObjQuery this, int mode)
 		obj_internal_FreePath(obj->Pathname);
                 nmFree(obj,sizeof(Object));
 		mssError(1,"OSML","Filename in query result exceeded internal limits");
+		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
                 return NULL;
                 }
 
@@ -622,7 +644,113 @@ objQueryFetch(pObjQuery this, int mode)
 	    break;
 	    }
 
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
+
     return obj;
+    }
+
+
+/*** objQueryCreate - creates a new object in the context of a running
+ *** query.  Returns the newly open object.
+ ***/
+pObject
+objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type)
+    {
+    pObject new_obj;
+    void* rval;
+    char* bufptr;
+    char* newname;
+
+	ASSERTMAGIC(this,MGK_OBJQUERY);
+
+	/** Duh. **/
+	mode |= OBJ_O_CREAT;
+
+	/** Make sure supplied name is "*" if using autokeying **/
+	if (mode & OBJ_O_AUTONAME)
+	    {
+	    if (strcmp(name,"*"))
+		{
+		mssError(1,"OSML","When creating an object using autokeying, name must be '*'");
+		return NULL;
+		}
+	    /** This is inherent with autoname **/
+	    mode |= OBJ_O_EXCL;
+	    }
+
+	/** Open up the new object descriptor **/
+	new_obj = (pObject)nmMalloc(sizeof(Object));
+	if (!new_obj) return NULL;
+	new_obj->Driver = this->Obj->Driver;
+	new_obj->ILowLevelDriver = this->Obj->ILowLevelDriver;
+	new_obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
+	new_obj->Obj = NULL;
+	xaInit(&(new_obj->Attrs),4);
+	new_obj->Mode = mode;
+	new_obj->Session = this->Obj->Session;
+	new_obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	new_obj->Pathname->LinkCnt = 1;
+	new_obj->Pathname->OpenCtlBuf = NULL;
+	new_obj->LinkCnt = 1;
+	new_obj->ContentPtr = NULL;
+	objLinkTo(this->Obj->Prev);
+	new_obj->Prev = this->Obj->Prev;
+	new_obj->Magic = MGK_OBJECT;
+	new_obj->Flags = 0;
+	new_obj->Type = NULL;
+
+	/** Does driver support QueryCreate? **/
+	if (new_obj->Driver->QueryCreate && 
+	    (!new_obj->ILowLevelDriver || new_obj->ILowLevelDriver->QueryCreate) &&
+	    (!new_obj->TLowLevelDriver || new_obj->TLowLevelDriver->QueryCreate))
+	    {
+	    /** Supported.  Call querycreate **/
+	    rval = new_obj->Driver->QueryCreate(this->Data, new_obj, name, mode, permission_mask, &(new_obj->Session->Trx));
+	    if (!rval)
+		{
+		/** Call failed.  Free up the obj structure **/
+		objClose(new_obj->Prev); /* unlink */
+		xaDeInit(&(new_obj->Attrs));
+		obj_internal_FreePath(new_obj->Pathname);
+                nmFree(new_obj,sizeof(Object));
+		return NULL;
+		}
+
+	    /** querycreate succeeded. **/
+	    new_obj->Data = rval;
+	    }
+	else
+	    {
+	    /** not supported by underlying driver - we have to do it ourselves, but
+	     ** that condition is not yet handled.  Sorry... (FIXME)
+	     **/
+	    mssError(1,"OSML","Bark!  Unimplemented functionality in objQueryCreate()");
+	    objClose(new_obj->Prev); /* unlink */
+	    xaDeInit(&(new_obj->Attrs));
+	    obj_internal_FreePath(new_obj->Pathname);
+	    nmFree(new_obj,sizeof(Object));
+	    return NULL;
+	    }
+
+	/** Set the name **/
+	new_obj->Driver->GetAttrValue(new_obj->Data, "name", DATA_T_STRING, &newname, NULL);
+	if (strlen(newname) + strlen(new_obj->Pathname->Pathbuf) + 2 > OBJSYS_MAX_PATH || new_obj->Pathname->nElements + 1 > OBJSYS_MAX_ELEMENTS)
+	    {
+	    new_obj->Driver->Close(new_obj->Data, &(new_obj->Session->Trx));
+	    objClose(new_obj->Prev); /* unlink */
+	    xaDeInit(&(new_obj->Attrs));
+	    /*nmFree(obj->Pathname,sizeof(Pathname));*/
+	    obj_internal_FreePath(new_obj->Pathname);
+	    nmFree(new_obj,sizeof(Object));
+	    mssError(1,"OSML","Filename in query result exceeded internal limits");
+	    return NULL;
+	    }
+	bufptr = strchr(new_obj->Pathname->Pathbuf,0);
+	*(bufptr++) = '/';
+	new_obj->Pathname->Elements[new_obj->Pathname->nElements++] = bufptr;
+	strcpy(bufptr, newname);
+
+    return new_obj;
     }
 
 
@@ -634,6 +762,8 @@ objQueryClose(pObjQuery this)
     {
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryClose(%8.8X:%3.3s)\n", this, this->Drv->Name);
 
     	/** Release sort information? **/
 	if (this->SortInf)

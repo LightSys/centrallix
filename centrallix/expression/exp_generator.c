@@ -46,10 +46,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.3 2003/04/24 02:13:22 gbeeley Exp $
+    $Id: exp_generator.c,v 1.4 2003/05/30 17:39:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.4  2003/05/30 17:39:48  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.3  2003/04/24 02:13:22  gbeeley
     Added functionality to handle "domain of execution" to the expression
     module, allowing the developer to specify the nature of an expression
@@ -388,6 +399,8 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 	    {
 	    case EXPR_N_FUNCTION:
 	        /** Function node - write function call, param list, end paren. **/
+		if ((!strcmp(exp->Name,"runclient") || !strcmp(exp->Name,"runserver") || !strcmp(exp->Name,"runstatic")) && exp->Children.nItems == 1)
+		    return exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg);
 	        sprintf(eg->TmpBuf,"%.250s(",exp->Name);
 		exp_internal_WriteText(eg, eg->TmpBuf);
 		for(i=0;i<exp->Children.nItems;i++)
@@ -522,12 +535,10 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_NOT:
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, "(");
 		exp_internal_WriteText(eg, "!");
-	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[1]), eg) < 0) return -1;
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, ")");
+		exp_internal_WriteText(eg, "(");
+	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
+		exp_internal_WriteText(eg, ")");
 		break;
 
 	    case EXPR_N_AND:
@@ -582,7 +593,12 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 	    
 	    case EXPR_N_OBJECT:
-	        if (exp->ObjID == -1 && exp->Name) exp_internal_WriteText(eg, exp->Name);
+	        if (exp->ObjID == -1 && exp->Name) 
+		    {
+		    exp_internal_WriteText(eg, exp->Name);
+		    exp_internal_WriteText(eg, ".");
+		    }
+	        if (exp->Children.nItems != 1 || exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
 		break;
 
 	    case EXPR_N_PROPERTY:
@@ -590,16 +606,17 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		    {
 		    case -1: break;
 		    case EXPR_OBJID_CURRENT: break;
-		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, ":"); break;
+		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, "this."); break;
 		    default: 
-		        if (exp->ObjID >= 0) 
+		        if (exp->ObjID >= 0)
 			    {
-			    exp_internal_WriteText(eg, ":");
-		            exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+			    if (eg->Objlist) 
+				exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+			    else
+				exp_internal_WriteText(eg, exp->Name);
 			    }
 			break;
 		    }
-		exp_internal_WriteText(eg,":");
 		exp_internal_WriteText(eg,exp->Name);
 		break;
 
@@ -673,4 +690,43 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
     return 0;
     }
 
+
+/*** expGetPropList - get a list of object/property names referenced in a given
+ *** expression tree.  Returns the list in a pair of xarrays - one for the
+ *** object names, the second with the property names.  The caller must init
+ *** the xarrays, and must deinit them afterwards.  The strings referenced in
+ *** the list MUST be freed with nmSysFree() by the caller.
+ ***/
+int
+expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa)
+    {
+    pExpression subexp;
+    int i;
+
+	/** Is node an object/property node? **/
+	if (exp->NodeType == EXPR_N_OBJECT)
+	    {
+	    subexp = (pExpression)(exp->Children.Items[0]);
+	    xaAddItem(objs_xa, nmSysStrdup(exp->Name));
+	    if (subexp && subexp->NodeType == EXPR_N_PROPERTY)
+		{
+		xaAddItem(props_xa, nmSysStrdup(subexp->Name));
+		}
+	    else
+		{
+		xaAddItem(props_xa, NULL);
+		}
+	    }
+	else if (exp->NodeType == EXPR_N_PROPERTY)
+	    {
+	    xaAddItem(objs_xa, NULL);
+	    xaAddItem(props_xa, nmSysStrdup(exp->Name));
+	    }
+	else
+	    {
+	    for(i=0;i<exp->Children.nItems;i++) expGetPropList((pExpression)(exp->Children.Items[i]), objs_xa, props_xa);
+	    }
+
+    return objs_xa->nItems;
+    }
 

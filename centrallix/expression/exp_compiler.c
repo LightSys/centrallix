@@ -47,10 +47,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.5 2003/04/24 02:13:22 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.6 2003/05/30 17:39:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.6  2003/05/30 17:39:48  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.5  2003/04/24 02:13:22  gbeeley
     Added functionality to handle "domain of execution" to the expression
     module, allowing the developer to specify the nature of an expression
@@ -107,6 +118,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     int t,err=0,i;
     int was_unary = 0;
     int was_prefix_unary = 0;
+    int new_cmpflags;
     char* sptr;
 
 	/** This is to suppress a rather unintelligent compiler warning about
@@ -143,6 +155,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		    /** Empty list. () **/
 		    expr = expAllocExpression();
 		    expr->NodeType = EXPR_N_LIST;
+		    if (cmpflags & EXPR_CMP_RUNSERVER) expr->Flags |= EXPR_F_RUNSERVER;
+		    if (cmpflags & EXPR_CMP_RUNCLIENT) expr->Flags |= EXPR_F_RUNCLIENT;
 		    break;
 		    }
 		else
@@ -158,6 +172,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 	    else
 		{
 	        etmp = expAllocExpression();
+		if (cmpflags & EXPR_CMP_RUNSERVER) etmp->Flags |= EXPR_F_RUNSERVER;
+		if (cmpflags & EXPR_CMP_RUNCLIENT) etmp->Flags |= EXPR_F_RUNCLIENT;
 	        switch(t)
                     {
 		    /*case MLX_TOK_MINUS:
@@ -255,10 +271,12 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    mlxHoldToken(lxs);
 
 				    /** Compile the param and add it as a child item **/
-				    if (etmp->Flags & (EXPR_F_RUNSERVER | EXPR_F_RUNCLIENT))
-					etmp2 = exp_internal_CompileExpression_r(lxs,level+1,objlist,(cmpflags & ~EXPR_CMP_WATCHLIST) | EXPR_CMP_LATEBIND);
-				    else
-					etmp2 = exp_internal_CompileExpression_r(lxs,level+1,objlist,(cmpflags & ~EXPR_CMP_WATCHLIST));
+				    new_cmpflags = cmpflags & ~EXPR_CMP_WATCHLIST;
+				    if (etmp->Flags & EXPR_F_RUNSERVER)
+					new_cmpflags |= (EXPR_CMP_LATEBIND | EXPR_CMP_RUNSERVER);
+				    if (etmp->Flags & EXPR_F_RUNCLIENT)
+					new_cmpflags |= (EXPR_CMP_LATEBIND | EXPR_CMP_RUNCLIENT);
+				    etmp2 = exp_internal_CompileExpression_r(lxs,level+1,objlist,new_cmpflags);
 				    if (!etmp2)
 				        {
 					if (expr) expFreeExpression(expr);
@@ -326,6 +344,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			etmp2->Parent = etmp;
 			etmp2->ObjID = -1;
 			etmp2->ObjCoverageMask = 0;
+			if (cmpflags & EXPR_CMP_RUNSERVER) etmp2->Flags |= EXPR_F_RUNSERVER;
+			if (cmpflags & EXPR_CMP_RUNCLIENT) etmp2->Flags |= EXPR_F_RUNCLIENT;
 			xaAddItem(&etmp->Children, (void*)etmp2);
 			break;
     
@@ -388,6 +408,14 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				if (cmpflags & EXPR_CMP_LATEBIND)
 				    {
 				    etmp->ObjID = -1;
+				    etmp2 = expAllocExpression();
+				    xaAddItem(&(etmp->Children),(void*)etmp2);
+				    etmp2->ObjID = etmp->ObjID;
+				    etmp2->Parent = etmp;
+				    etmp->NodeType = EXPR_N_OBJECT;
+				    etmp2->NodeType = EXPR_N_PROPERTY;
+				    etmp2->NameAlloc = 1;
+				    etmp2->Name = mlxStringVal(lxs,&(etmp2->NameAlloc));
 				    }
 				else
 				    {
@@ -400,8 +428,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    break;
 				    }
 				}
-			    etmp->NameAlloc = 1;
-			    etmp->Name = mlxStringVal(lxs,&(etmp->NameAlloc));
+			    else
+				{
+				etmp->NameAlloc = 1;
+				etmp->Name = mlxStringVal(lxs,&(etmp->NameAlloc));
+				}
 			    }
 			else
 			    {
@@ -415,12 +446,6 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			    objlist->Flags[i] |= EXPR_O_REFERENCED;
 			    etmp->ObjCoverageMask |= (1<<(i));
 			    }
-			/* etmp->Parent = expAllocExpression();
-			xaAddItem(&(etmp->Parent->Children),(void*)etmp);
-			etmp->Parent->ObjID = etmp->ObjID;
-			if (i>=0) etmp->Parent->ObjCoverageMask |= (1<<(i));
-			etmp = etmp->Parent;
-			etmp->NodeType = EXPR_N_OBJECT;  */
                         break;
     
                     default:
@@ -468,6 +493,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		if (expr->NodeType != EXPR_N_LIST)
 		    {
 	    	    etmp = expAllocExpression();
+		    if (cmpflags & EXPR_CMP_RUNSERVER) etmp->Flags |= EXPR_F_RUNSERVER;
+		    if (cmpflags & EXPR_CMP_RUNCLIENT) etmp->Flags |= EXPR_F_RUNCLIENT;
 		    etmp->NodeType = EXPR_N_LIST;
 		    expr->Parent = etmp;
 		    xaAddItem(&(etmp->Children),(void*)expr);
@@ -516,6 +543,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		break;
 		}
 	    etmp = expAllocExpression();
+	    if (cmpflags & EXPR_CMP_RUNSERVER) etmp->Flags |= EXPR_F_RUNSERVER;
+	    if (cmpflags & EXPR_CMP_RUNCLIENT) etmp->Flags |= EXPR_F_RUNCLIENT;
 	    switch(t)
 		{
 		case MLX_TOK_KEYWORD:

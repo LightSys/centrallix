@@ -49,10 +49,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.10 2003/04/25 04:09:29 gbeeley Exp $
+    $Id: obj_object.c,v 1.11 2003/05/30 17:39:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.11  2003/05/30 17:39:52  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.10  2003/04/25 04:09:29  gbeeley
     Adding insert and autokeying support to OSML and to CSV datafile
     driver on a limited basis (in rowidkey mode only, which is the only
@@ -679,9 +690,16 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** Driver requested transactions? **/
 	    if ((this->Driver->Capabilities & OBJDRV_C_TRANS) && OSYS.TransLayer)
 	        {
-	        this->LowLevelDriver = this->Driver;
+	        this->TLowLevelDriver = this->Driver;
 	        this->Driver = OSYS.TransLayer;
 	        }
+
+	    /** Driver requested inheritance and caller is OK with it? **/
+	    if ((this->Driver->Capabilities & OBJDRV_C_INHERIT) && OSYS.InheritanceLayer && !(mode & OBJ_O_NOINHERIT))
+		{
+		this->ILowLevelDriver = this->Driver;
+		this->Driver = OSYS.InheritanceLayer;
+		}
 	
 	    /** Do the open **/
 	    this->Data = this->Driver->Open(this, mask, ck_type, usrtype, &(s->Trx));
@@ -704,7 +722,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	if (name && !this->Type) this->Type = obj_internal_TypeFromName(name);
 
 	/** Cache the upper-level node for this object? **/
-	if (this->Prev && this->Prev->Driver != OSYS.RootDriver && !(this->Prev->LowLevelDriver == OSYS.RootDriver && this->Prev->Driver == OSYS.TransLayer))
+	if (this->Prev && this->Prev->Driver != OSYS.RootDriver && !(this->Prev->TLowLevelDriver == OSYS.RootDriver && this->Prev->Driver == OSYS.TransLayer) && !(this->Prev->ILowLevelDriver == OSYS.RootDriver && this->Prev->Driver == OSYS.InheritanceLayer))
 	    {
 	    /** Only cache if not already cached. **/
 	    if (!dc || dc->NodeObj != this->Prev)
@@ -1171,6 +1189,8 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%8.8X, \"%s\") = ", (unsigned int)(session), path);
+
 	/** Make sure supplied name is "*" if using autokeying **/
 	if (mode & OBJ_O_AUTONAME)
 	    {
@@ -1204,6 +1224,8 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	/** Add to open objects this session. **/
 	xaAddItem(&(session->OpenObjects),(void*)this);
 
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8X/%s\n", this, this->Driver->Name);
+
     return this;
     }
 
@@ -1217,6 +1239,8 @@ objClose(pObject this)
     {
 
 	ASSERTMAGIC(this,MGK_OBJECT);
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objClose(%8.8X/%3.3s/%s) (LinkCnt now %d)\n", (unsigned int)(this), this->Driver->Name, this->Pathname->Pathbuf, this->LinkCnt-1);
 
     	/** LinkCnt will go to zero? **/
 	if (this->LinkCnt == 1 && !(this->Flags & OBJ_F_ROOTNODE))
@@ -1255,6 +1279,9 @@ objClose(pObject this)
 int
 objLinkTo(pObject this)
     {
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objLinkTo(%8.8X/%3.3s/%s) (LinkCnt now %d)\n", this, this->Driver->Name, this->Pathname->Pathbuf, this->LinkCnt+1);
+
     while(this) 
         {
 	ASSERTMAGIC(this,MGK_OBJECT);

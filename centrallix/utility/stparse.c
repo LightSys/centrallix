@@ -47,10 +47,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.5 2003/03/11 02:19:06 jorupp Exp $
+    $Id: stparse.c,v 1.6 2003/05/30 17:39:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.6  2003/05/30 17:39:53  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.5  2003/03/11 02:19:06  jorupp
      * fix stGenerateMsg so it actually _writes_ to the file instead of reads from it :)
 
@@ -451,6 +462,13 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 	find_exp = stGetExpression(this, nval);
 	if (!find_exp) return -1;
 
+	/** expression code? **/
+	if (type == DATA_T_CODE && (find_exp->Flags & EXPR_F_RUNCLIENT))
+	    {
+	    pod->Generic = find_exp;
+	    return 0;
+	    }
+
 	/** Correct type requested? **/
 	if (type != DATA_T_ANY && type != find_exp->DataType) return -1;
 
@@ -472,6 +490,10 @@ stGetAttrType(pStructInf this, int nval)
 
 	find_exp = stGetExpression(this, nval);
 	if (!find_exp) return -1;
+
+	/** Exception - if runclient, return as code, not data **/
+	if (find_exp->Flags & EXPR_F_RUNCLIENT)
+	    return DATA_T_CODE;
 
     return find_exp->DataType;
     }

@@ -64,10 +64,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.27 2003/04/25 04:09:29 gbeeley Exp $
+    $Id: test_obj.c,v 1.28 2003/05/30 17:39:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.28  2003/05/30 17:39:47  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.27  2003/04/25 04:09:29  gbeeley
     Adding insert and autokeying support to OSML and to CSV datafile
     driver on a limited basis (in rowidkey mode only, which is the only
@@ -904,6 +915,7 @@ start(void* v)
 			if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) printf("cant_have_content ");
 			if (info->Flags & OBJ_INFO_F_HAS_CONTENT) printf("has_content ");
 			if (info->Flags & OBJ_INFO_F_NO_CONTENT) printf("no_content ");
+			if (info->Flags & OBJ_INFO_F_SUPPORTS_INHERITANCE) printf("supports_inheritance ");
 			printf("\n");
 			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
 			    {

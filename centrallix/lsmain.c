@@ -5,6 +5,7 @@
 #endif
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -53,10 +54,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.27 2003/04/04 05:56:53 gbeeley Exp $
+    $Id: lsmain.c,v 1.28 2003/05/30 17:39:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.28  2003/05/30 17:39:47  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.27  2003/04/04 05:56:53  gbeeley
     Forgot to seed the random number generator (gulp)
 

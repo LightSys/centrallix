@@ -41,10 +41,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.12 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.13 2003/05/30 17:39:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.13  2003/05/30 17:39:49  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.12  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -129,6 +140,8 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char name[64];
    char* nptr;
    char* ptr;
+   char* style;
+   int w;
 
    /** Get an id for this. **/
    id = (HTFS.idcnt++);
@@ -136,6 +149,13 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Get x,y of this object **/
    if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
    if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+
+   /** Get optional style **/
+   if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&style)) != 0) style = "";
+   if (!strcmp(style,"large") || !strcmp(style,"largeflat"))
+       w = 90;
+   else
+       w = 13;
 
    /** Write named global **/
    if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -146,14 +166,19 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   htrAddStylesheetItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    %s = fs_init(%s.layers.fs%dmain);\n", nptr, parentname, id);
+   htrAddScriptInit_va(s,"    %s = fs_init(%s.layers.fs%dmain,\"%s\");\n", nptr, parentname, id, style);
    /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
+   if (!strcmp(style,"large"))
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstatL01.png></DIV>\n", id);
+   else if (!strcmp(style,"largeflat"))
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstatLF01.png></DIV>\n", id);
+   else
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
 
    htrAddEventHandler(s,"document","MOUSEDOWN","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseDown');\n\n"); 
    htrAddEventHandler(s,"document","MOUSEUP",  "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseUp');\n\n"); 

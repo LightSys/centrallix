@@ -45,10 +45,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.6 2003/04/25 05:06:58 gbeeley Exp $
+    $Id: obj_trx.c,v 1.7 2003/05/30 17:39:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.7  2003/05/30 17:39:52  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.6  2003/04/25 05:06:58  gbeeley
     Added insert support to OSML-over-HTTP, and very remedial Trx support
     with the objCommit API method and Commit osdriver method.  CSV datafile
@@ -378,7 +389,7 @@ oxtOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (new_oxt) new_oxt->OpType = OXT_OP_NONE;
 
 	/** Make the driver call. **/
-	inf->LLParam = obj->LowLevelDriver->Open(obj, mask, systype, usrtype, pass_oxt);
+	inf->LLParam = obj->TLowLevelDriver->Open(obj, mask, systype, usrtype, pass_oxt);
 
 	/** Was the pass_oxt completed or failed? **/
 	if ((*pass_oxt) && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -430,7 +441,7 @@ oxtClose(void* this_v, pObjTrxTree* oxt)
     
     	/** Call the driver to make the close operation. **/
     	pass_oxt = &(this->Trx);
-	rval = this->Obj->LowLevelDriver->Close(this->LLParam, pass_oxt);
+	rval = this->Obj->TLowLevelDriver->Close(this->LLParam, pass_oxt);
 
 	/** Completed or error? **/
 	if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -464,9 +475,9 @@ oxtCommit(void* this_v, pObjTrxTree* oxt)
     int rval;
 
     	/** Call the driver to make the close operation. **/
-	if (!this->Obj->LowLevelDriver->Commit) return 0;
+	if (!this->Obj->TLowLevelDriver->Commit) return 0;
     	pass_oxt = &(this->Trx);
-	rval = this->Obj->LowLevelDriver->Commit(this->LLParam, pass_oxt);
+	rval = this->Obj->TLowLevelDriver->Commit(this->LLParam, pass_oxt);
 
 	/** Completed or error? **/
 	if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -504,7 +515,7 @@ oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 	if (new_oxt) new_oxt->OpType = OXT_OP_CREATE;
 
 	/** Make the driver call. **/
-	rval = obj->LowLevelDriver->Create(obj, mask, systype, usrtype, pass_oxt);
+	rval = obj->TLowLevelDriver->Create(obj, mask, systype, usrtype, pass_oxt);
 
 	/** Was the pass_oxt completed or failed? **/
 	if ((*pass_oxt) && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -559,7 +570,7 @@ oxtDelete(pObject obj, pObjTrxTree* oxt)
 	if (new_oxt) new_oxt->OpType = OXT_OP_DELETE;
 
 	/** Make the driver call. **/
-	rval = obj->LowLevelDriver->Delete(obj, pass_oxt);
+	rval = obj->TLowLevelDriver->Delete(obj, pass_oxt);
 
 	/** Was the pass_oxt completed or failed? **/
 	if ((*pass_oxt) && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -624,7 +635,7 @@ oxtSetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    }
 
 	/** Call the driver. **/
-	rval = this->Obj->LowLevelDriver->SetAttrValue(this->LLParam, attrname, datatype, val, pass_oxt);
+	rval = this->Obj->TLowLevelDriver->SetAttrValue(this->LLParam, attrname, datatype, val, pass_oxt);
 
 	/** Failed? **/
 	if (rval < 0 && new_oxt)
@@ -685,7 +696,7 @@ oxtOpenAttr(void* this_v, char* attrname, pObjTrxTree* oxt)
 	    }
     
 	/** Call the low level driver **/
-	rval = this->Obj->LowLevelDriver->OpenAttr(this->Obj,attrname,pass_oxt);
+	rval = this->Obj->TLowLevelDriver->OpenAttr(this->Obj,attrname,pass_oxt);
 
 	/** Completion? **/
 	if (*pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -726,7 +737,7 @@ int
 oxtGetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->GetAttrValue(this->LLParam, attrname, datatype, val, oxt);
+    return this->Obj->TLowLevelDriver->GetAttrValue(this->LLParam, attrname, datatype, val, oxt);
     }
 
 
@@ -744,7 +755,7 @@ oxtOpenQuery(void* this_v, char* query, pObjTrxTree* oxt)
 
 	/** Call the low level driver. **/
 	qy->Obj = this->Obj;
-	qy->LLParam = this->Obj->LowLevelDriver->OpenQuery(this->LLParam,query,oxt);
+	qy->LLParam = this->Obj->TLowLevelDriver->OpenQuery(this->LLParam,query,oxt);
 	if (!(qy->LLParam))
 	    {
 	    nmFree(qy,sizeof(ObjTrxQuery));
@@ -761,7 +772,7 @@ int
 oxtQueryDelete(void* qy_v, pObjTrxTree* oxt)
     {
     pObjTrxQuery qy = (pObjTrxQuery)(qy_v);
-    return qy->Obj->LowLevelDriver->QueryDelete(qy->LLParam, oxt);
+    return qy->Obj->TLowLevelDriver->QueryDelete(qy->LLParam, oxt);
     }
 
 
@@ -778,7 +789,7 @@ oxtQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (!subobj) return NULL;
 	
 	/** Call the lowlevel driver **/
-	subobj->LLParam = qy->Obj->LowLevelDriver->QueryFetch(qy->LLParam, obj, mode, oxt);
+	subobj->LLParam = qy->Obj->TLowLevelDriver->QueryFetch(qy->LLParam, obj, mode, oxt);
 	if (!(subobj->LLParam)) 
 	    {
 	    nmFree(subobj,sizeof(ObjTrxPtr));
@@ -799,7 +810,7 @@ oxtQueryClose(void* qy_v, pObjTrxTree* oxt)
     pObjTrxQuery qy = (pObjTrxQuery)qy_v;
 
     	/** Free the object and call the lowlevel. **/
-	qy->Obj->LowLevelDriver->QueryClose(qy->LLParam,oxt);
+	qy->Obj->TLowLevelDriver->QueryClose(qy->LLParam,oxt);
 	nmFree(qy,sizeof(ObjTrxQuery));
 
     return 0;
@@ -813,7 +824,7 @@ int
 oxtWrite(void* this_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->Write(this->LLParam,buffer,cnt,offset,flags,(this->Trx)?&(this->Trx):oxt);
+    return this->Obj->TLowLevelDriver->Write(this->LLParam,buffer,cnt,offset,flags,(this->Trx)?&(this->Trx):oxt);
     }
 
 
@@ -824,7 +835,7 @@ int
 oxtRead(void* this_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->Read(this->LLParam,buffer,maxcnt,offset,flags,oxt);
+    return this->Obj->TLowLevelDriver->Read(this->LLParam,buffer,maxcnt,offset,flags,oxt);
     }
 
 
@@ -834,7 +845,7 @@ int
 oxtGetAttrType(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->GetAttrType(this->LLParam,attrname,oxt);
+    return this->Obj->TLowLevelDriver->GetAttrType(this->LLParam,attrname,oxt);
     }
 
 
@@ -845,7 +856,7 @@ int
 oxtAddAttr(void* this_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->AddAttr(this->LLParam, oxt);
+    return this->Obj->TLowLevelDriver->AddAttr(this->LLParam, oxt);
     }
 
 
@@ -855,7 +866,7 @@ char*
 oxtGetFirstAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->GetFirstAttr(this->LLParam,oxt);
+    return this->Obj->TLowLevelDriver->GetFirstAttr(this->LLParam,oxt);
     }
 
 
@@ -865,7 +876,7 @@ char*
 oxtGetNextAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->GetNextAttr(this->LLParam,oxt);
+    return this->Obj->TLowLevelDriver->GetNextAttr(this->LLParam,oxt);
     }
 
 
@@ -875,7 +886,7 @@ char*
 oxtGetFirstMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->GetFirstMethod(this->LLParam,oxt);
+    return this->Obj->TLowLevelDriver->GetFirstMethod(this->LLParam,oxt);
     }
 
 
@@ -885,7 +896,7 @@ char*
 oxtGetNextMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->GetNextMethod(this->LLParam,oxt);
+    return this->Obj->TLowLevelDriver->GetNextMethod(this->LLParam,oxt);
     }
 
 
@@ -895,7 +906,7 @@ int
 oxtExecuteMethod(void* this_v, char* methodname, void* param, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->ExecuteMethod(this->LLParam,methodname,param,oxt);
+    return this->Obj->TLowLevelDriver->ExecuteMethod(this->LLParam,methodname,param,oxt);
     }
 
 
@@ -905,7 +916,7 @@ pObjPresentationHints
 oxtPresentationHints(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);
+    return this->Obj->TLowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);
     }
 
 

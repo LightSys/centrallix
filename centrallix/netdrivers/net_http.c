@@ -61,10 +61,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.33 2003/04/25 05:06:57 gbeeley Exp $
+    $Id: net_http.c,v 1.34 2003/05/30 17:39:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.34  2003/05/30 17:39:51  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.33  2003/04/25 05:06:57  gbeeley
     Added insert support to OSML-over-HTTP, and very remedial Trx support
     with the objCommit API method and Commit osdriver method.  CSV datafile
@@ -1144,7 +1155,7 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	    xsConcatenate(&xs,dptr,-1);
 	xsConcatenate(&xs,"</A>\n",5);
 	fdWrite(conn,xs.String,strlen(xs.String),0,0);
-	printf("%s",xs.String);
+	/*printf("%s",xs.String);*/
 	xsDeInit(&xs);
 	xsDeInit(&hints);
 
@@ -1645,11 +1656,22 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 		    }
 		else
 		    {
-		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			     "Pragma: no-cache\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-			     0);
+		    rval = objCommit(objsess);
+		    if (rval < 0)
+			{
+			snprintf(sbuf,256,"Content-Type: text/html\r\n"
+				 "Pragma: no-cache\r\n"
+				 "\r\n"
+				 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			}
+		    else
+			{
+			snprintf(sbuf,256,"Content-Type: text/html\r\n"
+				 "Pragma: no-cache\r\n"
+				 "\r\n"
+				 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
+				 0);
+			}
 		    fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 		    }
 		}

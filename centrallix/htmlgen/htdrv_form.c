@@ -43,6 +43,17 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.49  2003/05/30 17:39:49  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.48  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -427,6 +438,7 @@ htformInitialize()
 	htrAddAction(drv,"Prev");
 	htrAddAction(drv,"Query");
 	htrAddAction(drv,"QueryExec");
+	htrAddAction(drv,"QueryToggle");
 	htrAddAction(drv,"Save");
 
 	/* these don't really do much, since the form doesn't have a layer, so nothing can find it... */

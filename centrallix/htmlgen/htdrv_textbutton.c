@@ -43,10 +43,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.19 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.20 2003/05/30 17:39:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.20  2003/05/30 17:39:50  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.19  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -175,12 +186,15 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char fgcolor1[64];
     char fgcolor2[64];
     char bgcolor[128];
+    char disable_color[64];
     pObject sub_w_obj;
     pObjQuery qy;
     int x,y,w,h;
     int id;
     int is_ts = 1;
     char* nptr;
+    int is_enabled = 1;
+    pExpression code;
 
     	/** Get an id for this. **/
 	id = (HTTBTN.idcnt++);
@@ -202,11 +216,23 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    return -1;
 	    }
 	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
+	if (objGetAttrType(w_obj,"enabled") == DATA_T_STRING && objGetAttrValue(w_obj,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
+	    {
+	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
+	    }
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
+
+	/** User requesting expression for enabled? **/
+	if (objGetAttrType(w_obj,"enabled") == DATA_T_CODE)
+	    {
+	    objGetAttrValue(w_obj,"enabled",DATA_T_CODE,POD(&code));
+	    is_enabled = 0;
+	    htrAddExpression(s, name, "enabled", code);
+	    }
 
 	/** Threestate button or twostate? **/
 	if (objGetAttrValue(w_obj,"tristate",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
@@ -235,10 +261,15 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    sprintf(fgcolor2,"%.63s",ptr);
 	else
 	    strcpy(fgcolor2,"black");
+	if (objGetAttrValue(w_obj,"disable_color",DATA_T_STRING,POD(&ptr)) == 0)
+	    sprintf(disable_color,"%.63s",ptr);
+	else
+	    strcpy(disable_color,"#808080");
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#tb%dpane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:-1; TOP:-1; WIDTH:%d; Z-INDEX:%d; }\n",id,w-1,z+1);
+	htrAddStylesheetItem_va(s,"\t#tb%dpane2 { POSITION:absolute; VISIBILITY:%s; LEFT:-1; TOP:-1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_enabled?"inherit":"hidden",w-1,z+1);
+	htrAddStylesheetItem_va(s,"\t#tb%dpane3 { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,is_enabled?"hidden":"inherit",x,y,w-1,z+1);
 	htrAddStylesheetItem_va(s,"\t#tb%dtop { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
 	htrAddStylesheetItem_va(s,"\t#tb%dbtm { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
 	htrAddStylesheetItem_va(s,"\t#tb%drgt { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
@@ -253,19 +284,21 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
-	htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
-		nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
+	htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dpane3,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
+		nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h >= 0)
 	    {
 	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,h);
 	    htrAddBodyItem_va(s, "<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,h);
+	    htrAddBodyItem_va(s, "<DIV ID=\"tb%dpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text,h);
 	    }
 	else
 	    {
 	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=3 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text);
 	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text);
 	    }
 	htrAddBodyItem_va(s,"<DIV ID=\"tb%dtop\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
 	htrAddBodyItem_va(s,"<DIV ID=\"tb%dbtm\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
@@ -275,7 +308,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tb",
-		"    if (ly.kind == 'tb')\n"
+		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
 		"        ly.moveBy(1,1);\n"
 		"        tb_setmode(ly,2);\n"
@@ -283,7 +316,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","tb",
-		"    if (ly.kind == 'tb')\n"
+		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
 		"        ly.moveBy(-1,-1);\n"
 		"        if (e.pageX >= ly.pageX &&\n"
@@ -302,21 +335,21 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n" );
 
 	htrAddEventHandler(s, "document","MOUSEOVER","tb",
-		"    if (ly.kind == 'tb')\n"
+		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,1);\n"
 		"        cn_activate(ly, 'MouseOver');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","tb",
-		"    if (ly.kind == 'tb')\n"
+		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,0);\n"
 		"        cn_activate(ly, 'MouseOut');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEMOVE","tb",
-		"    if (ly.kind == 'tb')\n"
+		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
 		"        cn_activate(ly, 'MouseMove');\n"
 		"        }\n");

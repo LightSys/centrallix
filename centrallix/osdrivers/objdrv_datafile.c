@@ -54,10 +54,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.10 2003/04/25 05:06:58 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.11 2003/05/30 17:39:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.11  2003/05/30 17:39:52  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.10  2003/04/25 05:06:58  gbeeley
     Added insert support to OSML-over-HTTP, and very remedial Trx support
     with the objCommit API method and Commit osdriver method.  CSV datafile
@@ -1823,6 +1834,16 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
     }
 
 
+/*** dat_csv_UpdateRowBuf - update the RowBuf in the row's inf structure to reflect
+ *** a modified property.
+ ***/
+int
+dat_internal_UpdateRowBuf(pDatData inf, int update_colid, pObjData update_val)
+    {
+    return 0;
+    }
+
+
 /*** dat_csv_GenerateRow - generate an entire textual format row, including the 
  *** allocation of the buffer.  Optionally, look in the update ptr or in the
  *** OXT structures for the source data.  DOES add the field separators.  DOES
@@ -1833,11 +1854,12 @@ unsigned char*
 dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrxTree oxt)
     {
     pObjTrxTree sub_oxt;
-    int i,len,j;
+    int i,len,j,d,s,a;
     unsigned char* buf;
     unsigned char* bufptr;
     int maxlen;
     pObjData val;
+    pObjData oldval;
 
     	/** Allocate a buffer **/
 	maxlen = DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1);
@@ -1847,6 +1869,7 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 	bufptr = buf;
 	for(i=0;i<inf->TData->nCols;i++)
 	    {
+	    val = NULL;
 	    /** What's the source of this data? **/
 	    if (update_colid == i)
 	        {
@@ -1856,7 +1879,6 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 	    else if (oxt)
 	        {
 		/** Source: from INSERT (OXT - multiple SetAttrValue) **/
-		val = NULL;
 		for(j=0;j<oxt->Children.nItems;j++)
 		    {
 		    sub_oxt = (pObjTrxTree)(oxt->Children.Items[j]);
@@ -1870,7 +1892,7 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 			}
 		    }
 		}
-	    else
+	    if (!val)
 	        {
 		/** Source: from EXISTING ROW DATA **/
 		if (inf->ColPtrs[i] == NULL)
@@ -1879,6 +1901,88 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 		    val = POD(inf->ColPtrs[i]);
 		else
 		    val = POD(&(inf->ColPtrs[i]));
+		}
+	    else
+		{
+		/** Need to update rowbuf - find old value **/
+		if (inf->ColPtrs[i] == NULL)
+		    oldval = NULL;
+		else if (inf->TData->ColTypes[i] == DATA_T_INTEGER || inf->TData->ColTypes[i] == DATA_T_DOUBLE)
+		    oldval = POD(inf->ColPtrs[i]);
+		else
+		    oldval = POD(&(inf->ColPtrs[i]));
+
+		/** Original was null? (as in the case of insert) **/
+		if (val && !oldval)
+		    {
+		    switch(inf->TData->ColTypes[i])
+			{
+			case DATA_T_INTEGER:
+			    s = sizeof(int);
+			    break;
+			case DATA_T_DOUBLE:
+			    s = sizeof(double);
+			    break;
+			case DATA_T_MONEY:
+			    s = sizeof(MoneyType);
+			    break;
+			case DATA_T_DATETIME:
+			    s = sizeof(DateTime);
+			    break;
+			case DATA_T_STRING:
+			    s = 1;
+			    break;
+			}
+		    if (inf->RowBufSize + s <= maxlen)
+			{
+			inf->ColPtrs[i] = inf->RowBuf + inf->RowBufSize;
+			inf->RowBufSize += s;
+			if (inf->TData->ColTypes[i] == DATA_T_INTEGER || inf->TData->ColTypes[i] == DATA_T_DOUBLE)
+			    oldval = POD(inf->ColPtrs[i]);
+			else
+			    oldval = POD(&(inf->ColPtrs[i]));
+			if (inf->TData->ColTypes[i] == DATA_T_STRING)
+			    inf->ColPtrs[i][0] = '\0';
+			}
+		    }
+
+		/** And set it based on its type **/
+		if (val && oldval)
+		    {
+		    switch(inf->TData->ColTypes[i])
+			{
+			case DATA_T_INTEGER:
+			    memcpy(&(oldval->Integer), &(val->Integer), sizeof(int));
+			    break;
+			case DATA_T_DOUBLE:
+			    memcpy(&(oldval->Double), &(val->Double), sizeof(double));
+			    break;
+			case DATA_T_DATETIME:
+			    memcpy(oldval->DateTime, val->DateTime, sizeof(DateTime));
+			    break;
+			case DATA_T_MONEY:
+			    memcpy(oldval->Money, val->Money, sizeof(MoneyType));
+			    break;
+			case DATA_T_STRING:
+			    /** may have to move ptrs **/
+			    if (val->String && oldval->String)
+				{
+				len = strlen(oldval->String);
+				d = strlen(val->String) - len;
+				if (inf->RowBufSize + d <= maxlen)
+				    {
+				    for(j=i+1;j<inf->TData->nCols;j++)
+					{
+					if (inf->ColPtrs[j]) inf->ColPtrs[j] += d;
+					}
+				    memmove(inf->ColPtrs[i]+d+len,inf->ColPtrs[i]+len, inf->RowBufSize - (inf->ColPtrs[i] - inf->RowBuf) - len);
+				    inf->RowBufSize += d;
+				    strcpy(oldval->String, val->String);
+				    }
+				}
+			    break;
+			}
+		    }
 		}
 
 	    /** Generate the item. **/

@@ -46,10 +46,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.7 2003/04/25 02:43:28 gbeeley Exp $
+    $Id: obj_main.c,v 1.8 2003/05/30 17:39:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.8  2003/05/30 17:39:52  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.7  2003/04/25 02:43:28  gbeeley
     Fixed some object open nuances with node object caching where a cached
     object might be open readonly but we would need read/write.  Added a
@@ -464,6 +475,9 @@ objRegisterDriver(pObjDriver drv)
 
 	/** MultiQuery module? **/
 	if (drv->Capabilities & OBJDRV_C_ISMULTIQUERY) OSYS.MultiQueryLayer = drv;
+
+	/** Inheritance layer? **/
+	if (drv->Capabilities & OBJDRV_C_ISINHERIT) OSYS.InheritanceLayer = drv;
 
     return 0;
     }

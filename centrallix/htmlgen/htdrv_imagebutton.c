@@ -44,10 +44,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.23 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.24 2003/05/30 17:39:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.24  2003/05/30 17:39:49  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.23  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -199,12 +210,13 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char p_img[128];
     char c_img[128];
     char d_img[128];
-    char enabled[10];
+    int is_enabled = 1;
     pObject sub_w_obj;
     pObjQuery qy;
     int x,y,w,h;
     int id;
     char* nptr;
+    pExpression code;
 
     	/** Get an id for this. **/
 	id = (HTIBTN.idcnt++);
@@ -268,14 +280,9 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    strcpy(d_img, n_img);
 	    }
 
-	if (objGetAttrValue(w_obj,"enabled",DATA_T_STRING,POD(&ptr)) == 0)
+	if (objGetAttrType(w_obj,"enabled") == DATA_T_STRING && objGetAttrValue(w_obj,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
 	    {
-	    memccpy(enabled,ptr,'\0',10);
-	    enabled[10]=0;
-	    }
-	else
-	    {
-	    strcpy(enabled, "true");
+	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
 	    }
 
 	/** Ok, write the style header items. **/
@@ -289,19 +296,27 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
 
+	/** User requesting expression for enabled? **/
+	if (objGetAttrType(w_obj,"enabled") == DATA_T_CODE)
+	    {
+	    objGetAttrValue(w_obj,"enabled",DATA_T_CODE,POD(&code));
+	    is_enabled = 0;
+	    htrAddExpression(s, name, "enabled", code);
+	    }
+
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
-	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s','%s',%d,%d,%s,'%s',%s);\n",
-	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr,enabled);
+	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s','%s',%d,%d,%s,'%s',%d);\n",
+	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr,is_enabled);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)
-	    if(strcmp(enabled,"false"))
+	    if(is_enabled)
 		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,n_img);
 	    else
 		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,d_img);
 	else
-	    if(strcmp(enabled,"false"))
+	    if(is_enabled)
 		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,n_img,w,h);
 	    else
 		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,d_img,w,h);
@@ -351,6 +366,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddEventHandler(s, "document","MOUSEMOVE","ib",
 		"    if (e.target != null && e.target.kind == 'ib' && ly.enabled == true)\n"
 		"        {\n"
+		"        if (e.target.img && e.target.img.src != e.target.cImage.src) e.target.img.src = e.target.cImage.src;\n"
 		"        cn_activate(ly, 'MouseMove');\n"
 		"        }\n");
 

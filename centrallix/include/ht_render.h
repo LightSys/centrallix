@@ -34,10 +34,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.11 2002/12/04 00:19:13 gbeeley Exp $
+    $Id: ht_render.h,v 1.12 2003/05/30 17:39:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.12  2003/05/30 17:39:50  gbeeley
+    - stubbed out inheritance code
+    - bugfixes
+    - maintained dynamic runclient() expressions
+    - querytoggle on form
+    - two additional formstatus widget image sets, 'large' and 'largeflat'
+    - insert support
+    - fix for startup() not always completing because of queries
+    - multiquery module double objClose fix
+    - limited osml api debug tracing
+
     Revision 1.11  2002/12/04 00:19:13  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -105,6 +116,7 @@
 
 #include "mtask.h"
 #include "obj.h"
+#include "expression.h"
 #include "xarray.h"
 
 #define HT_SBUF_SIZE	(256)
@@ -236,6 +248,7 @@ typedef struct
     pObject	HtmlHeaderFile;		/* output file if too big */
     XArray	HtmlStylesheet;		/* html stylesheet buffers */
     pObject	HtmlStylesheetFile;	/* output file if too big */
+    XArray	HtmlExpressionInit;	/* expressions init */
     XArray	HtmlBodyParams;		/* params for <body> tag */
     XArray	Includes;		/* script includes */
     XHashTable	NameIncludes;		/* hash lookup for includes */
@@ -261,6 +274,7 @@ typedef struct
 
 
 /** Flags for layer addition routines **/
+#define HTR_LAYER_F_DEFAULT	0	/* no flags */
 #define HTR_LAYER_F_DYNAMIC	1	/* layer will be reloaded from server */
 
 
@@ -279,6 +293,7 @@ int htrAddScriptInit_va(pHtSession s, char* fmt, ... );
 int htrAddScriptCleanup(pHtSession s, char* init_text);
 int htrAddScriptCleanup_va(pHtSession s, char* fmt, ... );
 int htrAddScriptInclude(pHtSession s, char* filename, int flags);
+int htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp);
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);
 int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
