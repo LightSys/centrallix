@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.6 2002/08/08 21:58:36 pfinley Exp $
+    $Id: centrallix.c,v 1.7 2002/08/12 09:14:28 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.7  2002/08/12 09:14:28  mattphillips
+    Use the built-in PACKAGE_VERSION instead of VERSION to get the current version
+    number to be more standard.  PACKAGE_VERSION is set by autoconf, but read from
+    .version when configure is generated.
+
     Revision 1.6  2002/08/08 21:58:36  pfinley
     changes to Makefile & centrallix.c for the clock widget.
 
@@ -81,7 +86,7 @@
  *** information so that other modules don't have to be rebuilt with
  *** every compile - just this file in particular.
  ***/
-char* cx__version = VERSION;
+char* cx__version = PACKAGE_VERSION;
 int cx__build = BUILD;
 int cx__subbuild = SUBBUILD;
 char* cx__stability = STABILITY;

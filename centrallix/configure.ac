@@ -1,5 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(centrallix.c)
+AC_INIT([Centrallix Application Server], 
+	esyscmd(echo -n $(cat .version)),
+	[centrallix-devel@lists.sourceforge.net])
 AC_CONFIG_HEADERS(config.h)
 AC_PREFIX_DEFAULT(/usr/local)
 
