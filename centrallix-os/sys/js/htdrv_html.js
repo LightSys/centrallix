@@ -147,7 +147,8 @@ function ht_reloaded(e)
 
 function ht_click(e)
     {
-    e.target.layer.mainlayer.source = e.target.href;
+    if (e.target.href)
+    	e.target.layer.mainlayer.source = e.target.href;
     return false;
     }
 

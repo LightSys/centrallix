@@ -569,27 +569,39 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     resizeTo(tl,w,1);
     setClipWidth(tl,w);
     setClipHeight(tl,1);
+    if (cx__capabilities.Dom1HTML && pl)
+    	pl.parentLayer.appendChild(tl);
     moveAbove(tl,pl);
     moveToAbsolute(tl,x,y);
     htr_setzindex(tl,z);
+
     resizeTo(bl,w+s-1,1);
     setClipWidth(bl,w+s-1);
     setClipHeight(bl,1);
+    if (cx__capabilities.Dom1HTML && pl)
+    	pl.parentLayer.appendChild(bl);
     moveAbove(bl,pl);
     moveToAbsolute(bl,x,y+h-s+1);
     htr_setzindex(bl,z);
+
     resizeTo(ll,1,h);
     setClipHeight(ll,h);
     setClipWidth(ll,1);
+    if (cx__capabilities.Dom1HTML && pl)
+    	pl.parentLayer.appendChild(ll);
     moveAbove(ll,pl);
     moveToAbsolute(ll,x,y);
     htr_setzindex(ll,z);
+
     resizeTo(rl,1,h+1);
     setClipHeight(rl,h+1);
     setClipWidth(rl,1);
+    if (cx__capabilities.Dom1HTML && pl)
+    	pl.parentLayer.appendChild(rl);
     moveAbove(rl,pl);
     moveToAbsolute(rl,x+w-s+1,y);
     htr_setzindex(rl,z);
+    
     htr_setvisibility(tl, 'inherit');
     htr_setvisibility(bl, 'inherit');
     htr_setvisibility(rl, 'inherit');
@@ -618,7 +630,7 @@ function pg_hidebox(tl,bl,rl,ll)
         moveAbove(tl, document.getElementById("pgtvl"));
         moveAbove(bl, document.getElementById("pgtvl"));
         moveAbove(rl, document.getElementById("pgtvl"));
-        moveAbove(ll, document.getElementById("pgtvl"));        	
+        moveAbove(ll, document.getElementById("pgtvl"));
         }
         
     return;
