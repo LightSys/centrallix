@@ -53,7 +53,7 @@ function osrc_action_query_object(q, formobj, readonly)
     
     firstone=true;
     if(this.pendingorderobject)
-	for(i in this.pendingorderobject)
+	for(var i in this.pendingorderobject)
 	    {
 	    //alert('asdf'+this.pendingorderobject[i]);
 	    if(firstone)
@@ -518,6 +518,7 @@ function osrc_fetch_next()
 	this.replica[this.OSMLRecord][colnum]['value'] = htutil_rtrim(unescape(lnk[i].text));
 	this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);
 	this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;
+	this.replica[this.OSMLRecord][colnum]['hints'] = cx_parse_hints(lnk[i].search);
 	}
 /** make sure we bring this.LastRecord back down to the top of our replica...**/
     while(!this.replica[this.LastRecord])
