@@ -31,10 +31,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.10 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: xstring.c,v 1.11 2003/04/03 21:38:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.11  2003/04/03 21:38:31  gbeeley
+    Adding xsSubst() to the xstring library.  Does a replacement of a
+    string with another based on position, not content.
+
     Revision 1.10  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -577,6 +581,36 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
 	}
     return -1;
     }
+
+
+/*** xsSubst - substitutes a string in a given position in an xstring.  does not
+ *** search for matches like xsreplace does - you have to tell it the position
+ *** and length to replace.  Length of -1 indicates length is unknown.
+ ***/
+int
+xsSubst(pXString this, int offset, int len, char* rep, int replen)
+    {
+
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
+	/** Figure some default lengths **/
+	if (offset > this->Length || offset < 0) return -1;
+	if (len == -1) len = strlen(this->String + offset);
+	if (replen == -1) replen = strlen(rep);
+
+	/** Make sure we have enough room **/
+	if (len < replen) xsCheckAlloc(this, replen - len);
+
+	/** Move the tail of the string, and plop the replacement in there **/
+	memmove(this->String+offset+replen, this->String+offset+len, this->Length + 1 - (offset+len));
+	memcpy(this->String+offset, rep, replen);
+	this->Length += (replen - len);
+	CXSEC_UPDATE(*this);
+
+    return 0;
+    }
+
 
 /*** xsReplace - searches an xString for a string and replaces that string with another
  ***   returns the starting offset of the replace if successful, and -1 if not found

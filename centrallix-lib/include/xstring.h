@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.8 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: xstring.h,v 1.9 2003/04/03 21:38:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.9  2003/04/03 21:38:30  gbeeley
+    Adding xsSubst() to the xstring library.  Does a replacement of a
+    string with another based on position, not content.
+
     Revision 1.8  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -104,6 +108,7 @@ int xsLTrim(pXString this);
 int xsTrim(pXString this);
 int xsFind(pXString this,char* find,int findlen, int offset);
 int xsFindRev(pXString this,char* find,int findlen, int offset);
+int xsSubst(pXString this, int offset, int len, char* rep, int replen);
 int xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen);
 int xsInsertAfter(pXString this, char* ins, int inslen, int offset);
 int xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, ...);
