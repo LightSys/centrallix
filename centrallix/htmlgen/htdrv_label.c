@@ -42,6 +42,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.7  2002/05/31 05:03:32  jorupp
+     * OSRC now can do a DoubleSync -- check kardia for an example
+
     Revision 1.6  2002/04/27 06:37:45  jorupp
      * some bug fixes in the form
      * cleaned up some debugging output in the label
@@ -166,13 +169,13 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
-
+#if 0
 	/** Label text encoding function **/
 	htrAddScriptFunction(s, "lbl_encode", "\n"
 		"function lbl_encode(s)\n"
 		"    {\n"
-		"    rs = '';\n"
-		"    for(i=0;i<s.length;i++)\n"
+		"    var rs = '';\n"
+		"    for(var i=0;i<s.length;i++)\n"
 		"        {\n"
 		"        if (s[i] == '<') rs += '&lt;';\n"
 		"        else if (s[i] == '>') rs += '&gt;';\n"
@@ -182,22 +185,12 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n"
 		"    return rs;\n"
 		"    }\n", 0);
-	/** Label initializer **/
-	htrAddScriptFunction(s, "lbl_init", "\n"
-		"function lbl_init(l,text,align,width)\n"
-		"    {\n"
-		"    l.kind = 'label'\n"
-		"    l.document.write(\"<table border=0 width=\"+width+\"><tr><td align='\"+align+\"'>\");\n"
-		"    l.document.write(lbl_encode(new String(text)));\n"
-		"    l.document.write(\"</td></tr></table>\");\n"
-		"    l.document.close();\n"
-		"    return l;\n"
-		"    }\n", 0);
-	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = lbl_init(%s.layers.lbl%d,\"%s\",\"%s\",%i);\n", nptr, parentname, id,text,align,w);
+
+#endif
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"lbl%d\">\n",id);
+	htrAddBodyItem_va(s, "<table border=0 width=\"%i\"<tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
 	htrAddBodyItem(s, "</DIV>\n");
 
 	nmFree(text,strlen(text)+1);

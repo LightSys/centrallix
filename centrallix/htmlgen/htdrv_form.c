@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.37  2002/05/31 05:03:32  jorupp
+     * OSRC now can do a DoubleSync -- check kardia for an example
+
     Revision 1.36  2002/05/31 01:41:19  lkehresman
     Fixed form bug that hung javascript if no data was returned from a query.
 
@@ -922,6 +925,7 @@ old query code
 		/** build an query object to give the osrc **/
 		"    var query=new Array();\n"
 		"    query.oid=null;\n"
+		"    query.joinstring='AND';\n"
 		"    \n"
 		"    for(var i in form.elements)\n"
 		"        {\n"
