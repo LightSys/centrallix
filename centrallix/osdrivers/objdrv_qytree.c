@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.9 2004/06/23 21:33:55 mmcgill Exp $
+    $Id: objdrv_qytree.c,v 1.10 2004/08/30 03:15:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.10  2004/08/30 03:15:56  gbeeley
+    - various bugfixes for qytree driver.  This driver needs a security audit
+      as well.
+
     Revision 1.9  2004/06/23 21:33:55  mmcgill
     Implemented the ObjInfo interface for all the drivers that are currently
     a part of the project (in the Makefile, in other words). Authors of the
@@ -493,7 +497,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			    objlist->Names[(signed char)(objlist->CurrentID)] = find_inf->Name;
 			    expr = (pExpression)expCompileExpression(exprval, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 			    }
-                        sprintf(inf->Pathname,"%s/%s",strval,path->Elements[subref]);
+                        snprintf(inf->Pathname,sizeof(inf->Pathname),"%s/%s?ls__type=application%%2foctet-stream",strval,path->Elements[subref]);
 
 			/** Setup this querytree struct entry for lookups **/
 			xhAdd(&struct_table, find_inf->Name, (void*)find_inf);
@@ -570,7 +574,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 		inf->LLObj = NULL;
 
 		/** Close the objects and free the param list. **/
-		for(i=0;i<objlist->nObjects-1;i++) objClose(objlist->Objects[i]);
+		for(i=0;i<objlist->nObjects-1;i++) if (objlist->Objects[i]) objClose(objlist->Objects[i]);
 		expFreeParamList(objlist);
 		mssError(0,"QYT","Could not find object via access through querytree");
 		return NULL;
@@ -580,7 +584,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	    }
 	inf->NodeData = dptr;
 	xhDeInit(&struct_table);
-	for(i=0;i<objlist->nObjects-1;i++) objClose(objlist->Objects[i]);
+	for(i=0;i<objlist->nObjects-1;i++) if (objlist->Objects[i]) objClose(objlist->Objects[i]);
 
     return inf;
     }
@@ -1121,7 +1125,7 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Alloc the structure **/
 	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, qy->ObjInf->BaseNode, 
-		obj->Pathname->nElements-1, qy->ObjInf->BaseNode->Data, 0, 1);
+		qy->ObjInf->Obj->SubPtr, qy->ObjInf->BaseNode->Data, 0, 1);
 	if (!inf) return NULL;
 	/*strcpy(inf->Pathname, llobj->Pathname->Pathbuf);*/
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname, 0, 0));
@@ -1176,7 +1180,7 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** If there is a low-level object, lookup within it **/
 	if (inf->LLObj) return objGetAttrType(inf->LLObj, attrname);
 
-	mssError(1,"QYT","Invalid attribute for querytree object");
+	mssError(1,"QYT","Invalid attribute '%s' for querytree object", attrname);
 
     return -1;
     }
@@ -1252,7 +1256,7 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** Low-level object?  Lookup the attribute in it **/
 	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, val);
 
-	mssError(1,"QYT","Invalid attribute for querytree object");
+	mssError(1,"QYT","Invalid attribute '%s' for querytree object", attrname);
 
     return -1;
     }
@@ -1404,13 +1408,13 @@ qytExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
 int
 qytInfo(void* inf_v, pObjectInfo info)
     {
-	pQytData inf = QYT(inf);
-	if (inf->LLObj) 
-	    {
-	    info = objInfo(inf->LLObj);
-	    return 0;
-	    }
-	return -1;
+    pQytData inf = QYT(inf_v);
+    if (inf->LLObj) 
+	{
+	info = objInfo(inf->LLObj);
+	return 0;
+	}
+    return -1;
     }
 
 /*** qytInitialize - initialize this driver, which also causes it to 
