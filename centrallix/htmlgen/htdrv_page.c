@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.22 2002/07/15 22:41:02 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.23 2002/07/16 16:12:07 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.23  2002/07/16 16:12:07  pfinley
+    added a script init that accidentally got deleted when converting to a js file.
+
     Revision 1.22  2002/07/15 22:41:02  lkehresman
     Whoops!  Got copy-happy and removed an event with all the functions.
 
@@ -457,6 +460,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	htrAddScriptInit_va(s, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",t.msfocus1,t.msfocus2);
 	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",t.dtfocus1,t.dtfocus2);
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
+
+	/** Start cursor blinking **/
+	htrAddScriptInit(s, "    pg_togglecursor();\n");
 
 	htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
 
