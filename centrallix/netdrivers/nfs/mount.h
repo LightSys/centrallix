@@ -70,7 +70,7 @@ typedef exportlist_item *exportlist;
 #define MOUNTPROC_DUMP 2
 #define MOUNTPROC_UMNT 3
 #define MOUNTPROC_UMNTALL 4
-#define MOUNTPROC_EXPORT 
+#define MOUNTPROC_EXPORT 5
 
 extern  bool_t xdr_fhandle (XDR *, fhandle);
 extern  bool_t xdr_fhstatus (XDR *, fhstatus*);
