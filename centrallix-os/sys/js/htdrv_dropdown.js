@@ -306,17 +306,17 @@ function dd_scroll(t)
     var px = dd_incr;
     var ly = dd_current.PaneLayer.ScrLayer;
     var ht1 = getRelativeY(ly) - 2;
-    var ht2 = dd_current.PaneLayer.h - getClipHeight(ly) + ht1;
     var h = dd_current.PaneLayer.h;
+    var ht2 = h - dd_current.h2 + ht1;
     var d = h - getClipHeight(dd_current.PaneLayer) + 4;
     var v = getClipHeight(dd_current.PaneLayer) - (3*18) - 4;
-    if (ht1+px>0) px = -ht1;
-    if (ht2+px<0) px = -ht2;
+    if (px > -ht1) px = -ht1;
+    if (px < -ht2) px = -ht2;
     if ((px<0 && ht2>0) || (px>0 && ht1<0)) // up or down
 	{
 	moveBy(ly, 0, px);
-	setClipHeight(ly, getClipHeight(ly) - px);
 	setClipTop(ly, getClipTop(ly) - px);
+	setClipHeight(ly, dd_current.h2);
 	if (t==null)
 	    {
 	    if (d<=0) 
@@ -364,6 +364,7 @@ function dd_create_pane(l)
     htr_write_content(p, c);
     htutil_tag_images(p.document,'dt_pn',p,l);
     pg_stackpopup(p,l);
+    setClipHeight(p, l.h2);
 
     /**  Create scroll background layer  **/
     p.ScrLayer = htr_new_layer(1024, p);
