@@ -279,7 +279,8 @@ function tx_keyhandler(l,e,k)
     {
     if (!tx_current) return true;
     if (tx_current.enabled!='full') return 1;
-    if (tx_current.form) tx_current.form.DataNotify(tx_current);
+    if (k != 27 && k != 9 && tx_current.form) 
+	tx_current.form.DataNotify(tx_current);
     if (k >= 32 && k < 127)
         {
         txt = l.rows[l.cursorRow].content;
