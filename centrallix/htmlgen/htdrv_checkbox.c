@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.14 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.15 2002/07/07 00:18:17 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.15  2002/07/07 00:18:17  jorupp
+     * initial support for checbox in Mozilla -- NOT COMPLETE -- barely works, only tested on 1.1a
+
     Revision 1.14  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -124,11 +127,12 @@ int htcbVerify() {
    return 0;
 }
 
+#include "htdrv_checkbox_moz.c"
 
 /* 
-   htcbRender - generate the HTML code for the page.
+   htcbNs47DefRender - generate the HTML code for the page (Netscape 4.7x:Default).
 */
-int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
    char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
    int id;
@@ -346,13 +350,33 @@ int htcbInitialize() {
    /** Fill in the structure. **/
    strcpy(drv->Name,"DHTML Checkbox Driver");
    strcpy(drv->WidgetName,"checkbox");
-   drv->Render = htcbRender;
+   drv->Render = htcbNs47DefRender;
    drv->Verify = htcbVerify;
    xaInit(&(drv->PosParams),16);
    xaInit(&(drv->Properties),16);
    xaInit(&(drv->Events),16);
    xaInit(&(drv->Actions),16);
    strcpy(drv->Target,"Netscape47x:default");
+   /** Register. **/
+   htrRegisterDriver(drv);
+
+
+   /** Allocate the driver **/
+   drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+   if (!drv) return -1;
+
+   /** Fill in the structure. **/
+   strcpy(drv->Name,"DHTML Checkbox Driver");
+   strcpy(drv->WidgetName,"checkbox");
+   drv->Render = htcbMozDefRender;
+   drv->Verify = htcbVerify;
+   xaInit(&(drv->PosParams),16);
+   xaInit(&(drv->Properties),16);
+   xaInit(&(drv->Events),16);
+   xaInit(&(drv->Actions),16);
+   strcpy(drv->Target,"Mozilla:default");
+   /** Register. **/
+   htrRegisterDriver(drv);
 
 #if 00
    /** Add the 'load page' action **/
@@ -365,9 +389,6 @@ int htcbInitialize() {
    xaAddItem(&action->Parameters,(void*)param);
    xaAddItem(&drv->Actions,(void*)action);
 #endif
-
-   /** Register. **/
-   htrRegisterDriver(drv);
 
    HTCB.idcnt = 0;
 
