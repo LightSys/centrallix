@@ -59,10 +59,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.11 2002/05/01 02:25:50 jorupp Exp $
+    $Id: htdrv_table.c,v 1.12 2002/05/30 03:55:21 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.12  2002/05/30 03:55:21  lkehresman
+    editbox:  * added readonly flag so the editbox is always only readonly
+              * made disabled appear visually
+    table:    * fixed a typo
+
     Revision 1.11  2002/05/01 02:25:50  jorupp
      * more changes
 
@@ -268,7 +273,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"                        if(this.textcolor)\n"
 		"                            this.rows[i].fg.cols[j].document.write('<font color='+this.textcolor+'>'+this.rows[i].fg.cols[j].data+'<font>');\n"
 		"                        else\n"
-		"                            this.rows[i].fg.cols[j].document.write(his.rows[i].fg.cols[j].data);\n"
+		"                            this.rows[i].fg.cols[j].document.write(this.rows[i].fg.cols[j].data);\n"
 		"                        this.rows[i].fg.cols[j].document.close();\n"
 		"                        }\n"
 		"                    }\n"

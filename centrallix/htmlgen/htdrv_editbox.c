@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.13 2002/05/03 01:40:56 jheth Exp $
+    $Id: htdrv_editbox.c,v 1.14 2002/05/30 03:55:21 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.14  2002/05/30 03:55:21  lkehresman
+    editbox:  * added readonly flag so the editbox is always only readonly
+              * made disabled appear visually
+    table:    * fixed a typo
+
     Revision 1.13  2002/05/03 01:40:56  jheth
     Defined fieldname size to be 60 (from 30) in ht_render.h - HT_FIELDNAME_SIZE
 
@@ -141,6 +146,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id;
+    int is_readonly = 0;
     int is_raised = 1;
     char* nptr;
     char* c1;
@@ -168,9 +174,12 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Maximum characters to accept from the user **/
 	if (objGetAttrValue(w_obj,"maxchars",POD(&maxchars)) != 0) maxchars=255;
 
+	/** Readonly flag **/
+	if (objGetAttrValue(w_obj,"readonly",POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
+
 	/** Background color/image? **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgcolor='%.40s'",ptr);
+	    sprintf(main_bg,"bgColor='%.40s'",ptr);
 	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
@@ -277,6 +286,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_enable", "\n"
 		"function eb_enable()\n"
 		"    {\n"
+		"    eval('this.document.'+this.bg);\n"
 		"    this.enabled='full';\n"
 		"    }\n", 0);
 
@@ -284,6 +294,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_disable", "\n"
 		"function eb_disable()\n"
 		"    {\n"
+		"    this.document.background='';\n"
+		"    this.document.bgColor='#e0e0e0';\n"
 		"    this.enabled='disabled';\n"
 		"    }\n", 0);
 
@@ -291,6 +303,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_readonly", "\n"
 		"function eb_readonly()\n"
 		"    {\n"
+		"    eval('this.document.'+this.bg);\n"
 		"    this.enabled='readonly';\n"
 		"    }\n", 0);
 
@@ -357,8 +370,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_select", "\n"
 		"function eb_select(x,y,l,c,n)\n"
 		"    {\n"
+		"    if(l.enabled != 'full') return 0;\n"
 		"    if(l.form) l.form.FocusNotify(l);\n"
-		"    if(l.enabled=='disabled') return 0;\n"
 		"    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/eb_metric.charWidth);\n"
 		"    if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;\n"
 		"    if (eb_current) eb_current.cursorlayer = null;\n"
@@ -392,9 +405,10 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Editbox initializer **/
 	htrAddScriptFunction(s, "eb_init", "\n"
-		"function eb_init(l,c1,c2,fieldname)\n"
+		"function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)\n"
 		"    {\n"
-		"    l.kind = 'editbox'\n"
+		"    l.bg = main_bg;\n"
+		"    l.kind = 'editbox';\n"
 		"    l.document.Layer = l;\n"
 		"    l.ContentLayer = c1;\n"
 		"    l.HiddenLayer = c2;\n"
@@ -429,9 +443,18 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.setvalue = eb_setvalue;\n"
 		"    l.clearvalue = eb_clearvalue;\n"
 		"    l.setoptions = null;\n"
-		"    l.enable = eb_enable;\n"
 		"    l.disable = eb_disable;\n"
 		"    l.readonly = eb_readonly;\n"
+		"    if (is_readonly)\n"
+		"        {\n"
+		"        l.enable = eb_disable;\n"
+		"        l.enabled = 'disable';\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        l.enable = eb_enable;\n"
+		"        l.enabled = 'full';\n"
+		"        }\n"
 		"    l.isFormStatusWidget = false;\n"
 		"    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', 1);\n"
 		"    c1.y = ((l.clip.height - eb_metric.charHeight)/2);\n"
@@ -439,20 +462,19 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if (fm_current) fm_current.Register(l);\n"
 		"    l.form = fm_current;\n"
 		"    l.changed = false;\n"
-		"    l.enabled = 'full';\n"
 		"    return l;\n"
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\");\n",
+	htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\", %d, \"%s\");\n",
 		nptr, parentname, id, 
 		parentname, id, id, 
 		parentname, id, id,
-		fieldname);
+		fieldname, is_readonly, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);
-	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\"><BODY %s>\n",id, main_bg);
+	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
 	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
@@ -472,7 +494,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/*htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);*/
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	htrAddBodyItem(s, "</BODY></DIV>\n");
 
     return 0;
     }
