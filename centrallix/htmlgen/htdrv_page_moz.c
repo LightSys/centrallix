@@ -11,12 +11,6 @@ htpageRenderMozDefault(pHtSession s, pObject w_obj, int z, char* parentname, cha
 
 	htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"IFRAME");
 
-	/** set variable so javascript can run alternate code for a different browser **/    
-	htrAddScriptInit(s,
-		"    cn_browser=new Object();\n"
-		"    cn_browser.netscape47=false;\n"
-		"    cn_browser.mozilla=true;\n");
-
 	/** Add focus box **/
 	htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
 	htrAddStylesheetItem(s,"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");

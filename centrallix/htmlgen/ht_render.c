@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.30 2002/12/04 00:19:09 gbeeley Exp $
+    $Id: ht_render.c,v 1.31 2002/12/24 09:41:07 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.31  2002/12/24 09:41:07  jorupp
+     * move output of cn_browser to ht_render, also moving up above the first place where it is needed
+
     Revision 1.30  2002/12/04 00:19:09  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -244,6 +247,9 @@ htrRegisterUserAgents()
 	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
 	reg = (regex_t *)nmMalloc(sizeof(regex_t));
 	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.1\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "Galeon\\/1.[0-9].[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
 
 	/** Internet Explorer regular expressions **/
@@ -1168,6 +1174,17 @@ htrRender(pFile output, pObject appstruct)
 
 	/** Write the initialization lines **/
 	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
+	fdWrite(output,"    cn_browser = new Object();\n",31,0,FD_U_PACKET);
+	if(s->WidgetSet == HTR_UA_MOZILLA)
+	    {
+	    fdWrite(output,"    cn_browser.netscape47 = false;\n",35,0,FD_U_PACKET);
+	    fdWrite(output,"    cn_browser.mozilla = true;\n",31,0,FD_U_PACKET);
+	    }
+	else
+	    {
+	    fdWrite(output,"    cn_browser.netscape47 = true;\n",34,0,FD_U_PACKET);
+	    fdWrite(output,"    cn_browser.mozilla = false;\n",32,0,FD_U_PACKET);
+	    }
 	fdWrite(output,"    if(typeof(pg_status_init)=='function')pg_status_init();\n",60,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {

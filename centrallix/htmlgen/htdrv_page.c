@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.51 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.52 2002/12/24 09:41:07 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.52  2002/12/24 09:41:07  jorupp
+     * move output of cn_browser to ht_render, also moving up above the first place where it is needed
+
     Revision 1.51  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -488,7 +491,14 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d);\n", name, parentname, attract);
+	if(s->WidgetSet == HTR_UA_MOZILLA)
+	    {
+	    htrAddScriptInit_va(s, "    %s = pg_init(%s.getElementById('pgtop'),%d);\n", name, parentname, attract);
+	    }
+	else
+	    {
+	    htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d);\n", name, parentname, attract);
+	    }
 
     return 0;
     }
@@ -504,12 +514,6 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
     HtPageStruct t;
 
         htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"DIV");
-
-	/** set variable so javascript can run alternate code for a different browser **/    
-	htrAddScriptInit(s,
-		"    cn_browser=new Object();\n"
-		"    cn_browser.netscape47=true;\n"
-		"    cn_browser.mozilla=false;\n");
 
 	/** Add focus box **/
 	htrAddStylesheetItem(s, 
