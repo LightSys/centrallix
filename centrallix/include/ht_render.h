@@ -34,10 +34,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.9 2002/06/09 23:44:47 nehresma Exp $
+    $Id: ht_render.h,v 1.10 2002/07/16 18:23:21 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.10  2002/07/16 18:23:21  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.9  2002/06/09 23:44:47  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -196,6 +205,8 @@ typedef struct
     pObject	HtmlBodyFile;		/* output file if too big */
     XArray	HtmlHeader;		/* html header page buffers */
     pObject	HtmlHeaderFile;		/* output file if too big */
+    XArray	HtmlStylesheet;		/* html stylesheet buffers */
+    pObject	HtmlStylesheetFile;	/* output file if too big */
     XArray	HtmlBodyParams;		/* params for <body> tag */
     XArray	Includes;		/* script includes */
     XHashTable	NameIncludes;		/* hash lookup for includes */

@@ -44,10 +44,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_menu.c,v 1.5 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_menu.c,v 1.6 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_menu.c,v $
 
     $Log: htdrv_menu.c,v $
+    Revision 1.6  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.5  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -159,9 +168,7 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#mn%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; %s%s%s }\n",id,(x==-1)?0:x,(y==-1)?0:y,w,z, (*bgcolor)?"LAYER-BACKGROUND-COLOR:":"",bgcolor,(*bgcolor)?";":"");
-	htrAddHeaderItem_va(s,"    </STYLE>\n");
+	htrAddStylesheetItem_va(s,"\t#mn%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; %s%s%s }\n",id,(x==-1)?0:x,(y==-1)?0:y,w,z, (*bgcolor)?"LAYER-BACKGROUND-COLOR:":"",bgcolor,(*bgcolor)?";":"");
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);

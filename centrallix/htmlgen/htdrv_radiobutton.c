@@ -42,10 +42,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.13 2002/07/16 17:52:00 lkehresman Exp $
+    $Id: htdrv_radiobutton.c,v 1.14 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.14  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.13  2002/07/16 17:52:00  lkehresman
     Updated widget drivers to use include files
 
@@ -202,22 +211,21 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptInclude(s, "/sys/js/htdrv_radiobutton.js", 0);
 
    /** Ok, write the style header items. **/
-   htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanel%dparentpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dparentpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            id,x,y,w,h,z,w,h);
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanel%dborderpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dborderpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            id,3,12,w-(2*3),h-(12+3),z+1,w-(2*3),h-(12+3));
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanel%dcoverpane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dcoverpane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            id,1,1,w-(2*3 +2),h-(12+3 +2),z+2,w-(2*3 +2),h-(12+3 +2));
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanel%dtitlepane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dtitlepane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",
            id,10,1,w/2,17,z+3);
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanelbuttonsetpane   { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanelbuttonsetpane   { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            5,5,12,12,z+2,12,12);
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanelbuttonunsetpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanelbuttonunsetpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            5,5,12,12,z+2,12,12);
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanelvaluepane       { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanelvaluepane       { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            5,5,12,12,z+2,12,12);
-   htrAddHeaderItem_va(s,"\t#radiobuttonpanellabelpane       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#radiobuttonpanellabelpane       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            27,2,w-(2*3 +2+27+1),24,z+2,w-(2*3 +2+27+1),24);
    
    /** Write named global **/
@@ -235,7 +243,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
          objGetAttrValue(radiobutton_obj,"outer_type",POD(&ptr));
          if (!strcmp(ptr,"widget/radiobutton")) {
-            htrAddHeaderItem_va(s,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
+            htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
                     id,i,7,10+((i-1)*25)+3,w-(2*3 +2+7),25,z+2,w-(2*3 +2+7),25);
             i++;
          }
@@ -244,7 +252,6 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    }
    objQueryClose(qy);
    
-   htrAddHeaderItem_va(s, "    </STYLE>\n");
 
 
    /** Script initialization call. **/

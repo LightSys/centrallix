@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.7 2002/07/16 17:52:00 lkehresman Exp $
+    $Id: htdrv_scrollpane.c,v 1.8 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.8  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.7  2002/07/16 17:52:00  lkehresman
     Updated widget drivers to use include files
 
@@ -170,11 +179,9 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	htrAddHeaderItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,w-18,z+1);
-	htrAddHeaderItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,w-18,z+1);
-	htrAddHeaderItem_va(s,"    </STYLE>\n");
+	htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,w-18,z+1);
+	htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,w-18,z+1);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sp_target_img", "null", 0);

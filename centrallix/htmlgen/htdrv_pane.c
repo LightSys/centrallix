@@ -41,10 +41,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.9 2002/07/16 17:52:00 lkehresman Exp $
+    $Id: htdrv_pane.c,v 1.10 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.10  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.9  2002/07/16 17:52:00  lkehresman
     Updated widget drivers to use include files
 
@@ -172,10 +181,8 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	htrAddHeaderItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
-	htrAddHeaderItem_va(s,"    </STYLE>\n");
+	htrAddStylesheetItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);

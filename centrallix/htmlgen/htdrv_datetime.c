@@ -41,10 +41,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.11 2002/07/16 17:52:00 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.12 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.12  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.11  2002/07/16 17:52:00  lkehresman
     Updated widget drivers to use include files
 
@@ -220,14 +229,12 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#dt%dpane1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	htrAddHeaderItem_va(s,"\t#dt%dbg1   { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w,h,z+1);
-	htrAddHeaderItem_va(s,"\t#dt%dbg2   { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-1,h-1,z+2);
-	htrAddHeaderItem_va(s,"\t#dt%dbody  { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+3);
-	htrAddHeaderItem_va(s,"\t#dt%dimg   { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:1; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+4);
-	htrAddHeaderItem_va(s,"\t#dt%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:182; HEIGHT:190; Z-INDEX:%d; }\n",id,x,y+h,w,z+5);
-	htrAddHeaderItem(s,"    </STYLE>\n");
+	htrAddStylesheetItem_va(s,"\t#dt%dpane1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#dt%dbg1   { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w,h,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%dbg2   { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-1,h-1,z+2);
+	htrAddStylesheetItem_va(s,"\t#dt%dbody  { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+3);
+	htrAddStylesheetItem_va(s,"\t#dt%dimg   { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:1; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+4);
+	htrAddStylesheetItem_va(s,"\t#dt%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:182; HEIGHT:190; Z-INDEX:%d; }\n",id,x,y+h,w,z+5);
 
 	/** Write named global **/
 	sprintf(name, "%s.layers.dt%dpane", parentname, id);

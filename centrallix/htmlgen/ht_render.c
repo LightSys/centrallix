@@ -46,10 +46,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.17 2002/07/15 21:27:02 lkehresman Exp $
+    $Id: ht_render.c,v 1.18 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.18  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.17  2002/07/15 21:27:02  lkehresman
     Added copyright statement at top of generated DHTML documents.  (if the
     wording needs to change, please do it or let me know)
@@ -365,6 +374,16 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
     }
 
 
+/*** htrAddStylesheetItem -- copies stylesheet definitions into the
+ *** buffers that will eventually be output as HTML.
+ ***/
+int 
+htrAddStylesheetItem(pHtSession s, char* html_text)
+    {
+    return htr_internal_AddTextToArray(&(s->Page.HtmlStylesheet), html_text);
+    }
+
+
 /*** htrAddHeaderItem -- copies html text into the buffers that will 
  *** eventually be output as the HTML header.
  ***/
@@ -468,6 +487,22 @@ htrAddBodyItem_va(pHtSession s, char* fmt, ... )
 
 	va_start(va, fmt);
 	htr_internal_AddText(s, htrAddBodyItem, fmt, va);
+	va_end(va);
+
+    return 0;
+    }
+
+
+/*** htrAddStylesheetItem_va() - use a vararg list (like sprintf, etc) to add a 
+ *** formatted string to the stylesheet definition of the document.
+ ***/
+int
+htrAddStylesheetItem_va(pHtSession s, char* fmt, ... )
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddStylesheetItem, fmt, va);
 	va_end(va);
 
     return 0;
@@ -850,11 +885,13 @@ htrRender(pFile output, pObject appstruct)
 	xaInit(&(s->Page.Cleanups),64);
 	xaInit(&(s->Page.HtmlBody),64);
 	xaInit(&(s->Page.HtmlHeader),64);
+	xaInit(&(s->Page.HtmlStylesheet),64);
 	xaInit(&(s->Page.HtmlBodyParams),16);
 	xaInit(&(s->Page.EventScripts.Array),16);
 	xhInit(&(s->Page.EventScripts.HashTable),31,0);
 	s->Page.HtmlBodyFile = NULL;
 	s->Page.HtmlHeaderFile = NULL;
+	s->Page.HtmlStylesheetFile = NULL;
 	s->DisableBody = 0;
 
 	/** Render the top-level widget. **/
@@ -880,6 +917,15 @@ htrRender(pFile output, pObject appstruct)
 	snprintf(sbuf, HT_SBUF_SIZE, "    <META NAME=\"Generator\" CONTENT=\"Centrallix v%s\">\n", VERSION);
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
 
+	fdWrite(output, "    <STYLE TYPE=\"text/css\">\n", 28, 0, FD_U_PACKET);
+	/** Write the HTML header items. **/
+	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
+	    {
+	    ptr = (char*)(s->Page.HtmlStylesheet.Items[i]);
+	    n = *(int*)ptr;
+	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    }
+	fdWrite(output, "    </STYLE>\n", 13, 0, FD_U_PACKET);
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
@@ -1061,6 +1107,8 @@ htrRender(pFile output, pObject appstruct)
 	xaDeInit(&(s->Page.HtmlBody));
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++) nmFree(s->Page.HtmlHeader.Items[i],2048);
 	xaDeInit(&(s->Page.HtmlHeader));
+	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++) nmFree(s->Page.HtmlStylesheet.Items[i],2048);
+	xaDeInit(&(s->Page.HtmlStylesheet));
 	for(i=0;i<s->Page.HtmlBodyParams.nItems;i++) nmFree(s->Page.HtmlBodyParams.Items[i],2048);
 	xaDeInit(&(s->Page.HtmlBodyParams));
 

@@ -59,10 +59,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.21 2002/07/16 17:52:01 lkehresman Exp $
+    $Id: htdrv_table.c,v 1.22 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.22  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.21  2002/07/16 17:52:01  lkehresman
     Updated widget drivers to use include files
 
@@ -233,11 +242,9 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	pObjQuery qy;
 
 	/** STYLE for the layer **/
-	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t.id,t.x,t.y,t.w-18,z+1);
-	htrAddHeaderItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t.id,t.x+t.w-18,t.y+t.rowheight,t.h-t.rowheight,z+1);
-	htrAddHeaderItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; HEIGHT:18; Z-INDEX:%d; }\n",t.id,z+2);
-	htrAddHeaderItem(s,"    </STYLE>\n");
+	htrAddStylesheetItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t.id,t.x,t.y,t.w-18,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t.id,t.x+t.w-18,t.y+t.rowheight,t.h-t.rowheight,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; HEIGHT:18; Z-INDEX:%d; }\n",t.id,z+2);
 
 	/** HTML body <DIV> element for the layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dpane\"></DIV>\n",t.id);

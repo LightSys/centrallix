@@ -41,10 +41,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.14 2002/07/16 17:52:01 lkehresman Exp $
+    $Id: htdrv_treeview.c,v 1.15 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.15  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.14  2002/07/16 17:52:01  lkehresman
     Updated widget drivers to use include files
 
@@ -185,10 +194,8 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	src[127]=0;
 
 	/** Ok, write the style header items. **/
-	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddHeaderItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
-	htrAddHeaderItem_va(s,"    </STYLE>\n");
+	htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);

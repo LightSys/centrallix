@@ -41,10 +41,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.21 2002/07/16 17:52:00 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.22 2002/07/16 18:23:20 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.22  2002/07/16 18:23:20  lkehresman
+    Added htrAddStylesheetItem() function to help consolidate the output of
+    the html generator.  Now, all stylesheet definitions are included in the
+    same <style></style> tags rather than each widget having their own.  I
+    have modified the current widgets to take advantage of this.  In the
+    future, do not use htrAddHeaderItem(), but use this new function.
+
+    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
+
     Revision 1.21  2002/07/16 17:52:00  lkehresman
     Updated widget drivers to use include files
 
@@ -203,9 +212,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    }
 
    /** Ok, write the style header items. **/
-   htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
-   htrAddHeaderItem_va(s,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-   htrAddHeaderItem_va(s,"    </STYLE>\n");
+   htrAddStylesheetItem_va(s,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
    htrAddScriptGlobal(s, "dd_current", "null", 0);
    htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
