@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_replica.c,v 1.1 2004/06/22 16:37:35 gbeeley Exp $
+    $Id: obj_replica.c,v 1.2 2004/12/31 04:20:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_replica.c,v $
 
     $Log: obj_replica.c,v $
+    Revision 1.2  2004/12/31 04:20:51  gbeeley
+    - fix a couple of substantial memory leaks in obj_replica mechanism
+
     Revision 1.1  2004/06/22 16:37:35  gbeeley
     - adding stray file that wandered off from the tree...
     - this provides the underlying support for some of the replication-to-the
@@ -162,6 +165,7 @@ obj_internal_RnDelete(pObjReqNotifyItem item)
 	    {
 	    /** Last item - deallocate and detach notify structure **/
 	    xhRemove(&(OSYS.NotifiesByPath), (void*)(notify_data->Pathname));
+	    xaDeInit(&(notify_data->Requests));
 	    nmFree(notify_data, sizeof(ObjReqNotify));
 	    }
 	else
@@ -365,6 +369,7 @@ objRequestNotify(pObject this, int (*callback_fn)(), void* context, int what)
 	if (!what && item)
 	    {
 	    obj_internal_RnDelete(item);
+	    nmFree(item, sizeof(ObjReqNotifyItem));
 	    return 0;
 	    }
 
