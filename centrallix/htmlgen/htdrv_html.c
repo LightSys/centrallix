@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.22 2004/08/13 18:46:13 mmcgill Exp $
+    $Id: htdrv_html.c,v 1.23 2004/09/02 03:27:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.23  2004/09/02 03:27:20  gbeeley
+    - first (imperfect) cut at conversion of html widget
+
     Revision 1.22  2004/08/13 18:46:13  mmcgill
     *   Differentiated between non-visual widgets and widgets without associated
         objects during the rendering process. Widgets without associated objects
@@ -299,9 +302,9 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     char* nptr = NULL;
     pObject content_obj;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
-	    mssError(1,"HTHTML","Netscape DOM support required");
+	    mssError(1,"HTHTML","NS4 or W3C DOM support required");
 	    return -1;
 	    }
 
@@ -350,6 +353,13 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	        htrAddStylesheetItem_va(s,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z+1);
 	        }
 
+	    if (s->Capabilities.CSS1)
+		{
+	        htrAddStylesheetItem_va(s,"\t#ht%dpane { overflow:hidden; }\n",id);
+	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { overflow:hidden; }\n",id);
+	        htrAddStylesheetItem_va(s,"\t#ht%dfader { overflow:hidden; }\n",id);
+		}
+
             /** Write named global **/
             nptr = (char*)nmMalloc(strlen(name)+1);
             strcpy(nptr,name);
@@ -373,9 +383,9 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddEventHandler(s,"document","MOUSEUP",  "ht", "    if (ly.kind == 'ht') cn_activate(ly.mainlayer,'MouseUp');\n");
 
             /** Script initialization call. **/
-            htrAddScriptInit_va(s,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,%s.layers.ht%dfader,\"%s\",%s,%d,%d,%s);\n",
-                    parentname, id, parentname, id, parentname, id, src, parentname, w,h, parentobj);
-            htrAddScriptInit_va(s,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
+            htrAddScriptInit_va(s,"    %s = ht_init(%s.cxSubElement(\"ht%dpane\"),%s.cxSubElement(\"ht%dpane2\"),%s.cxSubElement(\"ht%dfader\"),\"%s\",%s,%d,%d,%s);\n",
+                    nptr, parentname, id, parentname, id, parentname, id, 
+		    src, parentname, w,h, parentobj);
     
             /** HTML body <DIV> element for the layer. **/
             htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV><DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id,id);
