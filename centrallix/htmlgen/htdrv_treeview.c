@@ -41,10 +41,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.22 2003/11/18 05:58:34 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.23 2004/02/24 20:21:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.23  2004/02/24 20:21:57  gbeeley
+    - hints .js file inclusion on form, osrc, and editbox
+    - htrParamValue and htrGetBoolean utility functions
+    - connector now supports runclient() expressions as a better way to
+      do things for connector action params
+    - global variable pollution problems fixed in some places
+    - show_root option on treeview
+
     Revision 1.22  2003/11/18 05:58:34  gbeeley
     - messing with efficiency issues
 
@@ -192,6 +200,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int x,y,w;
     int id;
     char* nptr;
+    int show_root = 1;
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -219,6 +228,17 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    return -1;
 	    }
 
+	/** Are we showing root of tree or the trunk? **/
+	show_root = htrGetBoolean(w_obj, "show_root", 1);
+	if (show_root < 0) return -1;
+
+	/** Compensate hidden root position if not shown **/
+	if (!show_root)
+	    {
+	    x -= 20;
+	    y -= 20;
+	    }
+
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
@@ -233,10 +253,11 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	memccpy(src,ptr,0,127);
 	src[127]=0;
 
+
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	    htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,show_root?"inherit":"hidden",x,y,w,z);
 	    htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
 	    }
 
@@ -256,13 +277,13 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if(s->Capabilities.Dom0NS)
 	    {
 	    htrAddScriptInit_va(s,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
-	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
+	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s,null);\n",
 		    nptr, src, parentname, id, parentname, w, parentobj);
 	    }
 	else if(s->Capabilities.Dom1HTML)
 	    {
 	    htrAddScriptInit_va(s,"    %s = document.getElementById('tv%droot');\n",nptr, id);
-	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",document.getElementById('tv%dload'),%s,%d,%s);\n",
+	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",document.getElementById('tv%dload'),%s,%d,%s,null);\n",
 		    nptr, src, id, parentname, w, parentobj);
 	    }
 	else
@@ -282,7 +303,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d;\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,x,y,w,z,src);
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d;\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,show_root?"inherit":"hidden",x,y,w,z,src);
 	    htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);
 	    }
 
@@ -315,7 +336,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (e.target != null && e.target.kind == 'tv' && e.which == 3) return false;\n"
 		"    if (tv_target_img != null && tv_target_img.kind == 'tv')\n"
 		"        {\n"
-		"        l = tv_target_img.layer;\n"
+		"        var l = tv_target_img.layer;\n"
 		"        tv_target_img = null;\n"
 		"        if (l.expanded == 0)\n"
 		"            {\n"

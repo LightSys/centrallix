@@ -42,10 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.59 2003/11/30 02:09:40 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.60 2004/02/24 20:21:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.60  2004/02/24 20:21:57  gbeeley
+    - hints .js file inclusion on form, osrc, and editbox
+    - htrParamValue and htrGetBoolean utility functions
+    - connector now supports runclient() expressions as a better way to
+      do things for connector action params
+    - global variable pollution problems fixed in some places
+    - show_root option on treeview
+
     Revision 1.59  2003/11/30 02:09:40  gbeeley
     - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
       oneachreveal)
@@ -523,6 +531,8 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "pg_loadqueue", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_loadqueue_busy", "false", 0);
 	htrAddScriptGlobal(s, "pg_debug_log", "null", 0);
+	htrAddScriptGlobal(s, "pg_isloaded", "false", 0);
+	htrAddScriptGlobal(s, "pg_username", "null", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.Dom1HTML)
@@ -551,6 +561,8 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    htrAddScriptInit_va(s, "    %s = pg_init(%s.all.pgtop,%d);\n", name, parentname, attract);
 	    }
+
+	htrAddScriptInit_va(s, "    pg_username = '%s';\n", mssUserName());
 
 	if(s->Capabilities.HTML40)
 	    {
@@ -721,7 +733,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    pg_lastkey = k;\n"
 		"    /*pg_togglecursor();*/\n"
 		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
-		"    pg_keytimeoutid = setTimeout(pg_keytimeout, 200);\n"
+		"    pg_addsched(\"pg_keytimeoutid = setTimeout(pg_keytimeout, 200)\",window);\n"
 		"    return pg_keyhandler(k, e.modifiers, e);\n");
 
 	htrAddEventHandler(s, "document", "KEYUP", "pg",

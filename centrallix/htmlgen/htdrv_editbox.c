@@ -41,10 +41,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.29 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_editbox.c,v 1.30 2004/02/24 20:21:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.30  2004/02/24 20:21:56  gbeeley
+    - hints .js file inclusion on form, osrc, and editbox
+    - htrParamValue and htrGetBoolean utility functions
+    - connector now supports runclient() expressions as a better way to
+      do things for connector action params
+    - global variable pollution problems fixed in some places
+    - show_root option on treeview
+
     Revision 1.29  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -307,6 +315,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
 	htrAddEventHandler(s, "document","MOUSEUP", "eb", 
 	    "\n"

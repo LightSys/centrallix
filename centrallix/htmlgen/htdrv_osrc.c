@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.51 2003/11/30 02:09:40 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.52 2004/02/24 20:21:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.52  2004/02/24 20:21:57  gbeeley
+    - hints .js file inclusion on form, osrc, and editbox
+    - htrParamValue and htrGetBoolean utility functions
+    - connector now supports runclient() expressions as a better way to
+      do things for connector action params
+    - global variable pollution problems fixed in some places
+    - show_root option on treeview
+
     Revision 1.51  2003/11/30 02:09:40  gbeeley
     - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
       oneachreveal)
@@ -443,6 +451,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+   htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
    htrAddScriptInit_va(s,"    %s.oldosrc=osrc_current;\n",name);
    htrAddScriptInit_va(s,"    osrc_current=%s;\n",name);

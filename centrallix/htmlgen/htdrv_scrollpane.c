@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.19 2003/11/14 19:45:50 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.20 2004/02/24 20:21:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.20  2004/02/24 20:21:57  gbeeley
+    - hints .js file inclusion on form, osrc, and editbox
+    - htrParamValue and htrGetBoolean utility functions
+    - connector now supports runclient() expressions as a better way to
+      do things for connector action params
+    - global variable pollution problems fixed in some places
+    - show_root option on treeview
+
     Revision 1.19  2003/11/14 19:45:50  gbeeley
     - make sure only one sp_mv_timeout is active at a time
     - trying direct styles for positioning on W3C browsers
@@ -351,18 +359,18 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        cn_activate(sp_cur_mainlayer, 'MouseOut');\n"
 		"        sp_cur_mainlayer = null;\n"
 		"        }\n"
-		"    ti=sp_target_img;\n"
+		"    var ti=sp_target_img;\n"
 		"    if (ti != null && ti.kind=='sp' && ti.name=='t')\n"
 		"        {\n"
-		"        v=ti.pane.clip.height-(3*18);\n"
-		"        new_y=sp_thum_y + (e.pageY-sp_click_y);\n"
+		"        var v=ti.pane.clip.height-(3*18);\n"
+		"        var new_y=sp_thum_y + (e.pageY-sp_click_y);\n"
 		"        if (new_y > ti.pane.pageY+18+v) new_y=ti.pane.pageY+18+v;\n"
 		"        if (new_y < ti.pane.pageY+18) new_y=ti.pane.pageY+18;\n"
 		"        ti.thum.pageY=new_y;\n"
-		"        h=ti.area.clip.height;\n"
-		"        d=h-ti.pane.clip.height;\n"
+		"        var h=ti.area.clip.height;\n"
+		"        var d=h-ti.pane.clip.height;\n"
 		"        if (d<0) d=0;\n"
-		"        yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;\n"
+		"        var yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;\n"
 		"        ti.area.y+=yincr;\n"
 		"        return false;\n"
 		"        }\n"

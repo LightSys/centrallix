@@ -44,10 +44,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.11 2003/07/27 03:24:53 jorupp Exp $
+    $Id: htdrv_connector.c,v 1.12 2004/02/24 20:21:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.12  2004/02/24 20:21:56  gbeeley
+    - hints .js file inclusion on form, osrc, and editbox
+    - htrParamValue and htrGetBoolean utility functions
+    - connector now supports runclient() expressions as a better way to
+      do things for connector action params
+    - global variable pollution problems fixed in some places
+    - show_root option on treeview
+
     Revision 1.11  2003/07/27 03:24:53  jorupp
      * added Mozilla support for:
      	* connector
@@ -156,6 +164,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int id;
     char* nptr;
     XString xs;
+    pExpression code;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
 	    {
@@ -220,6 +229,12 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action")) continue;
 	    switch(objGetAttrType(w_obj, ptr))
 	        {
+		case DATA_T_CODE:
+		    objGetAttrValue(w_obj, ptr, DATA_T_CODE, POD(&code));
+		    xsConcatPrintf(&xs,"    with(eparam) { aparam.%s = ", ptr);
+		    expGenerateText(code, NULL, xsWrite, &xs, NULL, "javascript");
+		    xsConcatenate(&xs,"; }\n",4);
+		    break;
 		case DATA_T_INTEGER:
 	    	    objGetAttrValue(w_obj, ptr, DATA_T_INTEGER,POD(&vint));
 		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %d;\n",ptr,vint);

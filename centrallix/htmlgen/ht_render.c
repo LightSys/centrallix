@@ -51,10 +51,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.41 2003/11/22 16:37:18 jorupp Exp $
+    $Id: ht_render.c,v 1.42 2004/02/24 20:21:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.42  2004/02/24 20:21:56  gbeeley
+    - hints .js file inclusion on form, osrc, and editbox
+    - htrParamValue and htrGetBoolean utility functions
+    - connector now supports runclient() expressions as a better way to
+      do things for connector action params
+    - global variable pollution problems fixed in some places
+    - show_root option on treeview
+
     Revision 1.41  2003/11/22 16:37:18  jorupp
      * add support for moving event handler scripts to the .js code
      	note: the underlying implimentation in ht_render.c_will_ change, this was
@@ -1305,7 +1313,7 @@ htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layer
  *** as an open ObjectSystem object.
  ***/
 int
-htrRender(pFile output, pObject appstruct)
+htrRender(pFile output, pObject appstruct, pStruct params)
     {
     pHtSession s;
     int i,n,j,k,l;
@@ -1331,6 +1339,7 @@ htrRender(pFile output, pObject appstruct)
 	s = (pHtSession)nmMalloc(sizeof(HtSession));
 	if (!s) return -1;
 	memset(s,0,sizeof(HtSession));
+	s->Params = params;
 
 	/** Did user request a class of widgets? **/
 	classname = (char*)mssGetParam("Class");
@@ -1832,5 +1841,76 @@ htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen)
 	    }
 
     return 0;
+    }
+
+
+/*** htrGetBoolean() - a convenience routine to retrieve a boolean value
+ *** from the structure file.  Boolean values can be specified as yes/no,
+ *** true/false, on/off, y/n, or 1/0.  This routine checks for those.
+ *** Return value = 1 if true, 0 if false, -1 if error, and default_value
+ *** if not found.  default_value can be set to -1 to indicate an error
+ *** on a nonexistent attribute.
+ ***/
+int
+htrGetBoolean(pObject obj, char* attrname, int default_value)
+    {
+    int t;
+    int rval = default_value;
+    char* ptr;
+    int n;
+
+	/** type of attr (need to check number if 1/0) **/
+	t = objGetAttrType(obj,attrname);
+	if (t < 0) return default_value;
+
+	/** integer? **/
+	if (t == DATA_T_INTEGER)
+	    {
+	    if (objGetAttrValue(obj,attrname,t,POD(&n)) == 0)
+		{
+		rval = (n != 0);
+		}
+	    }
+	else if (t == DATA_T_STRING)
+	    {
+	    /** string? **/
+	    if (objGetAttrValue(obj,attrname,t,POD(&ptr)) == 0)
+		{
+		if (!strcasecmp(ptr,"yes") || !strcasecmp(ptr,"true") || !strcasecmp(ptr,"on") || !strcasecmp(ptr,"y"))
+		    {
+		    rval = 1;
+		    }
+		else if (!strcasecmp(ptr,"no") || !strcasecmp(ptr,"false") || !strcasecmp(ptr,"off") || !strcasecmp(ptr,"n"))
+		    {
+		    rval = 0;
+		    }
+		}
+	    }
+	else
+	    {
+	    mssError(1,"HT","Invalid data type for attribute '%s'", attrname);
+	    rval = -1;
+	    }
+
+    return rval;
+    }
+
+
+/*** htrParamValue() - for use by widget drivers; get the value of a param
+ *** passed in to the application or component.
+ ***/
+char*
+htrParamValue(pHtSession s, char* paramname)
+    {
+    pStruct attr;
+    
+	/** Make sure this isn't a reserved param **/
+	if (!strncmp(paramname,"ls__",4)) return NULL;
+
+	/** Look for it. **/
+	attr = stLookup_ne(s->Params, paramname);
+	if (!attr) return NULL;
+
+    return attr->StrVal;
     }
 
