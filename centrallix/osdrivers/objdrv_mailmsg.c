@@ -55,12 +55,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mailmsg.c,v 1.1 2001/08/13 18:01:03 gbeeley Exp $
+    $Id: objdrv_mailmsg.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/Attic/objdrv_mailmsg.c,v $
 
     $Log: objdrv_mailmsg.c,v $
-    Revision 1.1  2001/08/13 18:01:03  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:03  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:04  gbeeley
     Centrallix Core Initial Import
@@ -413,7 +418,7 @@ msgDelete(pObject obj, pObjTrxTree* oxt)
 /*** msgRead - Structure elements have no content.  Fails.
  ***/
 int
-msgRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+msgRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pMsgData inf = MSG(inf_v);
     mssError(1,"MSG","Users or user-lists do not have content.");
@@ -424,7 +429,7 @@ msgRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** msgWrite - Again, no content.  This fails.
  ***/
 int
-msgWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+msgWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pMsgData inf = MSG(inf_v);
     mssError(1,"MSG","Users or user-lists do not have content.");

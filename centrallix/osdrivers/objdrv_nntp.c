@@ -46,12 +46,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_nntp.c,v 1.1 2001/08/13 18:01:03 gbeeley Exp $
+    $Id: objdrv_nntp.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_nntp.c,v $
 
     $Log: objdrv_nntp.c,v $
-    Revision 1.1  2001/08/13 18:01:03  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:03  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:05  gbeeley
     Centrallix Core Initial Import
@@ -280,7 +285,7 @@ ntpDelete(pObject obj, pObjTrxTree* oxt)
 /*** ntpRead - Structure elements have no content.  Fails.
  ***/
 int
-ntpRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+ntpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pNtpData inf = NTP(inf_v);
     return -1;
@@ -290,7 +295,7 @@ ntpRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** ntpWrite - Again, no content.  This fails.
  ***/
 int
-ntpWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+ntpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pNtpData inf = NTP(inf_v);
     return -1;

@@ -53,12 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_uxprint.c,v 1.1 2001/08/13 18:01:12 gbeeley Exp $
+    $Id: objdrv_uxprint.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_uxprint.c,v $
 
     $Log: objdrv_uxprint.c,v $
-    Revision 1.1  2001/08/13 18:01:12  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:12  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -554,7 +559,7 @@ uxpDelete(pObject obj, pObjTrxTree* oxt)
  *** a print job mean?  This fails.  Sigh.
  ***/
 int
-uxpRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+uxpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pUxpData inf = UXP(inf_v);*/
 
@@ -566,7 +571,7 @@ uxpRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
  *** and written to, it spools a new print job.
  ***/
 int
-uxpWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+uxpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pUxpData inf = UXP(inf_v);
     int rval;
@@ -619,12 +624,12 @@ uxpWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree*
 	/** Need to filter the data? **/
 	if (inf->MasterFD)
 	    {
-	    rval = fdWrite(inf->MasterFD, buffer, cnt, flags, offset);
+	    rval = fdWrite(inf->MasterFD, buffer, cnt, offset, flags);
 	    }
 	else
 	    {
 	    /** Write to the spool file. **/
-	    rval = fdWrite(inf->SpoolFileFD, buffer, cnt, flags, offset);
+	    rval = fdWrite(inf->SpoolFileFD, buffer, cnt, offset, flags);
 	    }
 
     return rval;

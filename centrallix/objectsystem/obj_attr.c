@@ -47,12 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.1 2001/08/13 18:00:57 gbeeley Exp $
+    $Id: obj_attr.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
-    Revision 1.1  2001/08/13 18:00:57  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:00:57  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -113,7 +118,7 @@ objGetAttrValue(pObject this, char* attrname, pObjData val)
 	        {
 		maxread = 256;
 		if (maxread > (maxbytes - bytes)) maxread = maxbytes - bytes;
-		if (bytes == 0) readcnt = objRead(this, readbuf, maxread, FD_U_SEEK, 0);
+		if (bytes == 0) readcnt = objRead(this, readbuf, maxread, 0, FD_U_SEEK);
 		else readcnt = objRead(this, readbuf, maxread, 0,0);
 		if (readcnt == -1) return -1;
 		if (readcnt == 0) break;

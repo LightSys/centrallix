@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.2 2001/09/25 18:04:22 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.3 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.3  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
     Revision 1.2  2001/09/25 18:04:22  gbeeley
     Fixed quote escaping problem in the CSV driver.
 
@@ -388,7 +393,7 @@ dat_internal_FlushPages(pDatPage this)
 	        {
 		seq_pages[i]->Flags |= DAT_CACHE_F_LOCKED;
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_DIRTY;
-		objWrite(this->Node->DataObj->Prev, seq_pages[i]->Data, seq_pages[i]->Length, FD_U_SEEK, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID);
+		objWrite(this->Node->DataObj->Prev, seq_pages[i]->Data, seq_pages[i]->Length, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID, FD_U_SEEK);
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_LOCKED;
 		}
 	    }
@@ -483,7 +488,7 @@ dat_internal_ReadPage(pDatNode node, int page_id)
 	this->Node = node;
 	this->PageID = page_id;
 	this->Flags |= DAT_CACHE_F_LOCKED;
-	this->Length = objRead(this->Node->DataObj->Prev, this->Data, DAT_CACHE_PAGESIZE, FD_U_SEEK, DAT_CACHE_PAGESIZE*page_id);
+	this->Length = objRead(this->Node->DataObj->Prev, this->Data, DAT_CACHE_PAGESIZE, DAT_CACHE_PAGESIZE*page_id, FD_U_SEEK);
 	if (this->Length <= 0)
 	    {
 	    if (this->Prev) this->Prev->Next = this->Next;
@@ -2236,7 +2241,7 @@ datDelete(pObject obj, pObjTrxTree* oxt)
  *** a datatype, the first one is used.
  ***/
 int
-datRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+datRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /* GRB - uncomment these vars when the function is coded */
     /*pDatData inf = DAT(inf_v);
@@ -2282,7 +2287,7 @@ dat_internal_OpenTmpFile(char* name)
  *** size of a BLOB write operation before writing can start.
  ***/
 int
-datWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+datWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /* GRB - uncomment these vars when the function is coded */
     /*pDatData inf = DAT(inf_v);

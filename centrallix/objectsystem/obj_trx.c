@@ -45,12 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.1 2001/08/13 18:01:00 gbeeley Exp $
+    $Id: obj_trx.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
-    Revision 1.1  2001/08/13 18:01:00  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:00  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -725,10 +730,10 @@ oxtQueryClose(void* qy_v, pObjTrxTree* oxt)
  *** the trans layer.
  ***/
 int
-oxtWrite(void* this_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+oxtWrite(void* this_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->Write(this->LLParam,buffer,cnt,flags,offset,(this->Trx)?&(this->Trx):oxt);
+    return this->Obj->LowLevelDriver->Write(this->LLParam,buffer,cnt,offset,flags,(this->Trx)?&(this->Trx):oxt);
     }
 
 
@@ -736,10 +741,10 @@ oxtWrite(void* this_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree
  *** not be passthru later when we implement the whole trans layer.
  ***/
 int
-oxtRead(void* this_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+oxtRead(void* this_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
-    return this->Obj->LowLevelDriver->Read(this->LLParam,buffer,maxcnt,flags,offset,oxt);
+    return this->Obj->LowLevelDriver->Read(this->LLParam,buffer,maxcnt,offset,flags,oxt);
     }
 
 

@@ -54,12 +54,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_pop3.c,v 1.1 2001/08/13 18:01:05 gbeeley Exp $
+    $Id: objdrv_pop3.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_pop3.c,v $
 
     $Log: objdrv_pop3.c,v $
-    Revision 1.1  2001/08/13 18:01:05  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:05  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:05  gbeeley
     Centrallix Core Initial Import
@@ -363,7 +368,7 @@ popDelete(pObject obj, pObjTrxTree* oxt)
 /*** popRead - Structure elements have no content.  Fails.
  ***/
 int
-popRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+popRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pPopData inf = POP(inf_v);
     return -1;
@@ -373,7 +378,7 @@ popRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** popWrite - Again, no content.  This fails.
  ***/
 int
-popWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+popWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pPopData inf = POP(inf_v);
     return -1;

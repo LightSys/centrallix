@@ -49,12 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_query.c,v 1.1 2001/08/13 18:01:06 gbeeley Exp $
+    $Id: objdrv_query.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_query.c,v $
 
     $Log: objdrv_query.c,v $
-    Revision 1.1  2001/08/13 18:01:06  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:06  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:05  gbeeley
     Centrallix Core Initial Import
@@ -370,7 +375,7 @@ QyDelete(pObject obj, pObjTrxTree* oxt)
 /*** QyRead - Structure elements have no content.  Fails.
  ***/
 int
-QyRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+QyRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
     mssError(1,"QY","Multiqueries do not have content.");
@@ -381,7 +386,7 @@ QyRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree
 /*** QyWrite - Again, no content.  This fails.
  ***/
 int
-QyWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+QyWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
     mssError(1,"QY","Multiqueries do not have content.");

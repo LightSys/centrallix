@@ -49,12 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.1 2001/08/13 18:01:09 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
-    Revision 1.1  2001/08/13 18:01:09  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:09  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -336,7 +341,7 @@ stxDelete(pObject obj, pObjTrxTree* oxt)
 /*** stxRead - Structure elements have no content.  Fails.
  ***/
 int
-stxRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+stxRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pStxData inf = STX(inf_v);*/
     return -1;
@@ -346,7 +351,7 @@ stxRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** stxWrite - Again, no content.  This fails.
  ***/
 int
-stxWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+stxWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pStxData inf = STX(inf_v);*/
     return -1;

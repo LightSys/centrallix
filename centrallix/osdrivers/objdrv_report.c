@@ -57,12 +57,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.1 2001/08/13 18:01:09 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
-    Revision 1.1  2001/08/13 18:01:09  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:09  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -3148,7 +3153,7 @@ rptDelete(pObject obj, pObjTrxTree* oxt)
  *** that thread if it hasn't been started yet...
  ***/
 int
-rptRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+rptRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pRptData inf = RPT(inf_v);
     int rcnt;
@@ -3163,7 +3168,7 @@ rptRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 
 	/** Attempt the read operation. **/
 	syPostSem(inf->IOSem, 1, 0);
-	rcnt = fdRead(inf->MasterFD, buffer, maxcnt, flags, offset);
+	rcnt = fdRead(inf->MasterFD, buffer, maxcnt, offset, flags);
 	if (rcnt <= 0 && (inf->Flags & RPT_F_ERROR))
 	    {
 	    return -1;
@@ -3176,7 +3181,7 @@ rptRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** rptWrite - This fails for reports.
  ***/
 int
-rptWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+rptWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pRptData inf = RPT(inf_v);*/
     mssError(1,"RPT","Cannot write to a report generator object in system/report mode");

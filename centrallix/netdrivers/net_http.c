@@ -48,12 +48,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.1 2001/08/13 18:00:57 gbeeley Exp $
+    $Id: net_http.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
-    Revision 1.1  2001/08/13 18:00:57  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:00:57  gbeeley
+    Centrallix Core initial import
 
     Revision 1.3  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -708,7 +713,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 			 "<A HREF=/ TARGET=X%8.8X>",
 		    0);
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
-		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?OBJ_U_SEEK:0,(o != -1)?o:0)) > 0)
+		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?o:0,(o != -1)?OBJ_U_SEEK:0)) > 0)
 		    {
 		    for(i=0;i<cnt;i++)
 		        {

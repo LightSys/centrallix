@@ -43,12 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.1 2001/08/13 18:00:55 gbeeley Exp $
+    $Id: multiquery.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
-    Revision 1.1  2001/08/13 18:00:55  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:00:55  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -1502,7 +1507,7 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
  *** clause).
  ***/
 int
-mqRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pPseudoObject p = (pPseudoObject)inf_v;*/
     return -1; /* nyi - not yet implemented */
@@ -1513,7 +1518,7 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree
  *** the query must explicitly allow FOR UPDATE.
  ***/
 int
-mqWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+mqWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pPseudoObject p = (pPseudoObject)inf_v;*/
     return -1; /* nyi - not yet implemented */

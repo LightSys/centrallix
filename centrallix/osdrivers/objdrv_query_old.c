@@ -51,12 +51,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_query_old.c,v 1.1 2001/08/13 18:01:06 gbeeley Exp $
+    $Id: objdrv_query_old.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_query_old.c,v $
 
     $Log: objdrv_query_old.c,v $
-    Revision 1.1  2001/08/13 18:01:06  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:06  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:13  gbeeley
     Centrallix Core Initial Import
@@ -664,7 +669,7 @@ qyDelete(pObject obj, pObjTrxTree* oxt)
 /*** qyRead - Attempt to read from the underlying object.
  ***/
 int
-qyRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+qyRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
     int rcnt;
@@ -677,7 +682,7 @@ qyRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree
 	    }
 
 	/** Otherwise, attempt the read operation. **/
-	rcnt = objRead(inf->LLObj, buffer, maxcnt, flags, offset);
+	rcnt = objRead(inf->LLObj, buffer, maxcnt, offset, flags);
 
     return rcnt;
     }
@@ -686,7 +691,7 @@ qyRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree
 /*** qyWrite - As above, attempt to read if we found an actual object.
  ***/
 int
-qyWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+qyWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pQyData inf = QY(inf_v);
     int wcnt;
@@ -699,7 +704,7 @@ qyWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* 
 	    }
 
 	/** Ok, attempt the write operation **/
-	wcnt = objWrite(inf->LLObj, buffer, cnt, flags, offset);
+	wcnt = objWrite(inf->LLObj, buffer, cnt, offset, flags);
 
     return wcnt;
     }

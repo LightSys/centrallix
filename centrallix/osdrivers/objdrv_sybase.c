@@ -61,12 +61,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.1 2001/08/13 18:01:11 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
-    Revision 1.1  2001/08/13 18:01:11  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:11  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -1842,7 +1847,7 @@ sybd_internal_PrepareText(pSybdData inf, CS_CONNECTION* session, int maxtextsize
  *** a datatype, the first one is used.
  ***/
 int
-sybdRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+sybdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
     int rcnt,rval;
@@ -1960,7 +1965,7 @@ sybd_internal_OpenTmpFile(char* name)
  *** size of a BLOB write operation before writing can start.
  ***/
 int
-sybdWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+sybdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
 

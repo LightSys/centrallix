@@ -43,12 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_content.c,v 1.1 2001/08/13 18:00:57 gbeeley Exp $
+    $Id: obj_content.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_content.c,v $
 
     $Log: obj_content.c,v $
-    Revision 1.1  2001/08/13 18:00:57  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:00:57  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:30:59  gbeeley
     Centrallix Core Initial Import
@@ -61,9 +66,9 @@
  *** offset.  Very similar to MTask's fdRead().
  ***/
 int 
-objRead(pObject this, char* buffer, int maxcnt, int flags, int offset)
+objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
     {
-    return this->Driver->Read(this->Data, buffer, maxcnt, flags, offset, &(this->Session->Trx));
+    return this->Driver->Read(this->Data, buffer, maxcnt, offset, flags, &(this->Session->Trx));
     }
 
 
@@ -71,8 +76,8 @@ objRead(pObject this, char* buffer, int maxcnt, int flags, int offset)
  *** offset.  Also very similar to MTask's fdWrite().
  ***/
 int 
-objWrite(pObject this, char* buffer, int cnt, int flags, int offset)
+objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
     {
-    return this->Driver->Write(this->Data, buffer, cnt, flags, offset, &(this->Session->Trx));
+    return this->Driver->Write(this->Data, buffer, cnt, offset, flags, &(this->Session->Trx));
     }
 

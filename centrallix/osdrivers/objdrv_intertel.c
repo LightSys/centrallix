@@ -53,12 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_intertel.c,v 1.1 2001/08/13 18:01:03 gbeeley Exp $
+    $Id: objdrv_intertel.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_intertel.c,v $
 
     $Log: objdrv_intertel.c,v $
-    Revision 1.1  2001/08/13 18:01:03  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:03  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:13  gbeeley
     Centrallix Core Initial Import
@@ -270,7 +275,7 @@ itlDelete(pObject obj, pObjTrxTree* oxt)
 /*** itlRead - Structure elements have no content.  Fails.
  ***/
 int
-itlRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+itlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pItlData inf = ITL(inf_v);
     return -1;
@@ -280,7 +285,7 @@ itlRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** itlWrite - Again, no content.  This fails.
  ***/
 int
-itlWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+itlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pItlData inf = ITL(inf_v);
     return -1;

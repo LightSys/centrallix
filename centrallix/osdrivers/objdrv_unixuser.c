@@ -54,12 +54,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_unixuser.c,v 1.1 2001/08/13 18:01:11 gbeeley Exp $
+    $Id: objdrv_unixuser.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_unixuser.c,v $
 
     $Log: objdrv_unixuser.c,v $
-    Revision 1.1  2001/08/13 18:01:11  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:11  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -378,7 +383,7 @@ uxuDelete(pObject obj, pObjTrxTree* oxt)
 /*** uxuRead - Structure elements have no content.  Fails.
  ***/
 int
-uxuRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+uxuRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pUxuData inf = UXU(inf_v);*/
     mssError(1,"UXU","Users or user-lists do not have content.");
@@ -389,7 +394,7 @@ uxuRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** uxuWrite - Again, no content.  This fails.
  ***/
 int
-uxuWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+uxuWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     /*pUxuData inf = UXU(inf_v);*/
     mssError(1,"UXU","Users or user-lists do not have content.");

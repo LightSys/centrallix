@@ -35,12 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.1 2001/08/13 18:00:53 gbeeley Exp $
+    $Id: obj.h,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
-    Revision 1.1  2001/08/13 18:00:53  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
+    Centrallix Core initial import
 
     Revision 1.3  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -412,8 +417,8 @@ pObject objQueryFetch(pObjQuery this, int mode);
 int objQueryClose(pObjQuery this);
 
 /** objectsystem content functions **/
-int objRead(pObject this, char* buffer, int maxcnt, int flags, int offset);
-int objWrite(pObject this, char* buffer, int cnt, int flags, int offset);
+int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);
+int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
 
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);

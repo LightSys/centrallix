@@ -49,12 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_indexfile.c,v 1.1 2001/08/13 18:01:02 gbeeley Exp $
+    $Id: objdrv_indexfile.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_indexfile.c,v $
 
     $Log: objdrv_indexfile.c,v $
-    Revision 1.1  2001/08/13 18:01:02  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/27 19:26:23  gbeeley
+    Minor change to OSML upper and lower APIs: objRead and objWrite now follow
+    the same syntax as fdRead and fdWrite, that is the 'offset' argument is
+    4th, and the 'flags' argument is 5th.  Before, they were reversed.
+
+    Revision 1.1.1.1  2001/08/13 18:01:02  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:04  gbeeley
     Centrallix Core Initial Import
@@ -497,7 +502,7 @@ idx_internal_GetTData(pObject obj)
 	if (!tdata) return NULL;
 	strcpy(tdata->Pathname, path);
 	tdata->RawHeader = (unsigned char*)nmSysMalloc(IDX_PAGESIZE);
-	if (objRead(obj->Prev, tdata->RawHeader, IDX_PAGESIZE, OBJ_U_PACKET | OBJ_U_SEEK, 0) != IDX_PAGESIZE)
+	if (objRead(obj->Prev, tdata->RawHeader, IDX_PAGESIZE, 0, OBJ_U_PACKET | OBJ_U_SEEK) != IDX_PAGESIZE)
 	    {
 	    mssError(0,"IDX","Could not read indexed file header");
 	    nmSysFree(tdata->RawHeader);
@@ -530,7 +535,7 @@ idx_internal_GetTData(pObject obj)
 	while(pagesread < pagecnt)
 	    {
 	    offset = ((int*)(tdata->RawHeader))[2+pagesread]*IDX_PAGESIZE;
-	    if (objRead(obj->Prev, tdata->RawHeader + pagesread*IDX_PAGESIZE, IDX_PAGESIZE, OBJ_U_PACKET | OBJ_U_SEEK, offset) != IDX_PAGESIZE)
+	    if (objRead(obj->Prev, tdata->RawHeader + pagesread*IDX_PAGESIZE, IDX_PAGESIZE, offset, OBJ_U_PACKET | OBJ_U_SEEK) != IDX_PAGESIZE)
 	        {
 	        mssError(0,"IDX","Could complete reading of indexed file header, offset %d",offset);
 	        nmSysFree(tdata->RawHeader);
@@ -588,7 +593,7 @@ idx_internal_WriteTData(pObject obj, pIdxTableData tdata)
 	for(i=0;i<pagecnt;i++)
 	    {
 	    offset = tdata->HdrInf1->HdrPageList[i] * IDX_PAGESIZE;
-	    if (objWrite(obj->Prev, tdata->RawHeader + i*IDX_PAGESIZE, IDX_PAGESIZE, OBJ_U_PACKET | OBJ_U_SEEK, offset) != IDX_PAGESIZE)
+	    if (objWrite(obj->Prev, tdata->RawHeader + i*IDX_PAGESIZE, IDX_PAGESIZE, offset, OBJ_U_PACKET | OBJ_U_SEEK) != IDX_PAGESIZE)
 	        {
 		mssError(0,"IDX","Failed to save table metadata!");
 		return -1;
@@ -808,7 +813,7 @@ idx_internal_NewTData(pIdxData inf)
 	tdata->HdrInf1->HdrByteCnt = tdata->OrigByteCnt;
 
 	/** Write the header block. **/
-	objWrite(inf->Obj->Prev, tdata->RawHeader, tdata->HdrAllocSize, OBJ_U_SEEK, 0);
+	objWrite(inf->Obj->Prev, tdata->RawHeader, tdata->HdrAllocSize, 0, OBJ_U_SEEK);
 
 	/** Ok, now allocate the root page.  This will also cause grp allocation **/
 	pg = idx_internal_AllocPage(tdata, IDX_PAGE_ROOT, 0);
@@ -862,7 +867,7 @@ idx_internal_DiscardPage(pXHashQueue xhq, pXHQElement xe, int locked)
         if (syGetSem(pg->Lock, 1, SEM_U_NOBLOCK) < 0) return -1;
 	if (pg->Flags & IDX_PAGE_F_DIRTY)
 	    {
-	    wcnt = objWrite(pg->TData->NodeRef, pg->Data.Raw, IDX_PAGESIZE, OBJ_U_SEEK, pg->PageID*IDX_PAGESIZE);
+	    wcnt = objWrite(pg->TData->NodeRef, pg->Data.Raw, IDX_PAGESIZE, pg->PageID*IDX_PAGESIZE, OBJ_U_SEEK);
 	    if (wcnt < 0)
 	        {
 		mssError(0,"IDX","Could not write page %d", pg->PageID);
@@ -912,7 +917,7 @@ idx_internal_FlushCache(pIdxTableData tdata)
 		    {
 		    /** Try to write the page. **/
 		    search_pg = (pIdxPage)(sorted_pages.Items[i]);
-		    if (objWrite(pg->TData->NodeRef, pg->Data.Raw, IDX_PAGESIZE, OBJ_U_SEEK, pg->PageID*IDX_PAGESIZE) != IDX_PAGESIZE)
+		    if (objWrite(pg->TData->NodeRef, pg->Data.Raw, IDX_PAGESIZE, pg->PageID*IDX_PAGESIZE, OBJ_U_SEEK) != IDX_PAGESIZE)
 		        {
 			mssError(0,"IDX","Could not flush page %d update to node object", pg->PageID);
 			err = 1;
@@ -932,7 +937,7 @@ idx_internal_FlushCache(pIdxTableData tdata)
 	    {
 	    /** Try to write the page. **/
 	    search_pg = (pIdxPage)(sorted_pages.Items[i]);
-	    if (objWrite(pg->TData->NodeRef, pg->Data.Raw, IDX_PAGESIZE, OBJ_U_SEEK, pg->PageID*IDX_PAGESIZE) != IDX_PAGESIZE)
+	    if (objWrite(pg->TData->NodeRef, pg->Data.Raw, IDX_PAGESIZE, pg->PageID*IDX_PAGESIZE, OBJ_U_SEEK) != IDX_PAGESIZE)
 	        {
 		mssError(0,"IDX","Could not flush page %d update to node object", pg->PageID);
 		err = 1;
@@ -1061,7 +1066,7 @@ idx_internal_GetPage(pIdxTableData tdata, int type, int req_pageid)
 
 	/** Ok, not cached.  Read it and cache it. **/
 	pg = (pIdxPage)nmMalloc(sizeof(IdxPage));
-	rcnt = objRead(tdata->NodeRef, pg->Data.Raw, IDX_PAGESIZE, OBJ_U_SEEK, req_pageid*IDX_PAGESIZE);
+	rcnt = objRead(tdata->NodeRef, pg->Data.Raw, IDX_PAGESIZE, req_pageid*IDX_PAGESIZE, OBJ_U_SEEK);
 	if (rcnt < 0)
 	    {
 	    nmFree(pg,sizeof(IdxPage));
@@ -1639,7 +1644,7 @@ idxDelete(pObject obj, pObjTrxTree* oxt)
 /*** idxRead - Structure elements have no content.  Fails.
  ***/
 int
-idxRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTree* oxt)
+idxRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pIdxData inf = IDX(inf_v);
     return -1;
@@ -1649,7 +1654,7 @@ idxRead(void* inf_v, char* buffer, int maxcnt, int flags, int offset, pObjTrxTre
 /*** idxWrite - Again, no content.  This fails.
  ***/
 int
-idxWrite(void* inf_v, char* buffer, int cnt, int flags, int offset, pObjTrxTree* oxt)
+idxWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pIdxData inf = IDX(inf_v);
     return -1;
