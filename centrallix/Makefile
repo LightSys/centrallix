@@ -31,7 +31,7 @@ XOBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
 
 # DHTML generation subsystem, including drivers and the ht_render main system.
-XHTDRIVERS=htdrv_page.o htdrv_scrollpane.o htdrv_treeview.o htdrv_html.o htdrv_connector.o htdrv_imagebutton.o htdrv_textbutton.o htdrv_menu.o htdrv_frameset.o ht_render.o htdrv_variable.o htdrv_tab.o htdrv_pane.o htdrv_table.o htdrv_window.o htdrv_checkbox.o htdrv_radiobutton.o htdrv_editbox.o htdrv_timer.o htdrv_execmethod.o htdrv_form.o htdrv_formstatus.o
+XHTDRIVERS=htdrv_page.o htdrv_scrollpane.o htdrv_treeview.o htdrv_html.o htdrv_connector.o htdrv_imagebutton.o htdrv_textbutton.o htdrv_menu.o htdrv_frameset.o ht_render.o htdrv_variable.o htdrv_tab.o htdrv_pane.o htdrv_table.o htdrv_window.o htdrv_checkbox.o htdrv_radiobutton.o htdrv_editbox.o htdrv_timer.o htdrv_execmethod.o htdrv_form.o htdrv_formstatus.o htdrv_alerter.o
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 
 # Multiquery subsystem, SQL parser, and query drivers.
@@ -77,7 +77,7 @@ CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include
 #CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include -DBUILD=$(BUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -Wall
 #LIBS=-lnsl -lsocket
 #LIBS=-lsybtcl -lct -linsck -lcomn -lintl -lcs -lm
-LIBS=-lct -lcomn -lintl -lsybtcl -lcs -linsck -lm -lcrypt -lreadline ../centrallix-lib/libCentrallix.a #-lncurses
+LIBS=-lct -lcomn -lintl -lsybtcl -lcs -linsck -lm -lcrypt -lreadline ../centrallix-lib/libCentrallix.a
 #LIBS=-lm
 STATICLIBS=/usr/local/syblinux/elf/lib/libct.a /usr/local/syblinux/elf/lib/libcomn.a /usr/local/syblinux/elf/lib/libintl.a /usr/local/syblinux/elf/lib/libsybtcl.a /usr/local/syblinux/elf/lib/libcs.a /usr/local/syblinux/elf/lib/libinsck.a
 LIBDIRS=-L$(SYBASE)/lib
@@ -92,7 +92,7 @@ centrallix: .build .subbuild lsmain.o $(LSOBJS)
 	@echo
 	cc lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
-#	@rm lsmain.o
+	@rm lsmain.o
 
 jsengine: $(JSVM)
 	cc $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm

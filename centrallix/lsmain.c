@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.8 2002/03/06 23:30:35 lkehresman Exp $
+    $Id: lsmain.c,v 1.9 2002/03/08 02:07:13 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.9  2002/03/08 02:07:13  jorupp
+    * initial commit of alerter widget
+    * build callback listing object for form
+    * form has many more of it's callbacks working
+
     Revision 1.8  2002/03/06 23:30:35  lkehresman
     Added form status widget.
 
@@ -220,6 +225,7 @@ start(void* v)
 	htfsInitialize();			/* form status module */
 
 	htformInitialize();			/* forms module */
+	htalrtInitialize();			/* alert module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */

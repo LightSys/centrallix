@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.10  2002/03/08 02:07:13  jorupp
+    * initial commit of alerter widget
+    * build callback listing object for form
+    * form has many more of it's callbacks working
+
     Revision 1.9  2002/03/05 01:55:23  jorupp
     * switch to using clearvalue() instead of setvalue('') to clear form elements
     * document basequery/basewhere
@@ -183,7 +188,15 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_register", "\n"
 		"function form_cb_register(aparam)\n"
 		"    {\n"
-		"    this.elements.push(aparam);\n"
+		"    if(aparam.kind==\"formstatus\")\n"
+		"        {\n"
+		"        this.statuswidgets.push(aparam);\n"
+		"        aparam.setvalue(this.mode);\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        this.elements.push(aparam);\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** A child 'control' has changed it's data **/
@@ -224,72 +237,101 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_data_available", "\n"
 		"function form_cb_data_available(aparam)\n"
 		"    {\n"
+		"    form_cb_helper(this,\"DataAvailable\",1);\n"
 		"    }\n", 0);
 
 	/** Objectsource wants us to dump our data **/
 	htrAddScriptFunction(s, "form_cb_is_discard_ready", "\n"
-		"function form_cb_is_discard_ready(aparam)\n"
+		"function form_cb_is_discard_ready()\n"
 		"    {\n"
 		"    return 0;\n"	/* FIXME -- not ready yet */
 		"    if(!this.IsUnsaved)\n"
-		"        {\n"	/* the osrc really shouldn't have called us... */
-		"        window.setTimeout(this.osrc.name+\".QueryContinue()\",100);\n"
+		"        {\n"
+		"        this.osrc.QueryContinue(this);\n"
 		"        return 0;\n"
 		"        }\n"
 		"    if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
 		"        {\n"
-		"        if(confirm(\"OK to save CANCEL to discard them.\"))\n"
-		"            {\n"
-		"            \n"
+		"        if(confirm(\"OK to save changes, CANCEL to discard them.\"))\n"
+		"            {\n" /* save */
+		"            this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.QueryContinue(this);\"))\n"
+		"            this.cb[\"OperationCompleteFail\"].add(this,new Function(\"this.osrc.QueryCancel(this);\"))\n"
+		"            this.ActionSave();\n"
 		"            }\n"
 		"        else\n"
-		"            {\n"
-		"            window.setTimeout(this.osrc.name+\".QueryContinue()\",100);\n"
+		"            {\n" /* cancel (discard) */
+		"            this.osrc.QueryContinue(this);\n"
 		"            }\n"
 		"        }\n"
 		"    else\n"
-		"        {\n"
-		"        window.setTimeout(this.osrc.name+\".QueryCancel()\",100);\n"
+		"        {\n" /* cancel (don't allow new query) */
+		"        this.osrc.QueryCancel(this);\n"
 		"        }\n"
 		"    }\n", 0);
-	
+
 	/** Objectsource says our object is available **/
 	htrAddScriptFunction(s, "form_cb_object_available", "\n"
 		"function form_cb_object_available(aparam)\n"
 		"    {\n"
-		"    \n"
+		"    form_cb_helper(this,\"ObjectAvailable\",1);\n"
 		"    }\n", 0);
 
 	/** Objectsource says the operation is complete **/
 	htrAddScriptFunction(s, "form_cb_operation_complete", "\n"
 		"function form_cb_operation_complete(aparam)\n"
 		"    {\n"
+		"    if(aparam)\n"
+		"        form_cb_helper(this,\"OperationCompleteSuccess\",1);\n"
+		"    else\n"
+		"        form_cb_helper(this,\"OperationCompleteFail\",1);\n"
 		"    }\n", 0);
 
 	/** Objectsource says the object was deleted **/
 	htrAddScriptFunction(s, "form_cb_object_deleted", "\n"
 		"function form_cb_object_deleted(aparam)\n"
 		"    {\n"
+		"    form_cb_helper(this,\"ObjectDeleted\",1);\n"
 		"    }\n", 0);
 
 	/** Objectsource says the object was created **/
 	htrAddScriptFunction(s, "form_cb_object_created", "\n"
 		"function form_cb_object_created(aparam)\n"
 		"    {\n"
+		"    form_cb_helper(this,\"ObjectCreated\",1);\n"
 		"    }\n", 0);
 
 	/** Objectsource says the object was modified **/
 	htrAddScriptFunction(s, "form_cb_object_modified", "\n"
 		"function form_cb_object_modified(aparam)\n"
 		"    {\n"
+		"    form_cb_helper(this,\"ObjectModified\",1);\n"
 		"    }\n", 0);
 	
 	/** Moves form to "No Data" mode **/
 	/**   If unsaved data exists (New or Modify mode), prompt for Save/Discard **/
-	/** Clears any rows in osrc replica (not delete) **/
+	/** Clears any rows in osrc replica (doesn't delete from DB) **/
 	htrAddScriptFunction(s, "form_action_clear", "\n"
 		"function form_action_clear(aparam)\n"
 		"    {\n"
+		"    if(this.mode==\"No Data\")\n"
+		"        return;\n"	/* Already in No Data Mode */
+		"    if(this.mode==\"New\" || this.mode==\"Modify\")\n"
+		"        {\n"
+		"        if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
+		"            {\n"
+		"            if(confirm(\"OK to save changes, CANCEL to discard them.\"))\n"
+		"                {\n" /* save */
+		"                this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.ActionClear();\"));\n"
+		"                this.ActionSave;\n"
+		"                return 0;\n"
+		"                }\n"	
+		"            else\n"
+		"                {\n"
+		"                return 0;\n"	/* don't go anywhere */
+		"                }\n"
+		"            }\n" /* if discard is ok, just let it fall through */
+		"        }\n"
+		"    this.ClearAll();\n"
 		"    }\n", 0);
 
 	/** in New - clear, remain in New **/
@@ -298,38 +340,107 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_action_delete", "\n"
 		"function form_action_delete(aparam)\n"
 		"    {\n"
+		"    switch(this.mode)\n"
+		"        {\n"
+		"        case \"New\":\n"
+		"            this.ClearAll();\n"
+		"            break;\n"
+		"        case \"View\":\n"
+		"            break;\n"
+		"        case \"Query\":\n"
+		"            this.ClearAll();\n"
+		"            break;\n"
+		"        default:\n"
+		"            break;\n" /* else do nothing */
+		"        }\n"
 		"    }\n", 0);
 
-	/** in  **/
-	/** in  **/
-	/** in  **/
-	/** in  **/
-	/** in  **/
+	/** in Modify, cancel changes, switch to 'View' **/
+	/** in New, cancel changes, switch to 'No Data' **/
+	/** in Query, clear, remain in query mode **/
 	htrAddScriptFunction(s, "form_action_discard", "\n"
 		"function form_action_discard(aparam)\n"
 		"    {\n"
+		"    switch(this.mode)\n"
+		"        {\n"
+		"        case \"Modify\":\n"
+		"            this.ClearAll();\n"
+		"            this.ChangeMode(\"View\");\n"
+		"            break;\n"
+		"        case \"New\":\n"
+		"            this.ClearAll();\n"
+		"            this.ChangeMode(\"No Data\");\n"
+		"            break;\n"
+		"        case \"Query\":\n"
+		"            this.ClearAll();\n"
+		"            break;\n"
+		"        }\n"
 		"    }\n", 0);
 
+	/** in No Data, move to New **/
+	/** in View, move to Modify (note this can be implicit on click -- can be disabled) **/
 	htrAddScriptFunction(s, "form_action_edit", "\n"
 		"function form_action_edit(aparam)\n"
 		"    {\n"
+		"    switch(this.mode)\n"
+		"        {\n"
+		"        case \"No Data\":\n"
+		"            this.ChangeMode(\"New\");\n"
+		"            break;\n"
+		"        case \"View\":\n"
+		"            this.ChangeMode(\"Modify\");\n"
+		"            break;\n"
+		"        }\n"
 		"    }\n", 0);
 
+	/** tell osrc to go to first record **/
 	htrAddScriptFunction(s, "form_action_first", "\n"
 		"function form_action_first(aparam)\n"
 		"    {\n"
+		"    this.osrc.First();\n"
 		"    }\n", 0);
 
 	htrAddScriptFunction(s, "form_action_last", "\n"
 		"function form_action_last(aparam)\n"
 		"    {\n"
+		"    this.osrc.Last();\n"
 		"    }\n", 0);
 
+	/** in View, Query, or No Data, clear, move to New **/
+	/** in Modify, give save/discard/cancel prompt **/
+	/** (if from No Data or View mode after query, auto-fill criteria) **/
 	htrAddScriptFunction(s, "form_action_new", "\n"
 		"function form_action_new(aparam)\n"
 		"    {\n"
+		"    switch(this.mode)\n"
+		"        {\n"
+		"        case \"Query\":\n"
+		"        case \"No Data\":\n"
+		"        case \"View\":\n"
+		"            this.ChangeMode(\"New\");\n"
+		"            \n" /* if there was a query run, fill in it's values... */
+		"            break;\n"
+		"        case \"Modify\":\n"
+		"            if(this.Unsaved)\n"
+		"                {\n"
+		"                if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
+		"                    {\n"
+		"                    if(confirm(\"OK to save changes, CANCEL to discard them.\"))\n"
+		"                        {\n" /* save */
+		"                        this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.ActionNew();\"))\n"
+		"                        }\n"
+		"                    else\n"
+		"                        {\n" /* cancel (discard) */
+		"                        this.ChangeMode(\"New\");\n"
+		"                        }\n"
+		"                    }\n"
+		                 /* cancel (don't allow new query) */
+		"                }\n" 
+		"            break;\n"
+		"        }\n"
 		"    }\n", 0);
 
+	/** Save changed data, move the osrc **/
 	htrAddScriptFunction(s, "form_action_next", "\n"
 		"function form_action_next(aparam)\n"
 		"    {\n"
@@ -339,17 +450,55 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Helper function -- called from other mode change functions **/
 	htrAddScriptFunction(s, "form_change_mode", "\n"
-		"function form_change_mode(form,newmode)\n"
+		"function form_change_mode(newmode)\n"
 		"    {\n"
-		"    alert(\"Form is going from \"+form.mode+\" to \"+newmode+\" mode.\");\n"
-		"    form.oldmode = form.mode;\n"
-		"    form.mode = newmode;\n"
-		"    form.changed = false;\n"
+		"    alert(\"Form is going from \"+this.mode+\" to \"+newmode+\" mode.\");\n"
+		"    this.oldmode = this.mode;\n"
+		"    this.mode = newmode;\n"
+		"    this.changed = false;\n"
+		/*
 		"    var event = new Object();\n"
-		"    event.Caller = form;\n"
-		/*"    //cn_activate(form, 'StatusChange', event);\n" doesn't work -- FIXME*/
+		"    event.Caller = this;\n"
+		"    //cn_activate(this, 'StatusChange', event);\n" doesn't work -- FIXME
 		"    delete event;\n"
+		*/
+		"    for(var i in this.statuswidgets)\n"
+		"        {\n"
+		"        this.statuswidgets[i].setvalue(this.mode);\n"
+		"        }\n"
 		"    return 1;\n"
+		"    }\n", 0);
+	
+	/** Clears all children, also resets IsChanged/IsUnsaved flag to false **/
+	htrAddScriptFunction(s, "form_clear_all", "\n"
+		"function form_clear_all()\n"
+		"    {\n"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        this.elements[i].clearvalue();\n"
+		"        this.elements[i]._form_IsChanged=false;\n"
+		"        }\n"
+		"    this.IsUnsaved=false;\n"
+		"    }\n", 0);
+
+	/** Disables all children **/
+	htrAddScriptFunction(s, "form_disable_all", "\n"
+		"function form_disable_all()\n"
+		"    {\n"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        this.elements[i].disable();\n"
+		"        }\n"
+		"    }\n", 0);
+
+	/** Enables all children **/
+	htrAddScriptFunction(s, "form_enable_all", "\n"
+		"function form_enable_all()\n"
+		"    {\n"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        this.elements[i].enable();\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** Change to query mode **/
@@ -357,14 +506,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_action_query()\n"
 		"    {\n"
 		"    if(!this.allowquery) {alert(\"Query mode not allowed\");return 0;}\n"
-		"    for(var i in form.elements)\n"
-		"        {\n"
-		"        form.elements[i].clearvalue();\n"
-		/*"        form.elements[i].setvalue('');\n" recently changed*/
-		"        form.elements[i]._form_IsChanged=false;\n"
-		"        }\n"
-		"    this.IsUnsaved=false;\n"
-		"    return form_change_mode(this,\"Query\");\n"
+		"    this.ClearAll();\n"
+		"    return this.ChangeMode(\"Query\");\n"
 		"    }\n", 0);
 
 	/** Execute query **/
@@ -480,8 +623,35 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    	alert(\"There isn't any reason to save.\");\n"
 		"    	return 0;\n"
 		"    	}\n"
+		"       this.cb[\"OperationCompleteSuccess\"].add(this,\n"
+		"           new Function(\"this.Unsaved=false;this.Pending=false;this.EnableAll();this.cb[\\\"OperationCompleteFail\\\"].clear();\"),1);\n"
+		"       this.cb[\"OperationCompleteFail\"].add(this,\n"
+		"           new Function(\"confirm(\\\"Data Save Failed\\\");this.cb[\\\"OperationCompleteSuccess\\\"].clear();\"),1);\n"
+/***	OLD WAY
+		"    if(cbsuc==undefined)\n"
+		"        this.cb[\"OperationCompleteSuccess\"]=form_fill_cb_array(\n"
+		"            new Array(),this,new Function(\"this.Unsaved=false;\n"
+		"                this.Pending=false;this.EnableAll();\"));\n"
+		"    else\n"
+		"        this.cb[\"OperationCompleteSuccess\"]=cbsuc;\n"
+		"    if(cbfail==undefined)\n"
+		"        this.cb[\"OperationCompleteFail\"]=form_fill_cb_array(\n"
+		"            new Array(),this,new Function(\"this.Pending=false;\n"
+		"                confirm(\\\"Save failed\\\");this.EnableAll();\"));\n"
+		"    else\n"
+		"        this.cb[\"OperationCompleteFail\"]=cbfail;\n"
+***/
+	    
 		/** build the object to pass to objectsource **/
-		"    \n"
+		"    var dataobj=new Object();\n"
+		"    for(var i in form.elements)\n"
+		"        {\n"
+		"        var j=form.elements[i];\n"
+		"        dataobj[j.fieldname]=j.getvalue();\n"
+		"        }\n"
+		"    this.DisableAll();\n"
+		"    this.Pending=true;\n"
+		"    this.osrc.update(obj);\n"
 		"    }\n", 0);
 
 	/** Helper function to build a query */
@@ -490,14 +660,75 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    re=/where/i;\n"
 		"    if(re.test(base))\n"
-		"        {\n"
 		"        return base+\" AND \"+where+\";\";\n"
-		"        }\n"
 		"    else\n"
-		"        {\n"
 		"        return base+\" WHERE \"+where+\";\";\n"
-		"        }\n"
 		"    }\n", 0);
+
+
+	/***
+	 ***   The following callback helper functions might be
+	 ***   useful if available to all widgets.
+	 ***   For now, just the form will use them though
+	 ***/
+
+	/** Callback object init **/
+	htrAddScriptFunction(s, "form_cbobj", "\n"
+		"function form_cbobj()\n"
+		"    {\n"
+		"    this.arr=new Array();\n"
+		"    this.add=form_cbobj_add;\n"
+		"    this.run=form_cbobj_run;\n"
+		"    this.clear=form_cbobj_clear;\n"
+		"    }\n", 0);
+
+	/** Calls all registered functions **/
+	htrAddScriptFunction(s, "form_cbobj_run", "\n"
+		"function form_cbobj_run()\n"
+		"    {\n"
+		"    this.arr.sort(form_cbobj_compare);\n"
+		"    for(var i in this.arr)\n"
+		"        {\n"
+		"        var j=this.arr[i];\n"
+		"        if(j[3])\n"
+		"            j[2](j[1],j[3]);\n"
+		"        else\n"
+		"            j[2](j[1]);\n"
+		"        }\n"
+		"    for(var i in this.arr)\n"
+		"        if(!this.arr[i][4])\n"
+		"            delete this.arr[i];\n"
+		"    }\n", 0);
+
+	/** Adds a new registered function **/
+	htrAddScriptFunction(s, "form_cbobj_add", "\n"
+		"function form_cbobj_add(obj,func,param,key,multi)\n"
+		"    {\n"
+		"    if(obj==undefined) { obj = null; }\n"
+		"    if(func==undefined) { func = null; }\n"
+		"    if(param==undefined) { param = null; }\n"
+		"    if(key==undefined) { key=100; }\n"
+		"    this.arr.push(new Array(key,obj,func,param,multi));\n"
+		"    }\n", 0);
+	
+	/** Clears all (non-multi) registered callbacks **/
+	htrAddScriptFunction(s, "form_cbobj_clear", "\n"
+		"function form_cbobj_clear()\n"
+		"    {\n"
+		"    for(var i in this.arr)\n"
+		"        if(!this.arr[i][4])\n"
+		"            delete this.arr[i];\n"
+		"    }\n", 0);
+
+	/** Compares two arrays based on the first element **/
+	htrAddScriptFunction(s, "form_cbobj_compare", "\n"
+		"function form_cbobj_compare(a,b)\n"
+		"    {\n"
+		"    if(a[0]>b[0]) return -1;\n"
+		"    if(a[0]==b[0]) return 0;\n"
+		"    if(a[0]<b[0]) return 1;\n"
+		"    }\n", 0);
+
 
 
 	/** Form initializer **/
@@ -508,6 +739,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.basequery = bq;\n"
 		"    form.currentquery = form_build_query(bq,bw);\n"
 		"    form.elements = new Array();\n"
+		"    form.statuswidgets = new Array();\n"
 		"    form.mode = \"No Data\";\n"
 		"    form.cobj = null;\n" /* current 'object' (record) */
 		"    form.oldmode = null;\n"
@@ -515,6 +747,15 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.IsUnsaved = false;\n"
 		"    form.name = name;\n"
 		"    form.Pending = false;\n"
+		/** remember what to do after callbacks.... **/
+		"    form.cb = new Array();\n"
+		"    form.cb[\"DataAvailable\"] = new form_cbobj();\n"
+		"    form.cb[\"ObjectAvailable\"] = new form_cbobj();\n"
+		"    form.cb[\"OperationCompleteSuccess\"] = new form_cbobj();\n"
+		"    form.cb[\"OperationCompleteFail\"] = new form_cbobj();\n"
+		"    form.cb[\"ObjectDeleted\"] = new form_cbobj();\n"
+		"    form.cb[\"ObjectCreated\"] = new form_cbobj();\n"
+		"    form.cb[\"ObjectModified\"] = new form_cbobj();\n"
 		/** initialize params from .app file **/
 		"    form.allowquery = aq;\n"
 		"    form.allownew = an;\n"
@@ -545,6 +786,11 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.DataNotify = form_cb_data_notify;\n"
 		"    form.FocusNotify = form_cb_focus_notify;\n"
 		"    form.TabNotify = form_cb_tab_notify;\n"
+		/** noone else should call these.... **/
+		"    form.ClearAll = form_clear_all;\n"
+		"    form.DisableAll = form_disable_all;\n"
+		"    form.EnableAll = form_enable_all;\n"
+		"    form.ChangeMode = form_change_mode;\n"
 
 		"    return form;\n"
 		"    }\n",0);
