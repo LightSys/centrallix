@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.12 2002/05/03 03:42:16 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.13 2002/05/31 19:22:03 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.13  2002/05/31 19:22:03  lkehresman
+    * Added option to dropdown to allow specification of number of elements
+      to display at one time (default 3).
+    * Fixed some places that were getting truncated prematurely.
+
     Revision 1.12  2002/05/03 03:42:16  gbeeley
     Added objClose to close objects returned from fetches in the dropdown
     list SQL query.
@@ -122,6 +127,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    int type, rval;
    int x,y,w;
    int id;
+   int num_disp;
    ObjData od;
    pObject qy_obj;
    pObjQuery qy;
@@ -136,6 +142,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	return -1;
    }
+
+   if (objGetAttrValue(w_obj,"numdisplay",POD(&num_disp)) != 0) num_disp=3;
 
    if (objGetAttrValue(w_obj,"hilight",POD(&ptr)) == 0) {
 	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
@@ -280,9 +288,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Form Status initializer **/
    htrAddScriptFunction(s, "dd_init", "\n"
-	"function dd_init(l, clr_b, clr_h, fn) {\n"
+	"function dd_init(l, clr_b, clr_h, fn, disp) {\n"
 	"   l.numItems = 0;\n"
-	"   l.numDispElements = 3;\n"
+	"   l.numDispElements = disp;\n"
 	"   l.fieldname = fn;\n"
 	"   l.colorBack = clr_b;\n"
 	"   l.colorHilight = clr_h;\n"
@@ -408,7 +416,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"\n");
 
    /** Script initialization call. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain, '%s', '%s', '%s');\n", parentname, id, bgstr, hilight, fieldname);
+   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain, '%s', '%s', '%s', %d);\n", parentname, id, bgstr, hilight, fieldname, num_disp);
    htrAddScriptInit(s, sbuf);
 
    /* Read and initialize the dropdown items */

@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.11 2002/05/08 00:46:30 jorupp Exp $
+    $Id: htdrv_page.c,v 1.12 2002/05/31 19:22:03 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.12  2002/05/31 19:22:03  lkehresman
+    * Added option to dropdown to allow specification of number of elements
+      to display at one time (default 3).
+    * Fixed some places that were getting truncated prematurely.
+
     Revision 1.11  2002/05/08 00:46:30  jorupp
      * added client-side support for the session watchdog.  The client will ping every timer/2 seconds (just to be safe)
 
@@ -619,7 +624,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (k == pg_lastkey) return false;\n"
 		"    pg_lastkey = k;\n"
 		"    /*pg_togglecursor();*/\n"
-		"    /*alert('Code=' + k + '; Mod=' + e.modifiers);*/\n"
 		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
 		"    pg_keytimeoutid = setTimeout(pg_keytimeout, 200);\n"
 		"    return pg_keyhandler(k, e.modifiers, e);\n");

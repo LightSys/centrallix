@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.5 2002/03/13 19:48:46 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.6 2002/05/31 19:22:03 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.6  2002/05/31 19:22:03  lkehresman
+    * Added option to dropdown to allow specification of number of elements
+      to display at one time (default 3).
+    * Fixed some places that were getting truncated prematurely.
+
     Revision 1.5  2002/03/13 19:48:46  gbeeley
     Fixed a window-dragging issue with nested html windows.  Added the
     dropdown widget to lsmain.c.  Updated changelog.
@@ -183,9 +188,8 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,160,"    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
+	htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
 		nptr, parentname, id, parentname, id, id);
-	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> element for the base layer. **/
 	snprintf(sbuf,160,"<DIV ID=\"pn%dbase\">\n",id);
