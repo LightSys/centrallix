@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.6 2003/07/09 18:05:59 gbeeley Exp $
+    $Id: obj_query.c,v 1.7 2003/07/10 19:20:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.7  2003/07/10 19:20:57  gbeeley
+    objOpenQuery now links to the parent object of the query to prevent it
+    from being pulled out from under the osdriver if the user calls objClose
+    on the parent object before calling objQueryClose on the query.
+
     Revision 1.6  2003/07/09 18:05:59  gbeeley
     Interim fix for 'order by' causing objects to be fetched differently
     because of the query-sort-reopen logic.  Now uses open-as to reopen
@@ -237,6 +242,7 @@ objMultiQuery(pObjSession session, char* query)
 	this->Drv = OSYS.MultiQueryLayer;
 	this->QySession = session;
 	this->Magic = MGK_OBJQUERY;
+	this->Obj = NULL;
 
 	/** Start the query. **/
 	this->Data = this->Drv->OpenQuery(session, query);
@@ -287,6 +293,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	this->Magic = MGK_OBJQUERY;
 
 	/** Ok, first parse the query. **/
+	objLinkTo(obj);
 	this->Obj = obj;
         this->ObjList = (void*)expCreateParamList();
 	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, 0);
@@ -801,6 +808,9 @@ objQueryClose(pObjQuery this)
 	    xaRemoveItem(&(this->Obj->Session->OpenQueries),
 	        xaFindItem(&(this->Obj->Session->OpenQueries),(void*)this));
 	    }
+
+	/** Close the parent object (or, just unlink from it), if applicable **/
+	if (this->Obj) objClose(this->Obj);
 	
 	/** Free up the expression tree and the qy object itself **/
 	if (this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
