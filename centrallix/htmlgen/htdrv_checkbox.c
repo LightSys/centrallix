@@ -41,12 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.2 2002/02/23 03:28:51 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.3 2002/02/23 03:32:24 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
-    Revision 1.2  2002/02/23 03:28:51  lkehresman
-    Reworked the Checkbox widget to be form-aware.  In theory this works..
+    Revision 1.3  2002/02/23 03:32:24  lkehresman
+    ...all theories are made to be broken.  Just like this checkbox was before
+    I remapped a couple functions to work properly.
 
     Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
     Centrallix Core initial import
@@ -125,6 +126,8 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	  "   l.document.images[0].checkedImage.kind = 'checkbox';\n"
 	  "   l.document.images[0].checkedImage.src = \"/sys/images/checkbox_checked.gif\";\n"
 	  "   l.document.images[0].checkedImage.is_checked = l.is_checked;\n"
+	  "   l.setvalue = checkbox_setvalue;\n"
+	  "   l.getvalue = checkbox_getvalue;\n"
 	  "   if (fm_current) fm_current.Register(l);\n"
       "}\n", 0);
 
