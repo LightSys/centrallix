@@ -56,10 +56,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.8 2002/08/04 20:25:16 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.9 2002/08/04 20:38:24 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.9  2002/08/04 20:38:24  jorupp
+     * fixed a bug that caused a segfault when running a query on an object with no subnodes
+     * fixed a compile warning about a cast
+
     Revision 1.8  2002/08/04 20:25:16  jorupp
      * fixed a bug with the retrieving of the value of the attribute for the purpose of determining the type
         -- was causing the type to be returned as integer when it should have string
@@ -256,12 +260,13 @@ void xml_internal_BuildAttributeHashTable(pXmlData inf);
  *** object in an XML tree structure.  libxml 1.x called it "childs" [sic]
  *** while libxml 2.x calls it "children".
  ***/
+#if 0
 #ifdef USE_LIBXML1
 #define xml_internal_GetChildren(p) p->childs
 #else
 #define xml_internal_GetChildren(p) p->children
 #endif
-#if 0
+#else
     xmlNodePtr
 xml_internal_GetChildren(xmlNodePtr parent)
     {
@@ -687,22 +692,24 @@ xmlOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	memset(qy->Types, 0, sizeof(XHashTable));
 	xhInit(qy->Types,17,0);
 
-	p=xml_internal_GetChildren(inf->CurNode);
-	do
+	if(p)
 	    {
-	    if(p->name && p->name[0])
+	    do
 		{
-		if(!(pHE=(pXmlCountObj)xhLookup(qy->Types,(char*)p->name)))
+		if(p->name && p->name[0])
 		    {
-		    pHE=malloc(sizeof(XmlCountObj));
-		    if(!pHE) return NULL;
-		    pHE->current=-1; /* this will be incremented for the first record */
-		    pHE->total=0;
-		    xhAdd(qy->Types,(char*)p->name,(char*)pHE);
+		    if(!(pHE=(pXmlCountObj)xhLookup(qy->Types,(char*)p->name)))
+			{
+			pHE=malloc(sizeof(XmlCountObj));
+			if(!pHE) return NULL;
+			pHE->current=-1; /* this will be incremented for the first record */
+			pHE->total=0;
+			xhAdd(qy->Types,(char*)p->name,(char*)pHE);
+			}
+		    pHE->total++;
 		    }
-		pHE->total++;
-		}
-	    } while((p=p->next));
+		} while((p=p->next));
+	    }
 
     return (void*)qy;
     }
@@ -986,7 +993,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    {
 	    /** for the top level one -- return the inner name, not the outer one **/
 	    if(inf->Obj->SubCnt==1)
-		*((char**)val) = inf->CurNode->name;
+		*((char**)val) = (char*)inf->CurNode->name;
 	    else
 		*((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
