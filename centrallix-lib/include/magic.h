@@ -26,10 +26,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.7 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: magic.h,v 1.8 2003/04/16 03:26:38 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.8  2003/04/16 03:26:38  nehresma
+    oops.  forgot to commit the update to magic.h to go along with the nfs CXSEC stuff
+
     Revision 1.7  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -118,6 +121,7 @@ typedef struct
 #define MGK_MEMEND	0x12340908	/* newmalloc.c::MemStruct */
 
 #define MGK_XSTRING	0x12340Ab8	/* xstring.h::XString */
+#define MGK_NNFS	0x12340b01	/* net_nfs.c */
 
 
 #endif /* not defined _MAGIC_H */
