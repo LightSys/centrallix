@@ -20,7 +20,8 @@ function htr_event(e)
 
 	// move up from text nodes and spans to containers
 	var t = e.target;
-	while(t.nodeType == Node.TEXT_NODE || t.nodeName == 'SPAN')
+	while(t.nodeType == Node.TEXT_NODE || t.nodeName == 'SPAN' || 
+	    (t.nodeType == Node.ELEMENT_NODE && !(t.tagName == 'DIV' || t.tagName == 'IMG')))
 	    t = t.parentNode;
 
 	cx__event.target = t;
@@ -60,7 +61,7 @@ function htr_event(e)
 	}
     if(e.altKey && e.type && e.type.substring(0,5) == "mouse")
 	{
-	htr_alert_obj(cx__event,3);
+	//htr_alert_obj(cx__event,3);
 	}
     return cx__event;
     }
@@ -102,4 +103,218 @@ function htr_build_tabs(level)
     if(level==0)
 	return "";
     return "	"+htr_build_tabs(level-1);
+    }
+
+function htr_watch(obj, attr, func)
+    {
+    if (!obj.htr_watchlist) 
+	{
+	obj.htr_watchlist = new Array();
+	}
+    obj.watch(attr,htr_watchchanged);
+    var watchitem = new Object();
+    watchitem.attr = attr;
+    watchitem.func = func;
+    watchitem.obj = obj;
+    obj.htr_watchlist.push(watchitem);
+    }
+
+function htr_unwatch(obj, attr, func)
+    {
+    for (var i=0;i<obj.htr_watchlist.length;i++)
+	{
+	if (obj.htr_watchlist[i].attr == attr && obj.htr_watchlist[i].func == func)
+	    {
+	    obj.htr_watchlist.splice(i,1);
+	    i--;
+	    break;
+	    }
+	}
+    }
+
+function htr_watchchanged(prop,oldval,newval)
+    {
+    var setprop = newval;
+    //alert("changed: " + prop);
+    for (var i=0;i<this.htr_watchlist.length;i++)
+	{
+	if (this.htr_watchlist[i].attr == prop)
+	    {
+	    setprop = this[this.htr_watchlist[i].func](prop,oldval,newval);
+	    if (setprop == oldval) return oldval;
+	    }
+	}
+    return setprop;
+    }
+
+function htr_init_layer(l,ml,kind)
+    {
+    if (l.document)
+	l.document.layer = l;
+    else
+	l.layer = l;
+    if (cx__capabilities.Dom1HTML)
+	l.parentLayer = l.parentNode;
+    l.mainlayer = ml;
+    l.kind = kind;
+    l.cxSubElement = htr_get_subelement;
+    if (l.document) l.document.cxSubElement = htr_get_subelement;
+    }
+
+function htr_get_subelement(id)
+    {
+    if (cx__capabilities.Dom0NS)
+	{
+	if (this.document)
+	    return this.document.layers[id];
+	else
+	    return this.layers[id];
+	}
+    else if (cx__capabilities.Dom1HTML)
+	{
+	if (!this.tagName) return this.getElementById(id);
+	var sl = this.firstChild;
+	while(sl)
+	    {
+	    if ((sl.tagName == 'DIV' || sl.tagName == 'IFRAME') && sl.id == id)
+		return sl;
+	    sl = sl.nextSibling;
+	    }
+	}
+    return null;
+    }
+
+function htr_extract_bgcolor(s)
+    {
+    if (s.substr(0,17) == "background-color:")
+	{
+	var cp = s.indexOf(":");
+	return s.substr(cp+2,s.length-cp-3);
+	}
+    else if (s.substr(0,8) == "bgcolor=")
+	{
+	var qp = s.indexOf("'");
+	return s.substr(qp+1,s.length-qp-2);
+	}
+    return null;
+    }
+
+function htr_extract_bgimage(s)
+    {
+    if (s.substr(0,17) == "background-image:")
+	{
+	var qp = s.indexOf("'");
+	return s.substr(qp+1,s.length-qp-4);
+	}
+    else if (s.substr(0,11) == "background=")
+	{
+	var qp = s.indexOf("'");
+	return s.substr(qp+1,s.length-qp-2);
+	}
+    return null;
+    }
+
+function htr_getvisibility(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	return l.visibility;
+    else if (cx__capabilities.Dom1HTML)
+	return l.style.visibility;
+    return null;
+    }
+
+function htr_setvisibility(l,v)
+    {
+    if (cx__capabilities.Dom0NS)
+	l.visibility = v;
+    else if (cx__capabilities.Dom1HTML)
+	l.style.visibility = v;
+    return null;
+    }
+
+function htr_getbgcolor(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	return l.bgColor;
+    else if (cx__capabilities.Dom1HTML)
+	return l.style.backgroundColor;
+    return null;
+    }
+
+function htr_setbgcolor(l,v)
+    {
+    if (cx__capabilities.Dom0NS)
+	l.bgColor = v;
+    else if (cx__capabilities.Dom1HTML)
+	l.style.backgroundColor = v;
+    return null;
+    }
+
+function htr_getbgimage(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	return l.background.src;
+    else if (cx__capabilities.Dom1HTML)
+	return l.style.backgroundImage;
+    return null;
+    }
+
+function htr_setbgimage(l,v)
+    {
+    if (cx__capabilities.Dom0NS)
+	l.background.src = v;
+    else if (cx__capabilities.Dom1HTML)
+	//pg_set_style_string(l,"backgroundImage",v);
+	l.style.backgroundImage = "URL('" + v + "')";
+    return null;
+    }
+
+function htr_getphyswidth(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	return l.document.width;
+    else if (cx__capabilities.Dom1HTML)
+	{
+	//if (l.offsetWidth) return l.offsetWidth;
+	return pg_get_style(l,"width");
+	}
+    return null;
+    }
+
+function htr_getviswidth(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	return l.clip.width;
+    else if (cx__capabilities.Dom1HTML)
+	return pg_get_style(l, "clip.width");
+    return null;
+    }
+
+function htr_getvisheight(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	return l.clip.height;
+    else if (cx__capabilities.Dom1HTML)
+	return pg_get_style(l, "clip.height");
+    return null;
+    }
+
+
+
+function htr_getzindex(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	return l.zIndex;
+    else if (cx__capabilities.Dom1HTML)
+	return parseInt(l.style.zIndex);
+    return null;
+    }
+
+function htr_setzindex(l,v)
+    {
+    if (cx__capabilities.Dom0NS)
+	l.zIndex = v;
+    else if (cx__capabilities.Dom1HTML)
+	l.style.zIndex = v;
+    return null;
     }
