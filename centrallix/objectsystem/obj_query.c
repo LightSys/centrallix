@@ -47,10 +47,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.2 2002/04/25 17:59:59 gbeeley Exp $
+    $Id: obj_query.c,v 1.3 2002/05/03 03:51:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.3  2002/05/03 03:51:21  gbeeley
+    Added objUnmanageObject() and objUnmanageQuery() which cause an object
+    or query to not be closed automatically on session close.  This should
+    NEVER be used with the intent of keeping an object or query open after
+    session close, but rather it is used when the object or query would be
+    closed in some other way, such as 'hidden' objects and queries that the
+    multiquery layer opens behind the scenes (closing the multiquery objects
+    and queries will cause the underlying ones to be closed).
+    Also fixed some problems in the OSML where some objects and queries
+    were not properly being added to the session's open objects and open
+    queries lists.
+
     Revision 1.2  2002/04/25 17:59:59  gbeeley
     Added better magic number support in the OSML API.  ObjQuery and
     ObjSession structures are now protected with magic numbers, and
@@ -195,6 +207,9 @@ objMultiQuery(pObjSession session, char* query)
 	    nmFree(this,sizeof(ObjQuery));
 	    return NULL;
 	    }
+
+	/** Add to session open queries... **/
+	xaAddItem(&(session->OpenQueries),(void*)this);
 
     return this;
     }
@@ -502,6 +517,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    obj->Next = NULL;
 	    obj->Type = NULL;
 	    xaInit(&obj->Attrs,4);
+            xaAddItem(&(this->QySession->OpenObjects),(void*)obj);
 	    return obj;
 	    }
 
@@ -617,6 +633,10 @@ objQueryClose(pObjQuery this)
 	if (this->Drv) 
 	    {
 	    this->Drv->QueryClose(this->Data);
+
+	    /** Remove from session open queries... **/
+	    xaRemoveItem(&(this->QySession->OpenQueries),
+	        xaFindItem(&(this->QySession->OpenQueries),(void*)this));
 	    }
 	else
 	    {

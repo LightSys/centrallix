@@ -43,10 +43,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.2 2002/04/05 06:10:11 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.3 2002/05/03 03:51:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.3  2002/05/03 03:51:21  gbeeley
+    Added objUnmanageObject() and objUnmanageQuery() which cause an object
+    or query to not be closed automatically on session close.  This should
+    NEVER be used with the intent of keeping an object or query open after
+    session close, but rather it is used when the object or query would be
+    closed in some other way, such as 'hidden' objects and queries that the
+    multiquery layer opens behind the scenes (closing the multiquery objects
+    and queries will cause the underlying ones to be closed).
+    Also fixed some problems in the OSML where some objects and queries
+    were not properly being added to the session's open objects and open
+    queries lists.
+
     Revision 1.2  2002/04/05 06:10:11  gbeeley
     Updating works through a multiquery when "FOR UPDATE" is specified at
     the end of the query.  Fixed a reverse-eval bug in the expression
@@ -258,6 +270,7 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDWR, 0600, "system/directory");
 	else
 	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDONLY, 0600, "system/directory");
+	objUnmanageObject(mq->SessionID, qe->LLSource);
 	if (!qe->LLSource) 
 	    {
 	    mssError(0,"MQP","Could not open source object for SQL projection");
@@ -287,6 +300,7 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    mssError(0,"MQP","Could not query source object for SQL projection");
 	    return -1;
 	    }
+	objUnmanageQuery(mq->SessionID, qe->LLQuery);
 	qe->IterCnt = 0;
 
     return 0;
@@ -312,6 +326,7 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
     	/** Fetch the next item and set the object... **/
 	obj = objQueryFetch(qe->LLQuery, O_RDONLY);
 	if (!obj) return 0;
+	objUnmanageObject(mq->SessionID, obj);
 	expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
 
     return 1;

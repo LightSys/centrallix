@@ -44,10 +44,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_session.c,v 1.2 2002/04/25 17:59:59 gbeeley Exp $
+    $Id: obj_session.c,v 1.3 2002/05/03 03:51:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_session.c,v $
 
     $Log: obj_session.c,v $
+    Revision 1.3  2002/05/03 03:51:21  gbeeley
+    Added objUnmanageObject() and objUnmanageQuery() which cause an object
+    or query to not be closed automatically on session close.  This should
+    NEVER be used with the intent of keeping an object or query open after
+    session close, but rather it is used when the object or query would be
+    closed in some other way, such as 'hidden' objects and queries that the
+    multiquery layer opens behind the scenes (closing the multiquery objects
+    and queries will cause the underlying ones to be closed).
+    Also fixed some problems in the OSML where some objects and queries
+    were not properly being added to the session's open objects and open
+    queries lists.
+
     Revision 1.2  2002/04/25 17:59:59  gbeeley
     Added better magic number support in the OSML API.  ObjQuery and
     ObjSession structures are now protected with magic numbers, and
@@ -98,20 +110,19 @@ objOpenSession(char* current_dir)
 int 
 objCloseSession(pObjSession this)
     {
-    int i;
 
 	ASSERTMAGIC(this, MGK_OBJSESSION);
 
 	/** Close any open queries **/
-	for(i=0;i<this->OpenQueries.nItems;i++)
+	while(this->OpenQueries.nItems)
 	    {
-	    objQueryClose((pObjQuery)(this->OpenQueries.Items[i]));
+	    objQueryClose((pObjQuery)(this->OpenQueries.Items[0]));
 	    }
 
 	/** Close any open objects **/
-	for(i=0;i<this->OpenObjects.nItems;i++)
+	while(this->OpenObjects.nItems)
 	    {
-	    objClose((pObject)(this->OpenObjects.Items[i]));
+	    objClose((pObject)(this->OpenObjects.Items[0]));
 	    }
 
 	/** Remove from the session list **/
@@ -148,4 +159,35 @@ objGetWD(pObjSession this)
     ASSERTMAGIC(this, MGK_OBJSESSION);
     return this->CurrentDirectory;
     }
+
+
+/*** objUnmanageObject - removes an object from the list of open objects
+ *** associated with this session.  This basically means that the object
+ *** won't be auto-closed when the session is closed.  This should ONLY
+ *** be used when a module can guarantee that the object will otherwise
+ *** be closed when the session is closed, such as with open objects
+ *** and queries used internally by the multiquery module.
+ ***/
+int
+objUnmanageObject(pObjSession this, pObject obj)
+    {
+    xaRemoveItem(&(this->OpenObjects), xaFindItem(&(this->OpenObjects), (void*)obj));
+    return 0;
+    }
+
+
+/*** objUnmanageQuery - removes a query from the list of open queries
+ *** associated with this session.  This basically means that the query
+ *** won't be auto-closed when the session is closed.  This should ONLY
+ *** be used when a module can guarantee that the query will otherwise
+ *** be closed when the session is closed, such as with open objects
+ *** and queries used internally by the multiquery module.
+ ***/
+int
+objUnmanageQuery(pObjSession this, pObjQuery qy)
+    {
+    xaRemoveItem(&(this->OpenQueries), xaFindItem(&(this->OpenQueries), (void*)qy));
+    return 0;
+    }
+
 

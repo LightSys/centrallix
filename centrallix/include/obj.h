@@ -35,10 +35,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.8 2002/04/25 17:59:59 gbeeley Exp $
+    $Id: obj.h,v 1.9 2002/05/03 03:51:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.9  2002/05/03 03:51:21  gbeeley
+    Added objUnmanageObject() and objUnmanageQuery() which cause an object
+    or query to not be closed automatically on session close.  This should
+    NEVER be used with the intent of keeping an object or query open after
+    session close, but rather it is used when the object or query would be
+    closed in some other way, such as 'hidden' objects and queries that the
+    multiquery layer opens behind the scenes (closing the multiquery objects
+    and queries will cause the underlying ones to be closed).
+    Also fixed some problems in the OSML where some objects and queries
+    were not properly being added to the session's open objects and open
+    queries lists.
+
     Revision 1.8  2002/04/25 17:59:59  gbeeley
     Added better magic number support in the OSML API.  ObjQuery and
     ObjSession structures are now protected with magic numbers, and
@@ -452,6 +464,8 @@ int objSetWD(pObjSession this, pObject wd);
 char* objGetWD(pObjSession this);
 int objSetDateFmt(pObjSession this, char* fmt);
 char* objGetDateFmt(pObjSession this);
+int objUnmanageObject(pObjSession this, pObject obj);
+int objUnmanageQuery(pObjSession this, pObjQuery qy);
 
 /** objectsystem object functions **/
 pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type);
