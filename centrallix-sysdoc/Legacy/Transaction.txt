@@ -1,0 +1,232 @@
+Title:	  ObjectSystem Transaction Management
+Author:	  Gregory R. Beeley
+Date:	  November 6, 1998
+-------------------------------------------------------------------------------
+
+I   OVERVIEW
+
+    During the course of building the initial objectsystem interface and 
+    initial UNIX filesystem and Sybase database drivers for the ObjectSystem,
+    one small problem arose:  transaction management must be done to make this
+    interface to a database even possible.  For example, when one inserts a
+    row into the database (by creating a row object in the Table/rows 
+    ObjectSystem directory), one must set all required attributes before the
+    driver can even insert the row physically into the database.  However, with
+    the current model, this is not possible because once the Open() or Create()
+    executes, the object is expected to exist in the ObjectSystem, a problem
+    which is even more severe for table creation, in which case the column 
+    objects must be created before the table can be created.
+
+    Thus, a transaction layer must be added into the scheme somewhere.  Somehow
+    the database driver needs to be able to "cache" the changes in some kind
+    of tree structure paralleling the apparent objectsystem abstraction, and
+    then upon a Commit() operation (or possible auto-commit on close()) walk
+    the tree structure and create/modify/delete objects in the database.  The
+    big challenge is that these intermediate changes must be visible to the
+    calling session _only_ and not to any other sessions, in order to promote
+    correct transaction management.  The Sybase database must be able to allow
+    DDL in transactions along with any update/insert/delete changes.
+
+    The added sticky point has to do with other non-database objectsystem
+    drivers, like the UNIX filesystem driver.  The UNIX filesystem driver has
+    no idea what a transaction is, and no rollback facilities.  But, should
+    it?  And should a transaction be allowed which mixes filesystem updates
+    and database changes?  Arguably, yes to both questions.
+
+    So, given the time constraints, how do we limit the scope of the project
+    down so that adequate transaction management can be added at this point
+    to handle the problem at hand while not limiting the implementation of
+    full-scale transaction management.  Well, the first step is to fully 
+    design the transaction management, and then back it off to a small 
+    piece.
+
+
+II  REQUIREMENTS
+
+    The transaction management system must be able to solve the following key
+    issues:
+
+        1.  Begin(), Commit(), and Rollback() 
+	2.  Abstracting database changes to a tree-structure that can be
+	    accessed in a simple manner by the db driver.
+	3.  Handling commit/rollback on the UNIX filesystem driver.
+	4.  Making in-progress changes visible to the modifying user but
+	    not to other users.
+	5.  The underlying objectsystem driver should decide whether it 
+	    wants to be responsible for merging conflicting changes.  This is
+	    a big piece of functionality that doesn't belong in a prototype.
+	    I think.
+
+
+III PROPOSED SOLUTION #1
+
+    Solution #1 involves creating a transaction objectsystem driver which 
+    may or may not be inserted between an objectsystem driver and the 
+    objectsystem management layer.  The transaction objectsystem driver
+    will create a tree-structure paralleling the objectsystem and will 
+    continue to build the structure until a commit transaction is performed
+    by the calling session.  When the outermost transaction has been
+    committed, the transaction layer will then pass the transaction tree
+    structure to the driver starting with the first transaction item that
+    was requested by the session.  However, the objectsystem driver then
+    has the opportunity to process additional items within the transaction
+    tree, and complete those.  The transaction layer will then only pass
+    remaining items to the objectsystem driver.  During the actual processing
+    of the transaction, other sessions attempting to access objects affected
+    by the transaction will block.  This blocking will require the implemen-
+    tation of the synchronization facilities in the MTASK module, at least 
+    the semaphores or read/write locks.
+
+    This will require also adding objBegin(), objCommit(), and objRollback()
+    to the objectsystem management layer and making the objectsystem layer
+    intelligent about a driver's need for transaction management.  This will 
+    allow for the UNIX filesystem driver to remain as is for now, which is
+    good because I don't want to have to recode that silly thing.  But 
+    since the sybase driver is in a beginning state, this could work for 
+    it.  Make transaction management request a Capabilities driver flag.
+
+
+IV  SOLUTION #1 DETAILS
+
+    Transaction layer functions:  implement the ObjectSystem driver interface.
+    Add a field to the Object structure giving the LowLevelDriver - the 
+    driver which the Transaction layer will call to perform its operations.
+    Also modify the Object structure to contain a reference to an optional
+    transaction tree, so that the low level driver can implement the same
+    interface to the ObjectSystem (and almost feasibly be used directly if
+    certain operations are not performed, like create table or insert row).
+    Actually, in that case all drivers can be routed through the transaction
+    layer whether they need transaction management or not.  Hmmm...  
+
+    Problem: the objectsystem driver interface doesn't have any session
+    intelligence.  This can be added by the driver directly referencing the
+    session pointer in the Object structure.  So, the transaction tree should
+    really be added to the ObjSession structure, not the Object structure
+    directly.  Ok.  
+
+    On failure of a component of the transaction, the transaction layer will
+    be intelligent on how to back-out previously completed components, all the
+    while preventing other sessions from viewing or modifying any objects
+    affected by the transaction until it is fully complete.  Furthermore,
+    the transaction layer can be intelligent on backing out transactions 
+    even if the objectsystem driver doesn't require transaction management.
+    Any non-transaction-aware drivers won't be affected by commit and rollback.
+    But, the transaction driver can easily spread the transaction control over
+    multiple objectsystem drivers and driver nodes.
+
+    Example rollback of transaction components:
+
+    objCreate()			-->		objDelete()
+    objOpen()			-->		objDelete() only if created.
+    						Replace file if truncated.
+    objRead()			-->		--none--
+    objWrite()			-->		Replace original file
+    objSetAttrValue()		-->		Replace original value
+    objDelete()			-->		Restore original object.
+
+    This will require that the transaction layer _remember_ original attribute
+    values, file contents, and object content/attributes/location.  These are
+    difficult things to do and won't be implemented in the initial version of
+    the transaction layer.
+
+    The initial implementation will be comprised of the following components:
+
+    1.  The transaction layer will implement the objectsystem interface and
+        will link into calls to objectsystem drivers via the Driver and Low-
+	LevelDriver Object structure elements.  
+    2.  The transaction layer will place the transaction tree in the ObjSession
+        object.
+    3.  An objectsystem driver that desires to complete operations in a grouped
+        manner will utilize operations within the tree in groups in whatever
+	way as it sees fit.  If the tree is NULL, that means the transaction
+	layer was not active and the objectsystem driver should fail the 
+	transaction if it can't be completed as one part.
+    4.  The transaction layer will have an "auto-transaction" mechanism so that
+        the calling user doesn't have to perform Begin() and Commit() 
+	operations.  When an object is closed, the transaction tree at that
+	point will be submitted to the ObjectSystem driver, which will then
+	either fail or succeed, success meaning that the OS driver either
+	did the work or delayed it, and failure meaning that the work could
+	not be performed and would not have been able to be performed even had
+	the operation been delayed.  The amount of work actually performed will
+	be indicated by the state of the transaction tree.
+    5.  To support OS drivers that aren't transaction-tree aware, the 
+        transaction layer will manage a state setting in the transaction tree,
+	and if hte OS driver returns success but doesn't set the transaction
+	tree state variable, it means that the operation was actually 
+	completed entirely and the transaction layer should remove the
+	operation from the transaction tree.
+    6.  The transaction layer will put up a "pseudo object heirarchy" to the
+        calling objectsystem user when a partial transaction is in progress,
+	but no other session will see the transaction.  This pseudo object
+	heirarchy will correspond directly to the transaction tree.
+
+
+V   VISUAL SUMMARY OF OS-TRANSACTION-OSDRIVER INTERACTION
+
+    1.  Objectsystem driver registers with OS stating that it is requesting
+        transaction management.
+
+	OSDRIVER --> objRegisterDriver() with OBJDRV_C_TRANS --> OBJSYS
+
+    2.  End user places call to insert database row.
+
+        USER --> objOpen("/datasources/OMSS_DB/Partner/2100") --> OBJSYS
+
+    3.  Objectsystem passes on open/create to the Sybase objectsystem
+        driver, and in the process creates the transaction tree root item
+	at /datasources/OMSS_DB/Partner/2100.
+
+	OBJSYS --> sybdOpen("/datasources/OMSS_DB/" "Partner/2100") --> SYBD
+
+    4.  Sybase driver returns success and sets the Transaction tree state
+        to visited, but doesn't complete the Open operation.
+
+    5.  End user sets attributes on the open object.
+
+        USER --> objSetAttrValue("org_name","Some New Department") --> OBJSYS
+	(... and so forth)
+      
+    6.  Objectsystem adds the attribute creates as subnodes to the root tree
+        node and passes them on, one at a time, to the Sybase driver.
+
+	OBJSYS --> sybdSetAttrValue( ... ) --> SYBD
+
+    7.  Each time, the sybase driver refuses.
+
+    8.  End user closes the new object.
+
+        USER --> objClose() --> OBJSYS
+
+    9.  Objectsystem passes close on to Sybase driver.
+
+        OBJSYS --> sybdClose() --> SYBD
+
+    10. Sybase driver is then happy -- it then processes the transaction tree
+        and deposits it into the database, completing each item in the tree
+	structure.  The close operation succeeds.
+
+    One should note that in this instance a database row cannot be inserted
+    with the objCreate call since no indication can be given by the end-user
+    that it is finished with adding attributes.  Should this be desired,
+    an objCommit operation would need to be added, with a transaction
+    beginning with any objectsystem modification operation.
+
+
+VI  STRUCTURAL DETAILS
+
+    The transaction tree and transaction layer will be managed via three 
+    major data structures:
+
+        1.  The transaction tree node:  this data structure will describe a
+	    specific object that is involved in the transaction, regardless
+	    of the number of open() accesses to such an object.  The tree
+	    structure is used for fast search and interrelation of related
+	    objects.
+	2.  The open transaction query:  when an objOpenQuery() is performed,
+	    this structure is used to track access to the query results from
+	    the underlying object.  One of these structures will exist for 
+	    each OpenQuery() call, but at most one transaction tree node
+	    will exist for any object queried.
+	3.  The open transaction object:  when an objOpen, objOpenAttr, or
+	    objQueryFetch is performed, a link to an object is generated.

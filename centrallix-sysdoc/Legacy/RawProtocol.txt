@@ -1,0 +1,247 @@
+Document:  Raw Centrallix client-server protocol
+Author:    Greg Beeley (GRB)
+Date:      May 1st, 2001
+-------------------------------------------------------------------------------
+
+OVERVIEW....
+
+    The raw Centrallix protocol is designed to allow remote access to the 
+    entire OSML call-level API from a remote system via a stream socket or
+    even datagram mechanism.
+
+
+BASIC SEQUENCE....
+
+    Upon establishing a connection to the Centrallix server, the client must
+    first open one or more user-auth channels.  No other operation (other than
+    closing the connection) is permitted.  A user-auth channel specifies a 
+    username and password to authenticate the client to the server.  Operations
+    over the connection can be carried out in any of the established user-auth
+    channels - in this way, a client BF and server BF can be connected by a
+    single connection for operations to cover all users.
+
+    After opening an authenticated user channel, the client must open one or
+    more sessions before performing commands.  These are OSML sessions, and 
+    are reflected by having a current working directory and other similar 
+    session-level settings.
+
+    Once a session is open, the client can then open an object, create an
+    object, delete an object, or open a multiquery.  With an open object, the
+    client can open a query on that object, view/change that object's
+    attributes, read/write that object's content, and execute methods on that
+    object.  With an open query or multiquery, the client can fetch open 
+    objects from the query.
+
+    Open queries and objects should be closed when they are no longer being
+    used by the client or by the protocol batch process.
+
+
+LOOPS AND BATCHING....
+
+    The protocol allows commands to be batched and sent as a group rather than
+    waiting for the server's acknowledgement and completion of each command.
+    This makes the protocol useable in a high-latency datagram-style type of
+    environment, such as performing operations over email connections.  This is
+    especially important for replication mechanisms.
+
+    Commands can reference the result value(s) of previous commands when used
+    in a batch process.  The underlying protocol allows for this.
+
+    Looping also can be performed using some very simple loop constructs.
+
+
+PROTOCOL SPECIFICATION....
+
+    Command Batch:
+        8 bytes		Sequential batch identifier, must increment by one for
+			each batch sent over a given connection.  This is 
+			independent of how many user auth channels or sessions
+			are open!
+	4 bytes		Authenticated user channel identifier.  Set to ZERO if
+			this batch contains a user auth command at its start.
+			Note that user channel id's are specified by the
+			CLIENT not by the SERVER (see user auth command).
+	4 bytes		Length of batch, in bytes, including the 20-byte
+			header block.
+	4 bytes		Number of commands in batch.
+	<n> bytes	Batch commands, where n = <length - 20>
+
+    Generic Command, applies to ALL COMMANDS but NOT ACKS/ERRORS.
+	4 bytes		Sequence number of this command.  Must start at ONE
+			within each batch, and is reset for each batch.
+    	4 bytes		Length of command, in bytes.  Includes header.
+        2 bytes		Command code (open/auth/del/query/etc)
+	2 bytes		Number of parameters.
+	4 bytes		Control flags.  One important control flag is whether
+			or not the command's result code will remain tied to
+			the command's sequence id.
+	param #1	Session identifier.  Can be specified or a reference
+			to an opensession command can be given.
+	param #2	Object or Query identifier comes next, if applicable.
+			Can be specified immediately or a reference to another
+			command can be given.  If not applicable, param must be
+			omitted, not set to NULL.
+	param #3	String argument comes next, if applicable, such as with
+			changedir commands, open() commands, multiquery() sql,
+			and so forth.  Some such commands won't have a param 2.
+	other params	Additional parameters are defined on a command-by-
+			command basis.
+
+    Parameter Format:
+        1 byte		Parameter type.
+			    0xFF =	Immediate 4-byte integer.
+			    0xFE = 	Immediate string value.
+			    0xFD =	Immediate double-precision float value.
+			    0xFC =	Immediate money value.
+			    0xFB =	Immediate date/time value.
+			    0x01 =	Backreference to a command's result.
+			    0x00 = 	Null parameter.
+	4 bytes		Immediate int value (omit if not type 0xFF)
+	4 bytes		String length (omit if not type 0xFE)
+	n bytes		String Data (omit if not type 0xFE)
+	8 bytes		Double precision float value (omit if not type 0xFD)
+	6 bytes		Money value (omit if not type 0xFC)
+	5 bytes		Date/time value (omit if not type 0xFB)
+	4 bytes		Command ID (omit if not type 0x01)
+
+    ACK MESSAGE:
+        8 bytes		Sequence number of the ACK.
+	8 bytes		Batch for ACK reply.
+	4 bytes		Command ID for ACK reply.
+	4 bytes		Number of parameters in result, including result code.
+	param #1	Result value for command.  May be integer, string, etc.
+	other params	Some commands may have LOTS of result params.
+
+    ERROR MESSAGE:
+        8 bytes		Sequence number of the ERR.  Uses same sequence space
+			as ACK's.
+	8 bytes		Batch that caused the error.
+	4 bytes		Command ID causing the error.
+	param #1	Numeric error code (integer).  May be unset.
+	param #2	String error message.
+
+    REQVERSION COMMAND:
+        param #1	Integer, version number.
+        
+    REQAUTH COMMAND:
+        param #1	Username
+	param #2	Password
+	param #3	User channel ID to be used.
+
+    OPENSESSION COMMAND:
+        param #1	Current working directory.  Set NULL to use default.
+
+    OPENOBJ COMMAND:
+    	param #2	OMIT.
+        param #3	Object pathname.
+
+    OPENQUERY COMMAND:
+        param #2	Object identifier to query.
+	param #3	WHERE clause.
+	param #4	ORDER BY clause.
+
+    MULTIQUERY COMMAND:
+        param #2	OMIT.
+	param #3	SQL text.
+
+    FETCH COMMAND:
+        param #2	Query identifier.
+	param #3	OMIT.
+
+    CLOSEQUERY COMMAND:
+        param #2	Query identifier.
+	param #3	OMIT.
+
+    CLOSEOBJ COMMAND:
+        param #2	Object identifier.
+	param #3	OMIT.
+
+    CLOSESESSION COMMAND:
+        param #1	Session identifier, as usual.
+	param #2,#3	OMIT.
+
+    CLOSEAUTH COMMAND:
+        param #1,#2,#3	OMIT ALL.
+
+    READCONTENT COMMAND:
+    	param #2	Object identifier
+	param #3	OMIT.
+	param #4	Starting offset.  May be NULL.
+	param #5	Length.  May be NULL for entire thing.
+
+    WRITECONTENT COMMAND:
+        param #2	Object identifier
+	param #3	OMIT.
+	param #4	Starting offset.  May be NULL.
+	param #5	Integer: 0 to not truncate, 1 to truncate existing data
+	param #6	String value, up to 4GB of string permitted.
+
+    CHANGEDIR COMMAND:
+    	param #2	OMIT.
+	param #3	Directory pathname.
+
+    GETATTRS COMMAND:
+        param #2	Object identifier.
+	param #3	Attribute name.  If null, gets all ATTR names.  Note
+			that this is normally left NULL, otherwise the command
+			merely TESTS for the existence of an attribute.  The
+			ACK will have one param for each attribute name, and
+			one param for each attribute type, alternating.
+
+    GETATTRVALUES COMMAND:
+        param #2	Object identifier.
+	param #3	Attribute name.  If null, get ALL object attribute
+			values, otherwise just the one.  The returned ACK will
+			have one param for each attrname, one param for each
+			value, and one param for each attr type.  The three
+			will alternate for each attribute.  The type is 
+			returned in case the attribute is NULL (which normally
+			has no type).
+
+    SETATTRVALUE COMMAND:
+        param #2	Object identifier
+	param #3	Attribute name.
+	param #4	Attribute value.
+
+    EXECMETHOD COMMAND:
+        param #2	Object identifier
+	param #3	Method name.
+	param #4	Method string argument.
+
+    BEGINLOOP COMMAND:
+        param #2,#3	OMIT BOTH.
+
+    EXITLOOPIF:
+        param #2,#3	OMIT BOTH.
+	param #4	Value #1 to test.
+	param #5	Value #2 to test.
+	param #6	Operation used to test (string, < > == etc)
+
+    CONTINUELOOPIF:
+        param #2,#3	OMIT BOTH
+	param #4	Value #1 to test.
+	param #5	Value #2 to test.
+	param #6	Operation used to test (string, < > == etc)
+
+    ENDLOOP COMMAND:
+        param #2,#3	OMIT BOTH
+
+    BEGINITERLOOP COMMAND:
+        param #2,#3	OMIT BOTH
+	param #4	Backreference to command result code that returned
+			several values.
+
+    DELETEOBJ COMMAND:
+    	param #2	Object identifier to delete (omit if #3 specified)
+	param #3	Pathname of object to delete (omit of #2 specified)
+
+    CREATEOBJ COMMAND:
+        param #2	OMIT.
+	param #3	Pathname of object to be created.
+	param #4	Integer - 0 to leave object closed, 1 to open it.
+
+    EXIT COMMAND: shuts down the entire connection and closes all sessions,
+    		  objects, and queries that were open.
+        param #2,#3	OMIT BOTH.
+
+-------------------------------------------------------------------------------

@@ -1,0 +1,191 @@
+Document:  MultiQuery Handling in LightServer
+Author:	   Greg Beeley
+Date:	   February 4, 1998
+-------------------------------------------------------------------------------
+
+
+I   OVERVIEW
+
+    The MultiQuery mechanism within LightServer provides a way to join abstract
+    data queries together.  Whereas a simple directory query provides a simple
+    where-clause qualifier, the MultiQuery mechanism accepts (potentially) full
+    SQL language constructs for querying multiple directories in the Server's
+    objectsystem.
+
+    The results of a MultiQuery are pseudo-objects that have attributes 
+    representing the results of the query.  Such pseudo-objects may be able to
+    be updated, depending on the particular projected attribute and query.
+    Within a Query Object, new pseudo-objects may be able to be inserted, and
+    existing ones deleted, though a MultiQuery by itself is strictly select-
+    only.
+
+
+II  THE 'SELECT' LIST
+
+    The first basic element of the select statement is the selection list.  
+    This list provides a series of attributes and expressions that should be
+    returned as projected attributes within the returned pseudo-objects.  
+    
+    The select-list may also be '*', in which case all applicable attributes 
+    are projected into the returned pseudo-objects.  In this case, if one or
+    more of the source objects has a changeable attribute listing (as with a
+    structure file), the resulting query will have attributes that match the
+    first returned object; any objects thereafter that have new attributes
+    which do not fit neatly into those returned by the first object will end
+    up with suppressed attributes that do not show up in the returned objects.
+    In such cases, it is important to fully qualify the select-list instead
+    of simply using '*'.  
+
+    In many cases, when performing a join, some attribute names may apply
+    to more than one of the source objects.  In these cases, it may be 
+    necessary to fully qualify the attribute as coming from a particular 
+    object.  This can either be done by giving <obj-directory>:<attr-name> or
+    by aliasing the object's name and giving <alias>:<attr-name>.
+
+    The select-list also provides a mechanism to specify the names that the
+    attributes in the returned pseudo-objects will take on.  This is done
+    by a "select new_attr_name = :attr_name" or by a "select :attr_name
+    'new_attr_name'" or "select :attr_name as 'new_attr_name'" type of 
+    query construction.  The 'name' attribute can also be specified by doing
+    this, so that the returned pseudo-objects can have any kind of naming 
+    convention that the user desires.
+
+    The select list may also contain constant values, such as numbers and
+    strings.
+
+        SELECT 'This is a file...', :name from /some_directory
+
+    Also, the select list provides the ability to retrieve 'constant' values
+    from objects by fully specifying the object's path, 
+
+        SELECT "This is my directory's name...", /some_directory/my_dir:name
+
+    Note that if '/some_directory/my_dir' were contained in the 'from'
+    clause, an alias name (see below) would need to be used to query sub-
+    files within that directory.  Otherwise, the query processor will assume
+    that the 'name' attribute listed above comes from the directory itself,
+    instead of a projected attribute from sub-objects within that directory.
+
+    An alternative to using an alias name in that case is to construct the
+    query like this:
+
+        SELECT "A file within ", /some_directory/my_dir:name,
+		" is the following: ", /some_directory/my_dir/*:name
+
+    The query processor will understand that a '/*' on the end of a pathname
+    indicates that the attribute named should apply to sub-objects instead of
+    the object's path that is given.  The above query would generate a list
+    of files within '/some_directory/my_dir', with the resulting objects 
+    having names like the sub-object names, and four additional attributes
+    that are given abstract names, like 'const_0001'.
+
+
+III THE 'FROM' CLAUSE
+
+    The from clause provides the method for specifying which directories the
+    queried objects should come from.  For example, "select :first_name from
+    /datasources/OMSS_DB/Partner/rows" will return all first names for all
+    row entities for the Partner table.  The query "select :size from
+    /some_directory" will return a listing of all of the sizes of the files
+    and directories within that directory.  The returned objects would 
+    have a 'name' attribute that matches their source objects, in addition
+    to a projected 'size' attribute.  In this case, no other attributes
+    will be projected (such as group and owner).
+
+    Directories in the 'from' clause can be given alias names that the writer
+    of the SQL can use in other places instead of rewriting the entire
+    directory path each time.  This is done like the following:
+
+        SELECT a:size from /some_directory a
+	SELECT p:first_name, p:last_name from 
+	   	/datasources/OMSS_DB/Partner/rows p
+
+
+IV  THE 'WHERE' CLAUSE
+
+    The where clause is used for two major purposes:  first, to restrict 
+    which kinds of objects are returned based on attribute values, and second,
+    to perform joins on multiple directories.
+
+    Restricting the kinds of objects is rather simple.  The where clause can
+    contain a variety of equality, inequality, greater, less-than, and so
+    forth tests, combined with such operators as AND and OR, and grouped
+    with parentheses.  For example, if one wanted a list of all files that
+    were between 10 and 1000 bytes in size, inclusive, a query like the 
+    following could be performed:
+
+        SELECT f:name, f:size from /some_directory f where f:size >= 10
+		AND f:size <= 1000
+
+    Performing a join between two directories is also straightforward.  The
+    following query lists the sizes of files in two directories, one of which
+    is presumably a backup copy of the main directory from quite some time
+    ago.
+
+        SELECT name=f1:name, oldsize=f1:size, newsize=f2:size
+		FROM /backup_directory f1, /current_dir f2
+		WHERE f1:name = f2:name
+
+    In this case, the query processor will perform an objOpenQuery on one of
+    the two directories, and then proceed to do a qualified objOpenQuery
+    on the second directory for each entry in the first.  Entries in the
+    first directory that have no matching entry in the second will not be 
+    returned.
+
+    One could combine qualifier restrictions with the join, like the following:
+
+        SELECT name=f1:name, oldsize=f1:size, newsize=f2:size
+		FROM /backup_directory f1, /current_dir f2 
+		WHERE f1:name = f2:name AND f2:size >= 1000
+
+    In this case, the query processor will perform the first objOpenQuery on 
+    the 'f2' directory, with a qualifying where clause of ':size >= 1000'.  It
+    will then do an objOpenQuery on the 'f1' directory for each object that
+    is returned by the query on the 'f2' directory.
+
+    It is also possible to perform the join on more than one attribute 
+    between the two objects.  Consider the following query which lists all
+    objects that have changed in size by more than 100 bytes:
+
+        SELECT name=f1:name, oldsize=f1:size, newsize=f2:size
+		FROM /backup_directory f1, /current_dir f2 
+		WHERE f1:name = f2:name AND (f1:size > f2:size + 100 OR
+			f1:size < f2:size - 100)
+
+    In this case, the query processor will again perform the first objOpenQuery
+    on the 'f2' directory, since the 'f2' expressions in the where clause are
+    not atomic (they have "+ 100" and "- 100" attached to them).  For each 
+    returned 'f2' item, the processor will then perform an objOpenQuery on the
+    'f1' directory, using a qualifying clause like:
+
+    	":name = 'myfile' AND (:size > 1045 + 100 OR size < 1045 - 100)"
+
+    where this qualifying clause is built through simple substitution on the
+    'where' clause in the original multi-query.  Currently, the query processor
+    will not be intelligent enough to solve equations, so a WHERE clause like
+    this:
+
+    	WHERE f1:name = f2:name AND (f1:size-f2:size > 100 OR 
+		f1:size-f2:size < -100)
+
+    would result in a qualifying clause of ":name = 'myfile'" only, without the
+    size restrictions.  The query processor would then have to apply the size
+    restrictions to the larger number of returned results from the two 
+    directories.  This is true even though the two where clauses are 
+    technically identical.
+
+    Outer joins are also possible.  To perform an outer join, use the Sybase
+    outer-join syntax.  To do this, simply place an asterisk ("*") before or
+    after the equals sign being used to perform the join.  The asterisk should
+    go on the same side of the equals sign as the table from which rows are
+    mandatory, and the side of the = without the * will have the table from
+    which a match is not required (and the attributes derived from such a
+    table will be NULL).
+
+
+V   THE ORDER BY CLAUSE
+
+    A query can have a sorting criteria applied to it as well.  This uses the
+    ORDER BY clause, where such an 'order by' statement is followed by a comma
+    separated list of attribute names that will be used to sort the data.
+-------------------------------------------------------------------------------
