@@ -75,6 +75,8 @@ typedef struct
     char	Redirected;
     DateTime	LastModified;
     char	*Annotation;
+    int		ContentLength;
+    int		Offset;
     }
     HttpData, *pHttpData;
 
@@ -129,10 +131,12 @@ http_internal_Cleanup(pHttpData inf,char *line)
     return NULL;
     }
 
+/*** http_internal_ParseDate -- an HTTP/1.1 compliant date parser
+ ***  -- will detect dates in RFC 1123, RFC 1036, or ANSI C asctime() format
+ ***/
 int
 http_internal_ParseDate(pDateTime dt, const char *str)
     {
-    //I quickly hacked this out because
     char* obj_short_months[] = {"Jan","Feb","Mar","Apr","May","Jun",
 				"Jul","Aug","Sep","Oct","Nov","Dec"};
     char *p;
@@ -140,42 +144,170 @@ http_internal_ParseDate(pDateTime dt, const char *str)
     char **ar;
     int off=0;
     int i;
-    p2=p=(char*)malloc(strlen(str)+1);
-    ar=(char**)malloc(sizeof(char*)*8);
-    if(!p || !ar) return -1;
-    strcpy(p,str);
-    ar[off]=p;
-    while(p2-p<strlen(p))
+    char temp[256]; // for reporting regcomp errors and temp storage while processing regexec
+
+    regex_t rfc1123date;
+    regex_t rfc850date;
+    regex_t asctimedate;
+
+    regmatch_t pmatch[11];
+
+/** taking advantage of the fact that in C, "a" "b" is the same as "ab" **/
+/** These definitions come directly from sec3.3.1 of rfc2616 (modified for C identifiers) **/
+#define HTTP_date "(" rfc1123_date ")" "|" "(" rfc850_date ")" "|" "(" asctime_date ")"
+#define rfc1123_date wkday "," SP date1 SP time SP "GMT"
+#define rfc850_date weekday "," SP date2 SP time SP "GMT"
+#define asctime_date wkday SP date3 SP time SP DIGIT4
+#define date1 DIGIT2 SP month SP DIGIT4
+#define date2 DIGIT2 "-" month "-" DIGIT2
+#define date3 month SP "(" DIGIT2 "|" "(" SP DIGIT1 ")" ")"
+#define time DIGIT2 ":" DIGIT2 ":" DIGIT2
+#define wkday "(Mon|Tue|Wed|Thu|Fri|Sat|Sun)"
+#define weekday "(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)"
+#define month "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+#define DIGIT4 "([0123456789]{4})"
+#define DIGIT2 "([0123456789]{2})"
+#define DIGIT1 "([0123456789])"
+#define SP " "
+    
+    if((i=regcomp(&rfc1123date,rfc1123_date,REG_EXTENDED)))
 	{
-	if(p2[0]==' ' || p2[0]==':')
+	regerror(i,&rfc1123date,temp,256);
+	mssError(0,"HTTP","Error while building rfc1123date: %s",temp);
+	return -1;
+	}
+    if((i=regcomp(&rfc850date,rfc850_date,REG_EXTENDED)))
+	{
+	regerror(i,&rfc850date,temp,256);
+	mssError(0,"HTTP","Error while building rfc850date: %s",temp);
+	return -1;
+	}
+    if((i=regcomp(&asctimedate,asctime_date,REG_EXTENDED)))
+	{
+	regerror(i,&asctimedate,temp,256);
+	mssError(0,"HTTP","Error while building asctimedate: %s",temp);
+	return -1;
+	}
+
+/** b = base string
+ ** p = char* to dump data into
+ ** m = match #
+ **/
+#define CPYPMATCH(b,p,m) \
+	memset((p),0,pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
+	strncpy((p),b+pmatch[(m)].rm_so,pmatch[(m)].rm_eo-pmatch[(m)].rm_so);
+/** s = value to assign to
+ ** m = match #
+ **/
+#define PUTMATCHINSTRUCT(s,m) \
+	CPYPMATCH(str,temp,m);\
+	s=atoi(temp);
+/** s = pointer to date object to dump
+ **   NOTE: this is all one statement (safe to use w/o curly braces)
+ **/
+#define DumpDate(s) \
+	printf("%02i-%02i-%04i %02i:%02i:%02i\n", \
+	    s->Part.Month+1,s->Part.Day+1,s->Part.Year+1900,\
+	    s->Part.Hour,s->Part.Minute,s->Part.Second);
+
+    if(HTTP_OS_DEBUG)
+	printf("Date Test: %s\n",str);
+    if(regexec(&rfc1123date,str,11,pmatch,0)==0)
+	{
+	if(HTTP_OS_DEBUG) printf("matched an rfc1123 date\n");
+	if(HTTP_OS_DEBUG)
+	    for(i=0;i<11;i++)
+		{
+		CPYPMATCH(str,temp,i);
+		printf("%i: '%s'\n",i,temp);
+		}
+	CPYPMATCH(str,temp,2);
+	dt->Part.Day=atoi(temp)-1; /* days are in base 0 -- the 1st is day 0 **/
+	CPYPMATCH(str,temp,3);
+	if(HTTP_OS_DEBUG) printf("temp: %s\n",temp);
+	for(i=0;i<12;i++)
+	    if(!strcmp(obj_short_months[i],temp))
+		break;
+	if(i==12) /* invalid month */
+	    return -1;
+	dt->Part.Month=i; /* months are in base 0 -- January is month 0 **/
+	CPYPMATCH(str,temp,4);
+	dt->Part.Year=atoi(temp)-1900; /* years are in years since 1900 -- 2002 is 102 **/
+	if(HTTP_OS_DEBUG) printf("temp: %s\n",temp);
+	PUTMATCHINSTRUCT(dt->Part.Hour,5);
+	PUTMATCHINSTRUCT(dt->Part.Minute,6);
+	PUTMATCHINSTRUCT(dt->Part.Second,7);
+	if(HTTP_OS_DEBUG) 
+	    DumpDate(dt);
+	return 0;
+	}
+    if(regexec(&rfc850date,str,11,pmatch,0)==0)
+	{
+	if(HTTP_OS_DEBUG) printf("matched an rfc850 date\n");
+	if(HTTP_OS_DEBUG)
+	    for(i=0;i<11;i++)
+		{
+		CPYPMATCH(str,temp,i);
+		printf("%i: '%s'\n",i,temp);
+		}
+	CPYPMATCH(str,temp,2);
+	dt->Part.Day=atoi(temp)-1; /* days are in base 0 -- the 1st is day 0 **/
+	CPYPMATCH(str,temp,3);
+	if(HTTP_OS_DEBUG) printf("temp: %s\n",temp);
+	for(i=0;i<12;i++)
+	    if(!strcmp(obj_short_months[i],temp))
+		break;
+	if(i==12) /* invalid month */
+	    return -1;
+	dt->Part.Month=i; /* months are in base 0 -- January is month 0 **/
+	CPYPMATCH(str,temp,4);
+	if(atoi(temp)>50) /** warning: 2 digit year -- using 50 as split point **/
+	    dt->Part.Year=atoi(temp);
+	else
+	    dt->Part.Year=atoi(temp)+100;
+	if(HTTP_OS_DEBUG) printf("temp: %s\n",temp);
+	PUTMATCHINSTRUCT(dt->Part.Hour,5);
+	PUTMATCHINSTRUCT(dt->Part.Minute,6);
+	PUTMATCHINSTRUCT(dt->Part.Second,7);
+	if(HTTP_OS_DEBUG) 
+	    DumpDate(dt);
+	return 0;
+	}
+    if(regexec(&asctimedate,str,11,pmatch,0)==0)
+	{
+	if(HTTP_OS_DEBUG) printf("matched an asctime() date\n");
+	if(HTTP_OS_DEBUG)
+	    for(i=0;i<11;i++)
+		{
+		CPYPMATCH(str,temp,i);
+		printf("%i: '%s'\n",i,temp);
+		}
+	/** 5 is a two-digit day, 6 is a one-digit day **/
+	CPYPMATCH(str,temp,5);
+	if(temp[0]!='\0')
+	    dt->Part.Day=atoi(temp)-1; /* days are in base 0 -- the 1st is day 0 **/
+	else
 	    {
-	    off++;
-	    ar[off]=p2+1;
+	    CPYPMATCH(str,temp,6);
+	    dt->Part.Day=atoi(temp)-1; /* days are in base 0 -- the 1st is day 0 **/
 	    }
-	p2++;
+	CPYPMATCH(str,temp,2);
+	for(i=0;i<12;i++)
+	    if(!strcmp(obj_short_months[i],temp))
+		break;
+	if(i==12) /* invalid month */
+	    return -1;
+	dt->Part.Month=i; /* months are in base 0 -- January is month 0 **/
+	CPYPMATCH(str,temp,10);
+	dt->Part.Year=atoi(temp)-1900; /* years are in years since 1900 -- 2002 is 102 **/
+	PUTMATCHINSTRUCT(dt->Part.Hour,7);
+	PUTMATCHINSTRUCT(dt->Part.Minute,8);
+	PUTMATCHINSTRUCT(dt->Part.Second,9);
+	if(HTTP_OS_DEBUG) 
+	    DumpDate(dt);
+	return 0;
 	}
-    for(i=1;i<8;i++)
-	{
-	(ar[i]-1)[0]='\0';
-	}
-    dt->Part.Day=atoi(ar[1]);
-    for(i=0;i<12;i++)
-	{
-	if(!strcmp(ar[2],obj_short_months[i]))
-	    dt->Part.Month=i;
-	}
-    dt->Part.Year=atoi(ar[3])-1900;
-    /** HACK FOR TIMEZONE -- FIXME!!!!! **/
-    if(atoi(ar[4])-5<0) { dt->Part.Hour=24+atoi(ar[4])-5; dt->Part.Day--; } 
-    else 
-	dt->Part.Hour=atoi(ar[4])-5;
-    dt->Part.Minute=atoi(ar[5]);
-    dt->Part.Second=atoi(ar[6]);
-    /** HACK -- it's displaying 1 day higher than it should -- FIXME**/
-    dt->Part.Day--;
-    free(p);
-    free(ar);
-    return 0;
+    return -1;
     }
 
 int
@@ -194,6 +326,9 @@ http_internal_GetPageStream(pHttpData inf)
     char *p2;
     short status=0;
     pStructInf attr;
+
+    /** Reset ContentLength and Offset **/
+    inf->ContentLength=inf->Offset=0;
 
     /** decide what path we're going for.  Once we've been redirected, 
 	SubCnt is locked, and the server path is altered 
@@ -239,29 +374,30 @@ http_internal_GetPageStream(pHttpData inf)
 	    return (int)http_internal_Cleanup(inf,"could not connect to proxy server");
 	if(inf->Port[0])
 	    {
-	    snprintf(buf,256,"GET http://%s:%s%s HTTP/1.1\n",inf->Server,inf->Port,fullpath);
+	    snprintf(buf,256,"GET http://%s:%s%s HTTP/1.0\r\n",inf->Server,inf->Port,fullpath);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-	    sprintf(buf,"Host: %s:%s\n",inf->Server,inf->Port);
+	    sprintf(buf,"Host: %s:%s\r\n",inf->Server,inf->Port);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	    }
 	else
 	    {
-	    sprintf(buf,"GET http://%s%s HTTP/1.1\n",inf->Server,fullpath);
+	    sprintf(buf,"GET http://%s%s HTTP/1.0\r\n",inf->Server,fullpath);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-	    sprintf(buf,"Host: %s\n",inf->Server);
+	    sprintf(buf,"Host: %s\r\n",inf->Server);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	    }
 	if(inf->ProxyAuthLine[0])
 	    {
 	    fdWrite(inf->Socket,inf->ProxyAuthLine,strlen(inf->ProxyAuthLine),0,FD_U_PACKET);
-	    fdWrite(inf->Socket,"\n",1,0,FD_U_PACKET);
+	    fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
 	    }
 	if(inf->AuthLine[0])
 	    {
 	    fdWrite(inf->Socket,inf->AuthLine,strlen(inf->AuthLine),0,FD_U_PACKET);
-	    fdWrite(inf->Socket,"\n",1,0,FD_U_PACKET);
+	    fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
 	    }
-	fdWrite(inf->Socket,"\n",1,0,FD_U_PACKET);
+	//fdWrite(inf->Socket,"Connection: close\r\n",19,0,FD_U_PACKET);
+	fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
 	}
     else
 	{
@@ -272,27 +408,28 @@ http_internal_GetPageStream(pHttpData inf)
 	if(!inf->Socket)
 	    return (int)http_internal_Cleanup(inf,"could not connect to server");
 	if(HTTP_OS_DEBUG) printf("connected\n");
-	sprintf(buf,"GET %s HTTP/1.1\n",fullpath);
+	sprintf(buf,"GET %s HTTP/1.0\r\n",fullpath);
 	if(HTTP_OS_DEBUG) printf("%s\n",buf);
 	fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	if(inf->Port[0])
 	    {
-	    sprintf(buf,"Host: %s:%s\n",inf->Server,inf->Port);
+	    sprintf(buf,"Host: %s:%s\r\n",inf->Server,inf->Port);
 	    if(HTTP_OS_DEBUG) printf("%s\n",buf);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	    }
 	else
 	    {
-	    sprintf(buf,"Host: %s\n",inf->Server);
+	    sprintf(buf,"Host: %s\r\n",inf->Server);
 	    if(HTTP_OS_DEBUG) printf("%s\n",buf);
 	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
 	    }
 	if(inf->AuthLine[0])
 	    {
 	    fdWrite(inf->Socket,inf->AuthLine,strlen(inf->AuthLine),0,FD_U_PACKET);
-	    fdWrite(inf->Socket,"\n",1,0,FD_U_PACKET);
+	    fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
 	    }
-	fdWrite(inf->Socket,"\n",1,0,FD_U_PACKET);
+	//fdWrite(inf->Socket,"Connection: close\r\n",19,0,FD_U_PACKET);
+	fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
 	}
 
     if(HTTP_OS_DEBUG) printf("Opening lexer session\n");
@@ -391,6 +528,10 @@ http_internal_GetPageStream(pHttpData inf)
 			objDataToDateTime(DATA_T_STRING,p2,&(inf->LastModified),
 					    "DDD, dd MMM yyyy HH:mm:ss GMT");
 			*/
+			}
+		    else if(!strcmp(p1,"Content-Length"))
+			{
+			inf->ContentLength=atoi(p2);
 			}
 		    }
 
@@ -569,7 +710,7 @@ int
 httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
-    int i;
+    int i=maxcnt; /* if we get no other info, use the size requested */
     if(!inf->Socket || (flags & FD_U_SEEK && offset==0))
 	{
 	/** if there's no connection or we're told to seek to 0, reinit the connection **/
@@ -581,10 +722,20 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	if(rval==0)
 	    return -1;
 	}
+    if(inf->ContentLength)
+	{
+	/** if the server provided a Content-Length header, use it... **/
+	i=inf->ContentLength-inf->Offset; /* the maximum length we're allowed to request */
+	i=i>maxcnt?maxcnt:i; /* drop down to what the requesting object wants */
+	}
     if(!inf->Socket) return -1;
-    if(HTTP_OS_DEBUG) printf("HTTP -- starting fdRead\n");
-    i=fdRead(inf->Socket,buffer,maxcnt,offset,flags);
-    if(HTTP_OS_DEBUG) printf("HTTP -- done with fdRead\n");
+    if(HTTP_OS_DEBUG) printf("HTTP -- starting fdRead -- asking for: %i bytes\n",i);
+    /** We should mask FD_U_SEEK in the flags here **/
+    i=fdRead(inf->Socket,buffer,i,offset,flags);
+    if(HTTP_OS_DEBUG) printf("HTTP -- done with fdRead -- got: %i bytes\n",i);
+    /** update inf->Offset with the new distance we are into the stream **/
+    if(i>0)
+	inf->Offset+=i;
     return i;
     }
 
@@ -644,6 +795,7 @@ httpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
 	if (!strcmp(attrname,"inner_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
+	if (!strcmp(attrname,"Content-Length")) return DATA_T_INTEGER;
 
 	/** Check for attributes in the node object if that was opened **/
 	if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
@@ -722,6 +874,11 @@ httpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    else
 		return 0;
 	    }
+	if(!strcmp(attrname,"Content-Length"))
+	    {
+	    *(int*)val=inf->ContentLength;
+	    return 0;
+	    }
 
 	if(stLookup(inf->Attr,attrname)) 
 	    {
@@ -757,19 +914,29 @@ httpGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	{
 	switch(inf->NextAttr++)
 	    {
-	    case -6: return "name";
-	    case -5: return "content_type";
-	    case -4: return "annotation";
-	    case -3: return "inner_type";
-	    case -2: return "outer_type";
-	    case -1:
+	    case -7: return "name";
+	    case -6: return "content_type";
+	    case -5: return "annotation";
+	    case -4: return "inner_type";
+	    case -3: return "outer_type";
+	    case -2:
 		     if(inf->LastModified.Value)
 			 return "last_modification";
+		     inf->NextAttr++;
+	    case -1:
+		     if(inf->ContentLength)
+			 return "Content-Length";
+
 	    }
 	}
 
     if(inf->NextAttr<inf->Attr->nSubInf)
-        return inf->Attr->SubInf[inf->NextAttr++]->Name;
+	{ 
+	/* skip Content-Length as an attribute -- it was handled above */
+	while(!strcmp(inf->Attr->SubInf[inf->NextAttr]->Name,"Content-Length"))
+	    inf->NextAttr++;
+	return inf->Attr->SubInf[inf->NextAttr++]->Name;
+	}
 
     return NULL;
     }
