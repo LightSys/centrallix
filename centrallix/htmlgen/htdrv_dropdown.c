@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.18 2002/06/24 15:33:09 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.19 2002/06/26 00:46:17 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.19  2002/06/26 00:46:17  lkehresman
+    * Added keyhandler to dropdown (you can type the first letter of options
+      to jump to that option and bounce around)
+    * Improved scrolling by adding all items to a layer and created universal
+      scrolling methods
+    * Fixed some GUI bugs
+
     Revision 1.18  2002/06/24 15:33:09  lkehresman
     Improvements and bugfixes to the dropdown widget:
      * Uses pg_addarea() function so mouseovers work
@@ -192,6 +199,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddHeaderItem_va(s,"    </STYLE>\n");
 
    htrAddScriptGlobal(s, "dd_current", "null", 0);
+   htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
 
    /** Get Value function **/
    htrAddScriptFunction(s, "dd_getvalue", "\n"
@@ -243,6 +251,114 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   this.enabled = 'disabled';\n"
 	"}\n", 0);
 
+   /** Keyboard Handler function **/
+   htrAddScriptFunction(s, "dd_keyhandler", "\n"
+	"function dd_keyhandler(l,e,k) {\n"
+	"    if (!dd_current) return;\n"
+	"    if (dd_current.enabled != 'full') return 1;\n"
+	"    if ((k >= 65 && k <= 90) || (k >= 97 && k <= 122))\n"
+	"        {\n"
+	"        if (k < 97)\n"
+	"            {\n"
+	"            k_lower = k + 32;\n"
+	"            k_upper = k;\n"
+	"            k = k + 32;\n"
+	"            }\n"
+	"        else\n"
+	"            {\n"
+	"            k_lower = k;\n"
+	"            k_upper = k - 32;\n"
+	"            }\n"
+	"        if (!dd_lastkey || dd_lastkey != k)\n"
+	"            {\n"
+	"            for (i=0; i < this.labels.length; i++)\n"
+	"                {\n"
+	"                if (this.labels[i].substring(0, 1) == String.fromCharCode(k_upper) ||\n"
+	"                    this.labels[i].substring(0, 1) == String.fromCharCode(k_lower))\n"
+	"                   {\n"
+	"                   dd_hilight_item(this.itemLayers[i]);\n"
+	"                   i=this.labels.length;\n"
+	"                   }\n"
+	"                }\n"
+	"            }\n"
+	"        else\n"
+	"            {\n"
+	"            var first = -1;\n"
+	"            var last = -1;\n"
+	"            var next = -1;\n"
+	"            for (i=0; i < this.labels.length; i++)\n"
+	"                {\n"
+	"                if (this.labels[i].substring(0, 1) == String.fromCharCode(k_upper) ||\n"
+	"                    this.labels[i].substring(0, 1) == String.fromCharCode(k_lower))\n"
+	"                   {\n"
+	"                   if (first < 0) { first = i; last = i; }\n"
+	"                   for (var j=i; j < this.labels.length && \n"
+	"                         (this.itemLayers[j].label.substring(0, 1) == String.fromCharCode(k_upper) ||\n"
+	"                          this.itemLayers[j].label.substring(0, 1) == String.fromCharCode(k_lower)); j++)\n"
+	"                       {\n"
+	"                       if (this.itemLayers[j] == this.selectedItem)\n"
+	"                           {\n"
+	"                           next = j + 1;\n"
+	"                           }\n"
+	"                       last = j;\n"
+	"                       }\n"
+	"                   if (next <= last)\n"
+	"                       dd_hilight_item(this.itemLayers[next]);\n"
+	"                   else\n"
+	"                       dd_hilight_item(this.itemLayers[first]);\n"
+	"                   i=this.labels.length;\n"
+	"                   }\n"
+	"                }\n"
+	"            }\n"
+	"        }\n"
+	"    else if (k == 13 && dd_lastkey != 13)\n"
+	"        {\n"
+	"        dd_select_item(this.selectedItem);\n"
+	"        dd_unhilight_item(this.selectedItem);\n"
+	"        }\n"
+	"    dd_lastkey = k;\n"
+	"    return false;\n"
+	"}\n", 0);
+
+   htrAddScriptFunction(s, "dd_hilight_item",
+	"function dd_hilight_item(l) {\n"
+	"   if (l.topLayer.selectedItem)\n"
+	"      dd_unhilight_item(l.topLayer.selectedItem);\n"
+	"   l.topLayer.selectedItem = l;\n"
+	"   l.bgColor = dd_current.colorHilight;\n"
+	"   range = l.topLayer.scrollPanelLayer.viewRangeBottom - l.topLayer.scrollPanelLayer.viewRangeTop;\n" 
+	"   if (l.topLayer.scrollPanelLayer.viewRangeBottom < l.y+16)\n"
+	"      {\n"
+	"      l.topLayer.scrollPanelLayer.viewRangeTop = l.y - range + 16;\n"
+	"      l.topLayer.scrollPanelLayer.viewRangeBottom = l.topLayer.scrollPanelLayer.viewRangeTop + range;\n"
+	"      }\n"
+	"   else if (l.topLayer.scrollPanelLayer.viewRangeTop > l.y)\n"
+	"      {\n"
+	"      l.topLayer.scrollPanelLayer.viewRangeTop = l.y;\n"
+	"      l.topLayer.scrollPanelLayer.viewRangeBottom = l.y + range;\n"
+	"      }\n"
+	"   l.topLayer.scrollPanelLayer.y = -l.topLayer.scrollPanelLayer.viewRangeTop;\n"
+	"}\n", 0);
+
+   htrAddScriptFunction(s, "dd_unhilight_item",
+	"function dd_unhilight_item(l) {\n"
+	"   l.bgColor = l.topLayer.colorBack;\n"
+	"   l.topLayer.selectedItem = null;\n"
+	"}\n", 0);
+
+   htrAddScriptFunction(s, "dd_select_item",
+	"function dd_select_item(l) {\n"
+	"   dd_current.document.images[8].src = '/sys/images/ico15b.gif';\n"
+	"   dd_current.ddLayer.visibility = 'hide';\n"
+	"   if (l.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
+	"      dd_write_item(dd_current.labelLayer, l.label, l.value, dd_current);\n"
+	"      if(dd_current.form)\n"
+	"         dd_current.form.DataNotify(dd_current);\n"
+	"   }\n"
+	"   dd_current = null;\n"
+	"   dd_lastkey = null;\n"
+	"}\n", 0);
+   
    /** Lose Keyboard Focus Handler function **/
    htrAddScriptFunction(s, "dd_losefocus", "\n"
 	"function dd_losefocus() {\n"
@@ -264,7 +380,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"function dd_additem(l, label, value) {\n"
 	"   l.labels.push(label);\n"
 	"   l.values.push(value);\n"
-	"   var tmpLayer = new Layer(1024, l.bg1Layer);\n"
+	"   var tmpLayer = new Layer(1024, l.scrollPanelLayer);\n"
 	"   tmpLayer.kind = 'dropdown';\n"
 	"   tmpLayer.subkind = 'dropdown_item';\n"
 	"   tmpLayer.topLayer = l;\n"
@@ -280,6 +396,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.itemLayers.push(tmpLayer);\n"
 	"   dd_write_item(tmpLayer, label, value);\n"
 	"   l.numItems++;\n"
+	"   l.scrollPanelLayer.clip.height = l.numItems * 16;\n" 
 	"   if (l.numItems > l.numDispElements && !l.dispScrollLayer) {\n"
 	"      l.dispScrollLayer = true;\n"
 	"      l.ddLayer.clip.width = l.clip.width;\n"
@@ -304,8 +421,10 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"      l.scrollLayer.document.images[1].subkind = 'dropdown_scroll';\n"
 	"      l.scrollLayer.document.images[2].subkind = 'dropdown_scroll';\n"
 	"   } else if (!l.dispScrollLayer) {\n"
+	"      l.scrollPanelLayer.viewRangeBottom = (l.numItems * 16);\n"
 	"      l.ddLayer.clip.height = ((l.numItems) * 16) + 2;\n"
 	"      l.bg1Layer.clip.height = l.ddLayer.clip.height - 1;\n"
+	"      l.bg2Layer.clip.height = l.bg1Layer.clip.height - 1;\n"
 	"   }\n"
 	"}\n", 0);
    
@@ -363,6 +482,25 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.bg1Layer.x = 1;\n"
 	"   l.bg1Layer.clip.width = l.ddLayer.clip.width;\n"
 
+	"   l.bg2Layer = new Layer(1024, l.bg1Layer);\n"
+	"   l.bg2Layer.visibility = 'inherit';\n"
+	"   l.bg2Layer.bgColor = '#cc0000';\n"
+	"   l.bg2Layer.clip.left = 0;\n"
+	"   l.bg2Layer.clip.top = 0;\n"
+	"   l.bg2Layer.clip.width = l.bg1Layer.clip.width - 2;\n"
+
+	"   l.scrollPanelLayer = new Layer(1024, l.bg2Layer);\n"
+	"   l.scrollPanelLayer.layer = l.scrollPanelLayer;\n"
+	"   l.scrollPanelLayer.topLayer = l;\n"
+	"   l.scrollPanelLayer.bgColor = '#cc0000';\n"
+	"   l.scrollPanelLayer.kind = 'dropdown';\n"
+	"   l.scrollPanelLayer.visibility = 'inherit';\n"
+	"   l.scrollPanelLayer.clip.left = 0;\n"
+	"   l.scrollPanelLayer.clip.top = 0;\n"
+	"   l.scrollPanelLayer.clip.width = l.bg2Layer.clip.width;\n"
+	"   l.scrollPanelLayer.viewRangeTop = 0;\n"
+	"   l.scrollPanelLayer.viewRangeBottom = 0;\n"
+
 	"   l.setvalue = dd_setvalue;\n"
 	"   l.getvalue = dd_getvalue;\n"
 	"   l.enable = dd_enable;\n"
@@ -370,8 +508,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.disable = dd_disable;\n"
 	"   l.clearvalue = dd_clearvalue;\n"
 	"   l.resetvalue = dd_resetvalue;\n"
+	"   l.keyhandler = dd_keyhandler;\n"
 	"   l.losefocushandler = dd_losefocus;\n"
-	"   pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dropdown', 'dropdown', 0);\n"
+	"   pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dropdown', 'dropdown', 1);\n"
 	"   if (fm_current) fm_current.Register(l);\n"
 	"}\n", 0);
 
@@ -379,7 +518,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"\n"
 	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
 	"   if (dd_current != null && dd_current == targetLayer.topLayer && targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
-	"      targetLayer.bgColor = dd_current.colorHilight;\n"
+	"      dd_hilight_item(targetLayer);\n"
 	"   }\n"
 	"\n");
 
@@ -395,42 +534,24 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   }\n"
 	"\n");
 
-   htrAddEventHandler(s, "document","MOUSEOUT", "dropdown", 
-	"\n"
-	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && dd_current == targetLayer.topLayer && targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
-	"      targetLayer.bgColor = dd_current.colorBack;\n"
-	"   }\n"
-	"\n");
-
    htrAddEventHandler(s, "document","MOUSEDOWN", "dropdown", 
 	"\n"
 	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
 	"   if (dd_current != null && (targetLayer != dd_current || targetLayer.kind != 'dropdown')) {\n"
 	"      if (targetLayer.subkind == 'dropdown_scroll' || targetLayer.subkind == 'dropdown_thumb') {\n"
-	"          il = dd_current.itemLayers;\n"
-	"          ddl = dd_current.ddLayer\n"
-	"          if (targetLayer.name == 'up') {\n"
+	"          if (targetLayer.name == 'up' && dd_current.topLayer.scrollPanelLayer.viewRangeTop > 0) {\n"
 	"              targetLayer.src = '/sys/images/ico13c.gif';\n"
-	"              for (i=il.length-1; i >= 0 && il[0].y < 0; i--) {\n"
-	"                  il[i].y += 8\n"
-	"              }\n"
-	"          } else if (targetLayer.name == 'down') {\n"
+	"              dd_current.topLayer.scrollPanelLayer.y += 8;\n"
+	"              dd_current.topLayer.scrollPanelLayer.viewRangeTop -= 8;\n"
+	"              dd_current.topLayer.scrollPanelLayer.viewRangeBottom -= 8;\n"
+	"          } else if (targetLayer.name == 'down' && dd_current.topLayer.scrollPanelLayer.viewRangeBottom < dd_current.topLayer.scrollPanelLayer.clip.height) {\n"
 	"              targetLayer.src = '/sys/images/ico12c.gif';\n"
-	"              for (i=0; i < il.length && il[il.length-1].y > ddl.clip.height-16; i++) {\n"
-	"                  il[i].y -= 8;\n"
-	"              }\n"
+	"              dd_current.topLayer.scrollPanelLayer.y -= 8;\n"
+	"              dd_current.topLayer.scrollPanelLayer.viewRangeTop += 8;\n"
+	"              dd_current.topLayer.scrollPanelLayer.viewRangeBottom += 8;\n"
 	"          }\n"
 	"      } else {\n"
-	"          dd_current.document.images[8].src = '/sys/images/ico15b.gif';\n"
-	"          dd_current.ddLayer.visibility = 'hide';\n"
-	"          if (targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
-	"             targetLayer.bgColor = dd_current.colorBack;\n"
-	"             dd_write_item(dd_current.labelLayer, targetLayer.label, targetLayer.value, dd_current);\n"
-	"             if(dd_current.form)\n"
-	"                 dd_current.form.DataNotify(dd_current);\n"
-	"          }\n"
-	"          dd_current = null;\n"
+	"          dd_select_item(targetLayer);\n"
 	"      }\n"
 	"   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
 	"      targetLayer.ddLayer.zIndex = 1000000;\n"
@@ -438,6 +559,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"      targetLayer.ddLayer.pageY = targetLayer.pageY + 18;\n"
 	"      targetLayer.document.images[8].src = '/sys/images/ico15c.gif';\n"
 	"      dd_current = targetLayer.topLayer;\n"
+	"      dd_lastkey = null;\n"
 	"      if(dd_current.form)\n"
 	"          dd_current.form.FocusNotify(dd_current);\n"
 	"      dd_current.ddLayer.visibility = 'inherit';\n"
