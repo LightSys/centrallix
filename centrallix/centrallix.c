@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.30 2004/08/02 14:09:33 mmcgill Exp $
+    $Id: centrallix.c,v 1.31 2004/08/28 06:27:13 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.31  2004/08/28 06:27:13  jorupp
+     * the widget drivers are all initialized in wgtrInitialize()
+
     Revision 1.30  2004/08/02 14:09:33  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -581,45 +584,6 @@ cxInitialize(void* v)
 
 	/** Initialize the wgtr module **/
 	wgtrInitialize();
-	wgtalrtInitialize();
-	wgtcaInitialize();
-	wgtcbInitialize();
-	wgtclInitialize();
-	wgtcmpdInitialize();
-	wgtconnInitialize();
-	wgtdtInitialize();
-	wgtddInitialize();
-	wgtebInitialize();
-	wgtexInitialize();
-	wgtfbInitialize();
-	wgtformInitialize();
-	wgtfsInitialize();
-	wgtsetInitialize();
-	wgthintInitialize();
-	wgthtmlInitialize();
-	wgtibtnInitialize();
-	wgtimgInitialize();
-	wgtlblInitialize();
-	wgtmenuInitialize();
-	wgtosrcInitialize();
-	wgtpageInitialize();
-	wgtpnInitialize();
-	wgtrbInitialize();
-	wgtrmtInitialize();
-	wgtsbInitialize();
-	wgtspaneInitialize();
-	wgtspnrInitialize();
-	wgtosmlInitialize();
-	wgttabInitialize();
-	wgttblInitialize();
-	wgtxxxInitialize();
-	wgttermInitialize();
-	wgttxInitialize();
-	wgttbtnInitialize();
-	wgttmInitialize();
-	wgttreeInitialize();
-	wgtvblInitialize();
-	wgtwinInitialize();
 
 	/** Initialize the Interface module **/
 	ifcInitialize();
