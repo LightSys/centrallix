@@ -62,10 +62,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.12 2002/09/24 09:53:58 jorupp Exp $
+    $Id: centrallix.c,v 1.13 2002/10/18 01:48:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.13  2002/10/18 01:48:45  gbeeley
+    Added attribute-based enable/disable module, so that structure file
+    editors can turn them on and off and not ignore them as a result of
+    a module being commented out.  This will also come in handy if we
+    want autoconf to automatically turn them on/off when make config is
+    done.
+
     Revision 1.12  2002/09/24 09:53:58  jorupp
      * check to ensure that libdl is there before including the header for it
 
@@ -144,6 +151,7 @@ cx_internal_LoadModules(char* type)
     pStructInf one_module;
     char* modtype;
     char* modpath;
+    char* modenable;
     pCxModule moduledata;
     int i,j,found;
     int n_loaded = 0;
@@ -171,6 +179,18 @@ cx_internal_LoadModules(char* type)
 	    if (!modpath || !modtype)
 		{
 		mssError(1,"CX","Module '%s' must have path and type settings; load failed",one_module->Name);
+		continue;
+		}
+
+	    /** Don't load it if it is disabled. **/
+	    modenable = NULL;
+	    stAttrValue(stLookup(one_module,"enable_module"), NULL, &modenable, 0);
+	    if (modenable && !strcasecmp(modenable, "no"))
+		{
+		if (!CxGlobals.QuietInit)
+		    {
+		    printf("mod: %s %s disabled\n", modtype, one_module->Name);
+		    }
 		continue;
 		}
 

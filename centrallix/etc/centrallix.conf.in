@@ -52,12 +52,12 @@ centrallix "system/config"
     // Loadable Modules
     modules "system/config"
 	{
-//	sybd "system/config-module" { path="##LIBDIR##/objdrv_sybase.so"; type="osdriver"; }
-//	http "system/config-module" { path="##LIBDIR##/objdrv_http.so"; type="osdriver"; }
-//	xml "system/config-module" { path="##LIBDIR##/objdrv_xml.so"; type="osdriver"; }
-//	mime "system/config-module" { path="##LIBDIR##/objdrv_mime.so"; type="osdriver"; }
-//	gzip "system/config-module" { path="##LIBDIR##/objdrv_gzip.so"; type="osdriver"; }
-//	dbl "system/config-module" { path="##LIBDIR##/objdrv_dbl.so"; type="osdriver"; }
+	sybd "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_sybase.so"; type="osdriver"; }
+	http "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_http.so"; type="osdriver"; }
+	xml "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_xml.so"; type="osdriver"; }
+	mime "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_mime.so"; type="osdriver"; }
+	gzip "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_gzip.so"; type="osdriver"; }
+	dbl "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_dbl.so"; type="osdriver"; }
 	}
     }
 
