@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.9 2003/04/25 04:31:22 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.10 2003/04/25 05:06:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.10  2003/04/25 05:06:58  gbeeley
+    Added insert support to OSML-over-HTTP, and very remedial Trx support
+    with the objCommit API method and Commit osdriver method.  CSV datafile
+    driver is the only driver supporting it at present.
+
     Revision 1.9  2003/04/25 04:31:22  gbeeley
     When creating new row with autokey, release the insert semaphore as
     soon as row has been inserted.
@@ -2047,6 +2052,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		    (*oxt)->OpType = OXT_OP_CREATE;
 		    (*oxt)->LLParam = (void*)inf;
 		    (*oxt)->Status = OXT_S_VISITED;
+		    (*oxt)->Object = obj;
 		    inf->Flags |= DAT_F_ROWPARSED;
 		    return inf;
 		    }
@@ -2204,10 +2210,10 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
     }
 
 
-/*** datClose - close an open file or directory.
+/*** datCommit - commit changes.
  ***/
 int
-datClose(void* inf_v, pObjTrxTree* oxt)
+datCommit(void* inf_v, pObjTrxTree* oxt)
     {
     pDatData inf = DAT(inf_v);
     unsigned char* insbuf;
@@ -2228,25 +2234,13 @@ datClose(void* inf_v, pObjTrxTree* oxt)
 		        {
 			/** FAIL the oxt. **/
 			(*oxt)->Status = OXT_S_FAILED;
-
-			/** Release the open object data **/
-	    	        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-	    	        inf->Pathname.OpenCtlBuf = NULL;
-			nmFree(inf,sizeof(DatData));
-			if (inf->Flags & DAT_F_HOLDINSERTSEM) syPostSem(inf->Node->InsertSem, 1, 0);
 			return -1;
 			}
 		    if (dat_internal_InsertRow(inf, inf->Node, insbuf) < 0)
 		        {
 			/** FAIL the oxt. **/
 			(*oxt)->Status = OXT_S_FAILED;
-
-			/** Release the open object data **/
 			nmFree(insbuf,DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1));
-	    	        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-	    	        inf->Pathname.OpenCtlBuf = NULL;
-			nmFree(inf,sizeof(DatData));
-			if (inf->Flags & DAT_F_HOLDINSERTSEM) syPostSem(inf->Node->InsertSem, 1, 0);
 			return -1;
 			}
 
@@ -2264,6 +2258,20 @@ datClose(void* inf_v, pObjTrxTree* oxt)
 	/** Release the row descriptor, if one **/
 	if (inf->Row) dat_internal_ReleaseRow(inf->Row);
 
+    return 0;
+    }
+
+
+/*** datClose - close an open object
+ ***/
+int
+datClose(void* inf_v, pObjTrxTree* oxt)
+    {
+    pDatData inf = DAT(inf_v);
+    int rval;
+
+	rval = datCommit(inf_v, oxt);
+
 	/** Close out the 'other' object as well... **/
 	if (inf->SpecObj != NULL) objClose(inf->SpecObj);
 	if (inf->DataObj != NULL) objClose(inf->DataObj);
@@ -2274,7 +2282,7 @@ datClose(void* inf_v, pObjTrxTree* oxt)
 	if (inf->Flags & DAT_F_HOLDINSERTSEM) syPostSem(inf->Node->InsertSem, 1, 0);
 	nmFree(inf,sizeof(DatData));
 
-    return 0;
+    return rval;
     }
 
 
@@ -3412,6 +3420,7 @@ datInitialize()
 	drv->GetNextMethod = datGetNextMethod;
 	drv->ExecuteMethod = datExecuteMethod;
 	drv->PresentationHints = datPresentationHints;
+	drv->Commit = datCommit;
 
 	nmRegister(sizeof(DatTableInf),"DatTableInf");
 	nmRegister(sizeof(DatData),"DatData");

@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.19 2003/04/25 04:09:28 gbeeley Exp $
+    $Id: obj.h,v 1.20 2003/04/25 05:06:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.20  2003/04/25 05:06:56  gbeeley
+    Added insert support to OSML-over-HTTP, and very remedial Trx support
+    with the objCommit API method and Commit osdriver method.  CSV datafile
+    driver is the only driver supporting it at present.
+
     Revision 1.19  2003/04/25 04:09:28  gbeeley
     Adding insert and autokeying support to OSML and to CSV datafile
     driver on a limited basis (in rowidkey mode only, which is the only
@@ -311,6 +316,7 @@ typedef struct _OSD
     int		(*ExecuteMethod)();
     pObjPresentationHints (*PresentationHints)();
     int		(*Info)();
+    int		(*Commit)();
     }
     ObjDriver, *pObjDriver;
 
@@ -582,6 +588,7 @@ int objSetDateFmt(pObjSession this, char* fmt);
 char* objGetDateFmt(pObjSession this);
 int objUnmanageObject(pObjSession this, pObject obj);
 int objUnmanageQuery(pObjSession this, pObjQuery qy);
+int objCommit(pObjSession this);
 
 /** objectsystem object functions **/
 pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type);

@@ -61,10 +61,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.32 2003/03/12 03:19:09 lkehresman Exp $
+    $Id: net_http.c,v 1.33 2003/04/25 05:06:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.33  2003/04/25 05:06:57  gbeeley
+    Added insert support to OSML-over-HTTP, and very remedial Trx support
+    with the objCommit API method and Commit osdriver method.  CSV datafile
+    driver is the only driver supporting it at present.
+
     Revision 1.32  2003/03/12 03:19:09  lkehresman
     * Added basic presentation hint support to multiquery.  It only returns
       hints for the first result set, which is the wrong way to do it.  I went
@@ -1192,7 +1197,7 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
     char hexbuf[3];
     int mode,mask;
     char* usrtype;
-    int i,t,n,o,cnt,start,flags;
+    int i,t,n,o,cnt,start,flags,len,rval;
     pStruct subinf;
     MoneyType m;
     DateTime dt;
@@ -1543,8 +1548,34 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 		nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1,encode_attrs);
 		}
-	    else if (!strcmp(request,"setattrs"))
+	    else if (!strcmp(request,"setattrs") || !strcmp(request,"create"))
 	        {
+		/** First, if creating, open the new object. **/
+		if (!strcmp(request,"create"))
+		    {
+		    len = strlen(req_inf->StrVal);
+		    if (len < 1 || req_inf->StrVal[len-1] != '*' || (len >= 2 && req_inf->StrVal[len-2] != '/'))
+			obj = objOpen(objsess, req_inf->StrVal, O_CREAT | O_RDWR, 0600, "system/object");
+		    else
+			obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
+		    if (!obj)
+			{
+			snprintf(sbuf,256,"Content-Type: text/html\r\n"
+				 "Pragma: no-cache\r\n"
+				 "\r\n"
+				 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+			mssError(0,"NHT","Could not create object");
+			return -1;
+			}
+		    else
+			{
+			obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+			}
+		    }
+		else
+		    obj_handle = 0;
+
 		/** Find all GET params that are NOT like ls__thingy **/
 		for(i=0;i<req_inf->nSubInf;i++)
 		    {
@@ -1589,12 +1620,38 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 			//printf("%i\n",retval);
 			}
 		    }
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-		         0);
-	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+		if (!strcmp(request,"create"))
+		    {
+		    rval = objCommit(objsess);
+		    if (rval < 0)
+			{
+			snprintf(sbuf,256,"Content-Type: text/html\r\n"
+				 "Pragma: no-cache\r\n"
+				 "\r\n"
+				 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+			objClose(obj);
+			}
+		    else
+			{
+			snprintf(sbuf,256,"Content-Type: text/html\r\n"
+				 "Pragma: no-cache\r\n"
+				 "\r\n"
+				 "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
+				 obj_handle);
+			fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+			nht_internal_WriteOneAttr(sess,obj,conn,obj_handle,"name",encode_attrs);
+			}
+		    }
+		else
+		    {
+		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			     "Pragma: no-cache\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
+			     0);
+		    fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+		    }
 		}
 	    }
 	

@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.5 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: obj_trx.c,v 1.6 2003/04/25 05:06:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.6  2003/04/25 05:06:58  gbeeley
+    Added insert support to OSML-over-HTTP, and very remedial Trx support
+    with the objCommit API method and Commit osdriver method.  CSV datafile
+    driver is the only driver supporting it at present.
+
     Revision 1.5  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -444,6 +449,39 @@ oxtClose(void* this_v, pObjTrxTree* oxt)
 
 	/** Free the ptr structure. **/
 	nmFree(this,sizeof(ObjTrxPtr));
+
+    return rval;
+    }
+
+
+/*** oxtCommit - commit changes
+ ***/
+int
+oxtCommit(void* this_v, pObjTrxTree* oxt)
+    {
+    pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    pObjTrxTree* pass_oxt;
+    int rval;
+
+    	/** Call the driver to make the close operation. **/
+	if (!this->Obj->LowLevelDriver->Commit) return 0;
+    	pass_oxt = &(this->Trx);
+	rval = this->Obj->LowLevelDriver->Commit(this->LLParam, pass_oxt);
+
+	/** Completed or error? **/
+	if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
+	    {
+	    if (*oxt == *pass_oxt) *oxt = NULL;
+	    obj_internal_FreeTree(*pass_oxt);
+	    *pass_oxt = NULL;
+	    }
+	else if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_FAILED)
+	    {
+	    rval = -1;
+	    if (*oxt == *pass_oxt) *oxt = NULL;
+	    obj_internal_FreeTree(*pass_oxt);
+	    *pass_oxt = NULL;
+	    }
 
     return rval;
     }
@@ -914,6 +952,7 @@ oxtInitialize()
 	drv->GetNextMethod = oxtGetNextMethod;
 	drv->ExecuteMethod = oxtExecuteMethod;
 	drv->PresentationHints = oxtPresentationHints;
+	drv->Commit = oxtCommit;
 
 	nmRegister(sizeof(ObjTrxPtr),"ObjTrxPtr");
 	nmRegister(sizeof(ObjTrxQuery),"ObjTrxQuery");

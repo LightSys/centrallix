@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_session.c,v 1.5 2003/04/25 02:43:28 gbeeley Exp $
+    $Id: obj_session.c,v 1.6 2003/04/25 05:06:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_session.c,v $
 
     $Log: obj_session.c,v $
+    Revision 1.6  2003/04/25 05:06:58  gbeeley
+    Added insert support to OSML-over-HTTP, and very remedial Trx support
+    with the objCommit API method and Commit osdriver method.  CSV datafile
+    driver is the only driver supporting it at present.
+
     Revision 1.5  2003/04/25 02:43:28  gbeeley
     Fixed some object open nuances with node object caching where a cached
     object might be open readonly but we would need read/write.  Added a
@@ -207,4 +212,25 @@ objUnmanageQuery(pObjSession this, pObjQuery qy)
     return 0;
     }
 
+
+/*** objCommit - commit changes made during a transaction.  Only partly
+ *** implemented at present, and only if supported by the underlying
+ *** driver.
+ ***/
+int
+objCommit(pObjSession this)
+    {
+    int rval = 0;
+    pObject open_obj;
+
+	/** For each open object in the session's transaction tree, do
+	 ** a commit operation.  Just top-level object for now (simple case).
+	 **/
+	if (!this->Trx) return 0;
+	open_obj = this->Trx->Object;
+	if (open_obj && open_obj->Driver->Commit)
+	    rval = open_obj->Driver->Commit(open_obj->Data, &(this->Trx));
+
+    return rval;
+    }
 
