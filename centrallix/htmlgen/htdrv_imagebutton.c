@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.4 2002/03/16 05:12:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.4  2002/03/16 05:12:02  gbeeley
+    Added the buttonName javascript property for imagebuttons and text-
+    buttons.  Allows them to be identified more easily via javascript.
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -175,7 +179,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Our initialization processor function. **/
 	htrAddScriptFunction(s, "ib_init", "\n"
-		"function ib_init(l,n,p,c,w,h,po)\n"
+		"function ib_init(l,n,p,c,w,h,po,nm)\n"
 		"    {\n"
 		"    l.LSParent = po;\n"
 	     	"    l.nofocus = true;\n" 
@@ -184,6 +188,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    l.img.kind = 'ib';\n"
 		"    l.kind = 'ib';\n"
 		"    l.clip.width = w;\n"
+		"    l.buttonName = nm;\n"
 		"    if (h == -1) l.nImage = new Image();\n"
 		"    else l.nImage = new Image(w,h);\n"
 		"    l.nImage.src = n;\n"
@@ -198,8 +203,8 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Script initialization call. **/
 	snprintf(sbuf,160,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf,160,"    ib_init(%s,'%s','%s','%s',%d,%d,%s);\n",
-		nptr, n_img, p_img, c_img, w, h, parentobj);
+	snprintf(sbuf,160,"    ib_init(%s,'%s','%s','%s',%d,%d,%s,'%s');\n",
+		nptr, n_img, p_img, c_img, w, h, parentobj,nptr);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/

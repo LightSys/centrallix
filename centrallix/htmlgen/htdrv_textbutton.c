@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.5 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.6 2002/03/16 05:12:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.6  2002/03/16 05:12:02  gbeeley
+    Added the buttonName javascript property for imagebuttons and text-
+    buttons.  Allows them to be identified more easily via javascript.
+
     Revision 1.5  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -195,7 +199,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Our initialization processor function. **/
 	htrAddScriptFunction(s, "tb_init", "\n"
-		"function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts)\n"
+		"function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts,nm)\n"
 		"    {\n"
 		"    l.LSParent = p;\n"
 	     	"    l.nofocus = true;\n"
@@ -208,6 +212,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    l2.document.kind = 'tb';\n"
 		"    l.document.layer = l;\n"
 		"    l2.document.layer = l;\n"
+		"    l.buttonName = nm;\n"
 	        "    l.l2 = l2;\n"
 		"    l.tp = top;\n"
 		"    l.btm = btm;\n"
@@ -231,8 +236,8 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Script initialization call. **/
 	snprintf(sbuf,320,"    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf,320,"    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d);\n",
-		nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts);
+	snprintf(sbuf,320,"    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
+		nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
