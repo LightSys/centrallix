@@ -52,5 +52,9 @@ dnl Sybase support.
 AH_TEMPLATE([USE_SYBASE], [Define for Sybase support])
 CENTRALLIX_CHECK_SYBASE
 
+dnl XML osdriver support.
+AH_TEMPLATE([USE_XML], [Define for XML support])
+CENTRALLIX_CHECK_XML_OS
+
 AC_SUBST(OBJDRIVERMODULES)
 AC_OUTPUT(Makefile, echo timestamp > stamp-h)

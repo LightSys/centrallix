@@ -198,8 +198,78 @@ AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
 	else
 	    AC_MSG_RESULT(no)
 	fi
+    ]
+)
 
-	AC_SUBST(SYBASE_LIBS)
-	AC_SUBST(SYBASE_CFLAGS)
+
+dnl Test for the XML os driver.
+AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
+    [
+	AC_MSG_CHECKING(if xml support is desired)
+
+	AC_ARG_ENABLE(xml,
+	    AC_HELP_STRING([--disable-xml],
+		[disable xml support]
+	    ),
+	    WITH_XML="$enableval", 
+	    WITH_XML="yes"
+	)
+
+	AC_ARG_WITH(libxml,
+	    AC_HELP_STRING([--with-libxml=PATH],
+		[library path for xml library (default is /usr/lib)]
+	    ),
+	    libxml_libdir="$withval",
+	    libxml_libdir="`xml2-config --libs | cut -f1 | cut -b 3-`"
+	)
+
+	AC_ARG_WITH(libxml-inc,
+	    AC_HELP_STRING([--with-libxml-inc=PATH],
+		[include path for Sybase headers (default is /usr/include)]
+	    ),
+	    libxml_incdir="$withval",
+	    libxml_incdir="`xml2-config --cflags | cut -f1 | cut -b 3-`"
+	)
+ 
+	if test "$WITH_XML" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+	    temp=$CPPFLAGS
+	    CPPFLAGS="$CPPFLAGS -I$libxml_incdir"
+	    tempC=$CFLAGS
+	    CFLAGS="$CFLAGS -I$libxml_incdir"
+	    AC_CHECK_HEADER(libxml/parser.h, 
+		WITH_XML="yes",
+		WITH_XML="no"
+	    )
+	    CPPFLAGS="$temp"
+	    CFLAGS="$tempC"
+
+	    if test "$WITH_XML" = "yes"; then
+		XML_CFLAGS="-I$libxml_incdir"
+		temp=$LIBS
+		LIBS="$LIBS -L$libxml_libdir"
+		AC_CHECK_LIB(xml2, xmlParseFile, WITH_XML_XML="yes", WITH_XML_XML="no", -lxml2)
+		if test "$WITH_XML_XML" = "no"; then
+		    WITH_XML="no"
+		else
+		    XML_LIBS="-L$libxml_libdir -lxml2"
+		fi
+		LIBS="$temp"
+	    fi
+	fi
+
+	AC_MSG_CHECKING(if XML support can be enabled)
+	if test "$WITH_XML" = "yes"; then
+	    AC_DEFINE(USE_XML)
+	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_xml.so"
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+
+	AC_SUBST(XML_CFLAGS)
+	AC_SUBST(XML_LIBS)
     ]
 )

@@ -86,12 +86,10 @@ OBJDRIVERMODULES=$(patsubst %,osdrivers/%,$(XOBJDRIVERMODULES))
 XV3OBJDRIVERS=$(XOBJDRIVERMODULES) \
 	      objdrv_ux.o \
 	      objdrv_unixuser.o \
-	      objdrv_sybase.o \
 	      objdrv_struct.o \
 	      objdrv_qytree.o \
 	      objdrv_datafile.o \
-	      objdrv_audio.o \
-	      objdrv_http.o
+	      objdrv_audio.o 
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
 # DHTML generation subsystem, including drivers and the ht_render main system.
@@ -344,6 +342,9 @@ osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 
 osdrivers/objdrv_http.so: osdrivers/objdrv_http.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+
+osdrivers/objdrv_xml.so: osdrivers/objdrv_xml.c
+	$(CC) $(CFLAGS) @XML_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @XML_LIBS@ -o $@
 
 # Dependencies made by "make depend"
 include .depend
