@@ -180,7 +180,10 @@ function tbld_up_click()
 function tbld_down_click()
     {
     if(this.table.startat+this.table.windowsize-1<=this.table.osrc.LastRecord || this.table.osrc.qid) 
+	{
+//	alert("startat is " + this.table.startat + ", windowsize is " + this.table.windowsize);
 	this.table.osrc.ScrollTo(++this.table.startat+this.table.windowsize);
+	}
     }
 
 function tbld_bar_click(e)
@@ -200,8 +203,8 @@ function tbld_bar_click(e)
 
 function tbld_change_width(move)
     {
-    l=this;
-    t=l.row.table;
+    var l=this;
+    var t=l.row.table;
     if(l.clip.w==undefined) l.clip.w=l.clip.width
     if(l.x+l.clip.w+move+l.rb.clip.w>l.row.clip.w)
 	move=l.row.clip.w-l.rb.clip.w-l.x-l.clip.w;
@@ -308,6 +311,13 @@ function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborde
     t.osrc = osrc_current;
     t.down.m+='65626c=6573 0d4a6=f6e2 05275=70700d';
     t.windowsize = windowsize > 0 ? windowsize : t.osrc.replicasize;
+
+    // Sanity bounds checks on visible records
+    if (t.windowsize > height/t.rowheight)
+	t.windowsize = Math.floor(height/t.rowheight);
+    if (t.windowsize > t.osrc.replicasize)
+	t.windowsize = t.osrc.replicasize;
+
     t.maxwindowsize = t.windowsize;
     t.rows=new Array(t.windowsize+1);
     t.clip.width=width;

@@ -739,6 +739,7 @@ function osrc_scroll_next_page()
 
 function osrc_scroll_to(recnum)
     {
+//    alert("osrc scrolling to " + recnum);
     this.moveop=false;
     this.TargetRecord=recnum;
     if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)
