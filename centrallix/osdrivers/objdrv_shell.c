@@ -52,7 +52,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.9 2002/12/24 09:28:53 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.10 2002/12/24 09:36:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -164,6 +164,7 @@ shl_internal_Launch(pShlData inf)
 	if(pEV)
 	    {
 	    p = (char*)malloc(strlen(name)+2+(pEV->value?strlen(pEV->value):0));
+	    sprintf(p,"%s=%s",name,pEV->value?pEV->value:"");
 	    xaAddItem(&inf->envArray,p);
 	    }
 	}
