@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_berk.c,v 1.1 2003/08/05 16:45:12 affert Exp $
+    $Id: objdrv_berk.c,v 1.2 2003/08/13 14:45:55 affert Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_berk.c,v $
 
     $Log: objdrv_berk.c,v $
+    Revision 1.2  2003/08/13 14:45:55  affert
+    Added a new attribute ('transdata') to allow data to be entered in hex
+    translated form.  This is a temporary solution to the problem of allowing
+    null bytes in a string attribute.
+    Also fixed a few small bugs and updated some comments.
+
     Revision 1.1  2003/08/05 16:45:12  affert
     Initial Berkeley DB support.
 
@@ -88,7 +94,7 @@ typedef struct EN
     struct EN*	    pNext;
     int		    nNumOpen;
     int		    nSysOpen;
-    pObject	    PrevObj;	    /* this is causing a bug :( */
+    pObject	    PrevObj;
     }
     EnvNode, *pEnvNode;
 
@@ -220,7 +226,7 @@ berkInternalTranslateKey(pBerkData inf)
 	cur[1]=0;
 	
 #if DEBUGGER
-	mssError(0, "BERK", "  InternalTranslateKey called with key '%s'", inf->Pathname.Elements[sp]);
+	mssError(0, "BERK", "  InternalTranslateKey called with key '%s'", inf->Pathname.Elements[inf->obj->SubPtr]);
 #endif
 	/* make sure there is an even number of chars */
 	inf->pKey = nmMalloc(sizeof(DBT));
@@ -334,7 +340,7 @@ berkInternalCreateEnv(pBerkData inf, pEnvNode pPrevNode)
 	strcpy(pEnvNodeTemp->Filename, inf->Filename);
 	}
     inf->pMyEnvNode = pEnvNodeTemp;
-    inf->pMyEnvNode->PrevObj = inf->obj->Prev; /* HERE */
+    inf->pMyEnvNode->PrevObj = inf->obj->Prev;
     objLinkTo(inf->pMyEnvNode->PrevObj);
     inf->pMyEnvNode->nNumOpen = 1;
     /* Create and open the environment */
@@ -482,7 +488,7 @@ berkInternalRecVerify(pBerkData inf)
 		mssError(0, "BERK", "berkInternalRecVerify: key not found, so going to create it. pKey = '%s'", inf->pKey->data);
 #endif
 		/* put an array with 1 element that is NULL into data */
-		if(inf->pNewData)
+		if(inf->pNewData && inf->pNewData->data)
 		    {
 		    inf->pData->data = nmSysMalloc(inf->pNewData->size);
 		    if(!inf->pData->data) return -1;
@@ -754,43 +760,11 @@ berkOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 #if DEBUGGER
 	    mssError(0, "BERK", "berkOpen:  about to call get with inf->pKey->data = '%s' and size '%d'", inf->pKey->data, inf->pKey->size);
 #endif
-	    r = inf->pMyEnvNode->TheDatabase->get(inf->pMyEnvNode->TheDatabase, NULL, inf->pKey, inf->pData, 0);
-	    if(r == DB_NOTFOUND)
+	    /* make sure the record exists and is valid */
+	    if(berkInternalRecVerify(inf))
 		{
-		if(inf->obj->Mode & O_CREAT)
-		    {
-#if DEBUGGER
-		    mssError(0, "BERK", "berkOpen: key not found, so going to create it. pKey = '%s'", inf->pKey->data);
-#endif
-		    /* put an array with 1 element that is NULL into data */
-		    inf->pData->data = nmSysMalloc(1);
-		    inf->pData->size = 1;
-		    ((char*)inf->pData->data)[0] = 0;
-		    inf->pData->flags = 0;
-		    /* create the thang */
-		    /* make sure it has writing allowed */
-		    if(!((inf->obj->Mode & O_ACCMODE) == O_WRONLY || (inf->obj->Mode & O_ACCMODE) == O_RDWR)) return NULL;
-		    /* close any open cursors (to allow writing to the database */
-		    berkInternalCloseCursors(inf);
-		    /* add the pKey to the database */
-		    r = inf->pMyEnvNode->TheDatabase->put(inf->pMyEnvNode->TheDatabase, NULL, inf->pKey, inf->pData, 0);
-		    for(i=0;r==DB_LOCK_DEADLOCK && i < 10;i++)
-			r=inf->pMyEnvNode->TheDatabase->put(inf->pMyEnvNode->TheDatabase, NULL, inf->pKey, inf->pData, 0);
-		    if(r != 0)
-			return NULL;
-		    return (void*) inf;
-		    }
-		mssError(0, "BERK", "berkOpen: tried to get key '%s' which doesn't exist", inf->pKey->data);
-		berkInternalDestructor(inf);
+		mssError(0, "BERK", "berkOpen: RecVerify failed");
 		return NULL;
-		}
-	    else
-		{
-		if(inf->obj->Mode & O_CREAT && inf->obj->Mode & O_EXCL)
-		    {
-		    mssError(0, "BERK", "berkOpen called with O_CREAT and O_EXCL with '%s' that exists", inf->pKey->data);
-		    return NULL;
-		    }
 		}
 	    }
 	return (void*)inf;
@@ -837,7 +811,10 @@ berkDelete(pObject obj, pObjTrxTree* oxt)
 	inf = (pBerkData)obj->Data;
 	/* check to make sure this is a DBT */
 	if(inf->Type != BERK_TYPE_DBT)
+	    {
+	    mssError(0, "BERK", "delete: only works for DBTs.  Can't delete whole file");
 	    return -1;
+	    }
 #if DEBUGGER
 	mssError(0, "BERK", " inf->pKey to be delete = '%s'", inf->pKey->data);
 #endif
@@ -1245,8 +1222,6 @@ berkQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    nmFree(inf, sizeof(BerkData)); return NULL; 
 	    }
 	    
-	/* LOOK AT THIS: I'm not sure if this is the right way to set Pathname->Elements */
-	/* IE will this set it to the right location? */
 	inf->Pathname.Elements[inf->Pathname.nElements-1]=p;
 	
 	/* NULL seperate the elements in the pathname */
@@ -1342,6 +1317,7 @@ berkGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if(!strcmp(attrname, "key")) return DATA_T_STRING;	/* TODO: these can't really stay as strings */
 	    if(!strcmp(attrname, "size"))return DATA_T_INTEGER;
 	    if(!strcmp(attrname, "key_size")) return DATA_T_INTEGER;
+	    if(!strcmp(attrname, "transdata")) return DATA_T_STRING;	/* temp solution: allow data to be translated into hex */
 	    }
 	
 	if(inf->Type == BERK_TYPE_FILE)
@@ -1431,6 +1407,15 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    inf->pStrAttr[inf->pKey->size] = 0;
 		    *((char**)val) = inf->pStrAttr;
 		    }
+		else if(!strcmp(attrname, "transdata"))
+		    {
+		    /* data translated into hex form */
+		    inf->pStrAttr = nmSysMalloc(inf->pData->size * 2 + 1);
+		    inf->pStrAttr[inf->pData->size * 2] = 0;
+		    if(berkInternalKeyToHex(inf->pStrAttr, inf->pData->data, inf->pData->size*2+1, inf->pData->size))
+			return -1;
+		    *((char**)val) = inf->pStrAttr;
+		    }
 		else /* attrname wasn't data or key */
 		    return -1;
 		return 0;
@@ -1506,6 +1491,8 @@ berkGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 		return "size";
 	    case 4:
 		return "key_size";
+	    case 5:
+		return "transdata";
 	    default:
 		return NULL;
 	    }
@@ -1530,9 +1517,10 @@ int
 berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pBerkData inf;
-    int i, r;
+    int i, r, NewDataFlag;
 
     inf = (pBerkData)inf_v;
+    NewDataFlag = 0;
     /* this is the same no matter what type this is */
     if(!strcmp(attrname, "annotation"))
 	{
@@ -1552,16 +1540,16 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    {
 	    if(!strcmp(attrname, "name"))
 		{
+		i = strlen(*(char**)val);
+		if(i != ((int)(i/2))*2)
+		    {
+		    mssError(0, "BERK", "SetAttrVal: invalid name: must be hex encoded, and therefor even length");
+		    return -1;
+		    }
+		/* set the name */
+		memccpy(inf->ObjName, *(char**)val, '\0', OBJSYS_MAX_PATH);
 		if(inf->AutoName)
 		    {
-		    /* set the name */
-		    i = strlen(*(char**)val);
-		    if(i != ((int)(i/2))*2)
-			{
-			mssError(0, "BERK", "SetAttrVal: invalid name: must be hex encoded, and therefor even length");
-			return -1;
-			}
-		    memccpy(inf->ObjName, *(char**)val, '\0', OBJSYS_MAX_PATH);
 		    inf->pKey->data = nmSysMalloc(i / 2);
 		    inf->pKey->size = i / 2;
 		    
@@ -1572,11 +1560,16 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    }
 		else
 		    {
-		    /* not currently supported: would be changing the name */
-		    mssError(0, "BERK", "name changing for already existing DBTs is NOT supported");
-		    return -1;
+		    /* remove old newKey */
+		    if(inf->newKey)
+			nmSysFree(inf->newKey);
+		    inf->newKey = nmSysMalloc((i / 2) + 1);
+		    inf->newKey[(i/2)] = '\0';
+		    if(!inf->newKey) return -1;
+		    if(berkInternalHexToKey(inf->newKey, inf->ObjName, (i / 2), i)) return -1;
 		    }
 		/* change the name */
+		return 0;
 		}
 	    if(!strcmp(attrname, "data"))
 		{
@@ -1592,6 +1585,31 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		inf->pData->size = strlen(*(const char**)val);
 		inf->pData->data = nmSysMalloc(inf->pData->size); if(!inf->pData->data) return -1;
 		memcpy(inf->pData->data, *(void**)val, inf->pData->size);
+		NewDataFlag = 1;
+		}
+	    if(!strcmp(attrname, "transdata"))
+		{
+		if(datatype!= DATA_T_STRING)
+		    {
+		    mssError(0, "BERK", "Trying to set 'transdata' attribute, datatype needs to be string");
+		    return -1;
+		    }
+		i = strlen(*(const char**)val);
+		
+		if(i != (((int)(i/2))*2))
+		    {
+		    mssError(0, "BERK", "length of transdata must be even");
+		    return -1;
+		    }
+		if(inf->pData->data) nmSysFree(inf->pData->data);
+		inf->pData->size = i/2;
+		inf->pData->data = nmSysMalloc(inf->pData->size);
+		if(!inf->pData->data) return -1;
+		berkInternalHexToKey(inf->pData->data, *(char**)val, inf->pData->size, i);
+		NewDataFlag = 1;
+		}
+	    if(NewDataFlag)
+		{
 		/* if inf->AutoName, then all we have to do is set inf->pData->data */
 		if(inf->AutoName)
 		    {
@@ -1643,12 +1661,13 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		if(inf->newKey)
 		    nmSysFree(inf->newKey);
 		/* make room for the new one */
-		inf->newKey = nmSysMalloc(strlen(*(char**)val));
+		inf->newKey = nmSysMalloc(strlen(*(char**)val) + 1);
+		inf->newKey[strlen(*(char**)val)] = '\0';
 		if(!inf->newKey) return -1;
 		/* copy the key into inf->newKey */
 		memcpy((void*)inf->newKey, *(void**)val, strlen(*(char**)val));
 		/* on close, if newKey has memory, it will be copied in */
-		}    
+		}
 	    break;
 	    }
 	case BERK_TYPE_FILE:
@@ -1785,10 +1804,13 @@ berkInternalSysFree(void *ptr)
     return;
     }
 
+/*** SysFsync  this doesn't need to do anything, becuase everything gets written at write time ***/
 int
 berkInternalSysFsync(int fd)
     {
+#if DEBUGGER
     mssError(0, "BERK", "   SysFsync got run for '%d'", fd);
+#endif
     return 0;
     }
 
@@ -1857,8 +1879,6 @@ berkInternalSysOpen(const char *path, int flags, ...)
 	    mssError(0, "BERK", "   SysOpen got '%s' in working dir '%s' & !O_CREAT", path, cBuf);
 #endif
 
-
-	/* see what happens if i tell it that i opened __db.001 */
 	i=0;
 	/* find next available FD */
 	while(i<BERK_INF.TableSize && BERK_INF.pFDTable[i]!=NULL)
@@ -1880,7 +1900,6 @@ berkInternalSysOpen(const char *path, int flags, ...)
 	    memcpy(p, BERK_INF.pOffsetTable, sizeof(int*) * (BERK_INF.TableSize - 16));
 	    nmFree(BERK_INF.pOffsetTable, (BERK_INF.TableSize - 16) * sizeof(pEnvNode));
 	    BERK_INF.pOffsetTable = p;
-	    i = BERK_INF.TableSize - 16;
 	    }
 	/* at this point, i is the next available FD */
 	pEnvNodeTemp = BERK_INF.pEnvList;
@@ -1890,7 +1909,6 @@ berkInternalSysOpen(const char *path, int flags, ...)
 	    }
 	/* even if this is null, we still want to put it in the list */
 	BERK_INF.pFDTable[i] = pEnvNodeTemp;
-	BERK_INF.pFDTable[i]->nSysOpen++;
 	/* initialize the Offset to the beginning of the file: needed for when FD is reused */
 	BERK_INF.pOffsetTable[i] = 0;
 	if(pEnvNodeTemp)
@@ -1898,6 +1916,8 @@ berkInternalSysOpen(const char *path, int flags, ...)
 #if DEBUGGER
 	    mssError(0, "BERK", "   SysOpen is returning '%d'", i);
 #endif
+	    /* SysOpen is used to keep track how many times this file has been opened: is -- on close */
+	    BERK_INF.pFDTable[i]->nSysOpen++;
 	    return i;
 	    }
 	/*implied else*/
@@ -1921,7 +1941,7 @@ berkInternalSysRead(int fd, void *buf, size_t nbytes)
 		mssError(0, "BERK", "SysRead: this filedescriptor has lost its link to its object");
 		return -1;
 		}
-	    r = objRead(BERK_INF.pFDTable[fd]->PrevObj, buf, nbytes, BERK_INF.pOffsetTable[fd], FD_U_SEEK); /* HERE */
+	    r = objRead(BERK_INF.pFDTable[fd]->PrevObj, buf, nbytes, BERK_INF.pOffsetTable[fd], FD_U_SEEK);
 	    if(r!=-1)
 		BERK_INF.pOffsetTable[fd] += r;
 #if DEBUGGER
@@ -2016,7 +2036,7 @@ berkInternalSysWrite(int fd, const void *buffer, size_t nbytes)
 	memcpy(temp, buffer, nbytes);
         if(BERK_INF.pFDTable[fd])
             {
-            r = objWrite(BERK_INF.pFDTable[fd]->PrevObj, temp, nbytes, BERK_INF.pOffsetTable[fd], FD_U_SEEK); /* HERE */
+            r = objWrite(BERK_INF.pFDTable[fd]->PrevObj, temp, nbytes, BERK_INF.pOffsetTable[fd], FD_U_SEEK);
             if(r!=-1)
                 BERK_INF.pOffsetTable[fd] += r;
 	    else
