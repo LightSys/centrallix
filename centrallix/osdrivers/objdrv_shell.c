@@ -51,7 +51,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.1 2002/11/11 22:50:14 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.2 2002/11/12 00:28:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -236,6 +236,30 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    /** switch to pipe as stdout **/
 	    dup2(fdesout[1],1);
 	    close(fdesout[1]);
+
+	    /** security issue: when centrallix runs as root with system
+	     ** authentication, the threads run with ruid=root, euid=user,
+	     ** and we need to get rid of the ruid=root here so that the
+	     ** command's privs are more appropriate.  Same for group id.
+	     **/
+	    if (getuid() != geteuid())
+		{
+		if (setreuid(geteuid(),-1) < 0)
+		    {
+		    /** Rats!  we couldn't do it! **/
+		    mssError(1,"SHL","Could not drop privileges!");
+		    _exit(1);
+		    }
+		}
+	    if (getgid() != getegid())
+		{
+		if (setregid(getegid(),-1) < 0)
+		    {
+		    /** Rats!  we couldn't do it! **/
+		    mssError(1,"SHL","Could not drop group privileges!");
+		    _exit(1);
+		    }
+		}
 
 	    /** make the exec() call **/
 	    //execlp(inf->program,inf->progname,inf->arg1,inf->arg2,NULL);
