@@ -1,0 +1,8 @@
+$Version=2$
+myshell "system/shell"
+{
+    program = "/usr/bin/top";
+    arg="top","-d5";
+    changeable="TERM";
+    TERM="vt100";
+}

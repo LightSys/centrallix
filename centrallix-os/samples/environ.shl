@@ -1,0 +1,9 @@
+$Version=2$
+myshell "system/shell"
+{
+    program = "/bin/bash";
+    arg="bash","-c","export";
+    changeable="TERM";
+    HOME="/root";
+    TERM="vt100";
+}
