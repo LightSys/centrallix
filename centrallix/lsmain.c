@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include "centrallix.h"
 #include "mtask.h"
 #include "obj.h"
 #include "xstring.h"
@@ -43,10 +44,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.5 2001/11/12 20:43:43 gbeeley Exp $
+    $Id: lsmain.c,v 1.6 2002/02/14 00:55:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.6  2002/02/14 00:55:20  gbeeley
+    Added configuration file centrallix.conf capability.  You now MUST have
+    this file installed, default is /usr/local/etc/centrallix.conf, in order
+    to use Centrallix.  A sample centrallix.conf is found in the centrallix-os
+    package in the "doc/install" directory.  Conf file allows specification of
+    file locations, TCP port, server string, auth realm, auth method, and log
+    method.  rootnode.type is now an attribute in the conf file instead of
+    being a separate file, and thus is no longer used.
+
     Revision 1.5  2001/11/12 20:43:43  gbeeley
     Added execmethod nonvisual widget and the audio /dev/dsp device obj
     driver.  Added "execmethod" ls__mode in the HTTP network driver.
@@ -91,6 +101,10 @@ char* cx__stability = STABILITY;
 char* cx__years = YEARS;
 
 
+/*** Instantiate the globals from centrallix.h 
+ ***/
+CxGlobals_t CxGlobals;
+
 /*** start - this function is called by the MTASK module once the 
  *** mtInitialize() routine is finished intializing the first thread.  This
  *** is where processing really starts.  The purpose of this function is
@@ -100,21 +114,63 @@ char* cx__years = YEARS;
 void
 start(void* v)
     {
+    pFile cxconf;
+    pStructInf mss_conf;
+    char* authmethod;
+    char* authmethodfile;
+    char* logmethod;
+    char* logprog;
+    int log_all_errors;
+    char* ptr;
 
 #ifndef LS_QUIET_INIT
+
 	/** Startup message **/
-	printf("\n");
-	printf("Centrallix/%s build #%4.4d-%d [%s]\n\n", cx__version, cx__build, cx__subbuild, cx__stability);
-	printf("Copyright (C) %s LightSys Technology Services, Inc.\n", cx__years);
-	printf("An open source community developed project.  Provided with\n");
-	printf("ABSOLUTELY NO WARRANTY.  See the file 'COPYING' for details.\n");
-	printf("\n");
+	if (!CxGlobals.QuietInit)
+	    {
+	    printf("\n");
+	    printf("Centrallix/%s build #%4.4d-%d [%s]\n\n", cx__version, cx__build, cx__subbuild, cx__stability);
+	    printf("Copyright (C) %s LightSys Technology Services, Inc.\n", cx__years);
+	    printf("An open source community developed project.  Provided with\n");
+	    printf("ABSOLUTELY NO WARRANTY.  See the file 'COPYING' for details.\n");
+	    printf("\n");
+	    }
+
 #endif
+
+
+	/** Load the configuration file **/
+	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
+	if (!cxconf)
+	    {
+	    printf("centrallix: could not open config file '%s'\n", CxGlobals.ConfigFileName);
+	    thExit();
+	    }
+	CxGlobals.ParsedConfig = stParseMsg(cxconf, 0);
+	if (!CxGlobals.ParsedConfig)
+	    {
+	    printf("centrallix: error parsing config file '%s'\n", CxGlobals.ConfigFileName);
+	    thExit();
+	    }
+	fdClose(cxconf, 0);
+
+	/** Init the session handler.  We have to extract the config data for this 
+	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't
+	 ** use the new stparse module's routines.
+	 **/
+	mss_conf = stLookup(CxGlobals.ParsedConfig, "mtsession");
+	if (stAttrValue(stLookup(mss_conf,"auth_method"),NULL,&authmethod,0) < 0) authmethod = "system";
+	if (stAttrValue(stLookup(mss_conf,"altpasswd_file"),NULL,&authmethodfile,0) < 0) authmethodfile = "/usr/local/etc/cxpasswd";
+	if (stAttrValue(stLookup(mss_conf,"log_method"),NULL,&logmethod,0) < 0) logmethod = "stdout";
+	if (stAttrValue(stLookup(mss_conf,"log_progname"),NULL,&logprog,0) < 0) logprog = "centrallix";
+	log_all_errors = 0;
+	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
+	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
 
 	/** Initialize the various parts **/
 	nmInitialize();				/* memory manager */
 	expInitialize();			/* expression processor/compiler */
-	objInitialize();			/* OSML */
+	if (objInitialize() < 0) thExit();	/* OSML */
 	snInitialize();				/* Node structure file handler */
 
 	/** Init the multiquery system and drivers **/
@@ -187,8 +243,40 @@ start(void* v)
 /*** main - called from the C runtime to start the program.
  ***/
 int 
-main()
+main(int argc, char* argv[])
     {
-    mtInitialize(0, start);
+    int ch;
+
+	/** Default global values **/
+	strcpy(CxGlobals.ConfigFileName, "/usr/local/etc/centrallix.conf");
+	CxGlobals.QuietInit = 0;
+	CxGlobals.ParsedConfig = NULL;
+    
+	/** Check for config file options on the command line **/
+	while ((ch=getopt(argc,argv,"hc:q")) > 0)
+	    {
+	    switch (ch)
+	        {
+		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
+				CxGlobals.ConfigFileName[255] = '\0';
+				break;
+
+		case 'q':	CxGlobals.QuietInit = 1;
+				break;
+
+		case 'h':	printf("Usage:  centrallix [-c <config-file>]\n");
+				exit(0);
+
+		case '?':
+		default:	printf("Usage:  centrallix [-c <config-file>]\n");
+				exit(1);
+		}
+	    }
+
+	/** Init the multithreading module to start the first thread **/
+	/** 'start' is the name of the function to be the first thread **/
+	mtInitialize(0, start);
+
     return 0; /* never reached */
     }
+

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <time.h>
+#include "centrallix.h"
 #include "mtask.h"
 #include "mtsession.h"
 #include "xarray.h"
@@ -13,6 +14,7 @@
 #include "exception.h"
 #include "obj.h"
 #include "stparse_ne.h"
+#include "stparse.h"
 #include "htmlparse.h"
 
 /************************************************************************/
@@ -48,10 +50,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.4 2001/11/12 20:43:44 gbeeley Exp $
+    $Id: net_http.c,v 1.5 2002/02/14 00:55:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.5  2002/02/14 00:55:20  gbeeley
+    Added configuration file centrallix.conf capability.  You now MUST have
+    this file installed, default is /usr/local/etc/centrallix.conf, in order
+    to use Centrallix.  A sample centrallix.conf is found in the centrallix-os
+    package in the "doc/install" directory.  Conf file allows specification of
+    file locations, TCP port, server string, auth realm, auth method, and log
+    method.  rootnode.type is now an attribute in the conf file instead of
+    being a separate file, and thus is no longer used.
+
     Revision 1.4  2001/11/12 20:43:44  gbeeley
     Added execmethod nonvisual widget and the audio /dev/dsp device obj
     driver.  Added "execmethod" ls__mode in the HTTP network driver.
@@ -93,8 +104,6 @@
  **END-CVSDATA***********************************************************/
 
 
-#define NHT_SERVER_STRING	"Centrallix/0.7.0"
-
 /*** This structure is used for wait-for-conn-to-finish ***/
 typedef struct
     {
@@ -126,6 +135,8 @@ struct
     XHashTable	CookieSessions;
     XArray	Sessions;
     pFile	StdOut;
+    char	ServerString[80];
+    char	Realm[80];
     }
     NHT;
 
@@ -276,7 +287,7 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "<HTML><BODY><PRE>",NHT_SERVER_STRING);
+		     "<HTML><BODY><PRE>",NHT.ServerString);
 	fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
 	fdWrite(net_conn,errmsg->String,strlen(errmsg->String),0,0);
 	sprintf(sbuf,"</PRE></BODY></HTML>\r\n");
@@ -933,7 +944,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT_SERVER_STRING);
+			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn);
 	    netCloseTCP(conn,1000,0);
@@ -963,13 +974,13 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n", 
-		     NHT_SERVER_STRING,nsess->Cookie);
+		     NHT.ServerString,nsess->Cookie);
 	    nsess->IsNewCookie = 0;
 	    }
 	else
 	    {
 	    sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n",NHT_SERVER_STRING);
+		     "Server: %s\r\n",NHT.ServerString);
 	    }
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);
 
@@ -1151,7 +1162,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT_SERVER_STRING);
+			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn);
 	    netCloseTCP(conn,1000,0);
@@ -1161,7 +1172,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	/** OK, we're ready.  Send the 100 Continue message. **/
 	/*sprintf(sbuf,"HTTP/1.1 100 Continue\r\n"
 		     "Server: %s\r\n"
-		     "\r\n",NHT_SERVER_STRING);
+		     "\r\n",NHT.ServerString);
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);*/
 
 	/** If size specified, set the size. **/
@@ -1224,7 +1235,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, url_inf->StrVal);
+		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
 		}
 	    else
 	        {
@@ -1232,7 +1243,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, url_inf->StrVal);
+		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
 		}
 	    nsess->IsNewCookie = 0;
 	    }
@@ -1243,14 +1254,14 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,url_inf->StrVal);
+		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
 		}
 	    else
 	        {
 	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,url_inf->StrVal);
+		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
 		}
 	    }
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -1277,7 +1288,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>404 Source Not Found</H1><HR><PRE>\r\n",NHT_SERVER_STRING);
+			 "<H1>404 Source Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn);
 	    netCloseTCP(conn,1000,0);
@@ -1305,7 +1316,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>404 Target Not Found</H1>\r\n",NHT_SERVER_STRING);
+			 "<H1>404 Target Not Found</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    netCloseTCP(conn,1000,0);
 	    thExit();
@@ -1338,7 +1349,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, dest);
+		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
 		}
 	    else
 	        {
@@ -1346,7 +1357,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, dest);
+		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
 		}
 	    nsess->IsNewCookie = 0;
 	    }
@@ -1357,14 +1368,14 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,dest);
+		     "%s\r\n", NHT.ServerString,dest);
 		}
 	    else
 	        {
 	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,dest);
+		     "%s\r\n", NHT.ServerString,dest);
 		}
 	    }
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -1502,9 +1513,9 @@ nht_internal_ConnHandler(void* conn_v)
 	    {
 	    sprintf(sbuf,"HTTP/1.0 401 Unauthorized\r\n"
 	    		 "Server: %s\r\n"
-			 "WWW-Authenticate: Basic realm=\"Centrallix\"\r\n"
+			 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 			 "\r\n"
-			 "<H1>Unauthorized</H1>\r\n",NHT_SERVER_STRING);
+			 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    netCloseTCP(conn,1000,0);
 	    thExit();
@@ -1518,7 +1529,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    sprintf(sbuf,"HTTP/1.0 400 Bad Request\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>400 Bad Request</H1>\r\n",NHT_SERVER_STRING);
+			 "<H1>400 Bad Request</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    netCloseTCP(conn,1000,0);
 	    thExit();
@@ -1535,9 +1546,9 @@ nht_internal_ConnHandler(void* conn_v)
 		    {
 	    	    sprintf(sbuf,"HTTP/1.0 401 Unauthorized\r\n"
 		    		 "Server: %s\r\n"
-				 "WWW-Authenticate: Basic realm=\"Centrallix\"\r\n"
+				 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 				 "\r\n"
-				 "<H1>Unauthorized</H1>\r\n",NHT_SERVER_STRING);
+				 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	            fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	            netCloseTCP(conn,1000,0);
 	            thExit();
@@ -1554,9 +1565,9 @@ nht_internal_ConnHandler(void* conn_v)
 	        {
 	        sprintf(sbuf,"HTTP/1.0 401 Unauthorized\r\n"
 			     "Server: %s\r\n"
-			     "WWW-Authenticate: Basic realm=\"Centrallix\"\r\n"
+			     "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 			     "\r\n"
-			     "<H1>Unauthorized</H1>\r\n",NHT_SERVER_STRING);
+			     "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	        fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	        netCloseTCP(conn,1000,0);
 	        thExit();
@@ -1582,7 +1593,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    sprintf(sbuf,"HTTP/1.0 500 Internal Server Error\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>500 Internal Server Error</H1>\r\n",NHT_SERVER_STRING);
+			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    netCloseTCP(conn,1000,0);
 	    }
@@ -1610,7 +1621,7 @@ nht_internal_ConnHandler(void* conn_v)
 	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>400 Method Error - include ls__destination for copy</H1>\r\n",NHT_SERVER_STRING);
+			 "<H1>400 Method Error - include ls__destination for copy</H1>\r\n",NHT.ServerString);
 	            fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		    }
 		else
@@ -1627,7 +1638,7 @@ nht_internal_ConnHandler(void* conn_v)
 	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>400 Method Error - include ls__content for put</H1>\r\n",NHT_SERVER_STRING);
+			 "<H1>400 Method Error - include ls__content for put</H1>\r\n",NHT.ServerString);
 	            fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		    }
 		else
@@ -1658,7 +1669,7 @@ nht_internal_ConnHandler(void* conn_v)
 	        sprintf(sbuf,"HTTP/1.0 501 Not Implemented\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
-			 "<H1>501 Method Not Implemented</H1>\r\n",NHT_SERVER_STRING);
+			 "<H1>501 Method Not Implemented</H1>\r\n",NHT.ServerString);
 	        fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	        /*netCloseTCP(conn,1000,0);*/
 		}
@@ -1684,14 +1695,61 @@ nht_internal_Handler(void* v)
     {
     pFile listen_socket;
     pFile connection_socket;
+    pStructInf my_config;
+    char listen_port[32];
+    char* strval;
+    int intval;
 
     	/*printf("Handler called, stack ptr = %8.8X\n",&listen_socket);*/
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Network Listener");
 
+	/** Get our configuration **/
+	strcpy(listen_port,"800");
+	my_config = stLookup(CxGlobals.ParsedConfig, "net_http");
+	if (my_config)
+	    {
+	    /** Got the config.  Now lookup what the TCP port is that we listen on **/
+	    strval=NULL;
+	    if (stAttrValue(stLookup(my_config, "listen_port"), &intval, &strval, 0) >= 0)
+		{
+		if (strval)
+		    {
+		    memccpy(listen_port, strval, 0, 31);
+		    listen_port[31] = '\0';
+		    }
+		else
+		    {
+		    snprintf(listen_port,32,"%d",intval);
+		    }
+		}
+
+	    /** Find out what server string we should use **/
+	    if (stAttrValue(stLookup(my_config, "server_string"), NULL, &strval, 0) >= 0)
+		{
+		memccpy(NHT.ServerString, strval, 0, 79);
+		NHT.ServerString[79] = '\0';
+		}
+	    else
+		{
+		snprintf(NHT.ServerString, 80, "Centrallix/%.16s", cx__version);
+		}
+
+	    /** Get the realm name **/
+	    if (stAttrValue(stLookup(my_config, "auth_realm"), NULL, &strval, 0) >= 0)
+		{
+		memccpy(NHT.Realm, strval, 0, 79);
+		NHT.Realm[79] = '\0';
+		}
+	    else
+		{
+		snprintf(NHT.Realm, 80, "Centrallix");
+		}
+	    }
+
     	/** Open the server listener socket. **/
-	listen_socket = netListenTCP("800", 32, 0);
+	listen_socket = netListenTCP(listen_port, 32, 0);
 	if (!listen_socket) 
 	    {
 	    mssErrorErrno(1,"NHT","Could not open network listener");

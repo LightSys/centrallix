@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.4 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: obj.h,v 1.5 2002/02/14 00:55:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.5  2002/02/14 00:55:20  gbeeley
+    Added configuration file centrallix.conf capability.  You now MUST have
+    this file installed, default is /usr/local/etc/centrallix.conf, in order
+    to use Centrallix.  A sample centrallix.conf is found in the centrallix-os
+    package in the "doc/install" directory.  Conf file allows specification of
+    file locations, TCP port, server string, auth realm, auth method, and log
+    method.  rootnode.type is now an attribute in the conf file instead of
+    being a separate file, and thus is no longer used.
+
     Revision 1.4  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -90,7 +99,6 @@
 #include "newmalloc.h"
 #include <sys/stat.h>
 
-#define OBJSYS_ROOT			"/u/jnet/lightsys/os"
 #define OBJSYS_DEFAULT_ROOTNODE		"/usr/local/etc/rootnode"
 #define OBJSYS_DEFAULT_ROOTTYPE		"/usr/local/etc/rootnode.type"
 #define OBJSYS_DEFAULT_TYPES_CFG	"/usr/local/etc/types.cfg"

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "centrallix.h"
 #include "mtask.h"
 #include "mtlexer.h"
 #include "mtsession.h"
@@ -44,12 +45,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.1 2001/08/13 18:00:58 gbeeley Exp $
+    $Id: obj_main.c,v 1.2 2002/02/14 00:55:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
-    Revision 1.1  2001/08/13 18:00:58  gbeeley
-    Initial revision
+    Revision 1.2  2002/02/14 00:55:20  gbeeley
+    Added configuration file centrallix.conf capability.  You now MUST have
+    this file installed, default is /usr/local/etc/centrallix.conf, in order
+    to use Centrallix.  A sample centrallix.conf is found in the centrallix-os
+    package in the "doc/install" directory.  Conf file allows specification of
+    file locations, TCP port, server string, auth realm, auth method, and log
+    method.  rootnode.type is now an attribute in the conf file instead of
+    being a separate file, and thus is no longer used.
+
+    Revision 1.1.1.1  2001/08/13 18:00:58  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -60,9 +70,8 @@
 
  **END-CVSDATA***********************************************************/
 
-/*** Globals ***/
+/*** OSML Globals ***/
 OSYS_t OSYS;
-
 
 /*** obj_internal_BuildIsA - scan the content type registry (from types.cfg)
  *** and determine what types are related to what other types.  This is an
@@ -173,6 +182,7 @@ objInitialize()
     pContentType ct,parent_ct;
     char* ptr;
     char sbuf[128];
+    char* filename;
 
 	/** Zero the globals **/
 	memset(&OSYS, 0, sizeof(OSYS));
@@ -190,23 +200,27 @@ objInitialize()
 	chdir("/");
 
 	/** Load the types.cfg file **/
-	fd = fdOpen(OBJSYS_DEFAULT_TYPES_CFG, O_RDONLY, 0600);
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "types_config"), NULL, &filename, 0) < 0)
+	    {
+	    filename = OBJSYS_DEFAULT_TYPES_CFG;
+	    }
+	fd = fdOpen(filename, O_RDONLY, 0600);
 	if (!fd)
 	    {
-	    perror(OBJSYS_DEFAULT_TYPES_CFG);
+	    perror(filename);
 	    exit(1);
 	    }
 	s = mlxOpenSession(fd, MLX_F_EOF | MLX_F_EOL | MLX_F_POUNDCOMM);
 	if (!s)
 	    {
-	    puts("could not open lexer session on types.cfg");
+	    printf("could not open lexer session on '%s'", filename);
 	    exit(1);
 	    }
 	while((t = mlxNextToken(s)) != MLX_TOK_EOF)
 	    {
 	    if (t==MLX_TOK_ERROR) 
 		{
-		puts("error while loading types.cfg");
+		printf("error while loading '%s'\n", filename);
 		break;
 		}
 	    if (t==MLX_TOK_EOL) continue;
@@ -327,30 +341,28 @@ objInitialize()
 	fdClose(fd, 0);
 
 	/** Read the rootnode's path and type. **/
-	fd = fdOpen(OBJSYS_DEFAULT_ROOTTYPE, O_RDONLY, 0600);
-	if (!fd)
+	ptr = NULL;
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "rootnode_type"), NULL, &ptr, 0) < 0 || !ptr)
 	    {
-	    mssErrorErrno(1,"OSML","Could not open rootnode.type!");
+	    mssError(1,"OSML","rootnode_type not specified in centrallix.conf!");
+	    return -1;
 	    }
-	else
+	OSYS.RootType = NULL;
+	sbuf[i] = 0;
+	ct = (pContentType)xhLookup(&OSYS.Types, ptr);
+	if (!ct)
 	    {
-	    OSYS.RootType = NULL;
-	    i = fdRead(fd, sbuf, 127, 0, 0);
-	    if (strchr(sbuf,'\n')) *(strchr(sbuf,'\n')) = '\0';
-	    if (i>0)
-	        {
-	        sbuf[i] = 0;
-	        ct = (pContentType)xhLookup(&OSYS.Types, sbuf);
-	        if (!ct)
-	            {
-		    mssError(1,"OSML","Unknown type '%s' for rootnode",sbuf);
-		    }
-	        OSYS.RootType = ct;
-	        }
-	    fdClose(fd,0);
-	    memccpy(OSYS.RootPath, OBJSYS_DEFAULT_ROOTNODE, 0, 255);
-	    OSYS.RootPath[255] = 0;
+	    mssError(1,"OSML","Unknown type '%s' for rootnode",sbuf);
+	    return -1;
 	    }
+	OSYS.RootType = ct;
+	filename=NULL;
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "rootnode_file"), NULL, &filename, 0) < 0 || !filename)
+	    {
+	    filename = OBJSYS_DEFAULT_ROOTNODE;
+	    }
+	memccpy(OSYS.RootPath, filename, 0, 255);
+	OSYS.RootPath[255] = 0;
 
 	/** Build the Is-A database **/
 	obj_internal_BuildIsA();
