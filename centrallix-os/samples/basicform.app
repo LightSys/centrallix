@@ -270,16 +270,16 @@ basicform "widget/page"
 	visible=true;
 	Treeview_pane "widget/pane"
 	    {
-	    x=0; y=0; width=600; height=300;
+	    x=0; y=0; width=598; height=305;
 	    bgcolor="#e0e0e0";
 	    style=lowered;
 	    Tree_scroll "widget/scrollpane"
 		{
-		x=0; y=0; width=598; height=298;
+		x=0; y=0; width=596; height=303;
 		Tree "widget/treeview"
 		    {
 		    x=0; y=1; width=20000;
-		    source = "javascript:window";
+		    source = "javascript:Tree_scroll";
 		    }
 		}
 	    }
