@@ -114,7 +114,11 @@ ClipObject.prototype.left setter = function (val)
 
 HTMLElement.prototype.clip getter = function () 
     { 
-    return new ClipObject(this); 
+    /** keep the same ClipObject around -- that way we can use watches on it **/
+    if(this.cx__clip)
+	return this.cx__clip;
+    else
+	return this.cx__clip = new ClipObject(this);
     }
 
 function Element_MoveBy(x,y)

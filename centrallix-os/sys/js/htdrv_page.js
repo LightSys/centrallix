@@ -414,13 +414,6 @@ function pg_removearea(a)
 /** Add a universal resize manager function. **/
 function pg_resize(l)
     {
-    /** I think the height/width stuff is updated automatically under a DOM browser **/
-    /*
-    if(cx__capabilities.Dom1HTML)
-	{
-	return;
-	}
-    */
     var maxheight=0;
     var maxwidth=0;
     var layers = pg_layers(l);

@@ -81,6 +81,33 @@ function sp_init(l,aname,tname,p)
     l.mainlayer = l;
     l.kind = 'sp';
     l.LSParent = p;
+    l.thum = tlayer;
+    l.area = alayer;
+    l.UpdateThumb = sp_UpdateThumb;
+    
+    alayer.clip.pane = l;
+    alayer.clip.watch("height",sp_WatchHeight);
+    }
+
+function sp_WatchHeight(property, oldvalue, newvalue)
+    {
+    this.pane.UpdateThumb(newvalue);
+    return newvalue;
+    }
+
+function sp_UpdateThumb(h)
+    {
+    /** 'this' is a spXpane **/
+    if(!h)
+	{ /** if h is supplied, it is the soon-to-be clip.height of the spXarea **/
+	h=this.area.clip.height; // height of content
+	}
+    var d=h-this.clip.height; // height of non-visible content (max scrollable distance)
+    var v=this.clip.height-(3*18);
+    if(d<=0) 
+	this.thum.y=18;
+    else 
+	this.thum.y=18+v*(-this.area.y/d);
     }
 
 function do_mv()
@@ -106,18 +133,23 @@ function do_mv()
 	if(incr < 0 && scrolled<-incr) 
 	    incr=-scrolled;
 
+	var layers = pg_layers(ti.pane);
+	for(var i=0;i<layers.length;i++)
+	    {
+	    if(layers[i] != ti.thum)
+		{
+		layers[i].y-=incr;
+		}
+	    }
+
 	/** actually move the displayed content **/
-	ti.area.y-=incr;
+	//ti.area.y-=incr;
 	}
     else
 	{
 	alert(ti + ' -- ' + ti.id + ' is not known');
 	}
-    var v=ti.pane.clip.height-(3*18);
-    if(d<=0) 
-	ti.thum.y=18;
-    else 
-	ti.thum.y=18+v*(-ti.area.y/d);
+    ti.pane.UpdateThumb();
     return true;
     }
 

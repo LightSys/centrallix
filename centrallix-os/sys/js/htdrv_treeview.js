@@ -172,7 +172,6 @@ function tv_doalert()
     alert(this);
     }
 
-
 function tv_build_layer(l,img_src,link_href,link_text, link_bold)
     {
     if(cx__capabilities.Dom0NS)
@@ -188,10 +187,11 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold)
 	}
     else if(cx__capabilities.Dom1HTML)
 	{
+	var c;
 	/** remove all current children of this node **/
-	while(l.firstChild)
+	while(c = l.firstChild)
 	    {
-	    l.removeChild(l.firstChild);
+	    l.removeChild(c);
 	    }
 	
 	/** the image **/
@@ -312,6 +312,16 @@ function tv_BuildNewLayers(l, linkcnt)
     var tgtClipWidth = tv_tgt_layer.clip.width;
     var tgtX = tv_tgt_layer.x;
     var tgtY = tv_tgt_layer.y;
+
+    var jsProps = null
+    if(l.isjs)
+	{
+	jsProps = new Array();
+	for(var prop in l.obj)
+	    {
+	    jsProps.push(prop);
+	    }
+	}
     
     for(var i=1;i<=linkcnt;i++)
 	{
@@ -326,12 +336,7 @@ function tv_BuildNewLayers(l, linkcnt)
 	one_layer.expand=one_layer.parent.expand;
 	if(l.isjs)
 	    {
-	    k=0;
-	    for(m in l.obj)
-		{
-		if(k==i) { j=m; break; }
-		k++;
-		}
+	    var j = jsProps[i-1];
 	    if(j=="applets" || j=="embeds")
 		{
 		o=null;
@@ -607,6 +612,7 @@ function tv_collapse()
 	{
 	alert('browser not supported');
 	}
+
     pg_set(l.img,'src',l.img.realsrc);
     pg_set(l.img,'src',htutil_subst_last(l.img.src,'b.gif'));
     l.img.realsrc = null;
