@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.4 2002/06/18 16:25:49 gbeeley Exp $
+    $Id: mtask.c,v 1.5 2002/07/21 04:52:51 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.5  2002/07/21 04:52:51  jorupp
+     * support for gzip encoding added by ctaylor
+     * updated autoconf files to account for the new library (I think..)
+
     Revision 1.4  2002/06/18 16:25:49  gbeeley
     Fixed a couple of warnings that showed up with -O2.  Fixed an MTASK bug
     related to thMultiWait().
@@ -1503,7 +1507,12 @@ thClearFlags(pThread thr, int flags)
 int
 fdSetOptions(pFile filedesc, int options)
     {
-    filedesc->Flags |= (options & (FD_UF_RDCACHE | FD_UF_WRCACHE));
+    filedesc->Flags |= (options & (FD_UF_RDCACHE | FD_UF_WRCACHE | FD_UF_GZIP));
+    if (options & FD_UF_GZIP)
+	{
+	filedesc->GzFile = gzdopen(filedesc->FD, (filedesc->Flags & FD_F_WR ? "wb" : "rb"));
+	if (filedesc->GzFile != NULL) filedesc->GzStatus = GZ_FILE_OPENED;
+	}
     return 0;
     }
 
@@ -1560,6 +1569,8 @@ fdOpen(char* filename, int mode, int create_mode)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
+	new_fd->GzStatus = GZ_FILE_CLOSED;
+	new_fd->GzFile = NULL;
 
 	/** Set nonblocking mode **/
 	arg=1;
@@ -1594,6 +1605,8 @@ fdOpenFD(int fd, int mode)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
+	new_fd->GzStatus = GZ_FILE_CLOSED;
+	new_fd->GzFile = NULL;
 
 	/** Set nonblocking mode **/
 	arg=1;
@@ -1657,8 +1670,12 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
     	/** If filedesc not listed as blocked, try reading now. **/
     	if (!(filedesc->Flags & FD_F_RDBLK))
     	    {
-    	    if (flags & FD_U_SEEK) lseek(filedesc->FD, offset, SEEK_SET);
-    	    rval = read(filedesc->FD,buffer,maxlen);
+    	    if (flags & FD_U_SEEK)
+		{
+		if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
+		else lseek(filedesc->FD, offset, SEEK_SET);
+		}
+	    rval = (filedesc->Flags & FD_UF_GZIP ? gzread(filedesc->GzFile, buffer, maxlen) : read(filedesc->FD,buffer,maxlen));
     	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN) return -1;
     	    }
 
@@ -1697,8 +1714,12 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
             event = NULL;
             if (code == EV_S_COMPLETE) 
                 {
-    	        if (flags & FD_U_SEEK) lseek(filedesc->FD, offset, SEEK_SET);
-    	        rval = read(filedesc->FD,buffer,maxlen);
+    	        if (flags & FD_U_SEEK)
+		    {
+		    if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
+		    else lseek(filedesc->FD, offset, SEEK_SET);
+		    }
+    	        rval = (filedesc->Flags & FD_UF_GZIP ? gzread(filedesc->GzFile, buffer, maxlen) : read(filedesc->FD,buffer,maxlen));
 		eno = errno;
 
     	        /** I sincerely hope this doesn't happen... **/
@@ -1840,8 +1861,12 @@ fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
     	/** If filedesc not listed as blocked, try writing now. **/
     	if (!(filedesc->Flags & FD_F_RDBLK))
     	    {
-    	    if (flags & FD_U_SEEK) lseek(filedesc->FD, offset, SEEK_SET);
-    	    rval = write(filedesc->FD,buffer,length);
+    	    if (flags & FD_U_SEEK)
+		{
+		if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
+		else lseek(filedesc->FD, offset, SEEK_SET);
+		}
+    	    rval = (filedesc->Flags & FD_UF_GZIP ? gzwrite(filedesc->GzFile, buffer, length) : write(filedesc->FD,buffer,length));
     	    if (rval == -1 && errno != EWOULDBLOCK) return -1;
     	    }
 
@@ -1881,7 +1906,11 @@ fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
             if (code == EV_S_COMPLETE) 
                 {
     	        if (flags & FD_U_SEEK) lseek(filedesc->FD, offset, SEEK_SET);
-    	        rval = write(filedesc->FD,buffer,length);
+		    {
+		    if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
+		    else lseek(filedesc->FD, offset, SEEK_SET);
+		    }
+    		    rval = (filedesc->Flags & FD_UF_GZIP ? gzwrite(filedesc->GzFile, buffer, length) : write(filedesc->FD,buffer,length));
 
     	        /** I sincerely hope this doesn't happen... **/
     	        if (rval == -1 && errno == EWOULDBLOCK) 
@@ -1960,11 +1989,23 @@ fdClose(pFile filedesc, int flags)
         /** Close the FD **/
 	if (!(flags & FD_XU_NODST))
 	    {
-            close(filedesc->FD);
+	    if (filedesc->Flags & FD_UF_GZIP)
+		{
+		gzclose(filedesc->GzFile);
+		filedesc->GzStatus = GZ_FILE_CLOSED;
+		}
+	    else
+		{
+		close(filedesc->FD);
+		}
 	    if (filedesc->WrCacheBuf) nmFree(filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	    if (filedesc->RdCacheBuf) nmFree(filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
             nmFree(filedesc,sizeof(File));
 	    }
+	else
+		{
+		gzflush(filedesc->GzFile,Z_FINISH);
+		}
 
     return 0;
     }
@@ -2039,6 +2080,8 @@ netListenTCP(char* service_name, int queue_length, int flags)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
+	new_fd->GzStatus = GZ_FILE_CLOSED;
+	new_fd->GzFile = NULL;
 	memcpy(&(new_fd->LocalAddr),&localaddr,sizeof(struct sockaddr_in));
 
     return new_fd;
@@ -2123,6 +2166,8 @@ netAcceptTCP(pFile net_filedesc, int flags)
 	connected_fd->UnReadLen = 0;
 	connected_fd->WrCacheBuf = NULL;
 	connected_fd->RdCacheBuf = NULL;
+	connected_fd->GzStatus = GZ_FILE_CLOSED;
+	connected_fd->GzFile = NULL;
 	memcpy(&(connected_fd->RemoteAddr),&remoteaddr,sizeof(struct sockaddr_in));
 	memcpy(&(connected_fd->LocalAddr),&(net_filedesc->LocalAddr),sizeof(struct sockaddr_in));
 	if (flags & NET_U_KEEPALIVE)
@@ -2227,6 +2272,8 @@ netConnectTCP(char* host_name, char* service_name, int flags)
 	connected_fd->UnReadLen = 0;
 	connected_fd->WrCacheBuf = NULL;
 	connected_fd->RdCacheBuf = NULL;
+	connected_fd->GzStatus = GZ_FILE_CLOSED;
+	connected_fd->GzFile = NULL;
 
 	/** Try to connect **/
 	memset(&remoteaddr,0,sizeof(struct sockaddr_in));
@@ -2324,7 +2371,8 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
 
 	/** Shutdown read and write sides of the connection. **/
-	shutdown(net_filedesc->FD, 2);
+	if(!(net_filedesc->Flags & FD_UF_GZIP))
+	    shutdown(net_filedesc->FD, 2);
 
 	/** Try to close the socket, keeping track of timeout **/
 	rval = -1;
@@ -2333,7 +2381,15 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    t2 = mtTicks();
 	    linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
 	    t = t2;
-	    if ((rval=close(net_filedesc->FD)) FAIL && errno == EWOULDBLOCK)
+	    if (net_filedesc->Flags & FD_UF_GZIP)
+		{
+		rval=gzclose(net_filedesc->GzFile);
+		}
+	    else
+		{
+		rval=close(net_filedesc->FD);
+		}
+	    if (rval FAIL && errno == EWOULDBLOCK)
 	        {
 		thSleep(1000/MTASK.TicksPerSec);
 		}
@@ -2351,7 +2407,14 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
 	    arg=0;
 	    ioctl(net_filedesc->FD, FIONBIO, &arg);
-	    close(net_filedesc->FD);
+		if (net_filedesc->Flags & FD_UF_GZIP)
+		    {
+		    gzclose(net_filedesc->GzFile);
+		    }
+		else
+		    {
+		    close(net_filedesc->FD);
+		    }
 	    }
 
 	/** Now we destroy the structure. **/

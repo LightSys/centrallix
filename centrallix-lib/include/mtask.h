@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
+    $Id: mtask.h,v 1.3 2002/07/21 04:52:51 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.3  2002/07/21 04:52:51  jorupp
+     * support for gzip encoding added by ctaylor
+     * updated autoconf files to account for the new library (I think..)
+
     Revision 1.2  2002/05/03 03:46:29  gbeeley
     Modifications to xhandle to support clearing the handle list.  Added
     a param to xhClear to provide support for xhnClearHandles.  Added a
@@ -48,6 +52,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <zlib.h>
 
 #ifdef MTASK_USEPTHREADS
 #include <pthread.h>
@@ -136,6 +141,8 @@ typedef struct _FD
     char*	RdCacheBuf;
     int		RdCacheLen;
     char*	RdCachePtr;
+	gzFile	GzFile;
+	int		GzStatus;
     }
     File, *pFile;
 
@@ -147,6 +154,8 @@ typedef struct _FD
 #define FD_F_WR		32		/* FD open for writing */
 #define FD_UF_WRCACHE	64		/* Enable write-cache buffering */
 #define FD_UF_RDCACHE	128		/* Enable read-cache buffering */
+#define FD_UF_GZIP		256		/* Enable Gzip compression */
+
 
 #define FD_S_OPENING	0		/* FD is opening or connecting */
 #define FD_S_OPEN	1		/* FD is open normally */
@@ -165,6 +174,10 @@ typedef struct _FD
 
 #define SEM_U_HARDCLOSE	1		/* User: semdestroy kills waiting events */
 #define SEM_U_NOBLOCK	2		/* User: dont block on empty sem */
+
+/** Zlib gzFile Status **/
+#define GZ_FILE_CLOSED	0		/* gzFile has not been opened */
+#define GZ_FILE_OPENED	1		/* gzFile has been opened */
 
 /** Event Request structure **/
 typedef struct _EV

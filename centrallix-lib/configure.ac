@@ -13,6 +13,8 @@ AC_PATH_PROG([AR], [ar], [])
 AC_PROG_INSTALL
 
 dnl Checks for libraries.
+dnl Replace `main' with a function in -lz:
+AC_CHECK_LIB(z, main)
 
 dnl Checks for header files.
 AC_HEADER_STDC
