@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.10 2002/04/30 18:08:43 jorupp Exp $
+    $Id: htdrv_table.c,v 1.11 2002/05/01 02:25:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.11  2002/05/01 02:25:50  jorupp
+     * more changes
+
     Revision 1.10  2002/04/30 18:08:43  jorupp
      * more additions to the table -- now it can scroll~
      * made the osrc and form play nice with the table
@@ -185,7 +188,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	/** STYLE for the layer **/
 	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t.id,t.x,t.y,t.w-18,z+1);
-	htrAddHeaderItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t.id,t.x+t.w-18,t.y+t.rowheight+t.cellvspacing,t.h-t.rowheight-t.cellvspacing,z+1);
+	htrAddHeaderItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t.id,t.x+t.w-18,t.y+t.rowheight,t.h-t.rowheight,z+1);
 	htrAddHeaderItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; HEIGHT:18; Z-INDEX:%d; }\n",t.id,z+2);
 	htrAddHeaderItem(s,"    </STYLE>\n");
 
@@ -210,7 +213,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    if(this.startat+this.windowsize-1>this.osrc.LastRecord)\n"
 		"        this.startat=this.osrc.LastRecord-this.windowsize+1;\n"
 		"    if(t.m.length\%t.q==12) for(var j=t.m.length;j>0;j--) t.m=t.m.replace(' ','');\n"
-		"    if(this.cr!=this.osrc.CurrentRecord)\n"
+		"    if(this.cr!=this.osrc.CurrentRecord && this.followcurrent)\n"
 		"        {\n" /* the osrc has changed the current record, make sure we can see it */
 		"        this.cr=this.osrc.CurrentRecord;\n"
 		"        if(this.cr<this.startat)\n"
@@ -249,9 +252,9 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            for(var q=start;q<end;q++)\n"
 		"                this.rows[i].fg.y=q;\n"
 		*/
-		"        this.rows[i].y=((this.rowheight+this.cellvspacing)*(this.SlotToRecnum(i)-this.startat+1));\n"
+		"        this.rows[i].y=((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1));\n"
 		"        this.rows[i].fg.visibility='inherit';\n"
-		"        if(!(this.rows[i].fg.recnum && this.rows[i].fg.recnum==this.SlotToRecnum(i)))\n"
+		"        if(!(this.rows[i].fg.recnum!=null && this.rows[i].fg.recnum==this.SlotToRecnum(i)))\n"
 		"            {\n"
 		"            this.rows[i].fg.recnum=this.SlotToRecnum(i);\n"
 		"            \n"
@@ -271,6 +274,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"                    }\n"
 		"                }\n"
 		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            //confirm('(skipped)'+i+':'+this.rows[i].fg.recnum)\n"
+		"            }\n"
 		"        if(this.rows[i].fg.recnum==this.osrc.CurrentRecord)\n"
 		"            this.rows[i].fg.select();\n"
 		"        else\n"
@@ -287,7 +294,8 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_object_modified", "\n"
 		"function tbld_object_modified(current)\n"
 		"    {\n"
-		"    this.rows[this.RecnumToSlot(current)].recnum=null;\n"
+		"    this.rows[this.RecnumToSlot(current)].fg.recnum=null;\n"
+		"    //confirm('(current)'+current+':'+this.rows[this.RecnumToSlot(current)].recnum);\n"
 		"    this.Update();\n"
 		"    }\n",0);
 
@@ -341,7 +349,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"function tbld_mouseover()\n"
 		"    {\n"
 		"    if(this.subkind=='headerrow') return 0;\n"
-		"    this.bg.bgColor=0;\n"
+		"    else this.bgColor=0;\n"
 		"    return 0;\n"
 		"    \n"
 		"    if(this.oldbgColor) return;\n"
@@ -365,7 +373,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"function tbld_mouseout()\n"
 		"    {\n"
 		"    if(this.subkind=='headerrow') return 0;\n"
-		"    this.bg.bgColor=null;\n"
+		"    else this.bgColor=null;\n"
 		"    return 0;\n"
 		"    \n"
 		"    this.bgColor=this.oldbgColor;\n"
@@ -421,10 +429,11 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_init","\n"
-		"function tbld_init(t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,cols)"
+		"function tbld_init(t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,followcurrent,cols)"
 		"    {\n"
 		"    t.startat=1;\n"
 		"    t.cr=1;\n"
+		"    t.followcurrent=followcurrent>0?true:false;\n"
 		"    t.hdr_bgnd=hdr_bgnd;\n"
 		"    t.scrolldoc=scroll.document;\n"
 		"    t.scrolldoc.Click=tbld_bar_click;\n"
@@ -494,26 +503,29 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 		"        t.rows[i].fg=new Layer(width,t.rows[i]);\n"
 		"        t.rows[i].fg.bg=t.rows[i];\n"
-		"        t.rows[i].fg.x=t.cellhspacing/2;\n"
-		"        t.rows[i].fg.y=t.cellvspacing/2;\n"
+		"        t.rows[i].fg.x=t.cellhspacing;\n"
+		"        t.rows[i].fg.y=t.cellvspacing;\n"
 		"        t.rows[i].fg.visibility='show';\n"
-		"        t.rows[i].fg.clip.width=width-t.cellhspacing;\n"
-		"        t.rows[i].fg.clip.height=t.rowheight;\n"
+		"        t.rows[i].fg.clip.width=width-t.cellhspacing*2;\n"
+		"        t.rows[i].fg.clip.height=t.rowheight-t.cellvspacing*2;\n"
 		"        t.rows[i].fg.kind='tabledynamic';\n"
 		"        t.rows[i].fg.subkind='row';\n"
 		"        t.rows[i].fg.document.layer=t.rows[i];\n"
 		"        t.rows[i].fg.select=tbld_select;\n"
 		"        t.rows[i].fg.deselect=tbld_deselect;\n"
-		"        t.rows[i].fg.mouseover=tbld_mouseover;\n"
-		"        t.rows[i].fg.mouseout=tbld_mouseout;\n"
+		"        t.rows[i].mouseover=tbld_mouseover;\n"
+		"        t.rows[i].mouseout=tbld_mouseout;\n"
 		"        t.rows[i].fg.rownum=i;\n"
 		"        t.rows[i].fg.table=t;\n"
 		"        t.rows[i].table=t;\n"
+		"        t.rows[i].document.layer=t.rows[i];\n"
+		"        t.rows[i].kind='tabledynamic';\n"
+		"        t.rows[i].subkind='bg';\n"
 
 		"        t.rows[i].x=0;\n"
 		"        t.rows[i].y=voffset;\n"
 		"        t.rows[i].clip.width=width;\n"
-		"        t.rows[i].clip.height=t.rowheight+t.cellvspacing;\n"
+		"        t.rows[i].clip.height=t.rowheight;\n"
 		"        t.rows[i].visibility='inherit';\n"
 		"        t.rows[i].fg.cols=new Array(t.colcount);\n"
 		"        var hoffset=0;\n"
@@ -527,8 +539,8 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            t.rows[i].fg.cols[j].colnum=j;\n"
 		"            t.rows[i].fg.cols[j].x=hoffset+t.innerpadding;\n"
 		"            t.rows[i].fg.cols[j].y=t.innerpadding;\n"
-		"            t.rows[i].fg.cols[j].clip.width=t.cols[j][2];\n"
-		"            t.rows[i].fg.cols[j].clip.height=t.rowheight;\n"
+		"            t.rows[i].fg.cols[j].clip.width=t.cols[j][2]-t.innerpadding*2;\n"
+		"            t.rows[i].fg.cols[j].clip.height=t.rowheight-t.cellvspacing*2-t.innerpadding*2;\n"
 		"            //t.rows[i].fg.cols[j].document.write('hi');\n"
 		"            //t.rows[i].fg.cols[j].document.close();\n"
 		"            hoffset+=t.cols[j][2]+t.innerpadding*2;\n"
@@ -537,6 +549,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        voffset+=t.rowheight;\n"
 		"        }\n"
 		"    t.rows[0].fg.subkind='headerrow';\n"
+		"    t.rows[0].subkind='headerrow';\n"
 		"    eval('t.rows[0].fg.'+t.hdr_bgnd+';');\n"
 		"    t.down.m+='68 7265 736d6 16e';\n"
 		"    for(var i=0;i<t.colcount;i++)\n"
@@ -548,7 +561,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            t.rows[0].fg.cols[i].document.write(t.cols[i][1]);\n"
 		"        t.rows[0].fg.cols[i].document.close();\n"
 		"        }\n"
-		"    t.IsDiscardReady=new Function('return false;');\n"
+		"    t.IsDiscardReady=new Function('return true;');\n"
 		"    t.DataAvailable=tbld_clear_layers;\n"
 		"    t.ObjectAvailable=tbld_update;\n"
 		"    t.ReplicaMoved=tbld_update;\n"
@@ -564,10 +577,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    return t;\n"
 		"    }\n",0);
 
-	htrAddScriptInit_va(s,"   %s = tbld_init(%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",new Array(",
+	htrAddScriptInit_va(s,"   %s = tbld_init(%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%i,new Array(",
 		t.name,parentname,t.id,parentname,t.id,t.id,t.name,t.h,t.w-18,t.inner_padding,t.inner_border,t.windowsize, 
 		t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor, t.textcolorhighlight, t.titlecolor,
-		t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh,t.hdr_bgnd);
+		t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh,t.hdr_bgnd,t.followcurrent);
 	
 	for(colid=0;colid<t.ncols;colid++)
 	    {
@@ -582,9 +595,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddEventHandler(s,"document","MOUSEOVER","tabledynamic",
 		"\n"
 		"    targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && (targetLayer.subkind=='row' || targetLayer.subkind=='cell'))\n"
+		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && (targetLayer.subkind=='row' || targetLayer.subkind=='cell' || targetLayer.subkind=='bg'))\n"
 		"        {\n"
 		"        if(targetLayer.row) targetLayer=targetLayer.row;\n"
+		"        if(targetLayer.bg) targetLayer=targetLayer.bg;\n"
 		"        if(tbld_current) tbld_current.mouseout();\n"
 		"        tbld_current=targetLayer;\n"
 		"        tbld_current.mouseover();\n"
@@ -606,9 +620,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    targetLayer = (e.target.layer == null) ? t=e.target : e.target.layer;\n"
 		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic')\n"
 		"        {\n"
-		"        if(targetLayer.subkind=='row' || targetLayer.subkind=='cell')\n"
+		"        if(targetLayer.subkind=='row' || targetLayer.subkind=='cell' || targetLayer.subkind=='bg')\n"
 		"            {\n"    
-		"            if(targetLayer.row) targetLayer=targetLayer.row;\n"    
+		"            if(targetLayer.row) targetLayer=targetLayer.row;\n"
+		"            if(targetLayer.fg) targetLayer=targetLayer.fg;\n"
 		"            if(targetLayer.table.osrc.CurrentRecord!=targetLayer.recnum)\n"    
 		"                {\n"    
 		"                if(targetLayer.recnum)\n"    
