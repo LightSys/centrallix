@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.39 2002/07/12 20:03:09 lkehresman Exp $
+    $Id: htdrv_osrc.c,v 1.40 2002/07/12 20:06:42 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.40  2002/07/12 20:06:42  lkehresman
+    Removed an alert
+    *cough*
+
     Revision 1.39  2002/07/12 20:03:09  lkehresman
     Modified the osrc to take advantage of the new encoding ability in the
     net_http driver.  This fixes a bug that the textarea uncovered with new
@@ -788,7 +792,6 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "            //alert('New row: '+row+'('+this.OSMLRecord+')');\n"
       "            }\n"
       "        colnum++;\n"
-      "        alert(unescape(lnk[i].text));\n"
       "        this.replica[this.OSMLRecord][colnum] = new Array();\n"
       "        this.replica[this.OSMLRecord][colnum]['value'] = unescape(lnk[i].text)\n"
       "        this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);\n"
