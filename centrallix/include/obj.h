@@ -35,10 +35,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.10 2002/06/09 23:44:47 nehresma Exp $
+    $Id: obj.h,v 1.11 2002/06/19 23:27:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.11  2002/06/19 23:27:36  gbeeley
+    Added a few more presentations hints options.
+
     Revision 1.10  2002/06/09 23:44:47  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -193,6 +196,7 @@ typedef struct _PH
     XArray		EnumList;	/* list of string values */
     char*		EnumQuery;	/* query to enumerate the possible values */
     char*		Format;		/* presentation format - datetime or money */
+    int			Length;		/* Max length of data that can be entered */
     int			VisualLength;	/* length of data field as presented to user */
     int			VisualLength2;	/* used primarily for # lines in a multiline edit */
     unsigned int	BitmaskRO;	/* which bits, if any, in bitmask are read-only */
@@ -217,6 +221,8 @@ typedef struct _PH
 #define OBJ_PH_STYLE_HIGHLIGHT	1024	/* highlight this attribute */
 #define OBJ_PH_STYLE_LOWERCASE	2048	/* This attribute is lowercase-only */
 #define OBJ_PH_STYLE_UPPERCASE	4096	/* This attribute is uppercase-only */
+#define OBJ_PH_STYLE_TABPAGE	8192	/* Prefer tabpage layout for grouped fields */
+#define OBJ_PH_STYLE_SEPWINDOW	16384	/* Prefer separate windows for grouped fields */
 
 
 /** objectsystem driver **/
