@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.19 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.20 2005/03/01 07:11:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.20  2005/03/01 07:11:41  gbeeley
+    - properly return error on failure to add an object.
+
     Revision 1.19  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -894,7 +897,12 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	new_handle_id = prtAllocHandle(new_obj);
 
 	/** Add the object to the given parent object. **/
-	obj->LayoutMgr->AddObject(obj, new_obj);
+	if (obj->LayoutMgr->AddObject(obj, new_obj) < 0)
+	    {
+	    prtFreeHandle(new_handle_id);
+	    prt_internal_FreeObj(new_obj);
+	    return -1;
+	    }
 
 	prt_internal_DispatchEvents(s);
 
