@@ -417,4 +417,3 @@ function dt_event_mousedown2(targetLayer) {
 		dt_current = targetLayer;
 	}
 }
-

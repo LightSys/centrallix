@@ -9,27 +9,29 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function htutil_strpad(str, pad, len) {
-	str = new String(str);
-	tmp = '';
-	for (var i=0; i < len-str.length; i++)
-		tmp = pad+tmp;
-	return tmp+str;
-}
-
-function htutil_encode(s) {
-	rs = '';
-	for(i=0;i<s.length;i++) {
-		if (s[i] == '<') rs += '&lt;';
-		else if (s[i] == '>') rs += '&gt;';
-		else if (s[i] == '&') rs += '&amp;';
-		else if (s[i] == ' ') rs += '&nbsp;';
-		else rs += s[i];
+function cn_activate(t,f,eparam)
+    {
+    if (t['Event' + f].constructor == Array)
+	{
+	for(var fn in t['Event' + f])
+	    x = t['Event' + f][fn](eparam);
+	return x;
 	}
-	return rs;
-}
+    else
+	return t['Event' + f](eparam);
+    }
 
-function htutil_subst_last(str,subst) {
-	return str.substring(0,str.length-subst.length)+subst;
-}
+function cn_add(w,e)
+    {
+    if (w['Event' + e] == null)
+	w['Event' + e] = new Array();
+    w['Event' + e][w['Event' + e].length] = this.RunEvent;
+    }
 
+function cn_init(p,f)
+    {
+    this.Add = cn_add;
+    this.type = 'cn';
+    this.LSParent = p;
+    this.RunEvent = f;
+    }

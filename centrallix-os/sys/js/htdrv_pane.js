@@ -9,27 +9,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function htutil_strpad(str, pad, len) {
-	str = new String(str);
-	tmp = '';
-	for (var i=0; i < len-str.length; i++)
-		tmp = pad+tmp;
-	return tmp+str;
-}
-
-function htutil_encode(s) {
-	rs = '';
-	for(i=0;i<s.length;i++) {
-		if (s[i] == '<') rs += '&lt;';
-		else if (s[i] == '>') rs += '&gt;';
-		else if (s[i] == '&') rs += '&amp;';
-		else if (s[i] == ' ') rs += '&nbsp;';
-		else rs += s[i];
-	}
-	return rs;
-}
-
-function htutil_subst_last(str,subst) {
-	return str.substring(0,str.length-subst.length)+subst;
-}
-
+function pn_init(l,ml)
+    {
+    l.mainlayer = ml;
+    l.document.Layer = l;
+    ml.document.Layer = ml;
+    ml.maxheight = l.clip.height-2;
+    ml.maxwidth = l.clip.width-2;
+    return l;
+    }
