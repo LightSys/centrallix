@@ -39,6 +39,19 @@
 /* Description:	HTML Widget driver for a multi-line textarea.		*/
 /************************************************************************/
 
+
+/**CVSDATA***************************************************************
+
+    $Id: htdrv_textarea.c,v 1.6 2002/07/12 19:46:22 pfinley Exp $
+    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
+
+    $Log: htdrv_textarea.c,v $
+    Revision 1.6  2002/07/12 19:46:22  pfinley
+    added cvs logging to file.
+
+
+ **END-CVSDATA***********************************************************/
+
 /** globals **/
 static struct 
     {
