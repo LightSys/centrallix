@@ -35,12 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.h,v 1.1 2001/08/13 18:00:53 gbeeley Exp $
+    $Id: st_node.h,v 1.2 2004/08/30 03:18:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/st_node.h,v $
 
     $Log: st_node.h,v $
-    Revision 1.1  2001/08/13 18:00:53  gbeeley
-    Initial revision
+    Revision 1.2  2004/08/30 03:18:48  gbeeley
+    - magic number checking in SnNode.
+
+    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -61,6 +64,7 @@
 /*** Structure for storing top-level node accesses ***/
 typedef struct
     {
+    int		Magic;
     char	NodePath[256];
     char	OpenType[64];
     int		Status;
