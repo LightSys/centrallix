@@ -20,9 +20,9 @@ function eb_update_cursor(eb,val)
 	{
 	eb.cursorCol=0;
 	}
-    if(eb.cursorlayer == eb_ibeam)
+    if(eb.cursorlayer == ibeam_current)
 	{
-	eb_ibeam.moveToAbsolute(eb.ContentLayer.pageX + eb.cursorCol*eb_metric.charWidth, eb.ContentLayer.pageY);
+	ibeam_current.moveToAbsolute(eb.ContentLayer.pageX + eb.cursorCol*text_metric.charWidth, eb.ContentLayer.pageY);
 	}
     }
 
@@ -76,7 +76,7 @@ function eb_keyhandler(l,e,k)
     if(eb_current.form) eb_current.form.DataNotify(eb_current);
     adj = 0;
     txt = l.content;
-    var charClip = Math.ceil((l.pageX - l.ContentLayer.pageX) / eb_metric.charWidth);
+    var charClip = Math.ceil((l.pageX - l.ContentLayer.pageX) / text_metric.charWidth);
     var relPos = l.cursorCol - charClip;
     if (k == 9)
 	{
@@ -86,7 +86,7 @@ function eb_keyhandler(l,e,k)
 	{
 	newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);
 	l.cursorCol++;
-	if (relPos >= l.charWidth) adj = -eb_metric.charWidth; 
+	if (relPos >= l.charWidth) adj = -text_metric.charWidth; 
 	}
     else if (k == 8 && l.cursorCol > 0)
 	{
@@ -94,8 +94,8 @@ function eb_keyhandler(l,e,k)
 	l.cursorCol--;
 	if (relPos <= 1 && charClip > 0)
 	    {
-	    if (charClip < l.charWidth) adj = charClip * eb_metric.charWidth;
-	    else adj = l.charWidth * eb_metric.charWidth;
+	    if (charClip < l.charWidth) adj = charClip * text_metric.charWidth;
+	    else adj = l.charWidth * text_metric.charWidth;
 	    }
 	}
     else if (k == 127 && l.cursorCol < txt.length)
@@ -106,12 +106,12 @@ function eb_keyhandler(l,e,k)
 	{
 	return true;
 	}
-    eb_ibeam.visibility = 'hidden';
+    ibeam_current.visibility = 'hidden';
     eb_settext(l,newtxt);
     l.ContentLayer.pageX += adj;
     l.HiddenLayer.pageX += adj;
-    eb_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*eb_metric.charWidth, l.ContentLayer.pageY);
-    eb_ibeam.visibility = 'inherit';
+    ibeam_current.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*text_metric.charWidth, l.ContentLayer.pageY);
+    ibeam_current.visibility = 'inherit';
     l.changed=true;
     return false;
     }
@@ -120,22 +120,22 @@ function eb_select(x,y,l,c,n)
     {
     if(l.form) l.form.FocusNotify(l);
     if(l.enabled != 'full') return 0;
-    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/eb_metric.charWidth);
+    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/text_metric.charWidth);
     if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;
     if (eb_current) eb_current.cursorlayer = null;
     eb_current = l;
-    eb_current.cursorlayer = eb_ibeam;
-    eb_ibeam.visibility = 'hidden';
-    eb_ibeam.moveAbove(eb_current);
-    eb_ibeam.moveToAbsolute(eb_current.ContentLayer.pageX + eb_current.cursorCol*eb_metric.charWidth, eb_current.ContentLayer.pageY);
-    eb_ibeam.zIndex = eb_current.zIndex + 2;
-    eb_ibeam.visibility = 'inherit';
+    eb_current.cursorlayer = ibeam_current;
+    ibeam_current.visibility = 'hidden';
+    ibeam_current.moveAbove(eb_current);
+    ibeam_current.moveToAbsolute(eb_current.ContentLayer.pageX + eb_current.cursorCol*text_metric.charWidth, eb_current.ContentLayer.pageY);
+    ibeam_current.zIndex = eb_current.zIndex + 2;
+    ibeam_current.visibility = 'inherit';
     return 1;
     }
 
 function eb_deselect()
     {
-    eb_ibeam.visibility = 'hidden';
+    ibeam_current.visibility = 'hidden';
     if (eb_current)
 	{
 	eb_current.cursorlayer = null;
@@ -157,30 +157,13 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	{
 	l.bg = main_bg;
 	}
-    l.kind = 'editbox';
+    l.kind = 'eb';
     l.document.Layer = l;
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
-    l.fieldname = fieldname
-    if (!eb_ibeam || !eb_metric)
-	{
-	eb_metric = new Layer(24);
-	eb_metric.visibility = 'hidden';
-	eb_metric.document.write('<pre>xx</pre>');
-	eb_metric.document.close();
-	w2 = eb_metric.clip.width;
-	h1 = eb_metric.clip.height;
-	eb_metric.document.write('<pre>x\nx</pre>');
-	eb_metric.document.close();
-	eb_metric.charHeight = eb_metric.clip.height - h1;
-	eb_metric.charWidth = w2 - eb_metric.clip.width;
-	eb_ibeam = new Layer(1);
-	eb_ibeam.visibility = 'hidden';
-	eb_ibeam.document.write('<body bgcolor=' + page.dtcolor1 + '></body>');
-	eb_ibeam.document.close();
-	eb_ibeam.resizeTo(1,eb_metric.charHeight);
-	}
-    l.charWidth = Math.floor((l.clip.width-2)/eb_metric.charWidth);
+    l.fieldname = fieldname;
+    ibeam_init();
+    l.charWidth = Math.floor((l.clip.width-2)/text_metric.charWidth);
     c1.mainlayer = l;
     c2.mainlayer = l;
     c1.kind = 'eb';
@@ -208,8 +191,8 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	}
     l.isFormStatusWidget = false;
     pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', is_readonly);
-    c1.y = ((l.clip.height - eb_metric.charHeight)/2);
-    c2.y = ((l.clip.height - eb_metric.charHeight)/2);
+    c1.y = ((l.clip.height - text_metric.charHeight)/2);
+    c2.y = ((l.clip.height - text_metric.charHeight)/2);
     if (fm_current) fm_current.Register(l);
     l.form = fm_current;
     l.changed = false;
