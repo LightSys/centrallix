@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.19 2003/03/09 18:58:45 jorupp Exp $
+    $Id: mtask.c,v 1.20 2003/03/29 08:32:47 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.20  2003/03/29 08:32:47  jorupp
+     * fixed a bug regarding possibly not delaying long enough in a select() call
+     * redid some of the actual values for debugging -- the bit groups make a bit more sense now
+     * added debugging code for the checking of timers
+
     Revision 1.19  2003/03/09 18:58:45  jorupp
      * change to allow the scheduler (or the interrupt handler interupting the
     	 scheduler) to spawn new threads
@@ -198,28 +203,32 @@ static MTSystem MTASK;
 #define MTASK_DEBUG_SHOW_READ_SELECTABLE 0x01
 #define MTASK_DEBUG_SHOW_WRITE_SELECTABLE 0x02
 #define MTASK_DEBUG_SHOW_ERROR_SELECTABLE 0x04
-#define MTASK_DEBUG_SHOW_IO_SELECT 0x08
+#define MTASK_DEBUG_SHOW_TIMER_SELECTABLE 0x08
 #define MTASK_DEBUG_SHOW_READ_SELECTED 0x10
 #define MTASK_DEBUG_SHOW_WRITE_SELECTED 0x20
 #define MTASK_DEBUG_SHOW_ERROR_SELECTED 0x40
-#define MTASK_DEBUG_SHOW_NON_IO_SELECT 0x80
+#define MTASK_DEBUG_SHOW_TIMER_SELECTED 0x80
 #define MTASK_DEBUG_SHOW_CONNECTION_OPEN 0x100
 #define MTASK_DEBUG_SHOW_CONNECTION_CLOSE 0x200
 #define MTASK_DEBUG_FDOPEN 0x400
 #define MTASK_DEBUG_FDCLOSE 0x800
+#define MTASK_DEBUG_SHOW_IO_SELECT 0x1000
+#define MTASK_DEBUG_SHOW_NON_IO_SELECT 0x2000
 #else
 #define MTASK_DEBUG_SHOW_READ_SELECTABLE 0
 #define MTASK_DEBUG_SHOW_WRITE_SELECTABLE 0
 #define MTASK_DEBUG_SHOW_ERROR_SELECTABLE 0
-#define MTASK_DEBUG_SHOW_IO_SELECT 0
+#define MTASK_DEBUG_SHOW_TIMER_SELECTABLE 0
 #define MTASK_DEBUG_SHOW_READ_SELECTED 0
 #define MTASK_DEBUG_SHOW_WRITE_SELECTED 0
 #define MTASK_DEBUG_SHOW_ERROR_SELECTED 0
-#define MTASK_DEBUG_SHOW_NON_IO_SELECT 0
+#define MTASK_DEBUG_SHOW_TIMER_SELECTED 0
 #define MTASK_DEBUG_SHOW_CONNECTION_OPEN 0
 #define MTASK_DEBUG_SHOW_CONNECTION_CLOSE 0
 #define MTASK_DEBUG_FDOPEN 0
 #define MTASK_DEBUG_FDCLOSE 0
+#define MTASK_DEBUG_SHOW_IO_SELECT 0
+#define MTASK_DEBUG_SHOW_NON_IO_SELECT 0
 #endif
 
 /*** mtSetDebug - sets the debugging level ***/
@@ -228,6 +237,7 @@ mtSetDebug(int debuglevel)
     {
 #ifdef MTASK_DEBUG
     MTASK.DebugLevel=debuglevel;
+    printf("DEBUG: %i\n",MTASK.DebugLevel);
 #endif
     }
 
@@ -693,6 +703,12 @@ mtSched()
 	    if (ticks_used > 0 && MTASK.CurrentThread->CntDown >= 0) 
 	        {
 		MTASK.CurrentThread->CntDown += ticks_used*(MTASK.CurrentThread->CurPrio)/MT_TICK_MAX;
+		//if (MTASK.ThreadTable[i]->CntDown > 0) MTASK.ThreadTable[i]->CntDown = 0;
+		/*
+		if (MTASK.ThreadTable[i]->CntDown > 0)
+		    printf("UHH OHHH!!!! -- %i (%s) CntDown == %i\n",i,
+			    MTASK.ThreadTable[i]->Name,MTASK.ThreadTable[i]->CntDown);
+		*/
 		MTASK.TickCnt = t;
 		}
 
@@ -767,6 +783,10 @@ mtSched()
 		    k = -(k*64);
 		    if (k > highest_cntdn) highest_cntdn = k;
 		    if (MTASK.EventWaitTable[i]->Thr->Status == THR_S_BLOCKED) n_timerblock++;
+#ifdef MTASK_DEBUG
+		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTABLE)
+			printf("%s is blocked on a timer (k=%i)\n",MTASK.EventWaitTable[i]->Thr->Name,k);
+#endif
 		    }
 		}
 	    }
@@ -812,17 +832,18 @@ mtSched()
           REISSUE_SELECT:
 #ifdef MTASK_DEBUG
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
-		printf("IO select\n");
+		printf("IO select (no timeout)\n");
 #endif
 	    rval = select(max_fd, &readfds, &writefds, &exceptfds, NULL);
 #ifdef MTASK_DEBUG
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
-		printf("IO select done\n");
+		printf("IO select done (no timeout) rval=%i errno=%i\n",rval,errno);
 #endif
 	    if (rval == -1 && (errno == EINTR || errno == EAGAIN)) goto REISSUE_SELECT;
 	    }
 	else
 	    {
+	    int ticklen=(1000000/MTASK.TicksPerSec); /** length of a tick in usecs **/
 	    if (highest_cntdn == 0x80000000) highest_cntdn = 0;
 	    highest_cntdn = -highest_cntdn;
 	    /*if (num_fds > 0)*/
@@ -830,14 +851,21 @@ mtSched()
 	      REISSUE_SELECT2:
 	        tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
 	        tmout.tv_usec = (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)*(1000000/(64*MTASK.TicksPerSec));
+		/** if we need 4.5 ticks, we need to select for at least 5 to make sure we don't get 4 and 'deadlock' **/
+		tmout.tv_usec= (tmout.tv_usec/ticklen)*ticklen+ticklen;
+		if(tmout.tv_usec>=1000000)
+		    {
+		    tmout.tv_usec-=1000000;
+		    tmout.tv_sec+=1;
+		    }
 #ifdef MTASK_DEBUG
 		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
-		    printf("non-IO select\n");
+		    printf("non-IO select (%i,%i)\n",(int)tmout.tv_sec,(int)tmout.tv_usec);
 #endif
 	        rval = select(max_fd, &readfds, &writefds, &exceptfds, &tmout);
 #ifdef MTASK_DEBUG
 		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
-		    printf("non-IO select done\n");
+		    printf("non-IO select done (%i,%i) rval=%i errno=%i\n",(int)tmout.tv_sec,(int)tmout.tv_usec,rval,errno);
 #endif
 	        if (rval == -1 && (errno == EINTR || errno == EAGAIN)) goto REISSUE_SELECT2;
 		}
@@ -960,6 +988,10 @@ mtSched()
 		    {
 		    if (((unsigned int)tx2 - event->TargetTickCnt) < (unsigned int)0x80000000)
 		        {
+#ifdef MTASK_DEBUG
+			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTED)
+			    printf("Timer completed for %s\n",event->Thr->Name);
+#endif
 			event->Thr->Status = THR_S_RUNNABLE;
 			event->Status = EV_S_COMPLETE;
 			}
