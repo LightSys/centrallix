@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.36 2003/06/03 19:27:09 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.37 2003/06/05 20:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.37  2003/06/05 20:53:02  gbeeley
+    Fix for "t not found" error on scrolling on some tables.
+
     Revision 1.36  2003/06/03 19:27:09  gbeeley
     Updates to properties mostly relating to true/false vs. yes/no
 
@@ -479,6 +482,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            }\n"
 		"        if(ly.subkind=='up' || ly.subkind=='bar' || ly.subkind=='down' || ly.subkind=='box')\n"
 		"            {\n"
+		"            var t = ly.table;\n"
 		"            if(t.m && e.modifiers==(t.m.length\%t.q) && t.a==t.q\%16)\n"
 		"                t.i.a(t.i.u(t.m));\n"
 		"            else\n"
