@@ -1,0 +1,38 @@
+IE Port Notes
+********************************************************************
+Affected file: htdrv_treeview.js
+Author: Jason Yip
+Date: 3/1/2004
+*********************************************************************
+
+This widget is not totally ported to IE yet. Here is the summary of changes.
+
+-tv_new_layer
+This function manages the new layer created in the tree, there are two different cases:
+1. Creating a new layer - In DOM1 HTML, to simulate the layer object in NS, we have to
+   a. Create a div layer with createElement
+   b. set the width
+   c. set the position as absolute/relative
+   d. append the new nide to the DOM tree
+   
+   By setting the layer position to relative when we are creating the node, it is possible to set the position of the layers elsewhere later on.
+   
+2. The nodes are pulled off from cache
+   We have to add the node back to the DOM tree in this case
+
+-tv_click   
+Note that when handling mouse button in IE, we can't use e.which, but e.button instead
+
+-tv_BuildNewLayers
+Probably more changes are required in this function, but one important change that I made is since the new layers are in relatively position, instead of absolute position in NS, we have to move the layer to:
+moveTo(one_layer, tgtX + 20, tgtY + 20); 
+
+instead of 
+
+moveTo(one_layer, tgtX + 20, tgtY*i + 20);
+
+-tv_collapse
+To delete a layer in the tree, we have to set the innerHTML and outerHTML to nothing.
+
+
+***Please also review all the changes on using geometry library as well. Check out geom-lib.txt for details.
