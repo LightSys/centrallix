@@ -16,6 +16,22 @@ Centrallix ChangeLog
 	6.  MIME/rfc822 objectsystem driver added to parse rfc822 messages
 	    with MIME encoding and to allow SQL queries on that data..  The 
 	    MIME driver can also be used apart from rfc822 messages.
+	7.  objInfo() OSML API method added to obtain some 'structural'
+	    metainfo about an object.
+	8.  NFS netdriver added so that Centrallix can act as an NFS server.
+	9.  Added "xringqueue" ringbuffer based queue module to centrallix-lib.
+	10. Added "cxsec" optional security hardening module to centrallix-lib.
+	11. Work begun on "presentation hints" data presentation rules and
+	    display hints mechanism.
+	12. Gzip objectsystem driver for transparent handling of .gz encoded
+	    data.
+	13. Mailbox (mbox) objectsystem driver for handling an entire mailbox
+	    of email messages (message/rfc822).
+	14. Shell objectsystem driver for access to operating system shell
+	    commands.  Warning - can be very insecure and is disabled by
+	    default in the build.
+	15. Centrallix shutdown handler mechanism allows for clean shutdown
+	    when receiving SIGINT (ctrl-c).
 
 
 -------------------------------------------------------------------------------
