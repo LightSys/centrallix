@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.33 2004/08/30 03:20:41 gbeeley Exp $
+    $Id: test_obj.c,v 1.34 2004/12/31 04:18:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.34  2004/12/31 04:18:17  gbeeley
+    - bug fix for printing Binary type attributes
+    - bug fix for memory leaks due to open LxSession's
+
     Revision 1.33  2004/08/30 03:20:41  gbeeley
     - objInfo() can return NULL if it is not supported for an object.
 
@@ -403,12 +407,11 @@ testobj_show_attr(pObject obj, char* attrname)
 		    printf("  %20.20s: NULL", attrname);
 		else
 		    {
-		    printf("  %20.20s: %d bytes: ", bn.Size);
+		    printf("  %20.20s: %d bytes: ", attrname, bn.Size);
 		    for(i=0;i<bn.Size;i++)
 			{
 			printf("%2.2x  ", bn.Data[i]);
 			}
-		    printf("");
 		    }
 		break;
 
@@ -815,7 +818,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 				    printf("  %20.20s: NULL\n", attrname);
 				else
 				    {
-				    printf("  %20.20s: %d bytes: ", bn.Size);
+				    printf("  %20.20s: %d bytes: ", attrname, bn.Size);
 				    for(i=0;i<bn.Size;i++)
 					{
 					printf("%2.2x  ", bn.Data[i]);
@@ -1197,6 +1200,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		}
 	    else if (!strcmp(cmdname,"quit"))
 		{
+		mlxCloseSession(ls);
 		return 1;
 		}
 	    else if (!strcmp(cmdname,"exec"))
@@ -1285,6 +1289,8 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		printf("Unknown command '%s'\n",cmdname);
 		return -1;
 		}
+	
+	    mlxCloseSession(ls);
 
     return 0;
     }
