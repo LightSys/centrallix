@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mbox.c,v 1.1 2002/11/06 02:37:59 jorupp Exp $
+    $Id: objdrv_mbox.c,v 1.2 2002/11/06 19:32:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mbox.c,v $
 
     $Log: objdrv_mbox.c,v $
+    Revision 1.2  2002/11/06 19:32:26  jorupp
+     * throw errors when looking up the type of a non-existant attribute (for debugging)
+     * respond to inner_type _and_ content_type
+
     Revision 1.1  2002/11/06 02:37:59  jorupp
      * added mailbox (mbox) support (read-only) -- I want to read my mail in centrallix :)
 
@@ -507,6 +511,7 @@ mboxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** You will want to likely make a list of 'em in a global array **/
 	/** or something like that. **/
 
+	mssError(1,"MBOX","Could not locate requested attribute's type: %s",attrname);
     return -1;
     }
 
@@ -543,7 +548,8 @@ mboxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    return 0;
 	    }
 
-	if (!strcmp(attrname,"inner_type") || !strcmp(attrname,"inner_type") )
+	/** inner_type, content_type -- same thing... **/
+	if (!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type") )
 	    {
 	    if(inf->mnum==-1)
 		*((char**)val) = "system/void";
