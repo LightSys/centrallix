@@ -4,7 +4,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <errno.h>
 #include "xstring.h"
+#include "mtask.h"
 #include "newmalloc.h"
 
 /************************************************************************/
@@ -26,10 +28,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.8 2002/10/15 22:01:30 gbeeley Exp $
+    $Id: xstring.c,v 1.9 2002/11/22 20:56:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.9  2002/11/22 20:56:59  gbeeley
+    Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
+    basically allow printf() style functionality on top of any xxxWrite()
+    type of routine (such as fdWrite, objWrite, etc).
+
     Revision 1.8  2002/10/15 22:01:30  gbeeley
     A few minor tweaks.  This commit was originally going to fix the xstring
     null termination problems but evidently I hadn't done a cvs update in
@@ -540,3 +547,82 @@ xsInsertAfter(pXString this, char* ins, int inslen, int offset)
     this->Length+=inslen;
     return offset+inslen;
     }
+
+
+/*** xsGenPrintf - generic printf() operation to a xxxWrite() style function.
+ *** This routine isn't really all that closely tied to the XString module,
+ *** but this seemed to be the best place for it.  If a 'buf' and 'buf_size'
+ *** are supplied (NULL otherwise), then buf MUST be allocated with the
+ *** nmSysMalloc() routine.  Otherwise, kaboom!  This routine will grow
+ *** 'buf' if it is too small, and will update 'buf_size' accordingly.
+ ***
+ *** Returns -(errno) on failure and the printed length (>= 0) on success.
+ ***/
+int
+xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, va_list va)
+    {
+    va_list orig_va;
+    char* mybuf = NULL;
+    int mybuf_size = 0;
+    char* new_buf;
+    int new_buf_size;
+    int rval=0,len;
+
+	/** Init the varargs **/
+	orig_va = va;
+
+	/** Allocate a buffer, if caller didn't **/
+	if (!buf)
+	    {
+	    buf = &mybuf;
+	    buf_size = &mybuf_size;
+	    *buf_size = XS_PRINTF_BUFSIZ;
+	    *buf = (char*)nmSysMalloc(*buf_size);
+	    if (!*buf) return -ENOMEM;
+	    }
+
+	/** Try to print the formatted string. **/
+	while(1)
+	    {
+	    len = vsnprintf(*buf, *buf_size, fmt, va);
+
+	    /** Truncated? **/
+	    if (len == -1 || len > ((*buf_size) - 1))
+		{
+		/** Grab a bigger box **/
+		nmSysFree(*buf);
+		new_buf_size = (*buf_size)*2;
+		while(new_buf_size < len) new_buf_size *= 2;
+		new_buf = (char*)nmSysMalloc(new_buf_size);
+		if (!new_buf) return -ENOMEM;
+		*buf = new_buf;
+		*buf_size = new_buf_size;
+		va = orig_va;
+		}
+	    else
+		{
+		break;
+		}
+	    }
+
+	/** Ok, got it.  Now send it to the output function **/
+	rval = write_fn(write_arg, *buf, len, 0, FD_U_PACKET);
+	if (mybuf) nmSysFree(mybuf);
+	if (rval != len) rval = -EIO; /* oops!!! routine ignored FD_U_PACKET! */
+
+    return rval;
+    }
+
+int
+xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, ...)
+    {
+    va_list va;
+    int rval;
+
+	va_start(va, fmt);
+	rval = xsGenPrintf_va(write_fn, write_arg, buf, buf_size, fmt, va);
+	va_end(va);
+
+    return rval;
+    }
+

@@ -20,10 +20,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.6 2002/09/28 01:08:07 jorupp Exp $
+    $Id: xstring.h,v 1.7 2002/11/22 20:56:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.7  2002/11/22 20:56:57  gbeeley
+    Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
+    basically allow printf() style functionality on top of any xxxWrite()
+    type of routine (such as fdWrite, objWrite, etc).
+
     Revision 1.6  2002/09/28 01:08:07  jorupp
      * added xsFindRev()
      * fixed a couple bugs that pop up when using those functions I added
@@ -54,8 +59,10 @@
 
  **END-CVSDATA***********************************************************/
 
+#include <stdarg.h>
 
 #define XS_BLK_SIZ	256
+#define XS_PRINTF_BUFSIZ 1024
 
 typedef struct _XS
     {
@@ -84,6 +91,8 @@ int xsFind(pXString this,char* find,int findlen, int offset);
 int xsFindRev(pXString this,char* find,int findlen, int offset);
 int xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen);
 int xsInsertAfter(pXString this, char* ins, int inslen, int offset);
+int xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, ...);
+int xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, va_list va);
 
 #define XS_U_SEEK	2
 

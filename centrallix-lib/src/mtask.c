@@ -20,6 +20,7 @@
 #include <ioctls.h>
 #endif
 #include <grp.h>
+#include <stdarg.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -46,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.13 2002/11/12 00:26:49 gbeeley Exp $
+    $Id: mtask.c,v 1.14 2002/11/22 20:56:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.14  2002/11/22 20:56:58  gbeeley
+    Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
+    basically allow printf() style functionality on top of any xxxWrite()
+    type of routine (such as fdWrite, objWrite, etc).
+
     Revision 1.13  2002/11/12 00:26:49  gbeeley
     Updated MTASK approach to user/group security when using system auth.
     The module now handles group ID's as well.  Changes should have no
@@ -126,6 +132,7 @@
 
 #include "newmalloc.h"
 #include "mtask.h"
+#include "xstring.h"
 
 /** Internal stuff **/
 int mtRunStartFn(pThread new_thr, int idx);
@@ -1747,6 +1754,7 @@ fdOpen(const char* filename, int mode, int create_mode)
 #ifdef HAVE_LIBZ
 	new_fd->GzFile = NULL;
 #endif
+	new_fd->PrintfBuf = NULL;
 
 	/** Set nonblocking mode **/
 	arg=1;
@@ -1782,6 +1790,7 @@ fdOpenFD(int fd, int mode)
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
 	new_fd->GzFile = NULL;
+	new_fd->PrintfBuf = NULL;
 
 	/** Set nonblocking mode **/
 	arg=1;
@@ -2185,6 +2194,35 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
     }
 
 
+/*** FDPRINTF writes formatted output data to a descriptor.  It writes
+ *** all data, as if FD_U_PACKET had been specified.
+ ***
+ *** Returns length of written data on success (>= 0), or negative on error.
+ ***/
+int
+fdPrintf(pFile filedesc, const char* fmt, ...)
+    {
+    va_list va;
+    int rval;
+
+	/** Alloc a printf buf? **/
+	if (!filedesc->PrintfBuf)
+	    {
+	    filedesc->PrintfBufSize = FD_PRINTF_BUFSIZ;
+	    filedesc->PrintfBuf = (char*)nmSysMalloc(filedesc->PrintfBufSize);
+	    if (!filedesc->PrintfBuf)
+		return -ENOMEM;
+	    }
+
+	/** Print it. **/
+	va_start(va,fmt);
+	rval=xsGenPrintf_va(fdWrite, filedesc, &(filedesc->PrintfBuf), &(filedesc->PrintfBufSize), fmt, va);
+	va_end(va);
+
+    return rval;
+    }
+
+
 /*** FDCLOSE closes an open file.  It optionally waits until all reads
  *** and writes have completed on the FD before closing it down.
  ***/
@@ -2345,6 +2383,7 @@ netListenTCP(const char* service_name, int queue_length, int flags)
 #ifdef HAVE_LIBZ
 	new_fd->GzFile = NULL;
 #endif
+	new_fd->PrintfBuf = NULL;
 	memcpy(&(new_fd->LocalAddr),&localaddr,sizeof(struct sockaddr_in));
 
     return new_fd;
@@ -2433,6 +2472,7 @@ netAcceptTCP(pFile net_filedesc, int flags)
 #ifdef HAVE_LIBZ
 	connected_fd->GzFile = NULL;
 #endif
+	connected_fd->PrintfBuf = NULL;
 	memcpy(&(connected_fd->RemoteAddr),&remoteaddr,sizeof(struct sockaddr_in));
 	memcpy(&(connected_fd->LocalAddr),&(net_filedesc->LocalAddr),sizeof(struct sockaddr_in));
 	if (flags & NET_U_KEEPALIVE)
@@ -2545,6 +2585,7 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
 #ifdef HAVE_LIBZ
 	connected_fd->GzFile = NULL;
 #endif
+	connected_fd->PrintfBuf = NULL;
 
 	/** Try to connect **/
 	memset(&remoteaddr,0,sizeof(struct sockaddr_in));

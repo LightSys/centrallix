@@ -23,10 +23,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.8 2002/11/12 00:26:49 gbeeley Exp $
+    $Id: mtask.h,v 1.9 2002/11/22 20:56:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.9  2002/11/22 20:56:57  gbeeley
+    Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
+    basically allow printf() style functionality on top of any xxxWrite()
+    type of routine (such as fdWrite, objWrite, etc).
+
     Revision 1.8  2002/11/12 00:26:49  gbeeley
     Updated MTASK approach to user/group security when using system auth.
     The module now handles group ID's as well.  Changes should have no
@@ -186,11 +191,15 @@ typedef struct _FD
     char*	RdCacheBuf;
     int		RdCacheLen;
     char*	RdCachePtr;
+    char*	PrintfBuf;
+    int		PrintfBufSize;
 #ifdef HAVE_LIBZ
     gzFile	GzFile;
 #endif
     }
     File, *pFile;
+
+#define FD_PRINTF_BUFSIZ 512		/* initial size for fdPrintf buf */
 
 #define FD_F_RDBLK	1		/* FD is blocked for reading */
 #define FD_F_WRBLK	2		/* blocked for writing */
@@ -364,6 +373,7 @@ int fdClose(pFile filedesc, int flags);
 int fdFD(pFile filedesc);
 int fdSetOptions(pFile filedesc, int options);
 int fdUnSetOptions(pFile filedesc, int options);
+int fdPrintf(pFile filedesc, const char* fmt, ...);
 
 
 /** MTASK Networking Functions **/
