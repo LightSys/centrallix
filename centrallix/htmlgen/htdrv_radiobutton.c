@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.19 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.20 2003/03/30 22:49:23 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.20  2003/03/30 22:49:23  jorupp
+     * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
+
     Revision 1.19  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -302,19 +305,19 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Script initialization call. **/
    if (strlen(main_bgcolor) > 0) {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(
-            %s.layers.radiobuttonpanel%dparentpane,\"%s\",1,
-            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
-            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
-            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
-	    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
+      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(\n"
+        "    %s.layers.radiobuttonpanel%dparentpane,\"%s\",1,\n"
+        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
+        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
+        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
+	"    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
    } else if (strlen(main_background) > 0) {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(
-            %s.layers.radiobuttonpanel%dparentpane,\"%s\",2,
-            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
-            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
-            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
-	    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
+      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(\n"
+        "    %s.layers.radiobuttonpanel%dparentpane,\"%s\",2,\n"
+        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
+        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
+        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
+	"    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
    } else {
       htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", nptr, parentname, id,fieldname);
    }

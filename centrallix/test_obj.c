@@ -64,10 +64,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.22 2003/03/10 15:41:39 lkehresman Exp $
+    $Id: test_obj.c,v 1.23 2003/03/30 22:49:24 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.23  2003/03/30 22:49:24  jorupp
+     * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
+
     Revision 1.22  2003/03/10 15:41:39  lkehresman
     The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
     hints to the OSML.  To do this I had to:
@@ -368,7 +371,7 @@ testobj_show_attr(pObject obj, char* attrname)
     return 0;
     }
 
-int handle_tab()
+int handle_tab(int unused_1, int unused_2)
     {
     pXString xstrInput;
     pXString xstrLastInputParam;
@@ -612,7 +615,7 @@ start(void* v)
 	/** Authenticate **/
 	user = readline("Username: ");
 	pwd = getpass("Password: ");
-	
+
 	if (mssAuthenticate(user,pwd) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	free(user);
@@ -856,9 +859,10 @@ start(void* v)
 		puts("Attributes:");
 		testobj_show_attr(obj,"outer_type");
 		testobj_show_attr(obj,"inner_type");
+		testobj_show_attr(obj,"content_type");
 		testobj_show_attr(obj,"name");
 		testobj_show_attr(obj,"annotation");
-		/*testobj_show_attr(obj,"last_modification");*/
+		testobj_show_attr(obj,"last_modification");
 		attrname = objGetFirstAttr(obj);
 		while(attrname)
 		    {

@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.32 2003/01/05 04:18:08 lkehresman Exp $
+    $Id: ht_render.c,v 1.33 2003/03/30 22:49:23 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.33  2003/03/30 22:49:23  jorupp
+     * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
+
     Revision 1.32  2003/01/05 04:18:08  lkehresman
     Added detection for Mozilla 1.2.x
 
@@ -855,7 +858,7 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* f
 
 	/** Add the content **/
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddBodyItem, fmt, va);
+	htr_internal_AddText(s, htrAddBodyItem, (char*)fmt, va);
 	va_end(va);
 
 	/** Add the closing tag **/

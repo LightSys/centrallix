@@ -18,17 +18,6 @@
 #include "mtlexer.h"
 #include <signal.h>
 
-/* GRB - if someone can think of a better way to handle this (such as
- * maybe forbidding the #including of config.h files in public headers),
- * let me know....
- *
- * We have to re-include this as a remedial step because cxlibconfig.h
- * overrides PACKAGE_VERSION amongst other things.
- */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -63,10 +52,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.16 2003/03/09 18:59:13 jorupp Exp $
+    $Id: centrallix.c,v 1.17 2003/03/30 22:49:24 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.17  2003/03/30 22:49:24  jorupp
+     * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
+
     Revision 1.16  2003/03/09 18:59:13  jorupp
      * add SIGINT handling, which calls shutdown handlers
 
