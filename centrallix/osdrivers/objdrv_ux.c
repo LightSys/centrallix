@@ -54,10 +54,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.9 2003/04/30 02:15:35 jorupp Exp $
+    $Id: objdrv_ux.c,v 1.10 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.10  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.9  2003/04/30 02:15:35  jorupp
      * added stat calls before returning any data that would have come from it
        -- it's a bit inefficent -- really should just set a flag after a write or
@@ -684,6 +696,13 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		/** Exit the search loop. **/
 		break;
 		}
+	    }
+
+	/** Access called for RDWR but we can't open it RDWR? **/
+	if ((obj->Mode & O_ACCMODE) == O_RDWR && access(inf->RealPathname,W_OK) < 0)
+	    {
+	    obj->Mode &= ~O_ACCMODE;
+	    obj->Mode |= O_RDONLY;
 	    }
 
 	/** Release the resources we temporarily used. **/

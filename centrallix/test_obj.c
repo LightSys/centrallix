@@ -64,10 +64,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.28 2003/05/30 17:39:47 gbeeley Exp $
+    $Id: test_obj.c,v 1.29 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.29  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.28  2003/05/30 17:39:47  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -215,6 +227,16 @@
 void* my_ptr;
 unsigned long ticks_last_tab=0;
 pObjSession s;
+
+struct
+    {
+    char    UserName[32];
+    char    Password[32];
+    char    CmdFile[256];
+    pFile   Output;
+    char    Command[1024];
+    }
+    TESTOBJ;
 
 #define BUFF_SIZE 1024
 
@@ -606,12 +628,10 @@ int handle_tab(int unused_1, int unused_2)
     }
 
 
-void
-start(void* v)
+int
+testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     {
     char sbuf[BUFF_SIZE];
-    static char* inbuf = (char *)NULL;
-    char prompt[1024];
     char* ptr;
     char cmdname[64];
     pObject obj,child_obj,to_obj;
@@ -628,9 +648,6 @@ start(void* v)
     char* stringval;
     int intval;
     int is_where, is_orderby;
-    char* user;
-    char* pwd;
-    pFile StdOut;
     pLxSession ls = NULL;
     char where[256];
     char orderby[256];
@@ -645,73 +662,40 @@ start(void* v)
     int t;
     pObjectInfo info;
 
-	/** Initialize. **/
-	cxInitialize();
-
-	/** enable tab completion **/
-	rl_bind_key ('\t', handle_tab);
-
-	/** Authenticate **/
-	user = readline("Username: ");
-	pwd = getpass("Password: ");
-
-	if (mssAuthenticate(user,pwd) < 0)
-	    puts("Warning: auth failed, running outside session context.");
-	free(user);
-	StdOut = fdOpen("/dev/tty", O_RDWR, 0600);
-
-	/** Open a session **/
-	s = objOpenSession("/");
-
-	/** Loop, putting prompt and getting commands **/
-	while(1)
-	    {
-	    is_where = 0;
-	    sprintf(prompt,"OSML:%.1000s> ",objGetWD(s));
-
-	    /** If the buffer has already been allocated, return the memory to the free pool. **/
-	    if (inbuf)
+	    /** Open a lexer session **/
+	    ls = mlxStringSession(cmd,MLX_F_ICASE | MLX_F_EOF);
+	    if (mlxNextToken(ls) != MLX_TOK_KEYWORD)
 		{
-		free (inbuf);
-		inbuf = (char *)NULL;
-		}   
-
-	    /** Get a line from the user using readline library call. **/
-	    inbuf = readline (prompt);   
-
-	    /** If the line has any text in it, save it on the readline history. **/
-	    if (inbuf && *inbuf)
-		add_history (inbuf);
-
-	    /** If inbuf is null (end of file, etc.), exit **/
-	    if (!inbuf)
-	        {
-		printf("quit\n");
-		thExit();
+		mlxCloseSession(ls);
+		return -1;
 		}
-
-	    if (ls) mlxCloseSession(ls);
-	    ls = mlxStringSession(inbuf,MLX_F_ICASE | MLX_F_EOF);
-	    if (mlxNextToken(ls) != MLX_TOK_KEYWORD) continue;
 	    ptr = mlxStringVal(ls,NULL);
-	    if (!ptr) continue;
+	    if (!ptr) 
+		{
+		mlxCloseSession(ls);
+		return -1;
+		}
 	    strcpy(cmdname,ptr);
 	    mlxSetOptions(ls,MLX_F_IFSONLY);
 	    if ((t=mlxNextToken(ls)) != MLX_TOK_STRING) ptr = NULL;
 	    else ptr = mlxStringVal(ls,NULL);
 	    mlxUnsetOptions(ls,MLX_F_IFSONLY);
+
+	    /** What command? **/
 	    if (!strcmp(cmdname,"cd"))
 		{
 		if (!ptr)
 		    {
 		    printf("Usage: cd <directory>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		obj = objOpen(s, ptr, O_RDONLY, 0600, "system/directory");
 		if (!obj)
 		    {
 		    printf("cd: could not change to '%s'.\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		objSetWD(s,obj);
 		objClose(obj);
@@ -721,13 +705,15 @@ start(void* v)
 		if (!ptr)
 		    {
 		    printf("Usage: query \"<query-text>\"\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
-		qy = objMultiQuery(s, inbuf + 6);
+		qy = objMultiQuery(s, cmd + 6);
 		if (!qy)
 		    {
 		    printf("query: could not open query!\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		while((obj=objQueryFetch(qy, O_RDONLY)))
 		    {
@@ -777,18 +763,21 @@ start(void* v)
 		if (!ptr)
 		    {
 		    printf("Usage: annot <filename> <annotation>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		obj = objOpen(s, ptr, O_RDWR, 0600, "system/object");
 		if (!obj)
 		    {
 		    printf("annot: could not open '%s'.\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
 		    printf("Usage: annot <filename> <annotation>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		ptr = mlxStringVal(ls,NULL);
 		objSetAttrValue(obj, "annotation", DATA_T_STRING,POD(&ptr));
@@ -813,7 +802,8 @@ start(void* v)
 		if (!obj)
 		    {
 		    printf("list: could not open directory '%s'.\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		if (!is_where && !is_orderby)
 		    {
@@ -847,7 +837,8 @@ start(void* v)
 		    if (t != MLX_TOK_STRING) 
 			{
 			objClose(obj);
-			continue;
+			mlxCloseSession(ls);
+			return -1;
 			}
 		    strcpy(orderby, mlxStringVal(ls,NULL));
 		    qy = objOpenQuery(obj,NULL,orderby,NULL,NULL);
@@ -860,7 +851,8 @@ start(void* v)
 		    {
 		    objClose(obj);
 		    printf("list: object '%s' doesn't support directory queries.\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		while(NULL != (child_obj = objQueryFetch(qy,O_RDONLY)))
 		    {
@@ -893,7 +885,8 @@ start(void* v)
 		if (!obj)
 		    {
 		    printf("show: could not open object '%s'\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		info = objInfo(obj);
 		if (info)
@@ -960,7 +953,8 @@ start(void* v)
 		if (!obj)
 		    {
 		    printf("print: could not open object '%s'\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		while((cnt=objRead(obj, sbuf, 255, 0, 0)) >0)
 		    {
@@ -975,43 +969,56 @@ start(void* v)
 		if (!ptr)
 		    {
 		    printf("copy1: must specify <dsttype/srctype> <source> <destination>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		if (!strcmp(ptr,"srctype")) use_srctype = 1; else use_srctype = 0;
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
 		    printf("copy2: must specify <dsttype/srctype> <source> <destination>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		mlxCopyToken(ls, sbuf, 1023);
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
 		    printf("copy3: must specify <dsttype/srctype> <source> <destination>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		ptr = mlxStringVal(ls, NULL);
 		if (use_srctype)
 		    {
 		    obj = objOpen(s, sbuf, O_RDONLY, 0600, "application/octet-stream");
-		    if (!obj) continue;
+		    if (!obj) 
+			{
+			mlxCloseSession(ls);
+			return -1;
+			}
 		    objGetAttrValue(obj, "inner_type", DATA_T_STRING,POD(&stringval));
 		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, stringval);
 		    if (!to_obj)
 		        {
 			objClose(obj);
-			continue;
+			mlxCloseSession(ls);
+			return -1;
 			}
 		    }
 		else
 		    {
 		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, "application/octet-stream");
-		    if (!to_obj) continue;
+		    if (!to_obj)
+			{
+			mlxCloseSession(ls);
+			return -1;
+			}
 		    objGetAttrValue(to_obj, "inner_type", DATA_T_STRING,POD(&stringval));
 		    obj = objOpen(s, sbuf, O_RDONLY, 0600, stringval);
 		    if (!obj)
 		        {
 			objClose(to_obj);
-			continue;
+			mlxCloseSession(ls);
+			return -1;
 			}
 		    }
 		while((cnt = objRead(obj, sbuf, 255, 0, 0)) > 0)
@@ -1026,12 +1033,14 @@ start(void* v)
 		if (!ptr)
 		    {
 		    printf("delete: must specify object.\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		if (objDelete(s, ptr) < 0)
 		    {
 		    printf("delete: failed.\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		}
 	    else if (!strcmp(cmdname,"create"))
@@ -1039,7 +1048,8 @@ start(void* v)
 		if (!ptr) 
 		    {
 		    printf("create: must specify object.\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		if (!strcmp(ptr,"*"))
 		    obj = objOpen(s, ptr, O_RDWR | O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
@@ -1048,8 +1058,9 @@ start(void* v)
 		if (!obj)
 		    {
 		    printf("create: could not create object.\n");
-		    mssPrintError(StdOut);
-		    continue;
+		    mssPrintError(TESTOBJ.Output);
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		if (!strcmp(ptr,"*"))
 		    {
@@ -1098,12 +1109,12 @@ start(void* v)
 			if (pod) objSetAttrValue(obj,attrname,type,pod);
 			}
 		    }
-		if (objClose(obj) < 0) mssPrintError(StdOut);
+		if (objClose(obj) < 0) mssPrintError(TESTOBJ.Output);
 		rl_bind_key ('\t', handle_tab);
 		}
 	    else if (!strcmp(cmdname,"quit"))
 		{
-		break;
+		return 1;
 		}
 	    else if (!strcmp(cmdname,"exec"))
 	        {
@@ -1112,18 +1123,21 @@ start(void* v)
 		if (!obj)
 		    {
 		    printf("exec: could not open object '%s'\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
 		    printf("Usage: exec <obj> <method> <parameter>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		mlxCopyToken(ls, mname, 63);
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
 		    printf("Usage: exec <obj> <method> <parameter>\n");
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		mlxCopyToken(ls, mparam, 255);
 		mptr = mparam;
@@ -1137,7 +1151,8 @@ start(void* v)
 		if (!obj)
 		    {
 		    printf("hints: could not open object '%s'\n",ptr);
-		    continue;
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
 		attrname=NULL;
 		if (mlxNextToken(ls) == MLX_TOK_STRING)
@@ -1185,10 +1200,113 @@ start(void* v)
 	    else
 		{
 		printf("Unknown command '%s'\n",cmdname);
+		return -1;
+		}
+
+    return 0;
+    }
+
+
+void
+start(void* v)
+    {
+    int rval,t;
+    char* inbuf = NULL;
+    pObjSession s;
+    char* user;
+    char* pwd;
+    char prompt[1024];
+    pFile cmdfile;
+    pLxSession input_lx;
+    char* ptr;
+
+	/** Initialize. **/
+	cxInitialize();
+
+	/** enable tab completion **/
+	rl_bind_key ('\t', handle_tab);
+
+	/** Authenticate **/
+	if (!TESTOBJ.UserName[0]) 
+	    user = readline("Username: ");
+	else
+	    user = TESTOBJ.UserName;
+	if (!TESTOBJ.Password[0])
+	    pwd = getpass("Password: ");
+	else
+	    pwd = TESTOBJ.Password;
+
+	if (mssAuthenticate(user,pwd) < 0)
+	    puts("Warning: auth failed, running outside session context.");
+	TESTOBJ.Output = fdOpen("/dev/tty", O_RDWR, 0600);
+
+	/** Open a session **/
+	s = objOpenSession("/");
+
+	/** -C cmd provided on command line? **/
+	if (TESTOBJ.Command[0])
+	    {
+	    rval = testobj_do_cmd(s, TESTOBJ.Command, 1);
+	    }
+
+	/** Command file provided? **/
+	if (TESTOBJ.CmdFile[0])
+	    {
+	    cmdfile = fdOpen(TESTOBJ.CmdFile, O_RDONLY, 0600);
+	    if (!cmdfile)
+		{
+		perror(TESTOBJ.CmdFile);
+		}
+	    else
+		{
+		input_lx = mlxOpenSession(cmdfile, MLX_F_LINEONLY | MLX_F_EOF);
+		while((t = mlxNextToken(input_lx)) > 0)
+		    {
+		    if (t == MLX_TOK_EOF || t == MLX_TOK_ERROR) break;
+		    ptr = mlxStringVal(input_lx, NULL);
+		    if (ptr) 
+			{
+			rval = testobj_do_cmd(s, ptr, 1);
+			if (rval == 1) break;
+			}
+		    }
+		mlxCloseSession(input_lx);
+		fdClose(cmdfile, 0);
 		}
 	    }
 
-	/*objCloseSession(s);*/
+	/** Loop, putting prompt and getting commands **/
+	if (!TESTOBJ.Command[0] && !TESTOBJ.CmdFile[0]) 
+	  while(1)
+	    {
+	    sprintf(prompt,"OSML:%.1000s> ",objGetWD(s));
+
+	    /** If the buffer has already been allocated, return the memory to the free pool. **/
+	    if (inbuf)
+		{
+		free (inbuf);
+		inbuf = (char *)NULL;
+		}   
+
+	    /** Get a line from the user using readline library call. **/
+	    inbuf = readline (prompt);   
+
+	    /** If the line has any text in it, save it on the readline history. **/
+	    if (inbuf && *inbuf)
+		add_history (inbuf);
+
+	    /** If inbuf is null (end of file, etc.), exit **/
+	    if (!inbuf)
+	        {
+		printf("quit\n");
+		thExit();
+		}
+
+	    rval = testobj_do_cmd(s, inbuf, 0);
+	    if (rval == 1) break;
+	    }
+
+	objCloseSession(s);
 
     thExit();
     }
@@ -1204,12 +1322,25 @@ main(int argc, char* argv[])
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
+	memset(&TESTOBJ,0,sizeof(TESTOBJ));
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"hc:q")) > 0)
+	while ((ch=getopt(argc,argv,"hc:qu:p:f:C:")) > 0)
 	    {
 	    switch (ch)
 	        {
+		case 'C':	memccpy(TESTOBJ.Command, optarg, 0, 1023);
+				TESTOBJ.Command[1023] = 0;
+				break;
+		case 'f':	memccpy(TESTOBJ.CmdFile, optarg, 0, 255);
+				TESTOBJ.CmdFile[255] = 0;
+				break;
+		case 'u':	memccpy(TESTOBJ.UserName, optarg, 0, 31);
+				TESTOBJ.UserName[31] = 0;
+				break;
+		case 'p':	memccpy(TESTOBJ.Password, optarg, 0, 31);
+				TESTOBJ.Password[31] = 0;
+				break;
 		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
 				CxGlobals.ConfigFileName[255] = '\0';
 				break;

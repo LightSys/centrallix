@@ -50,10 +50,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.17 2003/07/09 18:10:02 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.18 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.18  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.17  2003/07/09 18:10:02  gbeeley
     Further fixes and enhancements to prtmgmt layer, particularly regarding
     visual layout of graphical borders around objects; border/shadow
@@ -336,8 +348,14 @@ prtSetTextStyle(int handle_id, pPrtTextStyle style)
 	memcpy(&(set_obj->TextStyle), style, sizeof(PrtTextStyle));
 	set_obj->TextStyle.FontSize = s->Formatter->GetNearestFontSize(s->FormatterData, set_obj->TextStyle.FontSize);
 	set_obj->LineHeight = set_obj->TextStyle.FontSize/12.0;
-	set_obj->Height = prt_internal_GetFontHeight(set_obj);
-	set_obj->ConfigHeight = set_obj->Height;
+
+	/** Only adjust height if a string object **/
+	if (set_obj->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    {
+	    set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	    set_obj->ConfigHeight = set_obj->Height;
+	    }
+
 	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);

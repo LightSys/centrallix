@@ -19,6 +19,7 @@
 #include "xstring.h"
 #include "st_node.h"
 #include "stparse.h"
+#include "stparse_ne.h"
 #include "hints.h"
 
 /************************************************************************/
@@ -54,10 +55,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.12 2003/06/03 20:29:12 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.13 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.13  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.12  2003/06/03 20:29:12  gbeeley
     Fix to CSV driver due to uninitialized memory causing a segfault when
     opening CSV files from time to time.
@@ -332,6 +345,7 @@ typedef struct
     int		   RowBufSize;
     unsigned char* ColPtrs[256];
     unsigned char  AutoName[256];
+    unsigned char  SpecName[OBJSYS_MAX_PATH]; /* spec file if specified in openctl params */
     pObject	   DataObj;
     pObject	   SpecObj;
     }
@@ -1382,12 +1396,22 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	strcpy(nodefile,filename);
 	if (strlen(filename) <= 5 || strcmp(".spec",filename+strlen(filename)-5))
 	    {
-	    slash_pos = strrchr(nodefile,'/');
-	    dot_pos = strrchr(nodefile,'.');
-	    if (!dot_pos || (slash_pos > dot_pos && slash_pos != NULL))
-		strcat(nodefile,".spec");
+	    if (context->SpecName[0])
+		{
+		/** Specfile specified in open ctl **/
+		memccpy(nodefile, context->SpecName, 0, 255);
+		nodefile[255] = '\0';
+		}
 	    else
-		strcpy(dot_pos,".spec");
+		{
+		/** Determine specfile name from object name **/
+		slash_pos = strrchr(nodefile,'/');
+		dot_pos = strrchr(nodefile,'.');
+		if (!dot_pos || (slash_pos > dot_pos && slash_pos != NULL))
+		    strcat(nodefile,".spec");
+		else
+		    strcpy(dot_pos,".spec");
+		}
 	    is_datafile = 1;
 	    }
 
@@ -2068,6 +2092,8 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     {
     pDatData inf;
     int i;
+    pStruct openctl_data;
+    char *ptr;
 
 	/** Allocate the structure **/
 	inf = (pDatData)nmMalloc(sizeof(DatData));
@@ -2082,6 +2108,18 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    nmFree(inf,sizeof(DatData));
 	    return NULL;
+	    }
+
+	/** Spec name passed in via openctl? **/
+	if (obj->Pathname->OpenCtl[obj->SubPtr-1] && (openctl_data = stLookup_ne(obj->Pathname->OpenCtl[obj->SubPtr-1],"specobj")))
+	    {
+	    ptr = NULL;
+	    stAttrValue_ne(openctl_data, &ptr);
+	    if (ptr)
+		{
+		memccpy(inf->SpecName, ptr, 0, OBJSYS_MAX_PATH-1);
+		inf->SpecName[OBJSYS_MAX_PATH-1] = '\0';
+		}
 	    }
 
 	/** Access the DB node. **/

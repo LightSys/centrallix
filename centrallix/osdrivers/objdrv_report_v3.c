@@ -16,6 +16,7 @@
 #include "xhash.h"
 #include "xstring.h"
 #include "stparse.h"
+#include "stparse_ne.h"
 #include "st_node.h"
 #include "expression.h"
 #include "report.h"
@@ -57,10 +58,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.6 2003/07/09 18:13:20 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.7 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.7  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.6  2003/07/09 18:13:20  gbeeley
     Further polishing/work on the table output in the report writer.  Re-
     enabled uxprint OSD once its dependence on prtmgmt was removed.
@@ -3548,6 +3561,9 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     int rval;
     char* node_path;
     pSnNode node = NULL;
+    int i;
+    pStruct paramdata;
+    pStructInf newparam;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
 	if (obj->SubPtr != obj->Pathname->nElements)
@@ -3583,6 +3599,17 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->ContentType[63] = 0;
 	xaInit(&(inf->UserDataSlots), 16);
 	inf->NextUserDataSlot = 1;
+
+	/** Lookup attribute/param override data in the openctl **/
+	if (obj->Pathname->OpenCtl[obj->SubPtr-1])
+	    {
+	    paramdata = obj->Pathname->OpenCtl[obj->SubPtr-1];
+	    for(i=0;i<paramdata->nSubInf;i++)
+		{
+		newparam = stAddAttr(inf->AttrOverride, paramdata->SubInf[i]->Name);
+		stSetAttrValue(newparam, DATA_T_STRING, POD(&(paramdata->SubInf[i]->StrVal)), 0);
+		}
+	    }
 
 	/** Content type must be application/octet-stream or more specific. **/
 	rval = obj_internal_IsA(inf->ContentType, "application/octet-stream");

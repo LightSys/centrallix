@@ -49,10 +49,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.13 2003/08/01 15:53:07 gbeeley Exp $
+    $Id: obj_object.c,v 1.14 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.14  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.13  2003/08/01 15:53:07  gbeeley
     Fix for objDelete on certain types of data sources which rely on the
     writability of obj->Prev during delete operations.
@@ -1215,7 +1227,7 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	/*this = obj_internal_ProcessPath(session, path, mode, type);*/
 	this = obj_internal_ProcessOpen(session, path, mode, permission_mask, type);
 	if (!this) return NULL;
-	this->Mode = mode;
+	/*this->Mode = mode;*/ /* GRB ProcessOpen does this for us */
 	this->Obj = NULL;
 	this->Session = session;
 	/*this->LinkCnt = 1;*/

@@ -47,10 +47,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.8 2003/04/21 21:00:48 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.9 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.9  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.8  2003/04/21 21:00:48  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -196,7 +208,7 @@ prtCloseSession(pPrtSession s)
 	    for(obj=s->StreamHead->ContentHead;obj;obj=obj->Next)
 		{
 		ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
-		prt_internal_GeneratePage(s, obj);
+		if (obj->ContentHead) prt_internal_GeneratePage(s, obj);
 		}
 	    }
 

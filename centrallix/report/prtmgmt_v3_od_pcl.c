@@ -50,10 +50,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.13 2003/07/09 18:10:02 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.14 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.14  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.13  2003/07/09 18:10:02  gbeeley
     Further fixes and enhancements to prtmgmt layer, particularly regarding
     visual layout of graphical borders around objects; border/shadow
@@ -600,6 +612,13 @@ prt_pclod_WriteRasterData(void* context_v, pPrtImage img, double width, double h
 	actual_height = (context->CurVPos + height <= next_y)?height:(next_y - context->CurVPos);
 	rows = actual_height/6.0*(context->SelectedResolution->Yres);
 	cols = width/10.0*(context->SelectedResolution->Xres);
+
+	/** Kludge: if not end of image yet, emit an extra row just in case
+	 ** we have roundoff problems with the next piece of the image.
+	 **/
+	if (context->CurVPos + height > next_y) rows++;
+
+	/*printf("od_pcl: rows=%d, cols=%d, start=%.3f, height=%.3f\n",rows,cols,context->CurVPos,actual_height);*/
 	/*if (context->SelectedResolution->Colors == PRT_COLOR_T_FULL)
 	    planes = 4;
 	else

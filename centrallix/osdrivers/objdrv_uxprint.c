@@ -11,6 +11,7 @@
 #include <grp.h>
 #include <time.h>
 #include <signal.h>
+#include <errno.h>
 #include "obj.h"
 #include "mtask.h"
 #include "xarray.h"
@@ -53,10 +54,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_uxprint.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_uxprint.c,v 1.6 2003/09/02 15:37:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_uxprint.c,v $
 
     $Log: objdrv_uxprint.c,v $
+    Revision 1.6  2003/09/02 15:37:13  gbeeley
+    - Added enhanced command line interface to test_obj.
+    - Enhancements to v3 report writer.
+    - Fix for v3 print formatter in prtSetTextStyle().
+    - Allow spec pathname to be provided in the openctl (command line) for
+      CSV files.
+    - Report writer checks for params in the openctl.
+    - Local filesystem driver fix for read-only files/directories.
+    - Race condition fix in UX printer osdriver
+    - Banding problem workaround installed for image output in PCL.
+    - OSML objOpen() read vs. read+write fix.
+
     Revision 1.5  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -621,6 +634,7 @@ uxpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
     char* type = NULL;
     struct stat fileinfo;
     int start_filter = 0;
+    int saved_errno;
 
 	/** Start the filter process? **/
 	if (!inf->SpoolFileFD && !inf->MasterFD)
@@ -640,6 +654,7 @@ uxpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 		}
 
 	    /** Generate a spool file name **/
+	  TRY_SPOOL_AGAIN:
 	    do  {
 	        sprintf(inf->SpoolPathname,"%s/%8.8d.job",spooldir,UXP_INF.SpoolCnt++);
 		} while (lstat(inf->SpoolPathname, &fileinfo) == 0);
@@ -648,6 +663,13 @@ uxpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 	    inf->SpoolFileFD = fdOpen(inf->SpoolPathname, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	    if (!inf->SpoolFileFD) 
 	        {
+		/** oops - race condition, someone else got it, try again **/
+		saved_errno = errno;
+		if (lstat(inf->SpoolPathname, &fileinfo) == 0) goto TRY_SPOOL_AGAIN;
+
+		/** Oh well, can't open the thing. **/
+		/** Shouldn't be writing to errno, but mssErrorErrno wants it... sigh... **/
+		errno = saved_errno;
 		mssErrorErrno(1,"UXP","Could not open spool file");
 		return -1;
 		}
