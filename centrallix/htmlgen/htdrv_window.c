@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.5 2001/10/22 17:19:42 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.6 2002/02/13 19:20:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.6  2002/02/13 19:20:40  lkehresman
+    Fixed a minor bug that wouldn't reset the "X" image if the close button
+    was clicked, but the mouse moved out of the image border.
+
     Revision 1.5  2001/10/22 17:19:42  gbeeley
     Added a few utility functions in ht_render to simplify the structure and
     authoring of widget drivers a bit.
@@ -356,6 +360,10 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        {\n"
 		"        e.target.src = '/sys/images/01close.gif';\n"
 		"        e.target.layer.visibility = 'hidden';\n"
+		"        }\n"
+		"    else if (ly.document.images[6].name == 'close')\n"
+		"        {\n"
+		"        ly.document.images[6].src = '/sys/images/01close.gif';\n"
 		"        }\n"
 		"    if (wn_current != null)\n"
 		"        {\n"
