@@ -1,8 +1,9 @@
-#ifndef _MIME_H
-#define _MIME_H
+#ifndef _HINTS_H
+#define _HINTS_H
 
 #include "obj.h"
 #include "stparse.h"
+#include "xstring.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -28,7 +29,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	libmime							*/
+/* Module: 	hints.c, hints.h					*/
 /* Author:	Luke Ehresman (LME)					*/
 /* Creation:	March 10, 2003						*/
 /* Description:	Provides declarations for the presentation hints	*/
@@ -36,5 +37,8 @@
 /************************************************************************/
 
 pObjPresentationHints objInfToHints(pStructInf inf, int data_type);
+pObjPresentationHints hntObjToHints(pObject obj);
+int hntVerifyHints(pObjPresentationHints hints, pTObjData ptod, char** msg, pParamObjects objlist);
+int hntEncodeHints(pObjPresentationHints hints, pXString xs);
 
-#endif /** _MIME_H **/
+#endif /** _HINTS_H **/
