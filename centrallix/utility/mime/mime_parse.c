@@ -166,10 +166,11 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
     else
 	{
 	flag = 1;
-	start = 0;
+	msg->MsgSeekEnd = msg->MsgSeekStart;
 	mlxSetOffset(lex, msg->MsgSeekStart);
 	while (flag)
 	    {
+	    mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
 	    toktype = mlxNextToken(lex);
 	    if (toktype == MLX_TOK_ERROR)
 		{
@@ -179,11 +180,10 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 		{
 		xsInit(&xsbuf);
 		xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
+		msg->MsgSeekEnd += strlen(xsbuf.String);
 		xsDeInit(&xsbuf);
-		start += strlen(xsbuf.String);
 		}
 	    }
-	msg->MsgSeekEnd = size;
 	}
 
     return 0;
@@ -716,7 +716,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 	    bytes_left = maxcnt;
 
 	    end = 0;
-	    while (bytes_left > 0 && !end)
+	    while (bytes_left > 0 && !end && mdat->ExternalChunkSeek <= msg->MsgSeekEnd)
 		{
 		/**  Figure out what chunk we're inside  **/
 		mdat->InternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_BUF_SIZE;
@@ -755,7 +755,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 			if (msg->MsgSeekEnd < msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen + tleft)
 			    {
 			    toffset = msg->MsgSeekEnd - (msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen);
-			    left = 0;
+			    tleft = 0;
 			    }
 			else
 			    {
@@ -782,11 +782,11 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		bptr = mdat->Buffer + (mdat->InternalSeek - mdat->InternalChunkSeek);
 		len = MIME_BUF_SIZE - (bptr - mdat->Buffer);
 		if (len > bytes_left) len = bytes_left;
-		if (len >= MIME_BUF_SIZE)
+		if (len >= MIME_BUF_SIZE || len >= maxcnt)
 		    {
-		    if (tsize < MIME_BUF_SIZE)
+		    if ((tsize-(bptr-mdat->Buffer)) < MIME_BUF_SIZE)
 			{
-			mdat->InternalChunkSize = tsize;
+			mdat->InternalChunkSize = (tsize-(bptr-mdat->Buffer));
 			end = 1;
 			}
 		    else
@@ -798,7 +798,6 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		    {
 		    mdat->InternalChunkSize = len;
 		    }
-		size += mdat->InternalChunkSize;
 
 		/**  Now copy the chunk of bytes into the buffer  **/
 		memcpy(ptr, bptr, mdat->InternalChunkSize);
@@ -806,6 +805,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		ptr += mdat->InternalChunkSize;
 		bytes_left -= mdat->InternalChunkSize;
 		mdat->InternalSeek += mdat->InternalChunkSize;
+		size += mdat->InternalChunkSize;
 		}
 	    break;
 	}

@@ -53,10 +53,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.18 2002/08/29 14:27:55 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.19 2002/08/29 16:23:03 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.19  2002/08/29 16:23:03  lkehresman
+    * Fixed bug that wasn't correctly setting the end seek point for the
+      message.
+    * Fixed bug that wasn't properly returning the size of the decoded
+      chunk, and thus was causing infinite loops when printing a base64
+      encoded message.
+    * Added "flags" parameter to libmime_PartRead() and made it so it can
+      handle both seeking and non-seeking requests (FD_U_SEEK)
+    * Fixed mimeRead() so that it handles the InternalSeek for the mime
+      driver side of things (this is different than the InternalSeek that
+      is used inside the libmime parser itself, it is necessary to keep
+      them distinct).
+
     Revision 1.18  2002/08/29 14:27:55  lkehresman
     Brand spankin' new base64 decoding algorithm.  This one is much better
     than the previous one.  It includes internal buffering, sliding
@@ -254,14 +267,14 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
 	fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
 	buffer = (char*)nmMalloc(1024);
-	size = libmime_PartRead(inf->MimeDat, tmp, buffer, 11, 360, FD_U_SEEK);
+	size = libmime_PartRead(inf->MimeDat, tmp, buffer, 80, 0, FD_U_SEEK);
 	buffer[size] = 0;
 	printf("--%d--%s--\n", size,buffer);
 	nmFree(buffer, 1024);
 	}
     fprintf(stderr, "-----------------------------------------------------------------\n\n");
-    */
     mlxCloseSession(lex);
+    */
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;
@@ -318,7 +331,12 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     int size;
     pMimeInfo inf = (pMimeInfo)inf_v;
 
-    size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, offset, flags);
+    if (!offset && !inf->InternalSeek)
+	inf->InternalSeek = 0;
+    else if (offset)
+	inf->InternalSeek = offset;
+    size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
+    inf->InternalSeek += size;
 
     return size;
     }

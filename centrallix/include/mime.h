@@ -134,7 +134,7 @@ int libmime_SetContentDisp(pMimeHeader msg, char *buf);
 int libmime_SetContentType(pMimeHeader msg, char *buf);
 void libmime_PrintEntityContent(pMimeHeader msg, pLxSession lex);
 int libmime_GetEntityContent(long start, long end, pLxSession lex);
-int libmime_ReadPart(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset);
+int libmime_ReadPart(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags);
 
 /** mime_address.c **/
 int libmime_ParseAddressList(char *buf, pXArray xary);
