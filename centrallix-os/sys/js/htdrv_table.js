@@ -413,3 +413,45 @@ function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborde
     t.SlotToRecnum=tbld_slot_to_recnum
     return t;
     }
+
+
+
+	
+/** Function to handle clicking of a table row **/
+
+function tbls_rowclick(x,y,l,cls,nm)
+    {
+    //alert(cls + ':' + nm);
+    return 3;
+    }
+
+function tbls_rowunclick()
+    {
+    return true;
+    }
+
+/** Function to enable clickable table rows **/
+function tbls_init(pl, nm, w, cp, cs)
+    {
+    if (w == -1) w = pl.clip.width;
+    ox = -1;
+    oy = -1;
+    nmstr = 'xy_' + nm;
+    for(i=0;i<pl.document.images.length;i++)
+        {
+        if (pl.document.images[i].name.substr(0,nmstr.length) == nmstr)
+            {
+            img = pl.document.images[i];
+            imgnm = pl.document.images[i].name.substr(nmstr.length+1,255);
+            if (ox != -1)
+                {
+                pl.getfocushandler = tbls_rowclick;
+                pl.losefocushandler = tbls_rowunclick;
+                pg_addarea(pl,img.x-cp-1,img.y-cp-1,w-(cs-1)*2,(img.y-oy)-(cs-1),nm,imgnm,3);
+                }
+            ox = img.x;
+            oy = img.y;
+            }
+        }
+    }
+
