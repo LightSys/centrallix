@@ -225,7 +225,7 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 
 	AC_ARG_WITH(libxml-inc,
 	    AC_HELP_STRING([--with-libxml-inc=PATH],
-		[include path for Sybase headers (default is /usr/include)]
+		[include path for libxml headers (default is /usr/include)]
 	    ),
 	    libxml_incdir="$withval",
 	    libxml_incdir="`xml2-config --cflags | cut -f1 | cut -b 3-`"

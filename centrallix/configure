@@ -844,7 +844,7 @@ Optional Packages:
   --with-sybase-lib=PATH  library path for Sybase libraries (default is
                           /opt/sybase/lib)
   --with-libxml=PATH      library path for xml library (default is /usr/lib)
-  --with-libxml-inc=PATH  include path for Sybase headers (default is
+  --with-libxml-inc=PATH  include path for libxml headers (default is
                           /usr/include)
 
 Some influential environment variables:
