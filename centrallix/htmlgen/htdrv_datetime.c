@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.9 2002/07/15 21:20:21 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.10 2002/07/15 22:24:15 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.10  2002/07/15 22:24:15  lkehresman
+    Updated datetime widget to include generic date manipulation script
+
     Revision 1.9  2002/07/15 21:20:21  lkehresman
     Stripped out all functions and added htrAddScriptInclude() function
     calls to include the .js files.
@@ -225,10 +228,9 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddHeaderItem(s,"    </STYLE>\n");
 
 	/** Write named global **/
-	//nptr = (char*)nmMalloc(strlen(name)+1);
 	sprintf(name, "%s.layers.dt%dpane", parentname, id);
-	//htrAddScriptGlobal(s, name, "null", HTR_F_NAMEALLOC);
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
 
