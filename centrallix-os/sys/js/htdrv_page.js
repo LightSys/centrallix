@@ -272,16 +272,25 @@ function pg_keyhandler(k,m,e)
  
 function pg_status_init()
     {
-    if (!document.layers.pgstat)
-	return false
-    pg_status = document.layers.pgstat;
+    pg_status = null;
+    if(cn_browser.netscape47)
+	{
+	pg_status = document.layers.pgstat;
+	}
+    else if(cn_browser.mozilla)
+	{
+	pg_status = document.getElementById("pgstat");
+	}
+    
+    if (!pg_status)
+	return false;
     pg_status.zIndex = 1000000;
     pg_status.visibility = 'visible';
     }
  
 function pg_status_close()
     {
-    if (!document.layers.pgstat)
+    if (!pg_status)
 	return false
     pg_status.visibility = 'hide';
     }

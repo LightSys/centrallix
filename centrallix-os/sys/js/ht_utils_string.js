@@ -17,6 +17,16 @@ function htutil_strpad(str, pad, len) {
 	return tmp+str;
 }
 
+function htutil_unpack(str) {
+	str = new String(str);
+	var ret="";
+	for(var i=0;i<str.length;i+=2)
+		{
+		ret+=unescape("%"+str.substr(i,2));
+		}
+	return ret;
+}
+
 function htutil_encode(s) {
 	rs = '';
 	for(i=0;i<s.length;i++) {
