@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.13 2002/06/19 19:57:13 gbeeley Exp $
+    $Id: ht_render.c,v 1.14 2002/06/20 16:22:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.14  2002/06/20 16:22:08  gbeeley
+    Wrapped the nonconstant format string warning in an ifdef WITH_SECWARN
+    so it doesn't bug people other than developers.
+
     Revision 1.13  2002/06/19 19:57:13  gbeeley
     Added warning code if htr..._va() function is passed a format string
     from the heap or other modifiable data segments.  Half a kludge...
@@ -393,10 +397,12 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	 ** modules, since their text segments will have different addresses
 	 ** and we'll then have to read /proc/self/maps manually.
 	 **/
+#ifdef WITH_SECWARN
 	if ((unsigned int)fmt > (unsigned int)(&__data_start))
 	    {
 	    printf("***WARNING*** htrXxxYyy_va() format string '%s' at address 0x%X > 0x%X may not be a constant.\n",fmt,(unsigned int)fmt,(unsigned int)(&__data_start));
 	    }
+#endif
 
 	/** Save the current va_list state so we can retry it. **/
 	orig_va = va;
