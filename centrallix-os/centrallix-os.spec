@@ -8,6 +8,7 @@ Source: centrallix-os-%{version}.tgz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
 URL: http://www.centrallix.net/
 Vendor: LightSys (http://www.lightsys.org)
+BuildArch: noarch
 
 %description
 The centrallix-os package provides a core file-based ObjectSystem for
