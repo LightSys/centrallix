@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 #include "datatypes.h"
 #include "ptod.h"
 
@@ -36,10 +40,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ptod.c,v 1.1 2004/05/04 18:19:48 gbeeley Exp $
+    $Id: ptod.c,v 1.2 2004/06/12 04:02:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/ptod.c,v $
 
     $Log: ptod.c,v $
+    Revision 1.2  2004/06/12 04:02:29  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.1  2004/05/04 18:19:48  gbeeley
     - new definition location for PTOD type.
 
@@ -169,4 +177,36 @@ ptodDuplicate(pTObjData ptod, int flags)
     {
     }
 
+
+/*** ptodPrint() - do a debugging print of the ptod data value to standard
+ *** output.
+ ***/
+int
+ptodPrint(pTObjData ptod)
+    {
+    char* type_names[] = { "(unknown)", "integer", "string", "double", "datetime", "intvec", "stringvec", "money", "array", "code", "binary" };
+    int t;
+
+	/** type **/
+	t = ptod->DataType;
+	if (t < 0 || t > sizeof(type_names)/sizeof(char*)) t = 0;
+
+	printf("PTOD: type %s, ", type_names[t]);
+	if (ptod->Flags & DATA_TF_UNASSURED) printf("unassured, ");
+	if (ptod->Flags & DATA_TF_UNMANAGED) printf("unmanaged, ");
+	if (ptod->Flags & DATA_TF_ATTACHED) printf("attached, ");
+	if (ptod->Flags & DATA_TF_NULL) 
+	    {
+	    printf("null\n");
+	    }
+	else
+	    {
+	    if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE)
+		printf("%s\n", (char*)objDataToStringTmp(t, (void*)&(ptod->Data), 0));
+	    else
+		printf("%s\n", (char*)objDataToStringTmp(t, (void*)(ptod->Data.Generic), 0));
+	    }
+
+    return 0;
+    }
 

@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.4 2002/04/05 06:10:11 gbeeley Exp $
+    $Id: multiquery.h,v 1.5 2004/06/12 04:02:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.5  2004/06/12 04:02:27  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.4  2002/04/05 06:10:11  gbeeley
     Updating works through a multiquery when "FOR UPDATE" is specified at
     the end of the query.  Fixed a reverse-eval bug in the expression
@@ -202,6 +206,7 @@ typedef struct
     ParamObjects	ObjList;
     int			Serial;
     int			AttrID;
+    pObject		Obj;
     }
     PseudoObject, *pPseudoObject;
 

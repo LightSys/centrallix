@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mbox.c,v 1.4 2004/06/11 21:06:57 mmcgill Exp $
+    $Id: objdrv_mbox.c,v 1.5 2004/06/12 04:02:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mbox.c,v $
 
     $Log: objdrv_mbox.c,v $
+    Revision 1.5  2004/06/12 04:02:29  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.4  2004/06/11 21:06:57  mmcgill
     Did some code tree scrubbing.
 
@@ -725,6 +729,33 @@ mboxExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt
     }
 
 
+/*** mboxInfo - get info on an object
+ ***/
+int
+mboxInfo(void* inf_v, pObjectInfo info)
+    {
+    pMboxData inf = MBOX(inf_v);
+
+	/** Basic settings for all of these objects **/
+	info->Flags = 0; /*OBJ_INFO_F_CANT_ADD_ATTR;*/
+
+	/** Is it a directory? **/
+	/*if (inf->Flags & UXD_F_ISDIR)
+	    {
+	    info->Flags |= (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
+		    OBJ_INFO_F_NO_CONTENT);
+	    }
+	else
+	    {
+	    info->Flags |= (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ | 
+		    OBJ_INFO_F_CAN_SEEK_FULL | OBJ_INFO_F_CAN_HAVE_CONTENT | 
+		    OBJ_INFO_F_HAS_CONTENT);
+	    }*/
+
+    return 0;
+    }
+
+
 /*** mboxInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
@@ -770,6 +801,7 @@ mboxInitialize()
 	drv->GetNextMethod = mboxGetNextMethod;
 	drv->ExecuteMethod = mboxExecuteMethod;
 	drv->PresentationHints = NULL;
+	drv->Info = mboxInfo;
 
 	nmRegister(sizeof(MboxData),"MboxData");
 	nmRegister(sizeof(MboxQuery),"MboxQuery");

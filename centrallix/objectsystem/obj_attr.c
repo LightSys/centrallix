@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -48,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.7 2003/08/01 18:51:30 gbeeley Exp $
+    $Id: obj_attr.c,v 1.8 2004/06/12 04:02:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.8  2004/06/12 04:02:28  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.7  2003/08/01 18:51:30  gbeeley
     Move a little bit of work out of the osdrivers in GetAttrType.
 
@@ -250,6 +254,8 @@ objGetNextAttr(pObject this)
 int 
 objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     {
+    int rval;
+    TObjData tod;
     
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -261,7 +267,16 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    }
 #endif
 
-    return this->Driver->SetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
+	rval = this->Driver->SetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
+	if (rval >= 0) 
+	    {
+	    memcpy(&(tod.Data), val, sizeof(ObjData));
+	    tod.DataType = data_type;
+	    tod.Flags = 0;
+	    obj_internal_RnNotifyAttrib(this, attrname, &tod, 0);
+	    }
+
+    return rval;
     }
 
 
@@ -271,8 +286,20 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 int
 objAddAttr(pObject this, char* attrname, int type, pObjData val)
     {
-    ASSERTMAGIC(this, MGK_OBJECT);
-    return this->Driver->AddAttr(this->Data, attrname, type, val, &(this->Session->Trx));
+    int rval;
+    TObjData tod;
+    
+	ASSERTMAGIC(this, MGK_OBJECT);
+	rval = this->Driver->AddAttr(this->Data, attrname, type, val, &(this->Session->Trx));
+	if (rval >= 0) 
+	    {
+	    memcpy(&(tod.Data), val, sizeof(ObjData));
+	    tod.DataType = type;
+	    tod.Flags = 0;
+	    obj_internal_RnNotifyAttrib(this, attrname, &tod, 0);
+	    }
+
+    return rval;
     }
 
 

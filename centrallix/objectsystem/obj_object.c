@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.16 2004/02/25 19:59:57 gbeeley Exp $
+    $Id: obj_object.c,v 1.17 2004/06/12 04:02:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.17  2004/06/12 04:02:28  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.16  2004/02/25 19:59:57  gbeeley
     - fixing problem in net_http; nht_internal_GET should not open the
       target_obj when operating in OSML-over-HTTP mode.
@@ -393,6 +397,7 @@ obj_internal_AllocObj()
 	this->Flags = 0;
 	this->Data = NULL;
 	this->Type = NULL;
+	this->NotifyItem = NULL;
 	memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
 	xaInit(&(this->Attrs),16);
 
@@ -1342,6 +1347,10 @@ objClose(pObject this)
 	    /** Remove from open objects this session. **/
 	    xaRemoveItem(&(this->Session->OpenObjects),
 	        xaFindItem(&(this->Session->OpenObjects),(void*)this));
+
+	    /** Any notify requests open on this? **/
+	    while (this->NotifyItem)
+		obj_internal_RnDelete(this->NotifyItem);
 
 	    /** Dismantle the structure **/
 	    if (this->ContentPtr)

@@ -12,6 +12,13 @@
 
 var pg_layer = null;
 
+var pg_msg = new Object();
+pg_msg.MSG_ERROR=1;
+pg_msg.MSG_QUERY=2;
+pg_msg.MSG_GOODBYE=4;
+pg_msg.MSG_REPMSG=8;
+pg_msg.MSG_EVENT=16;
+
 /** returns an attribute of the element in pixels **/
 function pg_get_style(element,attr)
     {
@@ -944,6 +951,7 @@ function pg_init(l,a,gs,ct)
     htr_init_layer(window,window,"window");
     pg_reveal_register_triggerer(window);
     pg_reveal_event(window,null,'Reveal');
+    pg_addsched('pg_msg_init()', window);
     return l;
     }
 
@@ -1590,6 +1598,49 @@ function pg_log_fn(fnname)
 	}
     fndecl += 'body)';
     window[fnname] = eval(fndecl);
+    return;
+    }
+
+
+/// The below set of functions handle the Control Message mechanism from
+/// the server.  Widgets / objects may request to receive control messages
+/// of certain types, and they will be routed as requested when they
+/// come in.
+
+// This function registers an object to receive control messages via the
+// object.ControlMsg callback.
+function pg_msg_request(o, m)
+    {
+    pg_msg_handlers.push({obj:o, msgtypes:m});
+    if (!pg_msg_timeout)
+	pg_msg_timeout = setTimeout('pg_serialized_load(pg_msg_layer, "/INTERNAL/control?cx_cm_nowait=1", pg_msg_received);', 2000);
+    return;
+    }
+
+// This function initializes the control message delivery mechanism
+function pg_msg_init()
+    {
+    pg_msg_layer = document.getElementById('pgmsg');
+    pg_msg_layer.onload = pg_msg_received;
+    //pg_addsched('pg_set(pg_msg_layer, "src", "/INTERNAL/control")');
+    //pg_set(pg_msg_layer, "src", null);
+    if (pg_msg_handlers.length > 0 && !pg_msg_timeout)
+	pg_msg_timeout = setTimeout('pg_serialized_load(pg_msg_layer, "/INTERNAL/control?cx_cm_nowait=1", pg_msg_received);', 2000);
+    return;
+    }
+
+// Called when a message has been received.
+function pg_msg_received()
+    {
+    var lnks = pg_links(this);
+    if (lnks.length > 1)
+	{
+	for(var i = 0; i<pg_msg_handlers.length; i++)
+	    {
+	    pg_msg_handlers[i].obj.ControlMsg(lnks);
+	    }
+	}
+    pg_msg_timeout = setTimeout('pg_serialized_load(pg_msg_layer, "/INTERNAL/control?cx_cm_nowait=1", pg_msg_received);', 2000);
     return;
     }
 

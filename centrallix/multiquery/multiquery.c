@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.15 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: multiquery.c,v 1.16 2004/06/12 04:02:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.16  2004/06/12 04:02:28  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.15  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -1402,11 +1406,56 @@ mq_internal_CkSetObjList(pMultiQuery mq, pPseudoObject p)
 	if (mq->CurSerial == p->Serial) return 0;
 
 	/** Ok, need to update... **/
+	expSyncSeqID(&(p->ObjList), mq->QTree->ObjList);
 	memcpy(mq->QTree->ObjList, &p->ObjList, sizeof(ParamObjects));
 	mq->QTree->ObjList->MainFlags |= EXPR_MO_RECALC;
 	mq->CurSerial = p->Serial;
 
     return 1;
+    }
+
+
+
+/*** mq_internal_UpdateNotify() - a callback function that is used by the
+ *** OSML's request-notify (Rn) mechanism to let the multiquery layer know
+ *** that an attribute of an underlying object has changed.  In response, we 
+ *** flag the object on the objlist as having changed, and generate an event to
+ *** the OSML to let it know that the composite object has been modified - which
+ *** possibly will result in Notifications (Rn-style) to whatever has the
+ *** multi-query open.
+ ***/
+int
+mq_internal_UpdateNotify(void* v)
+    {
+    pObjNotification n = (pObjNotification)v;
+    pPseudoObject p = (pPseudoObject)(n->Context);
+    int objid;
+    pExpression exp;
+    int i;
+
+	/** We're about to update... sync the seq ids **/
+	expSyncSeqID(&(p->ObjList), p->Query->QTree->ObjList);
+
+	/** Track down the entry in the objlist **/
+	objid = expObjChanged(&(p->ObjList), n->Obj);
+	/*objid = expObjChanged(&(p->Query->QTree->ObjList), n->Obj);*/
+	if (objid < 0) return -1;
+
+    	/** Check to see whether we're on current object. **/
+	mq_internal_CkSetObjList(p->Query, p);
+
+	/** Find attributes affected by it **/
+	for(i=0;i<p->Query->Tree->AttrCompiledExpr.nItems;i++)
+	    {
+	    exp = (pExpression)(p->Query->Tree->AttrCompiledExpr.Items[i]);
+	    if (expContainsAttr(exp, objid, n->Name))
+		{
+		/** Got one.  Trigger an event on this. **/
+		objDriverAttrEvent(p->Obj, p->Query->Tree->AttrNames.Items[i], NULL, 1);
+		}
+	    }
+
+    return 0;
     }
 
 
@@ -1551,6 +1600,7 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject inf = (pPseudoObject)inf_v;
     int i;
+    pObject obj;
 
     	/** Close the query **/
 	mqQueryClose(inf->Query, oxt);
@@ -1558,7 +1608,9 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
 	/** Release all objects in our param list **/
 	for(i=0;i<inf->ObjList.nObjects;i++) if (inf->ObjList.Objects[i])
 	    {
-	    objClose((pObject)inf->ObjList.Objects[i]);
+	    obj = (pObject)inf->ObjList.Objects[i];
+	    objRequestNotify(obj, mq_internal_UpdateNotify, inf, 0);
+	    objClose(obj);
 	    }
 
 	/** Release the param list **/
@@ -1597,7 +1649,7 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
 /*** mqQueryFetch - retrieves the next item in the query result set.
  ***/
 void*
-mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
+mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
     {
     pPseudoObject p;
     pMultiQuery qy = (pMultiQuery)qy_v;
@@ -1630,6 +1682,7 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
 	    p = (pPseudoObject)nmMalloc(sizeof(PseudoObject));
 	    if (!p) return NULL;
 	    p->Query = qy;
+	    p->Obj = highlevel_obj;
 	    qy->LinkCnt++;
 
 	    /** Copy the object list and link to the objects.
@@ -1677,6 +1730,17 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
 		for(i=0;i<p->ObjList.nObjects;i++) if (p->ObjList.Objects[i]) objClose((pObject)(p->ObjList.Objects[i]));
 		qy->LinkCnt--;
 		nmFree(p, sizeof(PseudoObject));
+		}
+	    }
+
+	/** If we have a pseudo-object, request update-notifies on its parts **/
+	if (p)
+	    {
+	    for(i=0;i<p->ObjList.nObjects;i++) 
+	        {
+	        obj = (pObject)(p->ObjList.Objects[i]);
+		if (obj) 
+		    objRequestNotify(obj, mq_internal_UpdateNotify, p, OBJ_RN_F_ATTRIB);
 		}
 	    }
 
@@ -2063,7 +2127,6 @@ int
 mqCommit(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    pObject obj;
     int i;
 
     	/** Check to see whether we're on current object. **/

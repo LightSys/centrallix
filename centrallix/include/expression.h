@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.9 2004/02/24 20:28:09 gbeeley Exp $
+    $Id: expression.h,v 1.10 2004/06/12 04:02:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.10  2004/06/12 04:02:27  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.9  2004/02/24 20:28:09  gbeeley
     - OOPS!  my commit log message messed up the comment structure in
       this file!
@@ -339,5 +343,8 @@ int expRemoveParamFromList(pParamObjects this, char* name);
 int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);
+int expObjChanged(pParamObjects this, pObject obj);
+int expContainsAttr(pExpression exp, int objid, char* attrname);
+int expSyncSeqID(pParamObjects list1, pParamObjects list2);
 
 #endif /* not defined _EXPRESSION_H */

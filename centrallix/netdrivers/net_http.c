@@ -32,7 +32,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -61,10 +61,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.40 2004/02/25 19:59:57 gbeeley Exp $
+    $Id: net_http.c,v 1.41 2004/06/12 04:02:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.41  2004/06/12 04:02:28  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.40  2004/02/25 19:59:57  gbeeley
     - fixing problem in net_http; nht_internal_GET should not open the
       target_obj when operating in OSML-over-HTTP mode.
@@ -312,7 +316,7 @@ typedef struct
     NhtControlMsgParam, *pNhtControlMsgParam;
 
 /*** This structure is used for server-to-client OOB control messages. ***/
-typedef struct
+typedef struct _NCM
     {
     int		MsgType;	/* NHT_CONTROL_T_xxx */
     XArray	Params;		/* xarray of pNhtControlMsgParam */
@@ -354,6 +358,8 @@ typedef struct
     handle_t	WatchdogTimer;
     handle_t	InactivityTimer;
     int		LinkCnt;
+    pSemaphore	ControlMsgs;
+    XArray	ControlMsgsList;
     }
     NhtSessionData, *pNhtSessionData;
 
@@ -400,6 +406,190 @@ extern int htrRender(pFile, pObject, pStruct);
 int nht_internal_RemoveWatchdog(handle_t th);
 
 
+/*** nht_internal_FreeControlMsg() - release memory used by a control
+ *** message, its parameters, etc.
+ ***/
+int
+nht_internal_FreeControlMsg(pNhtControlMsg cm)
+    {
+    int i;
+    pNhtControlMsgParam cmp;
+
+	/** Destroy semaphore? **/
+	if (cm->ResponseSem) syDestroySem(cm->ResponseSem, SEM_U_HARDCLOSE);
+
+	/** Release params? **/
+	for(i=0;i<cm->Params.nItems;i++)
+	    {
+	    cmp = (pNhtControlMsgParam)cm->Params.Items[i];
+	    if (cmp->P1) nmSysFree(cmp->P1);
+	    if (cmp->P2) nmSysFree(cmp->P2);
+	    if (cmp->P3) nmSysFree(cmp->P3);
+	    if (cmp->P3a) nmSysFree(cmp->P3a);
+	    if (cmp->P3b) nmSysFree(cmp->P3b);
+	    if (cmp->P3c) nmSysFree(cmp->P3c);
+	    if (cmp->P3d) nmSysFree(cmp->P3d);
+	    nmFree(cmp, sizeof(NhtControlMsgParam));
+	    }
+
+	/** Free the control msg structure itself **/
+	nmFree(cm, sizeof(NhtControlMsg));
+
+    return 0;
+    }
+
+
+/*** nht_internal_ControlMsgHandler() - the main handler for all connections
+ *** which access /INTERNAL/control, thus requesting to receive control
+ *** messages from the system.
+ ***/
+int
+nht_internal_ControlMsgHandler(pNhtSessionData sess, pFile conn, pStruct url_inf)
+    {
+    pNhtControlMsg cm, usr_cm;
+    pNhtControlMsgParam cmp;
+    int i;
+    char* response = NULL;
+    char* cm_ptr = "0";
+    char* err_ptr = NULL;
+    int wait_for_sem = 1;
+    char* ptr;
+
+	/** No delay? **/
+	if (stAttrValue_ne(stLookup_ne(url_inf, "cx_cm_nowait"), &ptr) == 0 && !strcmp(ptr,"1"))
+	    wait_for_sem = 0;
+
+	/** Control message response? **/
+	stAttrValue_ne(stLookup_ne(url_inf, "cx_cm_response"), &response);
+	if (response)
+	    {
+	    /** Get control message id **/
+	    stAttrValue_ne(stLookup_ne(url_inf, "cx_cm_id"), &cm_ptr);
+	    usr_cm = (pNhtControlMsg)strtoul(cm_ptr, NULL, 16);
+	    cm = NULL;
+	    for(i=0;i<sess->ControlMsgsList.nItems;i++)
+		{
+		if ((pNhtControlMsg)(sess->ControlMsgsList.Items[i]) == usr_cm)
+		    {
+		    cm = usr_cm;
+		    break;
+		    }
+		}
+
+	    /** No such id? **/
+	    if (!cm)
+		{
+		fdPrintf(conn,"HTTP/1.0 200 OK\r\n"
+			     "Server: %s\r\n"
+			     "Pragma: no-cache\r\n"
+			     "Content-Type: text/html\r\n"
+			     "\r\n"
+			     "<A HREF=0.0 TARGET=0>NO SUCH MESSAGE</A>\r\n",
+			     NHT.ServerString);
+		return 0;
+		}
+
+	    /** Is this an error? **/
+	    stAttrValue_ne(stLookup_ne(url_inf, "cx_cm_error"), &err_ptr);
+	    if (err_ptr)
+		{
+		cm->Status = NHT_CONTROL_S_ERROR;
+		cm->Response = err_ptr;
+		}
+	    else
+		{
+		cm->Status = NHT_CONTROL_S_RESPONSE;
+		cm->Response = response;
+		}
+
+	    /** Remove from queue and do response action (sem or fn call) **/
+	    xaRemoveItem(&(sess->ControlMsgsList), xaFindItem(&(sess->ControlMsgsList), cm));
+	    if (cm->ResponseSem)
+		syPostSem(cm->ResponseSem, 1, 0);
+	    else if (cm->ResponseFn)
+		cm->ResponseFn(cm);
+	    else
+		nht_internal_FreeControlMsg(cm);
+
+	    /** Tell syGetSem to return immediately, below **/
+	    wait_for_sem = 0;
+	    }
+
+	/** Send header **/
+	fdPrintf(conn,"HTTP/1.0 200 OK\r\n"
+		     "Server: %s\r\n"
+		     "Pragma: no-cache\r\n"
+		     "Content-Type: text/html\r\n"
+		     "\r\n",
+		     NHT.ServerString);
+
+    	/** Wait on the control msgs semaphore **/
+	while (1)
+	    {
+	    if (syGetSem(sess->ControlMsgs, 1, wait_for_sem?0:SEM_U_NOBLOCK) < 0)
+		{
+		fdPrintf(conn, "<A HREF=0.0 TARGET=0>END OF CONTROL MESSAGES</A>\r\n");
+		return 0;
+		}
+
+	    /** Grab one control message **/
+	    for(i=0;i<sess->ControlMsgsList.nItems;i++)
+		{
+		cm = (pNhtControlMsg)(sess->ControlMsgsList.Items[i]);
+		if (cm->Status == NHT_CONTROL_S_QUEUED)
+		    {
+		    cm->Status = NHT_CONTROL_S_SENT;
+		    break;
+		    }
+		}
+
+	    /** Send ctl message header **/
+	    fdPrintf(conn,  "<A HREF=%d.%d TARGET=%8.8X>CONTROL MESSAGE</A>\r\n",
+			    NHT.ServerString,
+			    cm->MsgType,
+			    cm->Params.nItems,
+			    (unsigned int)cm);
+
+	    /** Send parameters **/
+	    for(i=0;i<cm->Params.nItems;i++)
+		{
+		cmp = (pNhtControlMsgParam)(cm->Params.Items[i]);
+		if (cmp->P3a)
+		    {
+		    /** split-up HREF **/
+		    fdPrintf(conn, "<A HREF=\"http://%s/%s?%s#%s\" TARGET=\"%s\">%s</A>\r\n",
+			    cmp->P3a,
+			    cmp->P3b?cmp->P3b:"",
+			    cmp->P3c?cmp->P3c:"",
+			    cmp->P3d?cmp->P3d:"",
+			    cmp->P1?cmp->P1:"",
+			    cmp->P2?cmp->P2:"");
+		    }
+		else
+		    {
+		    /** unified HREF **/
+		    fdPrintf(conn, "<A HREF=\"%s\" TARGET=\"%s\">%s</A>\r\n",
+			    cmp->P3?cmp->P3:"",
+			    cmp->P1?cmp->P1:"",
+			    cmp->P2?cmp->P2:"");
+		    }
+		}
+	    printf("NHT: sending message\n");
+
+	    /** Dequeue message if no response needed? **/
+	    if (!cm->ResponseSem && !cm->ResponseFn)
+		{
+		xaRemoveItem(&(sess->ControlMsgsList), xaFindItem(&(sess->ControlMsgsList), cm));
+		nht_internal_FreeControlMsg(cm);
+		}
+
+	    wait_for_sem = 0;
+	    }
+
+    return 0;
+    }
+
+
 /*** nht_internal_LinkSess() - link to a session, thus increasing its link
  *** count.
  ***/
@@ -432,6 +622,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
     {
     pXString errmsg;
     pNhtConnTrigger trg;
+    pNhtControlMsg cm;
 
 	/** Bump the link cnt down **/
 	sess->LinkCnt--;
@@ -453,6 +644,7 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 
 	    /** Destroy the errors semaphore **/
 	    syDestroySem(sess->Errors, SEM_U_HARDCLOSE);
+	    syDestroySem(sess->ControlMsgs, SEM_U_HARDCLOSE);
 
 	    /** Clear the errors list **/
 	    while(sess->ErrorList.nItems)
@@ -476,9 +668,18 @@ nht_internal_UnlinkSess(pNhtSessionData sess)
 		    }
 		}
 
+	    /** Clear control msg list **/
+	    while(sess->ErrorList.nItems)
+		{
+		cm = (pNhtControlMsg)(sess->ControlMsgsList.Items[0]);
+		xaRemoveItem(&sess->ControlMsgsList, 0);
+		nht_internal_FreeControlMsg(cm);
+		}
+
 	    /** Dealloc the xarrays and such **/
 	    xaDeInit(&(sess->Triggers));
 	    xaDeInit(&(sess->ErrorList));
+	    xaDeInit(&(sess->ControlMsgsList));
 	    xhnDeInitContext(&(sess->Hctx));
 	    nht_internal_RemoveWatchdog(sess->WatchdogTimer);
 	    nht_internal_RemoveWatchdog(sess->InactivityTimer);
@@ -855,6 +1056,7 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	    {
 	    fdPrintf(net_conn,"HTTP/1.0 200 OK\r\n"
 			 "Server: %s\r\n"
+			 "Pragma: no-cache\r\n"
 			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
@@ -868,6 +1070,7 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	/** Format the error and print it as HTML. **/
 	fdPrintf(net_conn,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
+		     "Pragma: no-cache\r\n"
 		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "<HTML><BODY><PRE><A NAME=\"Message\">",NHT.ServerString);
@@ -1237,6 +1440,68 @@ nht_internal_WriteAttrs(pNhtSessionData sess, pObject obj, pFile conn, handle_t 
 
 
 
+/*** nht_internal_UpdateNotify() - this routine is called if the UI requested
+ *** notifications on an object modification, and such a modification has
+ *** indeed occurred.
+ ***/
+int
+nht_internal_UpdateNotify(void* v)
+    {
+    pObjNotification n = (pObjNotification)v;
+    pNhtSessionData sess = (pNhtSessionData)(n->Context);
+    handle_t obj_handle = xhnHandle(&(sess->Hctx), n->Obj);
+    pNhtControlMsg cm;
+    pNhtControlMsgParam cmp;
+    XString xs;
+    char* dptr;
+    int type;
+
+	/** Allocate a control message and set it up **/
+	cm = (pNhtControlMsg)nmMalloc(sizeof(NhtControlMsg));
+	if (!cm) return -ENOMEM;
+	cm->MsgType = NHT_CONTROL_T_REPMSG;
+	xaInit(&(cm->Params), 1);
+	cm->ResponseSem = NULL;
+	cm->ResponseFn = NULL;
+	cm->Status = NHT_CONTROL_S_QUEUED;
+	cm->Response = NULL;
+	cm->Context = NULL;
+
+	/** Parameter indicates what changed and how **/
+	cmp = (pNhtControlMsgParam)nmMalloc(sizeof(NhtControlMsgParam));
+	if (!cmp)
+	    {
+	    nmFree(cm, sizeof(NhtControlMsg));
+	    return -ENOMEM;
+	    }
+	memset(cmp, 0, sizeof(NhtControlMsgParam));
+	xsInit(&xs);
+	xsPrintf(&xs, "X" XHN_HANDLE_PRT, obj_handle);
+	cmp->P1 = nmSysStrdup(xs.String);
+	xsPrintf(&xs, "http://%s/", n->Name);
+	cmp->P3 = nmSysStrdup(xs.String);
+	type = n->NewAttrValue.DataType;
+	if (n->NewAttrValue.Flags & DATA_TF_NULL) 
+	    dptr = "";
+	else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) 
+	    dptr = objDataToStringTmp(type, (void*)&n->NewAttrValue.Data, 0);
+	else
+	    dptr = objDataToStringTmp(type, (void*)(n->NewAttrValue.Data.String), 0);
+	if (!dptr) dptr = "";
+	xsCopy(&xs, "", 0);
+	nht_internal_Escape(&xs, dptr);
+	cmp->P2 = nmSysStrdup(xs.String);
+	xaAddItem(&cm->Params, (void*)cmp);
+
+	/** Enqueue the thing. **/
+	xaAddItem(&sess->ControlMsgsList, (void*)cm);
+	syPostSem(sess->ControlMsgs, 1, 0);
+
+    return 0;
+    }
+
+
+
 /*** nht_internal_OSML - direct OSML access from the client.  This will take
  *** the form of a number of different OSML operations available seemingly
  *** seamlessly (hopefully) from within the JavaScript functionality in an
@@ -1441,6 +1706,9 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 		    obj_handle);
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 
+		if (obj && stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+		    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
+
 		/** Include an attribute listing **/
 		nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1,encode_attrs);
 	        }
@@ -1532,6 +1800,8 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 		while(n > 0 && (obj = objQueryFetch(qy,mode)))
 		    {
 		    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+			objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
 		    nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1,encode_attrs);
 		    n--;
 		    }
@@ -1870,6 +2140,8 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
     struct tm* thetime;
     time_t tval;
     char tbuf[32];
+    int send_info = 0;
+    pObjectInfo objinfo;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1878,6 +2150,10 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	if (!strncmp(url_inf->StrVal,"/INTERNAL/errorstream",21))
 	    {
 	    return nht_internal_ErrorHandler(nsess, conn);
+	    }
+	else if (!strncmp(url_inf->StrVal, "/INTERNAL/control", 17))
+	    {
+	    return nht_internal_ControlMsgHandler(nsess, conn, url_inf);
 	    }
 
 	/** Check GET mode. **/
@@ -2069,6 +2345,8 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	/** GET DIRECTORY LISTING mode. **/
 	else if (!strcmp(find_inf->StrVal,"list"))
 	    {
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__info"),&ptr) >= 0 && !strcmp(ptr,"1"))
+		send_info = 1;
 	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
@@ -2078,10 +2356,22 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		    {
+		    if (send_info)
+			{
+			objinfo = objInfo(sub_obj);
+			}
 		    objGetAttrValue(sub_obj, "name", DATA_T_STRING,POD(&ptr));
 		    objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
-		    fdPrintf(conn,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
-		    	(dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
+		    if (send_info && objinfo)
+			{
+			fdPrintf(conn,"<A HREF=%s%s%s TARGET='%s'>%d:%d:%s</A><BR>\n",dptr,
+			    (dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,objinfo->Flags,objinfo->nSubobjects,aptr);
+			}
+		    else
+			{
+			fdPrintf(conn,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
+			    (dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
+			}
 		    objClose(sub_obj);
 		    }
 		objQueryClose(query);
@@ -2676,6 +2966,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    //printf("ping request ERR\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
+				 "Pragma: no-cache\r\n"
 				 "Content-Type: text/html\r\n"
 				 "\r\n"
 				 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
@@ -2688,6 +2979,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    //printf("ping request OK\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
+				 "Pragma: no-cache\r\n"
 				 "Content-Type: text/html\r\n"
 				 "\r\n"
 				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
@@ -2706,6 +2998,7 @@ nht_internal_ConnHandler(void* conn_v)
 		//printf("ping request ERR -- NO SESSION\n");
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
+			     "Pragma: no-cache\r\n"
 			     "Content-Type: text/html\r\n"
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
@@ -2721,6 +3014,7 @@ nht_internal_ConnHandler(void* conn_v)
 		{
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
+			     "Pragma: no-cache\r\n"
 			     "Content-Type: text/html\r\n"
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
@@ -2752,11 +3046,13 @@ nht_internal_ConnHandler(void* conn_v)
 	    nsess->IsNewCookie = 1;
 	    nsess->ObjSess = objOpenSession("/");
 	    nsess->Errors = syCreateSem(0,0);
+	    nsess->ControlMsgs = syCreateSem(0,0);
 	    nsess->WatchdogTimer = nht_internal_AddWatchdog(NHT.WatchdogTime*1000, nht_internal_WTimeout, (void*)nsess);
 	    nsess->InactivityTimer = nht_internal_AddWatchdog(NHT.InactivityTime*1000, nht_internal_ITimeout, (void*)nsess);
 	    nsess->LinkCnt = 1;
 	    xaInit(&nsess->Triggers,16);
 	    xaInit(&nsess->ErrorList,16);
+	    xaInit(&nsess->ControlMsgsList,16);
 	    nht_internal_CreateCookie(nsess->Cookie);
 	    xhnInitContext(&(nsess->Hctx));
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);

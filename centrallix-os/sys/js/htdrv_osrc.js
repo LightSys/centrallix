@@ -451,8 +451,8 @@ function osrc_fetch_next()
     //alert('fetching....');
     if(!this.qid)
 	{
-	alert('something is wrong...');
-	alert(this.src);
+	//alert('something is wrong...');
+	//alert(this.src);
 	}
     var lnk=pg_links(this);
     var lc=lnk.length;
@@ -532,7 +532,7 @@ function osrc_fetch_next()
 	this.LastRecord--;
     if(this.LastRecord<this.TargetRecord)
 	{ /* We're going farther down this... */
-	pg_serialized_load(this, "/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+this.readahead, osrc_fetch_next);
+	pg_serialized_load(this, "/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount="+this.readahead, osrc_fetch_next);
 	//this.onload = osrc_fetch_next;
 	//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+this.readahead);
 	}
@@ -540,7 +540,7 @@ function osrc_fetch_next()
 	{ /* we've got the one we need */
 	if((this.LastRecord-this.FirstRecord+1)<this.replicasize)
 	    { /* make sure we have a full replica if possible */
-	    pg_serialized_load(this, "/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+(this.replicasize-(this.LastRecord-this.FirstRecord+1)), osrc_fetch_next);
+	    pg_serialized_load(this, "/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount="+(this.replicasize-(this.LastRecord-this.FirstRecord+1)), osrc_fetch_next);
 	    //this.onload = osrc_fetch_next;
 	    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+(this.replicasize-(this.LastRecord-this.FirstRecord+1)));
 	    }
@@ -734,10 +734,10 @@ function osrc_move_to_record_cb(recnum)
 		if(this.CurrentRecord == Number.MAX_VALUE)
 		    /* rowcount defaults to a really high number if not set */
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0");
-		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0", osrc_fetch_next);
+		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0", osrc_fetch_next);
 		else
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.readahead);
-		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.readahead, osrc_fetch_next);
+		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.readahead, osrc_fetch_next);
 		}
 	    else
 		{
@@ -766,12 +766,12 @@ function osrc_get_qid_startat()
     if(this.startat-this.TargetRecord+1<this.replicasize)
 	{
 	//pg_set(this,'src','/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat);
-	pg_serialized_load(this,'/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat, osrc_fetch_next);
+	pg_serialized_load(this,'/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__notify=' + this.request_updates + '&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat, osrc_fetch_next);
 	}
     else
 	{
 	//pg_set(this,'src','/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat);
-	pg_serialized_load(this,'/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat, osrc_fetch_next);
+	pg_serialized_load(this,'/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=' + this.request_updates + '&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat, osrc_fetch_next);
 	}
     this.startat=null;
     }
@@ -857,10 +857,10 @@ function osrc_scroll_to(recnum)
 		if(this.TargetRecord == Number.MAX_VALUE)
 		    /* rowcount defaults to a really high number if not set */
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0");
-		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0", osrc_fetch_next);
+		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0", osrc_fetch_next);
 		else
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.scrollahead);
-		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.scrollahead, osrc_fetch_next);
+		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.scrollahead, osrc_fetch_next);
 		}
 	    else
 		{
@@ -1023,8 +1023,18 @@ function osrc_cb_obscure(child)
     return 0;
     }
 
+/** Control message handler **/
+function osrc_cb_control_msg(m)
+    {
+    var s='';
+    for(var i = 0; i<m.length;i++)
+	s += m[i].target + ': ' + m[i].href + ' = ' + m[i].text + '\n';
+    alert(s);
+    return;
+    }
+
 /**  OSRC Initializer **/
-function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name,aq)
+function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name,aq,ru)
     {
     loader.osrcname=name;
     loader.readahead=ra;
@@ -1089,6 +1099,11 @@ function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name,aq)
     loader.ActionDoubleSyncCB = osrc_action_double_sync_cb;
     loader.InitQuery = osrc_init_query;
     loader.cleanup = osrc_cleanup;
+
+    // Request replication messages
+    loader.request_updates = ru?1:0;
+    if (ru) pg_msg_request(loader, pg_msg.MSG_REPMSG);
+    loader.ControlMsg = osrc_cb_control_msg;
 
     // Autoquery on load?
     if (loader.autoquery == loader.AQonLoad) 

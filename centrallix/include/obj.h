@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.26 2004/06/12 00:10:14 mmcgill Exp $
+    $Id: obj.h,v 1.27 2004/06/12 04:02:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.27  2004/06/12 04:02:27  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.26  2004/06/12 00:10:14  mmcgill
     Chalk one up under 'didn't understand the build process'. The remaining
     os drivers have been updated, and the prototype for objExecuteMethod
@@ -232,6 +236,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "xhandle.h"
+#include "ptod.h"
 
 #define OBJSYS_DEFAULT_ROOTNODE		"/usr/local/etc/rootnode"
 #define OBJSYS_DEFAULT_ROOTTYPE		"/usr/local/etc/rootnode.type"
@@ -239,6 +244,11 @@
 
 #define OBJSYS_MAX_PATH		256
 #define OBJSYS_MAX_ELEMENTS	16
+#define OBJSYS_MAX_ATTR		64
+
+#ifndef MAX
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
 
 #define OBJSYS_NOT_ISA		(0x80000000)
 
@@ -490,6 +500,7 @@ typedef struct _OF
     struct _OF*	Prev;		/* open object for accessing the "node" */
     struct _OF*	Next;		/* next object for intermediate opens chain */
     ObjectInfo	AdditionalInfo;	/* see ObjectInfo definition above */
+    void*	NotifyItem;	/* pObjReqNotifyItem; not-null when notifies are active on this */
     }
     Object, *pObject;
 
@@ -590,10 +601,53 @@ typedef struct
     char	RootPath[OBJSYS_MAX_PATH]; /* Path to root node file */
     pObjDriver	RootDriver;
     HandleContext SessionHandleCtx;	/* context for session handles */
+    XHashTable	NotifiesByPath;		/* objects with RequestNotify() */
+    long long	PathID;			/* pseudo-paths for multiquery */
     }
     OSYS_t;
 
 extern OSYS_t OSYS;
+
+
+/*** structure for managing request-notify ***/
+typedef struct
+    {
+    int		TotalFlags;		/* OBJ_RN_F_xxx bitwise ORed from all */
+    char	Pathname[OBJSYS_MAX_PATH];  /* path to object */
+    XArray	Requests;		/* all requests for notification */
+    }
+    ObjReqNotify, *pObjReqNotify;
+
+
+/*** structure for ONE request-notify ***/
+typedef struct _ORNI
+    {
+    struct _ORNI* Next;
+    pObjReqNotify NotifyStruct;		/* parent structure */
+    pObject	Obj;			/* object handle */
+    int		Flags;			/* OBJ_RN_F_xxx for this requestor */
+    int		(*CallbackFn)();	/* callback function */
+    void*	CallerContext;		/* passed in by caller */
+    MTSecContext SavedSecContext;	/* security context of requestor */
+    }
+    ObjReqNotifyItem, *pObjReqNotifyItem;
+
+/*** structure for delivery of notification ***/
+typedef struct
+    {
+    pObjReqNotifyItem __Item;		/* for internal use only */
+    pObject	Obj;			/* the object being modified */
+    void*	Context;		/* context provided on ReqNotify() */
+    int		What;			/* what is being modified - OBJ_RN_F_xxx */
+    char	Name[MAX(OBJSYS_MAX_ATTR,OBJSYS_MAX_PATH)];	/* attribute name or object name, if needed */
+    TObjData	NewAttrValue;		/* new value of attr */
+    int		PtrSize;		/* size of Ptr data */
+    int		Offset;			/* if content, offset to Ptr data */
+    int		NewSize;		/* if content, new size of content */
+    void*	Ptr;			/* actual information */
+    int		IsDel;			/* 1 if Name is being deleted, 0 if added */
+    }
+    ObjNotification, *pObjNotification;
 
 
 /*** OSML debugging flags ***/
@@ -634,6 +688,14 @@ typedef struct
 #if (OBJ_O_CXOPTS & (O_CREAT | O_TRUNC | O_ACCMODE | O_EXCL))
 #error "Conflict in objectsystem OBJ_O_xxx options, sorry!!!"
 #endif
+
+
+/*** Flags for objRequestNotify() replication function ***/
+#define	OBJ_RN_F_INIT		(1<<0)		/* send initial state */
+#define	OBJ_RN_F_ATTRIB		(1<<1)		/* attribute changes */
+#define OBJ_RN_F_CONTENT	(1<<2)		/* content changes */
+#define OBJ_RN_F_SUBOBJ		(1<<3)		/* subobject insert/delete */
+#define OBJ_RN_F_SUBTREE	(1<<4)		/* all descendents */
 
 
 /** objectsystem main functions **/
@@ -733,6 +795,13 @@ char* objDataToWords(int data_type, void* data_ptr);
 int objCopyData(pObjData src, pObjData dst, int type);
 int objTypeID(char* name);
 int objDebugDate(pDateTime dt);
+
+/** objectsystem replication services - open object notification (Rn) system **/
+int objRequestNotify(pObject this, int (*callback_fn)(), void* context, int what);
+int obj_internal_RnDelete(pObjReqNotifyItem item);
+int obj_internal_RnNotifyAttrib(pObject this, char* attrname, pTObjData newvalue, int send_this);
+int objDriverAttrEvent(pObject this, char* attr_name, pTObjData newvalue, int send_this);
+
 
 /** objectsystem event handler stuff -- for os drivers etc **/
 int objRegisterEventHandler(char* class_code, int (*handler_function)());

@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.3 2002/11/22 19:29:36 gbeeley Exp $
+    $Id: exp_params.c,v 1.4 2004/06/12 04:02:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.4  2004/06/12 04:02:27  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.3  2002/11/22 19:29:36  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -492,6 +496,73 @@ expClearRemapping(pExpression tree)
 	if (!tree->Parent) nmFree(tree->Control, sizeof(ExpControl));
         tree->Control = NULL;
 	}
+    return 0;
+    }
+
+
+/*** expObjChanged - indicates that the value of an object has changed, so it
+ *** should be re-evaluated on the next pass.
+ ***/
+int
+expObjChanged(pParamObjects objlist, pObject obj)
+    {
+    int i, found_obj = -1;
+
+	/** Find it **/
+	for(i=0;i<EXPR_MAX_PARAMS;i++)
+	    {
+	    if (objlist->Objects[i] == obj)
+		{
+		/** Got it.  Give it a new serial number. **/
+		objlist->SeqID++;
+		objlist->SeqIDs[i] = objlist->SeqID;
+		found_obj = i;
+		break;
+		}
+	    }
+
+    return found_obj;
+    }
+
+
+/*** expContainsAttr - determines whether an expression tree references a given
+ *** attribute, by name and object id (id from param objects)
+ ***/
+int
+expContainsAttr(pExpression exp, int objid, char* attrname)
+    {
+    int i;
+
+	/** Expression not dependent on this object? **/
+	if (!(exp->ObjCoverageMask & (1<<objid)))
+	    return 0;
+
+	/** Is this the attribute? **/
+	if (exp->NodeType == EXPR_N_PROPERTY && !strcmp(exp->Name, attrname))
+	    return 1;
+
+	/** Search subexpressions **/
+	for(i=0;i<exp->Children.nItems;i++)
+	    {
+	    if (expContainsAttr((pExpression)exp->Children.Items[i], objid, attrname))
+		return 1;
+	    }
+
+    return 0;
+    }
+
+
+/*** expSyncSeqID - synchronize the sequence ID's between two object lists,
+ *** updating the max sequence ids so that neither list's sequence id is
+ *** out-of-date.
+ ***/
+int
+expSyncSeqID(pParamObjects list1, pParamObjects list2)
+    {
+    if (list1->SeqID > list2->SeqID)
+	list2->SeqID = list1->SeqID;
+    else
+	list1->SeqID = list2->SeqID;
     return 0;
     }
 

@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.7 2003/07/10 19:20:57 gbeeley Exp $
+    $Id: obj_query.c,v 1.8 2004/06/12 04:02:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.8  2004/06/12 04:02:28  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.7  2003/07/10 19:20:57  gbeeley
     objOpenQuery now links to the parent object of the query to prevent it
     from being pulled out from under the osdriver if the user calls objClose
@@ -546,7 +550,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    {
 	    obj = (pObject)nmMalloc(sizeof(Object));
 	    if (!obj) return NULL;
-	    if ((obj->Data = this->Drv->QueryFetch(this->Data, mode)) == NULL)
+	    if ((obj->Data = this->Drv->QueryFetch(this->Data, obj, mode, NULL)) == NULL)
 	        {
 		nmFree(obj,sizeof(Object));
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
@@ -557,7 +561,6 @@ objQueryFetch(pObjQuery this, int mode)
 	    obj->ILowLevelDriver = NULL;
 	    obj->Session = this->QySession;
 	    obj->LinkCnt = 1;
-	    obj->Pathname = NULL;
 	    obj->Obj = NULL;
 	    obj->ContentPtr = NULL;
 	    obj->Magic = MGK_OBJECT;
@@ -565,8 +568,17 @@ objQueryFetch(pObjQuery this, int mode)
 	    obj->Prev = NULL;
 	    obj->Next = NULL;
 	    obj->Type = NULL;
+	    obj->NotifyItem = NULL;
 	    xaInit(&obj->Attrs,4);
             xaAddItem(&(this->QySession->OpenObjects),(void*)obj);
+	    obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	    memset(obj->Pathname, 0, sizeof(Pathname));
+	    obj->Pathname->OpenCtlBuf = NULL;
+	    sprintf(obj->Pathname->Pathbuf, "./INTERNAL/MQ.%16.16llx", (long long)(OSYS.PathID++));
+	    obj->Pathname->nElements = 3;
+	    obj->Pathname->Elements[0] = obj->Pathname->Pathbuf;
+	    obj->Pathname->Elements[1] = obj->Pathname->Pathbuf+2;
+	    obj->Pathname->Elements[2] = obj->Pathname->Pathbuf+11;
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
@@ -601,6 +613,7 @@ objQueryFetch(pObjQuery this, int mode)
 	obj->Magic = MGK_OBJECT;
 	obj->Flags = 0;
 	obj->Type = NULL;
+	obj->NotifyItem = NULL;
 
 	/** Scan objects til we find one matching the query. **/
 	while(1)
@@ -710,6 +723,7 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	new_obj->Magic = MGK_OBJECT;
 	new_obj->Flags = 0;
 	new_obj->Type = NULL;
+	new_obj->NotifyItem = NULL;
 
 	/** Does driver support QueryCreate? **/
 	if (new_obj->Driver->QueryCreate && 

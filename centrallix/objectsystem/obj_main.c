@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.9 2004/02/24 20:12:38 gbeeley Exp $
+    $Id: obj_main.c,v 1.10 2004/06/12 04:02:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.10  2004/06/12 04:02:28  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.9  2004/02/24 20:12:38  gbeeley
     - objTypeID() converts string data type to numeric type id
 
@@ -268,6 +272,8 @@ objInitialize()
 	xhInit(&(OSYS.Types), 257, 0);
 	xaInit(&(OSYS.TypeList), 256);
 	xhnInitContext(&(OSYS.SessionHandleCtx));
+	xhInit(&(OSYS.NotifiesByPath), 1027, 0);
+	OSYS.PathID = 0;
 
 	/** Setup the data type names list **/
 	for(i=0;i<OBJ_TYPE_NAMES_CNT;i++) obj_type_names[i] = "(unknown)";
@@ -281,6 +287,7 @@ objInitialize()
 	obj_type_names[DATA_T_STRINGVEC] = "stringvec";
 	obj_type_names[DATA_T_CODE] = "code";
 	obj_type_names[DATA_T_ARRAY] = "array";
+	obj_type_names[DATA_T_BINARY] = "binary";
 
 	chdir("/");
 

@@ -36,10 +36,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ptod.h,v 1.1 2004/05/04 18:19:48 gbeeley Exp $
+    $Id: ptod.h,v 1.2 2004/06/12 04:02:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ptod.h,v $
 
     $Log: ptod.h,v $
+    Revision 1.2  2004/06/12 04:02:27  gbeeley
+    - preliminary support for client notification when an object is modified.
+      This is a part of a "replication to the client" test-of-technology.
+
     Revision 1.1  2004/05/04 18:19:48  gbeeley
     - new definition location for PTOD type.
 
@@ -74,6 +78,8 @@ pTObjData ptodDuplicate(pTObjData ptod, int flags);
 int ptodTypeOf(pTObjData ptod);
 int ptodIsSet(pTObjData ptod, int flag);
 int ptodMakeIndependent(pTObjData ptod);
+
+int ptodPrint(pTObjData ptod);
 
 #endif /* not defined _PTOD_H */
 

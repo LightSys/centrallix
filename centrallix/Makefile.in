@@ -58,7 +58,8 @@ XSUPPORT=stparse.o \
 	 mime/mime_parse.o \
 	 mime/mime_address.o \
 	 mime/mime_encode.o \
-	 mime/mime_util.o
+	 mime/mime_util.o \
+	 ptod.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 
@@ -73,7 +74,9 @@ XOBJECTSYSTEM=obj_main.o \
 	      obj_params.o \
 	      obj_trx.o \
 	      obj_datatypes.o \
-	      obj_rootnode.o
+	      obj_rootnode.o \
+	      obj_replica.o
+
 OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 
 # Objectsystem drivers.
