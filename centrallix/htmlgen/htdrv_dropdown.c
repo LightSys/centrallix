@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.3 2002/03/11 14:10:16 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.3  2002/03/11 14:10:16  lkehresman
+    Added basic functionality for the dropdown widget.
+
     Revision 1.2  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -77,8 +80,12 @@ int htddVerify() {
 */
 int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
    char sbuf[HT_SBUF_SIZE];
+   char bgstr[HT_SBUF_SIZE];
+   char string[HT_SBUF_SIZE];
+   char *ptr;
    int x,y,w,h;
    int id;
+   pObjQuery qy;
 
    /** Get an id for this. **/
    id = (HTDD.idcnt++);
@@ -95,13 +102,23 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	return -1;
    }
 
+   if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0) {
+	snprintf(bgstr,HT_SBUF_SIZE,"bgcolor='%.40s'",ptr);
+   } else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0) {
+	snprintf(bgstr,HT_SBUF_SIZE,"background='%.110s'",ptr);
+   } else {
+   	strcpy(bgstr, "");
+   }
+
    /** Ok, write the style header items. **/
    snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
    htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   snprintf(sbuf,HT_SBUF_SIZE,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,h,w,z);
    htrAddHeaderItem(s,sbuf);
    snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
+
+   htrAddScriptGlobal(s, "dd_current", "null", 0);
 
    /** Get Value function **/
    htrAddScriptFunction(s, "dd_getvalue", "\n"
@@ -147,20 +164,139 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"function dd_disable() {\n"
 	"}\n", 0);
    
+   /** Disable function **/
+   htrAddScriptFunction(s, "dd_clickitem", "\n"
+	"function dd_clickitem(e) {\n"
+	"   alert(e);\n"
+	"}\n", 0);
+   
+   /** Disable function **/
+   htrAddScriptFunction(s, "dd_additem", "\n"
+	"function dd_additem(l, label, value) {\n"
+	"   l.labels.push(label);\n"
+	"   l.values.push(value);\n"
+	"   tmpLayer = new Layer(1024, l.fullLayer);"
+	"   tmpLayer.kind = 'dropdown';"
+	"   tmpLayer.document.write(label);\n"
+	"   tmpLayer.document.close();\n"
+	"   tmpLayer.clip.width = l.defaultWidth - l.defaultHeight;\n"
+	"   tmpLayer.clip.height = l.defaultHeight - 5;\n"
+	"   tmpLayer.top = ((l.labels.length-1)*l.defaultHeight+1) + 1;\n"
+	"   tmpLayer.left = 5;\n"
+	"   tmpLayer.bgColor = l.bgColor;\n"
+	"   tmpLayer.visibility = 'inherit';\n"
+	"   tmpLayer.captureEvents(Event.MOUSEDOWN);\n"
+	"   tmpLayer.onMouseDown = dd_clickitem;\n"
+	"   l.itemLayers.push(tmpLayer);\n"
+	"   l.fullLayer.clip.height += l.defaultHeight;\n"
+	"}\n", 0);
+   
 
    /** Form Status initializer **/
    htrAddScriptFunction(s, "dd_init", "\n"
-	"function dd_init(l) {\n"
+	"function dd_init(l,w,h) {\n"
+	"   l.width = w;\n"
+	"   l.height = h;\n"
 	"   l.kind = 'dropdown';\n"
+	"   l.enabled = true;\n"
+	"   l.labels = new Array();\n"
+	"   l.values = new Array();\n"
+	"   l.itemLayers = new Array();\n"
+	"   l.defaultWidth = w;\n"
+	"   l.defaultHeight = h;\n"
+	"   l.fullLayer = new Layer(1024);\n"
+	"   l.fullLayer.bgColor = '#ffffff';\n"
+	"   l.fullLayer.clip.width = w;\n"
+	"   l.fullLayer.visibility = 'hidden';\n"
+	"   l.fullLayer.pageX = l.pageX;\n"
+	"   l.fullLayer.pageY = l.pageY + h;\n"
+	"   l.fullLayer.kind = 'dropdown'\n"
+	"   for (i=0; i < l.document.images.length; i++) {\n"
+	"      l.document.images[i].kind = 'dropdown';\n"
+	"      l.document.images[i].enabled = true;\n"
+	"      l.document.images[i].parentLayer = l;\n"
+	"   }\n"
 	"   if (fm_current) fm_current.Register(l);\n"
 	"}\n", 0);
 
+   htrAddEventHandler(s, "document","MOUSEDOWN", "dropdown", 
+	"\n"
+	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+	"   if (dd_current != null) {\n"
+	"      dd_current.fullLayer.visibility = 'hide';\n"
+	"      dd_current = null;\n"
+	"   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
+	"      if (targetLayer.parentLayer != null)\n"
+	"         layer = targetLayer.parentLayer;\n"
+	"      else\n"
+	"         layer = targetLayer;\n"
+	"      if (layer.enabled) {\n"
+	"         if (layer.fullLayer.visibility != 'hide') {\n"
+	"            layer.fullLayer.visibility = 'hide';\n"
+	"         } else {\n"
+	"            layer.fullLayer.visibility = 'inherit';\n"
+	"         }\n"
+	"         dd_current = layer;\n"
+	"      }\n"
+	"   }\n"
+	"\n");
+
    /** Script initialization call. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain);\n", parentname, id);
+   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain, %d, %d);\n", parentname, id, w, h);
    htrAddScriptInit(s, sbuf);
+
+   /* Read and initialize the dropdown items */
+   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+   if (qy) {
+      while((w_obj = objQueryFetch(qy, O_RDONLY))) {
+         objGetAttrValue(w_obj,"outer_type",POD(&ptr));
+         if (!strcmp(ptr,"widget/dropdownitem")) {
+	    if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
+	       mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+	       return -1;
+   	    }
+            memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, string);
+	    htrAddScriptInit(s, sbuf);
+
+	    if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
+	       mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+	       return -1;
+   	    }
+            memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+	    snprintf(sbuf,HT_SBUF_SIZE,"'%s');\n", string);
+	    htrAddScriptInit(s, sbuf);
+         }
+         objClose(w_obj);
+      }
+   }
+   objQueryClose(qy);
 
    /** HTML body <DIV> element for the layers. **/
    snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"dd%dmain\">\n", id);
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"  <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,bgstr);
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>\n");
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>\n");
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"       <TD ALIGN=right><IMG SRC=/sys/images/ico_dd.gif></TD>\n");
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>\n");
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>\n");
+   htrAddBodyItem(s, sbuf);
+   snprintf(sbuf,HT_SBUF_SIZE,"  </TABLE>\n");
+   htrAddBodyItem(s, sbuf);
    snprintf(sbuf,HT_SBUF_SIZE,"</DIV>\n");
    htrAddBodyItem(s, sbuf);
 
