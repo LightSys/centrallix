@@ -3354,7 +3354,7 @@ fi
 done
 
 
-ALL_TARGET="libCentrallix.a"
+FINAL_TARGETS="libCentrallix.a"
 
 
 	echo "$as_me:$LINENO: checking if a shared libCentrallix is desired" >&5
