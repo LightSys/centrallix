@@ -26,10 +26,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.6 2002/09/21 01:59:33 jorupp Exp $
+    $Id: xstring.c,v 1.7 2002/09/28 01:08:07 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.7  2002/09/28 01:08:07  jorupp
+     * added xsFindRev()
+     * fixed a couple bugs that pop up when using those functions I added
+        the other day on null-terminated strings -- I may not have them all yet...
+
     Revision 1.6  2002/09/21 01:59:33  jorupp
      * added some functions to xstring -- helps quite a bit for string manipulation :)
 
@@ -462,6 +467,31 @@ xsFind(pXString this,char* find,int findlen, int offset)
     return -1;
     }
 
+/*** xsFindReverse - searches an xString for a string from an offset (from the end) and returns the offset it was found at
+ ***   returns -1 if not found
+ ***/
+int
+xsFindRev(pXString this,char* find,int findlen, int offset)
+    {
+    if(findlen==-1) findlen=strlen(find);
+    offset=this->Length-offset-1;
+    for(;offset>=0;offset--)
+	{
+	if(this->String[offset]==find[0])
+	    {
+	    int i;
+	    for(i=1;i<findlen;i++)
+		{
+		if(this->String[offset+i]!=find[i])
+		    break;
+		}
+	    if(i==findlen)
+		return offset;
+	    }
+	}
+    return -1;
+    }
+
 /*** xsReplace - searches an xString for a string and replaces that string with another
  ***   returns the starting offset of the replace if successful, and -1 if not found
  ***/
@@ -477,7 +507,7 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
 	memcpy(&(this->String[offset]),rep,replen);
 	if(replen!=findlen)
 	    {
-	    memmove(this->String+offset+replen,this->String+offset+findlen,this->Length-offset-findlen);
+	    memmove(this->String+offset+replen,this->String+offset+findlen,this->Length-offset-findlen+1);
 	    this->Length-=findlen-replen;
 	    }
 	}
@@ -485,21 +515,22 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
 	{
 	/** warning: untested code :) **/
 	xsCheckAlloc(this,replen-findlen);
-	memmove(this->String+offset+replen,this->String+offset+findlen,this->Length-offset-findlen);
+	memmove(this->String+offset+replen,this->String+offset+findlen,this->Length-offset-findlen+1);
+	memcpy(&(this->String[offset]),rep,replen);
 	this->Length+=replen-findlen;
 	}
     return offset;
     }
 
-/*** xsInsertAfter - inserts the supplied string at offset
+/*** xsInsertAfter - inserts the supplied string at offset -- returns new offset
  ***/
 int
 xsInsertAfter(pXString this, char* ins, int inslen, int offset)
     {
     if(inslen==-1) inslen=strlen(ins);
     if(xsCheckAlloc(this,inslen)==-1) return -1;
-    memmove(this->String+offset+inslen,this->String+offset,this->Length-offset);
+    memmove(this->String+offset+inslen,this->String+offset,this->Length-offset+1);
     memcpy(this->String+offset,ins,inslen);
     this->Length+=inslen;
-    return 0;
+    return offset+inslen;
     }

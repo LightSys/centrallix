@@ -20,10 +20,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.5 2002/09/21 01:59:33 jorupp Exp $
+    $Id: xstring.h,v 1.6 2002/09/28 01:08:07 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.6  2002/09/28 01:08:07  jorupp
+     * added xsFindRev()
+     * fixed a couple bugs that pop up when using those functions I added
+        the other day on null-terminated strings -- I may not have them all yet...
+
     Revision 1.5  2002/09/21 01:59:33  jorupp
      * added some functions to xstring -- helps quite a bit for string manipulation :)
 
@@ -76,6 +81,7 @@ int xsRTrim(pXString this);
 int xsLTrim(pXString this);
 int xsTrim(pXString this);
 int xsFind(pXString this,char* find,int findlen, int offset);
+int xsFindRev(pXString this,char* find,int findlen, int offset);
 int xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen);
 int xsInsertAfter(pXString this, char* ins, int inslen, int offset);
 
