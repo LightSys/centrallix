@@ -22,6 +22,10 @@ Centrallix ChangeLog
 	    function calls.
 	5.  Added some preliminary work towards the version-3 prtmgmt sub-
 	    system.  These files are the "v3" files in the 'report' directory.
+	6.  Major additions to the html generation subsystem including the
+	    form and object source widgets which allow communication with the
+	    Centrallix server from the client.  Many other widgets have been
+	    created and/or updated in this release, too many to name here.
 
 
 -------------------------------------------------------------------------------
