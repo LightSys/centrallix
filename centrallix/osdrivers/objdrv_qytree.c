@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.10 2004/08/30 03:15:56 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.11 2004/08/30 19:07:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.11  2004/08/30 19:07:07  gbeeley
+    - add driver-opened-objects management to qytree to avoid double closes
+      on objects when the session times out.
+
     Revision 1.10  2004/08/30 03:15:56  gbeeley
     - various bugfixes for qytree driver.  This driver needs a security audit
       as well.
@@ -544,6 +548,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			expr = NULL;
                         if (subref == path->nElements - 1) 
 			    {
+			    objUnmanageObject(test_obj->Session, test_obj);
                             inf->LLObj = test_obj;
 			    }
                         else 
@@ -1012,8 +1017,10 @@ qyt_internal_StartQuery(pQytQuery qy)
 	qy->LLQueryObj = objOpen(qy->ObjInf->Obj->Session, qy->ItemSrc, O_RDONLY, 0600, "system/directory");
 	if (qy->LLQueryObj) 
 	    {
+	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
 	    qyinf = objOpenQuery(qy->LLQueryObj, qy->QyText, NULL,NULL,NULL);
 	    if (!qyinf) objClose(qy->LLQueryObj);
+	    objUnmanageQuery(qy->LLQueryObj->Session, qyinf);
 	    }
 
 	/** Failed to open source object or issue query? **/
@@ -1107,6 +1114,7 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		else
 		    {
 		    objGetAttrValue(llobj, "name", DATA_T_STRING,POD(&objname));
+		    objUnmanageObject(llobj->Session, llobj);
 		    }
 	        }
 	    }
@@ -1149,11 +1157,8 @@ qytQueryClose(void* qy_v, pObjTrxTree* oxt)
     pQytQuery qy = ((pQytQuery)(qy_v));
 
     	/** Close any pending low-level query **/
-	if (qy->LLQuery) 
-	    {
-	    objQueryClose(qy->LLQuery);
-	    objClose(qy->LLQueryObj);
-	    }
+	if (qy->LLQuery) objQueryClose(qy->LLQuery);
+	if (qy->LLQueryObj) objClose(qy->LLQueryObj);
 
 	/** Free the structure **/
 	xhDeInit(&qy->StructTable);
