@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.17 2003/03/03 02:12:03 jorupp Exp $
+    $Id: mtask.c,v 1.18 2003/03/07 19:30:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.18  2003/03/07 19:30:57  gbeeley
+    Fixed some retry problems with read/write/recvfrom/sendto dealing
+    with the EINTR error condition which should be considered a retryable
+    error in most cases, so we do a retry.  Was having trouble with
+    MTask writes to parallel port causing EINTR under nonblocking I/O,
+    corrupting the data sent to the printer.
+
     Revision 1.17  2003/03/03 02:12:03  jorupp
      * it always helps when you put the brace on the correct side.... :)
 
@@ -1976,7 +1983,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		}
 #endif
-    	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN) return -1;
+	    if (rval == -1 && (errno != EWOULDBLOCK && errno != EINTR && errno != EAGAIN)) return -1;
     	    }
 
         /** If we need to (and may) block, create the event structure **/
@@ -2044,12 +2051,12 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 		eno = errno;
 
     	        /** I sincerely hope this doesn't happen... **/
-    	        if (rval == -1 && eno == EWOULDBLOCK) 
+		if (rval == -1 && eno == EWOULDBLOCK)
     	            {
     	            puts("Got completed readability on fd but it then blocked!");
     	            goto DID_BLOCK;
     	            }
-		else if (rval == -1 && eno == EAGAIN) goto DID_BLOCK;
+		else if (rval == -1 && (eno == EAGAIN || eno == EINTR)) goto DID_BLOCK;
                 }
 	    else if (code == EV_S_ERROR) rval = -1;
             }
@@ -2209,7 +2216,7 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 #ifdef HAVE_LIBZ
 		}
 #endif
-    	    if (rval == -1 && errno != EWOULDBLOCK) return -1;
+    	    if (rval == -1 && (errno != EWOULDBLOCK && errno != EINTR && errno != EAGAIN)) return -1;
     	    }
 
         /** If we need to (and may) block, create the event structure **/
@@ -2276,7 +2283,7 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 #endif
 
     	        /** I sincerely hope this doesn't happen... **/
-    	        if (rval == -1 && errno == EWOULDBLOCK) 
+		if (rval == -1 && (errno == EWOULDBLOCK || errno == EINTR || errno == EAGAIN))
     	            {
     	            puts("Got completed writeability on fd but it then blocked!");
     	            goto DID_BLOCK;
@@ -3144,7 +3151,7 @@ netRecvUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
     	if (!(filedesc->Flags & FD_F_RDBLK))
     	    {
 	    rval = recvfrom(filedesc->FD,buffer,maxlen,recvflags,(struct sockaddr*)from,&fromlen);
-    	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN) return -1;
+    	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN && errno != EINTR) return -1;
     	    }
 
         /** If we need to (and may) block, create the event structure **/
@@ -3191,7 +3198,7 @@ netRecvUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
     	            puts("Got completed readability on fd but it then blocked!");
     	            goto DID_BLOCK;
     	            }
-		else if (rval == -1 && eno == EAGAIN) goto DID_BLOCK;
+		else if (rval == -1 && (eno == EAGAIN || eno == EINTR)) goto DID_BLOCK;
                 }
 	    else if (code == EV_S_ERROR) rval = -1;
             }
@@ -3261,7 +3268,7 @@ netSendUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
     	if (!(filedesc->Flags & FD_F_WRBLK))
     	    {
 	    rval = sendto(filedesc->FD,buffer,maxlen,sendflags,(struct sockaddr*)from,fromlen);
-    	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN) return -1;
+    	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN && errno != EINTR) return -1;
     	    }
 
         /** If we need to (and may) block, create the event structure **/
@@ -3308,7 +3315,7 @@ netSendUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
     	            puts("Got completed readability on fd but it then blocked!");
     	            goto DID_BLOCK;
     	            }
-		else if (rval == -1 && eno == EAGAIN) goto DID_BLOCK;
+		else if (rval == -1 && (eno == EAGAIN || eno == EINTR)) goto DID_BLOCK;
                 }
 	    else if (code == EV_S_ERROR) rval = -1;
             }
