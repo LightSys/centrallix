@@ -61,10 +61,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.30 2002/11/22 20:57:32 gbeeley Exp $
+    $Id: net_http.c,v 1.31 2002/12/23 06:22:04 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.31  2002/12/23 06:22:04  jorupp
+     * added ability to take flags (numbers only) to ls__req=read
+
     Revision 1.30  2002/11/22 20:57:32  gbeeley
     Converted part of net_http to use fdPrintf() as a test of the new
     functionality.
@@ -1142,10 +1145,11 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
     pObjQuery qy = NULL;
     char* sid = NULL;
     char sbuf[256];
+    char sbuf2[256];
     char hexbuf[3];
     int mode,mask;
     char* usrtype;
-    int i,t,n,o,cnt,start;
+    int i,t,n,o,cnt,start,flags;
     pStruct subinf;
     MoneyType m;
     DateTime dt;
@@ -1446,14 +1450,23 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 		    o = -1;
 		else
 		    o = strtol(ptr,NULL,0);
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>",
-		    0);
-	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
-		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?o:0,(o != -1)?OBJ_U_SEEK:0)) > 0)
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__flags"),&ptr) < 0)
+		    flags = 0;
+		else
+		    flags = strtol(ptr,NULL,0);
+		start = 1;
+		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?o:0,(o != -1)?flags|OBJ_U_SEEK:flags)) > 0)
 		    {
+		    if(start)
+			{
+			snprintf(sbuf2,256,"Content-Type: text/html\r\n"
+				 "Pragma: no-cache\r\n"
+				 "\r\n"
+				 "<A HREF=/ TARGET=X%8.8X>",
+			    0);
+			fdWrite(conn, sbuf2, strlen(sbuf2), 0,0);
+			start = 0;
+			}
 		    for(i=0;i<cnt;i++)
 		        {
 		        sprintf(hexbuf,"%2.2X",((unsigned char*)sbuf)[i]);
@@ -1461,6 +1474,16 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 			}
 		    n -= cnt;
 		    o = -1;
+		    }
+		if(start)
+		    {
+		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			     "Pragma: no-cache\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=X%8.8X>",
+			cnt);
+		    fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+		    start = 0;
 		    }
 		fdWrite(conn, "</A>\r\n", 6,0,0);
 		}
