@@ -10,12 +10,14 @@
 // GNU Lesser General Public License for more details.
 
 
+var pg_layer = null;
+
 /** returns an attribute of the element in pixels **/
 function pg_get_style(element,attr)
     {
     if(!element)
 	{
-	alert("NULL ELEMENT");
+	alert("NULL ELEMENT, attr " + attr + "is unknow.");
 	return null;
 	}
     if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
@@ -23,7 +25,7 @@ function pg_get_style(element,attr)
 	if(attr.substring(0,5) == 'clip.')
 	    {
 	    return eval('element.' + attr);
-	    }
+	    }	
 	var comp_style = window.getComputedStyle(element,null);
 	var cssValue = comp_style.getPropertyCSSValue(attr);
 	if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
@@ -39,6 +41,72 @@ function pg_get_style(element,attr)
 	{
 	return eval('element.' + attr);
 	}
+    else if(cx__capabilities.Dom0IE)
+        {        
+        if(attr.substr(0,5) == 'clip.')
+            {
+            if(attr == 'clip.width')
+                {
+                return getClipWidth(element);
+                }
+            else if(attr == 'clip.height')
+                {
+                return getClipHeight(element);
+                }
+            else if(attr == 'clip.top')
+                {
+                return getClipTop(element);
+                }
+            else if(attr == 'clip.right')
+                {
+                return getClipRight(element);
+                }
+            else if(attr == 'clip.bottom')
+                {
+                return getClipBottom(element);
+                }
+            else if(attr == 'clip.left')
+                {
+                return getClipLeft(element);
+                }
+            else
+                {
+                alert("clip property " + attr + " is undefined in " + element);
+                return null;
+                }                
+            }
+        else if(attr == 'width')
+            {
+            var _w = parseInt(element.currentStyle.width);
+            if (isNaN(_w))
+            	return element.offsetWidth;
+            return _w;
+            }
+        else if(attr == 'height')
+            {
+            var _h = parseInt(element.currentStyle.height);
+            if (isNaN(_h))
+            	return element.offsetHeight;
+            return _h;
+            }
+        else if(attr == 'top')
+            {            
+            return element.currentStyle.top;
+            }
+        else if(attr == 'visibility')
+            {            
+            return element.currentStyle.visibility;
+            }
+        else if(attr == 'zIndex')
+            {            
+            return element.currentStyle.zIndex;
+            }
+        else 
+            {
+            alert(" attr " + attr + " needs to be implemeneted in pg_get_style in htdrv_page.js");
+            }
+        return null;
+        }
     else
 	{
 	alert('cannot calculate CSS values for this browser');
@@ -59,14 +127,89 @@ function pg_set_style(element,attr, value)
 	}
     else if(cx__capabilities.Dom0NS)
 	{
-	if (attr.substr(0,5) == 'clip.')
-	    {
-	    element.clip[attr.substr(5)] = value;
-	    return;
-	    }
 	element[attr] = value;
 	return;
 	}
+    // Jason Yip
+    else if(cx__capabilities.Dom0IE)
+	{
+	if(attr == 'visibility') 
+	    {
+	    element.runtimeStyle.visibility = value;
+	    return;
+	    }
+	else if(attr == 'left')
+	    {
+	    element.style.pixelLeft = value;
+	    return;
+	    }
+	else if(attr == 'top')
+	    {
+	    element.style.pixelTop = value;
+	    return;
+	    }
+	else if(attr == 'clip.top')
+	    {
+	    setClipTop(element, value);
+	    return;
+	    }
+	else if(attr == 'clip.right')
+	    {
+	    setClipRight(element, value);
+	    return;
+	    }
+	else if(attr == 'clip.bottom')
+	    {
+	    setClipBottom(element, value);
+	    return;
+	    }
+	else if(attr == 'clip.left')
+	    {
+	    setClipLeft(element, value);
+	    return;
+	    }	    
+	else if(attr == 'clip.height')
+	    {
+	    setClipHeight(element, value);
+	    return;
+	    }
+	else if(attr == 'clip.width')
+	    {
+	    setClipWidth(element, value);
+	    return;
+	    }
+	else if(attr == 'pageX')
+	    {
+	    setPageX(element, value);
+	    return;
+	    }
+	else if(attr == 'pageY')
+	    {
+	    setPageY(element, value);	    
+	    return;
+	    }
+	else if(attr == 'zIndex')
+	    {
+	    element.runtimeStyle.zIndex = value;
+	    return;
+	    }
+	else if(attr == 'bgColor')
+	    {
+	    element.runtimeStyle.backgroundColor = value;
+	    return;
+	    }
+	else if(attr == 'position')
+	    {
+	    element.runtimeStyle.position = value;
+	    return;
+	    }	    
+	else
+	    {
+	    alert("attr " + attr + " needs to be implemented in pg_set_style in htdrv_page.js.");
+	    return;
+	    }
+	return;
+	}	
     else
 	{
 	alert('cannot set CSS values for this browser');
@@ -86,6 +229,28 @@ function pg_set_style_string(element,attr, value)
 	element[attr] = value;
 	return;
 	}
+    else if(cx__capabilities.Dom0IE)
+	{
+	if(attr == 'visibility') 
+	    {
+	    element.runtimeStyle.visibility = value;
+	    return;
+	    }
+	else if(attr == 'position')
+	    {
+	    element.runtimeStyle.position = value;
+	    return;
+	    }
+	else if(attr == 'width')
+	    {
+	    element.runtimeStyle.width = value;
+	    return;
+	    }	    
+	else
+	    {
+	    alert(attr + " is not implemented in set_style_string in htdrv_page.js.");
+	    }
+	}	
     else
 	{
 	alert('cannot set CSS values for this browser');
@@ -95,7 +260,15 @@ function pg_set_style_string(element,attr, value)
 
 function pg_ping_init(l,i)
     {
-    l.tid=setInterval(pg_ping_send,i,l);
+    if(cx__capabilities.Dom0IE)
+        {
+        //alert(l.currentStyle.position);
+    	l.tid=setInterval(pg_ping_send, i);
+	}
+    else
+    	{
+    	l.tid=setInterval(pg_ping_send,i,l);    		
+    	}
     }
 
 function pg_ping_recieve()
@@ -120,17 +293,24 @@ function pg_ping_recieve()
 	confirm('you have been disconnected from the server');
 	}
     }
-
+    
 function pg_ping_send(p)
     {
     //confirm('sending');
+    if (cx__capabilities.Dom0IE)
+        {
+        p = document.getElementById('pgping');
+	}
+	        
     p.onload=pg_ping_recieve;
+    
     if(cx__capabilities.Dom1HTML)
 	{
 	p.setAttribute('src','/INTERNAL/ping');
 	}
     else if(cx__capabilities.Dom0NS)
 	{
+	//alert(p);
 	p.src='/INTERNAL/ping';
 	}
     }
@@ -224,6 +404,8 @@ function pg_get_computed_clip(o)
 	return getComputedStyle(o,null).getPropertyCSSValue('clip').getRectValue();
     else if(cx__capabilities.Dom0NS)
 	return o.clip;
+    else if(cx__capabilities.Dom0IE)
+	return o.runtimeStyle.clip;
     else
 	return null;
     }
@@ -239,15 +421,15 @@ function pg_get_clip(o)
 	    {
 	    var computed = getComputedStyle(o,null).getPropertyCSSValue('clip').cssText;
 	    o.style.setProperty('clip',computed,"");
-	    clip = o.style.getPropertyValue('clip');
-	    alert(clip);
-	    clip = o.style.getPropertyCSSValue('clip');
-	    alert(clip);
+	    clip = o.style.getPropertyValue('clip');	    
+	    clip = o.style.getPropertyCSSValue('clip');	    
 	    return clip.getRectValue;
 	    }
 	}
     else if(cx__capabilities.Dom0NS)
 	return o.clip;
+    else if(cx__capabilities.Dom0IE)
+	return o.runtimeStyle.clip;	
     else
 	return null;
     }
@@ -303,63 +485,112 @@ function pg_isinlayer(outer,inner)
     if(!outer) return true;
     if(!inner) return false;
     var i = 0;
-    for(i=0;i<outer.layers.length;i++)
-	{
-	if (outer.layers[i] == inner) return true;
-	if (pg_isinlayer(outer.layers[i], inner)) return true;
+    if(cx__capabilities.Dom1HTML)
+        {
+		for(i=0;i<outer.childNodes.length;i++)
+			{
+			if (outer.childNodes[i] == inner) return true;
+			if (pg_isinlayer(outer.childNodes[i], inner)) return true;
+			}        
+        }
+    else
+        {
+		for(i=0;i<outer.layers.length;i++)
+	        {
+			if (outer.layers[i] == inner) return true;
+			if (pg_isinlayer(outer.layers[i], inner)) return true;
+			}
 	}
-    for(i=0;i<outer.document.images.length;i++)
-	{
-	if (outer.document.images[i] == inner) return true;
-	}
+//    for(i=0;i<outer.document.images.length;i++)
+//		{
+//		if (outer.document.images[i] == inner) return true;
+//		}
     return false;
     }
 
-/** Function to make four layers into a box **/
+/** Function to make four layers into a box 
+* pl - a layer
+* x,y - x,y-cord
+* w,h - widht, height
+* s - ?
+* tl - top layer
+* bl - bottom layer
+* rl - right layer
+* ll - left layer
+* c1 - color1, for tl and ll
+* c2 - color2, for bl and rl
+* z - zIndex
+**/
 function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     {
-    tl.visibility = 'hidden';
-    bl.visibility = 'hidden';
-    rl.visibility = 'hidden';
-    ll.visibility = 'hidden';
-    tl.bgColor = c1;
-    ll.bgColor = c1;
-    bl.bgColor = c2;
-    rl.bgColor = c2;
-    tl.resizeTo(w,1);
-    tl.moveAbove(pl);
-    tl.moveToAbsolute(x,y);
-    tl.zIndex = z;
-    bl.resizeTo(w+s-1,1);
-    bl.moveAbove(pl);
-    bl.moveToAbsolute(x,y+h-s+1);
-    bl.zIndex = z;
-    ll.resizeTo(1,h);
-    ll.moveAbove(pl);
-    ll.moveToAbsolute(x,y);
-    ll.zIndex = z;
-    rl.resizeTo(1,h+1);
-    rl.moveAbove(pl);
-    rl.moveToAbsolute(x+w-s+1,y);
-    rl.zIndex = z;
-    tl.visibility = 'inherit';
-    bl.visibility = 'inherit';
-    rl.visibility = 'inherit';
-    ll.visibility = 'inherit';
+    
+    pg_set_style(tl, 'visibility', 'hidden');
+    pg_set_style(bl, 'visibility', 'hidden');
+    pg_set_style(rl, 'visibility', 'hidden');
+    pg_set_style(ll, 'visibility', 'hidden');
+    if (cx__capabilities.Dom0NS)
+        {
+    	tl.bgColor = c1;
+    	ll.bgColor = c1;
+    	bl.bgColor = c2;
+    	rl.bgColor = c2;
+    	}
+    else if (cx__capabilities.Dom1HTML)
+        {
+    	tl.style.backgroundColor = c1;
+    	ll.style.backgroundColor = c1;
+    	bl.style.backgroundColor = c2;
+    	rl.style.backgroundColor = c2;    		
+        }
+    //alert("x, y --" + x + " " + y);
+    
+    resizeTo(tl,w,1);
+    moveAbove(tl,pl);
+    moveToAbsolute(tl,x,y);
+    pg_set_style(tl,'zIndex',z);
+    resizeTo(bl,w+s-1,1);
+    moveAbove(bl,pl);
+    moveToAbsolute(bl,x,y+h-s+1);
+    pg_set_style(bl,'zIndex',z);
+    resizeTo(ll,1,h);
+    moveAbove(ll,pl);
+    moveToAbsolute(ll,x,y);
+    pg_set_style(ll,'zIndex',z);
+    resizeTo(rl,1,h+1);
+    moveAbove(rl,pl);
+    moveToAbsolute(rl,x+w-s+1,y);
+    pg_set_style(rl, 'zIndex', z);
+    pg_set_style(tl, 'visibility', 'inherit');
+    pg_set_style(bl, 'visibility', 'inherit');
+    pg_set_style(rl, 'visibility', 'inherit');
+    pg_set_style(ll, 'visibility', 'inherit');
     return;
     }
 
 /** To hide a box **/
 function pg_hidebox(tl,bl,rl,ll)
     {
-    tl.visibility = 'hidden';
-    bl.visibility = 'hidden';
-    rl.visibility = 'hidden';
-    ll.visibility = 'hidden';
-    tl.moveAbove(document.layers.pgtvl);
-    bl.moveAbove(document.layers.pgtvl);
-    rl.moveAbove(document.layers.pgtvl);
-    ll.moveAbove(document.layers.pgtvl);
+    
+    pg_set_style(tl, 'visibility', 'hidden');
+    pg_set_style(bl, 'visibility', 'hidden');
+    pg_set_style(rl, 'visibility', 'hidden');
+    pg_set_style(ll, 'visibility', 'hidden');
+
+    if (cx__capabilities.Dom0NS)
+        {    
+        tl.moveAbove(document.layers.pgtvl);
+        bl.moveAbove(document.layers.pgtvl);
+        rl.moveAbove(document.layers.pgtvl);
+        ll.moveAbove(document.layers.pgtvl);
+        }
+    else if (cx__capabilities.Dom0IE)
+        {
+        moveAbove(tl, document.getElementById("pgtvl"));
+        moveAbove(bl, document.getElementById("pgtvl"));
+        moveAbove(rl, document.getElementById("pgtvl"));
+        moveAbove(ll, document.getElementById("pgtvl"));        	
+        }
+        
     return;
     }
 
@@ -380,28 +611,28 @@ function pg_area(pl,x,y,w,h,cls,nm,f)
 /** Function to resize a given page area **/
 function pg_resize_area(a,w,h)
     {
-    var x=a.layer.pageX+a.x;
-    var y=a.layer.pageY+a.y;
+    var x=getPageX(a.layer)+getRelativeX(a);
+    var y=getPageY(a.layer)+getRelativeY(a);
     var tl=document.layers.pgtop;
     var bl=document.layers.pgbtm;
     var ll=document.layers.pglft;
     var rl=document.layers.pgrgt;
     a.width = w;
     a.height = h;
-    tl.resizeTo(w,1);
-    bl.resizeTo(w+1,1);
-    rl.resizeTo(1,h+1);
-    ll.resizeTo(1,h);
-    tl.moveToAbsolute(x,y);
-    bl.moveToAbsolute(x,y+h);
-    ll.moveToAbsolute(x,y);
-    rl.moveToAbsolute(x+w,y);
+    resizeTo(tl, w,1);
+    resizeTo(bl, w+1,1);
+    resizeTo(rl, 1,h+1);
+    resizeTo(ll, 1,h);
+    moveToAbsolute(tl, x,y);
+    moveToAbsolute(bl, x,y+h);
+    moveToAbsolute(ll, x,y);
+    moveToAbsolute(rl, x+w,y);
     }
 
 /** Function to add a new area to the arealist **/
 function pg_addarea(pl,x,y,w,h,cls,nm,f)
-    {
-    var a = new pg_area(pl,x,y,w,h,cls,nm,f);
+    {    
+    a = new pg_area(pl,x,y,w,h,cls,nm,f);
     pg_arealist.splice(0,0,a);
     return a;
     }
@@ -409,7 +640,7 @@ function pg_addarea(pl,x,y,w,h,cls,nm,f)
 /** Function to remove an existing area... **/
 function pg_removearea(a)
     {
-    for(var i=0;i<pg_arealist.length;i++)
+    for(i=0;i<pg_arealist.length;i++)
 	{
 	if (pg_arealist[i] == a)
 	    {
@@ -431,14 +662,14 @@ function pg_resize(l)
 	alert("Cannot resize " + l.id + l.name + "(" + l + ") -- no child layers");
 	return;
 	}
-    for(var i=0;i<layers.length;i++)
+    for(i=0;i<layers.length;i++)
 	{
 	var cl = layers[i];
 	var visibility = pg_get_style(cl,'visibility');
 	if (visibility == 'show' || visibility == 'visible' || visibility == 'inherit') 
 	    {
-	    var clh = cl.y + cl.clip.height;
-	    var clw = cl.x + cl.clip.width;
+	    var clh = getRelativeY(cl) + getClipHeight(cl);
+	    var clw = getRelativeX(cl) + getClipWidth(cl);
 	    if(clh > maxheight)
 		maxheight = clh;
 	    if(clw > maxwidth)
@@ -454,8 +685,8 @@ function pg_resize(l)
     if (l!=window) 
 	{
 	//alert("setting h/w to " + maxheight + "/" + maxwidth);
-	l.clip.height = maxheight;
-	l.clip.width = maxwidth;
+	setClipHeight(l, maxheight);
+	setClipWidth(l, maxwidth);
 	}
     else 
 	{
@@ -494,6 +725,7 @@ function pg_togglecursor()
     if (pg_curkbdlayer != null && pg_curkbdlayer.cursorlayer != null)
 	{
 	var cl = pg_curkbdlayer.cursorlayer;
+	
 	if (pg_get_style(cl,'visibility') != 'inherit')
 	    pg_set_style(cl,'visibility','inherit');
 	else
@@ -527,7 +759,7 @@ function pg_cmpkey(k1,k2)
     
 function pg_removekey(kd)
     {
-    for(var i=0;i<pg_keylist.length;i++)
+    for(i=0;i<pg_keylist.length;i++)
 	{
 	if (pg_keylist[i] == kd)
 	    {
@@ -553,9 +785,18 @@ function pg_keytimeout()
 
 function pg_keyhandler(k,m,e)
     {
+    //alert(this.caller);
     pg_lastmodifiers = m;
-    if (pg_curkbdlayer != null && pg_curkbdlayer.keyhandler != null && pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) return false;
-    for(var i=0;i<pg_keylist.length;i++)
+        
+    // layer.keyhandler is a callback routine that is optional 
+    // on any layer requesting focus with pg_addarea().
+    // It is set up in the corresponding widget drivers.
+    if (pg_curkbdlayer != null && 
+    pg_curkbdlayer.keyhandler != null && 
+    pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) 
+    	return false;       
+      
+    for(i=0;i<pg_keylist.length;i++)
 	{
 	if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (m & pg_keylist[i].modmask) == pg_keylist[i].mod)
 	    {
@@ -599,6 +840,7 @@ function pg_status_close()
     pg_status.visibility = 'hide';
     }
 
+// tc_init(document.cxSubElement("tc0base"), 0, "background='sys/images/slate2.gif'", "");
 function pg_init(l,a,gs,ct)
     {
     l.ActionLoadPage = pg_load_page;
@@ -645,10 +887,17 @@ function pg_launch(aparam)
 
 function pg_mvpginpt(ly)
     {
-    var a=(document.height-window.innerHeight-2)>=0?16:1;
-    var b=(document.width-window.innerWidth-2)>=0?22:5;
-    ly.moveTo(window.innerWidth-a+window.pageXOffset, window.innerHeight-b+window.pageYOffset);
-    if (a>1||b>5) setTimeout(pg_mvpginpt, 500, ly);
+
+    if (!cx__capabilities.Dom0IE)
+        {
+        pg_layer = ly;
+        }
+    var a=(getdocHeight()-getInnerHeight()-2)>=0?16:1;
+    var b=(getdocWidth()-getInnerWidth()-2)>=0?22:5;
+    
+    moveTo(pg_layer,getInnerWidth()-a+getpageXOffset(), getInnerHeight()-b+getpageYOffset());
+    if (a>1||b>5) 
+    	setTimeout(pg_mvpginpt, 500, pg_layer);
     }
 
 
@@ -751,7 +1000,14 @@ function pg_expression(o,p,e,l)
 
 function pg_removemousefocus()
     {
-    if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);
+    if (cx__capabilities.Dom0NS)
+        {
+    	if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);
+    	}
+    else if (cx__capabilities.Dom1HTML)
+    	{
+    	if (pg_curarea.flags & 1) pg_hidebox(document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"));
+    	}    
     pg_curarea = null;
     return true;
     }
@@ -759,12 +1015,13 @@ function pg_removemousefocus()
 function pg_findfocusarea(l, xo, yo)
     {
     for(var i=0;i<pg_arealist.length;i++) 
-	{
+	{	
 	if (l == pg_arealist[i].layer && ((xo == null && yo == null) || (xo >= pg_arealist[i].x &&
 	    yo >= pg_arealist[i].y && xo < pg_arealist[i].x+pg_arealist[i].width &&
 	    yo < pg_arealist[i].y+pg_arealist[i].height && l != pg_arealist[i])))
 	    {
 	    if (l == pg_arealist[i]) break;
+	    //alert("focus area -- " + i);
 	    return pg_arealist[i];
 	    }
 	}
@@ -780,11 +1037,19 @@ function pg_setmousefocus(l, xo, yo)
 	if (pg_curarea.flags & 1)
 	    {
 	    // wants mouse focus
-	    var x = pg_curarea.layer.pageX+pg_curarea.x;
-	    var y = pg_curarea.layer.pageY+pg_curarea.y;
+	    var x = getPageX(pg_curarea.layer)+pg_curarea.x;
+	    var y = getPageY(pg_curarea.layer)+pg_curarea.y;
+	    
 	    var w = pg_curarea.width;
 	    var h = pg_curarea.height;
-	    pg_mkbox(l, x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
+	    if (cx__capabilities.Dom0NS)
+	        {
+	        pg_mkbox(l, x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
+	        }
+	    else if (cx__capabilities.Dom1HTML)
+	        {
+	    	pg_mkbox(l, x,y,w,h, 1, document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"), page.mscolor1, page.mscolor2, document.getElementById("pgktop").currentStyle.zIndex-1);
+	    	}
 	    }
 	}
     }
@@ -794,7 +1059,14 @@ function pg_removekbdfocus()
     if (pg_curkbdlayer)
 	{
 	if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return false;
-	pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	if (cx__capabilities.Dom0NS)
+	    {
+	    pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	    }
+	else if (cx__capabilities.Dom1HTML)
+	    {
+	    pg_mkbox(null,0,0,0,0, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, pg_get_style(document.getElementById("pgtop"), 'zIndex')+100);
+	    }
 	}
     return true;
     }
@@ -805,8 +1077,9 @@ function pg_setkbdfocus(l, a, xo, yo)
 	{
 	a = pg_findfocusarea(l, xo, yo);
 	}
-    var x = a.layer.pageX+a.x;
-    var y = a.layer.pageY+a.y;
+
+    var x = getPageX(a.layer)+a.x;
+    var y = getPageY(a.layer)+a.y;
     var w = a.width;
     var h = a.height;
     var prevLayer = pg_curkbdlayer;
@@ -822,7 +1095,14 @@ function pg_setkbdfocus(l, a, xo, yo)
 	    // mk box for kbd focus
 	    if (prevArea != a)
 		{
-		pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+		if (cx__capabilities.Dom0NS)
+		    {
+		    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+		    }
+		else if (cx__capabilities.Dom1HTML)
+		    {		    
+		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, pg_get_style(document.getElementById("pgtop"),'zIndex')+100);
+		    }
 		}
 	    }
 	if (v & 2)
@@ -836,12 +1116,35 @@ function pg_setkbdfocus(l, a, xo, yo)
 	    else
 		{
 		// mk new data focus box for this control.
-		l.pg_dttop = new Layer(1152);
-		l.pg_dtbtm = new Layer(1152);
-		l.pg_dtrgt = new Layer(2);
-		l.pg_dtlft = new Layer(2);
+		if (cx__capabilities.Dom1HTML)
+		    {
+		    l.pg_dttop = document.createElement("div");
+		    l.pg_dttop.style.width = 1152;
+		    l.pg_dtbtm = document.createElement("div");
+		    l.pg_dtbtm.style.width = 1152;
+		    l.pg_dtrgt = document.createElement("div");
+		    l.pg_dtrgt.style.width = 2;
+		    l.pg_dtlft = document.createElement("div");
+		    l.pg_dtlft.style.width = 2;
+		    //alert("here");
+		    }
+		else if (cx__capabilities.Dom0NS)
+		    {
+		    l.pg_dttop = new Layer(1152);
+		    l.pg_dtbtm = new Layer(1152);
+		    l.pg_dtrgt = new Layer(2);
+		    l.pg_dtlft = new Layer(2);
+		    }		    
 		}
-	    pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);
+		
+	    if (cx__capabilities.Dom0NS)
+	        {	        
+	    	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);
+	    	}
+	    else if (cx__capabilities.Dom1HTML)
+	        {
+	        pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, pg_get_style(document.getElementById("pgtop"),'zIndex')+100);
+	        }
 	    }
 	}
     return true;
@@ -1141,35 +1444,5 @@ function pg_debug_register_log(l)
 // send debug msg
 function pg_debug(msg)
     {
-    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg, ContentType:'text/plain'});
+    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg});
     }
-
-// log function calls and return values.
-function pg_log_fn(fnname)
-    {
-    if (typeof(window[fnname]) != 'function') 
-	{
-	pg_debug(fnname + ' is not a function.\n');
-	return;
-	}
-    var oldfn = window[fnname].toString();
-    var openparen = oldfn.indexOf('(');
-    var closeparen = oldfn.indexOf(')');
-    var openbrace = oldfn.indexOf('{');
-    var closebrace = oldfn.lastIndexOf('}');
-    var argstext = oldfn.substring(openparen+1,closeparen);
-    var args = argstext.split(',');
-    var body = oldfn.substring(openbrace+1,closebrace);
-    body = "var __debugmsg = '" + fnname + " called with ('; for(var __i=0;__i<arguments.length;__i++) { if (__i > 0) __debugmsg += ', '; switch(typeof(arguments[__i])) { case 'string': __debugmsg += \"'\" + arguments[__i] + \"'\"; break; case 'function': __debugmsg += arguments[__i].name + '()'; break; default: __debugmsg += arguments[__i]; break; } } __debugmsg += ')\\n'; pg_debug(__debugmsg); function __internal(" + argstext + ") {" + body + "} var __rval = __internal.apply(this,arguments); pg_debug('" + fnname + " returned: ' + __rval + '\\n'); return __rval;";
-    //args.push(body);
-    var fndecl = 'new Function(';
-    for(var i=0;i<args.length;i++)
-	{
-	if (args[i] == '') continue;
-	fndecl += '"' + args[i] + '", ';
-	}
-    fndecl += 'body)';
-    window[fnname] = eval(fndecl);
-    return;
-    }
-
