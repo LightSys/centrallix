@@ -968,6 +968,7 @@ httpGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	{
 	switch(inf->NextAttr++)
 	    {
+#if 0
 	    case -7: return "name";
 	    case -6: return "content_type";
 	    case -5: return "annotation";
@@ -977,9 +978,12 @@ httpGetNextAttr(void* inf_v, pObjTrxTree oxt)
 		     if(inf->LastModified.Value)
 			 return "last_modification";
 		     inf->NextAttr++;
+#endif
 	    case -1:
 		     if(inf->ContentLength)
 			 return "Content-Length";
+		     else
+			inf->NextAttr++;
 
 	    }
 	}
@@ -1004,8 +1008,8 @@ httpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     pHttpData inf = HTTP(inf_v);
     char* ptr;
 
-	/** Set the current attribute. **/
-	inf->NextAttr = -6;
+	/** Set the first attribute to be returned. **/
+	inf->NextAttr = -1;
 
 	/** Return the next one. **/
 	ptr = httpGetNextAttr(inf_v, oxt);
