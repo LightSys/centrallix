@@ -20,12 +20,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.h,v 1.1 2001/08/13 18:04:19 gbeeley Exp $
+    $Id: mtsession.h,v 1.2 2002/02/14 00:41:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtsession.h,v $
 
     $Log: mtsession.h,v $
-    Revision 1.1  2001/08/13 18:04:19  gbeeley
-    Initial revision
+    Revision 1.2  2002/02/14 00:41:54  gbeeley
+    Added configurable logging and authentication to the mtsession module,
+    and made sure mtsession cleared MtSession data structures when it is
+    through with them since they contain sensitive data.
+
+    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
     Initial checkin of centrallix-lib
@@ -63,7 +68,7 @@ typedef struct
 
 
 /** User auth Functions **/
-int mssInitialize();
+int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname);
 char* mssUserName();
 char* mssPassword();
 int mssAuthenticate(char* username, char* password);

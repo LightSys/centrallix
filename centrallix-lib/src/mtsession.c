@@ -6,7 +6,9 @@
 #include <shadow.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <syslog.h>
 #include "mtask.h"
+#include "mtlexer.h"
 #include "newmalloc.h"
 #include "mtsession.h"
 #include "xarray.h"
@@ -32,12 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.1 2001/08/13 18:04:22 gbeeley Exp $
+    $Id: mtsession.c,v 1.2 2002/02/14 00:41:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
-    Revision 1.1  2001/08/13 18:04:22  gbeeley
-    Initial revision
+    Revision 1.2  2002/02/14 00:41:54  gbeeley
+    Added configurable logging and authentication to the mtsession module,
+    and made sure mtsession cleared MtSession data structures when it is
+    through with them since they contain sensitive data.
+
+    Revision 1.1.1.1  2001/08/13 18:04:22  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:02:52  gbeeley
     Initial checkin of centrallix-lib
@@ -49,12 +56,15 @@
 char *crypt(const char* key, const char* salt);
 #endif
 
-#define MSS_DEBUG	1
-
 /*** Globals ***/
 static struct
     {
     XArray	Sessions;
+    char	AuthMethod[32];
+    char	AuthFile[256];
+    char	LogMethod[32];
+    int		LogAllErrors;
+    char	AppName[32];
     }
     MSS;
 
@@ -72,11 +82,32 @@ mssMemoryErr(char* message)
 /*** mssInitialize - init the globals, etc.
  ***/
 int 
-mssInitialize()
+mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname)
     {
-    xaInit(&(MSS.Sessions),16);
-    nmRegister(sizeof(MtSession),"MtSession");
-    nmSetErrFunction(mssMemoryErr);
+
+	/** Setup auth method & log method settings **/
+	memccpy(MSS.AuthMethod, authmethod, 0, 31);
+	MSS.AuthMethod[31] = '\0';
+	memccpy(MSS.AuthFile, authfile, 0, 255);
+	MSS.AuthFile[255] = '\0';
+	memccpy(MSS.LogMethod, logmethod, 0, 31);
+	MSS.LogMethod[31] = '\0';
+	memccpy(MSS.AppName, log_progname, 0, 31);
+	MSS.AppName[31] = '\0';
+	MSS.LogAllErrors = logall;
+
+	/** Setup syslog, if requested. **/
+	if (!strcmp(MSS.LogMethod, "syslog"))
+	    {
+	    openlog(MSS.AppName, LOG_PID, LOG_USER);
+	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
+	    }
+   
+	/** Setup the sessions list **/
+	xaInit(&(MSS.Sessions),16);
+	nmRegister(sizeof(MtSession),"MtSession");
+	nmSetErrFunction(mssMemoryErr);
+
     return 0;
     }
 
@@ -124,6 +155,11 @@ mssAuthenticate(char* username, char* password)
     struct passwd* pw;
     struct spwd* spw;
     char salt[3];
+    pFile altpass_fd;
+    pLxSession altpass_lxs;
+    char pwline[80];
+    int t;
+    int found_user;
 
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
@@ -134,32 +170,114 @@ mssAuthenticate(char* username, char* password)
 	s->Password[31]=0;
 
 	/** Attempt to authenticate. **/
-	pw = getpwnam(s->UserName);
-	if (!pw)
+	if (!strcmp(MSS.AuthMethod,"system"))
 	    {
-	    nmFree(s,sizeof(MtSession));
-	    return -1;
+	    /** Use system auth (passwd/shadow files) **/
+	    pw = getpwnam(s->UserName);
+	    if (!pw)
+		{
+		memset(s, 0, sizeof(MtSession));
+		nmFree(s,sizeof(MtSession));
+		return -1;
+		}
+	    spw = getspnam(s->UserName);
+	    if (!spw)
+		{
+		pwd = pw->pw_passwd;
+		}
+	    else
+		{
+		pwd = spw->sp_pwdp;
+		}
+	    strncpy(salt,pwd,2);
+	    salt[2]=0;
+	    encrypted_pwd = (char*)crypt(s->Password,pwd);
+	    if (strcmp(encrypted_pwd,pwd))
+		{
+		memset(s, 0, sizeof(MtSession));
+		nmFree(s,sizeof(MtSession));
+		return -1;
+		}
 	    }
-	spw = getspnam(s->UserName);
-	if (!spw)
+	else if (!strcmp(MSS.AuthMethod, "altpasswd"))
 	    {
-	    pwd = pw->pw_passwd;
+	    /** Sanity checking. **/
+	    if (strchr(username,':'))
+		{
+		mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
+		memset(s, 0, sizeof(MtSession));
+		nmFree(s,sizeof(MtSession));
+		return -1;
+		}
+
+	    /** Open the alternate password file **/
+	    altpass_fd = fdOpen(MSS.AuthFile, O_RDONLY, 0600);
+	    if (!altpass_fd)
+		{
+		mssErrorErrno(1, "MSS", "Could not open auth file '%s'", MSS.AuthFile);
+		memset(s, 0, sizeof(MtSession));
+		nmFree(s,sizeof(MtSession));
+		return -1;
+		}
+	    altpass_lxs = mlxOpenSession(altpass_fd, MLX_F_LINEONLY | MLX_F_EOF);
+
+	    /** Scan it for the user name **/
+	    found_user = 0;
+	    while ((t = mlxNextToken(altpass_lxs)) != MLX_TOK_EOF)
+		{
+		if (t == MLX_TOK_ERROR)
+		    {
+		    mssError(0, "MSS", "Could not read auth file '%s'", MSS.AuthFile);
+		    memset(s, 0, sizeof(MtSession));
+		    nmFree(s,sizeof(MtSession));
+		    mlxCloseSession(altpass_lxs);
+		    fdClose(altpass_fd, 0);
+		    return -1;
+		    }
+		mlxCopyToken(altpass_lxs, pwline, 80);
+		if (strlen(username) < strlen(pwline) && !strncmp(pwline, username, strlen(username)) && pwline[strlen(username)] == ':')
+		    {
+		    found_user = 1;
+		    break;
+		    }
+		}
+
+	    /** Close the alternate password file **/
+	    mlxCloseSession(altpass_lxs);
+	    fdClose(altpass_fd, 0);
+
+	    /** Did we find the user in the file? **/
+	    if (found_user)
+		{
+		if (pwline[strlen(pwline)-1] == '\n')
+		    pwline[strlen(pwline)-1] = '\0';
+		pwd = pwline + strlen(username) + 1;
+		encrypted_pwd = (char*)crypt(s->Password,pwd);
+		if (strcmp(encrypted_pwd,pwd))
+		    {
+		    memset(s, 0, sizeof(MtSession));
+		    nmFree(s,sizeof(MtSession));
+		    return -1;
+		    }
+		}
+	    else
+		{
+		memset(s, 0, sizeof(MtSession));
+		nmFree(s,sizeof(MtSession));
+		return -1;
+		}
 	    }
 	else
 	    {
-	    pwd = spw->sp_pwdp;
-	    }
-	strncpy(salt,pwd,2);
-	salt[2]=0;
-	encrypted_pwd = (char*)crypt(s->Password,pwd);
-	if (strcmp(encrypted_pwd,pwd))
-	    {
-	    nmFree(s,sizeof(MtSession));
+	    mssError(1, "MSS", "Invalid auth method '%s'", MSS.AuthMethod);
 	    return -1;
 	    }
 
 	/** Set the session information **/
-	s->UserID = pw->pw_uid;
+	if (!strcmp(MSS.AuthMethod,"system"))
+	    s->UserID = pw->pw_uid;
+	else
+	    s->UserID = geteuid();
 	thSetParam(NULL,"mss",(void*)s);
 	thSetUserID(NULL,s->UserID);
 
@@ -194,6 +312,7 @@ mssEndSession()
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
 	xaRemoveItem(&(MSS.Sessions),xaFindItem(&(MSS.Sessions),(void*)s));
+	memset(s, 0, sizeof(MtSession));
 	nmFree(s,sizeof(MtSession));
 
     return 0;
@@ -254,10 +373,20 @@ mssError(int clr, char* module, char* message, ...)
 
 	/** Get current session **/
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s || MSS_DEBUG) 
+	if (!s || MSS.LogAllErrors) 
 	    {
 	    /*printf("mssError: Error occurred outside of session context.\n");*/
-	    printf("mssError: %s: %s\n",module,xs.String);
+	    if (!strcmp(MSS.LogMethod,"syslog"))
+		{
+		if (!s)
+		    syslog(LOG_ERR, "System: %s: %.256s\n", module, xs.String);
+		else
+		    syslog(LOG_WARNING, "User '%s': %s: %.256s\n", s->UserName, module, xs.String);
+		}
+	    else
+		{
+		printf("%s: %s: %s\n",MSS.AppName,module,xs.String);
+		}
 	    if (!s) return -1;
 	    }
 
@@ -340,10 +469,20 @@ mssErrorErrno(int clr, char* module, char* message, ...)
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s || MSS_DEBUG) 
+	if (!s || MSS.LogAllErrors) 
 	    {
 	    /*printf("mssErrorErrno: Error occurred outside of session context.\n");*/
-	    printf("mssErrorErrno: %s: %s (%s)\n",module,xs.String,err);
+	    if (!strcmp(MSS.LogMethod,"syslog"))
+		{
+		if (!s)
+		    syslog(LOG_ERR, "System: %s: %.256s (%s)\n", module, xs.String, err);
+		else
+		    syslog(LOG_WARNING, "User '%s': %s: %.256s (%s)\n", s->UserName, module, xs.String, err);
+		}
+	    else
+		{
+		printf("%s: %s: %s (%s)\n",MSS.AppName,module,xs.String,err);
+		}
 	    if (!s) return -1;
 	    }
 
