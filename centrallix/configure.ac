@@ -57,6 +57,10 @@ CENTRALLIX_CONF_FILE
 CENTRALLIX_OS_DIR
 AC_CACHE_SAVE
 
+dnl Check for __ctype_b
+AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])
+CHECK_CTYPE_B
+
 dnl Check if -pg is allowed with -fPIC
 AH_TEMPLATE([USE_PROFILE], [Define for profiling])
 CHECK_PROFILE

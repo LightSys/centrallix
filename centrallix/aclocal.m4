@@ -7,6 +7,27 @@ AC_DEFUN(CENTRALLIX_ADD_DRIVER,
 	AC_SUBST(DRIVERLIST)
     ]
 )
+
+dnl Test for __ctype_b presence and usability.  Newer glibc versions obliterated
+dnl this poor little symbol from being used by older libraries...
+AC_DEFUN(CHECK_CTYPE_B,
+    [
+	has_ctype_b="test"
+	AC_MSG_CHECKING(if __ctype_b is present and usable)
+	temp="$CFLAGS"
+	CFLAGS=""
+	AC_TRY_LINK([#include <ctype.h>],[int main() { int x = *(__ctype_b+'a'); return x; }],
+	    has_ctype_b="yes",
+	    has_ctype_b=""
+	)
+	if test "$has_ctype_b" = "yes"; then
+	    AC_DEFINE(HAVE_CTYPE_B)
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+    ]
+)
 	
 dnl Test for readline support.  Some versions of readline also require
 dnl ncurses, so test for that if necessary.
@@ -187,11 +208,21 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 	    )
 	    CPPFLAGS="$temp"
 
+	    
 	    if test "$WITH_SYBASE" = "yes"; then
-		SYBASE_CFLAGS="-I$sybase_incdir"
-		temp=$LIBS
-		LIBS="$LIBS -L$sybase_libdir"
-		AC_CHECK_LIB(ct, ct_connect, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no", -lct -lcomn -lsybtcl -linsck -lintl -lcs)
+		dnl only try compile if we don't have a __ctype_b problem
+		if test "$has_ctype_b" = "yes"; then
+		    SYBASE_CFLAGS="-I$sybase_incdir"
+		    temp=$LIBS
+		    LIBS="$LIBS -L$sybase_libdir"
+		    AC_CHECK_LIB(ct, ct_connect, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no", -lct -lcomn -lsybtcl -linsck -lintl -lcs)
+		else
+		    SYBASE_CFLAGS="-I$sybase_incdir"
+		    temp=$LIBS
+		    LIBS="$LIBS -L$sybase_libdir"
+		    libfile="$sybase_libdir/libct.so"
+		    AC_CHECK_FILE($libfile, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no")
+		fi
 		if test "$WITH_SYBASE_CT" = "no"; then
 		    WITH_SYBASE="no"
 		else

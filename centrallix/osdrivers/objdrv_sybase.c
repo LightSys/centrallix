@@ -9,6 +9,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <ctype.h>
 #include <ctpublic.h>
 #include "obj.h"
 #include "mtask.h"
@@ -63,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.14 2004/02/25 19:59:57 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.15 2004/06/10 17:37:07 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.15  2004/06/10 17:37:07  mmcgill
+    Configure updates to work on Fedora Core 1 (nasty interface change in
+    glibc __ctype_b)
+
     Revision 1.14  2004/02/25 19:59:57  gbeeley
     - fixing problem in net_http; nht_internal_GET should not open the
       target_obj when operating in OSML-over-HTTP mode.
@@ -161,6 +166,13 @@
 
  **END-CVSDATA***********************************************************/
 
+
+#ifndef HAVE_CTYPE_B
+/*** AARRRRRGGGHH!!  Silly glibc guys went and changed the interface again,
+ *** breaking the sybase libraries.  Here is our workaround.
+ ***/
+unsigned short int* __ctype_b;
+#endif
 
 /*** Module Controls ***/
 #define SYBD_USE_CURSORS	1	/* use cursors for all multirow SELECTs */
@@ -3952,6 +3964,10 @@ sybdInitialize()
     pObjDriver drv;
 #if 00
     pQueryDriver qdrv;
+#endif
+
+#ifndef HAVE_CTYPE_B
+	__ctype_b = *(__ctype_b_loc());
 #endif
 
 	/** Allocate the driver **/
