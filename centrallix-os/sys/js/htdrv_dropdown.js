@@ -229,11 +229,11 @@ function dd_scroll(t)
     var ht1=ly.y-2;
     var ht2=dd_current.PaneLayer.h-ly.clip.height+ht1;
     var h=dd_current.PaneLayer.h;
-    var d=h-dd_current.PaneLayer.clip.height-4;
+    var d=h-dd_current.PaneLayer.clip.height+4;
     var v=dd_current.PaneLayer.clip.height-(3*18)-4;
     if (ht1+px>0) px = -ht1;
     if (ht2+px<0) px = -ht2;
-    if (px<0 && ht2>0)
+    if (px<0 && ht2>0) // down
 	{
 	ly.y += px;
 	ly.clip.height -= px;
@@ -241,10 +241,10 @@ function dd_scroll(t)
 	if (t==null)
 	    {
 	    if (d<=0) ti.thum.y=18;
-	    else ti.thum.y=18+v*(-(ly.y+2)/d);
+	    else ti.thum.y=20+(-v*(ly.y/d));
 	    }
 	}
-    else if (px>0 && ht1<0)
+    else if (px>0 && ht1<0) // up
 	{
 	ly.y += px;
 	ly.clip.height -= px;
@@ -252,7 +252,7 @@ function dd_scroll(t)
 	if (t==null)
 	    {
 	    if (d<=0) ti.thum.y=18;
-	    else ti.thum.y=22+v*(-(ly.y+2)/d);
+	    else ti.thum.y=20+(-v*(ly.y/d));
 	    }
 	}
     }
