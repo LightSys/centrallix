@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.15 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_tab.c,v 1.16 2003/11/15 19:59:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.16  2003/11/15 19:59:57  gbeeley
+    Adding support for tabs on any of 4 sides of tab control
+
     Revision 1.15  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -136,6 +139,9 @@ static struct
     HTTAB;
 
 
+enum httab_locations { Top=0, Bottom=1, Left=2, Right=3 };
+
+
 /*** httabVerify - not written yet.
  ***/
 int
@@ -163,12 +169,23 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     int id,tabcnt;
     char* nptr;
     char* subnptr;
+    enum httab_locations tloc;
+    int tab_width = 0;
+    int xoffset,yoffset,xtoffset, ytoffset;
 
 	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTTAB","NS4 DOM Support required");
 	    return -1;
+	    }
 
     	/** Get an id for this. **/
 	id = (HTTAB.idcnt++);
+
+	/** Get name **/
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	memccpy(name,ptr,0,63);
+	name[63]=0;
 
     	/** Get x,y,w,h of this object **/
 	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -182,6 +199,38 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    mssError(0,"HTTAB","Tab widget must have a 'height' property");
 	    return -1;
+	    }
+
+	/** Which side are the tabs on? **/
+	if (objGetAttrValue(w_obj,"tab_location",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    if (!strcasecmp(ptr,"top")) tloc = Top;
+	    else if (!strcasecmp(ptr,"bottom")) tloc = Bottom;
+	    else if (!strcasecmp(ptr,"left")) tloc = Left;
+	    else if (!strcasecmp(ptr,"right")) tloc = Right;
+	    else
+		{
+		mssError(1,"HTTAB","%s: '%s' is not a valid tab_location",name,ptr);
+		return -1;
+		}
+	    }
+	else
+	    {
+	    tloc = Top;
+	    }
+
+	/** How wide should left/right tabs be? **/
+	if (objGetAttrValue(w_obj,"tab_width",DATA_T_INTEGER,POD(&tab_width)) != 0)
+	    {
+	    if (tloc == Right || tloc == Left)
+		{
+		mssError(1,"HTTAB","%s: tab_width must be specified with tab_location of left or right", name);
+		return -1;
+		}
+	    }
+	else
+	    {
+	    if (tab_width < 0) tab_width = 0;
 	    }
 
 	/** Which tab is selected? **/
@@ -216,13 +265,17 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	else
 	    strcpy(tab_txt,"black");
 
-	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63]=0;
+	/** Determine offset to actual tab pages **/
+	switch(tloc)
+	    {
+	    case Top:    xoffset = 0;         yoffset = 24; xtoffset = 0; ytoffset = 0; break;
+	    case Bottom: xoffset = 0;         yoffset = 0;  xtoffset = 0; ytoffset = h; break;
+	    case Right:  xoffset = 0;         yoffset = 0;  xtoffset = w; ytoffset = 0; break;
+	    case Left:   xoffset = tab_width; yoffset = 0;  xtoffset = 0; ytoffset = 0; break;
+	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#tc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y+24,w,z+1);
+	htrAddStylesheetItem_va(s,"\t#tc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x+xoffset,y+yoffset,w,z+1);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -263,8 +316,8 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = tc_init(%s.layers.tc%dbase);\n",
-		nptr, parentname, id);
+	htrAddScriptInit_va(s,"    %s = tc_init(%s.layers.tc%dbase, %d);\n",
+		nptr, parentname, id, tloc);
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
 	tabcnt = 0;
@@ -279,22 +332,42 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 		    tabcnt++;
 		    htrAddBodyItem_va(s,"<DIV ID=\"tc%dtab%d\">\n",id,tabcnt);
-		    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 %s>\n", main_bg);
-		    htrAddBodyItem(s,"        <TR><TD colspan=3 background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-		    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
-		        htrAddBodyItem(s,"        <TR><TD><IMG SRC=/sys/images/tab_lft2.gif name=tb></TD>\n");
-		    else
-		        htrAddBodyItem(s,"        <TR><TD><IMG SRC=/sys/images/tab_lft3.gif name=tb></TD>\n");
+		    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 width=%d %s>\n", tab_width, main_bg);
+		    if (tloc != Bottom) 
+			htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
+		    htrAddBodyItem(s,"        <TR>");
+		    if (tloc != Right)
+			{
+			htrAddBodyItem(s,"<TD><IMG SRC=/sys/images/white_1x1.png height=24 width=1>");
+			if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24></TD>\n");
+			else
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24></TD>\n");
+			}
 		    if (objGetAttrValue(tabpage_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
 		        {
-		        htrAddBodyItem_va(s,"            <TD valign=middle><FONT COLOR=%s>%s</FONT></TD>\n", tab_txt, ptr);
+		        htrAddBodyItem_va(s,"            <TD valign=middle align=center><FONT COLOR=%s><b>&nbsp;%s&nbsp;</b></FONT></TD>\n", tab_txt, ptr);
 			}
 		    else
 		        {
 			objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
-		        htrAddBodyItem_va(s,"            <TD valign=middle><FONT COLOR=%s><B>&nbsp;%s&nbsp;</B></FONT></TD>\n", tab_txt, ptr);
+		        htrAddBodyItem_va(s,"            <TD valign=middle align=center><FONT COLOR=%s><B>&nbsp;%s&nbsp;</B></FONT></TD>\n", tab_txt, ptr);
 			}
-		    htrAddBodyItem(s,"            <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD></TR>\n    </TABLE>\n");
+		    if (tloc != Left)
+			htrAddBodyItem(s,"           <TD align=right>");
+		    if (tloc == Right)
+			{
+			if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24>");
+			else
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24>");
+			}
+		    if (tloc != Left)
+			htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>\n");
+		    htrAddBodyItem(s,"            </TR>\n");
+		    if (tloc != Top) 
+			htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
+		    htrAddBodyItem(s,"    </TABLE>\n");
 		    htrAddBodyItem(s, "</DIV>\n");
 		    }
 		objClose(tabpage_obj);
@@ -333,7 +406,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
 		        {
 		        htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
-			    id,tabcnt,x,y,1,z+2);
+			    id,tabcnt,x+xtoffset,y+ytoffset,1,z+2);
 		        htrAddStylesheetItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,w-2,z+2);
 			}
