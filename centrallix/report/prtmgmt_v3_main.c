@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_main.c,v 1.5 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: prtmgmt_v3_main.c,v 1.6 2003/03/02 04:17:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_main.c,v $
 
     $Log: prtmgmt_v3_main.c,v $
+    Revision 1.6  2003/03/02 04:17:35  gbeeley
+    Adding skeleton tabular layout manager, for table/row/cell formatted
+    data.
+
     Revision 1.5  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -485,7 +489,7 @@ prtInitialize()
 
 	/** Setup list of layout managers **/
 	prt_textlm_Initialize();
-	/*prt_tablm_Initialize();*/
+	prt_tablm_Initialize();
 	prt_collm_Initialize();
 	prt_pagelm_Initialize();
 
