@@ -50,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.5 2002/02/14 00:55:20 gbeeley Exp $
+    $Id: net_http.c,v 1.6 2002/03/16 04:26:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.6  2002/03/16 04:26:25  gbeeley
+    Added functionality in net_http's object access routines so that it,
+    when appropriate, sends the metadata attributes also, including the
+    following:  "name", "inner_type", "outer_type", and "annotation".
+
     Revision 1.5  2002/02/14 00:55:20  gbeeley
     Added configuration file centrallix.conf capability.  You now MUST have
     this file installed, default is /usr/local/etc/centrallix.conf, in order
@@ -546,43 +551,64 @@ nht_internal_EncodeHTML(int ch, char** bufptr, int maxlen)
     }
 
 
+/*** nht_internal_WriteOneAttr - put one attribute's information into the
+ *** outbound data connection stream.
+ ***/
+int
+nht_internal_WriteOneAttr(pObject obj, pFile conn, int tgt, char* attrname)
+    {
+    ObjData od;
+    char* dptr;
+    int type,rval;
+    XString xs;
+    char sbuf[80];
+    static char* coltypenames[] = {"unknown","integer","string","double","datetime","intvec","stringvec","money",""};
+
+	/** Get type and value **/
+	xsInit(&xs);
+	type = objGetAttrType(obj,attrname);
+	if (type < 0) return -1;
+	rval = objGetAttrValue(obj,attrname,&od);
+	if (rval != 0) 
+	    dptr = "";
+	else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) 
+	    dptr = objDataToStringTmp(type, (void*)&od, 0);
+	else
+	    dptr = objDataToStringTmp(type, (void*)(od.String), 0);
+	if (!dptr) dptr = "";
+
+	/** Write the HTML output. **/
+	snprintf(sbuf,80,"<A TARGET=X%8.8X HREF='http://%.40s/#%s'>",tgt,attrname,coltypenames[type]);
+	xsCopy(&xs,sbuf,-1);
+	xsConcatenate(&xs,dptr,-1);
+	xsConcatenate(&xs,"</A>\n",5);
+	fdWrite(conn,xs.String,strlen(xs.String),0,0);
+	xsDeInit(&xs);
+
+    return 0;
+    }
+
+
 /*** nht_internal_WriteAttrs - write an HTML-encoded attribute list for the
  *** object to the connection, given an object and a connection.
  ***/
 int
-nht_internal_WriteAttrs(pObject obj, pFile conn, int tgt)
+nht_internal_WriteAttrs(pObject obj, pFile conn, int tgt, int put_meta)
     {
     char* attr;
-    int type,rval;
-    char* dptr;
-    static char* coltypenames[] = {"unknown","integer","string","double","datetime","intvec","stringvec","money",""};
-    ObjData od;
-    XString xs;
-    char sbuf[80];
 
 	/** Loop throught the attributes. **/
-	xsInit(&xs);
+	if (put_meta)
+	    {
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "name");
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "inner_type");
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "outer_type");
+	    nht_internal_WriteOneAttr(obj, conn, tgt, "annotation");
+	    }
 	for(attr = objGetFirstAttr(obj); attr; attr = objGetNextAttr(obj))
 	    {
-	    /** Get type and value **/
-	    type = objGetAttrType(obj,attr);
-	    rval = objGetAttrValue(obj,attr,&od);
-	    if (rval != 0) 
-	        dptr = "";
-	    else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) 
-	        dptr = objDataToStringTmp(type, (void*)&od, 0);
-	    else
-	        dptr = objDataToStringTmp(type, (void*)(od.String), 0);
-	    if (!dptr) dptr = "";
-
-	    /** Write the HTML output. **/
-	    sprintf(sbuf,"<A TARGET=X%8.8X HREF='http://%.40s/#%s'>",tgt,attr,coltypenames[type]);
-	    xsCopy(&xs,sbuf,-1);
-	    xsConcatenate(&xs,dptr,-1);
-	    xsConcatenate(&xs,"</A>\n",5);
-	    fdWrite(conn,xs.String,strlen(xs.String),0,0);
+	    nht_internal_WriteOneAttr(obj, conn, tgt, attr);
 	    }
-	xsDeInit(&xs);
 
     return 0;
     }
@@ -657,7 +683,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 
 		/** Include an attribute listing **/
-		nht_internal_WriteAttrs(obj,conn,(int)obj);
+		nht_internal_WriteAttrs(obj,conn,(int)obj,1);
 	        }
 	    else if (!strcmp(request,"close"))
 	        {
@@ -712,7 +738,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 		while(n > 0 && (obj = objQueryFetch(qy,mode)))
 		    {
-		    nht_internal_WriteAttrs(obj,conn,(int)obj);
+		    nht_internal_WriteAttrs(obj,conn,(int)obj,1);
 		    n--;
 		    }
 		}
@@ -768,7 +794,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
-		nht_internal_WriteAttrs(obj,conn,0);
+		nht_internal_WriteAttrs(obj,conn,0,1);
 		}
 	    else if (!strcmp(request,"setattrs"))
 	        {
@@ -1077,7 +1103,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    rowid = 0;
 		    while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		        {
-			nht_internal_WriteAttrs(sub_obj,conn,rowid);
+			nht_internal_WriteAttrs(sub_obj,conn,rowid,1);
 			objClose(sub_obj);
 			rowid++;
 			}

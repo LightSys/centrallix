@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.3 2001/09/28 20:04:50 gbeeley Exp $
+    $Id: multiquery.c,v 1.4 2002/03/16 04:26:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.4  2002/03/16 04:26:25  gbeeley
+    Added functionality in net_http's object access routines so that it,
+    when appropriate, sends the metadata attributes also, including the
+    following:  "name", "inner_type", "outer_type", and "annotation".
+
     Revision 1.3  2001/09/28 20:04:50  gbeeley
     Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
     are now self-contained and require no redundant OBJECT nodes as parent
@@ -1561,6 +1566,8 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    }
 	if (id == -1) 
 	    {
+	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
+	        return -1;
 	    mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
 	    return -1;
 	    }
