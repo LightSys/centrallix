@@ -19,6 +19,7 @@
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // Here are two checkboxes.
 checkbox_test "widget/page"
@@ -33,6 +34,7 @@ checkbox_test "widget/page"
 		x = 20; y = 20;
 		}
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="connector" type="widget/connector">
@@ -57,6 +59,7 @@ checkbox_test "widget/page"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 
 $Version=2$
 // Here's our connector.Imagine that this is embedded within a treeview
@@ -75,6 +78,7 @@ cn1 "widget/connector"
 	Source = "Pathname";
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="editbox" type="widget/editbox">
@@ -101,6 +105,7 @@ cn1 "widget/connector"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // Here is a single lonely edit box.
 my_editbox "widget/editbox"
@@ -110,6 +115,7 @@ my_editbox "widget/editbox"
 	x = 10; y = 10; width=100; height=19;
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="execmethod" type="widget/execmethod">
@@ -133,6 +139,7 @@ my_editbox "widget/editbox"
 			<action name="ExecuteMethod">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: "Objname", the object path, "Method", the method to invoke, and "Parameter", the parameter to pass to the method being invoked.</action>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // This execmethod widget is set up to play a sound file (on the server).
 mySoundPlayer "widget/execmethod"
@@ -142,6 +149,7 @@ mySoundPlayer "widget/execmethod"
 	parameter = "/data/Welcome.wav";
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="form" type="widget/form">
@@ -181,6 +189,8 @@ mySoundPlayer "widget/execmethod"
 			<action name="Save">Saves the form's contents.</action>
 		</actions>
 		<sample>
+		<![CDATA[
+		]]>
 		</sample>
 	</widget>
 	<widget name="formstatus" type="widget/formstatus">
@@ -199,6 +209,8 @@ mySoundPlayer "widget/execmethod"
 		</events>
 		<actions></actions>
 		<sample>
+		<![CDATA[
+		]]>
 		</sample>
 	</widget>
 	<widget name="frameset" type="widget/frameset">
@@ -223,6 +235,7 @@ mySoundPlayer "widget/execmethod"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // Example of a page with three frames on it.
 //
@@ -249,6 +262,7 @@ BigFrameset "widget/frameset"
 		framesize = "60%";
 		}
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="html" type="widget/html">
@@ -279,6 +293,7 @@ BigFrameset "widget/frameset"
 			<action name="LoadPage">loadpage action takes two parameters. "Source" contains the URL for the new page to be loaded into the HTML area.The optional parameter "Transition" indicates the type of fade to be used between one page and the next.Currently supported values are "pixelate", "rlwipe", and "lrwipe".</action>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 HTMLArea "widget/html"
 	{
@@ -287,6 +302,7 @@ HTMLArea "widget/html"
 	width = 478; height = 396;
 	source = "http://localhost:800/index.html";
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="htmlwindow" type="widget/htmlwindow">
@@ -320,6 +336,7 @@ HTMLArea "widget/html"
 			<action name="SetVisibility">one parameter, "is_visible", which is set to 0 or 1 to hide or show the window, respectively.</action>
 		</actions>
 		<sample>
+		<![CDATA[
 
 $Version=2$
 MyButton "widget/htmlwindow"
@@ -332,6 +349,7 @@ MyButton "widget/htmlwindow"
 	title = "An HTML Window";
 	textcolor = "black";
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="imagebutton" type="widget/imagebutton">
@@ -359,6 +377,7 @@ MyButton "widget/htmlwindow"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 
 $Version=2$
 MyButton "widget/imagebutton"
@@ -371,6 +390,7 @@ MyButton "widget/imagebutton"
 	image = "/images/default.png"
 	clickimage = "/images/clicked.png"
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="menu" type="widget/menu">
@@ -397,6 +417,7 @@ MyButton "widget/imagebutton"
 			<action name="Activate">This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.Two parameters - X and Y, the (integer) positions on the page for the menu to appear.</action>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // Here's a sample menu with three buttons.
 myMenu "widget/menu"
@@ -410,6 +431,7 @@ myMenu "widget/menu"
 	b3 "widget/textbutton" { x = 0; y = 0; width=70; height=24;text="Three"; }
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="objectsource" type="widget/objectsource">
@@ -429,6 +451,8 @@ myMenu "widget/menu"
 		</events>
 		<actions></actions>
 		<sample>
+		<![CDATA[
+		]]>
 		</sample>
 	</widget>
 	<widget name="page" type="widget/page">
@@ -457,6 +481,7 @@ myMenu "widget/menu"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // A really simple application.Just a blank page with a title.
 //
@@ -467,6 +492,7 @@ MyPage "widget/page"
 	textcolor = "black";
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="pane" type="widget/pane">
@@ -492,6 +518,7 @@ MyPage "widget/page"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 mypane "widget/pane"
 	{
@@ -500,6 +527,7 @@ mypane "widget/pane"
 	bgcolor = "#c0c0c0";
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="radiobuttonpanel" type="widget/radiobuttonpanel">
@@ -532,6 +560,7 @@ mypane "widget/pane"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // Here are some radio buttons...
 testradio "widget/radiobuttonpanel" 
@@ -545,6 +574,7 @@ testradio "widget/radiobuttonpanel"
 	label2 "widget/radiobutton" { label="is fun"; }
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="remotectl" type="widget/remotectl">
@@ -565,6 +595,8 @@ testradio "widget/radiobuttonpanel"
 		</events>
 		<actions></actions>
 		<sample>
+		<![CDATA[
+		]]>
 		</sample>
 	</widget>
 	<widget name="remotemgr" type="widget/remotemgr">
@@ -585,6 +617,8 @@ testradio "widget/radiobuttonpanel"
 		</events>
 		<actions></actions>
 		<sample>
+		<![CDATA[
+		]]>
 		</sample>
 	</widget>
 	<widget name="scrollpane" type="widget/scrollpane">
@@ -610,6 +644,7 @@ testradio "widget/radiobuttonpanel"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 
 $Version=2$
 MyScrollPane "widget/scrollpane"
@@ -630,6 +665,7 @@ MyScrollPane "widget/scrollpane"
 		}
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="tab" type="widget/tab">
@@ -661,6 +697,7 @@ MyScrollPane "widget/scrollpane"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 
 $Version=2$
 // Here's a tab control with two tab pages.
@@ -673,6 +710,7 @@ myTabControl "widget/tab"
 	FirstPage "widget/tabpage" { title = "TheFirstPage";}
 	SecondPage "widget/tabpage" { title = "TheSecondTabPage"; }
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="table" type="widget/table">
@@ -714,6 +752,7 @@ myTabControl "widget/tab"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // Here is a simple table.
 tblFileList "widget/table"
@@ -733,6 +772,7 @@ tblFileList "widget/table"
 	annotation "widget/table-column" { title="Annotation"; width=25; }
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="textbutton" type="widget/textbutton">
@@ -763,6 +803,7 @@ tblFileList "widget/table"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 
 $Version=2$
 MyButton "widget/textbutton"
@@ -775,6 +816,7 @@ MyButton "widget/textbutton"
 	background = "/sys/images/grey_gradient.png";
 	text = "OK";
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="timer" type="widget/timer">
@@ -798,6 +840,7 @@ MyButton "widget/textbutton"
 			<action name="CancelTimer">actions causes a timer to stop counting down, and thus no Expire event will occur until another countdown sequence is initiated by a SetTimer action.</action>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // These timers trigger each other!You can make this app do something
 // more interesting by putting other connectors on the Expire events of
@@ -825,6 +868,7 @@ mytimerTwo "widget/timer"
 		}
 	}
 
+		]]>
 		</sample>
 	</widget>
 	<widget name="treeview" type="widget/treeview">
@@ -850,6 +894,7 @@ mytimerTwo "widget/timer"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // Example of a pane containing a scrollpane containing a treeview.
 mypane "widget/pane"
@@ -869,6 +914,7 @@ mypane "widget/pane"
 			}
 		}
 	}
+		]]>
 		</sample>
 	</widget>
 	<widget name="variable" type="widget/variable">
@@ -888,6 +934,7 @@ mypane "widget/pane"
 		<actions>
 		</actions>
 		<sample>
+		<![CDATA[
 $Version=2$
 // This creates a global variable.
 counter "widget/variable"
@@ -895,6 +942,7 @@ counter "widget/variable"
 	value = 0;
 	}
 
+		]]>
 		</sample>
 	</widget>
 </widgets>
