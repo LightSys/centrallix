@@ -829,7 +829,7 @@ Optional Features:
   --disable-dynamic-load  disable dynamic loading
   --disable-gzip          disable gzip support
   --disable-http          disable HTTP support
-  --enable-mime           enable MIME support
+  --disable-mime          disable MIME support
   --enable-dbl            enable DBL support
   --disable-sybase        disable Sybase support
   --disable-xml           disable xml support
@@ -1990,7 +1990,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-CFLAGS="${CFLAGS/-O2} -pg"
+CFLAGS=`echo $CFLAGS | sed -e "s/-O2//"`
 echo "$as_me:$LINENO: checking whether ${MAKE-make} sets \${MAKE}" >&5
 echo $ECHO_N "checking whether ${MAKE-make} sets \${MAKE}... $ECHO_C" >&6
 set dummy ${MAKE-make}; ac_make=`echo "$2" | sed 'y,./+-,__p_,'`
@@ -4571,7 +4571,7 @@ if test "${enable_mime+set}" = set; then
   enableval="$enable_mime"
   WITH_MIME="$enableval"
 else
-  WITH_MIME="no"
+  WITH_MIME="yes"
 
 fi;
 

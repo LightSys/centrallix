@@ -323,11 +323,11 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
 	AC_MSG_CHECKING(if MIME support is desired)
 
 	AC_ARG_ENABLE(mime,
-	    AC_HELP_STRING([--enable-mime],
-		[enable MIME support]
+	    AC_HELP_STRING([--disable-mime],
+		[disable MIME support]
 	    ),
 	    WITH_MIME="$enableval", 
-	    WITH_MIME="no"
+	    WITH_MIME="yes"
 	)
  
 	if test "$WITH_MIME" = "yes"; then
