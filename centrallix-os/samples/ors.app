@@ -355,7 +355,7 @@ ors "widget/page"
 
     debugwin "widget/htmlwindow"
 	{
-	x=600;y=220;width=600;height=434;
+	x=30;y=440;width=600;height=434;
 	hdr_bgcolor='#e0e0e0';
 	bgcolor='#c0c0c0';
 	visible=true;
@@ -369,6 +369,7 @@ ors "widget/page"
 		x=0; y=0; width=594; height=208;
 		Tree "widget/treeview"
 		    {
+		    show_branches=yes;
 		    x=0; y=1; width=574;
 		    source = "javascript:window";
 		    }
