@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.32 2002/06/03 05:45:35 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.33 2002/06/03 19:10:29 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.33  2002/06/03 19:10:29  jorupp
+     * =>,<=
+
     Revision 1.32  2002/06/03 05:45:35  jorupp
      * removing alerts
 
@@ -388,18 +391,18 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                        break;\n"
       "                    default:\n"
       "                        /**/ if(val.substring(0,2)=='>=')\n"
-      "                            str=':'+q[i].oid+' >= '+val.substring(1);\n"
+      "                            str=':'+q[i].oid+' >= '+val.substring(2);\n"
       "                        else if(val.substring(0,2)=='<=')\n"
-      "                            str=':'+q[i].oid+' <= '+val.substring(1);\n"
+      "                            str=':'+q[i].oid+' <= '+val.substring(2);\n"
       "                        else if(val.substring(0,2)=='=>')\n"
-      "                            str=':'+q[i].oid+' >= '+val.substring(1);\n"
+      "                            str=':'+q[i].oid+' >= '+val.substring(2);\n"
       "                        else if(val.substring(0,2)=='=<')\n"
-      "                            str=':'+q[i].oid+' <= '+val.substring(1);\n"
+      "                            str=':'+q[i].oid+' <= '+val.substring(2);\n"
       "                        else if(val.substring(0,1)=='>')\n"
       "                            str=':'+q[i].oid+' > '+val.substring(1);\n"
       "                        else if(val.substring(0,1)=='<')\n"
       "                            str=':'+q[i].oid+' < '+val.substring(1);\n"
-      "                        else if((/\\%/).test(val))\n"
+      "                        else if((/\\*/).test(val))\n"
       "                            str=':'+q[i].oid+' LIKE \"'+val+'\"';\n"
       "                        else\n"
       "                            str=':'+q[i].oid+'='+'\"'+val+'\"';\n"
