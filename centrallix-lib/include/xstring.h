@@ -1,8 +1,13 @@
 #ifndef _XSTRING_H
 #define _XSTRING_H
 
+#ifdef CXLIB_INTERNAL
 #include "cxsec.h"
 #include "magic.h"
+#else
+#include "cxlib/cxsec.h"
+#include "cxlib/magic.h"
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -23,10 +28,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.10 2005/02/06 02:35:41 gbeeley Exp $
+    $Id: xstring.h,v 1.11 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.11  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.10  2005/02/06 02:35:41  gbeeley
     - Adding 'mkrpm' script for automating the RPM build process for this
       package (script is portable to other packages).

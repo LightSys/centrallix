@@ -21,10 +21,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.h,v 1.2 2002/08/05 19:51:22 gbeeley Exp $
+    $Id: mtlexer.h,v 1.3 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtlexer.h,v $
 
     $Log: mtlexer.h,v $
+    Revision 1.3  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.2  2002/08/05 19:51:22  gbeeley
     Adding only "mildly tested" support for getting/setting the seek offset
     while in a lexer session.  The lexer does blocked/buffered I/O, so it
@@ -43,8 +47,11 @@
 
  **END-CVSDATA***********************************************************/
 
-
+#ifdef CXLIB_INTERNAL
 #include "mtask.h"
+#else
+#include "cxlib/mtask.h"
+#endif
 
 /** lexer session structure **/
 typedef struct _LX

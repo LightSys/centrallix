@@ -26,10 +26,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.12 2004/08/30 02:29:49 gbeeley Exp $
+    $Id: magic.h,v 1.13 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.13  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.12  2004/08/30 02:29:49  gbeeley
     - SnNode magic number
     - fixed that constant with an, ummm, 'ambiguous' value
@@ -139,4 +143,8 @@ typedef struct
 #define MGK_NNFS	0x12340b01	/* net_nfs.c */
 
 #define MGK_WGTR	0x12340c32	/* wgtr.c::WgtrNode */
+
+#define MGK_SMREGION	0x1200345c	/* smmalloc.h::SmRegion */
+#define MGK_SMBLOCK	0x1200349a	/* smmalloc_private.h::SmBlock */
+
 #endif /* not defined _MAGIC_H */

@@ -20,12 +20,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_raw_api.h,v 1.1 2001/08/13 18:04:20 gbeeley Exp $
+    $Id: net_raw_api.h,v 1.2 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/net_raw_api.h,v $
 
     $Log: net_raw_api.h,v $
-    Revision 1.1  2001/08/13 18:04:20  gbeeley
-    Initial revision
+    Revision 1.2  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
+    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:03  gbeeley
     Initial checkin of centrallix-lib
@@ -34,12 +38,21 @@
  **END-CVSDATA***********************************************************/
 
 
+#ifdef CXLIB_INTERNAL
 #include "mtask.h"
 #include "mtsession.h"
 #include "xarray.h"
 #include "xhash.h"
 #include "mtlexer.h"
 #include "datatypes.h"
+#else
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/datatypes.h"
+#endif
 
 /*** Protocol Messages ***/
 #define NET_M_ACK		1

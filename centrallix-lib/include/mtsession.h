@@ -20,10 +20,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.h,v 1.3 2002/11/12 00:26:49 gbeeley Exp $
+    $Id: mtsession.h,v 1.4 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtsession.h,v $
 
     $Log: mtsession.h,v $
+    Revision 1.4  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.3  2002/11/12 00:26:49  gbeeley
     Updated MTASK approach to user/group security when using system auth.
     The module now handles group ID's as well.  Changes should have no
@@ -44,10 +48,17 @@
  **END-CVSDATA***********************************************************/
 
 
+#ifdef CXLIB_INTERNAL
 #include "mtask.h"
 #include "xarray.h"
 #include "xstring.h"
 #include "xhash.h"
+#else
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
+#include "cxlib/xhash.h"
+#endif
 
 
 /** Structure for a session. **/

@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.15 2005/02/06 02:35:41 gbeeley Exp $
+    $Id: mtask.h,v 1.16 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.16  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.15  2005/02/06 02:35:41  gbeeley
     - Adding 'mkrpm' script for automating the RPM build process for this
       package (script is portable to other packages).
@@ -125,7 +129,11 @@
 #include <netinet/in.h>
 
 #ifdef HAVE_CONFIG_H
+#ifdef CXLIB_INTERNAL
 #include "cxlibconfig.h"
+#else
+#include "cxlib/cxlibconfig.h"
+#endif /* defined CXLIB_INTERNAL */
 #else
 #define HAVE_LIBZ 1
 #endif

@@ -1,7 +1,7 @@
 Summary: A base functionality library developed for the Centrallix server.
 Name: centrallix-lib
 Version: 0.7.4
-Release: 1
+Release: 2
 License: LGPL
 Group: System Environment/Libraries
 Source: centrallix-lib-%{version}.tgz
@@ -48,7 +48,7 @@ mv $RPM_BUILD_ROOT/usr/lib/libStParse.so $RPM_BUILD_ROOT/usr/lib/libStParse.so.%
 
 %files devel
 %defattr(-,root,root)
-/usr/include/*
+/usr/include/cxlib/*
 /usr/lib/libCentrallix.a
 /usr/lib/libStParse.a
 

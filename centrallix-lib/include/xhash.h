@@ -22,10 +22,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhash.h,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
+    $Id: xhash.h,v 1.3 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xhash.h,v $
 
     $Log: xhash.h,v $
+    Revision 1.3  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.2  2002/05/03 03:46:29  gbeeley
     Modifications to xhandle to support clearing the handle list.  Added
     a param to xhClear to provide support for xhnClearHandles.  Added a
@@ -42,8 +46,11 @@
 
  **END-CVSDATA***********************************************************/
 
-
+#ifdef CXLIB_INTERNAL
 #include "xarray.h"
+#else
+#include "cxlib/xarray.h"
+#endif
 
 
 /** Structures **/

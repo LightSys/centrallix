@@ -20,10 +20,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.h,v 1.2 2005/02/06 02:35:41 gbeeley Exp $
+    $Id: stparse.h,v 1.3 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/stparse.h,v $
 
     $Log: stparse.h,v $
+    Revision 1.3  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.2  2005/02/06 02:35:41  gbeeley
     - Adding 'mkrpm' script for automating the RPM build process for this
       package (script is portable to other packages).
@@ -41,8 +45,13 @@
  **END-CVSDATA***********************************************************/
 
 
+#ifdef CXLIB_INTERNAL
 #include "mtask.h"
 #include "mtlexer.h"
+#else
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
+#endif
 
 #define	ST_MAX_SUBINF	(128)
 #define ST_MAX_VALUES	(64)

@@ -20,10 +20,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: bdqs.h,v 1.1 2002/03/23 06:25:09 gbeeley Exp $
+    $Id: bdqs.h,v 1.2 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/bdqs.h,v $
 
     $Log: bdqs.h,v $
+    Revision 1.2  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.1  2002/03/23 06:25:09  gbeeley
     Updated MSS to have a larger error string buffer, as a lot of errors
     were getting chopped off.  Added BDQS protocol files with some very
@@ -31,10 +35,17 @@
 
  **END-CVSDATA***********************************************************/
 
+#ifdef CXLIB_INTERNAL
 #include "mtask.h"
 #include "xarray.h"
 #include "xstring.h"
 #include "xhash.h"
+#else
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
+#include "cxlib/xhash.h"
+#endif
 
 
 /*** Compatibility data type specifications, the below are for 

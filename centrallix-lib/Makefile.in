@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.14 2004/09/09 03:06:48 gbeeley Exp $
+## $Id: Makefile.in,v 1.15 2005/02/26 04:32:02 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -50,8 +50,8 @@ LIBS = @LIBS@
 ## stop working!!!
 ##
 PROFILE=@PROFILE@
-CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
-MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g -O0
+CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
+MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g -O0
 
 XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
@@ -112,8 +112,8 @@ libStParse.a:		src/stparse.o
 	${RANLIB} libStParse.a
 
 install: all
-	mkdir -p "$(includedir)"
-	$(INSTALL) -p $(INCLUDEFILES) "$(includedir)"
+	mkdir -p "$(includedir)/cxlib"
+	$(INSTALL) -p $(INCLUDEFILES) "$(includedir)/cxlib"
 	mkdir -p "$(libdir)"
 	$(INSTALL) -p ${FINAL_TARGETS} "$(libdir)"
 	@echo ""

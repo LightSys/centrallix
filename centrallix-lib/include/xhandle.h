@@ -21,10 +21,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhandle.h,v 1.3 2004/06/12 04:09:37 gbeeley Exp $
+    $Id: xhandle.h,v 1.4 2005/02/26 04:32:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xhandle.h,v $
 
     $Log: xhandle.h,v $
+    Revision 1.4  2005/02/26 04:32:02  gbeeley
+    - moving include file install directory to include a "cxlib/" prefix
+      instead of just putting 'em all in /usr/include with everything else.
+
     Revision 1.3  2004/06/12 04:09:37  gbeeley
     - supporting logic to allow saving of an MTask security context for later
       use in a new thread.  This is needed for the asynchronous event delivery
@@ -46,7 +50,11 @@
 
  **END-CVSDATA***********************************************************/
 
+#ifdef CXLIB_INTERNAL
 #include "xhash.h"
+#else
+#include "cxlib/xhash.h"
+#endif
 
 
 /*** Handle type - 64bit integer on most platforms should work. ***/
