@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.9  2002/03/05 01:55:23  jorupp
+    * switch to using clearvalue() instead of setvalue('') to clear form elements
+    * document basequery/basewhere
+
     Revision 1.8  2002/03/05 00:46:34  jorupp
     * Fix a problem in Luke's radiobutton fix
     * Add the corresponding checks in the form
@@ -133,6 +137,28 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) 
 	    tabmode[0]='\0';
 
+	/*** 
+	 *** (03/01/02) Jonathan Rupp -- added two new paramters
+	 ***      basequery -- the part of the SQL statement that is never
+	 ***        modified, even in QBF form (do not terminate with ';')
+	 ***      basewhere -- an initial WHERE clause (do not include WHERE)
+	 ***   example:
+	 ***     basequery="SELECT a,b,c from data"
+	 ***     +- no WHERE clause by default, can be added in QBF
+	 ***     basequery="SELECT a,b,c from data"
+	 ***     basewhere="a=true"
+	 ***     +- by default, only show fields where a is true
+	 ***          QBF will override
+	 ***     basequery="SELECT a,b,c from data WHERE b=false"
+	 ***     +- only will show rows where b is false
+	 ***          can't be overridden in QBF, can be added to
+	 ***     basequery="SELECT a,b,c from data WHERE b=false"
+	 ***     basewhere="c=true"
+	 ***     +- only will show rows where b is false
+	 ***          in addition, at start, will only show where c is true
+	 ***          condition (c=true) can be overridden, (b=false) can't
+	 ***/
+
 	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
 	    sprintf(basequery,"%.300s",ptr);
 	else
@@ -165,7 +191,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_cb_data_notify(control)\n"
 		"    {\n"
 		"	this.IsUnsaved=true;\n"
-		"       control.IsChanged=true;\n"
+		"       control._form_IsChanged=true;\n"
 		"    }\n", 0);
 
 	/** A child 'control' got or lost focus **/
@@ -333,10 +359,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if(!this.allowquery) {alert(\"Query mode not allowed\");return 0;}\n"
 		"    for(var i in form.elements)\n"
 		"        {\n"
-		/*"        form.elements[i].Clear();\n" -- change soon */
-		"        form.elements[i].setvalue('');\n"
-		"        form.elements[i].IsChanged=false;\n"
-		/* temp check"        confirm(form.elements[i].fieldname);\n"*/
+		"        form.elements[i].clearvalue();\n"
+		/*"        form.elements[i].setvalue('');\n" recently changed*/
+		"        form.elements[i]._form_IsChanged=false;\n"
 		"        }\n"
 		"    this.IsUnsaved=false;\n"
 		"    return form_change_mode(this,\"Query\");\n"
@@ -353,9 +378,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		/** Build the SQL query, do I have to?...... **/
 		"    for(var i in form.elements)\n"
 		"        {\n"
-		"        //confirm(form.elements[i].kind+\": \"+form.elements[i].getvalue());\n"
-		/*"        if(form.elements[i].getvalue()!='')\n"*/
-		"        if(form.elements[i].IsChanged)\n"
+		"        if(form.elements[i]._form_IsChanged)\n"
 		"            {\n"
 		"            if(firstone)\n"
 		"                {\n"
@@ -468,7 +491,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    re=/where/i;\n"
 		"    if(re.test(base))\n"
 		"        {\n"
-		"        return base+\" \"+where+\";\";\n"
+		"        return base+\" AND \"+where+\";\";\n"
 		"        }\n"
 		"    else\n"
 		"        {\n"
@@ -486,6 +509,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.currentquery = form_build_query(bq,bw);\n"
 		"    form.elements = new Array();\n"
 		"    form.mode = \"No Data\";\n"
+		"    form.cobj = null;\n" /* current 'object' (record) */
 		"    form.oldmode = null;\n"
 		"    form.osrc = new Object();\n"
 		"    form.IsUnsaved = false;\n"
