@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.9 2003/03/09 07:47:57 jorupp Exp $
+    $Id: net_nfs.c,v 1.10 2003/03/09 18:59:13 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.10  2003/03/09 18:59:13  jorupp
+     * add SIGINT handling, which calls shutdown handlers
+
     Revision 1.9  2003/03/09 07:47:57  jorupp
      * reversed some of the changes nehresma made earlier on bad advice from me
      * added some extra xdr_free calls
@@ -1333,6 +1336,14 @@ nnfs_internal_mount_listener(void* v)
     thExit();
     }
 
+/*** nnfsShutdownHandler - shutdown the NFS driver
+***/
+void
+nnfsShutdownHandler()
+    {
+    mssError(0,"NNFS","NFS netdriver is shutting down");
+    }
+
 
 /*** nhtInitialize - initialize the HTTP network handler and start the 
  *** listener thread.
@@ -1342,8 +1353,6 @@ nnfsInitialize()
     {
     pStructInf my_config;
     int i;
-
-	mtrace();	
 
 	/** init global object **/
 	memset(&NNFS,0,sizeof(NNFS));
@@ -1375,6 +1384,9 @@ nnfsInitialize()
 	NNFS.semaphore = syCreateSem(0,0);
 	/** 0 is reserved **/
 	NNFS.nextFileHandle=1;
+
+	/** add shutdown handler **/
+	cxAddShutdownHandler(nnfsShutdownHandler);
 	
 	/** Start the mountd listener **/
 	thCreate(nnfs_internal_mount_listener, 0, NULL);

@@ -48,6 +48,8 @@ typedef struct _CXG
     pStructInf	ParsedConfig;
     int		QuietInit;
     pCxModule	ModuleList;
+    XArray	ShutdownHandlers;
+    int		ShuttingDown;
     }
     CxGlobals_t, *pCxGlobals_t;
 
@@ -79,6 +81,10 @@ extern CxGlobals_t CxGlobals;
 
 #define CX_CURRENT_IFACE	(1)
 extern int CxSupportedInterfaces[];
+
+/** shutdown handlers function **/
+typedef void (*ShutdownHandlerFunc)();
+int cxAddShutdownHandler(ShutdownHandlerFunc);
 
 /*** startup functions ***/
 int cxInitialize();

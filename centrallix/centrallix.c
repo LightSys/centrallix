@@ -16,6 +16,7 @@
 #include "xhash.h"
 #include "stparse.h"
 #include "mtlexer.h"
+#include <signal.h>
 
 /* GRB - if someone can think of a better way to handle this (such as
  * maybe forbidding the #including of config.h files in public headers),
@@ -62,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.15 2003/01/08 18:01:33 gbeeley Exp $
+    $Id: centrallix.c,v 1.16 2003/03/09 18:59:13 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.16  2003/03/09 18:59:13  jorupp
+     * add SIGINT handling, which calls shutdown handlers
+
     Revision 1.15  2003/01/08 18:01:33  gbeeley
     Oops!  Where'd that one go?  Evidently I left out an init call when I
     created this file.
@@ -290,6 +294,40 @@ cx_internal_LoadModules(char* type)
     return 0;
     }
 
+
+/** cxShutdownThread - thread created from the SIGINT handler, 
+***   call all registered shutdown handlers then exits
+**/
+void cxShutdownThread(void *v)
+    {
+    int i;
+    mssError(0,"CN","Centrallix is shutting down");
+    for(i=0;i<xaCount(&CxGlobals.ShutdownHandlers);i++)
+	{
+	ShutdownHandlerFunc handler = (ShutdownHandlerFunc) xaGetItem(&CxGlobals.ShutdownHandlers,i);
+	if(handler)
+	    handler();
+	}
+    _exit(0);
+    thExit();
+    }
+
+
+/** cxShutdown - handler for SIGINT
+**/
+void cxShutdown(int signal)
+    {
+    if(CxGlobals.ShuttingDown)
+	return;
+    CxGlobals.ShuttingDown = 1;
+    thCreate(cxShutdownThread,0,NULL);
+    }
+
+int cxAddShutdownHandler(ShutdownHandlerFunc handler)
+    {
+    return xaAddItem(&CxGlobals.ShutdownHandlers,handler);
+    }
+
 int
 cxInitialize(void* v)
     {
@@ -301,6 +339,12 @@ cxInitialize(void* v)
     char* logprog;
     int log_all_errors;
     char* ptr;
+
+	CxGlobals.ShuttingDown = 0;
+	xaInit(&CxGlobals.ShutdownHandlers,4);
+
+	/** set up the interrupt handler so we can shutdown properly **/
+	signal(SIGINT,cxShutdown);
 
 	/** Startup message **/
 	if (!CxGlobals.QuietInit)
