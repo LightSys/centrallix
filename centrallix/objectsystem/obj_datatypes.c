@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.12 2004/08/27 01:28:32 jorupp Exp $
+    $Id: obj_datatypes.c,v 1.13 2004/12/31 04:38:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.13  2004/12/31 04:38:17  gbeeley
+    - a fix and speedup to objCopyData (copy a POD)
+
     Revision 1.12  2004/08/27 01:28:32  jorupp
      * cleaning up some compile warnings
 
@@ -1768,13 +1771,15 @@ objCopyData(pObjData src, pObjData dst, int type)
 	switch(type)
 	    {
 	    case DATA_T_INTEGER:
+		dst->Integer = src->Integer;
+		break;
 	    case DATA_T_STRING:
 	    case DATA_T_MONEY:
 	    case DATA_T_DATETIME:
 	    case DATA_T_INTVEC:
 	    case DATA_T_STRINGVEC:
 	    case DATA_T_CODE:
-		memcpy(dst,src,sizeof(void*));
+		dst->Generic = src->Generic;
 		break;
 	    case DATA_T_DOUBLE:
 		dst->Double = src->Double;
