@@ -74,6 +74,7 @@ centrallix "system/config"
 	mbox "system/config-module" { enable_module=@ENABLE_MBOX@; path="##LIBDIR##/objdrv_mbox.so"; type="osdriver"; }
 	shell "system/config-module" { enable_module=@ENABLE_SHELL@; path="##LIBDIR##/objdrv_shell.so"; type="osdriver"; }
 	nnfs "system/config-module" { enable_module=@ENABLE_NETNFS@; path="##LIBDIR##/net_nfs.so"; type="netdriver"; }
+	pop3 "system/config-module" { enable_module=@ENABLE_POP3@; path="##LIBDIR##/objdrv_pop3_v3.so"; type="osdriver"; }
 	}
     }
 

@@ -417,6 +417,41 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
     ]
 )
 
+dnl Test for the POP3 os driver.
+AC_DEFUN(CENTRALLIX_CHECK_POP3_OS,
+    [
+        AC_MSG_CHECKING(if POP3 support is desired)
+
+        AC_ARG_ENABLE(pop3,
+            AC_HELP_STRING([--disable-pop3],
+                [disable POP3 support]
+            ),
+            WITH_POP3="$enableval", 
+            WITH_POP3="yes"
+        )
+
+        ENABLE_POP3="no"
+ 
+        if test "$WITH_POP3" = "yes"; then
+            AC_DEFINE(USE_POP3)
+            if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+                OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_pop3_v3.so"
+            else
+                OBJDRIVERS="$OBJDRIVERS objdrv_pop3_v3.o"
+            fi
+
+            ENABLE_POP3="yes"
+            AC_MSG_RESULT(yes)
+            CENTRALLIX_ADD_DRIVER(pop3, POP3)
+        else
+            AC_MSG_RESULT(no)
+        fi
+
+        AC_SUBST(ENABLE_POP3)
+    ]
+)
+
+
 dnl Test for the DBL os driver.
 AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
     [

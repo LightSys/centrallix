@@ -97,6 +97,10 @@ dnl Mbox support.
 AH_TEMPLATE([USE_MBOX], [Define for Mbox support])
 CENTRALLIX_CHECK_MBOX_OS
 
+dnl POP3 osdriver support
+AH_TEMPLATE([USE_POP3], [Define for POP3 support])
+CENTRALLIX_CHECK_POP3_OS
+
 dnl Shell osdriver support.
 AH_TEMPLATE([USE_SHELL], [Define for Shell osdriver support])
 CENTRALLIX_CHECK_SHELL_OS

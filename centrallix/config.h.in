@@ -165,6 +165,9 @@
 /* Define for NFS netdriver support */
 #undef USE_NETNFS
 
+/* Define for POP3 support */
+#undef USE_POP3
+
 /* Define for profiling */
 #undef USE_PROFILE
 
