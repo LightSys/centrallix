@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.18 2002/07/25 16:54:18 pfinley Exp $
+    $Id: htdrv_imagebutton.c,v 1.19 2002/07/25 18:45:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.19  2002/07/25 18:45:40  lkehresman
+    Standardized event connectors for imagebutton and textbutton, and took
+    advantage of the checking done in the cn_activate function so it isn't
+    necessary outside the function.
+
     Revision 1.18  2002/07/25 16:54:18  pfinley
     completely undoing the change made yesterday with aliasing of click events
     to mouseup... they are now two separate events. don't believe the lies i said
@@ -282,13 +287,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (e.target != null && e.target.kind=='ib' && e.target.layer.enabled==true)\n"
 		"        {\n"
 		"        e.target.src = e.target.layer.cImage.src;\n"
-		"        if (e.target.layer.EventMouseDown != null)\n"
-		"            {\n"
-		"            var eparam = new Object();\n"
-		"            eparam.Caller = e.target.layer;\n"
-		"            cn_activate(e.target.layer, 'MouseDown', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(e.target.layer, 'MouseDown');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","ib",
@@ -300,20 +299,8 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.pageY < e.target.layer.pageY + e.target.layer.clip.height)\n"
 		"            {\n"
 		"            e.target.src = e.target.layer.pImage.src;\n"
-		"            if (e.target.layer.EventClick != null)\n"
-		"                {\n"
-		"                var eparam = new Object();\n"
-		"                eparam.Caller = e.target.layer;\n"
-		"                cn_activate(e.target.layer, 'Click', eparam);\n"
-		"                delete eparam;\n"
-		"                }\n"
-		"            if (e.target.layer.EventMouseUp != null)\n"
-		"                {\n"
-		"                var eparam = new Object();\n"
-		"                eparam.Caller = e.target.layer;\n"
-		"                cn_activate(e.target.layer, 'MouseUp', eparam);\n"
-		"                delete eparam;\n"
-		"                }\n"
+		"            cn_activate(e.target.layer, 'Click');\n"
+		"            cn_activate(e.target.layer, 'MouseUp');\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
@@ -325,38 +312,20 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
 		"        {\n"
 		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.pImage.src;\n"
-		"        if (ly.EventMouseOver != null)\n"
-		"            {\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            cn_activate(ly, 'MouseOver', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(ly, 'MouseOver');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","ib",
 		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
 		"        {\n"
 		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.nImage.src;\n"
-		"        if (ly.EventMouseOut != null)\n"
-		"            {\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            cn_activate(ly, 'MouseOut', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(ly, 'MouseOut');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEMOVE","ib",
 		"    if (e.target != null && e.target.kind == 'ib' && ly.enabled == true)\n"
 		"        {\n"
-		"        if (ly.EventMouseMove != null)\n"
-		"            {\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            cn_activate(ly, 'MouseMove', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(ly, 'MouseMove');\n"
 		"        }\n");
 
 	/** Check for more sub-widgets within the imagebutton. **/

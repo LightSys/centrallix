@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.15 2002/07/25 16:54:18 pfinley Exp $
+    $Id: htdrv_textbutton.c,v 1.16 2002/07/25 18:45:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.16  2002/07/25 18:45:40  lkehresman
+    Standardized event connectors for imagebutton and textbutton, and took
+    advantage of the checking done in the cn_activate function so it isn't
+    necessary outside the function.
+
     Revision 1.15  2002/07/25 16:54:18  pfinley
     completely undoing the change made yesterday with aliasing of click events
     to mouseup... they are now two separate events. don't believe the lies i said
@@ -252,18 +257,11 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tb",
-		"    //alert(show_obj(e.target));\n"
 		"    if (ly.kind == 'tb')\n"
 		"        {\n"
 		"        ly.moveBy(1,1);\n"
 		"        tb_setmode(ly,2);\n"
-		"        if (ly.EventMouseDown != null)\n"
-		"            {\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            cn_activate(ly, 'MouseDown', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(ly, 'MouseDown');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","tb",
@@ -276,20 +274,8 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.pageY < ly.pageY + ly.clip.height)\n"
 		"            {\n"
 		"            tb_setmode(ly,1);\n"
-		"            if (ly.EventClick != null)\n"
-		"                {\n"
-		"                eparam = new Object();\n"
-		"                eparam.Caller = ly;\n"
-		"                cn_activate(ly, 'Click', eparam);\n"
-		"                delete eparam;\n"
-		"                }\n"
-		"            if (ly.EventMouseUp != null)\n"
-		"                {\n"
-		"                eparam = new Object();\n"
-		"                eparam.Caller = ly;\n"
-		"                cn_activate(ly, 'MouseUp', eparam);\n"
-		"                delete eparam;\n"
-		"                }\n"
+		"            cn_activate(ly, 'Click');\n"
+		"            cn_activate(ly, 'MouseUp');\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
@@ -301,38 +287,20 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (ly.kind == 'tb')\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,1);\n"
-		"        if (ly.EventMouseOver != null)\n"
-		"            {\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            cn_activate(ly, 'MouseOver', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(ly, 'MouseOver');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","tb",
 		"    if (ly.kind == 'tb')\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,0);\n"
-		"        if (ly.EventMouseOut != null)\n"
-		"            {\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            cn_activate(ly, 'MouseOut', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(ly, 'MouseOut');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEMOVE","tb",
 		"    if (ly.kind == 'tb')\n"
 		"        {\n"
-		"        if (ly.EventMouseMove != null)\n"
-		"            {\n"
-		"            eparam = new Object();\n"
-		"            eparam.Caller = ly;\n"
-		"            cn_activate(ly, 'MouseMove', eparam);\n"
-		"            delete eparam;\n"
-		"            }\n"
+		"        cn_activate(ly, 'MouseMove');\n"
 		"        }\n");
 
 	/** Check for more sub-widgets within the textbutton. **/
