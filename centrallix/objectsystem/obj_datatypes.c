@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.7 2002/08/10 02:00:15 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.8 2002/08/13 14:11:36 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.8  2002/08/13 14:11:36  lkehresman
+    * silenced some more unnecessarily verbose output in the makefile
+    * removed an unused variable in obj_datatypes.c
+
     Revision 1.7  2002/08/10 02:00:15  gbeeley
     Starting work on better date formatting and internationalization of
     date formats.  Main change that has taken effect now is that the
@@ -226,7 +230,6 @@ obj_internal_FormatDate(pDateTime dt, char* str)
     char* myfmt;
     int append_ampm = 0;
     char *Lw[7], *LW[7], *Lm[12], *LM[12];
-    char* ptr;
     char *Lwptr, *LWptr, *Lmptr, *LMptr;
 
     	/** Get the current date format. **/

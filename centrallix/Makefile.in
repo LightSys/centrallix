@@ -300,13 +300,13 @@ htmltest: htmltest.o $(SUPPORT)
 	$(CC) htmltest.o $(SUPPORT) $(PROFILE) -o htmltest
 
 etc/rootnode:
-	$(SED) -e "s|##OSDIR##|@CXOSDIR@|g" etc/rootnode.in > etc/rootnode
+	@$(SED) -e "s|##OSDIR##|@CXOSDIR@|g" etc/rootnode.in > etc/rootnode
 
 etc/centrallix.conf:
-	$(SED) -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LIBDIR##|$(libdir)|g" etc/centrallix.conf.in > etc/centrallix.conf
+	@$(SED) -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LIBDIR##|$(libdir)|g" etc/centrallix.conf.in > etc/centrallix.conf
 
 etc/centrallix.init:
-	$(SED) -e "s|##SBINDIR##|$(sbindir)|g" -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LOCALSTATEDIR##|$(localstatedir)|g" -e "s|##LIBDIR##|$(libdir)|g" -e "s|##CXLIBDIR##|$(CXLIBDIR)|g" etc/centrallix.init.in > etc/centrallix.init
+	@$(SED) -e "s|##SBINDIR##|$(sbindir)|g" -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LOCALSTATEDIR##|$(localstatedir)|g" -e "s|##LIBDIR##|$(libdir)|g" -e "s|##CXLIBDIR##|$(CXLIBDIR)|g" etc/centrallix.init.in > etc/centrallix.init
 
 clean:
 	@rm -f */*.o
