@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.2 2001/10/23 00:25:09 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.3 2001/10/23 02:21:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.3  2001/10/23 02:21:09  gbeeley
+    Fixed incorrect auto-setting of tabpage clip height.
+
     Revision 1.2  2001/10/23 00:25:09  gbeeley
     Added rudimentary single-line editbox widget.  No data source linking
     or anything like that yet.  Fixed a few bugs and made a few changes to
@@ -228,7 +231,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    l_tab.document.layer = l_tab;\n"
 		"    l_tab.document.Layer = l_tab;\n"
 		"    l_page.clip.width = this.clip.width-2;\n"
-		"    l_page.clip.height = this.clip.height-24;\n"
+		"    l_page.clip.height = this.clip.height-2;\n"
 		"    return l_tab;\n"
 		"    }\n", 0);
 
