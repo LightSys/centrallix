@@ -6,6 +6,7 @@
 #include "mtask.h"
 #include "xarray.h"
 #include "xhash.h"
+#include "magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_content.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: obj_content.c,v 1.3 2002/04/25 17:59:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_content.c,v $
 
     $Log: obj_content.c,v $
+    Revision 1.3  2002/04/25 17:59:59  gbeeley
+    Added better magic number support in the OSML API.  ObjQuery and
+    ObjSession structures are now protected with magic numbers, and
+    support for magic numbers in Object structures has been improved
+    a bit.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -68,6 +75,7 @@
 int 
 objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
     {
+    ASSERTMAGIC(this, MGK_OBJECT);
     return this->Driver->Read(this->Data, buffer, maxcnt, offset, flags, &(this->Session->Trx));
     }
 
@@ -78,6 +86,7 @@ objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
 int 
 objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
     {
+    ASSERTMAGIC(this, MGK_OBJECT);
     return this->Driver->Write(this->Data, buffer, cnt, offset, flags, &(this->Session->Trx));
     }
 

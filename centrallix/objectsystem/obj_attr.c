@@ -10,6 +10,7 @@
 #include "mtsession.h"
 #include "stparse.h"
 #include "expression.h"
+#include "magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -47,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: obj_attr.c,v 1.3 2002/04/25 17:59:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.3  2002/04/25 17:59:59  gbeeley
+    Added better magic number support in the OSML API.  ObjQuery and
+    ObjSession structures are now protected with magic numbers, and
+    support for magic numbers in Object structures has been improved
+    a bit.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -92,6 +99,8 @@ objGetAttrValue(pObject this, char* attrname, pObjData val)
     char readbuf[256];
     char* ptr;
     int rval;
+
+	ASSERTMAGIC(this, MGK_OBJECT);
 
     	/** How about content? **/
 	if (!strcmp(attrname,"objcontent"))
@@ -151,6 +160,7 @@ objGetAttrValue(pObject this, char* attrname, pObjData val)
 char*
 objGetFirstAttr(pObject this)
     {
+    ASSERTMAGIC(this, MGK_OBJECT);
     return this->Driver->GetFirstAttr(this->Data,&(this->Session->Trx));
     }
 
@@ -162,6 +172,7 @@ objGetFirstAttr(pObject this)
 char*
 objGetNextAttr(pObject this)
     {
+    ASSERTMAGIC(this, MGK_OBJECT);
     return this->Driver->GetNextAttr(this->Data, &(this->Session->Trx));
     }
 
@@ -172,6 +183,7 @@ objGetNextAttr(pObject this)
 int 
 objSetAttrValue(pObject this, char* attrname, pObjData val)
     {
+    ASSERTMAGIC(this, MGK_OBJECT);
     return this->Driver->SetAttrValue(this->Data, attrname, val, &(this->Session->Trx));
     }
 
@@ -182,6 +194,7 @@ objSetAttrValue(pObject this, char* attrname, pObjData val)
 int
 objAddAttr(pObject this, char* attrname, int type, pObjData val)
     {
+    ASSERTMAGIC(this, MGK_OBJECT);
     return this->Driver->AddAttr(this->Data, attrname, type, val, &(this->Session->Trx));
     }
 
@@ -195,6 +208,8 @@ objOpenAttr(pObject this, char* attrname, int mode)
     pObject obj;
     void* obj_data;
 
+	ASSERTMAGIC(this, MGK_OBJECT);
+
 	/** Verify length **/
 	if (strlen(attrname) + strlen(this->Pathname->Pathbuf) + 1 > 255) return NULL;
 
@@ -207,6 +222,7 @@ objOpenAttr(pObject this, char* attrname, int mode)
 	if (!obj) return NULL;
 	obj->Data = obj_data;
 	obj->Obj = this;
+	obj->Magic = MGK_OBJECT;
 	xaAddItem(&(this->Attrs), (void*)obj);
 	obj->Driver = this->Driver;
 	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
@@ -233,6 +249,8 @@ pObjPresentationHints
 objPresentationHints(pObject this, char* attrname)
     {
     pObjPresentationHints ph = NULL;
+
+	ASSERTMAGIC(this, MGK_OBJECT);
 
     	/** Check with lowlevel driver **/
 	if (this->Driver->PresentationHints != NULL)

@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.3 2002/03/23 05:09:16 gbeeley Exp $
+    $Id: obj_object.c,v 1.4 2002/04/25 17:59:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.4  2002/04/25 17:59:59  gbeeley
+    Added better magic number support in the OSML API.  ObjQuery and
+    ObjSession structures are now protected with magic numbers, and
+    support for magic numbers in Object structures has been improved
+    a bit.
+
     Revision 1.3  2002/03/23 05:09:16  gbeeley
     Fixed a logic error in net_http's ls__startat osml feature.  Improved
     OSML error text.
@@ -1091,6 +1097,8 @@ pObject
 objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type)
     {
     pObject this;
+
+	ASSERTMAGIC(session, MGK_OBJSESSION);
 
 	/** Lookup the path, etc. **/
 	/*this = obj_internal_ProcessPath(session, path, mode, type);*/

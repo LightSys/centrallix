@@ -47,12 +47,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.1 2001/08/13 18:00:59 gbeeley Exp $
+    $Id: obj_query.c,v 1.2 2002/04/25 17:59:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
-    Revision 1.1  2001/08/13 18:00:59  gbeeley
-    Initial revision
+    Revision 1.2  2002/04/25 17:59:59  gbeeley
+    Added better magic number support in the OSML API.  ObjQuery and
+    ObjSession structures are now protected with magic numbers, and
+    support for magic numbers in Object structures has been improved
+    a bit.
+
+    Revision 1.1.1.1  2001/08/13 18:00:59  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -171,6 +177,8 @@ objMultiQuery(pObjSession session, char* query)
     {
     pObjQuery this;
 
+	ASSERTMAGIC(session, MGK_OBJSESSION);
+
     	/** Allocate a query structure **/
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
 	if (!this) return NULL;
@@ -178,6 +186,7 @@ objMultiQuery(pObjSession session, char* query)
 	this->QyText = query;
 	this->Drv = OSYS.MultiQueryLayer;
 	this->QySession = session;
+	this->Magic = MGK_OBJQUERY;
 
 	/** Start the query. **/
 	this->Data = this->Drv->OpenQuery(session, query);
@@ -217,6 +226,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	this->Drv = NULL;
 	this->Flags = 0;
 	this->SortInf = NULL;
+	this->Magic = MGK_OBJQUERY;
 
 	/** Ok, first parse the query. **/
 	this->Obj = obj;
@@ -431,7 +441,7 @@ objQueryDelete(pObjQuery this)
     int rval = 0;
     pObject obj;
 
-    	ASSERTMAGIC(this->Obj,MGK_OBJECT);
+	ASSERTMAGIC(this, MGK_OBJQUERY);
 
     	/** Multiquery? **/
 	if (this->Drv) return this->Drv->QueryDelete(this->Data);
@@ -467,7 +477,7 @@ objQueryFetch(pObjQuery this, int mode)
     char* name;
     char buf[256];
 
-    	ASSERTMAGIC(this->Obj,MGK_OBJECT);
+    	ASSERTMAGIC(this,MGK_OBJQUERY);
 
     	/** Multiquery? **/
 	if (this->Drv) 
@@ -587,7 +597,7 @@ int
 objQueryClose(pObjQuery this)
     {
 
-    	ASSERTMAGIC(this->Obj,MGK_OBJECT);
+    	ASSERTMAGIC(this,MGK_OBJQUERY);
 
     	/** Release sort information? **/
 	if (this->SortInf)

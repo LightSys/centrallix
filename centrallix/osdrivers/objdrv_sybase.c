@@ -21,6 +21,7 @@
 #include "st_node.h"
 #include "xhashqueue.h"
 #include "multiquery.h"
+#include "magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -61,10 +62,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.4 2002/04/25 04:26:07 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.5 2002/04/25 17:59:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.5  2002/04/25 17:59:59  gbeeley
+    Added better magic number support in the OSML API.  ObjQuery and
+    ObjSession structures are now protected with magic numbers, and
+    support for magic numbers in Object structures has been improved
+    a bit.
+
     Revision 1.4  2002/04/25 04:26:07  gbeeley
     Basic overhaul of objdrv_sybase to fix some security issues, improve
     robustness with key data in particular, and so forth.  Added a new

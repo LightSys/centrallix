@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.7 2002/04/25 04:26:07 gbeeley Exp $
+    $Id: obj.h,v 1.8 2002/04/25 17:59:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.8  2002/04/25 17:59:59  gbeeley
+    Added better magic number support in the OSML API.  ObjQuery and
+    ObjSession structures are now protected with magic numbers, and
+    support for magic numbers in Object structures has been improved
+    a bit.
+
     Revision 1.7  2002/04/25 04:26:07  gbeeley
     Basic overhaul of objdrv_sybase to fix some security issues, improve
     robustness with key data in particular, and so forth.  Added a new
@@ -260,6 +266,7 @@ typedef struct _OT
 /** objectsystem session **/
 typedef struct _OSS
     {
+    int			Magic;
     char		CurrentDirectory[OBJSYS_MAX_PATH];
     XArray		OpenObjects;
     XArray		OpenQueries;
@@ -339,6 +346,7 @@ typedef struct _SRT
 /** object query information **/
 typedef struct _OQ
     {
+    int		Magic;
     pObject	Obj;
     char*	QyText;
     void*	Tree;	/* pExpression */

@@ -6,6 +6,7 @@
 #include "mtask.h"
 #include "xarray.h"
 #include "xhash.h"
+#include "magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,12 +44,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_session.c,v 1.1 2001/08/13 18:00:59 gbeeley Exp $
+    $Id: obj_session.c,v 1.2 2002/04/25 17:59:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_session.c,v $
 
     $Log: obj_session.c,v $
-    Revision 1.1  2001/08/13 18:00:59  gbeeley
-    Initial revision
+    Revision 1.2  2002/04/25 17:59:59  gbeeley
+    Added better magic number support in the OSML API.  ObjQuery and
+    ObjSession structures are now protected with magic numbers, and
+    support for magic numbers in Object structures has been improved
+    a bit.
+
+    Revision 1.1.1.1  2001/08/13 18:00:59  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:01  gbeeley
     Centrallix Core Initial Import
@@ -76,6 +83,7 @@ objOpenSession(char* current_dir)
 	strncpy(this->CurrentDirectory,current_dir,255);
 	this->CurrentDirectory[255]=0;
 	this->Trx = NULL;
+	this->Magic = MGK_OBJSESSION;
 
 	/** Add to the sessions list **/
 	xaAddItem(&(OSYS.OpenSessions),(void*)this);
@@ -91,6 +99,8 @@ int
 objCloseSession(pObjSession this)
     {
     int i;
+
+	ASSERTMAGIC(this, MGK_OBJSESSION);
 
 	/** Close any open queries **/
 	for(i=0;i<this->OpenQueries.nItems;i++)
@@ -123,6 +133,7 @@ objCloseSession(pObjSession this)
 int
 objSetWD(pObjSession this, pObject wd)
     {
+    ASSERTMAGIC(this, MGK_OBJSESSION);
     if (!strcmp(wd->Pathname->Pathbuf,".")) strcpy(this->CurrentDirectory,"/");
     else strcpy(this->CurrentDirectory, wd->Pathname->Pathbuf+1);
     return 0;
@@ -134,6 +145,7 @@ objSetWD(pObjSession this, pObject wd)
 char*
 objGetWD(pObjSession this)
     {
+    ASSERTMAGIC(this, MGK_OBJSESSION);
     return this->CurrentDirectory;
     }
 
