@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.11 2002/07/26 20:23:06 pfinley Exp $
+    $Id: htdrv_pane.c,v 1.12 2002/07/29 21:34:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.12  2002/07/29 21:34:40  lkehresman
+    fixed typo by peter
+
     Revision 1.11  2002/07/26 20:23:06  pfinley
     Added standard event handlers: Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove
 
@@ -228,7 +231,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
-	htrAddBodyItem_va(s,"    <TABLE red' width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
 	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
