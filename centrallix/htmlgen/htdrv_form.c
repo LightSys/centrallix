@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.41  2002/06/03 04:52:45  lkehresman
+    Made saving throw you out of modify mode in the form.
+
     Revision 1.40  2002/06/02 22:13:21  jorupp
      * added disable functionality to image button (two new Actions)
      * bugfixes
@@ -402,7 +405,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.show3bconfirm();\n"
 		"    return 0;\n"
 		"    \n"
-		"    \n"
 		"    if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
 		"        {\n"
 		"        if(confirm(\"OK to save changes, CANCEL to discard them.\"))\n"
@@ -739,6 +741,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if(this.mode=='Query')\n"
 		"        this.ClearAll();\n"
 		"    \n"
+		//"    alert(newmode + ' - ' + this.oldmode);\n"
 		"    if(this.mode=='NoData' || this.mode=='View')\n"
 		"        {\n"
 		"        this.EnableModifyAll();\n"
@@ -976,12 +979,12 @@ old query code
 		"function form_action_save()\n"
 		"    {\n"
 		"    if(!this.IsUnsaved)\n"
-		"    	 {\n"
-		"    	 return 0;\n"
+		"        {\n"
+		"        return 0;\n"
 		"        }\n"
 		"    this.cb['OperationCompleteSuccess'].add(this,\n"
-		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableModifyAll();this.cb['OperationCompleteFail'].clear();\"),null,-100);\n"
-		"     this.cb['OperationCompleteFail'].add(this,\n"
+		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableModifyAll();this.cb['OperationCompleteFail'].clear();this.ChangeMode('View');\"),null,-100);\n"
+		"    this.cb['OperationCompleteFail'].add(this,\n"
 		"           new Function(\"this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();\"),null,-100);\n"
 	    
 		/** build the object to pass to objectsource **/
