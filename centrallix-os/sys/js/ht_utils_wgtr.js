@@ -4,39 +4,6 @@
 //
 
 
-function wgtr_internal_Print(msg, indent)
-    {
-    var txt;
-    var element;
-    var i;
-
-	if (document.layers.dbgwnd)
-	    {
-	    element = document.layers.dbgwnd.document.forms.dbgform.elements.dbgtxt;
-	    txt = element.value;
-	    for (i=0;i<indent;i++) { txt = txt+" "; }
-	    element.value = txt+msg+"\n";
-	    }
-	
-    }
-
-function wgtr_internal_Debug(msg, indent)
-    {
-/*
-    var txt;
-    var element;
-    var i;
-
-	if (document.layers.dbgwnd)
-	    {
-	    element = document.layers.dbgwnd.document.forms.dbgform.elements.dbgtxt;
-	    txt = element.value;
-	    for (i=0;i<indent;i++) { txt = txt+" "; }
-	    element.value = txt+msg+"\n";
-	    }
-*/	
-    }
-
 // wgtrAddToTree - takes an existing object, and makes it a widget tree node,
 // grafting it in to a tree as the child of the given parent.
 function wgtrAddToTree	(   obj,	    // the object to graft into the tree
@@ -65,13 +32,15 @@ function wgtrGetProperty(node, prop_name)
     var prop;
 
 	// make sure the parameters are legitimate
-	if (!node || !node.WGTRNODE) { wgtr_internal_Debug("wgtrGetProperty - object passed as node was not a WgtrNode!"); return null; }
+	if (!node || !node.WGTRNODE) 
+{ 
+	pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; }
 
 	// check for the existence of the asked-for property
 	prop = node[prop_name];
 	if (typeof prop == "undefined") 
 	    { 
-	    wgtr_internal_Debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name);
+	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
 	    return null;
 	    }
 
@@ -86,12 +55,12 @@ function wgtrGetProperty(node, prop_name)
 function wgtrSetProperty(node, prop_name, value)
     {
 	// make sure the parameters are legitimate
-	if (!node || !node.WGTRNODE) { wgtr_internal_Debug("wgtrGetProperty - object passed as node was not a WgtrNode!"); return null; }
+	if (!node || !node.WGTRNODE) { pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; }
 
 	// check for the existence of the asked-for property
 	if (!node[prop_name]) 
 	    { 
-	    wgtr_internal_Debug("wgtrSetProperty - widget node "+node.WgtrName+" does not have property "+prop_name);
+	    pg_debug("wgtrSetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
 	    return false;
 	    }
 
@@ -109,7 +78,7 @@ function wgtrGetNode(tree, node_name)
 
 	// make sure the parameters are legitimate
 	if (!tree || !tree.WGTRNODE) 
-	    { wgtr_internal_Debug("wgtrGetNode - node was not a WgtrNode!"); return false; }
+	    { pg_debug("wgtrGetNode - node was not a WgtrNode!\n"); return false; }
 	
 	for (i=0;i<tree.children.length;i++)
 	    {
@@ -127,7 +96,7 @@ function wgtrAddEventFunc(node, event_name, func)
 
 	// make sure this is actually a tree
 	if (!node || !node.WGTRNODE) 
-	    { wgtr_internal_Debug("wgtrGetNode - node was not a WgtrNode!"); return false; }
+	    { pg_debug("wgtrGetNode - node was not a WgtrNode!\n"); return false; }
 
 	if (node['Event'+event_name] == null)
 	    node['Event'+event_name] = new Array();
@@ -157,7 +126,9 @@ function wgtrWalk(tree, x)
 	    {
 	    txt = txt+" non-visual";
 	    }
-	wgtr_internal_Print(txt, x);
+	txt=txt+"\n";
+	for (i=0;i<x;i++) txt = ' '+txt;
+	pg_debug(txt);
 	for (i=0;i<tree.WgtrChildren.length;i++)
 	    {
 	    wgtrWalk(tree.WgtrChildren[i], x+2);
