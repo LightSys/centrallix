@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.24 2004/03/10 10:51:09 jasonyip Exp $
+    $Id: htdrv_treeview.c,v 1.25 2004/03/17 20:29:50 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.25  2004/03/17 20:29:50  jasonyip
+
+    Fixed the problem of cannot click on the open folder picture on treeview:
+    - changed .href == null to .nodeName != 'A'
+    - changed .href != null to .nodeName == 'A'
+
     Revision 1.24  2004/03/10 10:51:09  jasonyip
 
     These are the latest IE-Port files.
@@ -316,15 +322,29 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Event handler for click-on-url **/
-	htrAddEventHandler(s, "document","CLICK","tv",
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddEventHandler(s, "document","CLICK","tv",
 		"    if (e.target != null && e.target.kind == 'tv' && e.target.href != null)\n"
 		"        {\n"
 		"        cn_activate(ly, 'Click');\n"
 		"        return tv_click(e);\n"
 		"        }\n");
+	    }
+	else
+	    {
+	    htrAddEventHandler(s, "document","CLICK","tv",
+		"    if (e.target != null && e.target.kind == 'tv' && e.target.nodeName == 'A')\n"
+		"        {\n"
+		"        cn_activate(ly, 'Click');\n"
+		"        return tv_click(e);\n"
+		"        }\n");
+	    }
 
 	/** Add the event handling scripts **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","tv",
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddEventHandler(s, "document","MOUSEDOWN","tv",
 		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseDown');\n"
 		"    if (e.target != null && e.target.kind=='tv' && e.target.href == null)\n"
 		"        {\n"
@@ -338,6 +358,24 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            pg_set(tv_target_img,'src',htutil_subst_last(tv_target_img.src,'c.gif'));\n"
 		"            }\n"
 		"        }\n");
+	    }
+	else
+	    {
+	    htrAddEventHandler(s, "document","MOUSEDOWN","tv",
+		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseDown');\n"
+		"    if (e.target != null && e.target.kind=='tv' && e.target.nodeName != 'A')\n"
+		"        {\n"
+		"        if (e.which == 3)\n"
+		"            {\n"
+		"            return false; //return tv_rclick(e);\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            tv_target_img = e.target;\n"
+		"            pg_set(tv_target_img,'src',htutil_subst_last(tv_target_img.src,'c.gif'));\n"
+		"            }\n"
+		"        }\n");
+	    }
 
 	htrAddEventHandler(s, "document","MOUSEUP","tv",
 		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseUp');\n"
