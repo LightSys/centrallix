@@ -11,13 +11,14 @@
 
 function wn_init(l,ml,gs,ct,titlebar)
     {
+    htr_init_layer(l,l,"wn");
+    htr_init_layer(ml,l,"wn");
     /** NS4 version doesn't use a separate div for the title bar **/
     if(cx__capabilities.Dom1HTML)
 	{
+	htr_init_layer(titlebar,l,"wn");
 	titlebar.subkind = 'titlebar';
 	l.titlebar = titlebar;
-	titlebar.mainlayer = l;
-	titlebar.kind = 'wn';
 	}
     else
 	{
@@ -33,17 +34,7 @@ function wn_init(l,ml,gs,ct,titlebar)
 	l.osrc.push(t);
 	t=t.oldosrc;
 	}
-    if(cx__capabilities.Dom0NS)
-	l.document.layer = l;
-    else if(cx__capabilities.Dom1HTML)
-	l.layer = l;
-    l.mainlayer = l;
     l.ContentLayer = ml;
-    if(cx__capabilities.Dom0NS)
-	ml.document.layer = ml;
-    else if(cx__capabilities.Dom1HTML)
-	ml.layer = ml;
-    ml.mainlayer = l;
 
     l.orig_width = pg_get_style(l,'clip.width');
     l.orig_height = pg_get_style(l,'clip.height');
@@ -56,8 +47,6 @@ function wn_init(l,ml,gs,ct,titlebar)
     l.closetype = ct;
     l.working = false;
     l.shaded = false;
-    l.kind = 'wn';
-    ml.kind = 'wn';
 
     /** make sure the images are set up **/
     for(i=0;i<pg_images(titlebar).length;i++)
