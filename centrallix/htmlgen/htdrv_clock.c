@@ -42,8 +42,12 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.2 2002/08/09 19:18:42 pfinley Exp $
+    $Id: htdrv_clock.c,v 1.3 2002/08/09 19:25:22 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
+
+    $Log: htdrv_clock.c,v $
+    Revision 1.3  2002/08/09 19:25:22  pfinley
+    added missing line for version logs of clock widget
 
 
  **END-CVSDATA***********************************************************/
