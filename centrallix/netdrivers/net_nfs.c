@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.16 2003/03/31 23:13:54 jorupp Exp $
+    $Id: net_nfs.c,v 1.17 2003/04/03 00:42:06 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.17  2003/04/03 00:42:06  nehresma
+    changed the open object cache to work with fhandles instead of ints
+
     Revision 1.16  2003/03/31 23:13:54  jorupp
      * I guess that it would probably help if we said that it was a directory and you were allowed access to it :)
 
@@ -226,7 +229,7 @@ struct
     }
     NNFS;
 
-pObject nnfs_internal_open_inode(int inode);
+pObject nnfs_internal_open_inode(fhandle f);
 
 void
 nnfs_internal_dump_buffer(unsigned char* buf, int len)
@@ -1649,9 +1652,9 @@ void nnfs_internal_monitor_objects()
  ***  if there isn't one already open.  Do _NOT_ close the returned pObject,
  ***  but let the monitor thread handle the closes.
  ***/
-pObject nnfs_internal_open_inode(int inode)
+pObject nnfs_internal_open_inode(fhandle fh)
     {
-    int i;
+    int i, inode;
     pObjectUse obj;
     int found=0;
     char *path;
@@ -1660,6 +1663,9 @@ pObject nnfs_internal_open_inode(int inode)
 	int fhi;
 	fhandle fhc;
 	} fhandle_c;
+
+    strncpy(fhandle_c.fhc, fh, FHSIZE);
+    inode=fhandle_c.fhi;
 
     /* look through the open objects for this inode */
     for (i=0;i<xaCount(NNFS.openObjects);i++)
