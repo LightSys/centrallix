@@ -29,10 +29,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.2 2001/09/28 20:00:21 gbeeley Exp $
+    $Id: mtlexer.c,v 1.3 2002/06/20 15:57:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.3  2002/06/20 15:57:05  gbeeley
+    Fixed some compiler warnings.  Repaired improper buffer handling in
+    mtlexer's mlxReadLine() function.
+
     Revision 1.2  2001/09/28 20:00:21  gbeeley
     Modified magic number system syntax slightly to eliminate semicolon
     from within the macro expansions of the ASSERT macros.
@@ -226,7 +230,7 @@ mlxReadLine(pLxSession s, char* buf, int maxlen)
 		    {
 		    n = s->InpCnt;
 		    }
-	    	if (n>maxlen-1) n=maxlen-1;
+	    	if (n>maxlen-1-bufpos) n=maxlen-1-bufpos;
 	    	memcpy(buf+bufpos, s->InpPtr, n);
 		bufpos += n;
 		s->InpCnt -= n;

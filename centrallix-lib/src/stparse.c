@@ -30,10 +30,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.2 2002/04/25 17:54:39 gbeeley Exp $
+    $Id: stparse.c,v 1.3 2002/06/20 15:57:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.3  2002/06/20 15:57:05  gbeeley
+    Fixed some compiler warnings.  Repaired improper buffer handling in
+    mtlexer's mlxReadLine() function.
+
     Revision 1.2  2002/04/25 17:54:39  gbeeley
     Small update to stparse to fix some string length issues.
 
@@ -139,7 +143,8 @@ stAddAttr(pStructInf inf, char* name)
 
 	newinf = stAllocInf();
 	if (!newinf) return NULL;
-	strcpy(newinf->Name, name);
+	memccpy(newinf->Name, name, 0, 63);
+	newinf->Name[63] = 0;
 	newinf->Type = ST_T_ATTRIB;
 	if (stAddInf(inf, newinf) < 0)
 	    {
@@ -160,8 +165,10 @@ stAddGroup(pStructInf inf, char* name, char* type)
 
 	newinf = stAllocInf();
 	if (!newinf) return NULL;
-	strcpy(newinf->Name, name);
-	strcpy(newinf->UsrType, type);
+	memccpy(newinf->Name, name, 0, 63);
+	newinf->Name[63] = 0;
+	memccpy(newinf->UsrType, type, 0, 63);
+	newinf->UsrType[63] = 0;
 	newinf->Type = ST_T_SUBGROUP;
 	if (stAddInf(inf, newinf) < 0)
 	    {
@@ -358,7 +365,7 @@ st_internal_ParseGroup(pLxSession s, pStructInf inf)
 		    mssError(1,"ST","Internal representation exceeded");
 		    return -1;
 		    }
-		strncpy(subinf->Name, str, 31);
+		memccpy(subinf->Name, str, 0, 31);
 		subinf->Name[31] = 0;
 
 		/** If a subgroup, will have a type.  Check for it. **/

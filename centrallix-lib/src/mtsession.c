@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.5 2002/05/03 03:46:29 gbeeley Exp $
+    $Id: mtsession.c,v 1.6 2002/06/20 15:57:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.6  2002/06/20 15:57:05  gbeeley
+    Fixed some compiler warnings.  Repaired improper buffer handling in
+    mtlexer's mlxReadLine() function.
+
     Revision 1.5  2002/05/03 03:46:29  gbeeley
     Modifications to xhandle to support clearing the handle list.  Added
     a param to xhClear to provide support for xhnClearHandles.  Added a
@@ -560,7 +564,7 @@ mssPrintError(pFile fd)
 	if (!s) return -1;
 
 	/** Print the error stack. **/
-	sprintf(sbuf,"ERROR - Session By Username [%s]\r\n",s->UserName);
+	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
 	fdWrite(fd,sbuf,strlen(sbuf),0,0);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
@@ -587,7 +591,7 @@ mssStringError(pXString str)
 	if (!s) return -1;
 
 	/** Print the error stack. **/
-	sprintf(sbuf,"ERROR - Session By Username [%s]\r\n",s->UserName);
+	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
 	xsConcatenate(str,sbuf,-1);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
