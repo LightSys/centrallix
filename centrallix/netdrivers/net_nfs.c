@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.2 2003/03/03 09:32:00 jorupp Exp $
+    $Id: net_nfs.c,v 1.3 2003/03/04 00:39:53 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.3  2003/03/04 00:39:53  nehresma
+    couple typo fixes
+
     Revision 1.2  2003/03/03 09:32:00  jorupp
      * added some stuff to the NFS driver
        * prototypes for all NFS and mount RPC calls
@@ -197,7 +200,7 @@ struct rpc_struct mount_program[] =
 	}
     ,
 	{
-	(rpc_func)mountproc_umntall,
+	(rpc_func)mountproc_export,
 	(xdrproc_t) xdr_exportlist, sizeof(exportlist),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
@@ -433,7 +436,7 @@ exportlist* mountproc_export(void* param)
     return retval;
     }
 
-/** the functions that impliement nfs **/
+/** the functions that impliment nfs **/
 void* nfsproc_null(void* param)
     {
     void* retval = NULL;
