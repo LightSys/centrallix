@@ -13,6 +13,9 @@ function sp_init(l,aname,tname,p)
     {
     var alayer=null;
     var tlayer=null;
+    var ml;
+    var img;
+    var i;
     if(cx__capabilities.Dom0NS)
 	{
 	var layers = pg_layers(l);
@@ -65,9 +68,30 @@ function sp_init(l,aname,tname,p)
     l.thum = tlayer;
     l.area = alayer;
     l.UpdateThumb = sp_UpdateThumb;
+    l.ActionScrollTo = sp_action_scrollto;
     
     alayer.clip.pane = l;
     alayer.clip.watch("height",sp_WatchHeight);
+    }
+
+function sp_action_scrollto(aparam)
+    {
+    var h=this.area.clip.height; // height of content
+    var d=h-this.clip.height; // height of non-visible content (max scrollable distance)
+    if (d < 0) d=0;
+    if (aparam.Percent)
+	{
+	if (aparam.Percent < 0) aparam.Percent = 0;
+	else if (aparam.Percent > 100) aparam.Percent = 100;
+	this.area.y = -d*aparam.Percent/100;
+	}
+    else if (aparam.Offset)
+	{
+	if (aparam.Offset < 0) aparam.Offset = 0;
+	else if (aparam.Offset > d) aparam.Offset = d;
+	this.area.y = -aparam.Offset;
+	}
+    this.UpdateThumb(h);
     }
 
 function sp_WatchHeight(property, oldvalue, newvalue)
