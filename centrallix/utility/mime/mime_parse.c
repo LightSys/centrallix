@@ -78,7 +78,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     msg->ContentLength = 0;
     msg->ContentDisposition[0] = 0;
     msg->Filename[0] = 0;
-    msg->ContentMainType = MIME_TYPE_APPLICATION;
+    msg->ContentMainType = MIME_TYPE_TEXT;
     msg->ContentSubType[0] = 0;
     msg->Boundary[0] = 0;
     msg->Subject[0] = 0;
@@ -155,6 +155,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    }
 	xsDeInit(&xsbuf);
 	}
+    if (!msg->ContentSubType[0]) strcpy(msg->ContentSubType, "plain");
 
     /** Set the start and end offsets for the message **/
     msg->MsgSeekStart = mlxGetOffset(lex) + len;

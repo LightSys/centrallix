@@ -70,10 +70,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.19 2004/07/02 00:23:24 mmcgill Exp $
+    $Id: objdrv_sybase.c,v 1.20 2004/07/07 21:14:51 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.20  2004/07/07 21:14:51  mmcgill
+    Fixed a few errors I had made in the sybase driver, added support for
+    'uppercase' and 'lowercase' presentation hints styles in the sybase
+    structure files, and fixed the mime parsing code to treat mime objects
+    without Content-Type headers as 'text/plain'.
+
     Revision 1.19  2004/07/02 00:23:24  mmcgill
     Changes include, but are not necessarily limitted to:
         - fixed test_obj hints printing, added printing of hints to show command
@@ -329,7 +335,6 @@ typedef struct
     int		CurAttr;
     int		Size;
     int		ColID;
-    /** I'm not sure why this can't just be an ObjData. Less headaches that way.
     union
         {
 	DateTime	Date;
@@ -338,8 +343,6 @@ typedef struct
 	StringVec	SV;
 	}
 	Types;
-    **/
-    ObjData	Types;
     char*	ColPtrs[256];
     unsigned char ColNum[256];
     char	RowBuf[2048];
@@ -688,13 +691,6 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
     unsigned int msl,lsl,divtmp;
     int days,fsec;
     float f;
-    union		    /** Well...the following code was ripped straight out **/
-	{		    /** of sybdGetAttrValue, and I can't for the life of me **/
-	DateTime Date;	    /** figure out what the Types union is in the SybdData struct **/
-	MoneyType Money;    /** for, so I'm reproducing it here for the conversions. Seems **/
-	IntVec IV;	    /** pretty weird if you ask me. I think that union (and this) **/
-	StringVec SV;	    /** should be nixed, and everything should use pObjData. MJM**/
-	} Types;
 
 	/** Make sure the passed in data type matches what we'll end up with **/
 	if (sybd_internal_GetCxType(ut) != datatype)
@@ -721,7 +717,6 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 	else if (ut==22 || ut==12)
 	    {
 	    /** datetime **/
-//	    val->DateTime = &Types.Date;
 	    memcpy(&days,ptr,4);
 	    memcpy(&fsec,ptr+4,4);
 
@@ -770,7 +765,6 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 	else if (ut == 11 || ut == 21)
 	    {
 	    /** money **/
-//	    val->Money = &(Types.Money);
 	    if (ut == 21)
 		{
 		/** smallmoney, 4-byte **/
@@ -1015,6 +1009,19 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 		{
 		if (hints->BadChars) free(hints->BadChars);
 		hints->BadChars = strdup(ptr);
+		}
+	    if (!((hints->Style & OBJ_PH_STYLE_LOWERCASE) || (hints->Style & OBJ_PH_STYLE_UPPERCASE)))
+		{
+		if (stAttrValue(stLookup(type_inf, "lowercase"),NULL,&ptr,0) >= 0 && !strcmp(ptr, "yes"))
+		    {
+		    hints->StyleMask |= OBJ_PH_STYLE_LOWERCASE;
+		    hints->Style |= OBJ_PH_STYLE_LOWERCASE;
+		    }
+		else if (stAttrValue(stLookup(type_inf, "uppercase"),NULL,&ptr,0) >= 0 && !strcmp(ptr, "yes"))
+		    {
+		    hints->StyleMask |= OBJ_PH_STYLE_UPPERCASE;
+		    hints->Style |= OBJ_PH_STYLE_UPPERCASE;
+		    }
 		}
 	    }
 	
@@ -3725,7 +3732,9 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	        {
 		ptr = inf->ColPtrs[i];
 		t = tdata->ColTypes[i];
-		val->Generic = &(inf->Types.Generic);	/** bwahaha. This is a travesty. I wash my hands of this code. **/
+
+		if (datatype == DATA_T_DATETIME) val->DateTime = &(inf->Types.Date);
+		else if (datatype == DATA_T_MONEY) val->Money = &(inf->Types.Money);
 		if (sybd_internal_GetCxValue(ptr, t, val, datatype) < 0)
 		    {
 		    mssError(1, "SYBD", "Couldn't get value for %s.", attrname);
@@ -4366,7 +4375,7 @@ sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 		return hints;
 		break;
-	    case SYBD_T_ROW: break;
+	    case SYBD_T_ROW:
 		/** the attributes of a row are the column names, with the values being the field values **/
 		/** find the name of the column, and get its data type **/
 		for (i=0;i<inf->TData->nCols;i++) 
