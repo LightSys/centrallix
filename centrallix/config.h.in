@@ -123,8 +123,14 @@
 /* Define to 1 if your <sys/time.h> declares `struct tm'. */
 #undef TM_IN_SYS_TIME
 
+/* Define for DBL support */
+#undef USE_DBL
+
 /* Define for HTTP support */
 #undef USE_HTTP
 
 /* Define for Sybase support */
 #undef USE_SYBASE
+
+/* Define for XML support */
+#undef USE_XML

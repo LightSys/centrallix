@@ -201,6 +201,29 @@ AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
     ]
 )
 
+dnl Test for the DBL os driver.
+AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
+    [
+	AC_MSG_CHECKING(if DBL support is desired)
+
+	AC_ARG_ENABLE(dbl,
+	    AC_HELP_STRING([--enable-dbl],
+		[enable DBL support]
+	    ),
+	    WITH_DBL="$enableval", 
+	    WITH_DBL="no"
+	)
+ 
+	if test "$WITH_DBL" = "yes"; then
+	    AC_DEFINE(USE_DBL)
+	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_dbl.so"
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+    ]
+)
+
 
 dnl Test for the XML os driver.
 AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
