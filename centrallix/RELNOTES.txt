@@ -19,6 +19,11 @@ clarifications though.
     has not undergone a security audit yet.  Before running Centrallix, please
     be sure that your computer cannot be accessed by untrusted networks.
 
+4.  There are detailed installation instructions for each of the required
+    Centrallix packages (centrallix, centrallix-lib, and centrallix-os).  They
+    can be found in the base directory for their respective packages in a file
+    called INSTALL.
+
 
 -------------------------------------------------------------------------------
 Version 0.7.1, 17-Oct-2001
