@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.16 2002/08/27 20:42:39 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.17 2002/08/27 20:49:39 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.17  2002/08/27 20:49:39  lkehresman
+    I should have checked my code before committing.  I had the conditionals
+    mixed up in mimeRead().
+
     Revision 1.16  2002/08/27 20:42:39  lkehresman
     * Made mimeRead() take advantage of the libmime_PartRead() function that
       decodes the part on the fly
@@ -304,6 +308,10 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART ||
         inf->Header->ContentMainType == MIME_TYPE_MESSAGE)
 	{
+	return -1;
+	}
+    else
+	{
 	if (!offset && !inf->InternalSeek)
 	    inf->InternalSeek = 0;
 	else if (offset)
@@ -311,10 +319,6 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	size = libmime_PartRead(inf->Obj, inf->Header, buffer, maxcnt, inf->InternalSeek);
 	inf->InternalSeek += size;
 	return size;
-	}
-    else
-	{
-	return -1;
 	}
     }
 
