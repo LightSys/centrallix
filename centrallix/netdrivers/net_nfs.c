@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.22 2003/04/16 06:13:41 jorupp Exp $
+    $Id: net_nfs.c,v 1.23 2003/04/16 06:42:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.23  2003/04/16 06:42:26  jorupp
+     * make sure we return some kind of error message for the ops we don't impliment
+
     Revision 1.22  2003/04/16 06:13:41  jorupp
      * implimented write, rename, getattr (correctly this time), and a fake setattr
 
@@ -995,6 +998,8 @@ nfsstat* nnfs_internal_nfsproc_remove(diropargs* param)
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
+    memset(retval,0,sizeof(nfsstat));
+    *retval = NFSERR_IO;
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1006,6 +1011,8 @@ nfsstat* nnfs_internal_nfsproc_rename(renameargs* param)
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
+    memset(retval,0,sizeof(nfsstat));
+    *retval = NFSERR_IO;
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1017,6 +1024,8 @@ nfsstat* nnfs_internal_nfsproc_link(linkargs* param)
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
+    memset(retval,0,sizeof(nfsstat));
+    *retval = NFSERR_IO;
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1028,6 +1037,8 @@ nfsstat* nnfs_internal_nfsproc_symlink(symlinkargs* param)
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
+    memset(retval,0,sizeof(nfsstat));
+    *retval = NFSERR_IO;
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1039,6 +1050,8 @@ diropres* nnfs_internal_nfsproc_mkdir(createargs* param)
     diropres* retval = NULL;
     retval = (diropres*)nmMalloc(sizeof(diropres));
     /** do work here **/
+    memset(retval,0,sizeof(diropres));
+    retval->status = NFSERR_IO;
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1050,6 +1063,8 @@ nfsstat* nnfs_internal_nfsproc_rmdir(diropargs* param)
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
+    memset(retval,0,sizeof(nfsstat));
+    *retval = NFSERR_IO;
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1179,7 +1194,7 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     /** since there's no real drive here, just return sensible fake values **/
     retval->status = NFS_OK;
     retval->statfsres_u.info.tsize = 256; /* prefered transfer size */ /* small value for help with debugging */
-    retval->statfsres_u.info.bsize = 512; /* block size */
+    retval->statfsres_u.info.bsize = BLOCK_SIZE; /* block size */
     retval->statfsres_u.info.blocks = 1024; /* number of blocks on device */
     retval->statfsres_u.info.bfree = 1024; /* number of free blocks on device */
     retval->statfsres_u.info.bavail = 1024; /* number of blocks available for non-priviledged users */
