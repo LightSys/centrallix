@@ -42,6 +42,32 @@
 #include "xarray.h"
 #include "datatypes.h"
 #include "magic.h"
+#include "xhash.h"
+#include "ht_render.h"
+
+
+/** Generic property struct **/
+typedef struct
+    {
+    int		    Magic;			/** Magic Number **/
+    void*	    Reserved;
+    char	    Name[64];
+    int		    Type;
+    ObjData	    Val;
+    union
+	{
+	char	    String[16];
+	MoneyType   Money;
+	DateTime    Date;
+	IntVec	    IV;
+	StringVec   SV;
+	}
+	Buf;	/** buffer for various data types **/
+    } ObjProperty, *pObjProperty;
+
+
+
+
 
 pWgtrNode 
 wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type)
@@ -168,6 +194,21 @@ while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
     }
 
 
+void wgtr_internal_FreeProperty(pObjProperty prop)
+    {
+	switch (prop->Type)
+	    {
+	    case DATA_T_STRING:
+		nmSysFree(prop->Val.String);
+		break;
+	    case DATA_T_CODE:
+		expFreeExpression((pExpression)prop->Val.Generic);
+		break;
+	    }
+	nmFree(prop, sizeof(ObjProperty));
+
+    }
+
 void 
 wgtrFree(pWgtrNode tree)
     {
@@ -185,14 +226,7 @@ wgtrFree(pWgtrNode tree)
 	for (i=0;i<xaCount(&(tree->Properties));i++)
 	    {
 	    p = xaGetItem(&(tree->Properties), i);
-	    if (p->Type == DATA_T_STRING) nmSysFree(p->Val.String);
-	    else if (p->Type == DATA_T_CODE) 
-		{
-//		expFreeExpression(p->Val.Generic);
-		}
-//	    else if (p->Type == DATA_T_INTVEC) nmSysFree(p->Val.IntVec->Integers);
-//	    else if (p->Type == DATA_T_STRINGVEC) nmSysFree(p->Val.StringVec->Strings);
-	    nmFree(p, sizeof(ObjProperty));
+	    wgtr_internal_FreeProperty(p);
 	    }
 	xaDeInit(&(tree->Properties));
 	/** free the node itself **/
@@ -354,7 +388,6 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 	memset(prop, 0, sizeof(ObjProperty));
 	strncpy(prop->Name, name, 64);
 	prop->Type = datatype;
-//	fprintf(stderr, "\tAssigned property \"%s\" of type %d to \"%s\". Value = ", name, datatype, widget->Name);
 	/** Make sure the value is assigned correctly. A little nasty when these
 	 ** two interfaces meet
 	 **/
@@ -363,38 +396,31 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 	    {
 	    case DATA_T_INTEGER: 
 		prop->Val.Integer = val->Integer; 
-//		fprintf(stderr, "%d\n", prop->Val.Integer);
 		break;
 	    case DATA_T_STRING: 
 		prop->Val.String = nmSysStrdup(val->String); 
-//		fprintf(stderr, "\"%s\"\n", prop->Val.String);
 		break;
 	    case DATA_T_DOUBLE: 
 		prop->Val.Double = val->Double; 
-//		fprintf(stderr, "%f\n", prop->Val.Double); 
 		break;
 	    case DATA_T_DATETIME: 
 		prop->Buf.Date = *(val->DateTime);
 		prop->Val.DateTime = &(prop->Buf.Date);
-//		fprintf(stderr, "[date]\n");
 		break;	
 	    case DATA_T_MONEY:
 		prop->Buf.Money = *(val->Money);
 		prop->Val.Money = &(prop->Buf.Money);
-//		fprintf(stderr, "[money]\n");
 		break;
 	    case DATA_T_INTVEC:
 		prop->Buf.IV = *(val->IntVec);
 		prop->Val.IntVec = &(prop->Buf.IV);
-//		fprintf(stderr, "[intvec]\n");
 		break;
 	    case DATA_T_STRINGVEC:
 		prop->Buf.SV = *(val->StringVec);
 		prop->Val.StringVec = &(prop->Buf.SV);
-//		fprintf(stderr, "[stringvec]\n");
 		break;
 	    case DATA_T_CODE:
-		prop->Val.Generic = (void*)val->Generic;    // objGetAttrValue returned a pExpression
+		prop->Val.Generic = (void*)expDuplicateExpression((pExpression)val->Generic);    
 		break;
 	    }
 	/** Assign the property to the node **/
@@ -418,7 +444,8 @@ wgtrDeleteProperty(pWgtrNode widget, char* name)
 	    }
 	if (i == count) return -1;
 	xaRemoveItem(&(widget->Properties), i);
-	nmFree(prop, sizeof(ObjProperty));
+
+	wgtr_internal_FreeProperty(prop);
 
 	return 0;
     }
@@ -785,5 +812,128 @@ wgtrPrint(pWgtrNode tree, int indent)
 	    }
     }
 
+
+int 
+wgtr_internal_BuildVerifyQueue(pWgtrVerifySession vs, pWgtrNode node)
+    {
+    int i;
+
+	wgtrScheduleVerify(vs, node);
+	for (i=0;i<xaCount(&(node->Children));i++)
+	    wgtr_internal_BuildVerifyQueue(vs, xaGetItem(&(node->Children), i));
+	return 0;
+    }
+
+int
+wgtrVerify(void* v_s, pWgtrNode tree)
+    {
+    WgtrVerifySession vs;
+    pHtSession s = (pHtSession)v_s;
+    pWgtrNode	cur_node;
+    pHtDriver drv;
+    pXHashTable widget_drivers = NULL;
+
+	/** initialize datastructures **/
+	vs.Tree = tree;
+	xaInit(&(vs.VerifyQueue), 128);
+
+	/** Build the verification queue **/
+	wgtr_internal_BuildVerifyQueue(&vs, tree);
+	vs.NumWidgets = xaCount(&(vs.VerifyQueue));
+
+	/** assign the verification session to HtSession **/
+	s->VerifySession = &vs;
+
+	/** Get the drivers **/
+	/*
+	if (!s->Class)
+	    {
+	    mssError(1,"WGTR", "wgtrVerify(): Class not defined in HtSession!");
+	    goto error;
+	    }
+	widget_drivers = &(s->Class->WidgetDrivers);
+	if (!widget_drivers)
+	    {
+	    mssError(1, "WGTR", "wgtrVerify(): No widgets defined for useragent/class combo");
+	    goto error;
+	    }
+	*/
+	    
+	/** Iterate through the queue **/
+	for (vs.CurrWidgetIndex=0;vs.CurrWidgetIndex<vs.NumWidgets;vs.CurrWidgetIndex++)
+	    {
+	    /** Get the next node **/
+	    vs.CurrWidget = xaGetItem(&(vs.VerifyQueue), vs.CurrWidgetIndex);
+
+	    /** Get the driver for this node **/
+	    //drv = (pHtDriver)xhLookup(widget_drivers, vs.CurrWidget->Type+7);
+	    drv = htrLookupDriver(s, vs.CurrWidget->Type);
+	    if (!drv)
+		{
+		mssError(1, "WGTR", "Unknown widget object type '%s' for widget '%s'", 
+		    vs.CurrWidget->Type, vs.CurrWidget->Name);
+		goto error;
+		}
+
+	    /** Verify the widget **/
+	    if (drv->Verify && (drv->Verify(s) < 0))
+		{
+		mssError(0, "WGTR", "Couldn't verify widget '%s'", vs.CurrWidget->Name);
+		goto error;
+		}
+	    else vs.CurrWidget->Verified = 1;
+	    }
+
+	/** free up data structures **/
+	xaDeInit(&(vs.VerifyQueue));
+	s->VerifySession = NULL;
+
+	return 0;
+error:
+	s->VerifySession = NULL;
+	xaDeInit(&(vs.VerifyQueue));
+	return -1;
+    }
+
+
+int 
+wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget)
+    {
+    int i;
+  
+  /*
+	fprintf(stderr, "wgtrScheduleVerify(vs->NumWidgets=%d, widgth='%s'", vs->NumWidgets, widget->Name);
+	if (parent) fprintf(stderr, ", parent='%s'", parent->Name);
+	fprintf(stderr, ")\n");
+    */
+
+	xaAddItem(&(vs->VerifyQueue), widget);
+	vs->NumWidgets++;
+    }
+
+
+int 
+wgtrCancelVerify(pWgtrVerifySession vs, pWgtrNode widget)
+    {
+    int i;
+
+	/** find the widget **/
+	if ( (i=xaFindItem(&(vs->VerifyQueue), widget)) < 0) 
+	    {
+	    mssError(1, "WGTR", "wgtrCancelVerify() - couldn't find widget '%s'", widget->Name);
+	    return -1;
+	    }
+
+	/** if we've already verified it, or we're currently verifying it, this fails **/
+	if (i <= vs->CurrWidgetIndex || widget->Verified) 
+	    {
+	    mssError(1, "WGTR", "wgtrCancelVerify() - widget '%s' already verified", widget->Name);
+	    return -1;
+	    }
+
+	/** remove the widget from the queue **/
+	xaRemoveItem(&(vs->VerifyQueue), i);
+	return 0;
+    }
 
 

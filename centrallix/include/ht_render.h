@@ -34,10 +34,45 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.22 2004/07/19 15:30:42 mmcgill Exp $
+    $Id: ht_render.h,v 1.23 2004/07/20 21:28:52 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.23  2004/07/20 21:28:52  mmcgill
+    *   ht_render
+        -   Added code to perform verification of widget-tree prior to
+            rendering.
+        -   Added concept of 'pseudo-types' for widget-drivers, e.g. the
+            table driver getting called for 'table-column' widgets. This is
+            necessary now since the 'table-column' entry in an app file will
+            actually get put into its own widget node. Pseudo-type names
+            are stored in an XArray in the driver struct during the
+            xxxInitialize() function of the driver, and BEFORE ANY CALLS TO
+            htrAddSupport().
+        -   Added htrLookupDriver() to encapsulate the process of looking up
+            a driver given an HtSession and widget type
+        -   Added 'pWgtrVerifySession VerifySession' to HtSession.
+            WgtrVerifySession represents a 'verification context' to be used
+            by the xxxVerify functions in the widget drivers to schedule new
+            widgets for verification, and otherwise interact with the
+            verification system.
+    *   xxxVerify() functions now take a pHtSession parameter.
+    *   Updated the dropdown, tab, and table widgets to register their
+        pseudo-types
+    *   Moved the ObjProperty out of obj.h and into wgtr.c to internalize it,
+        in anticipation of converting the Wgtr module to use PTODs instead.
+    *   Fixed some Wgtr module memory-leak issues
+    *   Added functions wgtrScheduleVerify() and wgtrCancelVerify(). They are
+        to be used in the xxxVerify() functions when a node has been
+        dynamically added to the widget tree during tree verification.
+    *   Added the formbar widget driver, as a demonstration of how to modify
+        the widget-tree during the verification process. The formbar widget
+        doesn't actually do anything during the rendering process excpet
+        call htrRenderWidget on its subwidgets, but during Verify it adds
+        all the widgets necessary to reproduce the 'form control pane' from
+        ors.app. This will eventually be done even more efficiently with
+        component widgets - this serves as a tech test.
+
     Revision 1.22  2004/07/19 15:30:42  mmcgill
     The DHTML generation system has been updated from the 2-step process to
     a three-step process:
@@ -236,6 +271,7 @@ typedef struct
     XArray	Properties;		/* Properties this thing will have. */
     XArray	Events;			/* Events for this widget type */
     XArray	Actions;		/* Actions on this widget type */
+    XArray	PseudoTypes;		/* Pseudo-types this widget driver will handle */
     }
     HtDriver, *pHtDriver;
 
@@ -373,6 +409,7 @@ typedef struct
     int		Width;			/* target container (browser) width in pixels */
     int		Height;			/* target container height in pixels */
     char*	Parent;			/* name of target container */
+    pWgtrVerifySession VerifySession;	/* name of the current verification session */
     }
     HtSession, *pHtSession;
 
@@ -429,6 +466,7 @@ int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype
 pHtDriver htrAllocDriver();
 int htrAddSupport(pHtDriver drv, char* className);
 char* htrParamValue(pHtSession s, char* paramname);
+pHtDriver htrLookupDriver(pHtSession s, char* type_name);
 
 
 #endif /* _HT_RENDER_H */

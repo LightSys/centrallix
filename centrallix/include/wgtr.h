@@ -39,6 +39,7 @@
 
 #include "obj.h"
 #include "expression.h"
+#include "xarray.h"
 
 typedef struct
     {
@@ -56,20 +57,29 @@ typedef struct
     XArray	Children;			/** Array of child widgets **/
     int		CurrProperty;			/** Property to return on next call to wgtNextProperty **/
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/
-    int		extra;
-    } 
+    int		Verified;			/** Was the node verified? **/
+    }
     WgtrNode, *pWgtrNode;
 
 typedef struct
     {
-    int		Magic;		    /** Magic number **/
-    WgtrNode	Tree;		    /** Widget tree for this iterator **/
-    int		TraversMethod;	    /** WGTR_TM_XXX **/
-    WgtrNode	CurrNode;	    /** Next node to be returned **/
-    XArray	BacktrackStack;	    /** Keep track of parents for backtracking **/
-    XArray	VistQueue;	    /** For keeping track of nodes to visit **/
-    } 
-    WgtrIterator, *pWgtrIterator;
+    int			Magic;		    /** Magic number **/
+    pWgtrNode		Tree;		    /** Widget tree for this iterator **/
+    int			TraversMethod;	    /** WGTR_TM_XXX **/
+    pWgtrNode		CurrNode;	    /** Next node to be returned **/
+    XArray		BacktrackStack;	    /** Keep track of parents for backtracking **/
+    XArray		VistQueue;	    /** For keeping track of nodes to visit **/
+    } WgtrIterator, *pWgtrIterator;
+
+typedef struct
+    {
+    pWgtrNode		Tree;		    /** The tree being verified **/
+    XArray		VerifyQueue;	    /** Queue of nodes to be verified **/
+    int			NumWidgets;	    /** Number of widgets currently in the queue **/
+    int			CurrWidgetIndex;    /** Index of widget being verified right now **/
+    pWgtrNode		CurrWidget;	    /** Pointer to widget being verified right now **/
+    } WgtrVerifySession, *pWgtrVerifySession;
+
 
 #define WGTR_TM_LEVELORDER	1
 #define	WGTR_TM_PREORDER	2
@@ -85,7 +95,7 @@ int wgtrGetPropertyType(pWgtrNode widget, char* name);	/** get the type of the g
 int wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val); /** get property value **/
 char* wgtrFirstPropertyName(pWgtrNode widget);	/** returns name of first property in property array **/
 char* wgtrNextPropertyName(pWgtrNode widget);	/** returns next name in property array **/
-int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val);	/** add a property to the widget **/
+int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val); /** add a property to the widget **/
 int wgtrDeleteProperty(pWgtrNode widget, char* name);	/** deletes the property from the widget **/
 int wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val);	/** sets the widget property val **/
 pWgtrNode wgtrNewNode(	char* name, char* type, 
@@ -97,6 +107,9 @@ pWgtrNode wgtrNextChild(pWgtrNode tree);	/** return the next child **/
 pWgtrNode wgtrFirstChild(pWgtrNode tree);	/** return the first child **/
 pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints **/
 pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression from a widget node **/
+int wgtrVerify(void* s, pWgtrNode tree);	/** Verify a widget-tree. s must be pHtSession **/
+int wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget); /** add a widget to the Verify Queue **/
+int wgtrCancelVerify(pWgtrVerifySession cs, pWgtrNode widget);	/** remove a widget from the Verify Queue **/
 
 void wgtrPrint(pWgtrNode tree, int indent);	/** for debug purposes **/
 

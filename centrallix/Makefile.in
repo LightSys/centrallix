@@ -144,6 +144,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_image.o \
 	   htdrv_hints.o \
 	   wgtr.o \
+	   htdrv_formbar.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 
