@@ -41,10 +41,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.7 2002/03/15 22:40:47 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.8 2002/03/16 06:53:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.8  2002/03/16 06:53:34  gbeeley
+    Added modal-layer function at the page level.  Calling pg_setmodal(l)
+    causes all mouse activity outside of layer l to be ignored.  Useful
+    when you need to require the user to act on a certain window/etc.
+    Call pg_setmodal(null) to clear the modal status.  Note: keep the
+    modal layer simple!  The algorithm does quite a bit of poking around
+    to figure out whether the activity is targeted within the given modal
+    layer or not.  NOTE:  for modal windows, if you want to keep the user
+    from clicking the 'x' on the window, set the window's mainLayer to be
+    modal instead of the window itself, although the user will not be able
+    to even drag the window in that case, which might be desirable.
+
     Revision 1.7  2002/03/15 22:40:47  gbeeley
     Modified key input logic in the page widget to improve key debouncing
     and make key repeat rate and delay a bit more natural and more
@@ -193,6 +205,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "pg_lastkey", "-1", 0);
 	htrAddScriptGlobal(s, "pg_lastmodifiers", "null", 0);
 	htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0);
+	htrAddScriptGlobal(s, "pg_modallayer", "null", 0);
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 
@@ -228,6 +241,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandler(s, "document", "MOUSEMOVE","pg",
+		"    if (pg_modallayer)\n"
+		"        {\n"
+		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
+		"        else ly = e.target;\n"
+		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
+		"        }\n"
 		"    if (pg_curlayer != null)\n"
 		"        {\n"
 		"        for(i=0;i<pg_arealist.length;i++) if (pg_curlayer == pg_arealist[i].layer && e.x >= pg_arealist[i].x &&\n"
@@ -245,6 +264,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            }\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOUT", "pg",
+		"    if (pg_modallayer)\n"
+		"        {\n"
+		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
+		"        else ly = e.target;\n"
+		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
+		"        }\n"
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
 		"    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer)\n"
 		"        {\n"
@@ -252,6 +277,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        pg_curarea = null;\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOVER", "pg",
+		"    if (pg_modallayer)\n"
+		"        {\n"
+		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
+		"        else ly = e.target;\n"
+		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
+		"        }\n"
 		"    if (e.target != null && e.target.pageX != null)\n"
 		"        {\n"
 		"        pg_curlayer = e.target;\n"
@@ -260,6 +291,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** CLICK event handler is for making mouse focus the keyboard focus **/
 	htrAddEventHandler(s, "document", "MOUSEDOWN", "pg",
+		"    if (pg_modallayer)\n"
+		"        {\n"
+		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
+		"        else ly = e.target;\n"
+		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
+		"        }\n"
 		"    if (pg_curarea != null)\n"
 		"        {\n"
 		"        x = pg_curarea.layer.pageX+pg_curarea.x;\n"
@@ -307,6 +344,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** This resets the keyboard focus. **/
 	htrAddEventHandler(s, "document", "MOUSEUP", "pg",
+		"    if (pg_modallayer)\n"
+		"        {\n"
+		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
+		"        else ly = e.target;\n"
+		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
+		"        }\n"
 		"    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);\n");
 
 	/** Set colors for the focus layers **/
@@ -317,6 +360,31 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	snprintf(sbuf, HT_SBUF_SIZE,"    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
 	htrAddScriptInit(s, sbuf);
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
+
+	/** Function to set modal mode to a layer. **/
+	htrAddScriptFunction(s, "pg_setmodal", "\n"
+		"function pg_setmodal(l)\n"
+		"    {\n"
+		"    pg_modallayer = l;\n"
+		"    }\n", 0);
+
+	/** Function to find out whether image or layer is in a layer **/
+	htrAddScriptFunction(s, "pg_isinlayer", "\n"
+		"function pg_isinlayer(outer,inner)\n"
+		"    {\n"
+		"    var i = 0;\n"
+		"    if (inner == outer) return true;\n"
+		"    for(i=0;i<outer.layers.length;i++)\n"
+		"        {\n"
+		"        if (outer.layers[i] == inner) return true;\n"
+		"        if (pg_isinlayer(outer.layers[i], inner)) return true;\n"
+		"        }\n"
+		"    for(i=0;i<outer.document.images.length;i++)\n"
+		"        {\n"
+		"        if (outer.document.images[i] == inner) return true;\n"
+		"        }\n"
+		"    return false;\n"
+		"    }\n", 0);
 
 	/** Function to make four layers into a box **/
 	htrAddScriptFunction(s, "pg_mkbox", "\n"
