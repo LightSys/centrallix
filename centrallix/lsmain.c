@@ -50,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.19 2002/07/18 04:38:13 mattphillips Exp $
+    $Id: lsmain.c,v 1.20 2002/07/23 15:57:32 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.20  2002/07/23 15:57:32  mattphillips
+    - Modify the daemonizing routine based on
+      http://www.unixguide.net/unix/programming/1.7.shtml (information from David
+      Miller)
+
     Revision 1.19  2002/07/18 04:38:13  mattphillips
     Added '-d' option to centrallix to fork centrallix into the background on
     startup.  Also adding final support for the centrallix init script.
@@ -172,20 +177,6 @@ go_background()
     {
     pid_t pid;     
 
-	/** stdin is already closed. **/     
-	if (fclose(stdout)) 
-	    {
-	    printf("Can't close stdout\n");
-	    exit(1);
-	    }
-	open("/dev/null", O_WRONLY);
-	if (fclose(stderr)) 
-	    {
-	    printf("Can't close stderr\n");
-	    exit(1);
-	    }
-	open("/dev/null", O_WRONLY);
-
 	pid = fork();
 
 	if (pid == -1) 
@@ -198,15 +189,48 @@ go_background()
 	    /** parent **/
 	    exit(0);
 	    }
-	else
+
+	/** child **/
+	if (setsid() == -1) 
 	    {
-	    /** child **/
-	    if (setsid() == -1) 
-		{
-		printf("setsid() error\n");
-		exit(1);
-		}
+	    printf("setsid() error\n");
+	    exit(1);
 	    }
+
+	/** fork again to lose our controlling terminal **/
+	pid = fork();
+	if (pid == -1) 
+	    {
+	    printf("Can't fork\n");
+	    exit(1);
+	    }
+	if (pid != 0)
+	    {
+	    /** second parent **/
+	    exit(0);
+	    }
+
+	/** second child **/
+	chdir("/");
+	umask(0);
+	if (fclose(stdin)) 
+	    {
+	    printf("Can't close stdin\n");
+	    exit(1);
+	    }
+	open("/dev/null", O_RDONLY);
+	if (fclose(stdout)) 
+	    {
+	    printf("Can't close stdout\n");
+	    exit(1);
+	    }
+	open("/dev/null", O_WRONLY);
+	if (fclose(stderr)) 
+	    {
+	    printf("Can't close stderr\n");
+	    exit(1);
+	    }
+	open("/dev/null", O_WRONLY);
     }
 
 
