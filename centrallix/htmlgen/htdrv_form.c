@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.17  2002/03/17 20:45:45  gbeeley
+    Re-fixed security update introduced at file rev 1.12 but lost somehow.
+
     Revision 1.16  2002/03/17 03:51:03  jorupp
     * treeview now returns value on function call (in alert window)
     * implimented basics of 3-button confirm window on the form side
@@ -217,7 +220,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
