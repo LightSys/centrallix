@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.3 2002/03/16 02:45:46 bones120 Exp $
+    $Id: htdrv_spinner.c,v 1.4 2002/03/16 03:57:55 bones120 Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.4  2002/03/16 03:57:55  bones120
+    Finally, it works...sort of :)
+
     Revision 1.3  2002/03/16 02:45:46  bones120
     Making the spinner interact with the form without dying!
 
@@ -160,17 +163,17 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Ok, write the style header items. **/
 	snprintf(sbuf,512,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#sp%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	snprintf(sbuf,512,"\t#spnr%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#sp%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w-12,z);
+	snprintf(sbuf,512,"\t#spnr%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-12,z);
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#sp%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
+	snprintf(sbuf,512,"\t#spnr%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#sp%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
+	snprintf(sbuf,512,"\t#spnr%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",x+w-12,y,w,z);
+	snprintf(sbuf,512,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1,w,z);
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",x+w-12,y+9,w,z);
+	snprintf(sbuf,512,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1+9,w,z);
 	htrAddHeaderItem(s,sbuf);
 	snprintf(sbuf,512,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
@@ -305,7 +308,7 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    return true;\n"
 		"    }\n", 0);
 
-	htrAddEventHandler(s, "document","MOUSEDOWN", "sp", 
+	htrAddEventHandler(s, "document","MOUSEDOWN", "spnr", 
 		"\n"
 		"   if (e.target != null && e.target.kind == 'spinner') {\n"
 		"      if(e.target.subkind=='up')\n"
@@ -326,13 +329,13 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    l.content = 0;\n"
 		"    l.mainlayer=main;\n"
 		"    l.document.Layer = l;\n"
-		"    l.ContentLayer = c1;\n"
-		"    l.ContentLayer.document.write('0');\n"
-		"    l.ContentLayer.document.close();\n"
-		"    l.HiddenLayer = c2;\n"
-		"    l.HiddenLayer.document.write('0');\n"
-		"    l.HiddenLayer.document.close();\n"
-		"    l.form=fm_current;\n"
+		"    main.ContentLayer = c1;\n"
+		"    main.ContentLayer.document.write('0');\n"
+		"    main.ContentLayer.document.close();\n"
+		"    main.HiddenLayer = c2;\n"
+		"    main.HiddenLayer.document.write('0');\n"
+		"    main.HiddenLayer.document.close();\n"
+		"    main.form=fm_current;\n"
 		"    if (!spnr_ibeam || !spnr_metric)\n"
 		"        {\n"
 		"        spnr_metric = new Layer(24);\n"
@@ -360,29 +363,29 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    main.layers.spnr_button_down.document.images[0].kind='spinner';\n"
 		"    main.layers.spnr_button_up.document.images[0].subkind='up';\n"
 		"    main.layers.spnr_button_down.document.images[0].subkind='down';\n"
-		"    main.layers.spnr_button_up.document.images[0].eb_layers=l;\n"
-		"    main.layers.spnr_button_down.document.images[0].eb_layers=l;\n"
+		"    main.layers.spnr_button_up.document.images[0].eb_layers=main;\n"
+		"    main.layers.spnr_button_down.document.images[0].eb_layers=main;\n"
 		"    l.keyhandler = spnr_keyhandler;\n"
 		"    l.getfocushandler = spnr_select;\n"
 		"    l.losefocushandler = spnr_deselect;\n"
-		"    l.getvalue = spnr_getvalue;\n"
-		"    l.setvalue = spnr_setvalue;\n"
-		"    l.setoptions = null;\n"
-		"    l.enable = spnr_enable;\n"
-		"    l.disable = spnr_disable;\n"
-		"    l.readonly = spnr_readonly;\n"
-		"    l.clearvalue = spnr_clearvalue;\n"
-		"    l.isFormStatusWidget = false;\n"
-		"    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', 1);\n"
+		"    main.getvalue = spnr_getvalue;\n"
+		"    main.setvalue = spnr_setvalue;\n"
+		"    main.setoptions = null;\n"
+		"    main.enable = spnr_enable;\n"
+		"    main.disable = spnr_disable;\n"
+		"    main.readonly = spnr_readonly;\n"
+		"    main.clearvalue = spnr_clearvalue;\n"
+		"    main.isFormStatusWidget = false;\n"
+		"    pg_addarea(main, -1,-1,main.clip.width+1,main.clip.height+1, 'spinner', 'spinner', 1);\n"
 		"    c1.y = ((l.clip.height - spnr_metric.charHeight)/2);\n"
 		"    c2.y = ((l.clip.height - spnr_metric.charHeight)/2);\n"
-		"    if (fm_current) fm_current.Register(l);\n"
-		"    if (fm_current) l.form = fm_current;\n"
-		"    return l;\n"
+		"    if (fm_current) fm_current.Register(main);\n"
+		"    if (fm_current) main.form = fm_current;\n"
+		"    return main;\n"
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,512,"    %s = spnr_init(%s.layers.sp%dmain, %s.layers.sp%dmain.layers.sp%dbase, %s.layers.sp%dmain.layers.sp%dbase.document.layers.sp%dcon1, %s.layers.sp%dmain.layers.sp%dbase.document.layers.sp%dcon2);\n",
+	snprintf(sbuf,512,"    %s = spnr_init(%s.layers.spnr%dmain, %s.layers.spnr%dmain.layers.spnr%dbase, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon1, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon2);\n",
 		nptr, parentname, id, 
                 parentname, id, id,
 		parentname, id, id, id, 
@@ -391,9 +394,9 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** HTML body <DIV> element for the base layer. **/
 
-	snprintf(sbuf,512,"<DIV ID=\"sp%dmain\">\n",id);
+	snprintf(sbuf,512,"<DIV ID=\"spnr%dmain\">\n",id);
 	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512,"<DIV ID=\"sp%dbase\">\n",id);
+	snprintf(sbuf,512,"<DIV ID=\"spnr%dbase\">\n",id);
 	htrAddBodyItem(s, sbuf);
 	snprintf(sbuf,512,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w-12,main_bg);
 	htrAddBodyItem(s, sbuf);
@@ -415,9 +418,9 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddBodyItem(s, sbuf);
 	snprintf(sbuf,512, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
 	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "<DIV ID=\"sp%dcon1\"></DIV>\n",id);
+	snprintf(sbuf,512, "<DIV ID=\"spnr%dcon1\"></DIV>\n",id);
 	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "<DIV ID=\"sp%dcon2\"></DIV>\n",id);
+	snprintf(sbuf,512, "<DIV ID=\"spnr%dcon2\"></DIV>\n",id);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "</DIV>\n");
 	/*Add the spinner buttons*/
