@@ -1,4 +1,4 @@
-## $Id: Makefile,v 1.1 2001/08/13 18:04:19 gbeeley Exp $
+## $Id: Makefile,v 1.2 2001/10/01 20:27:59 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Attic/Makefile,v $
 ##
 ## Centrallix-Lib Makefile
@@ -13,8 +13,8 @@
 ## compilation.  DO NOT OPTIMIZE MTASK!!!!  It will cause it to
 ## stop working!!!
 ##
-CFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall
-MTCFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall
+CFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -g -pg
+MTCFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -g -pg
 
 XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
 #XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o net_raw_api.o
