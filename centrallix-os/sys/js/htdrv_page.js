@@ -680,12 +680,12 @@ function pg_expchange(p,o,n)
 
 function pg_dosched()
     {
-    var p = null;
+    var sched_item = null;
     window.pg_isloaded = true;
     if (pg_schedtimeoutlist.length > 0)
     	{
-	p = pg_schedtimeoutlist.pop();
-	with (p.obj) { eval(p.exp); }
+	sched_item = pg_schedtimeoutlist.pop();
+	with (sched_item.obj) { eval(sched_item.exp); }
 	}
 
     if (pg_schedtimeoutlist.length > 0)
