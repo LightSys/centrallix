@@ -12,6 +12,7 @@
 function htutil_tag_images(d,t,l,ml)
     {
     var images = pg_images(d);
+    if (!images) return;
     for (var i=0; i < images.length; i++) {
 	images[i].kind = t;
 	images[i].layer = l;

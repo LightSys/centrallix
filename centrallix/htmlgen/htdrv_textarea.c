@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.19 2004/08/04 20:03:11 mmcgill Exp $
+    $Id: htdrv_textarea.c,v 1.20 2004/08/29 17:32:32 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.20  2004/08/29 17:32:32  pfinley
+    Textarea widget crossbrowser support... I have tested on Mozilla 1.7rc1,
+    Firefox 0.9.3, and Netscape 4.79.  Also fixed a JS syntax error with
+    loading page/image.
+
     Revision 1.19  2004/08/04 20:03:11  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -201,7 +206,7 @@ static struct
     HTTX;
 
 
-/*** httxRender - generate the HTML code for the editbox widget.
+/*** httxRender - generate the HTML code for the textarea widget.
  ***/
 int
 httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
@@ -214,16 +219,17 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     int x=-1,y=-1,w,h;
     int id, i;
     int is_readonly = 0;
-    int is_raised = 1;
+    int is_raised = 0;
     char* nptr;
     char* c1;
     char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
+    int box_offset;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
 	    {
-	    mssError(1,"HTTX","Netscape DOM support required");
+	    mssError(1,"HTTX","Netscape, IE, or Dom2Events support required");
 	    return -1;
 	    }
 
@@ -251,12 +257,8 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	if (wgtrGetPropertyValue(tree,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
 
 	/** Background color/image? **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgColor='%.40s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"background='%.110s'",ptr);
-	else
-	    strcpy(main_bg,"");
+	strcpy(main_bg,"");
+	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -264,7 +266,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	name[63] = 0;
 
 	/** Style of Textarea - raised/lowered **/
-	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
+	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
 	if (is_raised)
 	    {
 	    c1 = "white_1x1.png";
@@ -285,8 +287,16 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    fieldname[0]='\0';
 	    } 
 
+	if (s->Capabilities.CSSBox)
+	    box_offset = 1;
+	else
+	    box_offset = 0;
+
 	/** Write Style header items. **/
-	htrAddStylesheetItem_va(s,"\t#tx%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	if (s->Capabilities.Dom1HTML)
+	    htrAddStylesheetItem_va(s,"\t#tx%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
+	else if (s->Capabilities.Dom0NS)
+	    htrAddStylesheetItem_va(s,"\t#tx%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -340,25 +350,45 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    "\n");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = tx_init(%s.layers.tx%dbase, \"%s\", %d, \"%s\");\n",
+	if (s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s, "    %s = tx_init(document.getElementById(\"tx%dbase\"), \"%s\", %d, \"%s\");\n",
+		nptr, id, 
+		fieldname, is_readonly, main_bg);
+	    }
+	else if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s, "    %s = tx_init(%s.layers.tx%dbase, \"%s\", %d, \"%s\");\n",
 		nptr, parentname, id, 
 		fieldname, is_readonly, main_bg);
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"tx%dbase\"><BODY %s>\n",id, main_bg);
-	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	htrAddBodyItem_va(s, "<DIV ID=\"tx%dbase\">\n",id);
 
-
-
+	/** Use CSS border or table for drawing? **/
+	if (s->Capabilities.CSS2)
+	    {
+	    if (is_raised)
+		htrAddStylesheetItem_va(s, "\t#tx%dbase { border-style:solid; border-width:1px; border-color: white gray gray white; %s }\n", id, main_bg);
+	    else
+		htrAddStylesheetItem_va(s, "\t#tx%dbase { border-style:solid; border-width:1px; border-color: gray white white gray; %s }\n", id, main_bg);
+	    if (h >= 0)
+		htrAddStylesheetItem_va(s,"\t#tx%dbase { height:%dpx; }\n", id, h-2*box_offset);
+	    }
+	else
+	    {
+	    htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	    htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	    }
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -366,7 +396,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</BODY></DIV>\n");
+	htrAddBodyItem(s, "</DIV>\n");
 
     return 0;
     }

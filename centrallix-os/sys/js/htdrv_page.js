@@ -378,7 +378,7 @@ function pg_layers(o)
 	}
     }
 
-/** Function to get the images attacked to a layer **/
+/** Function to get the images attached to a layer **/
 function pg_images(o)
     {
     if(!o)
