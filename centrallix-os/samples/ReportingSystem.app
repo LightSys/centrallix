@@ -3,6 +3,7 @@ ReportingSystem "widget/page"
     // Page-level settings
     title = "Reporting System"
     background="/sys/images/slate_blue2.png"
+    //bgcolor='#c0c0c0'
     textcolor=black
     //kbdfocus1=black
     //kbdfocus2=black

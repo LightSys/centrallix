@@ -47,5 +47,22 @@ editbox_test "widget/page"
 		}
 	    }
 	}
+
+    // Now for a table.
+    tablepane "widget/pane"
+        {
+	x = 10; y=300; width=300; height=300;
+	style=raised;
+	MyTable "widget/table"
+	    {
+	    sql = "select :name, :size, :owner from /";
+	    width=298;
+	    inner_border=1;
+	    hdr_bgcolor=white;
+	    name "widget/table-column" { width=20; title="Filename"; }
+	    size "widget/table-column" { width=5; title="Size"; }
+	    owner "widget/table-column" { width=10; title="Owner"; }
+	    }
+	}
     }
 
