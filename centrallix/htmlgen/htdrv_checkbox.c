@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.21 2002/07/25 20:33:29 pfinley Exp $
+    $Id: htdrv_checkbox.c,v 1.22 2002/07/26 04:13:28 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.22  2002/07/26 04:13:28  pfinley
+    oops, that shouldn't have been there.
+
     Revision 1.21  2002/07/25 20:33:29  pfinley
     changed 'Change' event to be the standard 'DataChange'.
 
@@ -198,7 +201,6 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
-   htrAddScriptInclude(s,"/sys/js/ht_utils_debug.js",0);
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "checkbox", 
       "\n"
