@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.30 2002/06/03 05:09:25 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.31 2002/06/03 05:10:56 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.31  2002/06/03 05:10:56  jorupp
+     * removed a debugging message -- not needed
+
     Revision 1.30  2002/06/03 05:09:25  jorupp
      * impliment the form view mode correctly
      * fix scrolling back in the OSRC (from the table)
@@ -734,7 +737,6 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                    this.FirstRecord++;\n"
       "                    }\n"
       "                }\n"
-      "            alert(this.FirstRecord+' -- '+this.OSMLRecord);\n"
       "            if(this.FirstRecord>this.OSMLRecord)\n"
       "                {\n"
       "                this.FirstRecord=this.OSMLRecord;\n"
