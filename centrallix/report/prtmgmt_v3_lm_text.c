@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.8 2003/02/20 03:05:19 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.9 2003/02/20 03:25:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.9  2003/02/20 03:25:22  gbeeley
+    Fixed a problem which inserted a blank line at the beginning of pages
+    when soft page breaks would occur.
+
     Revision 1.8  2003/02/20 03:05:19  gbeeley
     Mostly fixed a wordwrap bug affecting situations where multiple
     prtWriteString calls were made, and the wrap point ended up being in the
@@ -713,6 +717,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    objptr->X = 0.0;
 		    objptr->Y = 0.0;
 		    this = new_parent;
+		    objptr->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
 		    if (split_obj) split_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
 		    continue;
 		    }
