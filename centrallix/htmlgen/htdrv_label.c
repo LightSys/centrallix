@@ -42,6 +42,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.9  2002/07/07 00:23:12  jorupp
+     * fixed a bug with the table tag not being closed (why did this work before?
+     * added px qualifiers on CSS definitions for HTML 4.0 Strict
+
     Revision 1.8  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -105,7 +109,6 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char* ptr;
     char name[64];
     char align[64];
-    /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id;
@@ -168,7 +171,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Ok, write the style header items. **/
 	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#lbl%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddHeaderItem_va(s,"\t#lbl%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
 	htrAddHeaderItem(s,"    </STYLE>\n");
 
 	/** Write named global **/
@@ -195,7 +198,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"lbl%d\">\n",id);
-	htrAddBodyItem_va(s, "<table border=0 width=\"%i\"<tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
+	htrAddBodyItem_va(s, "<table border=0 width=\"%i\"><tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
 	htrAddBodyItem(s, "</DIV>\n");
 
 	nmFree(text,strlen(text)+1);
@@ -221,6 +224,19 @@ htlblInitialize()
 	drv->Render = htlblRender;
 	drv->Verify = htlblVerify;
 	strcpy(drv->Target, "Netscape47x:default");
+
+	/** Register. **/
+	htrRegisterDriver(drv);
+
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+
+	/** Fill in the structure. **/
+	strcpy(drv->Name,"DHTML Single-line Label Driver");
+	strcpy(drv->WidgetName,"label");
+	drv->Render = htlblRender;
+	drv->Verify = htlblVerify;
+	strcpy(drv->Target, "Mozilla:default");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
