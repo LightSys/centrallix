@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.39  2002/06/01 19:35:49  jorupp
+     * some more of the same problem....found where the global variable was made at -- removed it
+
     Revision 1.38  2002/06/01 19:33:44  jorupp
      * I don't know why this worked before, but it works now
 
@@ -930,22 +933,22 @@ old query code
 		"    query.oid=null;\n"
 		"    query.joinstring='AND';\n"
 		"    \n"
-		"    for(var i in form.elements)\n"
+		"    for(var i in this.elements)\n"
 		"        {\n"
-		"        if(form.elements[i]._form_IsChanged)\n"
+		"        if(this.elements[i]._form_IsChanged)\n"
 		"            {\n"
 		"            var t=new Object();\n"
-		"            t.oid=form.elements[i].fieldname;\n"
-		"            t.value=form.elements[i].getvalue();\n"
-		"            t.type=form.elements[i]._form_type;\n"
+		"            t.oid=this.elements[i].fieldname;\n"
+		"            t.value=this.elements[i].getvalue();\n"
+		"            t.type=this.elements[i]._form_type;\n"
 		"            query.push(t);\n"
 		"            }\n"
 		"        }\n"
 		/** Done with the query -- YEAH **/
 		"    //if(confirm('Send to \"'+this.osrc.name+'\"(osrc):'+query))\n"
 		"        {\n"
-		"        form.Pending=true;\n"
-		"        form.IsUnsaved=false;\n"
+		"        this.Pending=true;\n"
+		"        this.IsUnsaved=false;\n"
 		"        //this.cb['DataAvailable'].add(this,new Function('this.osrc.ActionFirst(this)'));\n"
 		"        this.osrc.ActionQueryObject(query, this);\n"
 		"        }\n"
@@ -1091,7 +1094,7 @@ old query code
 	htrAddScriptFunction(s, "form_init", "\n"
 		"function form_init(aq,an,am,av,and,me,name,_3b,ro)\n"
 		"    {\n"
-		"    form = new Object();\n"
+		"    var form = new Object();\n"
 		"    form.readonly=ro;\n" 
 		"    form.elements = new Array();\n"
 		"    form.statuswidgets = new Array();\n"
