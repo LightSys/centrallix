@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.1 2001/11/12 20:43:44 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.2 2002/02/07 03:48:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.2  2002/02/07 03:48:53  gbeeley
+    I think I fixed a bug where the param wasn't defaulting to the widget's
+    supplied Parameter property during an ExecuteMethod action.
+
     Revision 1.1  2001/11/12 20:43:44  gbeeley
     Added execmethod nonvisual widget and the audio /dev/dsp device obj
     driver.  Added "execmethod" ls__mode in the HTTP network driver.
@@ -117,7 +121,7 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    {\n"
 		"    o = aparam.Objname?aparam.Objname:this.Objname;\n"
 		"    m = aparam.Method?aparam.Method:this.Methodname;\n"
-		"    p = aparam.Parameter?aparam.Parameter:this.Parameter;\n"
+		"    p = aparam.Parameter?aparam.Parameter:this.Methodparam;\n"
 		"    if (!o || !m || !p) return false;\n"
 		"    this.HiddenLayer.load(o + '?ls__mode=execmethod&ls__methodname=' + (escape(m).replace(/\\//g,'%2f')) + '&ls__methodparam=' + (escape(p).replace(/\\//g,'%2f')), 64);\n"
 		"    return true;\n"
