@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_mime.c,v 1.5 2002/08/10 02:34:52 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.5  2002/08/10 02:34:52  lkehresman
+    * Removed duplicated StrTrim fuction calls
+    * Added rfc2822 complient address-list parsing
+        - Groups are detected, but ignored currently, this will come later
+        - Nested comments work everywhere except in displayable names
+        - escape characters work everywhere except in displayable names
+
     Revision 1.4  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -109,6 +116,17 @@
 
 /*** GLOBALS ***/
 
+/** Structure used to represent an email address **/
+typedef struct
+    {
+    char	Host[128];
+    char	Mailbox[128];
+    char	Display[128];
+    char	AddressLine[256];
+    pXArray	Group;
+    }
+    EmailAddr, *pEmailAddr;
+
 /** information structure for MIME msg **/
 typedef struct _MM
     {
@@ -116,17 +134,20 @@ typedef struct _MM
     char	ContentSubType[80];
     char	ContentDisp[80];
     char	ContentDispFilename[80];
-    char	PartBoundary[80];
+    char	Boundary[80];
     char	PartName[80];
-    char	PartSubject[80];
     char	Subject[80];
     char	Charset[32];
     char	TransferEncoding[32];
     char	MIMEVersion[16];
-    DateTime	PartDate;
-    unsigned long	HdrSeekStart;
-    unsigned long	MsgSeekStart;
-    unsigned long	MsgSeekEnd;
+    DateTime	Date;
+    long	HdrSeekStart;
+    long	MsgSeekStart;
+    long	MsgSeekEnd;
+    pXArray	ToList;
+    pXArray	FromList;
+    pXArray	CcList;
+    pEmailAddr	Sender;
     XArray	Parts;
     }
     MimeMsg, *pMimeMsg;
@@ -142,16 +163,6 @@ typedef struct
     int		NextAttr;
     }
     MimeData, *pMimeData;
-
-/** Structure used to represent an email address **/
-typedef struct
-    {
-    char	Host[128];
-    char	Mailbox[128];
-    char	Personal[128];
-    char	AddressLine[256];
-    }
-    EmailAddr, *pEmailAddr;
 
 /*** Possible Main Content Types ***/
 char *TypeStrings[7] =
@@ -352,6 +363,7 @@ mime_internal_HdrParse(char *buf, char* hdr)
 	else if (state == 2)
 	    {
 	    memcpy(hdr, buf, (count-1>79?79:count-1));
+	    hdr[(count-1>79?79:count-1)] = 0;
 	    memcpy(buf, &buf[count+1], strlen(&buf[count+1])+1);
 	    mime_internal_StrTrim(hdr);
 	    mime_internal_StrTrim(buf);
@@ -376,11 +388,140 @@ mime_internal_HdrParse(char *buf, char* hdr)
 **         This function returns -1 on failure, and 0 on success.  It will split
 **         addresses out into the desired data structure and will place it in the
 **         second parameter.
+**
+**     NOTES:
+**         This functionality is described in great detail in sections 3.4 and
+**         3.4.1 of RFC2822.  I have attempted to implement that functionality.  If
+**         you find inconsistencies, please align with the RFC unless otherwise
+**         noted by a comment.
+*/
+
+#define MIME_ST_NORM    0
+#define MIME_ST_QUOTE   1
+#define MIME_ST_COMMENT 2
+#define MIME_ST_GROUP   3
+
+int
+mime_internal_HdrParseAddrList(char *buf, pXArray xary)
+    {
+    int count=0, state=MIME_ST_NORM, flag=0, cnest=0, err=0;
+    char *s_ptr, *e_ptr, *t_str;
+    char ch;
+    pEmailAddr p_addr;
+
+    s_ptr = buf;
+    while (flag == 0)
+	{
+	ch = buf[count];
+	switch (state)
+	    {
+	    /** If no special states are set, then check for comma delimiters and such **/
+	    case MIME_ST_NORM:
+	    case MIME_ST_GROUP:
+		if (ch == '"')
+		    {
+		    state = MIME_ST_QUOTE;
+		    }
+		else if (ch == '(')
+		    {
+		    cnest++;
+		    state = MIME_ST_COMMENT;
+		    }
+		else if (ch == ':' && buf[count-1] != '\\')
+		    {
+		    state = MIME_ST_GROUP;
+		    }
+		else if ((state == MIME_ST_NORM && (ch == ',' || count == strlen(buf))) ||
+		         (state == MIME_ST_GROUP && (ch == ';' || count == strlen(buf))))
+		    {
+		    e_ptr = &buf[count];
+		    t_str = (char*)nmMalloc(e_ptr - s_ptr + 1);
+		    strncpy(t_str, s_ptr, e_ptr-s_ptr);
+		    t_str[e_ptr-s_ptr] = 0;
+		    /**  If we have a valid email address, parse it and add it to the list **/
+		    if (strlen(t_str))
+			{
+			p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
+			/**  Decide if we should hand this to the group parser or the address parser **/
+			if (state == MIME_ST_GROUP)
+			    err = mime_internal_HdrParseGroup(t_str, p_addr);
+			else
+			    err = mime_internal_HdrParseAddr(t_str, p_addr);
+
+			if (!err)
+			    xaAddItem(xary, p_addr);
+			else
+			    nmFree(p_addr, sizeof(EmailAddr));
+			}
+		    nmFree(t_str, e_ptr - s_ptr + 1);
+		    s_ptr = e_ptr+1;
+		    state = MIME_ST_NORM;
+		    }
+		break;
+	    /** If we are in a quote, ignore everything until the end quote is found **/
+	    case MIME_ST_QUOTE:
+		if (ch == '"' && buf[count-1] != '\\')
+		    {
+		    state = MIME_ST_NORM;
+		    }
+		break;
+	    /** If we are in a comment, ignore everything until the end of the comment is found **/
+	    case MIME_ST_COMMENT:
+		if (ch == ')' && buf[count-1] != '\\')
+		    {
+		    cnest--;
+		    if (!cnest)
+			{
+			state = MIME_ST_NORM;
+			}
+		    }
+		break;
+	    }
+	if (count > strlen(buf))
+	    flag = 1;
+	count++;
+	}
+    mime_internal_PrintAddrList(xary, 0);
+    return 0;
+    }
+
+/*
+**  int
+**  mime_internal_HdrParseGroup(char *buf, EmailAddr* addr);
+**     Parameters:
+**         (char*) buf     A string that represents a single email address.  This 
+**                         is usually one of the XArray elements that was returned
+**                         from the HdrParseAddrSplit function.
+**         (EmailAddr*) addr
+**                         An email address data structure that will be filled in 
+**                         by this function.  Since this is defining a group of 
+**                         addresses, this will mainly be a pointer structure to 
+**                         other addresses and groups.
+**
+**     Returns:
+**         This function returns -1 on failure and 0 on success.  It will split a
+**         group into its different parts as per RFC2822 and fill in the EmailAddr
+**         structure.
 */
 
 int
-mime_internal_HdrParseAddrList(char *buf, pXArray *ary)
+mime_internal_HdrParseGroup(char *buf, pEmailAddr addr)
     {
+    int count=0, state=MIME_ST_NORM, flag=0, cnest=0;
+    char *s_ptr, *e_ptr, *t_str;
+    char ch;
+    pEmailAddr p_addr;
+
+    mime_internal_StrTrim(buf);
+    //printf("GROUP: (%s)\n", buf);
+    return 0;
+
+    s_ptr = buf;
+    while (flag == 0)
+	{
+	ch = buf[count];
+	
+	}
     return 0;
     }
 
@@ -398,16 +539,176 @@ mime_internal_HdrParseAddrList(char *buf, pXArray *ary)
 **     Returns:
 **         This function returns -1 on failure and 0 on success.  It will split an
 **         individual email address or a group of addresses up into their various
-**         parts.  and return an EmailAddr structure.  Note that if this is a group
-**         of addresses, this call is recursive.
+**         parts.  and return an EmailAddr structure.
 */
 
+#define MIME_ST_ADR_HOST      0
+#define MIME_ST_ADR_MAILBOX   1
+#define MIME_ST_ADR_DISPLAY   2
+
 int
-mime_internal_HdrParseAddr(char *buf, pEmailAddr addr)
+mime_internal_HdrParseAddr(char *buf, pEmailAddr addr, int type)
     {
+    int count=0, state=MIME_ST_NORM, flag=0, cnest=0;
+    int display=1, len=0;
+    char *s_ptr, *e_ptr, *t_str;
+    char ch;
+    pEmailAddr p_addr;
+
+    mime_internal_StrTrim(buf);
+    addr->Host[0] = 0;
+    addr->Mailbox[0] = 0;
+    addr->Display[0] = 0;
+    addr->Group = NULL;
+    strncpy(addr->AddressLine, buf, 255);
+    addr->AddressLine[255] = 0;
+
+    if (!strchr(buf, '<'))
+	{
+	display = 0;
+	}
+
+    /*
+    **  First, get the email address itself which can be displayed in two forms,
+    **  either inside angle-brackets (<>), or not.  If it is not inside angle 
+    **  brackets, then we are done...the address is all there is.  If it IS inside
+    **  the brackets, then we need to check for the other parts as well.
+    */
+    if (!(s_ptr = strchr(buf, '<')))
+	{
+	mime_internal_HdrParseMailboxHost(buf, addr); /* set Host and Mailbox */
+	}
+    /** If this address DOES have <>'s, then treat it like anormal address **/
+    else
+	{
+	/** First, get the <mailbox@host> part parsed out of there **/
+	s_ptr++;
+	if (!(e_ptr = strchr(buf, '>')))
+	    {
+	    return -1;
+	    }
+	t_str = (char*)nmMalloc((e_ptr - s_ptr)+1);
+	strncpy(t_str, s_ptr, e_ptr-s_ptr);
+	t_str[e_ptr-s_ptr] = 0;
+	mime_internal_HdrParseMailboxHost(t_str, addr); /* set Host and Mailbox */
+	nmFree(t_str, (e_ptr-s_ptr)+1);
+
+	/** Now, lets go through and see if we can find a displayable name **/
+	if ((s_ptr = strchr(buf, '"')))
+	    {
+	    s_ptr++;
+	    if ((e_ptr = strchr(s_ptr, '"')))
+		{
+		len = (e_ptr-s_ptr<127?e_ptr-s_ptr:127);
+		memcpy(addr->Display, s_ptr, len);
+		addr->Display[len] = 0;
+		}
+	    else
+		{
+		return -1;
+		}
+	    }
+	else if ((s_ptr = strchr(buf, '(')))
+	    {
+	    s_ptr++;
+	    if ((e_ptr = strchr(s_ptr, ')')))
+		{
+		len = (e_ptr-s_ptr<127?e_ptr-s_ptr:127);
+		memcpy(addr->Display, s_ptr, len);
+		addr->Display[len] = 0;
+		}
+	    else
+		{
+		return -1;
+		}
+	    }
+	else
+	    {
+	    t_str = (char*)nmMalloc(strlen(buf)+1);
+	    s_ptr = strchr(buf, '<');
+	    e_ptr = strchr(s_ptr, '>');
+	    if (s_ptr == buf && e_ptr == buf+strlen(buf)) return 0;
+	    if (s_ptr > buf)
+		s_ptr--;
+	    if (e_ptr < buf+strlen(buf))
+		e_ptr++;
+	    memcpy(t_str, buf, s_ptr-buf);
+	    strcpy(t_str+(s_ptr-buf), e_ptr);
+	    strncpy(addr->Display, t_str, strlen(t_str));
+	    nmFree(t_str, strlen(buf)+1);
+	    }
+	}
+
     return 0;
     }
 
+/*
+**  int
+**  mime_internal_HdrParseMailboxHost(char *buf, EmailAddr *addr)
+**     Parameters:
+**         (char*) buf    A string that reperess a single mailbox@host address.
+**         (EmailAddr*) addr
+**                        An email address data structure that will be filled in
+**                        by this function.  This function will set the Host and
+**                        Mailbox properties if they are available in the buffer.
+**     Returns:
+**         This function parses Host and Mailbox out of the buffer and places
+**         them in the addr->Host and addr->Mailbox properties.
+*/
+int
+mime_internal_HdrParseMailboxHost(char *buf, pEmailAddr addr)
+    {
+    char *ptr;
+    int len;
+
+    mime_internal_StrTrim(buf);
+    if (!(ptr = strchr(buf, '@')))
+	{
+	strncpy(addr->Mailbox, buf, 127);
+	addr->Mailbox[127] = 0;
+	}
+    else
+	{
+	len = (ptr-buf<127?ptr-buf:127);
+	memcpy(addr->Mailbox, buf, len);
+	addr->Mailbox[len] = 0;
+	ptr++;
+	strncpy(addr->Host, ptr, 127);
+	addr->Host[127] = 0;
+	}
+    return 0;
+    }
+
+
+/*
+**  mime_internal_PrintAddrList
+*/
+
+int
+mime_internal_PrintAddrList(pXArray ary, int level)
+    {
+    int i,j;
+    pEmailAddr itm;
+
+    for (i=0; i < ary->nItems; i++)
+	{
+	itm = (pEmailAddr)xaGetItem(ary, i);
+	for (j=0; j < level; j++)
+	    {
+	    printf("   ");
+	    }
+	if (itm->Group == NULL)
+	    {
+	    printf("H[%s] M[%s] P[%s]\n", itm->Host, itm->Mailbox, itm->Display);
+	    }
+	else
+	    {
+	    printf("GROUP[%s]\n", itm->Display);
+	    mime_internal_PrintAddrList(itm->Group, level+1);
+	    }
+	}
+    return 0;
+    }
 
 /*  mime_internal_Unquote
 **
@@ -484,7 +785,6 @@ int
 mime_internal_SetMIMEVersion(pMimeData inf, char *buf)
     {
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetMIMEVersion() called.\n");
-    mime_internal_StrTrim(buf);
     strncpy(inf->Message->MIMEVersion, buf, 15);
     inf->Message->MIMEVersion[15] = 0;
 
@@ -507,7 +807,6 @@ mime_internal_SetDate(pMimeData inf, char *buf)
     {
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetDate() called.\n");
     /** Get the date **/
-    mime_internal_StrTrim(buf);
 
     /** FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME:
      **   objDataToDateTime does not currently behave properly.  When that function
@@ -529,7 +828,6 @@ mime_internal_SetSubject(pMimeData inf, char *buf)
     {
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetSubject() called.\n");
     /** Get the date **/
-    mime_internal_StrTrim(buf);
     strncpy(inf->Message->Subject, buf, 79);
     inf->Message->Subject[79] = 0;
 
@@ -577,7 +875,11 @@ mime_internal_SetCc(pMimeData inf, char *buf)
 int
 mime_internal_SetTo(pMimeData inf, char *buf)
     {
+    XArray xary;
+
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetTo() called.\n");
+    xaInit(&xary, sizeof(EmailAddr));
+    mime_internal_HdrParseAddrList(buf, &xary);
     if (MIME_DEBUG & (MIME_DBG_FUNC2 | MIME_DBG_FUNCEND)) fprintf(stderr, "MIME (2): mime_internal_SetTo() closing.\n");
     return 0;
     }
@@ -592,7 +894,6 @@ mime_internal_SetTransferEncoding(pMimeData inf, char *buf)
     {
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetTransferEncoding() called.\n");
 
-    mime_internal_StrTrim(buf);
     strncpy(inf->Message->TransferEncoding, buf, 31);
     inf->Message->TransferEncoding[31] = 0;
 
@@ -663,7 +964,6 @@ mime_internal_SetContentType(pMimeData inf, char *buf)
     if (MIME_DEBUG & MIME_DBG_FUNC2) fprintf(stderr, "MIME (2): mime_internal_SetContentType() called.\n");
 
     /** Get the disp main type and subtype **/
-    if (!(ptr=strtok_r(buf, ": ", &buf))) return 0;
     if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
     if ((cptr=strchr(ptr,'/')))
 	{
@@ -694,8 +994,8 @@ mime_internal_SetContentType(pMimeData inf, char *buf)
 	while (*ptr == ' ') ptr++;
 	if (!mime_internal_StrFirstCaseCmp(ptr, "boundary"))
 	    {
-	    strncpy(inf->Message->PartBoundary, mime_internal_Unquote(cptr), 79);
-	    inf->Message->PartBoundary[79] = 0;
+	    strncpy(inf->Message->Boundary, mime_internal_Unquote(cptr), 79);
+	    inf->Message->Boundary[79] = 0;
 	    }
 	else if (!mime_internal_StrFirstCaseCmp(ptr, "name"))
 	    {
@@ -712,8 +1012,8 @@ mime_internal_SetContentType(pMimeData inf, char *buf)
 	    }
 	else if (!mime_internal_StrFirstCaseCmp(ptr, "subject"))
 	    {
-	    strncpy(inf->Message->PartSubject, mime_internal_Unquote(cptr), 79);
-	    inf->Message->PartSubject[79] = 0;
+	    strncpy(inf->Message->Subject, mime_internal_Unquote(cptr), 79);
+	    inf->Message->Subject[79] = 0;
 	    }
 	else if (!mime_internal_StrFirstCaseCmp(ptr, "charset"))
 	    {
@@ -727,9 +1027,9 @@ mime_internal_SetContentType(pMimeData inf, char *buf)
 	printf("MIME Parser (Content-Type)\n");
 	printf("  TYPE:       : \"%s\"\n", TypeStrings[inf->Message->ContentMainType]);
 	printf("  SUBTYPE     : \"%s\"\n", inf->Message->ContentSubType);
-	printf("  BOUNDARY    : \"%s\"\n", inf->Message->PartBoundary);
+	printf("  BOUNDARY    : \"%s\"\n", inf->Message->Boundary);
 	printf("  NAME        : \"%s\"\n", inf->Message->PartName);
-	printf("  SUBJECT     : \"%s\"\n", inf->Message->PartSubject);
+	printf("  SUBJECT     : \"%s\"\n", inf->Message->Subject);
 	printf("  CHARSET     : \"%s\"\n", inf->Message->Charset);
 	}
 
@@ -759,9 +1059,9 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
     inf->Message->ContentDispFilename[0] = 0;
     inf->Message->ContentMainType = 0;
     inf->Message->ContentSubType[0] = 0;
-    inf->Message->PartBoundary[0] = 0;
+    inf->Message->Boundary[0] = 0;
     inf->Message->PartName[0] = 0;
-    inf->Message->PartSubject[0] = 0;
+    inf->Message->Subject[0] = 0;
     inf->Message->Charset[0] = 0;
     inf->Message->TransferEncoding[0] = 0;
     inf->Message->MIMEVersion[0] = 0;
@@ -823,7 +1123,7 @@ mime_internal_ParseMessage(pObject obj, pMimeData inf, int start, int end, int n
 		else if (!strcasecmp(hdrnme, "Date")) err = mime_internal_SetDate(inf, hdrbdy);
 		else if (!strcasecmp(hdrnme, "MIME-Version")) err = mime_internal_SetMIMEVersion(inf, hdrbdy);
 
-		if (err <= 0)
+		if (err < 0)
 		    {
 		    if (MIME_DEBUG & MIME_DBG_HDRPARSE) fprintf(stderr, "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
 		    }
