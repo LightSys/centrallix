@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.69 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.70 2005/03/01 07:08:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.70  2005/03/01 07:08:26  gbeeley
+    - don't activate the serialized loading until after startup() finishes
+      running.
+
     Revision 1.69  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -650,7 +654,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "window_current","null",0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_loadqueue", "new Array()", 0);
-	htrAddScriptGlobal(s, "pg_loadqueue_busy", "false", 0);
+	htrAddScriptGlobal(s, "pg_loadqueue_busy", "true", 0);
 	htrAddScriptGlobal(s, "pg_debug_log", "null", 0);
 	htrAddScriptGlobal(s, "pg_isloaded", "false", 0);
 	htrAddScriptGlobal(s, "pg_username", "null", 0);
@@ -828,8 +832,6 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");
 	    }
 	
-	/** for debugging - make sure the tree's being built right **/
-
 	return 0;
     }
 

@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.56 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: ht_render.c,v 1.57 2005/03/01 07:08:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.57  2005/03/01 07:08:25  gbeeley
+    - don't activate the serialized loading until after startup() finishes
+      running.
+
     Revision 1.56  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -1962,6 +1966,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	fdWrite(output,"    events();\n", 14,0,FD_U_PACKET);
 	fdWrite(output,"    expinit();\n", 15,0,FD_U_PACKET);
 	fdWrite(output,"    if(typeof(pg_status_close)=='function')pg_status_close();\n",62,0,FD_U_PACKET);
+	fdWrite(output,"    pg_serialized_load_doone();\n",32,0,FD_U_PACKET);
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 	/** Write the cleanup lines **/
