@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.9 2002/07/16 19:24:34 pfinley Exp $
+    $Id: htdrv_textarea.c,v 1.10 2002/07/19 14:54:22 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.10  2002/07/19 14:54:22  pfinley
+    - Modified the page mousedown & mouseover handlers so that the cursor ibeam
+    "can't" be clicked on (only supports the global cursor).
+    - Modified the editbox & textarea files to support the new global cursor.
+
     Revision 1.9  2002/07/16 19:24:34  pfinley
     uses the new header stylesheet function
 
@@ -165,12 +170,12 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Global for ibeam cursor layer **/
-	htrAddScriptGlobal(s, "tx_ibeam", "null", 0);
-	htrAddScriptGlobal(s, "tx_metric", "null", 0);
+	htrAddScriptGlobal(s, "text_metric", "null", 0);
 	htrAddScriptGlobal(s, "tx_current", "null", 0);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_textarea.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = tx_init(%s.layers.tx%dbase, \"%s\", %d, \"%s\");\n",

@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.22 2002/07/16 19:31:03 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.23 2002/07/19 14:54:22 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.23  2002/07/19 14:54:22  pfinley
+    - Modified the page mousedown & mouseover handlers so that the cursor ibeam
+    "can't" be clicked on (only supports the global cursor).
+    - Modified the editbox & textarea files to support the new global cursor.
+
     Revision 1.22  2002/07/16 19:31:03  lkehresman
     Added an include that I forgot earlier
 
@@ -258,13 +263,13 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Global for ibeam cursor layer **/
-	htrAddScriptGlobal(s, "eb_ibeam", "null", 0);
-	htrAddScriptGlobal(s, "eb_metric", "null", 0);
+	htrAddScriptGlobal(s, "text_metric", "null", 0);
 	htrAddScriptGlobal(s, "eb_current", "null", 0);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\", %d, \"%s\");\n",

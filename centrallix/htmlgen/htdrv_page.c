@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.30 2002/07/18 20:12:40 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.31 2002/07/19 14:54:22 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.31  2002/07/19 14:54:22  pfinley
+    - Modified the page mousedown & mouseover handlers so that the cursor ibeam
+    "can't" be clicked on (only supports the global cursor).
+    - Modified the editbox & textarea files to support the new global cursor.
+
     Revision 1.30  2002/07/18 20:12:40  lkehresman
     Added support for a loadstatus icon to be displayed, hiding the drawing
     of the visible windows.  This looks MUCH nicer when loading Kardia or
@@ -326,6 +331,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
+	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
 
 	/** Add script include to get function declarations **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
@@ -420,6 +426,12 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
+		"    if (ibeam_current && e.target == ibeam_current)\n"
+		"        {\n"
+		"        pg_curlayer = pg_curkbdlayer;\n"
+		"        pg_curarea = pg_curkbdarea;\n"
+		"        return false;\n"
+		"        }\n" 
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
 		"    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer)\n"
 		"        {\n"
@@ -433,6 +445,12 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
+		"    if (ibeam_current && e.target == ibeam_current)\n"
+		"        {\n"
+		"        pg_curlayer = pg_curkbdlayer;\n"
+		"        pg_curarea = pg_curkbdarea;\n"
+		"        return false;\n"
+		"        }\n" 
 		"    if (e.target != null && e.target.pageX != null)\n"
 		"        {\n"
 		"        pg_curlayer = e.target;\n"
@@ -447,6 +465,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
+		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
 		"    if (pg_curarea != null)\n"
 		"        {\n"
 		"        var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
