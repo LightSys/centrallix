@@ -208,6 +208,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        if (dd_current)\n"
 	"            {\n"
 	"            dd_current.PaneLayer.visibility = 'hide';\n"
+	"            dd_current.clip.height -= dd_current.PaneLayer.clip.height;\n"
+	"            pg_resize_area(dd_current.area,dd_current.clip.width+1,dd_current.clip.height+1);\n"
+	"            dd_toggle(dd_current);\n"
 	"            dd_current = null;\n"
 	"            }\n"
 	"        else\n"
@@ -218,8 +221,10 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"            if(ly.form)\n"
 	"                ly.form.FocusNotify(ly);\n"
 	"            dd_current = ly;\n"
-	"            }\n"
+	"            ly.clip.height += ly.PaneLayer.clip.height;\n"
+	"            pg_resize_area(ly.area,ly.clip.width+1,ly.clip.height+1);\n"
 	"            dd_toggle(ly);\n"
+	"            }\n"
 	"        }\n"
 	"    else if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')\n"
 	"        {\n"
@@ -257,6 +262,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"    if (dd_current && dd_current != ly && dd_current.PaneLayer != ly && (!ly.mainlayer || dd_current != ly.mainlayer))\n"
 	"        {\n"
 	"        dd_current.PaneLayer.visibility = 'hide';\n"
+	"        dd_current.clip.height -= dd_current.PaneLayer.clip.height;\n"
+	"        pg_resize_area(dd_current.area,dd_current.clip.width+1,dd_current.clip.height+1);\n"
 	"        dd_current = null;\n"
 	"        }\n"
 	"\n");
@@ -421,10 +428,20 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.32 2002/08/02 14:53:39 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.33 2002/08/05 19:20:08 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.33  2002/08/05 19:20:08  lkehresman
+    * Revamped the GUI for the DropDown to make it look cleaner
+    * Added the function pg_resize_area() so page areas can be resized.  This
+      allows the dropdown and datetime widgets to contain focus on their layer
+      that extends down.  Previously it was very kludgy, now it works nicely
+      by just extending the page area for that widget.
+    * Reworked the dropdown widget to take advantage of the resize function
+    * Added .mainlayer attributes to the editbox widget (new page functionaly
+      requires .mainlayer properties soon to be standard in all widgets).
+
     Revision 1.32  2002/08/02 14:53:39  lkehresman
     Fixed dropdown bug that was substituting the last 5 characters of images
     with "b.gif" on MOUSEUP to unpress icon buttons.  However, this wasn't doing

@@ -117,6 +117,27 @@ function pg_area(pl,x,y,w,h,cls,nm,f)
     return this;
     }
 
+/** Function to resize a given page area **/
+function pg_resize_area(a,w,h)
+    {
+    var x=a.layer.pageX+a.x;
+    var y=a.layer.pageY+a.y;
+    var tl=document.layers.pgtop;
+    var bl=document.layers.pgbtm;
+    var ll=document.layers.pglft;
+    var rl=document.layers.pgrgt;
+    a.width = w;
+    a.height = h;
+    tl.resizeTo(w,1);
+    bl.resizeTo(w+1,1);
+    rl.resizeTo(1,h+1);
+    ll.resizeTo(1,h);
+    tl.moveToAbsolute(x,y);
+    bl.moveToAbsolute(x,y+h);
+    ll.moveToAbsolute(x,y);
+    rl.moveToAbsolute(x+w,y);
+    }
+
 /** Function to add a new area to the arealist **/
 function pg_addarea(pl,x,y,w,h,cls,nm,f)
     {

@@ -161,8 +161,8 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	l.bg = main_bg;
 	}
     l.kind = 'eb';
-    l.document.Layer = l;
     l.document.layer = l;
+    l.mainlayer = l;
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
     l.fieldname = fieldname;

@@ -126,8 +126,15 @@ function dd_keyhandler(l,e,k)
 	}
     else if (k == 13 && dd_lastkey != 13)
 	{
-	dd_select_item(this,this.SelectedItem);
-	dd_unhilight_item(this,this.SelectedItem);
+	if (this.PaneLayer.visibility == 'hide')
+	    {
+	    alert("Drop Down");
+	    }
+	else
+	    {
+	    dd_select_item(this,this.SelectedItem);
+	    dd_unhilight_item(this,this.SelectedItem);
+	    }
 	}
     dd_lastkey = k;
     return false;
@@ -166,8 +173,13 @@ function dd_select_item(l,i)
 	l.form.DataNotify(l);
 	cn_activate(l, "DataChange");
 	}
-    l.PaneLayer.visibility = 'hide';
-    dd_current = null;
+    if (l.PaneLayer.visibility == 'inherit')
+	{
+	l.clip.height -= l.PaneLayer.clip.height;
+	pg_resize_area(l.area,l.clip.width+1,l.clip.height+1);
+	l.PaneLayer.visibility = 'hide';
+	dd_current = null;
+	}
     }
 
 function dd_getfocus()
@@ -272,18 +284,6 @@ function dd_create_pane(l)
     p.document.write("  <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>");
     p.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(l.h2-2)+" width=1></TD>");
     p.document.write("  <TD valign=top>");
-    p.document.write("  <TABLE border=0 cellpadding=0 cellspacing=0 width="+(l.w-2)+" height="+(l.h2-2)+">");
-    p.document.write("  <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>");
-    p.document.write("    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(l.w-4)+"></TD>");
-    p.document.write("    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>");
-    p.document.write("  <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(l.h2-4)+" width=1></TD>");
-    p.document.write("    <TD valign=top>");
-    p.document.write("    </TD>");
-    p.document.write("    <TD><IMG SRC=/sys/images/white_1x1.png height="+(l.h2-4)+" width=1></TD></TR>");
-    p.document.write("  <TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>");
-    p.document.write("    <TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(l.w-4)+"></TD>");
-    p.document.write("    <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>");
-    p.document.write("  </TABLE>");
     p.document.write("  </TD>");
     p.document.write("  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(l.h2-2)+" width=1></TD></TR>");
     p.document.write("<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>");
@@ -309,9 +309,9 @@ function dd_create_pane(l)
 	p.BarLayer.kind = 'dd_sc';
 	p.BarLayer.x = l.w-20; p.BarLayer.y = 2;
 	p.BarLayer.visibility = 'inherit';
+	p.BarLayer.mainlayer = l;
 	var pd = p.BarLayer.document;
 	pd.layer = p.BarLayer;
-	pd.mainlayer = l;
 	pd.write('<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>');
 	pd.write('<TR><TD><IMG name=u src=/sys/images/ico13b.gif></TD></TR>');
 	pd.write('<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>');
@@ -327,10 +327,10 @@ function dd_create_pane(l)
 	pd.images[0].thum = pd.images[1].thum = pd.images[2].thum = p.TmbLayer;
 	p.TmbLayer.x = l.w-20; p.TmbLayer.y = 20;
 	p.TmbLayer.visibility = 'inherit';
+	p.TmbLayer.mainlayer = l;
 	var pd = p.TmbLayer.document;
 	pd.write('<IMG src=/sys/images/ico14b.gif NAME=t>');
 	pd.close();
-	pd.mainlayer = l;
 	pd.images[0].mainlayer = l;
 	pd.images[0].thum = p.TmbLayer;
 	pd.images[0].kind = 'dd_sc';
@@ -411,7 +411,7 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.mainlayer = l;
     l.kind = 'dd';
     htutil_tag_images(l.document,'dd',l,l);
-    pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dd', 'dd', 0);
+    l.area = pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dd', 'dd', 0);
     if (fm_current) fm_current.Register(l);
     return l;
     }

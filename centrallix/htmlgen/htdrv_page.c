@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.41 2002/07/31 13:35:58 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.42 2002/08/05 19:20:08 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.42  2002/08/05 19:20:08  lkehresman
+    * Revamped the GUI for the DropDown to make it look cleaner
+    * Added the function pg_resize_area() so page areas can be resized.  This
+      allows the dropdown and datetime widgets to contain focus on their layer
+      that extends down.  Previously it was very kludgy, now it works nicely
+      by just extending the page area for that widget.
+    * Reworked the dropdown widget to take advantage of the resize function
+    * Added .mainlayer attributes to the editbox widget (new page functionaly
+      requires .mainlayer properties soon to be standard in all widgets).
+
     Revision 1.41  2002/07/31 13:35:58  lkehresman
     * Made x.mainlayer always point to the top layer in dropdown
     * Fixed a netscape crash bug with the event stuff from the last revision of dropdown
@@ -496,6 +506,11 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"                }\n"
 		"            break;\n"
 		"            }\n"
+		"        }\n"
+		"    if (e.target != null && pg_curarea != null && ly.mainlayer != pg_curarea.layer)\n"
+		"        {\n"
+		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
+		"        pg_curarea = null;\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOUT", "pg",
 		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
@@ -510,7 +525,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        return false;\n"
 		"        }\n" 
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
-		"    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer)\n"
+		"    if (e.target != null && pg_curarea != null && ly.mainlayer != pg_curarea.layer)\n"
 		"        {\n"
 		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
@@ -541,6 +556,11 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
+		"    if (e.target != null && pg_curarea != null && ly.mainlayer && ly.mainlayer != pg_curarea.layer)\n"
+		"        {\n"
+		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
+		"        pg_curarea = null;\n"
+		"        }\n"
 		"    if (pg_curarea != null)\n"
 		"        {\n"
 		"        var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
