@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.7 2003/05/30 17:39:52 gbeeley Exp $
+    $Id: obj_trx.c,v 1.8 2003/07/15 19:42:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.8  2003/07/15 19:42:34  gbeeley
+    Don't try calling driver PresentationHints function if the driver
+    does not implement that function.
+
     Revision 1.7  2003/05/30 17:39:52  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -916,6 +920,7 @@ pObjPresentationHints
 oxtPresentationHints(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (!(this->Obj->TLowLevelDriver->PresentationHints)) return NULL;
     return this->Obj->TLowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);
     }
 
