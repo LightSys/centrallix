@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.4 2002/03/13 00:38:23 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.5 2002/03/13 02:50:38 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.5  2002/03/13 02:50:38  lkehresman
+    Dropdown now works!  Everything except the form functions.. that is to come
+    shortly.
+
     Revision 1.4  2002/03/13 00:38:23  lkehresman
     Layer improvements for dropdown widget.  You can now click anywhere on the
     layer and get the dropdown to appear.
@@ -168,17 +172,25 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"function dd_disable() {\n"
 	"}\n", 0);
    
+   /** Disable function **/
+   htrAddScriptFunction(s, "dd_select_item", "\n"
+	"function dd_select_item(itemLayer, l) {\n"
+	"   l.document.iLayer.document.write('<table height='+(l.defaultHeight-2)+'><tr><td valign=middle>'+itemLayer.label+'</td></tr></table>');\n"
+	"   l.document.iLayer.document.layer = l;\n"
+	"   l.document.iLayer.document.close();\n"
+	"}\n", 0);
+   
    /** Adds an item to the dropdown layer l **/
    htrAddScriptFunction(s, "dd_additem", "\n"
 	"function dd_additem(l, label, value) {\n"
 	"   l.labels.push(label);\n"
 	"   l.values.push(value);\n"
 	"   tmpLayer = new Layer(1024, l.document.fullLayer);"
-	"   tmpLayer.name = 'value';\n"
+	"   tmpLayer.label = label;\n"
 	"   tmpLayer.value = value;\n"
-	"   tmpLayer.kind = 'dropdown';"
+	"   tmpLayer.kind = 'dropdownitem';"
 	"   tmpLayer.document.write(label);\n"
-	"   tmpLayer.document.layer = l.document.layer;\n"
+	"   tmpLayer.document.layer = tmpLayer;\n"
 	"   tmpLayer.document.close();\n"
 	"   tmpLayer.clip.width = l.defaultWidth - l.defaultHeight;\n"
 	"   tmpLayer.clip.height = l.defaultHeight - 5;\n"
@@ -204,9 +216,16 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.itemLayers = new Array();\n"
 	"   l.defaultWidth = w;\n"
 	"   l.defaultHeight = h;\n"
-	"   l.name='mainLayer';\n"
+	"   l.document.iLayer = new Layer(1024);\n"
+	"   l.document.iLayer.visibility = 'visible';\n"
+	"   l.document.iLayer.pageX = l.pageX;\n"
+	"   l.document.iLayer.pageY = l.pageY;\n"
+	"   l.document.iLayer.kind = 'dropdown';\n"
+	"   l.document.iLayer.bgColor = l.bgColor;\n"
+	"   l.document.iLayer.clip.width = l.defaultWidth-20;\n"
+	"   l.document.iLayer.clip.height = l.defaultHeight-2;\n"
+	"   l.document.iLayer.document.layer = l;\n"
 	"   l.document.fullLayer = new Layer(1024);\n"
-	"   l.document.fullLayer.name='fullLayer';\n"
 	"   l.document.fullLayer.bgColor = '#ffffff';\n"
 	"   l.document.fullLayer.clip.width = w;\n"
 	"   l.document.fullLayer.visibility = 'hidden';\n"
@@ -227,6 +246,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
 	"   if (dd_current != null && targetLayer != dd_current) {\n"
 	"      dd_current.document.fullLayer.visibility = 'hide';\n"
+	"      if (targetLayer.kind == 'dropdownitem') {\n"
+	"         dd_select_item(targetLayer, dd_current);\n"
+	"      }\n"
 	"      dd_current = null;\n"
 	"   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
 	"      if (targetLayer.enabled) {\n"
