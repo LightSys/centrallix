@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.11 2002/05/31 01:26:41 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.12 2002/06/01 19:49:30 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.12  2002/06/01 19:49:30  lkehresman
+    A couple changes that provide visual enhancements to the window widget
+
     Revision 1.11  2002/05/31 01:26:41  lkehresman
     * modified the window header HTML to make it look nicer
     * fixed a truncation problem with the image button
@@ -422,7 +425,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** HTML body <DIV> elements for the layers. **/
 	/** This is the top white edge of the window **/
-	snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"wn%dbase\"><TABLE %s border=0 cellspacing=0 cellpadding=0>\n",id,bgnd);
+	snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"wn%dbase\"><TABLE border=0 cellspacing=0 cellpadding=0>\n",id);
 	htrAddBodyItem(s, sbuf);
 	snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	htrAddBodyItem(s, sbuf);
@@ -481,7 +484,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** This is the left side of the window. **/
-	snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
+	snprintf(sbuf,HT_SBUF_SIZE,"<TR %s><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n", bgnd, bh);
 	htrAddBodyItem(s, sbuf);
 	if (!is_dialog_style)
 	    {
