@@ -22,7 +22,7 @@ function wn_init(l,ml,h)
 	}
     l.document.layer = l;
     l.mainlayer = l;
-    l.ml = ml;
+    l.ContentLayer = ml;
     ml.document.layer = ml;
     ml.mainlayer = l;
     l.orig_height = h;

@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.23 2002/07/30 12:45:44 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.24 2002/08/01 19:22:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.24  2002/08/01 19:22:25  lkehresman
+    Renamed what was previously known as mainlayer (aka ml) to be ContentLayer
+    so that it is more descriptive and doesn't conflict with other mainlayer
+    properties.
+
     Revision 1.23  2002/07/30 12:45:44  lkehresman
     * Added standard events to window
     * Reworked the window layer properties a bit so they are standard
@@ -468,8 +473,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	snprintf(sbuf,HT_SBUF_SIZE,"%s.ml.document",name);
-	snprintf(sbuf2,HT_SBUF_SIZE,"%s.ml",name);
+	snprintf(sbuf,HT_SBUF_SIZE,"%s.ContentLayer.document",name);
+	snprintf(sbuf2,HT_SBUF_SIZE,"%s.ContentLayer",name);
 
 	snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer.document",name);
 	snprintf(sbuf4,HT_SBUF_SIZE,"%s.mainlayer",name);

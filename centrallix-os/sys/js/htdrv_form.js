@@ -264,9 +264,9 @@ function form_show_3bconfirm()
     {
     var discard,save,cancel;
     if(cn_browser.mozilla)
-	var lay=this._3bconfirmwindow.mainLayer.getElementsByTagName('div');
+	var lay=this._3bconfirmwindow.ContentLayer.getElementsByTagName('div');
     else if(cn_browser.netscape47)
-	var lay=this._3bconfirmwindow.mainLayer.layers;
+	var lay=this._3bconfirmwindow.ContentLayer.layers;
     else
 	return false;
     for(var i in lay)
@@ -316,7 +316,7 @@ function form_show_3bconfirm()
 /** set modal and make the user do something
  **   modal will be unset and we'll get control back via callbacks **/
     this._3bconfirmwindow.ActionSetVisibility(1);
-    pg_setmodal(this._3bconfirmwindow.mainLayer)
+    pg_setmodal(this._3bconfirmwindow.ContentLayer)
     
     }
 
