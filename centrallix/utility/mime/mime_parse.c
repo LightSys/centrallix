@@ -690,17 +690,19 @@ libmime_PartRead(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int off
     static char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     int size;
     char *a_buf, *b_buf, a_ch, *ptr;
-    int a_count=0, a_bufcnt=0, a_pos=0;
-    int b_count=0, i, buf_cnt=0;
+    int a_count=0, a_bufcnt=0, a_pos=0;  /**  NOTE: a_* vars are messing with the encoded strings  **/
+    int b_count=0, i, buf_cnt=0;         /**        b_* vars are messing with the DEcoded strings  **/
 
     a_pos = msg->MsgSeekStart;
     switch (msg->TransferEncoding)
 	{
 	/** 7BIT AND 8BIT ENCODING **/
+	/** BINARY ENCODING **/
 	/** QUOTED-PRINTABLE ENCODING **/
 	case MIME_ENC_7BIT:
 	case MIME_ENC_8BIT:
-	case MIME_ENC_QP:  /**  Not currently supported, just print the text **/
+	case MIME_ENC_BINARY:  /**  Split this off to its own if needed at some point  **/
+	case MIME_ENC_QP:  /**  Not currently supported, just print the text  **/
 	    if (msg->MsgSeekStart+offset > msg->MsgSeekEnd)
 		return 0;
 	    if (msg->MsgSeekStart+offset+maxcnt > msg->MsgSeekEnd)
@@ -770,14 +772,6 @@ libmime_PartRead(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int off
 		}
 	    nmFree(a_buf, 5);
 	    nmFree(b_buf, 4);
-	    break;
-	/** BINARY ENCODING **/
-	case MIME_ENC_BINARY:
-	    if (msg->MsgSeekStart+offset > msg->MsgSeekEnd)
-		return 0;
-	    if (msg->MsgSeekStart+offset+maxcnt > msg->MsgSeekEnd)
-		maxcnt = msg->MsgSeekEnd - (msg->MsgSeekStart + offset);
-	    buf_cnt = objRead(obj->Prev, buffer, maxcnt, msg->MsgSeekStart+offset, FD_U_SEEK);
 	    break;
 	}
 

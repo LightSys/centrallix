@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.15 2002/08/27 20:14:15 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.16 2002/08/27 20:42:39 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.16  2002/08/27 20:42:39  lkehresman
+    * Made mimeRead() take advantage of the libmime_PartRead() function that
+      decodes the part on the fly
+    * Added some documentation to libmime_PartRead()
+    * Removed unnecessary code in the binary encoding
+
     Revision 1.15  2002/08/27 20:14:15  lkehresman
     Added (unoptimized) support for multipart message reading including
     decoding of encoded parts.  No quoted-printable support yet, that will
@@ -295,14 +301,14 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     **  We can read content from any of the five discrete top-level media types,
     **  but not from the two composite media types (rfc2046 section 3)
     */
-    if (inf->Header->ContentMainType != MIME_TYPE_MULTIPART &&
-        inf->Header->ContentMainType != MIME_TYPE_MESSAGE)
+    if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART ||
+        inf->Header->ContentMainType == MIME_TYPE_MESSAGE)
 	{
 	if (!offset && !inf->InternalSeek)
-	    inf->InternalSeek = inf->Header->MsgSeekStart;
+	    inf->InternalSeek = 0;
 	else if (offset)
-	    inf->InternalSeek = inf->Header->MsgSeekStart + offset;
-	size = objRead(inf->Obj->Prev, buffer, maxcnt, inf->InternalSeek, FD_U_SEEK);
+	    inf->InternalSeek = offset;
+	size = libmime_PartRead(inf->Obj, inf->Header, buffer, maxcnt, inf->InternalSeek);
 	inf->InternalSeek += size;
 	return size;
 	}
