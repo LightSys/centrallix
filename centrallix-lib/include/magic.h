@@ -26,12 +26,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.1 2001/08/13 18:04:19 gbeeley Exp $
+    $Id: magic.h,v 1.2 2001/09/28 20:00:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
-    Revision 1.1  2001/08/13 18:04:19  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/28 20:00:18  gbeeley
+    Modified magic number system syntax slightly to eliminate semicolon
+    from within the macro expansions of the ASSERT macros.
+
+    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
     Initial checkin of centrallix-lib
@@ -42,16 +46,16 @@
 
 #ifdef 	DBMAGIC
 
-#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y)),(*((int*)(0)) = *((int*)(0)))));
-#define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(0)) = *((int*)(0)))));
+#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y)),(*((int*)(0)) = *((int*)(0)))))
+#define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(0)) = *((int*)(0)))))
 #define ISMAGIC(x,y) (((pMagicHdr)(x))->Magic == (y))
 #define ISNTMAGIC(x,y) (((pMagicHdr)(x))->Magic != (y))
 #define SETMAGIC(x,y) (((pMagicHdr)(x))->Magic = (y))
 
 #else	/* defined DBMAGIC */
 
-#define ASSERTMAGIC(x,y)
-#define ASSERTNOTMAGIC(x,y)
+#define ASSERTMAGIC(x,y) (y)
+#define ASSERTNOTMAGIC(x,y) (y)
 #define ISMAGIC(x,y) (1)
 #define ISNTMAGIC(x,y) (1)
 #define SETMAGIC(x,y) (y)
@@ -73,6 +77,7 @@ typedef struct
 #define MGK_EXPRESSION	0x12340405	/* expression.h::Expression */
 #define MGK_PRTOBJSTRM	0x12340502	/* prtmgmt_new.h::PrtObjStream */
 #define MGK_PRTOBJSSN	0x1234058e	/* prtmgmt_new.h::PrtSession */
+#define MGK_STRUCTINF	0x123406fd	/* stparse_new.h::StructInf */
 
 
 #endif /* not defined _MAGIC_H */

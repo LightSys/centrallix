@@ -34,12 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.1 2001/08/13 18:04:22 gbeeley Exp $
+    $Id: newmalloc.c,v 1.2 2001/09/28 20:00:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
-    Revision 1.1  2001/08/13 18:04:22  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/28 20:00:21  gbeeley
+    Modified magic number system syntax slightly to eliminate semicolon
+    from within the macro expansions of the ASSERT macros.
+
+    Revision 1.1.1.1  2001/08/13 18:04:22  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:02:53  gbeeley
     Initial checkin of centrallix-lib
@@ -165,7 +169,7 @@ nmMalloc(size)
 		{
 		nmMallocHits++;
 	        tmp = lists[size];
-		ASSERTMAGIC(tmp,MGK_FREEMEM)
+		ASSERTMAGIC(tmp,MGK_FREEMEM);
 	        lists[size]=lists[size]->Next;
 		listcnt[size]--;
 		}
@@ -191,7 +195,7 @@ nmFree(ptr,size)
     {
     pOverlay tmp;
 
-    	ASSERTNOTMAGIC(ptr,MGK_FREEMEM)
+    	ASSERTNOTMAGIC(ptr,MGK_FREEMEM);
 
     	if (!ptr) return;
 
@@ -205,7 +209,7 @@ nmFree(ptr,size)
 	    tmp = lists[size];
 	    while(tmp)
 	        {
-		ASSERTMAGIC(tmp,MGK_FREEMEM)
+		ASSERTMAGIC(tmp,MGK_FREEMEM);
 		if (tmp == OVERLAY(ptr))
 		    {
 		    printf("Duplicate nmFree()!!!  Size = %d, Address = %8.8x\n",size,(unsigned int)ptr);
@@ -283,7 +287,7 @@ nmDebug()
 		blk = blknames[i];
 		while(blk)
 		    {
-		    ASSERTMAGIC(blk,MGK_REGISBLK)
+		    ASSERTMAGIC(blk,MGK_REGISBLK);
 		    printf("%s ", blk->Name);
 		    blk = blk->Next;
 		    }
@@ -317,7 +321,7 @@ nmDeltas()
 		blk = blknames[i];
 		while(blk)
 		    {
-		    ASSERTMAGIC(blk,MGK_REGISBLK)
+		    ASSERTMAGIC(blk,MGK_REGISBLK);
 		    printf("%s ", blk->Name);
 		    blk = blk->Next;
 		    }

@@ -29,12 +29,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.1 2001/08/13 18:04:20 gbeeley Exp $
+    $Id: mtlexer.c,v 1.2 2001/09/28 20:00:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
-    Revision 1.1  2001/08/13 18:04:20  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/28 20:00:21  gbeeley
+    Modified magic number system syntax slightly to eliminate semicolon
+    from within the macro expansions of the ASSERT macros.
+
+    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:02:52  gbeeley
     Initial checkin of centrallix-lib
@@ -180,7 +184,7 @@ int
 mlxCloseSession(pLxSession this)
     {
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
     	/** Need to do an 'unread' on the buffer? **/
 	if (this->Flags & MLX_F_NODISCARD && this->InpCnt > 0)
@@ -203,7 +207,7 @@ mlxReadLine(pLxSession s, char* buf, int maxlen)
     int got_newline=0;
     int bufpos = 0;
 
-    	ASSERTMAGIC(s,MGK_LXSESSION)
+    	ASSERTMAGIC(s,MGK_LXSESSION);
 
 	/** Keep piling data into buffer until we get a NL or buf full **/
 	while(!got_newline && bufpos < maxlen-1)
@@ -268,7 +272,7 @@ mlxNextToken(pLxSession this)
     int invert;
     int i,got_dot;
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
 	/** Token on hold?  If so, return current one. **/
 	if (this->Hold)
@@ -748,7 +752,7 @@ mlxStringVal(pLxSession this, int* alloc)
     char* bptr;
     char* nptr;
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
 	/** Error or non-string / non-keyword / non-int? **/
 	if (this->TokType == MLX_TOK_ERROR) 
@@ -884,7 +888,7 @@ int
 mlxIntVal(pLxSession this)
     {
 	
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
 	/** Error or non-int? **/
 	if (this->TokType != MLX_TOK_INTEGER && 
@@ -902,7 +906,7 @@ double
 mlxDoubleVal(pLxSession this)
     {
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
 	/** Error or non-int? **/
 	if (this->TokType != MLX_TOK_INTEGER && 
@@ -926,7 +930,7 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
     char ch;
     char* sptr;
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
 	/** Maybe buffer smaller than tok string? **/
 	if (maxlen-1 < this->TokStrCnt)
@@ -1026,7 +1030,7 @@ int
 mlxHoldToken(pLxSession this)
     {
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
 	/** Note that token is held. **/
 	this->Hold = 1;
@@ -1043,7 +1047,7 @@ int
 mlxSetOptions(pLxSession this, int options)
     {
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
     	this->Flags |= (options & (MLX_F_ICASE | MLX_F_IFSONLY | MLX_F_LINEONLY | MLX_F_SYMBOLMODE));
 
@@ -1057,7 +1061,7 @@ int
 mlxUnsetOptions(pLxSession this, int options)
     {
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
     	this->Flags &= ~(options & (MLX_F_ICASE | MLX_F_IFSONLY | MLX_F_LINEONLY | MLX_F_SYMBOLMODE));
 
@@ -1072,7 +1076,7 @@ int
 mlxSetReservedWords(pLxSession this, char** res_words)
     {
 
-    	ASSERTMAGIC(this,MGK_LXSESSION)
+    	ASSERTMAGIC(this,MGK_LXSESSION);
 
     	/** Set the words **/
 	this->ReservedWords = res_words;
@@ -1088,7 +1092,7 @@ mlxSetReservedWords(pLxSession this, char** res_words)
 int
 mlxNoteError(pLxSession this)
     {
-    ASSERTMAGIC(this,MGK_LXSESSION)
+    ASSERTMAGIC(this,MGK_LXSESSION);
     mssError(0,"MLX","Error near '%s'", this->TokString);
     return 0;
     }
@@ -1100,7 +1104,7 @@ mlxNoteError(pLxSession this)
 int
 mlxNotePosition(pLxSession this)
     {
-    ASSERTMAGIC(this,MGK_LXSESSION)
+    ASSERTMAGIC(this,MGK_LXSESSION);
     mssError(0,"MLX","Error at line %d", this->LineNumber);
     return 0;
     }
