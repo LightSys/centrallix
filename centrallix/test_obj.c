@@ -64,10 +64,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.32 2004/07/02 00:23:24 mmcgill Exp $
+    $Id: test_obj.c,v 1.33 2004/08/30 03:20:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.33  2004/08/30 03:20:41  gbeeley
+    - objInfo() can return NULL if it is not supported for an object.
+
     Revision 1.32  2004/07/02 00:23:24  mmcgill
     Changes include, but are not necessarily limitted to:
         - fixed test_obj hints printing, added printing of hints to show command
@@ -569,7 +572,7 @@ int handle_tab(int unused_1, int unused_2)
 
     /** open the query **/
     info = objInfo(obj);
-    if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
+    if (!info || info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
 	qry = objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL);
     else
 	qry = NULL;
@@ -639,7 +642,7 @@ int handle_tab(int unused_1, int unused_2)
 	    {
 	    /** see if there are any subobjects -- only need to fetch 1 to check **/
 	    info = objInfo(obj2);
-	    if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
+	    if (!info || info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
 		qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL);
 	    else
 		qry=NULL;
