@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.24 2004/02/24 20:11:01 gbeeley Exp $
+    $Id: obj.h,v 1.25 2004/05/07 01:18:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.25  2004/05/07 01:18:23  gbeeley
+    - support for StyleMask addition to the Style hint, which allows the
+      determination of which hints have been set, not just whether they are on
+      and off.  Also added 'negative' styles, e.g., 'allownull' vs 'notnull'.
+
     Revision 1.24  2004/02/24 20:11:01  gbeeley
     - fixing some date/time related problems
     - efficiency improvement for net_http allowing browser to actually
@@ -291,6 +296,7 @@ typedef struct _PH
     int			VisualLength2;	/* used primarily for # lines in a multiline edit */
     unsigned int	BitmaskRO;	/* which bits, if any, in bitmask are read-only */
     int			Style;		/* style information - bitmask OBJ_PH_STYLE_xxx */
+    int			StyleMask;	/* which style information is actually supplied */
     int			GroupID;	/* for grouping fields together.  -1 if not grouped */
     char*		GroupName;	/* Name of group, or NULL if no group or group named elsewhere */
     int			OrderID;	/* allows for reordering the fields (e.g., tab order) */

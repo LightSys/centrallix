@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2004 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -40,10 +40,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.4 2004/05/04 18:21:05 gbeeley Exp $
+    $Id: hints.c,v 1.5 2004/05/07 01:18:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.5  2004/05/07 01:18:23  gbeeley
+    - support for StyleMask addition to the Style hint, which allows the
+      determination of which hints have been set, not just whether they are on
+      and off.  Also added 'negative' styles, e.g., 'allownull' vs 'notnull'.
+
     Revision 1.4  2004/05/04 18:21:05  gbeeley
     - moving location of PTOD definition
 
@@ -117,6 +122,54 @@ hnt_internal_GetString(pObject obj, char* attrname)
 	str = nmSysStrdup(str);
 
     return str;
+    }
+
+
+/*** hnt_internal_SetStyleItem() - sets a style item and updates the hints
+ *** structure's Style and StyleMask accordingly.
+ ***/
+int
+hnt_internal_SetStyleItem(pObjPresentationHints ph, char* style)
+    {
+    static char* style_names[] = {  "bitmask","list","buttons","notnull",
+				    "strnull","grouped","readonly","hidden",
+				    "password","multiline","highlight","uppercase",
+				    "lowercase","tabpage","sepwindow","alwaysdef",
+				    NULL };
+    static int style_ids[] = {	OBJ_PH_STYLE_BITMASK, OBJ_PH_STYLE_LIST, OBJ_PH_STYLE_BUTTONS, OBJ_PH_STYLE_NOTNULL,
+				OBJ_PH_STYLE_STRNULL, OBJ_PH_STYLE_GROUPED, OBJ_PH_STYLE_READONLY, OBJ_PH_STYLE_HIDDEN,
+				OBJ_PH_STYLE_PASSWORD, OBJ_PH_STYLE_MULTILINE, OBJ_PH_STYLE_HIGHLIGHT, OBJ_PH_STYLE_UPPERCASE,
+				OBJ_PH_STYLE_LOWERCASE, OBJ_PH_STYLE_TABPAGE, OBJ_PH_STYLE_SEPWINDOW, OBJ_PH_STYLE_ALWAYSDEF };
+    static char* nstyle_names[] = { "nobitmask","nolist","nobuttons","allownull",
+				    "nostrnull","nogrouped","modifiable","visible",
+				    "nopassword","singleline","nohighlight","mixedcase",
+				    "mixedcase","notabpage","nosepwindow","noalwaysdef",
+				    NULL };
+    int i;
+
+	/** loop through styles, pick out the ones that apply and set em 
+	 ** Don't break out of loop in second case since the style 
+	 ** "mixedcase" negates two other styles - uppercase and lowercase.
+	 **/
+	for(i=0;i<sizeof(style_ids)/sizeof(int);i++)
+	    {
+	    if (!strcmp(style, style_names[i]))
+		{
+		ph->Style |= style_ids[i];
+		ph->StyleMask |= style_ids[i];
+		return 0;
+		}
+	    }
+	for(i=0;i<sizeof(style_ids)/sizeof(int);i++)
+	    {
+	    if (!strcmp(style, nstyle_names[i]))
+		{
+		ph->Style &= ~style_ids[i];
+		ph->StyleMask |= style_ids[i];
+		}
+	    }
+
+    return 0;
     }
 
 
@@ -245,22 +298,7 @@ hntObjToHints(pObject obj)
 		}
 
 	    /** Check style settings **/
-	    if (!strcmp(ptr,"bitmask")) ph->Style |= OBJ_PH_STYLE_BITMASK;
-	    else if (!strcmp(ptr,"list")) ph->Style |= OBJ_PH_STYLE_LIST;
-	    else if (!strcmp(ptr,"buttons")) ph->Style |= OBJ_PH_STYLE_BUTTONS;
-	    else if (!strcmp(ptr,"notnull")) ph->Style |= OBJ_PH_STYLE_NOTNULL;
-	    else if (!strcmp(ptr,"strnull")) ph->Style |= OBJ_PH_STYLE_STRNULL;
-	    else if (!strcmp(ptr,"grouped")) ph->Style |= OBJ_PH_STYLE_GROUPED;
-	    else if (!strcmp(ptr,"readonly")) ph->Style |= OBJ_PH_STYLE_READONLY;
-	    else if (!strcmp(ptr,"hidden")) ph->Style |= OBJ_PH_STYLE_HIDDEN;
-	    else if (!strcmp(ptr,"password")) ph->Style |= OBJ_PH_STYLE_PASSWORD;
-	    else if (!strcmp(ptr,"multiline")) ph->Style |= OBJ_PH_STYLE_MULTILINE;
-	    else if (!strcmp(ptr,"highlight")) ph->Style |= OBJ_PH_STYLE_HIGHLIGHT;
-	    else if (!strcmp(ptr,"uppercase")) ph->Style |= OBJ_PH_STYLE_UPPERCASE;
-	    else if (!strcmp(ptr,"lowercase")) ph->Style |= OBJ_PH_STYLE_LOWERCASE;
-	    else if (!strcmp(ptr,"tabpage")) ph->Style |= OBJ_PH_STYLE_TABPAGE;
-	    else if (!strcmp(ptr,"sepwindow")) ph->Style |= OBJ_PH_STYLE_SEPWINDOW;
-	    else if (!strcmp(ptr,"alwaysdef")) ph->Style |= OBJ_PH_STYLE_ALWAYSDEF;
+	    hnt_internal_SetStyleItem(ph, ptr);
 
 	    if (t == DATA_T_STRING || i >= od.StringVec->nStrings-1) break;
 	    i++;
@@ -415,22 +453,7 @@ objInfToHints(pStructInf inf, int data_type)
 	ph->Style = 0;
 	while(stAttrValue(stLookup(inf,"style"),NULL,&ptr,cnt) >= 0)
 	    {
-	    if (!strcmp(ptr,"bitmask")) ph->Style |= OBJ_PH_STYLE_BITMASK;
-	    else if (!strcmp(ptr,"list")) ph->Style |= OBJ_PH_STYLE_LIST;
-	    else if (!strcmp(ptr,"buttons")) ph->Style |= OBJ_PH_STYLE_BUTTONS;
-	    else if (!strcmp(ptr,"notnull")) ph->Style |= OBJ_PH_STYLE_NOTNULL;
-	    else if (!strcmp(ptr,"strnull")) ph->Style |= OBJ_PH_STYLE_STRNULL;
-	    else if (!strcmp(ptr,"grouped")) ph->Style |= OBJ_PH_STYLE_GROUPED;
-	    else if (!strcmp(ptr,"readonly")) ph->Style |= OBJ_PH_STYLE_READONLY;
-	    else if (!strcmp(ptr,"hidden")) ph->Style |= OBJ_PH_STYLE_HIDDEN;
-	    else if (!strcmp(ptr,"password")) ph->Style |= OBJ_PH_STYLE_PASSWORD;
-	    else if (!strcmp(ptr,"multiline")) ph->Style |= OBJ_PH_STYLE_MULTILINE;
-	    else if (!strcmp(ptr,"highlight")) ph->Style |= OBJ_PH_STYLE_HIGHLIGHT;
-	    else if (!strcmp(ptr,"uppercase")) ph->Style |= OBJ_PH_STYLE_UPPERCASE;
-	    else if (!strcmp(ptr,"lowercase")) ph->Style |= OBJ_PH_STYLE_LOWERCASE;
-	    else if (!strcmp(ptr,"tabpage")) ph->Style |= OBJ_PH_STYLE_TABPAGE;
-	    else if (!strcmp(ptr,"sepwindow")) ph->Style |= OBJ_PH_STYLE_SEPWINDOW;
-	    else if (!strcmp(ptr,"alwaysdef")) ph->Style |= OBJ_PH_STYLE_ALWAYSDEF;
+	    hnt_internal_SetStyleItem(ph, ptr);
 	    }
 
 	/** Check for group ID and Name **/
@@ -916,9 +939,9 @@ hntEncodeHints(pObjPresentationHints ph, pXString xs)
 	    xsConcatPrintf(xs, "%sBitmaskRO=%d", is_first?"":"&", ph->BitmaskRO);
 	    is_first = 0;
 	    }
-	if (ph->Style > 0)
+	if (ph->StyleMask > 0)
 	    {
-	    xsConcatPrintf(xs, "%sStyle=%d", is_first?"":"&", ph->Style);
+	    xsConcatPrintf(xs, "%sStyle=%d,%d", is_first?"":"&", ph->Style, ph->StyleMask);
 	    is_first = 0;
 	    }
 	if (ph->GroupID > 0)
