@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.6 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.7 2002/03/15 22:40:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.7  2002/03/15 22:40:47  gbeeley
+    Modified key input logic in the page widget to improve key debouncing
+    and make key repeat rate and delay a bit more natural and more
+    consistent across different machines and platforms.
+
     Revision 1.6  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -186,6 +191,8 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "pg_curkbdlayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_curkbdarea", "null", 0);
 	htrAddScriptGlobal(s, "pg_lastkey", "-1", 0);
+	htrAddScriptGlobal(s, "pg_lastmodifiers", "null", 0);
+	htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0);
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 
@@ -485,7 +492,21 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    return 0;\n"
 		"    }\n", 0);
-	htrAddEventHandler(s, "document", "KEYPRESS", "pg",
+	htrAddScriptFunction(s, "pg_keytimeout", "\n"
+		"function pg_keytimeout()\n"
+		"    {\n"
+		"    if (pg_lastkey != -1)\n"
+		"        {\n"
+		"        e = new Object();\n"
+		"        e.which = pg_lastkey;\n"
+		"        e.modifiers = pg_lastmodifiers;\n"
+		"        pg_keyhandler(pg_lastkey, pg_lastmodifiers, e);\n"
+		"        delete e;\n"
+		"        pg_keytimeoutid = setTimeout(pg_keytimeout, 50);\n"
+		"        }\n"
+		"    }\n", 0);
+
+	htrAddEventHandler(s, "document", "KEYDOWN", "pg",
 		"    k = e.which;\n"
 		"    if (k > 65280) k -= 65280;\n"
 		"    if (k >= 128) k -= 128;\n"
@@ -493,23 +514,41 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    pg_lastkey = k;\n"
 		"    /*pg_togglecursor();*/\n"
 		"    /*alert('Code=' + k + '; Mod=' + e.modifiers);*/\n"
-		"    setTimeout('pg_lastkey = -1;',100);\n"
+		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
+		"    pg_keytimeoutid = setTimeout(pg_keytimeout, 200);\n"
+		"    return pg_keyhandler(k, e.modifiers, e);\n");
+
+	htrAddScriptFunction(s, "pg_keyhandler", "\n"
+		"function pg_keyhandler(k,m,e)\n"
+		"    {\n"
+		"    pg_lastmodifiers = m;\n"
 		"    if (pg_curkbdlayer != null && pg_curkbdlayer.keyhandler != null && pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) return false;\n"
 		"    for(i=0;i<pg_keylist.length;i++)\n"
 		"        {\n"
-		"        if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (e.modifiers & pg_keylist[i].modmask) == pg_keylist[i].mod)\n"
+		"        if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (m & pg_keylist[i].modmask) == pg_keylist[i].mod)\n"
 		"            {\n"
 		"            pg_keylist[i].aparam.KeyCode = k;\n"
 		"            pg_keylist[i].target_obj[pg_keylist[i].fnname](pg_keylist[i].aparam);\n"
 		"            return false;\n"
 		"            }\n"
 		"        }\n"
-		"    return false;\n");
+		"    return false;\n"
+		"    }\n", 0);
+
 	htrAddScriptInit(s,
 		"    document.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
 		"    document.layers.pginpt.visibility = 'inherit';\n"
 		"    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',100);\n");
+
 	htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
+
+	htrAddEventHandler(s, "document", "KEYUP", "pg",
+		"    k = e.which;\n"
+		"    if (k > 65280) k -= 65280;\n"
+		"    if (k >= 128) k -= 128;\n"
+		"    if (k == pg_lastkey) pg_lastkey = -1;\n"
+		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
+		"    pg_keytimeoutid = null;\n");
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
