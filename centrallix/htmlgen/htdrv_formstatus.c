@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_formstatus.c,v 1.7 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.7  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.6  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -106,52 +109,7 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddHeaderItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddHeaderItem_va(s,"    </STYLE>\n");
 
-   /** Clear function **/
-   htrAddScriptFunction(s, "fs_setvalue", "\n"
-	"function fs_setvalue(m) {\n"
-	"   this.currentMode = m;\n"
-	"   if (this.currentMode == 'View') {;\n" 
-	"      this.document.images[0].src = '/sys/images/formstat01.gif';\n"
-	"   } else if (this.currentMode == 'Modify') {\n"
-	"      this.document.images[0].src = '/sys/images/formstat02.gif';\n"
-	"   } else if (this.currentMode == 'New') {\n"
-	"      this.document.images[0].src = '/sys/images/formstat03.gif';\n"
-	"   } else if (this.currentMode == 'Query') {\n"
-	"      this.document.images[0].src = '/sys/images/formstat04.gif';\n"
-	"   } else {\n"
-	"      this.document.images[0].src = '/sys/images/formstat05.gif';\n"
-	"   }\n"
-	"}\n", 0);
-
-   
-
-   /** Form Status initializer **/
-   htrAddScriptFunction(s, "fs_init", "\n"
-	"function fs_init(l) {\n"
-	"   l.kind = 'formstatus';\n"
-	"   l.currentMode = 'NoData';\n"
-	"   l.isFormStatusWidget = true;\n"
-	"   l.setvalue = fs_setvalue;\n"
-	"   if (fm_current) fm_current.Register(l);\n"
-	/*
-	"   cnt=0;\n"
-	"   while (confirm('again?')) {\n"
-	"      if (cnt == 0) {\n"
-	"         l.setvalue('Modify');\n"
-	"      } else if (cnt == 1) {\n"
-	"         l.setvalue('Modify');\n"
-	"      } else if (cnt == 2) {\n"
-	"         l.setvalue('New');\n"
-	"      } else if (cnt == 3) {\n"
-	"         l.setvalue('Query');\n"
-	"      } else {\n"
-	"         l.setvalue('NoData');\n"
-	"         cnt = -1;\n"
-	"      }\n"
-	"      cnt++\n"
-	"   }\n"
-	*/
-	"}\n", 0);
+   htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
    htrAddScriptInit_va(s,"    fs_init(%s.layers.fs%dmain);\n", parentname, id);

@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_scrollpane.c,v 1.7 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.7  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.6  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -186,89 +189,8 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	/** Utility function... **/
-	htrAddScriptFunction(s, "subst_last", "\n"
-		"function subst_last(str,subst)\n"
-		"    {\n"
-		"    return str.substring(0,str.length-subst.length)+subst;\n"
-		"    }\n", 0);
-
-	/** Add another utility function for helping handle the mousemove event **/
-	htrAddScriptFunction(s, "do_mv", "\n"
-		"function do_mv()\n"
-		"    {\n"
-		"    var ti=sp_target_img;\n"
-		"    if (ti.kind=='sp' && sp_mv_incr > 0)\n"
-		"        {\n"
-		"        h=ti.area.clip.height;\n"
-		"        d=h-ti.pane.clip.height;\n"
-		"        incr=sp_mv_incr;\n"
-		"        if(d<0) incr=0; else if (d+ti.area.y<incr) incr=d+ti.area.y;\n"
-		"        for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)\n"
-		"            ti.pane.document.layers[i].y-=incr;\n"
-		"        v=ti.pane.clip.height-(3*18);\n"
-		"        if (d<=0) ti.thum.y=18;\n"
-		"        else ti.thum.y=18+v*(-ti.area.y/d);\n"
-		"        }\n"
-		"    else if (ti.kind=='sp' && sp_mv_incr < 0)\n"
-		"        {\n"
-		"        h=ti.area.clip.height;\n"
-		"        d=h-ti.pane.clip.height;\n"
-		"        incr = -sp_mv_incr;\n"
-		"        if(d<0)incr=0; else if (ti.area.y>-incr) incr=-ti.area.y;\n"
-		"        for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)\n"
-		"            ti.pane.document.layers[i].y+=incr;\n"
-		"        v=ti.pane.clip.height-(3*18);\n"
-		"        if(d<=0) ti.thum.y=18;\n"
-		"        else ti.thum.y=18+v*(-ti.area.y/d);\n"
-		"        }\n"
-		"    return true;\n"
-		"    }\n",0);
-	htrAddScriptFunction(s, "tm_mv", "\n"
-		"function tm_mv()\n"
-		"    {\n"
-		"    do_mv();\n"
-		"    sp_mv_timeout=setTimeout(tm_mv,50);\n"
-		"    return false;\n"
-		"    }\n",0);
-
-	/** Our initialization processor function. **/
-	htrAddScriptFunction(s, "sp_init", "\n"
-		"function sp_init(l,aname,tname,p)\n"
-		"    {\n"
-		"    var alayer=null;\n"
-		"    var tlayer=null;\n"
-		"    for(i=0;i<l.layers.length;i++)\n"
-		"        {\n"
-		"        ml=l.layers[i];\n"
-		"        if(ml.name==aname) alayer=ml;\n"
-		"        if(ml.name==tname) tlayer=ml;\n"
-		"        }\n"
-		"    for(i=0;i<l.document.images.length;i++)\n"
-		"        {\n"
-		"        img=l.document.images[i];\n"
-		"        if(img.name=='d' || img.name=='u' || img.name=='b')\n"
-		"            {\n"
-		"            img.pane=l;\n"
-		"            img.area=alayer;\n"
-		"            img.thum=tlayer;\n"
-		"            img.kind='sp';\n"
-		"            }\n"
-		"        }\n"
-		"    tlayer.document.images[0].kind='sp';\n"
-		"    tlayer.document.images[0].thum=tlayer;\n"
-		"    tlayer.document.images[0].area=alayer;\n"
-		"    tlayer.document.images[0].pane=l;\n"
-		"    alayer.clip.width=l.clip.width-18;\n"
-		"    alayer.maxwidth=alayer.clip.width;\n"
-		"    alayer.minwidth=alayer.clip.width;\n"
-		"    tlayer.nofocus = true;\n"
-		"    alayer.nofocus = true;\n"
-		"    alayer.document.Layer = alayer;\n"
-		"    tlayer.document.Layer = tlayer;\n"
-		"    l.document.Layer = l;\n"
-		"    l.LSParent = p;\n"
-		"    }\n",0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    sp_init(%s.layers.sp%dpane,\"sp%darea\",\"sp%dthum\",%s);\n", parentname,id,id,id,parentobj);
@@ -287,7 +209,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    if (sp_target_img != null && sp_target_img.kind=='sp' && (sp_target_img.name=='u' || sp_target_img.name=='d'))\n"
 		"        {\n"
 		"        if (sp_target_img.name=='u') sp_mv_incr=-10; else sp_mv_incr=+10;\n"
-		"        sp_target_img.src = subst_last(sp_target_img.src,\"c.gif\");\n"
+		"        sp_target_img.src = htutil_subst_last(sp_target_img.src,\"c.gif\");\n"
 		"        do_mv();\n"
 		"        sp_mv_timeout = setTimeout(tm_mv,300);\n"
 		"        }\n"
@@ -332,7 +254,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    if (sp_target_img != null)\n"
 		"        {\n"
 		"        if (sp_target_img.name != 'b')\n"
-		"            sp_target_img.src = subst_last(sp_target_img.src,\"b.gif\");\n"
+		"            sp_target_img.src = htutil_subst_last(sp_target_img.src,\"b.gif\");\n"
 		"        sp_target_img = null;\n"
 		"        }\n");
 

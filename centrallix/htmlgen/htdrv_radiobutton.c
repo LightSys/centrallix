@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.12 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_radiobutton.c,v 1.13 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.13  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.12  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -196,7 +199,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       fieldname[0]='\0';
       } 
 
-   
+   htrAddScriptInclude(s, "/sys/js/htdrv_radiobutton.js", 0);
 
    /** Ok, write the style header items. **/
    htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
@@ -243,165 +246,6 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    
    htrAddHeaderItem_va(s, "    </STYLE>\n");
 
-   htrAddScriptFunction(s, "rb_getvalue", "\n"
-      "   function rb_getvalue() {\n"
-      "       if (this.selectedOption)\n"	/* return "" if nothing is selected */
-      "           {\n"
-      "           return this.selectedOption.layers.radiobuttonpanelvaluepane.document.anchors[0].name;\n"
-      "           }\n"
-      "       else\n"
-      "           {\n"
-      "           return \"\";\n"
-      "           }\n"
-      "   }\n",0);
-
-   /***
-    ***  Luke (03/04/02) -
-    ***  The behavior of this is in direct combination with the clearvalue function.
-    ***  if set_value() gets called with a value that _is_ in the list of values, then
-    ***  obviously that button gets marked.  However, if the called parameter is not
-    ***  in the list, an alert message pops up.  SEE ALSO:  Note on clearvalue()
-    ***/
-   htrAddScriptFunction(s, "rb_setvalue", "\n"
-      "   function rb_setvalue(v) {\n"
-      "       optsLayerArray = this.layers[0].document.layers[0].document.layers;\n"
-      "       for (var i=0; i < optsLayerArray.length; i++) {\n"
-      "           if (optsLayerArray[i].layers.radiobuttonpanelvaluepane.document.anchors[0].name == v) {\n"
-      "               radiobutton_toggle(optsLayerArray[i]);\n"
-      "               return;\n"
-      "           }\n"
-      "       }\n"
-      "       alert('Warning: \"'+v+'\" is not in the radio button list.');\n"
-      "   }\n",0);
-
-   /** Clear function **/
-   /*  Luke (03/04/02)  This unchecks ALL radio buttons.  As such, nothing is selected. */
-   htrAddScriptFunction(s, "rb_clearvalue", "\n"
-      "   function rb_clearvalue() {\n"
-      "      if (this.selectedOption) {\n"
-      "         this.selectedOption.unsetPane.visibility = 'inherit';\n"
-      "         this.selectedOption.setPane.visibility = 'hidden';\n"
-      "         this.selectedOption = null;\n"
-      "      }\n"
-      "   }\n", 0);
-
-   /** reset value function **/
-   htrAddScriptFunction(s, "rb_resetvalue", "\n"
-      "   function rb_resetvalue() {\n"
-      "      if (this.selectedOption != this.defaultSelectedOption) {\n"
-      "         radiobutton_toggle(this.defaultSelectedOption);\n"
-      "      }\n"
-      "   }\n", 0);
-
-   /** enable function **/
-   htrAddScriptFunction(s, "rb_enable", "\n"
-      "   function rb_enable() {\n"
-      "      this.enabled = true;\n"
-      "      for (i=0;i<this.buttonList.length;i++) {\n"
-      "         this.buttonList[i].enabled = this.enabled;;\n"
-      "         this.buttonList[i].setPane.enabled = this.enabled;\n"
-      "         this.buttonList[i].unsetPane.enabled = this.enabled;\n"
-      "         this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;\n"
-      "         this.buttonList[i].setPane.document.images[0].src = '/sys/images/radiobutton_set.gif';\n"
-      "         this.buttonList[i].unsetPane.document.images[0].src = '/sys/images/radiobutton_unset.gif';\n"
-      "      }\n"
-      "   }\n", 0);
-   
-   /** readonly function **/
-   htrAddScriptFunction(s, "rb_readonly", "\n"
-      "   function rb_readonly() {\n"
-      "      this.enabled = false;\n"
-      "      for (i=0;i<this.buttonList.length;i++) {\n"
-      "         this.buttonList[i].enabled = this.enabled;\n"
-      "         this.buttonList[i].setPane.enabled = this.enabled;\n"
-      "         this.buttonList[i].unsetPane.enabled = this.enabled;\n"
-      "         this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;\n"
-      "      }\n"
-      "   }\n", 0);
-   
-   /** disable function **/
-   htrAddScriptFunction(s, "rb_disable", "\n"
-      "   function rb_disable() {\n"
-      "      this.enabled = false;\n"
-      "      for (i=0;i<this.buttonList.length;i++) {\n"
-      "         this.buttonList[i].enabled = this.enabled;\n"
-      "         this.buttonList[i].setPane.enabled = this.enabled;\n"
-      "         this.buttonList[i].unsetPane.enabled = this.enabled;\n"
-      "         this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;\n"
-      "         this.buttonList[i].setPane.document.images[0].src = '/sys/images/radiobutton_set_dis.gif';\n"
-      "         this.buttonList[i].unsetPane.document.images[0].src = '/sys/images/radiobutton_unset_dis.gif';\n"
-      "      }\n"
-      "   }\n", 0);
-
-   htrAddScriptFunction(s, "add_radiobutton", "\n"
-      "   function add_radiobutton(optionPane, parentPane, selected) {\n"
-      "      optionPane.kind = 'radiobutton';\n"
-      "      optionPane.enabled = true;\n"
-      "      optionPane.parentPane = parentPane;\n"
-      "      optionPane.optionPane = optionPane;\n"
-      "      optionPane.setPane = optionPane.layers.radiobuttonpanelbuttonsetpane;\n"
-      "      optionPane.unsetPane = optionPane.layers.radiobuttonpanelbuttonunsetpane;\n"
-      "      optionPane.document.layer = optionPane;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonsetpane.kind = 'radiobutton';\n"
-      "      optionPane.layers.radiobuttonpanelbuttonsetpane.optionPane = optionPane;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonsetpane.enabled = optionPane.enabled;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonsetpane;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].kind = 'radiobutton';\n"
-      "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonsetpane;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].enabled = optionPane.enabled;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.kind = 'radiobutton';\n"
-      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.optionPane = optionPane;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.enabled = optionPane.enabled;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].kind = 'radiobutton';\n"
-      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;\n"
-      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].enabled = optionPane.enabled;\n"
-      "      optionPane.layers.radiobuttonpanellabelpane.kind = 'radiobutton';\n"
-      "      optionPane.layers.radiobuttonpanellabelpane.optionPane = optionPane;\n"
-      "      optionPane.layers.radiobuttonpanellabelpane.enabled = optionPane.enabled;\n"
-      "      optionPane.layers.radiobuttonpanellabelpane.document.layer = optionPane.layers.radiobuttonpanellabelpane;\n"
-      "      parentPane.buttonList.push(optionPane);\n"
-      "      if (selected) {\n"
-      "         optionPane.layers.radiobuttonpanelbuttonsetpane.visibility = 'inherit';\n"
-      "         optionPane.layers.radiobuttonpanelbuttonunsetpane.visibility = 'hidden';\n"
-      "         parentPane.selectedOption = optionPane;\n"
-      "         parentPane.defaultSelectedOption = optionPane;\n"
-      "      } else {\n"
-      "         optionPane.layers.radiobuttonpanelbuttonsetpane.visibility = 'hidden';\n"
-      "         optionPane.layers.radiobuttonpanelbuttonunsetpane.visibility = 'inherit';\n"
-      "      }\n"
-      "   }\n", 0);
-
-   htrAddScriptFunction(s, "radiobuttonpanel_init",
-         "   function radiobuttonpanel_init(parentPane,fieldname,flag,borderpane,coverpane,titlepane,main_bg,outline_bg) {\n"
-         "      if(flag==1)\n"
-         "          {\n"
-         "          parentPane.bgColor=main_bg;\n"
-         "          borderpane.bgColor=outline_bg;\n"
-         "          coverpane.bgColor=main_bg;\n"
-         "          titlepane.bgColor=main_bg;\n"
-         "          }\n"
-         "      if(flag==2)\n"
-         "          {\n"
-         "          parentPane.background.src=main_bg;\n"
-         "          borderpane.background.src=outline_bg;\n"
-         "          coverpane.background.src=main_bg;\n"
-         "          titlepane.background.src=main_bg;\n"
-         "          }\n"
-	 "      parentPane.buttonList = new Array();\n"
-	 "      parentPane.setvalue = rb_setvalue;\n"
-	 "      parentPane.getvalue = rb_getvalue;\n"
-	 "      parentPane.clearvalue = rb_clearvalue;\n"
-	 "      parentPane.resetvalue = rb_resetvalue;\n"
-	 "      parentPane.enable = rb_enable;\n"
-	 "      parentPane.disable = rb_disable;\n"
-	 "      parentPane.readonly = rb_readonly;\n"
-	 "      parentPane.kind = 'radiobutton';\n"
-	 "      parentPane.fieldname = fieldname;\n"
-	 "      parentPane.form = fm_current;\n"
-	 "      if (fm_current) fm_current.Register(parentPane);\n"
-	 "      return parentPane;\n"
-         "   }\n",0);
 
    /** Script initialization call. **/
    if (strlen(main_bgcolor) > 0) {
@@ -421,20 +265,6 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    } else {
       htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", nptr, parentname, id,fieldname);
    }
-
-   htrAddScriptFunction(s, "radiobutton_toggle", "\n"
-      "   function radiobutton_toggle(layer) {\n"
-      "      if(!layer) return;\n"
-      "      if(layer.optionPane.parentPane.form)\n"
-      "          layer.optionPane.parentPane.form.DataNotify(layer.optionPane.parentPane);\n"
-      "      if (layer.optionPane.parentPane.selectedOption) {\n"
-      "          layer.optionPane.parentPane.selectedOption.unsetPane.visibility = 'inherit';\n"
-      "          layer.optionPane.parentPane.selectedOption.setPane.visibility = 'hidden';\n"
-      "      }\n"
-      "      layer.optionPane.setPane.visibility = 'inherit';\n"
-      "      layer.optionPane.unsetPane.visibility = 'hidden';\n"
-      "      layer.optionPane.parentPane.selectedOption = layer.optionPane;\n"
-      "   }\n", 0);
 
    htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"
       "   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"

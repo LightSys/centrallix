@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.10 2002/07/15 22:24:15 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.11 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.11  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.10  2002/07/15 22:24:15  lkehresman
     Updated datetime widget to include generic date manipulation script
 
@@ -194,7 +197,6 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 	if (strlen(initialdate))
 	    {
-	    printf("ID: '%s'\n", initialdate);
 	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
 	    snprintf(initialdate, 64, "%s %d %d, %d:%d:%d", obj_short_months[dt.Part.Month], 
 	                          dt.Part.Day+1,

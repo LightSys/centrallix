@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.7 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.8 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.8  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.7  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -176,148 +179,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
             htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
             htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
     
-            /** This function handles the 'LoadPage' action **/
-            htrAddScriptFunction(s, "ht_loadpage", "\n"
-                    "function ht_loadpage(aparam)\n"
-                    "    {\n"
-		    "    this.transition = aparam.Transition;\n"
-		    "    this.mode = aparam.Mode;\n"
-                    "    this.source = aparam.Source;\n"
-                    "    }\n", 0);
-    
-            /** This function gets run when the user assigns to the 'source' property **/
-            htrAddScriptFunction(s, "ht_sourcechanged", "\n"
-                    "function ht_sourcechanged(prop,oldval,newval)\n"
-                    "    {\n"
-                    "    if (this.mode != 'dynamic' || (this.mode == 'dynamic' && newval.substr(0,5)=='http:'))\n"
-                    "        {\n"
-		    "        this.newsrc = newval;\n"
-		    "        if (this.transition && this.transition != 'normal')\n"
-		    "            {\n"
-		    "            ht_startfade(this,this.transition,'out',ht_dosourcechange);\n"
-		    "            }\n"
-		    "        else\n"
-		    "            ht_dosourcechange(this);\n"
-                    "        }\n"
-                    "    return newval;\n"
-                    "    }\n", 0);
-
-	    /** This function completes the doc source change **/
-	    htrAddScriptFunction(s, "ht_dosourcechange", "\n"
-		    "function ht_dosourcechange(l)\n"
-		    "    {\n"
-		    "    tmpl = l.curLayer;\n"
-		    "    tmpl.visibility = 'hidden';\n"
-		    "    l.curLayer = l.altLayer;\n"
-		    "    l.altLayer = tmpl;\n"
-                    "    l.curLayer.onload = ht_reloaded;\n"
-                    "    l.curLayer.bgColor = null;\n"
-                    "    l.curLayer.load(l.newsrc,l.clip.width);\n"
-		    "    }\n", 0);
-
-	    /** This function does the intermediate fading steps **/
-	    htrAddScriptFunction(s, "ht_fadestep", "\n"
-		    "function ht_fadestep()\n"
-		    "    {\n"
-		    "    ht_fadeobj.faderLayer.background.src = '/sys/images/fade_' + ht_fadeobj.transition + '_0' + ht_fadeobj.count + '.gif';\n"
-		    "    ht_fadeobj.count++;\n"
-		    "    if (ht_fadeobj.count == 5 || ht_fadeobj.count >= 9)\n"
-		    "        {\n"
-		    "        if (ht_fadeobj.completeFn) return ht_fadeobj.completeFn(ht_fadeobj);\n"
-		    "        else return;\n"
-		    "        }\n"
-		    "    setTimeout(ht_fadestep,100);\n"
-		    "    }\n", 0);
-
-	    /** This function controls the fade transitions of a layer **/
-	    htrAddScriptFunction(s, "ht_startfade", "\n"
-		    "function ht_startfade(l,ftype,inout,fn)\n"
-		    "    {\n"
-		    "    ht_fadeobj = l;\n"
-		    "    if (l.faderLayer.clip.height < l.curLayer.clip.height)\n"
-		    "        l.faderLayer.clip.height=l.curLayer.clip.height;\n"
-		    "    if (l.faderLayer.clip.width < l.curLayer.clip.width)\n"
-		    "        l.faderLayer.clip.width=l.curLayer.clip.width;\n"
-		    "    l.faderLayer.moveAbove(l.curLayer);\n"
-		    "    l.faderLayer.visibility='inherit';\n"
-		    "    l.completeFn = fn;\n"
-		    "    if (inout == 'in')\n"
-		    "        {\n"
-		    "        l.count=5;\n"
-		    "        setTimeout(ht_fadestep,20);\n"
-		    "        }\n"
-		    "    else\n"
-		    "        {\n"
-		    "        l.count=1;\n"
-		    "        setTimeout(ht_fadestep,20);\n"
-		    "        }\n"
-		    "    };\n", 0);
-    
-            /** This function is called when the layer is reloaded. **/
-            htrAddScriptFunction(s, "ht_reloaded", "\n"
-                    "function ht_reloaded(e)\n"
-                    "    {\n"
-                    "    e.target.mainLayer.watch('source',ht_sourcechanged);\n"
-                    "    e.target.clip.height = e.target.document.height;\n"
-		    "    e.target.mainLayer.faderLayer.moveAbove(e.target);\n"
-		    "    e.target.visibility = 'inherit';\n"
-                    /*"    e.target.document.captureEvents(Event.CLICK);\n"
-                    "    e.target.document.onclick = ht_click;\n"*/
-                    "    for(i=0;i<e.target.document.links.length;i++)\n"
-                    "        {\n"
-                    "        e.target.document.links[i].layer = e.target.mainLayer;\n"
-		    "        e.target.document.links[i].kind = 'ht';\n"
-                    "        }\n"
-                    "    pg_resize(e.target.mainLayer.parentLayer);\n"
-		    "    if (e.target.mainLayer.transition && e.target.mainLayer.transition != 'normal')\n"
-		    "        ht_startfade(e.target.mainLayer,e.target.mainLayer.transition,'in',null);\n"
-                    "    }\n", 0);
-    
-            /** This function is called when the user clicks on a link in the html pane **/
-            htrAddScriptFunction(s, "ht_click", "\n"
-                    "function ht_click(e)\n"
-                    "    {\n"
-		    "    e.target.layer.source = e.target.href;\n"
-                    "    return false;\n"
-                    "    }\n", 0);
-    
-            /** Our initialization processor function. **/
-            htrAddScriptFunction(s, "ht_init", "\n"
-                    "function ht_init(l,l2,fl,source,pdoc,w,h,p)\n"
-                    "    {\n"
-		    "    l.faderLayer = fl;\n"
-		    "    l.mainLayer = l;\n"
-		    "    l2.mainLayer = l;\n"
-		    "    fl.mainLayer = l;\n"
-		    "    l.curLayer = l;\n"
-		    "    l.altLayer = l2;\n"
-                    "    l.LSParent = p;\n"
-                    "    l.kind = 'ht';\n"
-                    "    l2.kind = 'ht';\n"
-		    "    fl.kind = 'ht';\n"
-                    "    l.pdoc = pdoc;\n"
-                    "    l2.pdoc = pdoc;\n"
-                    "    if (h != -1)\n"
-		    "        {\n"
-		    "        l.clip.height = h;\n"
-		    "        l2.clip.height = h;\n"
-		    "        }\n"
-                    "    if (w != -1)\n"
-		    "        {\n"
-		    "        l.clip.width = w;\n"
-		    "        l2.clip.width = w;\n"
-		    "        }\n"
-                    "    if (source.substr(0,5) == 'http:')\n"
-                    "        {\n"
-                    "        l.onload = ht_reloaded;\n"
-                    "        l.load(source,w);\n"
-                    "        }\n"
-                    "    l.source = source;\n"
-                    "    l.ActionLoadPage = ht_loadpage;\n"
-                    "    l.watch('source', ht_sourcechanged);\n"
-		    "    l.document.Layer = l;\n"
-		    "    l2.document.Layer = l2;\n"
-                    "    }\n" ,0);
+	    htrAddScriptInclude(s, "/sys/js/htdrv_html.js", 0);
 
 	    /** Event handler for click-on-link. **/
 	    htrAddEventHandler(s, "document","CLICK","ht",

@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_timer.c,v 1.5 2002/07/16 17:52:01 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.5  2002/07/16 17:52:01  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.4  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -129,56 +132,7 @@ httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	/** Timer expiration function **/
-	htrAddScriptFunction(s, "tm_expire", "\n"
-		"function tm_expire(tm)\n"
-		"    {\n"
-		"    if (tm.autoreset)\n"
-		"        tm.timerid = setTimeout(tm_expire,tm.msec,tm);\n"
-		"    else\n"
-		"        tm.timerid = null;\n"
-		"    if (tm.EventExpire != null)\n"
-		"        {\n"
-		"        eparam = new Object();\n"
-		"        eparam.Caller = tm;\n"
-		"        cn_activate(tm, 'Expire', eparam);\n"
-		"        delete eparam;\n"
-		"        }\n"
-		"    }\n", 0);
-
-	/** Set timer **/
-	htrAddScriptFunction(s, "tm_action_settimer", "\n"
-		"function tm_action_settimer(aparam)\n"
-		"    {\n"
-		"    if (this.timerid != null) clearTimeout(this.timerid)\n"
-		"    if (aparam.AutoReset != null) this.autoreset = aparam.AutoReset;\n"
-		"    this.timerid = setTimeout(tm_expire, aparam.Time, this);\n"
-		"    }\n", 0);
-
-	/** Cancel timer **/
-	htrAddScriptFunction(s, "tm_action_canceltimer", "\n"
-		"function tm_action_canceltimer(aparam)\n"
-		"    {\n"
-		"    if (this.timerid != null) clearTimeout(this.timerid)\n"
-		"    this.timerid = null;\n"
-		"    }\n", 0);
-
-	/** Timer initializer **/
-	htrAddScriptFunction(s, "tm_init", "\n"
-		"function tm_init(t,ar,as)\n"
-		"    {\n"
-		"    tm = new Object();\n"
-		"    tm.autostart = as;\n"
-		"    tm.autoreset = ar;\n"
-		"    tm.msec = t;\n"
-		"    tm.ActionSetTimer = tm_action_settimer;\n"
-		"    tm.ActionCancelTimer = tm_action_canceltimer;\n"
-		"    if (as)\n"
-		"        tm.timerid = setTimeout(tm_expire,t,tm);\n"
-		"    else\n"
-		"        tm.timerid = null;\n"
-		"    return tm;\n"
-		"    }\n", 0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0);
 
 	/** Script initialization call. **/
 	snprintf(sbuf,200,"    %s = tm_init(%d, %d, %d);\n", nptr, msec, auto_reset, auto_start);

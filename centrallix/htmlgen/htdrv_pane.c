@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.8 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_pane.c,v 1.9 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.9  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.8  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -179,17 +182,8 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	/** Pane initializer **/
-	htrAddScriptFunction(s, "pn_init", "\n"
-		"function pn_init(l,ml)\n"
-		"    {\n"
-		"    l.mainlayer = ml;\n"
-		"    l.document.Layer = l;\n"
-		"    ml.document.Layer = ml;\n"
-		"    ml.maxheight = l.clip.height-2;\n"
-		"    ml.maxwidth = l.clip.width-2;\n"
-		"    return l;\n"
-		"    }\n", 0);
+	/** Script include call **/
+	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",

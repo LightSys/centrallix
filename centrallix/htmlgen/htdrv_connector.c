@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.5 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_connector.c,v 1.6 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.6  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.5  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -166,38 +169,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInit_va(s,"    %s = new cn_init(%s,cn_%d);\n", nptr, parentobj, id);
 	htrAddScriptInit_va(s,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
 
-	/** Connector function to activate an action **/
-	htrAddScriptFunction(s, "cn_activate", "\n"
-		"function cn_activate(t,f,eparam)\n"
-		"    {\n"
-		"    if (t['Event' + f].constructor == Array)\n"
-		"        {\n"
-		"        for(var fn in t['Event' + f])\n"
-		"            x = t['Event' + f][fn](eparam);\n"
-		"        return x;\n"
-		"        }\n"
-		"    else\n"
-		"        return t['Event' + f](eparam);\n"
-		"    }\n", 0);
-
-	/** Function to add a connector to a widget's event **/
-	htrAddScriptFunction(s, "cn_add", "\n"
-		"function cn_add(w,e)\n"
-		"    {\n"
-		"    if (w['Event' + e] == null)\n"
-		"        w['Event' + e] = new Array();\n"
-		"    w['Event' + e][w['Event' + e].length] = this.RunEvent;\n"
-		"    }\n", 0);
-
-	/** Add function to instantiate objects **/
-	htrAddScriptFunction(s, "cn_init", "\n"
-		"function cn_init(p,f)\n"
-		"    {\n"
-		"    this.Add = cn_add;\n"
-		"    this.type = 'cn';\n"
-		"    this.LSParent = p;\n"
-		"    this.RunEvent = f;\n"
-		"    }\n", 0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 
 	/** Add the connector function **/
 	xsInit(&xs);

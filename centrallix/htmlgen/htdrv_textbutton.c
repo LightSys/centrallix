@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.8 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_textbutton.c,v 1.9 2002/07/16 17:52:01 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.9  2002/07/16 17:52:01  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.8  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -196,41 +199,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	/** Our initialization processor function. **/
-	htrAddScriptFunction(s, "tb_init", "\n"
-		"function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts,nm)\n"
-		"    {\n"
-		"    l.LSParent = p;\n"
-	     	"    l.nofocus = true;\n"
-		"    l2.nofocus = true;\n"
-		"    top.nofocus = true;\n"
-		"    rgt.nofocus = true;\n"
-		"    btm.nofocus = true;\n"
-		"    lft.nofocus = true;\n"
-		"    l.document.kind = 'tb';\n"
-		"    l2.document.kind = 'tb';\n"
-		"    l.document.layer = l;\n"
-		"    l2.document.layer = l;\n"
-		"    l.buttonName = nm;\n"
-	        "    l.l2 = l2;\n"
-		"    l.tp = top;\n"
-		"    l.btm = btm;\n"
-		"    l.lft = lft;\n"
-		"    l.rgt = rgt;\n"
-		"    l.kind = 'tb';\n"
-		"    l.clip.width = w;\n"
-		"    if (h != -1) l.clip.height = h;\n"
-		"    top.bgColor = '#FFFFFF';\n"
-		"    lft.bgColor = '#FFFFFF';\n"
-		"    btm.bgColor = '#7A7A7A';\n"
-		"    rgt.bgColor = '#7A7A7A';\n"
-		"    lft.clip.height = l.clip.height;\n"
-		"    rgt.clip.height = l.clip.height;\n"
-		"    rgt.pageX = l.pageX + l.clip.width - 2;\n"
-		"    btm.pageY = l.pageY + l.clip.height - 2;\n"
-		"    l.mode = 0;\n"
-		"    l.tristate = ts;\n"
-		"    }\n" ,0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
@@ -253,46 +222,6 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddBodyItem_va(s,"<DIV ID=\"tb%drgt\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h==-1)?1:h);
 	htrAddBodyItem_va(s,"<DIV ID=\"tb%dlft\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h==-1)?1:h);
 	htrAddBodyItem_va(s,"</DIV>\n");
-
-	/** Add a function to be used to change the state (mode) of the button **/
-	htrAddScriptFunction(s, "tb_setmode", "\n"
-		"function tb_setmode(layer,mode)\n"
-		"    {\n"
-		"    if (mode != layer.mode)\n"
-		"        {\n"
-		"        layer.mode = mode;\n"
-		"        if (layer.tristate == 0 && mode == 0) mode = 1;\n"
-		"        switch(mode)\n"
-		"            {\n"
-		"            case 0: /* no point no click */\n"
-		"                layer.rgt.visibility = 'hidden';\n"
-		"                layer.lft.visibility = 'hidden';\n"
-		"                layer.tp.visibility = 'hidden';\n"
-		"                layer.btm.visibility = 'hidden';\n"
-		"                break;\n"
-		"            case 1: /* point, but no click */\n"
-		"                layer.rgt.visibility = 'inherit';\n"
-		"                layer.lft.visibility = 'inherit';\n"
-		"                layer.tp.visibility = 'inherit';\n"
-		"                layer.btm.visibility = 'inherit';\n"
-		"                layer.tp.bgColor = '#FFFFFF';\n"
-		"                layer.lft.bgColor = '#FFFFFF';\n"
-		"                layer.btm.bgColor = '#7A7A7A';\n"
-		"                layer.rgt.bgColor = '#7A7A7A';\n"
-		"                break;\n"
-		"            case 2: /* point and click */\n"
-		"                layer.rgt.visibility = 'inherit';\n"
-		"                layer.lft.visibility = 'inherit';\n"
-		"                layer.tp.visibility = 'inherit';\n"
-		"                layer.btm.visibility = 'inherit';\n"
-		"                layer.tp.bgColor = '#7A7A7A';\n"
-		"                layer.lft.bgColor = '#7A7A7A';\n"
-		"                layer.btm.bgColor = '#FFFFFF';\n"
-		"                layer.rgt.bgColor = '#FFFFFF';\n"
-		"                break;\n"
-		"            }\n"
-		"        }\n"
-		"    }\n", 0);
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tb",

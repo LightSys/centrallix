@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.12 2002/06/19 21:22:45 lkehresman Exp $
+    $Id: htdrv_imagebutton.c,v 1.13 2002/07/16 17:52:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.13  2002/07/16 17:52:00  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.12  2002/06/19 21:22:45  lkehresman
     Added a losefocushandler to the table.  Not having this broke static tables.
 
@@ -232,54 +235,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	htrAddScriptFunction(s,"ib_enable","\n"
-		"function ib_enable()\n"
-		"    {\n"
-		"    //alert('enable');\n"
-		"    this.enabled=true;\n"
-		"    this.img.src=this.nImage.src;\n"
-		"    }\n",0);
-	
-	htrAddScriptFunction(s,"ib_disable","\n"
-		"function ib_disable()\n"
-		"    {\n"
-		"    //alert('disable');\n"
-		"    this.enabled=false;\n"
-		"    this.img.src=this.dImage.src;\n"
-		"    }\n",0);
-	
-	/** Our initialization processor function. **/
-	htrAddScriptFunction(s, "ib_init", "\n"
-		"function ib_init(l,n,p,c,d,w,h,po,nm,enable)\n"
-		"    {\n"
-		"    l.enabled = enable;\n"
-		"    l.LSParent = po;\n"
-	     	"    l.nofocus = true;\n" 
-		"    l.img = l.document.images[0];\n"
-		"    l.img.layer = l;\n"
-		"    l.img.kind = 'ib';\n"
-		"    l.kind = 'ib';\n"
-		"    l.clip.width = w;\n"
-		"    l.buttonName = nm;\n"
-		"    if (h == -1) l.nImage = new Image();\n"
-		"    else l.nImage = new Image(w,h);\n"
-		"    l.nImage.src = n;\n"
-		"    if (h == -1) l.pImage = new Image();\n"
-		"    else l.pImage = new Image(w,h);\n"
-		"    l.pImage.src = p;\n"
-		"    if (h == -1) l.cImage = new Image();\n"
-		"    else l.cImage = new Image(w,h);\n"
-		"    l.cImage.src = c;\n"
-		"    if (h == -1) l.dImage = new Image();\n"
-		"    else l.dImage = new Image(w,h);\n"
-		"    l.dImage.src = d;\n"
-		"    l.ActionEnable = ib_enable;\n"
-		"    l.ActionDisable = ib_disable;\n"
-		"    if(enable)\n"
-		"        l.ActionEnable();\n"
-		"    else\n"
-		"        l.ActionDisable();\n"
-		"    }\n" ,0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);

@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_tab.c,v 1.7 2002/07/16 17:52:01 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.7  2002/07/16 17:52:01  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.6  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -182,85 +185,11 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
+	/** Script include **/
+	htrAddScriptInclude(s, "/sys/js/htdrv_tab.js", 0);
+
 	/** Add a global for the master tabs listing **/
 	htrAddScriptGlobal(s, "tc_tabs", "null", 0);
-
-	/** Function for the makeCurrent method on a tabpage. **/
-	htrAddScriptFunction(s, "tc_makecurrent", "\n"
-		"function tc_makecurrent()\n"
-		"    {\n"
-		"    if (this.zIndex > this.tabctl.zIndex) return 0;\n"
-		"    for(i=0;i<this.tabctl.tabs.length;i++)\n"
-		"        {\n"
-		"        t = this.tabctl.tabs[i];\n"
-		"        if (t != this && t.zIndex > this.tabctl.zIndex)\n"
-		"            {\n"
-		"            t.zIndex = this.tabctl.zIndex - 1;\n"
-		"            t.tabpage.visibility = 'hidden';\n"
-		"            t.document.images['tb'].src = '/sys/images/tab_lft3.gif';\n"
-		"            t.pageY += 2;\n"
-		"            t.pageX += 1;\n"
-		"            t.clip.height = 23;\n"
-		"            }\n"
-		"        }\n"
-		"    this.zIndex = this.tabctl.zIndex + 1;\n"
-		"    this.tabpage.visibility = 'inherit';\n"
-		"    this.document.images['tb'].src = '/sys/images/tab_lft2.gif';\n"
-		"    this.pageY -= 2;\n"
-		"    this.pageX -= 1;\n"
-		"    this.clip.height = 25;\n"
-		"    }\n", 0);
-
-	/** Function for the addTab method for adding a new tab page to a tab **/
-	htrAddScriptFunction(s, "tc_addtab", "\n"
-		"function tc_addtab(l_tab, l_page)\n"
-		"    {\n"
-		"    if (this.tabs.length > 0)\n"
-		"        {\n"
-		"        newx = this.tabs[this.tabs.length-1].pageX + this.tabs[this.tabs.length-1].document.width + 1;\n"
-		"        if (this.tabs[this.tabs.length-1].tabpage.visibility == 'inherit') newx += 1;\n"
-		"        }\n"
-		"    else\n"
-		"        newx = this.pageX;\n"
-		"    newy = this.pageY - 24;\n"
-		"    if (l_page.visibility != 'inherit')\n"
-		"        {\n"
-		"        newx += 1;\n"
-		"        newy += 2;\n"
-		"        l_tab.clip.height = 23;\n"
-		"        }\n"
-		"    for(i=0;i<l_tab.document.images.length;i++)\n"
-		"        {\n"
-		"        l_tab.document.images[i].layer = l_tab;\n"
-		"        l_tab.document.images[i].kind = 'tc';\n"
-		"        }\n"
-		"    this.tabs[this.tabs.length++] = l_tab;\n"
-		"    l_tab.tabpage = l_page;\n"
-		"    l_tab.tabctl = this;\n"
-		"    l_tab.makeCurrent = tc_makecurrent;\n"
-		"    l_tab.pageX = newx;\n"
-		"    l_tab.pageY = newy;\n"
-		"    l_tab.kind = 'tc';\n"
-		"    l_tab.document.layer = l_tab;\n"
-		"    l_tab.document.Layer = l_tab;\n"
-		"    l_page.clip.width = this.clip.width-2;\n"
-		"    l_page.clip.height = this.clip.height-2;\n"
-		"    return l_tab;\n"
-		"    }\n", 0);
-
-	/** Tab control initializer **/
-	htrAddScriptFunction(s, "tc_init", "\n"
-		"function tc_init(l)\n"
-		"    {\n"
-		"    l.currentTab = 1;\n"
-		"    l.nTabs = 0;\n"
-		"    l.isShorting = 0;\n"
-		"    l.tabs = new Array();\n"
-		"    l.addTab = tc_addtab;\n"
-		"    if (tc_tabs == null) tc_tabs = new Array();\n"
-		"    tc_tabs[tc_tabs.length++] = l;\n"
-		"    return l;\n"
-		"    }\n", 0);
 
 	/** Event handler for click-on-tab **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tc",

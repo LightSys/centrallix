@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.17 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.18 2002/07/16 17:52:01 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.18  2002/07/16 17:52:01  lkehresman
+    Updated widget drivers to use include files
+
     Revision 1.17  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -286,123 +289,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	/** Our initialization processor function. **/
-	htrAddScriptFunction(s, "wn_init", "\n"
-		"function wn_init(l,ml,h)\n"
-		"    {\n"
-		"    l.oldwin=window_current;\n"
-		"    window_current=l;\n"
-		"    l.osrc = new Array();\n"
-		"    var t = osrc_current;\n"
-		"    while(t)\n"
-		"        {\n"
-		"        l.osrc.push(t);\n"
-		"        t=t.oldosrc;\n"
-		"        }\n"
-		"    l.document.layer = l;\n"
-		"    ml.document.Layer = ml;\n"
-		"    l.orig_height = h;\n"
-		"    l.mainLayer = ml;\n"
-		"    l.kind = 'wn';\n"
-		"    for(i=0;i<l.document.images.length;i++)\n"
-		"        {\n"
-		"        l.document.images[i].layer = l;\n"
-		"        l.document.images[i].kind = 'wn';\n"
-		"        }\n"
-		"    wn_bring_top(l);\n"
-		"    l.ActionSetVisibility = wn_setvisibility;\n"
-		"    l.RegisterOSRC = wn_register_osrc;\n"
-		"    return l;\n"
-		"    }\n",0);
-
-	htrAddScriptFunction(s, "wn_register_osrc", "\n"
-		"function wn_register_osrc(t)\n"
-		"    {\n"
-		"    this.osrc.push(t);\n"
-		"    }\n",0);
-
-	/* Action handlers for WindowShade
-	**   * added by Luke Ehresman (lehresma@css.tayloru.edu)
-	**   * October 7, 2001
-	**/
-	htrAddScriptFunction(s, "wn_unset_windowshade", "\n"
-		"function wn_unset_windowshade()\n"
-		"    {\n"
-		"    wn_clicked = 0;\n"
-		"    }\n", 0);
-
-	htrAddScriptFunction(s, "wn_windowshade", "\n"
-		"function wn_windowshade(layer)\n"
-		"    {\n"
-		"    if (wn_clicked == 1)\n"
-		"        {\n"
-		"        wn_clicked = 0;\n"
-		"        if (layer.clip.height != 23)\n"
-		"            layer.clip.height = 23;\n"
-		"        else\n"
-		"            layer.clip.height = layer.orig_height;\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        wn_clicked = 1;\n"
-		"        setTimeout(\"wn_unset_windowshade()\", 1200);\n" // 2 second delay
-		"        }\n"
-		"    }\n", 0);
-
-	/** Action handler for SetVisibility **/
-	htrAddScriptFunction(s, "wn_setvisibility", "\n"
-		"function wn_setvisibility(aparam)\n"
-		"    {\n"
-		"    if (aparam.IsVisible == null || aparam.IsVisible == 1 || aparam.IsVisible == '1')\n"
-		"        {\n"
-		"        wn_bring_top(this);\n"
-		"        this.visibility = 'inherit';\n"
-		"        if(!(aparam.NoInit && aparam.NoInit!=false && aparam.NoInit!=0))\n"
-		"            {\n"
-		"            for (var t in this.osrc)\n"
-		"                this.osrc[t].InitQuery();\n"
-		"            }\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        this.visibility = 'hidden';\n"
-		"        }\n"
-		"    }\n", 0);
-
-	/** Function for handling delayed-move event. **/
-	htrAddScriptFunction(s, "wn_domove", "\n"
-		"function wn_domove()\n"
-		"    {\n"
-		"    if (wn_current != null) wn_current.moveToAbsolute((wn_newx<0)?0:wn_newx,(wn_newy<0)?0:wn_newy);\n"
-		"    wn_clicked = 0;\n"
-		"    return true;\n"
-		"    }\n",0);
-
-	/** Function to adjust the Z of a window and its contents. **/
-	htrAddScriptFunction(s, "wn_adjust_z", "\n"
-		"function wn_adjust_z(l,zi)\n"
-		"    {\n"
-		"    if (zi < 0) l.zIndex += zi;\n"
-		"    for(i=0;i<l.document.layers.length;i++)\n"
-		"        {\n"
-		"        //wn_adjust_z(l.document.layers[i],zi);\n"
-		"        }\n"
-		"    if (zi > 0) l.zIndex += zi;\n"
-		"    if (l.zIndex > wn_top_z) wn_top_z = l.zIndex;\n"
-		"    wn_clicked = 0;\n"
-		"    return true;\n"
-		"    }\n", 0);
-
-	/** Function to bring a window to the 'top' **/
-	htrAddScriptFunction(s, "wn_bring_top", "\n"
-		"function wn_bring_top(l)\n"
-		"    {\n"
-		"    if (wn_topwin == l) return true;\n"
-		"    wn_adjust_z(l, wn_top_z - l.zIndex + 4);\n"
-		"    wn_topwin = l;\n"
-		"    wn_clicked = 0;\n"
-		"    }\n", 0);
-
+	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
+	
 	/** Event handler for mousedown -- initial click **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","wn",
 		"    if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
