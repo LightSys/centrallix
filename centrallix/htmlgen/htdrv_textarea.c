@@ -4,10 +4,10 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.20 2004/08/29 17:32:32 pfinley Exp $
+    $Id: htdrv_textarea.c,v 1.21 2005/02/26 06:33:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.21  2005/02/26 06:33:29  gbeeley
+    - just some brainstorming.  Thinking of multiple data formats.
+
     Revision 1.20  2004/08/29 17:32:32  pfinley
     Textarea widget crossbrowser support... I have tested on Mozilla 1.7rc1,
     Firefox 0.9.3, and Netscape 4.79.  Also fixed a JS syntax error with
@@ -220,6 +223,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     int id, i;
     int is_readonly = 0;
     int is_raised = 0;
+    int mode = 0; /* 0=text, 1=html, 2=wiki */
     char* nptr;
     char* c1;
     char* c2;
@@ -255,6 +259,19 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Readonly flag **/
 	if (wgtrGetPropertyValue(tree,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
+
+	/** Allow HTML? **/
+	if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    if (!strcasecmp(ptr,"text")) mode = 0;
+	    else if (!strcasecmp(ptr,"html")) mode = 1;
+	    else if (!strcasecmp(ptr,"wiki")) mode = 2;
+	    else
+		{
+		mssError(1,"HTTX","Textarea widget 'mode' property must be either 'text','html', or 'wiki'");
+		return -1;
+		}
+	    }
 
 	/** Background color/image? **/
 	strcpy(main_bg,"");
@@ -352,15 +369,15 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Script initialization call. **/
 	if (s->Capabilities.Dom1HTML)
 	    {
-	    htrAddScriptInit_va(s, "    %s = tx_init(document.getElementById(\"tx%dbase\"), \"%s\", %d, \"%s\");\n",
+	    htrAddScriptInit_va(s, "    %s = tx_init(document.getElementById(\"tx%dbase\"), \"%s\", %d, %d, \"%s\");\n",
 		nptr, id, 
-		fieldname, is_readonly, main_bg);
+		fieldname, is_readonly, mode, main_bg);
 	    }
 	else if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddScriptInit_va(s, "    %s = tx_init(%s.layers.tx%dbase, \"%s\", %d, \"%s\");\n",
+	    htrAddScriptInit_va(s, "    %s = tx_init(%s.layers.tx%dbase, \"%s\", %d, %d, \"%s\");\n",
 		nptr, parentname, id, 
-		fieldname, is_readonly, main_bg);
+		fieldname, is_readonly, mode, main_bg);
 	    }
 
 	/** HTML body <DIV> element for the base layer. **/
