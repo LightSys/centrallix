@@ -42,6 +42,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.4  2002/04/25 23:05:09  jorupp
+     * fixed bug I introduced when I didn't fix a collision with Greg's code right...
+
     Revision 1.3  2002/04/25 23:02:52  jorupp
      * added alternate alignment for labels (right or center should work)
      * fixed osrc/form bug
@@ -84,6 +87,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     {
     char* ptr;
     char name[64];
+    char align[64];
     /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
