@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.42 2002/08/05 19:20:08 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.43 2002/08/05 21:06:29 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.43  2002/08/05 21:06:29  pfinley
+    created a property that can optionally be added to layers that will keep
+    the current keyboard focus if it is clicked on. I added this property so
+    that keyboard focus would not be lost when you move a window. add the
+    property '.keep_kbd_focus = true' to any layer that you want to keep
+    the keyboard focus on (any layer without this property will act normally).
+
     Revision 1.42  2002/08/05 19:20:08  lkehresman
     * Revamped the GUI for the DropDown to make it look cleaner
     * Added the function pg_resize_area() so page areas can be resized.  This
@@ -608,7 +615,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"                }\n"
 		"            }\n"
 		"        }\n"
-		"    else if (pg_curkbdlayer != null)\n"
+		"    else if (pg_curkbdlayer != null && !ly.keep_kbd_focus)\n"
 		"        {\n"
 		"        pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"        if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return true;\n"

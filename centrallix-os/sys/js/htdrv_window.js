@@ -11,6 +11,7 @@
 
 function wn_init(l,ml,h)
     {
+    l.keep_kbd_focus = true;
     l.oldwin=window_current;
     window_current=l;
     l.osrc = new Array();
