@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.22 2003/07/27 03:24:54 jorupp Exp $
+    $Id: htdrv_textbutton.c,v 1.23 2003/11/18 05:58:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.23  2003/11/18 05:58:00  gbeeley
+    - attempting to fix text centering
+
     Revision 1.22  2003/07/27 03:24:54  jorupp
      * added Mozilla support for:
      	* connector
@@ -349,14 +352,15 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		{
 		htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { height: %dpx;}\n",id,id,id,h);
 		}
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { font-weight: 600;}\n",id,id,id);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { font-weight: 600; text-align: center; }\n",id,id,id);
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane { %s border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane { color: %s; text-align: center; vertical-align: bottom; }\n",id,fgcolor2);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane { color: %s; }\n",id,fgcolor2);
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane2 { color: %s; VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:-1px; top: -1px; width:%dpx; }\n",id,fgcolor1,is_enabled?"inherit":"hidden",z+1,w-1);
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane3 { color: %s; VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:0px; top: 0px; width:%dpx; }\n",id,disable_color,is_enabled?"hidden":"inherit",z+1,w-1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\">%s\n",id,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\">%s</DIV>\n",id,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\">%s</DIV>\n",id,text);
+
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><center><table><tr><td height=%d valign=middle align=center>%s</td></tr></table></center>\n",id,h,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\"><center><table><tr><td height=%d valign=middle align=center>%s</td></tr></table></center></DIV>\n",id,h,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\"><center><table><tr><td height=%d valign=middle align=center>%s</td></tr></table></center></DIV>\n",id,h,text);
 	    htrAddBodyItem_va(s,"</DIV>");
 
 	    /** Script initialization call. **/
