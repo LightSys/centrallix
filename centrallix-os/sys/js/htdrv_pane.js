@@ -13,12 +13,11 @@ function pn_init(l,ml)
     {
     l.mainlayer = ml;
     l.kind = "pn";
-    l.document.Layer = l;
     l.document.layer = ml;
     ml.kind = "pn";
-    ml.document.Layer = ml;
     ml.document.layer = ml;
     ml.maxheight = l.clip.height-2;
     ml.maxwidth = l.clip.width-2;
+    htutil_tag_images(l.document,'pn',ml,ml);
     return l;
     }

@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.13 2002/08/01 14:25:15 lkehresman Exp $
+    $Id: htdrv_pane.c,v 1.14 2002/08/01 18:27:16 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.14  2002/08/01 18:27:16  pfinley
+    The border images of the pane widget are now tagged with .kind, .layer, &
+    .mainlayer properties using the utils tag function.
+
     Revision 1.13  2002/08/01 14:25:15  lkehresman
     Removed closing body tag.  There was no opening body tag, so Netscape was
     thinking that this was the close of the HTML body.  Thus, it wasn't properly
@@ -203,6 +207,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Event Handlers **/
 	htrAddEventHandler(s, "document","MOUSEUP", "pn", 
