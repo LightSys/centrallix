@@ -9,9 +9,11 @@ fd	MTASK Module file I/O
 fxp	PrtDriver - Epson-FX (text/x-epson-fx) output
 htcb    HTDriver - Checkbox
 htconn	HTDriver - event-action connector
+htdd    HTDriver - drop down list
 hteb	HTDriver - edit box
 htex	HTDriver - exec method
 htform	HTDriver - form
+htfs    HTDriver - form status
 hthtml	HTDriver - HTML document pane
 htibtn	HTDriver - image button
 htmenu	HTDriver - menu

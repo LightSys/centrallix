@@ -146,6 +146,17 @@ II  FORM ELEMENTS...
 			value, whereas the 'Changed' event indicates that the
 			value simply changed, no matter what caused it.
 
+	    clearvalue() is used to clear the current values.  In the case
+	                of an edit box, this would set it to the "" string.
+			For a radio button, it would make no radio buttons
+			selected.  Note that this is different than the
+			resetvalue() function.
+
+	    resetvalue() is used to reset the value of a widget to its 
+	                original state (if any).  If no original state has
+			been defined, this will have the same effect as
+			clearvalue().
+
 	    setoptions() is used to set the possible values for the widget.
 			This is used, for instance, on dynamically-populated
 			drop-down list boxes.
