@@ -206,8 +206,8 @@ function dd_expand(l)
 	l.PaneLayer = dd_create_pane(l);
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
-	moveToAbsolute(l.PaneLayer, getPageX(l), getPageY(l)+20);
 	pg_stackpopup(l.PaneLayer, l);
+	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), 20, getClipWidth(l));
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
 	setClipHeight(l, getClipHeight(l) + getClipHeight(l.PaneLayer));

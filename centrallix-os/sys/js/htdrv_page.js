@@ -776,6 +776,36 @@ function pg_stackpopup(p,l)
 	}
     }
 
+/// This function handles the positioning of a popup such that it will 
+/// always appear fully on the screen.  Pass the layer being popped up
+/// as well as the coordinates and height of the layer it is being
+/// popped to, in page-absolute coordinates.
+function pg_positionpopup(p, x, y, h, w)
+    {
+    var posx, posy;
+
+    // Determine vertical (Y) position of where we can pop up...
+    if (y + h + getClipHeight(p) <= getInnerHeight())
+	posy = y + h;
+    else if (y - getClipHeight(p) >= 0)
+	posy = y - getClipHeight(p);
+    else
+	posy = getInnerHeight() - getClipHeight(p);
+
+    // Now determine horizontal (X) position...
+    if (x + getClipWidth(p) <= getInnerWidth())
+	posx = x;
+    else if (x + w - getClipWidth(p) >= 0)
+	posx = x + w - getClipWidth(p);
+    else
+	posx = getInnerWidth() - getClipWidth(p);
+
+    // Set the position
+    moveToAbsolute(p, posx, posy);
+
+    return;
+    }
+
 /** Cursor flash **/
 function pg_togglecursor()
     {
@@ -1212,7 +1242,7 @@ function pg_setkbdfocus(l, a, xo, yo)
 	        }
 	    }
 	}
-    return true;
+    return v?true:false;
     }
 
 

@@ -510,8 +510,8 @@ function dt_create_pane(ml,bg,w,h,h2) {
 // expand the date/time control
 function dt_expand(l) {
 	dt_prepare(l);
-	moveToAbsolute(l.PaneLayer, l.pageX, l.pageY + l.h);
 	pg_stackpopup(l.PaneLayer, l);
+	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	l.typed_content = '';
 }
