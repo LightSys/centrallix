@@ -196,7 +196,6 @@ function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam)
     kd.kbdlayer = klayer;
     kd.target_obj = tgt;
     kd.fnname = 'Action' + action;
-    alert(kd.fname);
     kd.aparam = aparam;
     pg_keylist.splice(0,0,kd);
     pg_keylist.sort(pg_cmpkey);
