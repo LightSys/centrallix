@@ -29,10 +29,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.4 2002/08/05 19:51:23 gbeeley Exp $
+    $Id: mtlexer.c,v 1.5 2002/08/05 20:54:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.5  2002/08/05 20:54:29  gbeeley
+    This fix should allow multiple mlxCopyToken()s if the string size is
+    larger than the buffer, to allow incremental retrievals of parts of the
+    string.
+
     Revision 1.4  2002/08/05 19:51:23  gbeeley
     Adding only "mildly tested" support for getting/setting the seek offset
     while in a lexer session.  The lexer does blocked/buffered I/O, so it
@@ -985,6 +990,7 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 		}
 	    memmove(this->TokString, this->TokString+maxlen-1, 
 		this->TokStrCnt - (maxlen-1) + 1);
+	    this->TokStrCnt -= (maxlen-1);
 	    buffer[maxlen-1] = 0;
 	    return maxlen-1;
 	    }
