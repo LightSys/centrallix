@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.43 2002/08/05 21:06:29 pfinley Exp $
+    $Id: htdrv_page.c,v 1.44 2002/08/08 16:23:07 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.44  2002/08/08 16:23:07  lkehresman
+    Added backwards compatible page area handling because the datetime widget
+    needs to do some funky stuff with page areas (areas inside of areas) that
+    worked with our previous model, but not with the mainlayer stuff.  Just
+    added a few checks to see if mainlayer existed or not.
+
     Revision 1.43  2002/08/05 21:06:29  pfinley
     created a property that can optionally be added to layers that will keep
     the current keyboard focus if it is clicked on. I added this property so
@@ -514,7 +520,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"            break;\n"
 		"            }\n"
 		"        }\n"
-		"    if (e.target != null && pg_curarea != null && ly.mainlayer != pg_curarea.layer)\n"
+		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
 		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
@@ -532,7 +538,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        return false;\n"
 		"        }\n" 
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
-		"    if (e.target != null && pg_curarea != null && ly.mainlayer != pg_curarea.layer)\n"
+		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
 		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
@@ -563,7 +569,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
-		"    if (e.target != null && pg_curarea != null && ly.mainlayer && ly.mainlayer != pg_curarea.layer)\n"
+		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
 		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
