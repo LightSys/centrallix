@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.12 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: ht_render.c,v 1.13 2002/06/19 19:57:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.13  2002/06/19 19:57:13  gbeeley
+    Added warning code if htr..._va() function is passed a format string
+    from the heap or other modifiable data segments.  Half a kludge...
+
     Revision 1.12  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -274,7 +278,6 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
     char* w_name;
     pHtDriver drv;
     char drv_key[64];
-    char buf[384];
     pXHashTable widget_drivers = NULL;
     char* agent = NULL;
 
@@ -372,6 +375,8 @@ htrAddBodyParam(pHtSession s, char* html_param)
     }
 
 
+extern int __data_start;
+
 /*** htr_internal_AddText() - use vararg mechanism to add text using one of
  *** the standard add routines.
  ***/
@@ -382,6 +387,16 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
     int rval;
     char* new_buf;
     int new_buf_size;
+
+	/** Print a warning if we think the format string isn't a constant.
+	 ** We'll need to upgrade this once htdrivers start being loaded as
+	 ** modules, since their text segments will have different addresses
+	 ** and we'll then have to read /proc/self/maps manually.
+	 **/
+	if ((unsigned int)fmt > (unsigned int)(&__data_start))
+	    {
+	    printf("***WARNING*** htrXxxYyy_va() format string '%s' at address 0x%X > 0x%X may not be a constant.\n",fmt,(unsigned int)fmt,(unsigned int)(&__data_start));
+	    }
 
 	/** Save the current va_list state so we can retry it. **/
 	orig_va = va;
