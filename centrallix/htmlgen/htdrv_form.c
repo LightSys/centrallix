@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.36  2002/05/31 01:41:19  lkehresman
+    Fixed form bug that hung javascript if no data was returned from a query.
+
     Revision 1.35  2002/05/30 04:17:21  lkehresman
     * Modified editbox to take advantage of enablenew and enablemodify
     * Fixed ChangeStatus stuff in form
@@ -414,30 +417,32 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    this.data=data;\n"
 		"    this.ClearAll();\n"
-		"    for(var i in this.elements)\n"
+		"    if (this.data)\n"
 		"        {\n"
-		"        if(this.elements[i]._form_fieldid==undefined)\n"
+		"        for(var i in this.elements)\n"
 		"            {\n"
-		"            for(var j in this.data)\n"
-		"                {\n"
-		"                if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)\n"
-		"                    {\n"
-		"                    this.elements[i]._form_type=data[j].type;\n"
-		"                    this.elements[i]._form_fieldid=j;\n"
-		"                    }\n"
-		"                }\n"
 		"            if(this.elements[i]._form_fieldid==undefined)\n"
-		"                this.elements[i]._form_fieldid=null;\n"
+		"                {\n"
+		"                for(var j in this.data)\n"
+		"                    {\n"
+		"                    if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)\n"
+		"                        {\n"
+		"                        this.elements[i]._form_type=data[j].type;\n"
+		"                        this.elements[i]._form_fieldid=j;\n"
+		"                        }\n"
+		"                    }\n"
+		"                if(this.elements[i]._form_fieldid==undefined)\n"
+		"                    this.elements[i]._form_fieldid=null;\n"
+		"                }\n"
+		"            if(this.elements[i]._form_fieldid!=null && this.data[this.elements[i]._form_fieldid].value)\n"
+		"                {\n"
+		"                this.elements[i].setvalue(this.data[this.elements[i]._form_fieldid].value);\n"
+		"                }\n"
+		"            else\n"
+		"                {\n"
+		"                this.elements[i].clearvalue();\n"
+		"                }\n"
 		"            }\n"
-		"        if(this.elements[i]._form_fieldid!=null && this.data[this.elements[i]._form_fieldid].value)\n"
-		"            {\n"
-		"            this.elements[i].setvalue(this.data[this.elements[i]._form_fieldid].value);\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            this.elements[i].clearvalue();\n"
-		"            }\n"
-
 		"        }\n"
 		"    }\n", 0);
 
