@@ -1396,7 +1396,11 @@ function pg_serialized_write(l, text, cb)
 // serialized loader list.
 function pg_serialized_load_doone()
     {
-    if (pg_loadqueue.length == 0) return;
+    if (pg_loadqueue.length == 0) 
+	{
+	pg_loadqueue_busy = false;
+	return;
+	}
     var one_item = pg_loadqueue.shift(); // remove first item
     if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.src + ' into ' + one_item.lyr.name + '\n');
     pg_loadqueue_busy = true;
