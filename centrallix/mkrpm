@@ -20,7 +20,7 @@ fi
 [ -f Makefile ] && make distclean
 
 /bin/ln -s . "$PKGNAME-$VERSION" || exit 1
-tar -czhf "$PKGNAME-$VERSION.tgz" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION.tgz" "$PKGNAME-$VERSION" || exit 1
+tar -czhf "$PKGNAME-$VERSION.tgz" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION" --exclude "$PKGNAME-$VERSION/$PKGNAME-$VERSION.tgz" --exclude CVS "$PKGNAME-$VERSION" || exit 1
 /bin/rm "$PKGNAME-$VERSION" || exit 1
 
 /bin/cp "$PKGNAME-$VERSION.tgz" "$RPMBUILDDIR"/SOURCES/ || exit 1
