@@ -51,7 +51,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.4 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: objdrv_shell.c,v 1.5 2002/11/22 19:37:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -247,12 +247,18 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	     **   as mssError() modifies the error stack.  _Nothing_ called in the child
 	     **   part of the fork() should call anything else in centrallix or centrallix-lib
 	     **   -- at least that's my opinion.... -- Jonathan Rupp 11/18/2002 **/
+	    /** 
+	     ** Re-added mssError() calls, because after a fork() the process spaces
+	     ** are *completely* isolated.  The error stack in the parent Centrallix
+	     ** will not be modified.  Plus, using mssError() allows for syslog() based
+	     ** error reporting to still work, as well as stderr.
+	     **/
 	    if (getuid() != geteuid())
 		{
 		if (setreuid(geteuid(),-1) < 0)
 		    {
 		    /** Rats!  we couldn't do it! **/
-		    fprintf(stderr,"Could not drop privileges!\n");
+		    mssError(1,"SHL","Could not drop privileges!");
 		    _exit(1);
 		    }
 		}
@@ -261,7 +267,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		if (setregid(getegid(),-1) < 0)
 		    {
 		    /** Rats!  we couldn't do it! **/
-		    fprintf(stderr,"Could not drop group privileges!\n");
+		    mssError(1,"SHL","Could not drop group privileges!");
 		    _exit(1);
 		    }
 		}
@@ -472,6 +478,7 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	}
 
     while(i < 0)
+	{
 	i=fdRead(inf->shell_fd,buffer,maxcnt,0,flags & ~FD_U_SEEK);
 	if(i < 0)
 	    {
