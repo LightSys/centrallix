@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.7 2003/02/19 22:53:54 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.8 2003/02/20 03:05:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.8  2003/02/20 03:05:19  gbeeley
+    Mostly fixed a wordwrap bug affecting situations where multiple
+    prtWriteString calls were made, and the wrap point ended up being in the
+    content of the first of the two calls.  This takes care of the common
+    case.
+
     Revision 1.7  2003/02/19 22:53:54  gbeeley
     Page break now somewhat operational, both with hard breaks (form feeds)
     and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
@@ -384,6 +390,100 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     }
 
 
+/*** prt_textlm_FindWrapPoint() - finds a suitable location within a given
+ *** string object to break it in order to do word wrapping.  Basically,
+ *** a hyphen or a space makes a wrap point.  This function will find the
+ *** optimum wrap point without causing the line to exceed the given line
+ *** width.  Returns -1 if no wrap point could be found, or 0 if a suitable
+ *** point was found.  In either event indicates what the break point would
+ *** be (if -1 is returned, there is no space/hyphen available).  If the whole
+ *** thing fits, 1 is returned.
+ ***/
+int
+prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint, double* brkwidth)
+    {
+    int sl,n,last_sep;
+    double lastw, w, ckw;
+
+	/** Start looking at beginning of string, computing width as we go **/
+	w = 0.0;
+	sl = strlen(stringobj->Content);
+	last_sep = -1;
+	lastw = 0.0;
+	for(n=0;n<sl;n++)
+	    {
+	    /** Note a separation point (space, hyphen)? **/
+	    if (stringobj->Content[n] == ' ' || (n > 0 && stringobj->Content[n-1] == '-' && stringobj->Content[n] >= 'A'))
+		{
+		last_sep = n;
+		lastw = w;
+		}
+
+	    /** Is that all that will fit? **/
+	    ckw = prt_internal_GetStringWidth(stringobj, stringobj->Content+n, 1);
+	    if (w + ckw > maxwidth)
+		{
+		if (last_sep == -1)
+		    {
+		    *brkpoint = n;
+		    *brkwidth = w;
+		    return -1;
+		    }
+		else
+		    {
+		    *brkpoint = last_sep;
+		    *brkwidth = lastw;
+		    return 0;
+		    }
+		}
+	    else
+		{
+		w += ckw;
+		}
+	    }
+
+	/** It all fits.  Return most reasonable split pt anyhow **/
+	*brkpoint = last_sep;
+	*brkwidth = lastw;
+
+    return 1;
+    }
+
+
+
+/*** prt_textlm_SplitString() - splits a string into two string objects,
+ *** creating a new string object which is returned.  The content of the
+ *** original string object is modified to reflect the split.  Used mainly
+ *** in word wrapping.  'splitpt' is the start point of where the split
+ *** occurs, and 'splitlen' is the number of characters to actually omit
+ *** from both strings (such as a space character).  'new_width' is a new
+ *** width for the first string, set to < 0 to force this routine to re-
+ *** compute that width.
+ ***/
+pPrtObjStream
+prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, double new_width)
+    {
+    pPrtObjStream split_obj;
+
+	split_obj = prt_internal_AllocObj("string");
+	split_obj->Session = stringobj->Session;
+	split_obj->Justification = stringobj->Justification;
+	prt_internal_CopyAttrs(stringobj, split_obj);
+	split_obj->Content = nmSysStrdup(stringobj->Content+splitpt+splitlen);
+	stringobj->Content[splitpt] = '\0';
+	if (new_width >= 0)
+	    stringobj->Width = new_width;
+	else
+	    stringobj->Width = prt_internal_GetStringWidth(stringobj, stringobj->Content, -1);
+	split_obj->Height = stringobj->Height;
+	split_obj->YBase = stringobj->YBase;
+	split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
+
+    return split_obj;
+    }
+
+
+
 /*** prt_textlm_ChildResizeReq() - this is called when a child object
  *** within this one is about to be resized.  This method gives this
  *** layout manager a chance to prevent the resize operation (return -1).  
@@ -431,9 +531,9 @@ prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_widt
 int
 prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
-    double top,bottom,w,maxw,lastw,ckw;
+    double top,bottom,maxw,sepw,newsepw;
     /*double oldheight;*/
-    int n,sl,last_sep;
+    int sep,newsep,rval;
     pPrtObjStream objptr;
     pPrtObjStream split_obj = NULL;
     /*unsigned char* spaceptr;*/
@@ -496,74 +596,61 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING)
 		    {
 		    /** String.  First, try to find a suitable break point. **/
-		    w = 0.0;
 		    maxw = this->Width - this->MarginLeft - this->MarginRight - objptr->X;
-		    sl = strlen(objptr->Content);
-		    last_sep = 0;
-		    lastw = 0.0;
-		    for(n=0;n<sl;n++)
-			{
-			/** Note a separation point (space, hyphen)? **/
-			if (objptr->Content[n] == ' ' || (n > 0 && objptr->Content[n-1] == '-' && objptr->Content[n] >= 'A'))
-			    {
-			    last_sep = n;
-			    lastw = w;
-			    }
+		    rval = prt_textlm_FindWrapPoint(objptr, maxw, &sep, &sepw);
 
-			/** Is that all that will fit? **/
-			ckw = prt_internal_GetStringWidth(objptr, objptr->Content+n, 1);
-			if (w + ckw > maxw)
+		    /** Did we find a break point?  result is 0 if so. **/
+		    split_obj = NULL;
+		    if (rval == 0)
+			{
+			split_obj = prt_textlm_SplitString(objptr, sep, (objptr->Content[sep]==' ')?1:0, sepw);
+			split_obj->Justification = this->Justification;
+			split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+			}
+		    else if (rval == -1 && this->ContentTail && objptr->Y == this->ContentTail->Y && !(objptr->Flags & PRT_OBJ_F_XSET) && objptr->X == this->ContentTail->X + this->ContentTail->Width && this->ContentTail->Content && this->ContentTail->ObjType->TypeID == PRT_OBJ_T_STRING)
+			{
+			/** Ok, no nice break point, but we might find something in the
+			 ** previous string object, a string with content which connects
+			 ** with the current string.  Let's see....  We won't look any
+			 ** further back than just the one string object (for now).
+			 **/
+			rval = prt_textlm_FindWrapPoint(this->ContentTail, maxw + this->ContentTail->Width, 
+				&newsep, &newsepw);
+			if (rval >= 0)
 			    {
-			    /** Did we find a break point?  last_sep != 0 if so. **/
-			    if (last_sep != 0)
-				{
-				split_obj = prt_internal_AllocObj("string");
-				split_obj->Session = objptr->Session;
-				split_obj->Justification = this->Justification;
-				prt_internal_CopyAttrs(objptr, split_obj);
-				if (objptr->Content[last_sep] == ' ')
-				    split_obj->Content = nmSysStrdup(objptr->Content+last_sep+1);
-				else
-				    split_obj->Content = nmSysStrdup(objptr->Content+last_sep);
-				objptr->Content[last_sep] = '\0';
-				objptr->Width = lastw;
-				split_obj->Height = objptr->Height;
-				split_obj->YBase = objptr->YBase;
-				split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
-				split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
-				}
-			    else
-			        {
-				/** If the line is less than 50% full, split it, otherwise move 
-				 ** it down to the next line.   maxw is *remaining* area on line.
-				 ** Don't move to next line if X was manually set.
-				 **/
-				if (maxw/(this->Width - this->MarginLeft - this->MarginRight) < 0.50 && !(objptr->Flags & PRT_OBJ_F_XSET))
-				    {
-				    /** Move down to the next line. **/
-				    objptr->X = 0.0;
-				    objptr->Y = bottom;
-				    objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
-				    }
-				else
-				    {
-				    /** Split it. **/
-				    split_obj = prt_internal_AllocObj("string");
-				    split_obj->Session = objptr->Session;
-				    split_obj->Justification = this->Justification;
-				    prt_internal_CopyAttrs(objptr, split_obj);
-				    split_obj->Content = nmSysStrdup(objptr->Content+n);
-				    objptr->Content[n] = '\0';
-				    objptr->Width = w;
-				    split_obj->Height = objptr->Height;
-				    split_obj->YBase = objptr->YBase;
-				    split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
-				    split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
-				    }
-				}
-			    break; /* out of for() loop */
+			    /** Goodie!! Found a break point **/
+			    split_obj = objptr;
+			    objptr = prt_textlm_SplitString(this->ContentTail, newsep, (this->ContentTail->Content[newsep]==' ')?1:0, newsepw);
+			    objptr->Justification = this->Justification;
+			    objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+
+			    /** We need to reset the location on this one. **/
+			    objptr->X = 0.0;
+			    objptr->Y = bottom;
 			    }
-			w += ckw;
+			}
+
+		    if (!split_obj)
+			{
+			/** No 'nice' breaking point found in the strings!  Sigh.
+			 ** If the line is less than 50% full, split it, otherwise move 
+			 ** it down to the next line.   maxw is *remaining* area on line.
+			 ** Don't move to next line if X was manually set.
+			 **/
+			if (maxw/(this->Width - this->MarginLeft - this->MarginRight) < 0.50 && !(objptr->Flags & PRT_OBJ_F_XSET))
+			    {
+			    /** Move down to the next line. **/
+			    objptr->X = 0.0;
+			    objptr->Y = bottom;
+			    objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+			    }
+			else
+			    {
+			    /** Split it. **/
+			    split_obj = prt_textlm_SplitString(objptr, sep, 0, sepw);
+			    split_obj->Justification = this->Justification;
+			    split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+			    }
 			}
 		    }
 		else
