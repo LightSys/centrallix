@@ -59,6 +59,18 @@ PRESENTATION HINTS COVERAGE....
 			Format specifications are contained in the Structure
 			File document in the "centrallix-doc" package.
 
+	AllowChars	A list of characters to be allowed in the string
+			value.  If NULL, all characters are allowed, subject
+			to the BadChars setting (if any), see below.
+
+	BadChars	A list of characters that are NOT allowed in the
+			string value.  If NULL, all characters permitted by
+			AllowChars are allowed.  If both Allow and Bad are
+			NULL, then everything is permitted in the string.
+			These two settings can be used to restrict a string's
+			content both for data validation and security
+			purposes.
+
 	Length		The length (in characters) of data that can be entered
 			in this field.
 
