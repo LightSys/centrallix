@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.7 2002/04/28 06:00:38 jorupp Exp $
+    $Id: ht_render.h,v 1.8 2002/05/03 01:41:39 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.8  2002/05/03 01:41:39  jheth
+    Defined global variable HT_FIELDNAME_SIZE, set to 60 - Used in some visible widgets
+
     Revision 1.7  2002/04/28 06:00:38  jorupp
      * added htrAddScriptCleanup* stuff
      * added cleanup stuff to osrc
@@ -84,7 +87,8 @@
 #include "xarray.h"
 
 #define HT_SBUF_SIZE	(256)
-
+/** This is the max fieldname size -- John Peebles and Joe Heth **/
+#define HT_FIELDNAME_SIZE (60)
 
 /** Widget parameter structure, also used for positioning params **/
 typedef struct
