@@ -1,0 +1,241 @@
+<html>
+<head>
+<title>How to install Centrallix under Cygwin/Linux?</title>
+</head>
+<body>
+<h1>How to install Centrallix under Cygwin/Linux?</h1>
+
+<p><h3>Before you start...</h3></p>
+<p>The following packages are required to compile and install Centrallix under Cygwin</p>
+
+* libxml2 - for XML support<br/>
+* libiconv - a dependency for libxml2<br/>
+* xorg-x11-devel - for makedepend<br/>
+* gcc - to compile Centrallix source code<br/>
+* cvs - to check out Centrallix source code under cygwin<br/>
+* OpenSSH - developers requires this to check out the source through ssh<br/>
+
+<p>For Linux,</p>
+
+* You need libxml2-devel, in addition to libxml2<br/>
+* You don't need libiconv<br/>
+
+<p><h3>Before you get the source</h3></p>
+<p>Once all the packages are installed, we can then double click the cygwin icon, you enter the shell prompt like:</p>
+
+<p>
+<pre>
+Jason Yip@jsoft ~
+$
+</pre>
+</p>
+
+<p>Before checking out the source code, make sure that you have created the destination directory for Centrallix:</p>
+
+<p>
+<pre>
+$ mkdir Centrallix
+
+$ cd Centrallix
+</pre>
+</p>
+
+<p>You will then entered the Centrallix directory that you just created:</p>
+
+<p>
+<pre>
+Jason Yip@jsoft ~/Centrallix
+$
+</pre>
+</p>
+
+<p><h3>Check out source code</h3></p>
+<p>To check out the source code, type the following:</p>
+
+<p>
+<pre>
+
+$ cvs -d:pserver:anonymous@cvs.sourceforge.net:/cvsroot/centrallix login
+
+$ cvs -z3 -d:pserver:anonymous@cvs.centrallix.sourceforge.net:/cvsroot/centrallix co centrallix
+(required -- server core)
+
+$ cvs -z3 -d:pserver:anonymous@cvs.centrallix.sourceforge.net:/cvsroot/centrallix co centrallix-lib
+(required -- server core libraries)
+
+$ cvs -z3 -d:pserver:anonymous@cvs.centrallix.sourceforge.net:/cvsroot/centrallix co centrallix-os
+(required -- objectsystem root, widget javascript)
+
+$ cvs -z3 -d:pserver:anonymous@cvs.centrallix.sourceforge.net:/cvsroot/centrallix co centrallix-doc
+(optional -- application developer documentation)
+
+$ cvs -z3 -d:pserver:anonymous@cvs.centrallix.sourceforge.net:/cvsroot/centrallix co centrallix-sysdoc
+(optional -- Centrallix developer documentation)
+</pre>
+</p>
+
+
+<p>After checking out the source code, you can start building the program:</p>
+
+<p>To configure Centrallix (generating makefile), you need to figure out the absolute path of the destination folder. Type the following:</p>
+
+<p><pre>$ pwd</pre></p>
+
+<p>it will give you the absolute path:</p>
+
+<p><pre>
+Jason Yip@jsoft ~/Centrallix
+$ pwd
+/home/Jason Yip/Centrallix
+</pre></p>
+
+<p>Remember this path or save it to a file for later use.</p>
+
+<p><h3>Build centrallix-lib module</h3></p>
+
+<p>To build centrallix-lib module, substitute your path in {$path}</p>
+
+<p><pre>
+$ cd centrallix-lib
+$ ./configure --prefix={$path}
+</pre></p>
+
+<p>so my configure command will look like:</p>
+
+<p><pre>
+$ ./configure --prefix=/home/Jason Yip/Centrallix
+</pre></p>
+
+<p>Then enter the following commands:</p>
+
+<p><pre>
+$ make
+$ make install
+$ cd ..
+</pre></p>
+
+<p><h3>Build centrallix module</h3></p>
+
+<p>To build centrallix module, substitute your path in {$path}</p>
+
+<p><pre>
+$ cd centrallix
+$ ./configure --prefix={$path}
+</pre></p>
+
+<p>so my configure command will look like:</p>
+
+<p><pre>
+$ ./configure --prefix=/home/Jason Yip/Centrallix
+(This is the same as the one in centrallix-lib)
+</pre></p>
+
+<p>Then enter the following commands</p>
+
+<p><pre>
+$ make
+$ make modules
+$ make install
+$ make modules_install
+$ cd ..
+</pre></p>
+
+<p><h3>Configure Centrallix</h3></p>
+
+<p>In your centrallix etc directory, i.e. /home/Jason Yip/Centrallix/etc in my case, modify centrallix.conf as follows:</p>
+
+*Set the net_http listen_port to something higher than 1024 so you don't have to run as root.<br/>
+*Under mtsession, set auth_method = "altpasswd" and enable the altpasswd_file, setting it to /home/{$username}/Centrallix/etc/cxpassword (replace {$username} with your username)<br/>
+
+
+<p>So the results will be like:</p>
+
+<p><pre>
+    // The HTTP network interface module.
+    net_http "system/config"
+        {
+	listen_port = 9800;
+	server_string = "Centrallix/0.7.3";
+	auth_realm = "Centrallix";
+	session_watchdog_timer = 180; //seconds
+	session_inactivity_timer = 1800; //seconds
+	enable_gzip = 0; // false - NS4 fails on this
+	condense_js = 1; // true
+	}
+
+    mtsession "system/config"
+	{
+	// Authentication method - "system" or "altpasswd".
+	//auth_method = "system";
+	auth_method = "altpasswd";
+	altpasswd_file = "/home/Jason Yip/Centrallix/etc/cxpasswd";
+
+	// Error message logging mechanism.  Method is 'stdout' or 'syslog'.
+	log_method = "stdout";
+
+	// Log all errors, or just those occurring outside a session?
+	log_all_errors = "yes";
+
+	// The program name that shows up in the syslog.
+	log_progname = "centrallix";
+	}
+</pre></p>
+
+<p><h3>Create your cxpasswd file</h3></p>
+
+<p>Type the following command and enter the password that you desired</p>
+
+<p><pre>$ htpasswd -cd cxpasswd {$username}</pre></p>
+
+<p>where {$username} is a username of your choice.</p>
+
+<p>If you don't have Apache (and hence htpasswd), you can still make this, it needs to be a file with one line, of the format username:crypted_passwd (man 3 crypt)</p>
+
+
+<p><h3>Modify rootnode</h3></p>
+
+<p>In your centrallix etc directory, i.e. /home/Jason Yip/Centrallix/etc in my case, modify the file rootnode as follows:</p>
+
+<p>Change path to point to where you put centrallix-os at
+ie. path="/home/{$username}/centrallix-os"</p>
+
+<p>In my case, it will be</p>
+
+<p><pre>
+rootnode "system/uxfile"
+    {
+    path = "/home/Jason Yip/Centrallix/centrallix-os"
+    }
+</pre></p>
+
+<p><h3>Running Centrallix</h3></p>
+
+<p>Under the Centrallix directory, i.e. /home/Jason Yip/Centrallix in my case, type the following command</p>
+
+<p><pre>$ LD_LIBRARY_PATH=lib sbin/centrallix -c etc/centrallix.conf</pre></p>
+
+<p>If you see this screen, you are done!</p>
+
+<p><pre>
+Centrallix/0.7.3 build #0960-1 [DEVELOPMENT]
+
+Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+An open source community developed project.  Provided with
+ABSOLUTELY NO WARRANTY.  See the file 'COPYING' for details.
+</pre></p>
+
+<p><h3>Try out a sample Centrallix application</h3></p>
+
+<p>Now Centrallix is up and running, you can open up your browser and type the following in the address bar:</p>
+
+<p><pre>http://localhost:9800/samples/basicform.app</pre></p>
+
+<p>In my case the port number is 9800, which is the number that you set under centrallix.conf a while before. Since I am running Centrallix on the same computer, I use localhost or 127.0.0.1. If you are running Centrallix on a remote server, replace localhost or 127.0.0.1 with the full-qualified domain name or the ip address.</p>
+
+<p>&nbsp;</p>
+<p><h1>HAVE FUN WITH CENTRALLIX!</h1></p>
+
+<p>This documentation is derived from <a href="http://centrallix.sourceforge.net/howto.htm">http://centrallix.sourceforge.net/howto.htm</a>. Thanks for Jonathan Rupp for reviewing this documentation :)</p>
+
+</body>
+</html>
