@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.7 2002/07/25 18:08:35 mcancel Exp $
+    $Id: htdrv_execmethod.c,v 1.8 2002/08/02 13:01:52 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.8  2002/08/02 13:01:52  lkehresman
+    Removed unused variables (to make the compile stop squalking!)
+
     Revision 1.7  2002/07/25 18:08:35  mcancel
     Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
 
@@ -113,8 +116,6 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     {
     char* ptr;
     char name[64];
-    char sbuf[HT_SBUF_SIZE];
-    char sbuf2[160];
     int id;
     char* nptr;
     char* objname;
