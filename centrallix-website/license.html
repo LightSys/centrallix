@@ -25,16 +25,26 @@
 	libraries to easily provide connectivity with the Centrallix server.  These libraries are contained wholly in the 
 	"centrallix-lib" package which is downloadable from this site.</p>
 
+	<p>Note that the /sys directory in the centrallix-os package, as of release 0.7.2, is now under the LGPL
+	license.  We did this so that we could 1) move some of the DHTML javascript functions out of the core
+	code base, and 2) thus allow the generated DHTML content itself from Centrallix to be usable under 
+	whatever license/copyright the creator of the corresponding .app file chooses.  The javascript files
+	would then be a "library" that is linked to via script src= tags.  As of the time of writing of this
+	page update, the .js functions were still in the core, however.</p>
+
 	<font size="+2">BSD License Portions....</font>
 	<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
 
 	<p>Finally, in order to promote as wide a usage as possible of Centrallix, we are releasing some components
 	under the BSD license.  Note that <i>none</i> of the Centrallix codebase is being released under the BSD
-	license; only supplemental files and documentation are.  The packages that are under the BSD license are 
-	as follows:  "centrallix-os", a baseline ObjectSystem used to start development within the Centrallix
-	environment, "centrallix-doc", the app developer and end-user documentation package, and "centrallix-sysdoc",
-	the system developer documentation (for those who code the Centrallix system itself).<p>
+	license; only supplemental files and documentation are.  The components that are under the BSD license are 
+	as follows:  the /samples directory and its contents in "centrallix-os", a baseline ObjectSystem used to
+	start development within the Centrallix environment, "centrallix-doc", the app developer and end-user
+	documentation package, and "centrallix-sysdoc", the system developer documentation (for those who code
+	the Centrallix system itself).<p>
 
+	<p>As mentioned above, the /sys directory and its contents in centrallix-os is under the LGPL.</p>
+	
 	<font size="+2">Note To Developers....</font>
 	<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
 
@@ -43,7 +53,7 @@
 	file or a BSDed file, you <i>must</i> get permission from the copyright holder for that code.  This
 	also applies to using LGPLed code in a BSDed file.<p> 
 
-	<br><br><hr><i><small>(c) 2001 LightSys Technology Services, Inc.  See <a href="LICENSE.txt">LICENSE.txt</a> for redistribution conditions.</small></i>
+	<br><br><hr><i><small>(c) 2001-2002 LightSys Technology Services, Inc.  See <a href="LICENSE.txt">LICENSE.txt</a> for redistribution conditions.</small></i>
 
     </td></tr></table>
 
