@@ -63,10 +63,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.13 2004/02/24 20:25:41 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.14 2004/02/25 19:59:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.14  2004/02/25 19:59:57  gbeeley
+    - fixing problem in net_http; nht_internal_GET should not open the
+      target_obj when operating in OSML-over-HTTP mode.
+    - adding OBJ_O_AUTONAME support to sybase driver.  Uses select max()+1
+      approach for integer fields which are left unspecified.
+
     Revision 1.13  2004/02/24 20:25:41  gbeeley
     - misc changes: runclient check in evaltree in stparse, eval() function
       rejected in sybase driver, update version in centrallix.conf, .cmp
@@ -159,7 +165,7 @@
 /*** Module Controls ***/
 #define SYBD_USE_CURSORS	1	/* use cursors for all multirow SELECTs */
 #define SYBD_CURSOR_ROWCOUNT	20	/* # of rows to fetch at a time */
-#define SYBD_SHOW_SQL		0	/* debug printout SQL issued to Sybase */
+#define SYBD_SHOW_SQL		1	/* debug printout SQL issued to Sybase */
 #define SYBD_RESULTSET_CACHE	64	/* number of rows to hold in cache */
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
 
@@ -168,6 +174,17 @@
 #ifndef O_NOFOLLOW
 #define O_NOFOLLOW 0400000
 #endif
+
+
+/*** Structure for foreign key information ***/
+typedef struct
+    {
+    int		nKeys;
+    char	ForeignKeys[16];
+    char	PrimaryKeys[16];
+    char	PrimaryKeyTable[32];
+    }
+    SybdRef, *pSybdRef;
 
 
 /*** Structure for storing table-key information ***/
@@ -186,16 +203,20 @@ typedef struct
     char*	Keys[8];
     int		KeyCols[8];
     int		nKeys;
+    pSybdRef	ColFK[256];
     pParamObjects ObjList;
     pExpression	RowAnnotExpr;
     char	Annotation[256];
     int		HasContent;
+    int		RowCount;		/* -1 if unknown */
+    pSemaphore	AutonameSem;		/* only one autoname insert at a time */
     }
     SybdTableInf, *pSybdTableInf;
 
 #define SYBD_CF_ALLOWNULL	1
 #define SYBD_CF_FOUND		2
 #define SYBD_CF_PRIKEY		4
+#define SYBD_CF_FOKEY		8	/* column is a foreign key referencing another table */
 
 
 /*** Structure for directory entry nodes ***/
@@ -262,6 +283,7 @@ typedef struct
     char*	ColPtrs[256];
     unsigned char ColNum[256];
     char	RowBuf[2048];
+    char	Autoname[256];
     }
     SybdData, *pSybdData;
 
@@ -289,8 +311,11 @@ typedef struct
     pSybdTableInf TableInf;
     CS_COMMAND*	Cmd;
     int		RowsSinceFetch;
+    int		Flags;
     }
     SybdQuery, *pSybdQuery;
+
+#define SYBD_QF_USECURSOR	1
 
 
 /*** Structure for one table in a passthru query ***/
@@ -361,6 +386,25 @@ static attr_t tabattr_inf[] =
     };
 #endif
 
+/*** sybd_internal_AttrType() - return the Centrallix attribute type for
+ *** a given column id in the given table.
+ ***/
+int
+sybd_internal_AttrType(pSybdTableInf tdata, int colid)
+    {
+	if (tdata->ColTypes[colid] == 5 || tdata->ColTypes[colid] == 6 ||
+	    tdata->ColTypes[colid] == 7 || tdata->ColTypes[colid] == 16)
+	    return DATA_T_INTEGER;
+	else if (tdata->ColTypes[colid] == 1 || tdata->ColTypes[colid] == 2 ||
+	    tdata->ColTypes[colid] == 19 || tdata->ColTypes[colid] == 18)
+	    return DATA_T_STRING;
+	else if (tdata->ColTypes[colid] == 22 || tdata->ColTypes[colid] == 12)
+	    return DATA_T_DATETIME;
+	else if (tdata->ColTypes[colid] == 11 || tdata->ColTypes[colid] == 21)
+	    return DATA_T_MONEY;
+	else if (tdata->ColTypes[colid] == 8 || tdata->ColTypes[colid] == 23)
+	    return DATA_T_DOUBLE;
+    }
 
 /*** sybd_internal_Exec - executes a query and returns the CTlib command
  *** structure.
@@ -694,7 +738,8 @@ pSybdTableInf
 sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
     {
     pSybdTableInf tdata;
-    char sbuf[160];
+    pSybdRef fkeydata;
+    char sbuf[480];
     char* ptr;
     char* tmpptr;
     int l,i,col,find_col,restype;
@@ -734,7 +779,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	tdata->HasContent = 0;
 
 	/** Build the query to get the cols. **/
-	snprintf(sbuf,160,"SELECT c.name,c.colid,c.status,c.usertype FROM syscolumns c,sysobjects o WHERE c.id=o.id AND o.name='%s' ORDER BY c.colid",table);
+	snprintf(sbuf,sizeof(sbuf),"SELECT c.name,c.colid,c.status,c.usertype FROM syscolumns c,sysobjects o WHERE c.id=o.id AND o.name='%s' ORDER BY c.colid",table);
 	if (!(cmd=sybd_internal_Exec(session,sbuf)))
 	    {
 	    nmSysFree(tdata->ColBuf);
@@ -749,7 +794,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	  while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
 	    {
 	    /** Get the col name. **/
-	    ct_get_data(cmd, 1, sbuf, 159, (CS_INT*)&i);
+	    ct_get_data(cmd, 1, sbuf, sizeof(sbuf)-1, (CS_INT*)&i);
 	    sbuf[i] = 0;
 	    if (strpbrk(sbuf,"'\"\t\r\n "))
 		{
@@ -816,7 +861,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	    }
 
 	/** Ok, done with that query.  Now load the primary key. **/
-	snprintf(sbuf,160,"SELECT keycnt,key1,key2,key3,key4,key5,key6,key7,key8 FROM syskeys k, sysobjects o where k.id=o.id and o.name='%s' and k.type=1",table);
+	snprintf(sbuf,sizeof(sbuf),"SELECT keycnt,key1,key2,key3,key4,key5,key6,key7,key8 FROM syskeys k, sysobjects o where k.id=o.id and o.name='%s' and k.type=1",table);
 	if ((cmd=sybd_internal_Exec(session,sbuf)))
 	    {
 	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
@@ -847,12 +892,12 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	    sybd_internal_Close(cmd);
 	    }
 
-	/** Finally, get annotation information for the table and for its rows. **/
+	/** Next, get annotation information for the table and for its rows. **/
 	tdata->Annotation[0] = 0;
 	tdata->RowAnnotExpr = NULL;
 	if (*(node->AnnotTable))
 	    {
-	    snprintf(sbuf, 160, "SELECT a,b,c FROM %s WHERE a = '%s'", node->AnnotTable, table);
+	    snprintf(sbuf, sizeof(sbuf), "SELECT a,b,c FROM %s WHERE a = '%s'", node->AnnotTable, table);
 	    if ((cmd=sybd_internal_Exec(session,sbuf)))
 	        {
 		while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
@@ -864,7 +909,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 			tdata->Annotation[i] = 0;
 
 			/** Get the annotation expression and compile it **/
-			ct_get_data(cmd, 3, sbuf, 159, (CS_INT*)&i);
+			ct_get_data(cmd, 3, sbuf, sizeof(sbuf)-1, (CS_INT*)&i);
 			sbuf[i] = 0;
 			tdata->ObjList = expCreateParamList();
 			expAddParamToList(tdata->ObjList, NULL, NULL, 0);
@@ -888,7 +933,73 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	    tdata->RowAnnotExpr = (pExpression)expCompileExpression("''", tdata->ObjList, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 	    }
 
+	/** Finally, get the foreign key information for the table **/
+	snprintf(sbuf, sizeof(sbuf), "select o2.name,keycnt,fokey1,fokey2,fokey3,fokey4,fokey5,fokey6,fokey7,fokey8,fokey9,fokey10,fokey11,fokey12,fokey13,fokey14,fokey15,fokey16,refkey1,refkey2,refkey3,refkey4,refkey5,refkey6,refkey7,refkey8,refkey9,refkey10,refkey11,refkey12,refkey13,refkey14,refkey15,refkey16 from sysobjects o1,sysobjects o2,sysreferences where o1.name='%s' and o1.id=tableid and o2.id=reftabid", table);
+	if ((cmd=sybd_internal_Exec(session,sbuf)))
+	    {
+	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+	      while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
+	        {
+		fkeydata = (pSybdRef)nmMalloc(sizeof(SybdRef));
+		if (!fkeydata) break;
+		fkeydata->nKeys = 0;
+
+		/** get referenced table name **/
+		ct_get_data(cmd, 1, fkeydata->PrimaryKeyTable, sizeof(fkeydata->PrimaryKeyTable)-1, (CS_INT*)&i);
+		fkeydata->PrimaryKeyTable[i] = 0;
+
+		/** Get column count for key **/
+		ct_get_data(cmd, 2, &(fkeydata->nKeys), 4, (CS_INT*)&i);
+		if (fkeydata->nKeys < 1 || fkeydata->nKeys > 16)
+		    {
+		    nmFree(fkeydata, sizeof(SybdRef));
+		    break;
+		    }
+
+		/** Get individual keys **/
+		for(l=0;l<fkeydata->nKeys;l++)
+		    {
+		    col = 0;
+		    ct_get_data(cmd, 3+l, &col, sizeof(int), (CS_INT*)&i);
+
+		    /** dereference foreign key column id's since we have the tdata with us **/
+		    find_col = -1;
+		    for(i=0;i<tdata->nCols;i++) if (tdata->ColIDs[i] == col) 
+		        {
+			find_col=i;
+			break;
+			}
+		    if (find_col < 0) continue;
+		    tdata->ColFK[find_col] = fkeydata;
+		    tdata->ColFlags[find_col] |= SYBD_CF_FOKEY;
+		    fkeydata->ForeignKeys[l] = find_col;
+		    }
+		for(l=0;l<fkeydata->nKeys;l++)
+		    {
+		    /** pri key table column id's are NOT dereferenced!! **/
+		    col = 0;
+		    ct_get_data(cmd, 3+16+l, &col, sizeof(int), (CS_INT*)&i);
+		    fkeydata->PrimaryKeys[l] = col;
+		    }
+		}
+	    sybd_internal_Close(cmd);
+	    }
+
+	/** Get the row count for the table **/
+	snprintf(sbuf, sizeof(sbuf), "select count(1) from %s", table);
+	if ((cmd=sybd_internal_Exec(session,sbuf)))
+	    {
+	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+	      while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
+	        {
+		tdata->RowCount = -1;
+		ct_get_data(cmd, 1, &tdata->RowCount, sizeof(int), (CS_INT*)&i);
+		}
+	    sybd_internal_Close(cmd);
+	    }
+
 	/** Cache the data **/
+	tdata->AutonameSem = syCreateSem(1,0);
 	xhAdd(&(node->TableInf),tdata->Table,(char*)tdata);
 
     return tdata;
@@ -1479,8 +1590,10 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	sybd_internal_DetermineType(obj,inf);
 
 	/** Access the DB node. **/
-	inf->Node = sybd_internal_OpenNode(obj_internal_PathPart(obj->Pathname,0,obj->SubPtr),obj->Mode,obj,inf->Type == SYBD_T_DATABASE,mask);
+	memccpy(sbuf, obj_internal_PathPart(obj->Pathname,0,obj->SubPtr), 0, sizeof(sbuf)-1);
+	sbuf[sizeof(sbuf)-1] = '\0';
 	obj_internal_PathPart(obj->Pathname,0,0);
+	inf->Node = sybd_internal_OpenNode(sbuf,obj->Mode,obj,inf->Type == SYBD_T_DATABASE,mask);
 	if (!(inf->Node))
 	    {
 	    mssError(0,"SYBD","Could not open database node!");
@@ -1595,6 +1708,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		(*oxt)->Status = OXT_S_VISITED;
 		(*oxt)->OpType = OXT_OP_CREATE;
 		(*oxt)->LLParam = (void*)inf;
+		(*oxt)->Object = obj;
 		return inf;
 		}
 	    }
@@ -1602,38 +1716,43 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** If a row is being accessed, verify its existence / open its row **/
 	if (inf->Type == SYBD_T_ROW)
 	    {
-	    ptr = sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr);
-	    if (!ptr)
-		{
-		sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
-		nmFree(inf,sizeof(SybdData));
-		return NULL;
-		}
-	    snprintf(sbuf,256,"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
-	    if ((cmd=sybd_internal_Exec(inf->SessionID, sbuf)) == NULL)
-	        {
-		mssError(0,"SYBD","Could not retrieve row object from database");
-		sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
-		nmFree(inf,sizeof(SybdData));
-		return NULL;
-		}
 	    cnt = 0;
-	    while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
-	        {
-	        ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
-	        for(i=0;i<ncols;i++) inf->ColNum[i] = (unsigned char)i;
-	        while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
-	            {
-		    cnt++;
-		    if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
+
+	    /** Autonaming a new object?  Won't be able to look it up if so. **/
+	    if (!(inf->Obj->Mode & OBJ_O_AUTONAME))
+		{
+		ptr = sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr);
+		if (!ptr)
+		    {
+		    sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+		    nmFree(inf,sizeof(SybdData));
+		    return NULL;
+		    }
+		snprintf(sbuf,256,"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
+		if ((cmd=sybd_internal_Exec(inf->SessionID, sbuf)) == NULL)
+		    {
+		    mssError(0,"SYBD","Could not retrieve row object from database");
+		    sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+		    nmFree(inf,sizeof(SybdData));
+		    return NULL;
+		    }
+		while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+		    {
+		    ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
+		    for(i=0;i<ncols;i++) inf->ColNum[i] = (unsigned char)i;
+		    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
 			{
-			sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
-			nmFree(inf,sizeof(SybdData));
-			return NULL;
+			cnt++;
+			if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
+			    {
+			    sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+			    nmFree(inf,sizeof(SybdData));
+			    return NULL;
+			    }
 			}
 		    }
+		sybd_internal_Close(cmd);
 		}
-	    sybd_internal_Close(cmd);
 	    if (cnt == 0)
 	        {
 		/** User specified a row that doesn't exist. **/
@@ -1651,12 +1770,189 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		if (!*oxt) *oxt = obj_internal_AllocTree();
 		(*oxt)->OpType = OXT_OP_CREATE;
 		(*oxt)->LLParam = (void*)inf;
+		(*oxt)->Object = obj;
+		(*oxt)->Status = OXT_S_VISITED;
 		return inf;
 		}
 	    }
 
     return (void*)inf;
     }
+
+
+/*** sybd_internal_BuildAutoname - figures out how to fill in the required 
+ *** information for an autoname-based row insertion, and populates the
+ *** "Autoname" field in the SybdData structure accordingly.  Looks in the
+ *** OXT for a partially (or fully) completed key, and uses an autonumber
+ *** type of approach to complete the remainder of the key.  Returns nonnegative
+ *** on success and with the autoname semaphore held.  Returns negative on error
+ *** with the autoname semaphore NOT held.  On success, the semaphore must be
+ *** released after the successful insertion of the new row.
+ ***/
+int
+sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
+    {
+    pObjTrxTree keys_provided[8];
+    int n_keys_provided = 0;
+    int i,j,colid;
+    pObjTrxTree find_oxt, attr_oxt;
+    pXString sql = NULL;
+    char* key_values[8];
+    char* ptr;
+    int rval = 0;
+    int first_clause = 1;
+    int t;
+    CS_COMMAND* cmd = NULL;
+    int restype;
+    int intval;
+    int len;
+
+	if (inf->TData->nKeys == 0) return -1;
+	for(j=0;j<inf->TData->nKeys;j++) key_values[j] = NULL;
+
+	/** Snarf the autoname semaphore **/
+	syGetSem(inf->TData->AutonameSem, 1, 0);
+
+	/** Try to locate provided keys in the OXT, leave NULL if not found. **/
+	for(j=0;j<inf->TData->nKeys;j++)
+	    {
+	    colid = inf->TData->KeyCols[j];
+	    find_oxt=NULL;
+	    for(i=0;i<oxt->Children.nItems;i++)
+		{
+		attr_oxt = ((pObjTrxTree)(oxt->Children.Items[i]));
+		if (attr_oxt->OpType == OXT_OP_SETATTR)
+		    {
+		    if (!strcmp(attr_oxt->AttrName,inf->TData->Cols[colid]))
+			{
+			find_oxt = attr_oxt;
+			find_oxt->Status = OXT_S_COMPLETE;
+			break;
+			}
+		    }
+		}
+	    if (find_oxt) 
+		{
+		n_keys_provided++;
+		keys_provided[j] = find_oxt;
+		ptr = objDataToStringTmp(find_oxt->AttrType, find_oxt->AttrValue, 0);
+		key_values[j] = nmSysStrdup(ptr);
+		if (!key_values[j])
+		    {
+		    rval = -ENOMEM;
+		    goto exit_BuildAutoname;
+		    }
+		}
+	    }
+
+	/** Build the SQL to do the select max()+1 **/
+	sql = (pXString)nmMalloc(sizeof(XString));
+	if (!sql)
+	    {
+	    rval = -ENOMEM;
+	    goto exit_BuildAutoname;
+	    }
+	xsInit(sql);
+	for(j=0;j<inf->TData->nKeys;j++)
+	    {
+	    colid = inf->TData->KeyCols[j];
+	    if (!key_values[j])
+		{
+		if (inf->TData->ColTypes[colid] != 5 && inf->TData->ColTypes[colid] != 6 && 
+			inf->TData->ColTypes[colid] != 7 && inf->TData->ColTypes[colid] != 16)
+		    {
+		    mssError(1,"SYBD","Non-integer key field '%s' left NULL on autoname create", inf->TData->Cols[colid]);
+		    rval = -1;
+		    goto exit_BuildAutoname;
+		    }
+		xsPrintf(sql, "SELECT max(%s)+1 FROM %s", inf->TData->Cols[colid], inf->TData->Table);
+		first_clause = 1;
+		for(i=0;i<inf->TData->nKeys;i++)
+		    {
+		    if (key_values[i])
+			{
+			if (first_clause)
+			    xsConcatenate(sql, " WHERE ", 7);
+			else
+			    xsConcatenate(sql, " AND ", 5);
+			first_clause = 0;
+			xsConcatenate(sql, inf->TData->Cols[inf->TData->KeyCols[i]], -1);
+			xsConcatenate(sql, " = ", 3);
+			t = sybd_internal_AttrType(inf->TData, inf->TData->KeyCols[i]);
+			if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE || t == DATA_T_MONEY)
+			    xsConcatenate(sql, key_values[i], -1);
+			else
+			    xsConcatPrintf(sql, "'%s'", key_values[i]);
+			}
+		    }
+
+		/** Now that sql is built, send to server **/
+		if ((cmd=sybd_internal_Exec(session,sql->String)))
+		    {
+		    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+			{
+			while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
+			    {
+			    /** Get the table's annotation **/
+			    intval = 0;
+			    ct_get_data(cmd, 1, &intval, 255, (CS_INT*)&i);
+			    key_values[j] = nmSysMalloc(16);
+			    if (!key_values[j])
+				{
+				rval = -ENOMEM;
+				goto exit_BuildAutoname;
+				}
+			    sprintf(key_values[j], "%d", intval);
+			    }
+			}
+		    sybd_internal_Close(cmd);
+		    cmd = NULL;
+		    }
+		else
+		    {
+		    mssError(1,"SYBD","Could not obtain next-value information for key '%s' on table '%s'",
+			    inf->TData->Cols[colid], inf->TData->Table);
+		    rval = -1;
+		    goto exit_BuildAutoname;
+		    }
+		}
+	    }
+
+	/** Okay, all keys filled in.  Build the autoname. **/
+	inf->Autoname[0] = '\0';
+	for(len=j=0;j<inf->TData->nKeys;j++)
+	    {
+	    if (j) len += 1; /* for | separator */
+	    len += strlen(key_values[j]);
+	    }
+	if (len >= sizeof(inf->Autoname))
+	    {
+	    mssError(1,"SYBD","Autoname too long!");
+	    rval = -1;
+	    goto exit_BuildAutoname;
+	    }
+	for(j=0;j<inf->TData->nKeys;j++)
+	    {
+	    if (j) strcat(inf->Autoname,"|");
+	    strcat(inf->Autoname, key_values[j]);
+	    }
+
+    exit_BuildAutoname:
+	/** Release resources we used **/
+	if (cmd) sybd_internal_Close(cmd);
+	if (rval < 0) 
+	    syPostSem(inf->TData->AutonameSem, 1, 0);
+	if (sql)
+	    {
+	    xsDeInit(sql);
+	    nmFree(sql, sizeof(XString));
+	    }
+	for(j=0;j<inf->TData->nKeys;j++) 
+	    if (key_values[j]) nmSysFree(key_values[j]);
+
+    return rval;
+    }
+
 
 
 /*** sybd_internal_InsertRow - inserts a new row into the database, looking
@@ -1675,6 +1971,8 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
     pXString insbuf;
     char* tmpptr;
     char tmpch;
+    int colid;
+    int holding_sem = 0;
 
         /** Allocate a buffer for our insert statement. **/
 	insbuf = (pXString)nmMalloc(sizeof(XString));
@@ -1686,6 +1984,14 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 	xsConcatenate(insbuf, "INSERT INTO ", 12);
 	xsConcatenate(insbuf, inf->TablePtr, -1);
 	xsConcatenate(insbuf, " VALUES (", 9);
+
+	/** If we are using an autoname-based create, here is where we build the name. **/
+	if (inf->Obj->Mode & OBJ_O_AUTONAME && inf->TData->nKeys)
+	    {
+	    if (sybd_internal_BuildAutoname(inf, session, oxt) < 0) return -1;
+	    inf->RowColPtr = inf->Autoname;
+	    holding_sem = 1; /* we hold the semaphore on successful BuildAutoname return */
+	    }
 
         /** Ok, look for the attribute sub-OXT's **/
         for(j=0;j<inf->TData->nCols;j++)
@@ -1704,6 +2010,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		    mssError(1,"SYBD","Not enough components in concat primary key (name)");
 		    xsDeInit(insbuf);
 		    nmFree(insbuf,sizeof(XString));
+		    if (holding_sem) syPostSem(inf->TData->AutonameSem, 1, 0);
 		    return -1;
 		    }
 		kendptr = strchr(kptr,'|');
@@ -1760,6 +2067,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
                         mssError(1,"SYBD","Required column not specified in object create");
 			xsDeInit(insbuf);
 			nmFree(insbuf,sizeof(XString));
+			if (holding_sem) syPostSem(inf->TData->AutonameSem, 1, 0);
                         return -1;
                         }
                     }
@@ -1778,37 +2086,31 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
             nmFree(insbuf,sizeof(XString));
             sybd_internal_Close(cmd);
 	    mssError(0,"SYBD","Could not execute SQL to insert new table row");
+	    if (holding_sem) syPostSem(inf->TData->AutonameSem, 1, 0);
             return -1;
             }
 	while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED);
         sybd_internal_Close(cmd);
 	xsDeInit(insbuf);
         nmFree(insbuf,sizeof(XString));
+	if (inf->TData && inf->TData->RowCount >= 0) inf->TData->RowCount++;
+	if (holding_sem) syPostSem(inf->TData->AutonameSem, 1, 0);
 
     return 0;
     }
 
 
-/*** sybdClose - close an open file or directory.
+/*** sybdCommit - commit changes made to the object, but don't close it.
  ***/
 int
-sybdClose(void* inf_v, pObjTrxTree* oxt)
+sybdCommit(void* inf_v, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
-    int i;
     struct stat fileinfo;
+    int i;
     char sbuf[160];
 
-    	/** Is a ReadSess in progress? **/
-	if (inf->ReadSessID != NULL) 
-	    {
-	    if (inf->RWCmd) sybd_internal_Close(inf->RWCmd);
-	    inf->RWCmd = NULL;
-	    sybd_internal_ReleaseConn(inf->Node, inf->ReadSessID);
-	    inf->ReadSessID = NULL;
-	    }
-
-	/** Write session is a bit more complex.  IF needed, complete the write. **/
+	/** Write session is a bit complex.  IF needed, complete the write. **/
 	if (inf->WriteSessID != NULL) 
 	    {
 	    if (inf->RWCmd) 
@@ -1822,7 +2124,7 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 		    inf->ContentIODesc.log_on_update = CS_TRUE;
 		    ct_data_info(inf->RWCmd, CS_SET, CS_UNUSED, &(inf->ContentIODesc));
 		    inf->TmpFD = fdOpen(inf->TmpFile, O_RDONLY, 0600);
-		    while((i=fdRead(inf->TmpFD,sbuf,160,0,0)))
+		    while((i=fdRead(inf->TmpFD,sbuf,sizeof(sbuf),0,0)))
 		        {
 			ct_send_data(inf->RWCmd, sbuf, (CS_INT)i);
 			}
@@ -1859,7 +2161,6 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 		    if (!inf->SessionID)
 			{
 			mssError(0,"SYBD","Database connection failed");
-			nmFree(inf, sizeof(SybdData));
 			return -1;
 			}
 
@@ -1872,7 +2173,6 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 			/** Release the open object data **/
 			sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
 			inf->SessionID = NULL;
-			nmFree(inf,sizeof(SybdData));
 			return -1;
 			}
 
@@ -1887,6 +2187,30 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 		}
 	    }
 
+    return 0;
+    }
+
+
+/*** sybdClose - close an open file or directory.
+ ***/
+int
+sybdClose(void* inf_v, pObjTrxTree* oxt)
+    {
+    pSybdData inf = SYBD(inf_v);
+    int rval;
+
+    	/** Is a ReadSess in progress? **/
+	if (inf->ReadSessID != NULL) 
+	    {
+	    if (inf->RWCmd) sybd_internal_Close(inf->RWCmd);
+	    inf->RWCmd = NULL;
+	    sybd_internal_ReleaseConn(inf->Node, inf->ReadSessID);
+	    inf->ReadSessID = NULL;
+	    }
+
+	/** Commit changes **/
+	rval = sybdCommit(inf_v, oxt);
+
 	/** Disconnect the DB session, if needed. **/
 	if (inf->SessionID != NULL)
 	    {
@@ -1897,7 +2221,7 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 	/** Free the info structure **/
 	nmFree(inf,sizeof(SybdData));
 
-    return 0;
+    return rval;
     }
 
 
@@ -1984,6 +2308,7 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 	sybd_internal_Close(cmd);
 	sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
+	if (inf->TData && inf->TData->RowCount > 0) inf->TData->RowCount--;
 
 	/** Free the structure **/
 	nmFree(inf,sizeof(SybdData));
@@ -2339,6 +2664,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->SessionID = NULL;
 	qy->ObjSession = NULL;
 	qy->Cmd = NULL;
+	qy->Flags = 0;
 
 	/** State that we won't do full query unless we get to SYBD_T_ROWSOBJ below **/
 	query->Flags &= ~OBJ_QY_F_FULLQUERY;
@@ -2351,9 +2677,14 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    case SYBD_T_DATABASE:
 	        /** Select the list of tables from the DB. **/
 		if (SYBD_USE_CURSORS)
+		    {
 		    snprintf(qy->SQLbuf,2048,"DECLARE _c CURSOR FOR SELECT name from sysobjects where type = 'U' ORDER BY name");
+		    qy->Flags |= SYBD_QF_USECURSOR;
+		    }
 		else
+		    {
 		    snprintf(qy->SQLbuf,2048,"SELECT name from sysobjects where type = 'U' ORDER BY name");
+		    }
 		qy->SessionID = inf->SessionID;
 		qy->ObjSession = inf->SessionID;
 		inf->SessionID = NULL;
@@ -2417,10 +2748,15 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			sybd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->TableInf),1,&sql);
 			}
 	  	    }
-		if (SYBD_USE_CURSORS)
+		if (SYBD_USE_CURSORS && (inf->TData->RowCount < 0 || inf->TData->RowCount > SYBD_CURSOR_ROWCOUNT))
+		    {
 		    snprintf(qy->SQLbuf,2048,"DECLARE _c CURSOR FOR SELECT * FROM %s %s",inf->TablePtr, sql.String);
+		    qy->Flags |= SYBD_QF_USECURSOR;
+		    }
 		else
+		    {
 		    snprintf(qy->SQLbuf,2048,"SELECT * FROM %s %s",inf->TablePtr, sql.String);
+		    }
 		if (strcmp(qy->SQLbuf, SYBD_INF.LastSQL.String) || 1)
 		    {
 		    if (SYBD_SHOW_SQL) printf("SQL = %s\n",qy->SQLbuf);
@@ -2444,7 +2780,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 
 	/** Cursor mode retrieval?  Open cursor if so. **/
-	if (SYBD_USE_CURSORS && qy->Cmd)
+	if ((qy->Flags & SYBD_QF_USECURSOR) && qy->Cmd)
 	    {
 	    while(ct_results(qy->Cmd,(CS_INT*)&restype)==CS_SUCCEED && restype != CS_CMD_DONE);
 	    sybd_internal_Close(qy->Cmd);
@@ -2510,7 +2846,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    /** Got a row.  Good -- return it. **/
 		    break;
 		    }
-		else if (cnt == 0 && (!(SYBD_USE_CURSORS) || qy->RowsSinceFetch < SYBD_CURSOR_ROWCOUNT))
+		else if (cnt == 0 && (!(qy->Flags & SYBD_QF_USECURSOR) || qy->RowsSinceFetch < SYBD_CURSOR_ROWCOUNT))
 		    {
 		    /** No rows left and fewer than rowcount (or no) rows returned - query over. **/
 		    /** Release the command structure now that we're done. **/
@@ -2663,7 +2999,7 @@ sybdQueryClose(void* qy_v, pObjTrxTree* oxt)
 	if (qy->Cmd) sybd_internal_Close(qy->Cmd);
 
 	/** Deallocate the cursor? **/
-	if (SYBD_USE_CURSORS && (qy->ObjInf->Type == SYBD_T_DATABASE || qy->ObjInf->Type == SYBD_T_ROWSOBJ))
+	if ((qy->Flags & SYBD_QF_USECURSOR) && (qy->ObjInf->Type == SYBD_T_DATABASE || qy->ObjInf->Type == SYBD_T_ROWSOBJ))
 	    {
 	    snprintf(qy->SQLbuf,2048,"CLOSE _c DEALLOCATE CURSOR _c");
 	    qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
@@ -2733,18 +3069,7 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	        {
 		if (!strcmp(attrname,tdata->Cols[i]))
 		    {
-		    if (tdata->ColTypes[i] == 5 || tdata->ColTypes[i] == 6 ||
-		        tdata->ColTypes[i] == 7 || tdata->ColTypes[i] == 16)
-			return DATA_T_INTEGER;
-		    else if (tdata->ColTypes[i] == 1 || tdata->ColTypes[i] == 2 ||
-		        tdata->ColTypes[i] == 19 || tdata->ColTypes[i] == 18)
-			return DATA_T_STRING;
-		    else if (tdata->ColTypes[i] == 22 || tdata->ColTypes[i] == 12)
-		        return DATA_T_DATETIME;
-		    else if (tdata->ColTypes[i] == 11 || tdata->ColTypes[i] == 21)
-		        return DATA_T_MONEY;
-		    else if (tdata->ColTypes[i] == 8 || tdata->ColTypes[i] == 23)
-		        return DATA_T_DOUBLE;
+		    return sybd_internal_AttrType(tdata, i);
 		    }
 		}
 	    }
@@ -2780,6 +3105,13 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		{
 		mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
+		}
+	    if (inf->Obj->Mode & OBJ_O_AUTONAME)
+		{
+		if (!inf->Autoname[0])
+		    return 1; /* value is NULL */
+		*((char**)val) = inf->Autoname;
+		return 0;
 		}
 	    ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
 	    if (ptr[0] == '.' && ptr[1] == '\0')
@@ -3663,6 +3995,7 @@ sybdInitialize()
 	drv->GetFirstMethod = sybdGetFirstMethod;
 	drv->GetNextMethod = sybdGetNextMethod;
 	drv->ExecuteMethod = sybdExecuteMethod;
+	drv->Commit = sybdCommit;
 
 	/** Initialize CT Library **/
 	if (cs_ctx_alloc(CS_VERSION_100, &SYBD_INF.Context) != CS_SUCCEED) return -1;

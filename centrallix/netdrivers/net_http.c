@@ -61,10 +61,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.39 2004/02/24 20:11:00 gbeeley Exp $
+    $Id: net_http.c,v 1.40 2004/02/25 19:59:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.40  2004/02/25 19:59:57  gbeeley
+    - fixing problem in net_http; nht_internal_GET should not open the
+      target_obj when operating in OSML-over-HTTP mode.
+    - adding OBJ_O_AUTONAME support to sybase driver.  Uses select max()+1
+      approach for integer fields which are left unspecified.
+
     Revision 1.39  2004/02/24 20:11:00  gbeeley
     - fixing some date/time related problems
     - efficiency improvement for net_http allowing browser to actually
@@ -1874,27 +1880,34 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	    return nht_internal_ErrorHandler(nsess, conn);
 	    }
 
-	/** Ok, open the object here. **/
-	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
-	if (!target_obj)
-	    {
-	    nht_internal_GenerateError(nsess);
-	    fdPrintf(conn,"HTTP/1.0 404 Not Found\r\n"
-	    		 "Server: %s\r\n"
-			 "Content-Type: text/html\r\n"
-			 "\r\n"
-			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-	    mssPrintError(conn);
-	    netCloseTCP(conn,1000,0);
-	    nht_internal_UnlinkSess(nsess);
-	    thExit();
-	    }
-
-	/** Do we need to set params as a part of the open? **/
-	nht_internal_CkParams(url_inf, target_obj);
-
 	/** Check GET mode. **/
 	find_inf = stLookup_ne(url_inf,"ls__mode");
+
+	/** Ok, open the object here, if not using OSML mode. **/
+	if (!find_inf || strcmp(find_inf->StrVal,"osml") != 0)
+	    {
+	    target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
+	    if (!target_obj)
+		{
+		nht_internal_GenerateError(nsess);
+		fdPrintf(conn,"HTTP/1.0 404 Not Found\r\n"
+			     "Server: %s\r\n"
+			     "Content-Type: text/html\r\n"
+			     "\r\n"
+			     "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
+		mssPrintError(conn);
+		netCloseTCP(conn,1000,0);
+		nht_internal_UnlinkSess(nsess);
+		thExit();
+		}
+
+	    /** Do we need to set params as a part of the open? **/
+	    nht_internal_CkParams(url_inf, target_obj);
+	    }
+	else
+	    {
+	    target_obj = NULL;
+	    }
 
 	/** WAIT TRIGGER mode. **/
 	if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
@@ -1908,7 +1921,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	    }
 
 	/** Check object's modification time **/
-	if (objGetAttrValue(target_obj, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
+	if (target_obj && objGetAttrValue(target_obj, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
 	    {
 	    memcpy(&dtval, dt, sizeof(DateTime));
 	    dt = &dtval;
@@ -2150,7 +2163,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	    }
 
 	/** Close the objectsystem entry. **/
-	objClose(target_obj);
+	if (target_obj) objClose(target_obj);
 
     return 0;
     }

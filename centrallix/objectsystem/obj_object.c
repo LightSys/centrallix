@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.15 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: obj_object.c,v 1.16 2004/02/25 19:59:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.16  2004/02/25 19:59:57  gbeeley
+    - fixing problem in net_http; nht_internal_GET should not open the
+      target_obj when operating in OSML-over-HTTP mode.
+    - adding OBJ_O_AUTONAME support to sybase driver.  Uses select max()+1
+      approach for integer fields which are left unspecified.
+
     Revision 1.15  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -624,7 +630,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	while(1)
 	    {
 	    /** Get the name and type from the previous open. **/
-	    objGetAttrValue(this,"name",DATA_T_STRING,POD(&name));
+	    if (objGetAttrValue(this,"name",DATA_T_STRING,POD(&name)) != 0)
+		{
+		/** Name might be NULL if Autoname in progress **/
+		name = "*";
+		}
 	    objGetAttrValue(this,"inner_type",DATA_T_STRING,POD(&type));
 
 	    /** If the driver "claimed" the last path element, we're done. **/
