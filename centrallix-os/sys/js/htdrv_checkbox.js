@@ -13,119 +13,114 @@
 
 function checkbox_getvalue()
     {
-    return this.document.images[0].is_checked; /* not sure why, but it works - JDR */
+    return (this.is_checked == -1)?null:this.is_checked;
     }
 
 function checkbox_setvalue(v)
     {
-    if (v)
-	{
-	this.document.images[0].src = this.document.images[0].checkedImage.src;
-	this.document.images[0].is_checked = 1;
-	this.is_checked = 1;
-	}
+    if (v == '1') v = 1;
+    else if (v == '0') v = 0;
+    if (v == null)
+	this.is_checked = -1;
     else
-	{
-	this.document.images[0].src = this.document.images[0].uncheckedImage.src;
-	this.document.images[0].is_checked = 0;
-	this.is_checked = 0;
-	}
+	this.is_checked = v?1:0;
+    pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
     }
 
 function checkbox_clearvalue()
     {
-    this.setvalue(false);
+    if (cx_hints_teststyle(this, cx_hints_style.notnull) && (!this.form || !this.form.IsQueryMode()))
+	this.setvalue(0);
+    else
+	this.setvalue(null);
     }
 
 function checkbox_resetvalue()
     {
-    this.setvalue(false);
+    this.clearvalue();
     }
 
 function checkbox_enable()
     {
-    this.enabled = true;
-    this.document.images[0].uncheckedImage.enabled = this.enabled;
-    this.document.images[0].checkedImage.enabled = this.enabled;
-    this.document.images[0].enabled = this.enabled;
-    this.document.images[0].uncheckedImage.src = '/sys/images/checkbox_unchecked.gif';
-    this.document.images[0].checkedImage.src = '/sys/images/checkbox_checked.gif';
-    if (this.is_checked)
-	{
-	this.document.images[0].src = this.document.images[0].checkedImage.src;
-	}
-    else
-	{
-	this.document.images[0].src = this.document.images[0].uncheckedImage.src;
-	}
+    this.enabled = 1;
+    pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
     }
 
 function checkbox_readonly()
     {
-    this.enabled = false;
-    this.document.images[0].uncheckedImage.enabled = this.enabled;
-    this.document.images[0].checkedImage.enabled = this.enabled;
-    this.document.images[0].enabled = this.enabled;
+    this.enabled = 0;
+    pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
     }
 
 function checkbox_disable()
     {
     this.readonly();
-    this.document.images[0].uncheckedImage.src = '/sys/images/checkbox_unchecked_dis.gif';
-    this.document.images[0].checkedImage.src = '/sys/images/checkbox_checked_dis.gif';
-    if (this.is_checked)
+    }
+
+
+// page focus interaction functions
+
+function checkbox_getfocus()
+    {
+    if (this.form) this.form.FocusNotify(this);
+    return 1;
+    }
+
+function checkbox_losefocus()
+    {
+    return true;
+    }
+
+function checkbox_keyhandler(l,e,k)
+    {
+    if (k == 9)		// tab pressed
 	{
-	this.document.images[0].src = this.document.images[0].checkedImage.src;
+	if (this.form) this.form.TabNotify(this);
 	}
-    else
+    else if (k == 32)	// spacebar pressed
 	{
-	this.document.images[0].src = this.document.images[0].uncheckedImage.src;
+	checkbox_toggleMode(this);
+	}
+    else if (k == 13)	// return pressed
+	{
+	if (this.form) this.form.RetNotify(this);
+	}
+    else if (k == 27)	// esc key pressed
+	{
+	if (this.form) this.form.EscNotify(this);
 	}
     }
 
 
-function checkbox_init(l,fieldname,checked) 
+// checked: -1 = null, 0 = unchecked, 1 = checked.
+// enabled: 0 = disabled, 1 = enabled
+function checkbox_init(l,fieldname,checked,enabled) 
     {
-    l.kind = 'checkbox';
-    l.mainlayer = l;
+    htr_init_layer(l, l, 'checkbox');
     l.fieldname = fieldname;
     l.is_checked = checked;
-    l.enabled = true;
+    l.enabled = enabled;
     l.form = fm_current;
-    if(cx__capabilities.Dom1HTML)
-	{
-	l.img = l.getElementsByTagName("img")[0];
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	l.img = l.document.images[0];
-	}
-    l.img.kind = 'checkbox';
-    l.img.form = l.form;
-    l.img.parentLayer = l;
-    l.img.layer = l;
-    l.img.is_checked = l.is_checked;
-    l.img.enabled = l.enabled;
-    l.img.uncheckedImage = new Image();
-    l.img.uncheckedImage.kind = 'checkbox';
+    var imgs = pg_images(l);
+    imgs[0].kind = 'checkbox';
+    imgs[0].layer = l;
+    l.img = imgs[0];
 
-    if(cx__capabilities.Dom1HTML)
-	l.img.uncheckedImage.setAttribute('src','/sys/images/checkbox_unchecked.gif');
-    else
-	l.img.uncheckedImage.src = '/sys/images/checkbox_unchecked.gif';
+    // image filenames
+    l.imgfiles = new Array(0,1);
+    l.imgfiles[0] = new Array('/sys/images/checkbox_null_dis.gif','/sys/images/checkbox_unchecked_dis.gif','/sys/images/checkbox_checked_dis.gif');
+    l.imgfiles[1] = new Array('/sys/images/checkbox_null.gif','/sys/images/checkbox_unchecked.gif','/sys/images/checkbox_checked.gif');
 
-    l.img.uncheckedImage.is_checked = l.is_checked;
-    l.img.uncheckedImage.enabled = l.enabled;
-    l.img.checkedImage = new Image();
-    l.img.checkedImage.kind = 'checkbox';
+    // default don't allow nulls - but app and data can override this.
+    cx_set_hints(l, "Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
 
-    if(cx__capabilities.Dom1HTML)
-	l.img.checkedImage.setAttribute('src','/sys/images/checkbox_checked.gif');
-    else
-	l.img.checkedImage.src = '/sys/images/checkbox_checked.gif';
+    // focus interaction
+    l.getfocushandler  = checkbox_getfocus;
+    l.losefocushandler = checkbox_losefocus;
+    l.keyhandler = checkbox_keyhandler;
+    pg_addarea(l, -1, -1, 13, 13, 'cb', 'cb', 3);
 
-    l.img.checkedImage.is_checked = l.is_checked;
-    l.img.checkedImage.enabled = l.enabled;
+    // form interaction
     l.setvalue   = checkbox_setvalue;
     l.getvalue   = checkbox_getvalue;
     l.clearvalue = checkbox_clearvalue;
@@ -134,42 +129,29 @@ function checkbox_init(l,fieldname,checked)
     l.readonly   = checkbox_readonly;
     l.disable    = checkbox_disable;
     if (fm_current) fm_current.Register(l);
+
     return l;
     }
 
-function checkbox_toggleMode(layer) 
+function checkbox_toggleMode(l) 
     {
-    layer = layer.img;
-    if (layer.form) 
+    if (!l.enabled) 
+	return;
+    if (l.form) 
 	{
-	if (layer.parentLayer)
-	    layer.form.DataNotify(layer.parentLayer);
-	else
-	    layer.form.DataNotify(layer);
+	l.form.DataNotify(l);
 	}
-    if (layer.is_checked) 
-	{
-	if(cx__capabilities.Dom1HTML)
-	    {
-	    layer.setAttribute('src',layer.uncheckedImage.src);
-	    }
-	else
-	    {
-	    layer.src = layer.uncheckedImage.src;
-	    }
-	layer.is_checked = 0;
-	} 
-    else 
-	{
-	if(cx__capabilities.Dom1HTML)
-	    {
-	    layer.setAttribute('src',layer.checkedImage.src);
-	    }
-	else
-	    {
-	    layer.src = layer.checkedImage.src;
-	    }
-	layer.is_checked = 1;
-	}
-    cn_activate(layer.parentLayer, 'DataChange');
+
+    // update the value
+    l.is_checked++;
+    if (l.is_checked == 2) 
+	l.is_checked = -1;
+    if (l.is_checked == -1 && cx_hints_teststyle(l,cx_hints_style.notnull) && (!l.form || !l.form.IsQueryMode()))
+	l.is_checked = 0;
+
+    // update the image
+    pg_set(l.img, 'src', l.imgfiles[l.enabled][l.is_checked+1]);
+
+    cn_activate(l, 'DataChange');
     }
+
