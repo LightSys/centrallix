@@ -45,12 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.1 2001/08/13 18:04:21 gbeeley Exp $
+    $Id: mtask.c,v 1.2 2001/12/28 21:52:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
-    Revision 1.1  2001/08/13 18:04:21  gbeeley
-    Initial revision
+    Revision 1.2  2001/12/28 21:52:56  gbeeley
+    netCloseTCP(fd,0,0), which causes a hard close, was leaving the socket
+    fd still open after deallocating the structure.  Fixed.
+
+    Revision 1.1.1.1  2001/08/13 18:04:21  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:02:50  gbeeley
     Initial checkin of centrallix-lib
@@ -2295,6 +2299,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	shutdown(net_filedesc->FD, 2);
 
 	/** Try to close the socket, keeping track of timeout **/
+	rval = -1;
 	while(linger_msec > 0)
 	    {
 	    t2 = mtTicks();
