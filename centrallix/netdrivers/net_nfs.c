@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.15 2003/03/31 05:23:50 jorupp Exp $
+    $Id: net_nfs.c,v 1.16 2003/03/31 23:13:54 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.16  2003/03/31 23:13:54  jorupp
+     * I guess that it would probably help if we said that it was a directory and you were allowed access to it :)
+
     Revision 1.15  2003/03/31 05:23:50  jorupp
      * fixed some error messages (caused a segfault if an invalid program was sent)
      * implimented nfsstat
@@ -645,7 +648,7 @@ attrstat* nnfs_internal_nfsproc_getattr(fhandle* param)
 	{
 	retval->status = 0;
 	retval->attrstat_u.attributes.type = NFDIR;
-	retval->attrstat_u.attributes.mode = 0;
+	retval->attrstat_u.attributes.mode = 040777;
 	retval->attrstat_u.attributes.nlink = 1;
 	retval->attrstat_u.attributes.uid = 1;
 	retval->attrstat_u.attributes.gid = 1;
