@@ -56,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.12 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_xml.c,v 1.13 2002/08/13 14:07:02 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.13  2002/08/13 14:07:02  lkehresman
+    fixed warning messages when copiling the xml driver
+
     Revision 1.12  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -607,7 +610,7 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	    {
 	    /** this structure might not have been allocated **/
 	    if(XML_DEBUG) printf("Clearing Attributes hash\n");
-	    xhClear(inf->Attributes,(int*)free,NULL);
+	    xhClear(inf->Attributes,(void*)free,NULL);
 	    if(XML_DEBUG) printf("Done Clearing Attributes hash\n");
 	    xhDeInit(inf->Attributes);
 	    nmFree(inf->Attributes,sizeof(XHashTable));
@@ -917,7 +920,7 @@ xmlQueryClose(void* qy_v, pObjTrxTree* oxt)
 	if(qy->Types)
 	    {
 	    if(XML_DEBUG) printf("Clearing Types hash\n");
-	    xhClear(qy->Types,(int*)free,NULL);
+	    xhClear(qy->Types,(void*)free,NULL);
 	    if(XML_DEBUG) printf("Done Clearing Types hash\n");
 	    xhDeInit(qy->Types);
 	    nmFree(qy->Types,sizeof(XHashTable));
