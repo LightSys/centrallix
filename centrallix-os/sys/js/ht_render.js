@@ -211,7 +211,7 @@ function htr_get_watch_newval(e)
 
 function htr_init_layer(l,ml,kind)
     {
-    if (l.document)
+    if (l.document && l.document != document)
 	{
 	l.document.layer = l;
 	}
@@ -304,7 +304,10 @@ function htr_getvisibility(l)
 	}
     else if (cx__capabilities.Dom1HTML)
         {
-	return l.style.visibility;
+	if (!l.style.visibility)
+	    return getComputedStyle(l,null).getPropertyCSSValue('visibility').cssText;
+	else
+	    return l.style.visibility;
 	}
     return null;
     }

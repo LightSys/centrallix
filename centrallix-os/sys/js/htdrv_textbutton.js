@@ -14,6 +14,9 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     l.LSParent = p;
     l.nofocus = true;
     l2.nofocus = true;
+    htr_init_layer(l,l,'tb');
+    htr_init_layer(l2,l,'tb');
+    htr_init_layer(l3,l,'tb');
     if(!cx__capabilities.Dom2CSS && !cx__capabilities.Dom0IE)
 	{
 	top.nofocus = true;
@@ -22,33 +25,21 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
 	lft.nofocus = true;
 	}
 
-    if(cx__capabilities.Dom0NS)
-	{
-	l.document.kind = 'tb';
-	l2.document.kind = 'tb';
-	l.document.layer = l;
-	l2.document.layer = l;
-	}
-    else
-	{
-	l.kind = 'tb';
-	l2.kind = 'tb';
-	l.layer = l;
-	l2.layer = l;
-	}
-
-    l.buttonName = nm;
-    l.mainlayer = l;
     l.l2 = l2;
     l.l3 = l3;
     l.tp = top;
     l.btm = btm;
     l.lft = lft;
     l.rgt = rgt;
-    l.kind = 'tb';
+    l.orig_x = getRelativeX(l);
+    l.orig_y = getRelativeY(l);
+    l.orig_ct = parseInt(getClipTop(l));
+    l.orig_cb = parseInt(getClipTop(l)) + parseInt(getClipHeight(l));
+    l.orig_cr = parseInt(getClipRight(l));
+    l.orig_cl = parseInt(getClipLeft(l));
     l.lightBorderColor = '#FFFFFF';
     l.darkBorderColor = '#7A7A7A';
-    if(!cx__capabilities.Dom2CSS)
+    if(cx__capabilities.Dom0NS)
 	{
 	setClipWidth(l, w);
 	if (h != -1) setClipHeight(l, h);
@@ -64,7 +55,7 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     l.tristate = ts;
     l.mode = -1;
     tb_setmode(l,0);
-    if (l3.visibility == 'inherit')
+    if (htr_getvisibility(l3) == 'inherit' || htr_getvisibility(l3) == 'visible')
 	l.enabled = false;
     else
 	l.enabled = true;
@@ -74,13 +65,17 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     else
     	{
     	//alert("watch is not supported!");
-    	l.onpropertychange = tb_setenable;
+    	l.onpropertychange = tb_propchange;
 	}
+    }
+
+function tb_propchange(prop, oldv, newv)
+    {
+    if (prop == 'enabled') tb_setenable(prop, oldv, newv);
     }
 
 function tb_setenable(prop, oldv, newv)
     {    
-    
     if (cx__capabilities.Dom0IE) 
     	{
     	var e = window.event;
@@ -116,16 +111,16 @@ function tb_setenable(prop, oldv, newv)
 
 function tb_setmode(layer,mode)
     {
+    if (layer.tristate == 0 && mode == 0) mode = 1;
     if (mode != layer.mode)
 	{
 	//status = layer.id + " " + mode;
 	layer.mode = mode;
 	//status = "tristate " + layer.id + " " + layer.tristate;
-	if (layer.tristate == 0 && mode == 0) mode = 1;
 	switch(mode)
 	    {
 	    case 0: /* no point no click */
-	    
+		moveTo(layer,layer.orig_x,layer.orig_y);
 		if(cx__capabilities.Dom2CSS)
 		    {
 		    layer.style.setProperty('border-width','0px',null);
@@ -140,11 +135,16 @@ function tb_setmode(layer,mode)
 		    }
 		else if(cx__capabilities.Dom0IE)
 		    {		    
+		    /*layer.style.borderStyle = 'solid';
 		    layer.style.borderWidth = '0px';
 		    layer.style.margin = '1px';		    	
+		    layer.style.padding = '1px';*/
+		    setClip(layer, layer.orig_ct+1, layer.orig_cr-1, layer.orig_cb-1, layer.orig_cl+1);
 		    }		    
 		break;
+
 	    case 1: /* point, but no click */
+		moveTo(layer,layer.orig_x,layer.orig_y);
 		if(cx__capabilities.Dom2CSS)
 		    {
 		    layer.style.setProperty('border-width','1px',null);
@@ -167,16 +167,20 @@ function tb_setmode(layer,mode)
 		    }
 		else if(cx__capabilities.Dom0IE)
 		    {
-		    	
+		    /*layer.style.borderStyle = 'solid';
 		    layer.style.borderWidth = '1px';
 		    layer.style.margin = '0px';		    
+		    layer.style.padding = '0px';*/
+		    if (layer.tristate) setClip(layer, layer.orig_ct, layer.orig_cr, layer.orig_cb, layer.orig_cl);
 		    layer.style.borderTopColor = layer.lightBorderColor;
 		    layer.style.borderLeftColor = layer.lightBorderColor;
 		    layer.style.borderBottomColor = layer.darkBorderColor;
 		    layer.style.borderRightColor = layer.darkBorderColor;
 		    }
 		break;
+
 	    case 2: /* point and click */
+		moveTo(layer,layer.orig_x+1,layer.orig_y+1);
 		if(cx__capabilities.Dom2CSS)
 		    {
 		    layer.style.setProperty('border-width','1px',null);
@@ -199,14 +203,99 @@ function tb_setmode(layer,mode)
 		    }
 		else if(cx__capabilities.Dom0IE)
 		    {
+		    if (layer.tristate) setClip(layer, layer.orig_ct, layer.orig_cr, layer.orig_cb, layer.orig_cl);
+		    /*layer.style.borderStyle = 'solid';
 		    layer.style.borderWidth = '1px';
-		    layer.style.margin = '0px';
-		    layer.style.borderTopColor = layer.darkBorderColor;
+		    layer.style.margin = '0px';*/
+		    /*layer.style.borderTopColor = layer.darkBorderColor;
 		    layer.style.borderLeftColor = layer.darkBorderColor;
 		    layer.style.borderBottomColor = layer.lightBorderColor;
-		    layer.style.borderRightColor = layer.lightBorderColor;
+		    layer.style.borderRightColor = layer.lightBorderColor;*/
+		    layer.style.borderColor = 'gray white white gray';
 		    }
 		break;
 	    }
 	}
     }
+
+function tb_dblclick(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (ly.kind == 'tb' && cx__capabilities.Dom0IE)
+	{
+	tb_mousedown(e);
+	tb_mouseup(e);
+	}
+    }
+
+function tb_mousedown(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (ly.kind == 'tb' && ly.enabled)
+        {
+        tb_setmode(ly,2);
+        cn_activate(ly, 'MouseDown');
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tb_mouseup(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (ly.kind == 'tb' && ly.enabled)
+        {
+        if (e.pageX >= getPageX(ly) &&
+            e.pageX < getPageX(ly) + getClipWidth(ly) &&
+            e.pageY >= getPageY(ly) &&
+            e.pageY < getPageY(ly) + getClipHeight(ly))
+            {
+            tb_setmode(ly,1);
+            cn_activate(ly, 'Click');
+            cn_activate(ly, 'MouseUp');
+            }
+        else
+            {
+            tb_setmode(ly,0);
+            }
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tb_mouseover(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (ly.kind == 'tb' && ly.enabled)
+        {
+	if (ly.mode != 2) tb_setmode(ly,1);
+        cn_activate(ly, 'MouseOver');
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tb_mouseout(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (ly.kind == 'tb' && ly.enabled)
+        {
+	if (ly.mode != 2) tb_setmode(ly,0);
+        cn_activate(ly, 'MouseOut');
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tb_mousemove(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.mainlayer) ly = ly.mainlayer;
+    if (ly.kind == 'tb' && ly.enabled)
+        {
+        cn_activate(ly, 'MouseMove');
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+

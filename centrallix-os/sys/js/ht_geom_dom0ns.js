@@ -28,6 +28,11 @@ function getClipHeight(l)
     return l.clip.height; 
     }
 
+function getRuntimeClipHeight(l)
+    {
+    return getClipHeight(l);
+    }
+
 function setClipHeight(l, value) 
     { 
     l.clip.height = value; 
@@ -80,6 +85,14 @@ function setClipRight(l, value)
 function setClipItem(l, side, value)
     {
     l.clip[side] = value;
+    }
+
+function setClip(l, t, r, b, l)
+    {
+    l.clip.top = t;
+    l.clip.right = r;
+    l.clip.bottom = b;
+    l.clip.left = l;
     }
 
 function getClipItem(l, side)

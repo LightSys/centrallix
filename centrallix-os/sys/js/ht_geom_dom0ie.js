@@ -152,7 +152,7 @@ function setClip(l, c_top, c_right, c_bottom, c_left)
     var _bottom = c_bottom;
     var _left = c_left;
     var _right = c_right;
-    
+   
     l.runtimeStyle.clip = "rect(" + _top + " " + _right + " " + _bottom + " " + _left + ")";    
     }
 
