@@ -1,0 +1,44 @@
+<HTML>
+<HEAD>
+<TITLE>Centrallix Application Widget Reference - CHECKBOX</TITLE>
+<LINK REL=StyleSheet HREF='style.css' TYPE='text/css'>
+</HEAD>
+<BODY>
+<h2>CHECKBOX</h2>
+<h3>Overview...</h3>
+<p>The checkbox widget is used to display a value that can be either true or false (or on/off, yes/no, etc.).It displays as a simple clickable check box.</p>
+<h3>Usage...</h3>
+<p>The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).=  Checkboxes may not contain visual widgets.</p>
+<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
+<h3>Properties...</h3>
+<table border=1 class='prop'>
+<tr><td class='propname'>x</td><td class='proptype'> (integer)</td><td class='propdesc'>x-coordinate of the upper left corner of the checkbox, default is 0.</td></tr>
+<tr><td class='propname'>y</td><td class='proptype'> (integer)</td><td class='propdesc'>y-coordinate of the upper left corner of the checkbox, default is 0.</td></tr>
+</table>
+<h3>Child Properties...</h3>
+<p>(none)</p>
+<h3>Events...</h3>
+<p>(none currently)</p>
+<h3>Actions...</h3>
+<p>(none currently)</p>
+<h3>Sample Code...</h3>
+<pre>
+$Version=2$
+// Here are two checkboxes.
+checkbox_test &quot;widget/page&quot;
+	{
+	background=&quot;/sys/images/slate2.gif&quot;;
+&nbsp;
+	testcheck2 &quot;widget/checkbox&quot;
+		{
+		x = 20; y = 40;
+		}
+	testcheck &quot;widget/checkbox&quot;
+		{
+		x = 20; y = 20;
+		}
+	}
+&nbsp;
+</pre>
+</BODY>
+</HTML>

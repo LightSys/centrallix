@@ -1,0 +1,56 @@
+<HTML>
+<HEAD>
+<TITLE>Centrallix Application Widget Reference - FRAMESET</TITLE>
+<LINK REL=StyleSheet HREF='style.css' TYPE='text/css'>
+</HEAD>
+<BODY>
+<h2>FRAMESET</h2>
+<h3>Overview...</h3>
+<p>The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).=  Framesets can consist of one or more frames, arranged either in rows or columns.</p>
+<h3>Usage...</h3>
+<p>The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.</p>
+<h3>Properties...</h3>
+<table border=1 class='prop'>
+<tr><td class='propname'>borderwidth</td><td class='proptype'>(integer)</td><td class='propdesc'>number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</td></tr>
+<tr><td class='propname'>direction</td><td class='proptype'> (string)</td><td class='propdesc'>Whether the frames are arranged in rows or columns.  Set this attribute to &quot;rows&quot; or &quot;columns&quot;respectively.</td></tr>
+</table>
+<h3>Child Properties...</h3>
+<table border=1 class='prop'>
+<tr><td class='propname'>framesize</td><td class='proptype'>(integer/string)</td><td class='propdesc'>large this frame will be.Can either be expressed as an integer, which represents &quot;50%&quot;.</td></tr>
+<tr><td class='propname'>marginwidth</td><td class='proptype'>(integer)</td><td class='propdesc'>width, in pixels, of the margins of the frame.</td></tr>
+</table>
+<h3>Events...</h3>
+<p>(none)</p>
+<h3>Actions...</h3>
+<p>(none)</p>
+<h3>Sample Code...</h3>
+<pre>
+$Version=2$
+// Example of a page with three frames on it.
+//
+BigFrameset &quot;widget/frameset&quot;
+	{
+	direction = &quot;rows&quot;;
+	borderwidth = 3;
+	TopFrameset &quot;widget/frameset&quot;
+		{
+		framesize = &quot;40%&quot;;
+		direction = &quot;columns&quot;;
+		borderwidth = 3;
+		TopLeftDocument &quot;widget/page&quot;
+			{
+			framesize = &quot;50%&quot;;
+			}
+		TopRightDocument &quot;widget/page&quot;
+			{
+			framesize = &quot;50%&quot;;
+			}
+		}
+	BottomDocument &quot;widget/page&quot;
+		{
+		framesize = &quot;60%&quot;;
+		}
+	}
+</pre>
+</BODY>
+</HTML>

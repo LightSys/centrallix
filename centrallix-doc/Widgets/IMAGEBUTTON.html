@@ -1,0 +1,47 @@
+<HTML>
+<HEAD>
+<TITLE>Centrallix Application Widget Reference - IMAGEBUTTON</TITLE>
+<LINK REL=StyleSheet HREF='style.css' TYPE='text/css'>
+</HEAD>
+<BODY>
+<h2>IMAGEBUTTON</h2>
+<h3>Overview...</h3>
+<p>The ImageButton widget provides a clickable button that is comprised of a set of two or three images.The first image is shown normally when the button is idle, the second when the button is pointed-to, and the third image is shown when the button is actually clicked.=  This provides a &quot;tri-state&quot; appearance much like that provided by buttons in modern user interfaces, although the button can be two-state, with just an &quot;unclicked&quot; and &quot;clicked&quot; version of the image.</p>
+<p>The images are automatically swapped out when the appropriate mouse events occur on the button.</p>
+<h3>Usage...</h3>
+<p>The ImageButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
+<h3>Properties...</h3>
+<table border=1 class='prop'>
+<tr><td class='propname'>clickimage</td><td class='proptype'>(string)</td><td class='propdesc'>The ObjectSystem pathname of the image to be shown when the user clicks the specified.</td></tr>
+<tr><td class='propname'>image</td><td class='proptype'> (string)</td><td class='propdesc'>The pathname of the image to be shown when the button is &quot;idle&quot;.</td></tr>
+<tr><td class='propname'>pointimage</td><td class='proptype'>(string)</td><td class='propdesc'>The pathname of the image to be shown when the button is pointed-to.Defaults to specified.</td></tr>
+<tr><td class='propname'>height</td><td class='proptype'> (integer)</td><td class='propdesc'>height, in pixels, of the image button.</td></tr>
+<tr><td class='propname'>width</td><td class='proptype'> (integer)</td><td class='propdesc'>width, in pixels, of the image button.</td></tr>
+<tr><td class='propname'>x</td><td class='proptype'> (integer)</td><td class='propdesc'>x-coordinate of the upper left corner of the button, relative to its container.</td></tr>
+<tr><td class='propname'>y</td><td class='proptype'> (integer)</td><td class='propdesc'>y-coordinate of the upper left corner of the button, relative to its container.</td></tr>
+</table>
+<h3>Child Properties...</h3>
+<p>(none)</p>
+<h3>Events...</h3>
+<table border=1 class='evt'>
+<tr><td class='evtname'>Click</td><td class='evtdesc'>This event occurs when the user clicks the button. No parameters are available from this event.</td></tr>
+</table>
+<h3>Actions...</h3>
+<p>(none)</p>
+<h3>Sample Code...</h3>
+<pre>
+&nbsp;
+$Version=2$
+MyButton &quot;widget/imagebutton&quot;
+	{
+	x = 10; y = 10;
+	width = 50;
+	height = 20;
+&nbsp;
+	// No pointimage for this one, thus not &quot;tristate&quot;.
+	image = &quot;/images/default.png&quot;
+	clickimage = &quot;/images/clicked.png&quot;
+	}
+</pre>
+</BODY>
+</HTML>

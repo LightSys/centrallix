@@ -1,0 +1,8 @@
+BODY,TABLE	{ font-size:9pt;font-family:Helvetica,sans-serif;}
+H1,H2	{ font-size:36pt;color:#999999;}
+H1	{ text-align: center;}
+H2	{ text-align: right;}
+H3	{ font-weight: bold; font-size: 9pt; }
+TABLE,TD	{ border:0; }
+TD	{ padding-left: 4pt; padding-right: 4pt; }
+PRE	{ font-size: 8pt; font-family:Courier;}

@@ -1,0 +1,37 @@
+<HTML>
+<HEAD>
+<TITLE>Centrallix Application Widget Reference - FORM</TITLE>
+<LINK REL=StyleSheet HREF='style.css' TYPE='text/css'>
+</HEAD>
+<BODY>
+<h2>FORM</h2>
+<h3>Overview...</h3>
+<p>The form widget is used as a high-level container for form elements.=  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
+<p>Forms have five different &quot;modes&quot;of operation, each of which can be specifically allowed or disallowed for the form.</p>
+<ol>
+<li> No Data - form inactive/disabled, no data viewed/edited.</li>
+<li> View - data being viewed readonly.</li>
+<li> Modify - existing data being modified.</li>
+<li> Query - query criteria being entered (used for query-by-form applications)</li>
+<li> New - new object being entered/created.</li>
+</ol>
+<p>Note: at the time of this writing, the form widget was in its design phase and had not yet been implemented.</p>
+<h3>Usage...</h3>
+<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.=  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
+<h3>Actions...</h3>
+<table border=1 class='evt'>
+<tr><td class='evtname'>Clear</td><td class='evtdesc'>Clears the form to a 'no data'state.</td></tr>
+<tr><td class='evtname'>Delete</td><td class='evtdesc'>Deletes the current object displayed.</td></tr>
+<tr><td class='evtname'>Discard</td><td class='evtdesc'>Cancels an edit of form contents.</td></tr>
+<tr><td class='evtname'>Edit</td><td class='evtdesc'>Allows editing of form's contents.</td></tr>
+<tr><td class='evtname'>First</td><td class='evtdesc'>Moves the form to the first object in the objectsource.</td></tr>
+<tr><td class='evtname'>Last</td><td class='evtdesc'>Moves the form to the last object in the objectsource.</td></tr>
+<tr><td class='evtname'>New</td><td class='evtdesc'>Allows creation of new form contents.</td></tr>
+<tr><td class='evtname'>Next</td><td class='evtdesc'>Moves the form to the next object in the objectsource.</td></tr>
+<tr><td class='evtname'>Prev</td><td class='evtdesc'>Moves the form to the previous object in the objectsource.</td></tr>
+<tr><td class='evtname'>Query</td><td class='evtdesc'>Allows entering of query criteria.</td></tr>
+<tr><td class='evtname'>QueryExec</td><td class='evtdesc'>the query and returns data.</td></tr>
+<tr><td class='evtname'>Save</td><td class='evtdesc'>Saves the form's contents.</td></tr>
+</table>
+</BODY>
+</HTML>

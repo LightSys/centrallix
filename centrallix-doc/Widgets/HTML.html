@@ -1,0 +1,46 @@
+<HTML>
+<HEAD>
+<TITLE>Centrallix Application Widget Reference - HTML</TITLE>
+<LINK REL=StyleSheet HREF='style.css' TYPE='text/css'>
+</HEAD>
+<BODY>
+<h2>HTML</h2>
+<h3>Overview...</h3>
+<p>The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.</p>
+<p>The HTML area widget also can act as a mini-browser -- clicking on hyper-text links in the visible document will by default cause the link to be followed, and the new document to be displayed in the HTML area (if the HTML area is dynamic).</p>
+<p>Dynamic HTML areas do double-buffering and allow for transitions of various types.</p>
+<h3>Usage...</h3>
+<p>The HTML area widget can be placed within any other widget that has a visible container (such as panes, pages, tab pages, etc.).</p>
+<h3>Properties...</h3>
+<table border=1 class='prop'>
+<tr><td class='propname'>content</td><td class='proptype'> (string)</td><td class='propdesc'>Static contents for the HTML area. Usually used in lieu of &quot;source&quot; (see below).</td></tr>
+<tr><td class='propname'>epilogue</td><td class='proptype'> (string)</td><td class='propdesc'>HTML source to be inserted at the end of the HTML document.</td></tr>
+<tr><td class='propname'>height</td><td class='proptype'> (integer)</td><td class='propdesc'>height, in pixels, of the HTML area as a whole.</td></tr>
+<tr><td class='propname'>mode</td><td class='proptype'> (string)</td><td class='propdesc'>Either &quot;static&quot; or &quot;dynamic&quot;, and determines whether the HTML area is in-flow (&quot;static&quot;) can be positioned and reloaded at-will.</td></tr>
+<tr><td class='propname'>prologue</td><td class='proptype'> (string)</td><td class='propdesc'>HTML source to be inserted at the beginning of the HTML document.</td></tr>
+<tr><td class='propname'>source</td><td class='proptype'> (string)</td><td class='propdesc'>The objectsystem path or URL containing the document to be loaded into the HTML as  local server.</td></tr>
+<tr><td class='propname'>width</td><td class='proptype'> (integer)</td><td class='propdesc'>width, in pixels, of the HTML area as a whole.</td></tr>
+<tr><td class='propname'>x</td><td class='proptype'> (integer)</td><td class='propdesc'>dynamic HTML areas, the x coordinate on the container of its upper left corner.</td></tr>
+<tr><td class='propname'>y</td><td class='proptype'> (integer)</td><td class='propdesc'>dynamic HTML areas, the y coordinate on the container of its upper left corner.</td></tr>
+</table>
+<h3>Child Properties...</h3>
+<p>(none)</p>
+<h3>Events...</h3>
+<p>(none)</p>
+<h3>Actions...</h3>
+<table border=1 class='evt'>
+<tr><td class='evtname'>LoadPage</td><td class='evtdesc'>loadpage action takes two parameters. &quot;Source&quot; contains the URL for the new page to be loaded into the HTML area.The optional parameter &quot;Transition&quot; indicates the type of fade to be used between one page and the next.Currently supported values are &quot;pixelate&quot;, &quot;rlwipe&quot;, and &quot;lrwipe&quot;.</td></tr>
+</table>
+<h3>Sample Code...</h3>
+<pre>
+$Version=2$
+HTMLArea &quot;widget/html&quot;
+	{
+	mode = &quot;dynamic&quot;;
+	x = 2; y = 2;
+	width = 478; height = 396;
+	source = &quot;http://localhost:800/index.html&quot;;
+	}
+</pre>
+</BODY>
+</HTML>
