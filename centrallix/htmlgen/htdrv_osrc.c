@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.38 2002/06/24 17:28:58 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.39 2002/07/12 20:03:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.39  2002/07/12 20:03:09  lkehresman
+    Modified the osrc to take advantage of the new encoding ability in the
+    net_http driver.  This fixes a bug that the textarea uncovered with new
+    lines getting squashed.
+
     Revision 1.38  2002/06/24 17:28:58  jorupp
      * osrc will now close objects when they are removed from the replica
 
@@ -783,8 +788,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "            //alert('New row: '+row+'('+this.OSMLRecord+')');\n"
       "            }\n"
       "        colnum++;\n"
+      "        alert(unescape(lnk[i].text));\n"
       "        this.replica[this.OSMLRecord][colnum] = new Array();\n"
-      "        this.replica[this.OSMLRecord][colnum]['value'] = lnk[i].text\n"
+      "        this.replica[this.OSMLRecord][colnum]['value'] = unescape(lnk[i].text)\n"
       "        this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);\n"
       "        this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;\n"
       "        }\n"
@@ -794,14 +800,14 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    if(this.LastRecord<this.TargetRecord)\n"
       "        {\n" /* We're going farther down this... */
       "        this.onload = osrc_fetch_next;\n"
-      "        this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
+      "        this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__encode=1&ls__rowcount=\"+this.readahead;\n"
       "        }\n"
       "    else\n"
       "        {\n" /* we've got the one we need */
       "        if((this.LastRecord-this.FirstRecord+1)<this.replicasize)\n"
       "            {\n" /* make sure we have a full replica if possible */
       "            this.onload = osrc_fetch_next;\n"
-      "            this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+(this.replicasize-(this.LastRecord-this.FirstRecord+1));\n"
+      "            this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__encode=1&ls__rowcount=\"+(this.replicasize-(this.LastRecord-this.FirstRecord+1));\n"
       "            }\n"
       "        else\n"
       "            {\n"
@@ -996,9 +1002,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                {\n"
       "                this.onload=osrc_fetch_next;\n"
       "                if(this.CurrentRecord == Number.MAX_VALUE)\n"
-      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0\";\n" /* rowcount defaults to a really high number if not set */
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0\";\n" /* rowcount defaults to a really high number if not set */
       "                else\n"
-      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
       "                }\n"
       "            else\n"
       "                {\n"
@@ -1027,11 +1033,11 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    //this.FirstRecord=this.startat;\n"
       "    if(this.startat-this.TargetRecord+1<this.replicasize)\n"
       "        {\n"
-      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat;\n"
+      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat;\n"
       "        }\n"
       "    else\n"
       "        {\n"
-      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat;\n"
+      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat;\n"
       "        }\n"
       "    this.startat=null;\n"
       "    }\n",0);
@@ -1121,9 +1127,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                {\n"
       "                this.onload=osrc_fetch_next;\n"
       "                if(this.TargetRecord == Number.MAX_VALUE)\n"
-      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0\";\n" /* rowcount defaults to a really high number if not set */
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0\";\n" /* rowcount defaults to a really high number if not set */
       "                else\n"
-      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.scrollahead;\n"
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.scrollahead;\n"
       "                }\n"
       "            else\n"
       "                {\n"
