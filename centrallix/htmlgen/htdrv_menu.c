@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2000-2001 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -33,265 +33,337 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	htdrv_imagebutton.c        				*/
-/* Author:	Greg Beeley (GRB)					*/
-/* Creation:	January 4, 1998  					*/
-/* Description:	HTML Widget driver for an 'image button', or a button	*/
-/*		comprised of a set of three images - one the default,	*/
-/*		second the image when pointed to, and third the image	*/
-/*		when clicked.						*/
+/* Module:      htdrv_menu.c                                            */
+/* Author:      Luke Ehresman (LME)                                     */
+/* Creation:    Mar. 5, 2002                                            */
+/* Description: HTML Widget driver for a drop down list                 */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_menu.c,v 1.8 2002/07/25 18:08:36 mcancel Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_menu.c,v $
-
-    $Log: htdrv_menu.c,v $
-    Revision 1.8  2002/07/25 18:08:36  mcancel
-    Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
-
-    Revision 1.7  2002/07/19 21:17:49  mcancel
-    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
-
-    Revision 1.6  2002/07/16 18:23:20  lkehresman
-    Added htrAddStylesheetItem() function to help consolidate the output of
-    the html generator.  Now, all stylesheet definitions are included in the
-    same <style></style> tags rather than each widget having their own.  I
-    have modified the current widgets to take advantage of this.  In the
-    future, do not use htrAddHeaderItem(), but use this new function.
-
-    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
-
-    Revision 1.5  2002/06/19 19:08:55  lkehresman
-    Changed all snprintf to use the *_va functions
-
-    Revision 1.4  2002/06/09 23:44:46  nehresma
-    This is the initial cut of the browser detection code.  Note that each widget
-    needs to register which browser and style is supported.  The GNU regular
-    expression library is also needed (comes with GLIBC).
-
-    Revision 1.3  2002/05/02 01:12:43  gbeeley
-    Fixed some buggy initialization code where an XArray was not being
-    setup prior to being used.  Was causing potential bad pointers to
-    realloc() and other various problems, especially once the dynamic
-    loader was messing with things.
-
-    Revision 1.2  2002/03/09 19:21:20  gbeeley
-    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
-    own bad sprintf habits that somehow worked their way into some other
-    folks' code as well ;)  Textbutton widget had an inadequate buffer for
-    the tb_init() call, causing various problems, including incorrect labels,
-    and more recently, javascript errors.
-
-    Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
-    Centrallix Core initial import
-
-    Revision 1.2  2001/08/07 19:31:52  gbeeley
-    Turned on warnings, did some code cleanup...
-
-    Revision 1.1.1.1  2001/08/07 02:30:54  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
-
 /** globals **/
-static struct 
-    {
-    int		idcnt;
+static struct {
+   int     idcnt;
+} HTMN;
+
+
+/* 
+   htmnVerify - not written yet.
+*/
+int htmnVerify() {
+   return 0;
+}
+
+
+/* 
+   htmenuRender - generate the HTML code for the menu widget.
+*/
+int htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+   char bgstr[HT_SBUF_SIZE];
+   char hilight[HT_SBUF_SIZE];
+   char string[HT_SBUF_SIZE];
+   char name[64];
+   char *ptr, *nptr;
+   int flag=0;
+   int x,y,w,h;
+   int id;
+   pObjQuery qy;
+   XString xs;
+
+   /** Get an id for this. **/
+   id = (HTMN.idcnt++);
+
+   /** Get x,y,height,& width of this object **/
+   if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
+   if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) h=20;
+   if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) {
+	mssError(1,"HTMN","Menu widget must have a 'width' property");
+	return -1;
+   }
+
+
+   if (objGetAttrValue(w_obj,"hilight",POD(&ptr)) == 0) {
+	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
+   } else {
+	mssError(1,"HTMN","Menu widget must have a 'hilight' property");
+	return -1;
+   }
+
+   if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0) {
+	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
+   } else {
+	mssError(1,"HTMN","Menu widget must have a 'bgcolor' property");
+	return -1;
+   }
+
+
+    /** Get name **/
+    if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+    memccpy(name,ptr,0,63);
+    name[63] = 0;
+    nptr = (char*)nmMalloc(strlen(name)+1);
+    strcpy(nptr,name);
+
+    /** Ok, write the style header items. **/
+    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+
+
+    htrAddScriptGlobal(s, "mn_current", "null", 0);
+    htrAddScriptGlobal(s, "mn_lastkey", "null", 0);
+    htrAddScriptGlobal(s, "mn_target_img", "null", 0);
+    htrAddScriptGlobal(s, "mn_thum_y","0",0);
+    htrAddScriptGlobal(s, "mn_timeout","null",0);
+    htrAddScriptGlobal(s, "mn_click_x","0",0);
+    htrAddScriptGlobal(s, "mn_click_y","0",0);
+    htrAddScriptGlobal(s, "mn_incr","0",0);
+    htrAddScriptGlobal(s, "mn_cur_mainlayer","null",0);
+    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
+    htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+    htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
+
+    htrAddEventHandler(s, "document","MOUSEMOVE", "mn", 
+	"\n"
+	// I think has to do with scrolling...
+	"    ti=mn_target_img;\n"
+	"    if (ti != null && ti.name == 't' && mn_current && mn_current.enabled!='disabled')\n"
+	"        {\n"
+	"        var pl=ti.mainlayer.PaneLayer;\n"
+	"        v=pl.clip.height-(3*18)-4;\n"
+	"        new_y=mn_thum_y+(e.pageY-mn_click_y)\n"
+	"        if (new_y > pl.pageY+20+v) new_y=pl.pageY+20+v;\n"
+	"        if (new_y < pl.pageY+20) new_y=pl.pageY+20;\n"
+	"        ti.thum.pageY=new_y;\n"
+	"        h=mn_current.PaneLayer.h;\n"
+	"        d=h-pl.clip.height+4;\n"
+	"        if (d<0) d=0;\n"
+	"        mn_incr = (((ti.thum.y-22)/(v-4))*-d)-mn_current.PaneLayer.ScrLayer.y;\n"
+	"        mn_scroll(0);\n"
+	"        return false;\n"
+	"        }\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind != 'mn')\n"
+	"        {\n"
+	"        cn_activate(ly.mainlayer, 'MouseMove');\n"
+	"        mn_cur_mainlayer = null;\n"
+	"        }\n"
+	"\n");
+
+    htrAddEventHandler(s, "document","MOUSEOVER", "mn", 
+	"\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind == 'mn')\n"
+	"        {\n"
+	"        cn_activate(ly.mainlayer, 'MouseOver');\n"
+	"        mn_cur_mainlayer = ly.mainlayer;\n"
+	"        }\n"
+	"    if (ly.kind == 'mn_itm')\n" 
+	"        {\n"
+	"        mn_lastkey = null;\n"
+	"        mn_toggle_item(mn_current, ly.index);\n"
+	"        }\n"
+	"    if (ly.kind == 'mn_itm' && mn_current && mn_current.enabled=='full')\n"
+	"        {\n"
+	"        mn_lastkey = null;\n"
+	"        mn_hilight_item(mn_current, ly.index);\n"
+	"        }\n"
+	"\n");
+
+    htrAddEventHandler(s, "document","MOUSEUP", "mn", 
+	"\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind == 'mn')\n"
+	"        {\n"
+	"        cn_activate(ly.mainlayer, 'MouseUp');\n"
+	"        }\n"
+	"    if (mn_timeout != null)\n"
+	"        {\n"
+	"        clearTimeout(mn_timeout);\n"
+	"        mn_timeout = null;\n"
+	"        mn_incr = 0;\n"
+	"        }\n"
+	"    if (mn_target_img != null)\n"
+	"        {\n"
+	"        if (mn_target_img.name != 'b' && mn_target_img.src && mn_target_img.kind.substr(0,2) == 'mn')\n"
+	"            mn_target_img.src = htutil_subst_last(mn_target_img.src,\"b.gif\");\n"
+	"        mn_target_img = null;\n"
+	"        }\n"
+	"    if (ly.kind == 'mn' && ly.enabled != 'disabled')\n"
+	"        {\n"
+	"        mn_toggle(ly);\n"
+	"        }\n"
+	"\n");
+
+    htrAddEventHandler(s, "document","MOUSEDOWN", "mn", 
+	"\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind == 'mn') cn_activate(ly.mainlayer, 'MouseDown');\n"
+	"    if (ly.kind == 'mn_itm')\n"
+	"        {\n"
+	"        mn_show_menu(ly.mainlayer,ly.index);\n"
+	"        }\n"
+	"    mn_target_img = e.target;\n"
+	"    if (ly.kind == 'mn' && ly.enabled != 'disabled')\n"
+	"        {\n"
+	"        if (mn_current)\n"
+	"            {\n"
+	"            mn_current.PaneLayer.visibility = 'hide';\n"
+	"            mn_current = null;\n"
+	"            }\n"
+	"        else\n"
+	"            {\n"
+	"            ly.PaneLayer.pageX = ly.pageX;\n"
+	"            ly.PaneLayer.pageY = ly.pageY+20;\n"
+	"            ly.PaneLayer.visibility = 'inherit';\n"
+	"            if(ly.form)\n"
+	"                ly.form.FocusNotify(ly);\n"
+	"            mn_current = ly;\n"
+	"            }\n"
+	"            mn_toggle(ly);\n"
+	"        }\n"
+	"    else if (ly.kind == 'mn_itm' && mn_current && mn_current.enabled == 'full')\n"
+	"        {\n"
+	"        mn_select_item(mn_current, ly.index);\n"
+	"        }\n"
+	"    else if (ly.kind == 'mn_sc')\n"
+	"        {\n"
+	"        switch(ly.name)\n"
+	"            {\n"
+	"            case 'u':\n"
+	"                ly.src = '/sys/images/ico13c.gif';\n"
+	"                mn_incr = 8;\n"
+	"                mn_scroll();\n"
+	"                mn_timeout = setTimeout(mn_scroll_tm,300);\n"
+	"                break;\n"
+	"            case 'd':\n"
+	"                ly.src = '/sys/images/ico12c.gif';\n"
+	"                mn_incr = -8;\n"
+	"                mn_scroll();\n"
+	"                mn_timeout = setTimeout(mn_scroll_tm,300);\n"
+	"                break;\n"
+	"            case 'b':\n"
+	"                mn_incr = mn_target_img.height+36;\n"
+	"                if (e.pageY > mn_target_img.thum.pageY+9) mn_incr = -mn_incr;\n"
+	"                mn_scroll();\n"
+	"                mn_timeout = setTimeout(mn_scroll_tm,300);\n"
+	"                break;\n"
+	"            case 't':\n"
+	"                mn_click_x = e.pageX;\n"
+	"                mn_click_y = e.pageY;\n"
+	"                mn_thum_y = mn_target_img.thum.pageY;\n"
+	"                break;\n"
+	"            }\n"
+	"        }\n"
+	"    if (mn_current && mn_current != ly && mn_current.PaneLayer != ly && (!ly.mainlayer || mn_current != ly.mainlayer))\n"
+	"        {\n"
+	"        mn_current.PaneLayer.visibility = 'hide';\n"
+	"        mn_current = null;\n"
+	"        }\n"
+	"\n");
+
+    /** Get the mode (default to 1, dynamicpage) **/
+
+    /** Script initialization call. **/
+
+    htrAddScriptInit_va(s,"    %s = mn_init(%s.layers.mn%dmain,'%s','%s',%d,%d);\n", nptr, parentname, id, bgstr, hilight, w, h);
+
+    /** HTML body <DIV> element for the layers. **/
+    htrAddBodyItem_va(s,"<DIV ID=\"mn%dmain\"><BODY bgcolor=\"%s\">\n", id,bgstr);
+    htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
+    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
+    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
+    htrAddBodyItem_va(s,"       <TD></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
+    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
+    htrAddBodyItem_va(s,"</TABLE>\n");
+    htrAddBodyItem_va(s,"</BODY></DIV>\n");
+    
+    /* Read and initialize the menu items */
+
+    //Note: w_obj here needs to be a sub object variable...
+    if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
+	flag=0;
+	while((w_obj = objQueryFetch(qy, O_RDONLY))) {
+	   objGetAttrValue(w_obj,"outer_type",POD(&ptr));
+	   if (!strcmp(ptr,"widget/menuitem")) {
+		    if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
+		      mssError(1,"HTMN","Menu Item  widget must have a 'label' property");
+		      return -1;
+		    }
+		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		    if (flag) { //create mn_add_top_layer function call...
+		        xsConcatPrintf(&xs, ",");
+		    } else {
+		        xsInit(&xs);
+		        xsConcatPrintf(&xs, "    mn_add_top_layer_items(%s.layers.mn%dmain, Array(", parentname, id);
+		        flag=1;
+		    }
+		    xsConcatPrintf(&xs,"Array('%s',", string); //fill in the menu items parameters for the function...
+    
+		    if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
+		        mssError(1,"HTMN","Menu Item widget must have a 'value' property");
+		        return -1;
+		    }
+		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		    xsConcatPrintf(&xs,"'%s',", string);
+    
+		    if (objGetAttrValue(w_obj,"width",POD(&ptr)) != 0) {
+		        mssError(1,"HTMN","Menu Item widget must have a 'width' property");
+		        return -1;
+		    }
+		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		    xsConcatPrintf(&xs,"%s)", string);
+
+	    } else {
+	        htrRenderWidget(s, w_obj, z+1, parentname, nptr);
+	    }
+	    objClose(w_obj);
+	}
+	if (flag) {
+	    xsConcatPrintf(&xs, "));\n");
+	    htrAddScriptInit(s,xs.String);
+	    xsDeInit(&xs);
+	}
+	objQueryClose(qy);
     }
-    HTMENU;
 
-
-/*** htmenuVerify - not written yet.
- ***/
-int
-htmenuVerify()
-    {
     return 0;
-    }
+}
 
 
-/*** htmenuRender - generate the HTML code for the page.
- ***/
-int
-htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
-    {
-    char* ptr;
-    char name[64];
-    char sbuf[HT_SBUF_SIZE];
-    char bgimg[128] = "";
-    char bgcolor[128] = "";
-    pObject sub_w_obj;
-    pObjQuery qy;
-    int x,y,w;
-    int id;
-    char* nptr;
-    int is_permanent = 0;
-    int is_horizontal = 0;
+/* 
+   htmenuInitialize - register with the ht_render module.
+*/
+int htmenuInitialize() {
+   pHtDriver drv;
 
-    	/** Get an id for this. **/
-	id = (HTMENU.idcnt++);
+   /** Allocate the driver **/
+   drv = htrAllocDriver();
+   if (!drv) return -1;
 
-    	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x = -1;
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y = -1;
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) w = 100;
+   /** Fill in the structure. **/
+   strcpy(drv->Name,"DHTML Menu Widget Driver");
+   strcpy(drv->WidgetName,"menu");
+   drv->Render = htmenuRender;
+   drv->Verify = htmnVerify;
+   strcpy(drv->Target, "Netscape47x:default");
 
-	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63]=0;
+   /** Register events **/
+   htrAddEvent(drv,"MouseUp");
+   htrAddEvent(drv,"MouseDown");
+   htrAddEvent(drv,"MouseOver");
+   htrAddEvent(drv,"MouseOut");
+   htrAddEvent(drv,"MouseMove");
+   htrAddEvent(drv,"DataChange");
+   htrAddEvent(drv,"GetFocus");
+   htrAddEvent(drv,"LoseFocus");
 
-	/** Get background image / color **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
-	    {
-	    memccpy(bgcolor, ptr, '\0', 127);
-	    bgcolor[127] = 0;
-	    }
-	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
-	    {
-	    memccpy(bgimg, ptr, '\0', 127);
-	    bgcolor[127] = 0;
-	    }
+   /** Register. **/
+   htrRegisterDriver(drv);
 
-	/** Is this a 'fixed' menu or 'popup'? **/
-	if (objGetAttrValue(w_obj,"type", POD(&ptr)) == 0)
-	    {
-	    if (!strcmp(ptr, "fixed")) 
-	        {
-		is_permanent = 1;
-		is_horizontal = 1;
-		}
-	    }
+   HTMN.idcnt = 0;
 
-	/** Is this a horizontal or vertical menu? **/
-	if (objGetAttrValue(w_obj,"orientation", POD(&ptr)) == 0)
-	    {
-	    if (!strcmp(ptr, "horizontal")) is_horizontal = 1;
-	    else if (!strcmp(ptr, "vertical")) is_horizontal = 0;
-	    }
-
-	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#mn%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; %s%s%s }\n",id,(x==-1)?0:x,(y==-1)?0:y,w,z, (*bgcolor)?"LAYER-BACKGROUND-COLOR:":"",bgcolor,(*bgcolor)?";":"");
-
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
-
-	/** Globals for tracking where last click was **/
-	htrAddScriptGlobal(s, "mn_last_x", "0", 0);
-	htrAddScriptGlobal(s, "mn_last_y", "0", 0);
-
-	/** Globals for tracking current menu **/
-	htrAddScriptGlobal(s, "mn_current", "null", 0);
-	htrAddScriptGlobal(s, "mn_top_z", "1500", 0);
-	htrAddScriptGlobal(s, "mn_clear", "0", 0);
+   return 0;
+}
 
 
-	htrAddScriptInclude(s,"/sys/js/htdrv_menu.js",0);
-
-	/** Script initialization call.   Do this part before the child objs init. **/
-	htrAddScriptInit_va(s,"    %s = %s.layers.mn%dpane;\n",nptr, parentname, id);
-
-	/** HTML body <DIV> elements for the menu layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"mn%dpane\">\n",id);
-
-	/** Add the event handling scripts **/
-	/** For mousedown, record the coordinates, and check to see if click in a menu. **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","mn",
-		"    mn_last_x = e.pageX;\n"
-		"    mn_last_y = e.pageY;\n"
-		"    if (mn_current != null)\n"
-		"        {\n"
-		"        in_mn = 0;\n"
-		"        mn = mn_current;\n"
-		"        while(mn.kind == 'mn')\n"
-		"            {\n"
-		"            if (e.pageX > mn.pageX && e.pageX < mn.pageX + mn.clip.width &&\n"
-		"                e.pageY > mn.pageY && e.pageY < mn.pageY + mn.clip.height)\n"
-		"                {\n"
-		"                in_mn = 1;\n"
-		"                mn_clear = 1;\n"
-		"                break;\n"
-		"                }\n"
-		"            mn.visibility = 'hidden';\n"
-		"            mn_current = mn_current.LSParent;\n"
-		"            mn = mn.LSParent;\n"
-		"            }\n"
-		"        if (in_mn == 0) mn_current = null;\n"
-		"        }\n" );
-
-	htrAddEventHandler(s, "document","MOUSEUP","mn",
-		"    if (mn_current != null && mn_clear == 1)\n"
-		"        {\n"
-		"        mn_clear = 0;\n"
-		"        mn_current.visibility = 'hidden';\n"
-		"        mn_current = null;\n"
-		"        }\n" );
-
-	htrAddEventHandler(s, "document","MOUSEOVER","mn",
-		"    if (e.target != null && e.target.kind == 'mn')\n"
-		"        {\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEOUT","mn",
-		"    if (e.target != null && e.target.kind == 'mn')\n"
-		"        {\n"
-		"        }\n");
-
-	/** Check for more sub-widgets within the imagebutton. **/
-	snprintf(sbuf,HT_SBUF_SIZE,"%s.document",nptr);
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, sub_w_obj, z+1, sbuf, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
-
-	/** End the menu object 'div' **/
-	htrAddBodyItem(s,"</DIV>\n");
-
-	/** Script initialization call.   Do the main mn_init _AFTER_ the child objs init. **/
-	htrAddScriptInit_va(s,"    mn_init(%s,%d,%d,%s);\n", nptr, is_permanent, is_horizontal, parentobj);
-
-    return 0;
-    }
-
-
-/*** htmenuInitialize - register with the ht_render module.
- ***/
-int
-htmenuInitialize()
-    {
-    pHtDriver drv;
-
-    	/** Allocate the driver **/
-	drv = htrAllocDriver();
-	if (!drv) return -1;
-
-	/** Fill in the structure. **/
-	strcpy(drv->Name,"HTML Menu Widget Driver");
-	strcpy(drv->WidgetName,"menu");
-	drv->Render = htmenuRender;
-	drv->Verify = htmenuVerify;
-	strcpy(drv->Target, "Netscape47x:default");
-
-	/** Add the 'click' event **/
-	htrAddAction(drv,"Activate");
-	htrAddParam(drv,"Activate","X",DATA_T_INTEGER);
-	htrAddParam(drv,"Activate","Y",DATA_T_INTEGER);
-
-	/** Register. **/
-	htrRegisterDriver(drv);
-
-	HTMENU.idcnt = 0;
-
-    return 0;
-    }
