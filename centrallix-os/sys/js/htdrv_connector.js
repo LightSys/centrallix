@@ -32,10 +32,11 @@ function cn_activate(t,f,eparam)
 	}
     }
 
-//function cn_add(w,e)
+// would be nice if this could go through the wgtr module, but the
+// sequence of events at startup makes that tricky - this gets called
+// before the wgtr stuff is initialized
 function cn_add(e)
     {
-//	wgtrAddEventFunc(wgtrGetNode(wgt_name), e);
     if (this.LSParent['Event' + e] == null)
 	this.LSParent['Event' + e] = new Array();
     this.LSParent['Event' + e][this.LSParent['Event' + e].length] = this.RunEvent;

@@ -22,18 +22,19 @@ function wgtr_internal_Print(msg, indent)
 
 function wgtr_internal_Debug(msg, indent)
     {
+/*
     var txt;
     var element;
     var i;
 
-//	if (document.layers.dbgwnd)
-//	    {
-//	    element = document.layers.dbgwnd.document.forms.dbgform.elements.dbgtxt;
-//	    txt = element.value;
-//	    for (i=0;i<indent;i++) { txt = txt+" "; }
-//	    element.value = txt+msg+"\n";
-//	    }
-	
+	if (document.layers.dbgwnd)
+	    {
+	    element = document.layers.dbgwnd.document.forms.dbgform.elements.dbgtxt;
+	    txt = element.value;
+	    for (i=0;i<indent;i++) { txt = txt+" "; }
+	    element.value = txt+msg+"\n";
+	    }
+*/	
     }
 
 // wgtrAddToTree - takes an existing object, and makes it a widget tree node,

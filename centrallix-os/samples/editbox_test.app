@@ -31,14 +31,14 @@ editbox_test "widget/page"
 	TabTwo "widget/tabpage"
 	    {
 	    // New testing editbox widget.
-	    my_editbox "widget/editbox"
+	    my_editbox3 "widget/editbox"
 		{
 		style = lowered;
 		//bgcolor=white;
 		background='/sys/images/wood.png';
 		x = 100; y = 10; width=100; height=19;
 		}
-	    my_editbox2 "widget/editbox"
+	    my_editbox4 "widget/editbox"
 		{
 		style = lowered;
 		//bgcolor='#e0e0e0';
@@ -59,9 +59,9 @@ editbox_test "widget/page"
 	    width=298;
 	    inner_border=1;
 	    hdr_bgcolor=white;
-	    name "widget/table-column" { width=20; title="Filename"; }
-	    size "widget/table-column" { width=5; title="Size"; }
-	    owner "widget/table-column" { width=10; title="Owner"; }
+	    name1 "widget/table-column" { fieldname="name"; width=20; title="Filename"; }
+	    size "widget/table-column" { fieldname="size"; width=5; title="Size"; }
+	    owner "widget/table-column" { fieldname="owner"; width=10; title="Owner"; }
 	    }
 	}
     }

@@ -40,7 +40,7 @@ fade_test "widget/page"
 	    bgcolor="#a0a0a0";
 	    fgcolor1="#000000";
 	    fgcolor2="#a0a0a0";
-	    c1 "widget/connector"
+	    c2 "widget/connector"
 	        {
 		event = "Click";
 		action = "LoadPage";

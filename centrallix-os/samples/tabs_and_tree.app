@@ -64,7 +64,7 @@ tabs_and_tree "widget/page"
 	    {
 	    title = "&nbsp;<b>TabTwo</b>&nbsp;";
 
-	    sp "widget/scrollpane"
+	    sp2 "widget/scrollpane"
 		{
 		x=0;y=0;width=598;height=398;
 		tv "widget/treeview"

@@ -1,0 +1,27 @@
+$Version=2$
+
+button "iface/definition"
+    {
+    type = widget;
+    v1 "iface/majorversion"
+	{
+	v0 "iface/minorversion"
+	    {
+	    x "iface/property" {}
+	    y "iface/property" {}
+	    width "iface/property" {}
+	    height "iface/property" {}
+	    enabled "iface/property" {}
+	    Click "iface/event" {}
+	    }
+	v1 "iface/minorversion"
+	    {
+	    foo "iface/action" 
+		{
+		cond = runclient(:recid < 1);
+		}
+	    bar "iface/action" {}
+	    }
+	}
+    }
+

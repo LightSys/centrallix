@@ -45,7 +45,7 @@ wholePage "widget/page"
 	    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 	    text = "Show debugger";
 	    tristate = "yes";
-	    cn5 "widget/connector"
+	    cn25 "widget/connector"
 		{
 		event="Click";
 		target="debugwin";
@@ -58,7 +58,7 @@ wholePage "widget/page"
 	    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 	    text = "Display above text";
 	    tristate = "yes";
-	    cn6 "widget/connector"
+	    cn26 "widget/connector"
 		{
 		event="Click";
 		target="alerter";
@@ -115,7 +115,7 @@ wholePage "widget/page"
 		    image = "/sys/images/ico16ba.gif";
 		    pointimage = "/sys/images/ico16bb.gif";
 		    clickimage = "/sys/images/ico16bc.gif";
-		    cn1 "widget/connector"
+		    cn2 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -129,7 +129,7 @@ wholePage "widget/page"
 		    image = "/sys/images/ico16ca.gif";
 		    pointimage = "/sys/images/ico16cb.gif";
 		    clickimage = "/sys/images/ico16cc.gif";
-		    cn1 "widget/connector"
+		    cn3 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -143,7 +143,7 @@ wholePage "widget/page"
 		    image = "/sys/images/ico16da.gif";
 		    pointimage = "/sys/images/ico16db.gif";
 		    clickimage = "/sys/images/ico16dc.gif";
-		    cn1 "widget/connector"
+		    cn4 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -193,7 +193,7 @@ wholePage "widget/page"
 			    x = 50; y = 10; height = 30; width = 80;
 			    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 			    text = "Form status to query";
-			    cn1 "widget/connector"
+			    cn5 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -205,7 +205,7 @@ wholePage "widget/page"
 			    x = 150; y = 10; height = 30; width = 80;
 			    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 			    text = "Execute Query";
-			    cn1 "widget/connector"
+			    cn6 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -308,12 +308,12 @@ wholePage "widget/page"
 			}
 		    Second "widget/tabpage" 
 			{
-			testedit3 "widget/editbox"
+			testedit4 "widget/editbox"
 			    {
 				x=20;y=10;width=100;height=15;
 				fieldname="fieldbox3";
 			    }
-			testedit4 "widget/editbox"
+			testedit5 "widget/editbox"
 			    {
 				x=20;y=40;width=100;height=15;
 				fieldname="fieldbox4";
@@ -365,9 +365,9 @@ wholePage "widget/page"
 		textcolor="black";
 		textcolorhighlight="white";
 		titlecolor="red";
-		name "widget/table-column" { title="Number";width=100; }
-		full_name "widget/table-column" { title="Name"; width=100; }
-		num_days "widget/table-column" { title="Days"; width=40; }
+		name1 "widget/table-column" { fieldname="name"; title="Number";width=100; }
+		full_name "widget/table-column" { fieldname="full_name"; title="Name"; width=100; }
+		num_days "widget/table-column" { fieldname="num_days"; title="Days"; width=40; }
 		}
 	    }	//end of osrc
 	}
@@ -391,7 +391,7 @@ wholePage "widget/page"
 		    x = 5; y = 5; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form to Query";
-		    cn1 "widget/connector"
+		    cn7 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -403,7 +403,7 @@ wholePage "widget/page"
 		    x = 5; y = 35; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form to New";
-		    cn1 "widget/connector"
+		    cn8 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -415,7 +415,7 @@ wholePage "widget/page"
 		    x = 5; y = 65; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form Clear";
-		    cn1 "widget/connector"
+		    cn9 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -427,7 +427,7 @@ wholePage "widget/page"
 		    x = 5; y = 95; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form to Edit";
-		    cn1 "widget/connector"
+		    cn10 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -439,7 +439,7 @@ wholePage "widget/page"
 		    x = 5; y = 125; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form Discard";
-		    cn1 "widget/connector"
+		    cn11 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -451,7 +451,7 @@ wholePage "widget/page"
 		    x = 5; y = 155; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Test 3-button confirm";
-		    cn1 "widget/connector"
+		    cn12 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -463,7 +463,7 @@ wholePage "widget/page"
 		    x = 5; y = 185; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "";
-		    cn1 "widget/connector"
+		    cn13 "widget/connector"
 			{
 			event="Click";
 			target="form1";
@@ -475,7 +475,7 @@ wholePage "widget/page"
 		    x = 5; y = 215; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "";
-		    cn1 "widget/connector"
+		    cn14 "widget/connector"
 			{
 			event="Click";
 			target="form1";

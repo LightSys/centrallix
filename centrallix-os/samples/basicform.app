@@ -99,7 +99,7 @@ basicform "widget/page"
 			pointimage = "/sys/images/ico16bb.gif";
 			clickimage = "/sys/images/ico16bc.gif";
 			disabledimage = "/sys/images/ico16bd.gif";
-			cn1 "widget/connector"
+			cn2 "widget/connector"
 			    {
 			    event="Click";
 			    target="form1";
@@ -115,7 +115,7 @@ basicform "widget/page"
 			pointimage = "/sys/images/ico16cb.gif";
 			clickimage = "/sys/images/ico16cc.gif";
 			disabledimage = "/sys/images/ico16cd.gif";
-			cn1 "widget/connector"
+			cn3 "widget/connector"
 			    {
 			    event="Click";
 			    target="form1";
@@ -131,7 +131,7 @@ basicform "widget/page"
 			pointimage = "/sys/images/ico16db.gif";
 			clickimage = "/sys/images/ico16dc.gif";
 			disabledimage = "/sys/images/ico16dd.gif";
-			cn1 "widget/connector"
+			cn4 "widget/connector"
 			    {
 			    event="Click";
 			    target="form1";
@@ -149,7 +149,7 @@ basicform "widget/page"
 		    text="Search";
 		    enabled = runclient(:form1:is_queryable or :form1:is_queryexecutable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="QueryToggle"; }
+		    cn5 "widget/connector" { event="Click"; target="form1"; action="QueryToggle"; }
 		    }
 		newbtn "widget/textbutton"
 		    {
@@ -159,7 +159,7 @@ basicform "widget/page"
 		    text="New";
 		    enabled = runclient(:form1:is_newable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="New"; }
+		    cn6 "widget/connector" { event="Click"; target="form1"; action="New"; }
 		    }
 		editbtn "widget/textbutton"
 		    {
@@ -169,7 +169,7 @@ basicform "widget/page"
 		    text="Edit";
 		    enabled = runclient(:form1:is_editable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Edit"; }
+		    cn7 "widget/connector" { event="Click"; target="form1"; action="Edit"; }
 		    }
 		savebtn "widget/textbutton"
 		    {
@@ -179,7 +179,7 @@ basicform "widget/page"
 		    text="Save";
 		    enabled = runclient(:form1:is_savable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Save"; }
+		    cn8 "widget/connector" { event="Click"; target="form1"; action="Save"; }
 		    }
 		cancelbtn "widget/textbutton"
 		    {
@@ -189,7 +189,7 @@ basicform "widget/page"
 		    text="Cancel";
 		    enabled = runclient(:form1:is_discardable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Discard"; }
+		    cn9 "widget/connector" { event="Click"; target="form1"; action="Discard"; }
 		    }
 		delbtn "widget/textbutton"
 		    {
@@ -199,7 +199,7 @@ basicform "widget/page"
 		    text="Delete";
 		    enabled = runclient(:form1:is_editable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Delete"; }
+		    cn10 "widget/connector" { event="Click"; target="form1"; action="Delete"; }
 		    }
 
 		id_label "widget/label"

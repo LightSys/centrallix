@@ -27,7 +27,7 @@ tabsandtree "widget/page"
 		    {
 		    mode = dynamic;
 		    x=0;y=0;width=464;
-		    source="http://localhost:800/INSTALL.txt";
+		    source="http://localhost:8800/INSTALL.txt";
 		    }
 		}
 	    }
@@ -67,7 +67,7 @@ tabsandtree "widget/page"
 	TabTwo "widget/tabpage"
 	    {
 	    title = "&nbsp;<b>TabTwo</b>&nbsp;";
-	    sp "widget/scrollpane"
+	    sp2 "widget/scrollpane"
 		{
 		x=0;y=0;width=598;height=398;
 		tv "widget/treeview"
@@ -82,10 +82,10 @@ tabsandtree "widget/page"
 	    {
 	    title = "&nbsp;<b>TabThree</b>&nbsp;";
 
-	    sp "widget/scrollpane"
+	    sp3 "widget/scrollpane"
 		{
 		x=0;y=0;width=598;height=398;
-		tv "widget/treeview"
+		tv2 "widget/treeview"
 		    {
 		    show_branches=yes;
 		    x=0;y=2;width=578;

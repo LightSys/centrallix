@@ -51,8 +51,8 @@ ReportingSystem "widget/page"
 		    //row_bgcolor2="#d0d0d0";
 		    hdr_bgcolor="white";
 		    textcolor=black;
-		    name "widget/table-column" { title="Object Name"; width=20; }
-		    annotation "widget/table-column" { title="Annotation"; width=25; }
+		    name1 "widget/table-column" { fieldname="name"; title="Object Name"; width=20; }
+		    annotation "widget/table-column" { fieldname="annotation"; title="Annotation"; width=25; }
 		    }
 		}
 	    }
@@ -111,8 +111,8 @@ ReportingSystem "widget/page"
 		    //row_bgcolor2="#d0d0d0";
 		    hdr_bgcolor="white";
 		    textcolor=black;
-		    name "widget/table-column" { title = "Printer"; width=10; }
-		    annotation "widget/table-column" { title = "Description"; width=40; }
+		    name2 "widget/table-column" { fieldname="name"; title = "Printer"; width=10; }
+		    annotation2 "widget/table-column" { fieldname="annotation"; title = "Description"; width=40; }
 		    }
 		}
 	    }
@@ -199,7 +199,7 @@ ReportingSystem "widget/page"
 		spSourceCode "widget/scrollpane"
 		    {
 		    x=0; y=0; width=592; height=306;
-		    htmlSourceCode "widget/html"
+		    htmlSourceCode2 "widget/html"
 		        {
 			mode=dynamic;
 			x=0; y=0; width=576;
@@ -280,7 +280,7 @@ ReportingSystem "widget/page"
 	    tristate=no;
 	    cnViewSource "widget/connector" { event=Click; target=dlgViewSource; action=SetVisibility; IsVisible=1; }
 	    }
-	btnEditSource "widget/textbutton"
+	btnEditSource1 "widget/textbutton"
 	    {
 	    x=344; y=43; width=100; height=30;
 	    text = "Edit Source";
@@ -290,7 +290,7 @@ ReportingSystem "widget/page"
 	    tristate=no;
 	    cnEditSource "widget/connector" { event=Click; target=dlgEditSource; action=SetVisibility; IsVisible=1; }
 	    }
-	btnEditSource "widget/textbutton"
+	btnEditSource2 "widget/textbutton"
 	    {
 	    x=464; y=4; width=100; height=30;
 	    text = "Debug Window";
@@ -298,7 +298,7 @@ ReportingSystem "widget/page"
 	    fgcolor1=black;
 	    fgcolor2=white;
 	    tristate=no;
-	    cnEditSource "widget/connector" { event=Click; target=debugwin; action=SetVisibility; IsVisible=1; }
+	    cnEditSource2 "widget/connector" { event=Click; target=debugwin; action=SetVisibility; IsVisible=1; }
 	    }
 
 	pnLogoPanel "widget/pane"

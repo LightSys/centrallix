@@ -38,7 +38,7 @@ Page "widget/page"
 		    fgcolor2="#cfcfcf";
 		    tristate="no";
 		    text="Query";
-		    Connector1 "widget/connector" { event="Click"; target="Form1"; action="Query"; }
+		    cn1 "widget/connector" { event="Click"; target="Form1"; action="Query"; }
 		    }
 
 		TextButton2 "widget/textbutton"
@@ -50,7 +50,7 @@ Page "widget/page"
 		    fgcolor2="#cfcfcf";
 		    tristate="no";
 		    text="QueryExec";
-		    Connector1 "widget/connector" { event="Click"; target="Form1"; action="QueryExec"; }
+		    cn2 "widget/connector" { event="Click"; target="Form1"; action="QueryExec"; }
 		    }
 
 		Label1 "widget/label"

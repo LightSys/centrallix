@@ -17,8 +17,8 @@ timer_test "widget/page"
 	msec=500;
 	auto_reset=0;
 	auto_start=0;
-	c1 "widget/connector" { target=dlg1; event=Expire; action=SetVisibility; IsVisible=0; }
-	c2 "widget/connector" { target=tmr; event=Expire; action=SetTimer; Time=500; }
+	c3 "widget/connector" { target=dlg1; event=Expire; action=SetVisibility; IsVisible=0; }
+	c4 "widget/connector" { target=tmr; event=Expire; action=SetTimer; Time=500; }
 	}
     dlg1 "widget/htmlwindow"
 	{
@@ -34,8 +34,8 @@ timer_test "widget/page"
 	text="Stop Blinking!";
 	tristate=no;
 	bgcolor='#c0c0c0';
-	c3 "widget/connector" { target=tmr2; event=Click; action=CancelTimer; }
-	c4 "widget/connector" { target=tmr; event=Click; action=CancelTimer; }
+	c5 "widget/connector" { target=tmr2; event=Click; action=CancelTimer; }
+	c6 "widget/connector" { target=tmr; event=Click; action=CancelTimer; }
 	}
     tb2 "widget/textbutton"
 	{
@@ -43,6 +43,6 @@ timer_test "widget/page"
 	text="Start Blinking!";
 	tristate=no;
 	bgcolor='#c0c0c0';
-	c3 "widget/connector" { target=tmr; event=Click; action=SetTimer; Time=500; }
+	c7 "widget/connector" { target=tmr; event=Click; action=SetTimer; Time=500; }
 	}
     }

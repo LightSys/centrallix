@@ -122,7 +122,7 @@ wholePage "widget/page"
 			    image = "/sys/images/ico16ba.gif";
 			    pointimage = "/sys/images/ico16bb.gif";
 			    clickimage = "/sys/images/ico16bc.gif";
-			    cn1 "widget/connector"
+			    cn2 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -136,7 +136,7 @@ wholePage "widget/page"
 			    image = "/sys/images/ico16ca.gif";
 			    pointimage = "/sys/images/ico16cb.gif";
 			    clickimage = "/sys/images/ico16cc.gif";
-			    cn1 "widget/connector"
+			    cn3 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -150,7 +150,7 @@ wholePage "widget/page"
 			    image = "/sys/images/ico16da.gif";
 			    pointimage = "/sys/images/ico16db.gif";
 			    clickimage = "/sys/images/ico16dc.gif";
-			    cn1 "widget/connector"
+			    cn4 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -184,7 +184,7 @@ wholePage "widget/page"
 			    x = 50; y = 10; height = 30; width = 80;
 			    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 			    text = "Form status to query";
-			    cn1 "widget/connector"
+			    cn25 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -196,7 +196,7 @@ wholePage "widget/page"
 			    x = 150; y = 10; height = 30; width = 80;
 			    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 			    text = "Execute Query";
-			    cn1 "widget/connector"
+			    cn26 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -316,7 +316,7 @@ wholePage "widget/page"
 			    image = "/sys/images/ico16aa.gif";
 			    pointimage = "/sys/images/ico16ab.gif";
 			    clickimage = "/sys/images/ico16ac.gif";
-			    cn1 "widget/connector"
+			    cn7 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -330,7 +330,7 @@ wholePage "widget/page"
 			    image = "/sys/images/ico16ba.gif";
 			    pointimage = "/sys/images/ico16bb.gif";
 			    clickimage = "/sys/images/ico16bc.gif";
-			    cn1 "widget/connector"
+			    cn28 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -344,7 +344,7 @@ wholePage "widget/page"
 			    image = "/sys/images/ico16ca.gif";
 			    pointimage = "/sys/images/ico16cb.gif";
 			    clickimage = "/sys/images/ico16cc.gif";
-			    cn1 "widget/connector"
+			    cn8 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -358,7 +358,7 @@ wholePage "widget/page"
 			    image = "/sys/images/ico16da.gif";
 			    pointimage = "/sys/images/ico16db.gif";
 			    clickimage = "/sys/images/ico16dc.gif";
-			    cn1 "widget/connector"
+			    cn9 "widget/connector"
 				{
 				event="Click";
 				target="form1";
@@ -392,7 +392,7 @@ wholePage "widget/page"
 			    x = 150; y = 10; height = 30; width = 80;
 			    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 			    text = "Form status to query";
-			    cn1 "widget/connector"
+			    cn10 "widget/connector"
 				{
 				event="Click";
 				target="form2";
@@ -404,7 +404,7 @@ wholePage "widget/page"
 			    x = 250; y = 10; height = 30; width = 80;
 			    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 			    text = "Execute Query";
-			    cn1 "widget/connector"
+			    cn11 "widget/connector"
 				{
 				event="Click";
 				target="form2";
@@ -420,12 +420,12 @@ wholePage "widget/page"
 			    title="test";
 			    fieldname="radiofield1";
 
-			    label1 "widget/radiobutton" 
+			    label3 "widget/radiobutton" 
 				{
 				label="basketball";
 				selected="true";
 				}
-			    label2 "widget/radiobutton" 
+			    label4 "widget/radiobutton" 
 				{
 				label="is fun";
 				}
@@ -526,96 +526,96 @@ wholePage "widget/page"
 	    rFirst "widget/tabpage"
 		{
 		title="Buttons";
-		formchangebtn10 "widget/textbutton" 
+		formchangebtn13 "widget/textbutton" 
 		    {
 		    x = 5; y = 5; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form to Query";
-		    cn1 "widget/connector"
+		    cn12 "widget/connector"
 			{
 			event="Click";
 			target="form1";
 			action="Query";
 			}
 		    }
-		formchangebtn11 "widget/textbutton" 
+		formchangebtn14 "widget/textbutton" 
 		    {
 		    x = 5; y = 35; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form to New";
-		    cn1 "widget/connector"
+		    cn13 "widget/connector"
 			{
 			event="Click";
 			target="form1";
 			action="New";
 			}
 		    }
-		formchangebtn12 "widget/textbutton" 
+		formchangebtn15 "widget/textbutton" 
 		    {
 		    x = 5; y = 65; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form Clear";
-		    cn1 "widget/connector"
+		    cn14 "widget/connector"
 			{
 			event="Click";
 			target="form1";
 			action="Clear";
 			}
 		    }
-		formchangebtn13 "widget/textbutton" 
+		formchangebtn16 "widget/textbutton" 
 		    {
 		    x = 5; y = 95; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form to Edit";
-		    cn1 "widget/connector"
+		    cn15 "widget/connector"
 			{
 			event="Click";
 			target="form1";
 			action="Edit";
 			}
 		    }
-		formchangebtn14 "widget/textbutton" 
+		formchangebtn17 "widget/textbutton" 
 		    {
 		    x = 5; y = 125; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Form Discard";
-		    cn1 "widget/connector"
+		    cn16 "widget/connector"
 			{
 			event="Click";
 			target="form1";
 			action="Discard";
 			}
 		    }
-		formchangebtn15 "widget/textbutton" 
+		formchangebtn18 "widget/textbutton" 
 		    {
 		    x = 5; y = 155; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "Test 3-button confirm";
-		    cn1 "widget/connector"
+		    cn17 "widget/connector"
 			{
 			event="Click";
 			target="form1";
 			action="test3bconfirm";
 			}
 		    }
-		formchangebtn16 "widget/textbutton" 
+		formchangebtn19 "widget/textbutton" 
 		    {
 		    x = 5; y = 185; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "";
-		    cn1 "widget/connector"
+		    cn18 "widget/connector"
 			{
 			event="Click";
 			target="form1";
 			action="";
 			}
 		    }
-		formchangebtn17 "widget/textbutton" 
+		formchangebtn20 "widget/textbutton" 
 		    {
 		    x = 5; y = 215; height = 30; width = 118;
 		    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
 		    text = "";
-		    cn1 "widget/connector"
+		    cn19 "widget/connector"
 			{
 			event="Click";
 			target="form1";

@@ -84,83 +84,10 @@ ors "widget/page"
 	    form1 "widget/form"
 		{
 		_3bconfirmwindow = "ConfirmWindow";
-
-		formctlpane "widget/pane"
+		formctl "widget/formbar"
 		    {
-		    x = 100; y=10; width=240; height=30;
-		    style=raised;
-		    //bgcolor="#c0c0c0";
-		    background="/sys/images/grey_gradient3.png";
-
-		    formstatus "widget/formstatus"
-			{
-			x=72;y=4;
-			style=largeflat;
-			}
-		    btnFirst "widget/imagebutton"
-			{
-			x=8;y=5;
-			width=18; height=18;
-			image = "/sys/images/ico16aa.gif";
-			pointimage = "/sys/images/ico16ab.gif";
-			clickimage = "/sys/images/ico16ac.gif";
-			disabledimage = "/sys/images/ico16ad.gif";
-			enabled = runclient(:form1:recid > 1);
-			cn1 "widget/connector"
-			    {
-			    event="Click";
-			    target="form1";
-			    action="First";
-			    }
-			}
-		    btnPrev "widget/imagebutton"
-			{
-			x=28;y=5;
-			width=18; height=18;
-			image = "/sys/images/ico16ba.gif";
-			pointimage = "/sys/images/ico16bb.gif";
-			clickimage = "/sys/images/ico16bc.gif";
-			disabledimage = "/sys/images/ico16bd.gif";
-			cn1 "widget/connector"
-			    {
-			    event="Click";
-			    target="form1";
-			    action="Prev";
-			    }
-			enabled = runclient(:form1:recid > 1);
-			}
-		    btnNext "widget/imagebutton"
-			{
-			x=190;y=5;
-			width=18; height=18;
-			image = "/sys/images/ico16ca.gif";
-			pointimage = "/sys/images/ico16cb.gif";
-			clickimage = "/sys/images/ico16cc.gif";
-			disabledimage = "/sys/images/ico16cd.gif";
-			cn1 "widget/connector"
-			    {
-			    event="Click";
-			    target="form1";
-			    action="Next";
-			    }
-			enabled = runclient(not (:form1:recid == :form1:lastrecid));
-			}
-		    btnLast "widget/imagebutton"
-			{
-			x=210;y=5;
-			width=18; height=18;
-			image = "/sys/images/ico16da.gif";
-			pointimage = "/sys/images/ico16db.gif";
-			clickimage = "/sys/images/ico16dc.gif";
-			disabledimage = "/sys/images/ico16dd.gif";
-			cn1 "widget/connector"
-			    {
-			    event="Click";
-			    target="form1";
-			    action="Last";
-			    }
-			enabled = runclient(not (:form1:recid == :form1:lastrecid));
-			}
+		    x=100; y=10;
+		    target=form1;
 		    }
 
 		searchbtn "widget/textbutton"
@@ -171,7 +98,7 @@ ors "widget/page"
 		    text="Search";
 		    enabled = runclient(:form1:is_queryable or :form1:is_queryexecutable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="QueryToggle"; }
+		    cn3 "widget/connector" { event="Click"; target="form1"; action="QueryToggle"; }
 		    }
 		newbtn "widget/textbutton"
 		    {
@@ -181,7 +108,7 @@ ors "widget/page"
 		    text="New";
 		    enabled = runclient(:form1:is_newable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="New"; }
+		    cn4 "widget/connector" { event="Click"; target="form1"; action="New"; }
 		    }
 		editbtn "widget/textbutton"
 		    {
@@ -191,7 +118,7 @@ ors "widget/page"
 		    text="Edit";
 		    enabled = runclient(:form1:is_editable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Edit"; }
+		    cn5 "widget/connector" { event="Click"; target="form1"; action="Edit"; }
 		    }
 		savebtn "widget/textbutton"
 		    {
@@ -201,7 +128,7 @@ ors "widget/page"
 		    text="Save";
 		    enabled = runclient(:form1:is_savable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Save"; }
+		    cn6 "widget/connector" { event="Click"; target="form1"; action="Save"; }
 		    }
 		cancelbtn "widget/textbutton"
 		    {
@@ -211,7 +138,7 @@ ors "widget/page"
 		    text="Cancel";
 		    enabled = runclient(:form1:is_discardable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Discard"; }
+		    cn7 "widget/connector" { event="Click"; target="form1"; action="Discard"; }
 		    }
 		delbtn "widget/textbutton"
 		    {
@@ -221,7 +148,7 @@ ors "widget/page"
 		    text="Delete";
 		    enabled = runclient(:form1:is_editable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Delete"; }
+		    cn8 "widget/connector" { event="Click"; target="form1"; action="Delete"; }
 		    }
 
 		id_label "widget/label"
@@ -457,7 +384,7 @@ ors "widget/page"
 	    text="Window";
 	    winconn "widget/connector" { event=Click; target=Tree; action=SetRoot; NewRoot=runclient('javascript:window'); }
 	    }
-	Win_btn "widget/textbutton"
+	Win_btn2 "widget/textbutton"
 	    {
 	    x=82;y=213;width=80;height=20;
 	    tristate=no;
@@ -465,7 +392,7 @@ ors "widget/page"
 	    fgcolor2="white";
 	    bgcolor="#e0e0e0";
 	    text="Document";
-	    winconn "widget/connector" { event=Click; target=Tree; action=SetRoot; NewRoot=runclient('javascript:document'); }
+	    winconn1 "widget/connector" { event=Click; target=Tree; action=SetRoot; NewRoot=runclient('javascript:document'); }
 	    }
 	Root_label "widget/label"
 	    {
@@ -523,8 +450,8 @@ ors "widget/page"
 	    x=241; y=386; width=354; height=20;
 	    bgcolor=white;
 	    evalconn "widget/connector" { event=ReturnPressed; target=Log; action=AddText; Text=runclient(:Eval_editbox:content + ' = ' + eval(:Eval_editbox:content) + '\n'); ContentType = runclient('text/plain');}
-	    showconn "widget/connector" { event=ReturnPressed; target=Log; action=ShowText; }
-	    bottomconn "widget/connector" { event=ReturnPressed; target=Log_scroll; action=ScrollTo; Percent=100; }
+	    showconn1 "widget/connector" { event=ReturnPressed; target=Log; action=ShowText; }
+	    bottomconn1 "widget/connector" { event=ReturnPressed; target=Log_scroll; action=ScrollTo; Percent=100; }
 	    }
 	}
     }

@@ -11,11 +11,11 @@ FourTabs "widget/page"
 	x = 10; y = 10; width=300; height=100;
 	background = "/sys/images/slate2.gif";
 	inactive_background = "/sys/images/slate2_dark.gif";
-	selected = runclient(:TabCtlTwo:selected);
+	selected_index = runclient(:TabCtlTwo:selected_index);
 
-	TabOne "widget/tabpage" { lbl1 "widget/label" { x=10; y=10; width=100; height=32; text="Label One"; } }
-	TabTwo "widget/tabpage" { lbl2 "widget/label" { x=30; y=30; width=100; height=32; text="Label Two"; } }
-	TabThree "widget/tabpage" { lbl3 "widget/label" { x=50; y=50; width=100; height=32; text="Label Three"; } }
+	TabOne1 "widget/tabpage" { lbl1 "widget/label" { x=10; y=10; width=100; height=32; text="Label One"; } }
+	TabTwo1 "widget/tabpage" { lbl2 "widget/label" { x=30; y=30; width=100; height=32; text="Label Two"; } }
+	TabThree1 "widget/tabpage" { lbl3 "widget/label" { x=50; y=50; width=100; height=32; text="Label Three"; } }
 	}
     TabCtlTwo "widget/tab"
 	{
@@ -24,11 +24,11 @@ FourTabs "widget/page"
 	x = 10; y = 144; width=300; height=100;
 	bgcolor = "#e0e0e0";
 	inactive_bgcolor = "#d0d0d0";
-	selected = runclient(:TabCtlOne:selected);
+	selected_index = runclient(:TabCtlOne:selected_index);
 
-	TabOne "widget/tabpage" { }
-	TabTwo "widget/tabpage" { }
-	TabThree "widget/tabpage" { }
+	TabOne2 "widget/tabpage" { }
+	TabTwo2 "widget/tabpage" { }
+	TabThree2 "widget/tabpage" { }
 	}
     TabWindow "widget/htmlwindow"
 	{
@@ -45,9 +45,9 @@ FourTabs "widget/page"
 	    bgcolor = "#c0c0e0";
 	    inactive_bgcolor = "#b0b0d0";
 
-	    TabOne "widget/tabpage" { }
-	    TabTwo "widget/tabpage" { }
-	    TabThree "widget/tabpage" { }
+	    TabOne3 "widget/tabpage" { }
+	    TabTwo3 "widget/tabpage" { }
+	    TabThree3 "widget/tabpage" { }
 	    }
 	}
     TabPane "widget/pane"
@@ -63,9 +63,9 @@ FourTabs "widget/page"
 	    bgcolor = "#c0e0c0";
 	    inactive_bgcolor = "#b0d0b0";
 
-	    TabOne "widget/tabpage" { }
-	    TabTwo "widget/tabpage" { }
-	    TabThree "widget/tabpage" { }
+	    TabOne4 "widget/tabpage" { }
+	    TabTwo4 "widget/tabpage" { }
+	    TabThree4 "widget/tabpage" { }
 	    }
 	}
     }

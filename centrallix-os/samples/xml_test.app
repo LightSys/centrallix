@@ -67,7 +67,7 @@ wholePage "widget/page"
 	    readahead=3;
 	    replicasize=25; //this is a really slow query -- get it all...
 
-	    pane1 "widget/pane" {
+	    pane2 "widget/pane" {
 		x=10; y=30; height=142; width=702;
 		style="lowered";
 		bgcolor="#b8b8b8";
@@ -92,9 +92,9 @@ wholePage "widget/page"
 		    textcolor="black";
 		    textcolorhighlight="white";
 		    titlecolor="red";
-		    title "widget/table-column" { title="Title";width=200; }
-		    link "widget/table-column" { title="Link"; width=500; }
-		    cn3 "widget/connector"
+		    title "widget/table-column" { fieldname="title"; title="Title";width=200; }
+		    link "widget/table-column" { fieldname="link"; title="Link"; width=500; }
+		    cn4 "widget/connector"
 			{
 			//event="Click"; target="htmlarea"; action="LoadPage"; Source="new String(eparam.data.link).replace('http:..slashdot.org','/samples/slashdot.http')";
 			event="Click"; target="htmlarea"; action="LoadPage"; Source="eparam.data.link";

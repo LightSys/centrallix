@@ -111,7 +111,7 @@ basicform2 "widget/page"
 			pointimage = "/sys/images/ico16bb.gif";
 			clickimage = "/sys/images/ico16bc.gif";
 			disabledimage = "/sys/images/ico16bd.gif";
-			cn1 "widget/connector"
+			cn2 "widget/connector"
 			    {
 			    event="Click";
 			    target="form1";
@@ -127,7 +127,7 @@ basicform2 "widget/page"
 			pointimage = "/sys/images/ico16cb.gif";
 			clickimage = "/sys/images/ico16cc.gif";
 			disabledimage = "/sys/images/ico16cd.gif";
-			cn1 "widget/connector"
+			cn3 "widget/connector"
 			    {
 			    event="Click";
 			    target="form1";
@@ -143,7 +143,7 @@ basicform2 "widget/page"
 			pointimage = "/sys/images/ico16db.gif";
 			clickimage = "/sys/images/ico16dc.gif";
 			disabledimage = "/sys/images/ico16dd.gif";
-			cn1 "widget/connector"
+			cn4 "widget/connector"
 			    {
 			    event="Click";
 			    target="form1";
@@ -161,7 +161,7 @@ basicform2 "widget/page"
 		    text="Search";
 		    enabled = runclient(:form1:is_queryable or :form1:is_queryexecutable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="QueryToggle"; }
+		    cn5 "widget/connector" { event="Click"; target="form1"; action="QueryToggle"; }
 		    }
 		newbtn "widget/textbutton"
 		    {
@@ -171,7 +171,7 @@ basicform2 "widget/page"
 		    text="New";
 		    enabled = runclient(:form1:is_newable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="New"; }
+		    cn6 "widget/connector" { event="Click"; target="form1"; action="New"; }
 		    }
 		editbtn "widget/textbutton"
 		    {
@@ -181,7 +181,7 @@ basicform2 "widget/page"
 		    text="Edit";
 		    enabled = runclient(:form1:is_editable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Edit"; }
+		    cn7 "widget/connector" { event="Click"; target="form1"; action="Edit"; }
 		    }
 		savebtn "widget/textbutton"
 		    {
@@ -191,7 +191,7 @@ basicform2 "widget/page"
 		    text="Save";
 		    enabled = runclient(:form1:is_savable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Save"; }
+		    cn8 "widget/connector" { event="Click"; target="form1"; action="Save"; }
 		    }
 		cancelbtn "widget/textbutton"
 		    {
@@ -201,7 +201,7 @@ basicform2 "widget/page"
 		    text="Cancel";
 		    enabled = runclient(:form1:is_discardable);
 		    fgcolor1=black;fgcolor2=white;
-		    cn1 "widget/connector" { event="Click"; target="form1"; action="Discard"; }
+		    cn9 "widget/connector" { event="Click"; target="form1"; action="Discard"; }
 		    }
 
 		first_name_label "widget/label"
@@ -268,8 +268,8 @@ basicform2 "widget/page"
 		    textcolor = "#000000";
 		    gridinemptyrows = 1;
 
-		    first_name "widget/table-column" { title = "First Name"; width = 110; }
-		    last_name "widget/table-column" { title = "Last Name"; width = 110; }
+		    first_name2 "widget/table-column" { fieldname="first_name"; title = "First Name"; width = 110; }
+		    last_name2 "widget/table-column" { fieldname="last_name"; title = "Last Name"; width = 110; }
 		    } // end table
 		}
 
@@ -311,9 +311,9 @@ basicform2 "widget/page"
 		    textcolor = "#000000";
 		    gridinemptyrows = 1;
 
-		    first_name "widget/table-column" { title = "First Name"; width = 150; }
-		    computer_name "widget/table-column" { title = "Computer Name"; width = 150; }
-		    memory "widget/table-column" { title = "MB Memory"; width = 100; }
+		    first_name3 "widget/table-column" { fieldname="first_name"; title = "First Name"; width = 150; }
+		    computer_name "widget/table-column" { fieldname="computer_name"; title = "Computer Name"; width = 150; }
+		    memory "widget/table-column" { fieldname="memory"; title = "MB Memory"; width = 100; }
 		    } // end table
 		}
 	    }

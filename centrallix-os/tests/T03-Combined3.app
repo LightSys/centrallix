@@ -29,7 +29,7 @@ Page1 "widget/page"
 	bgcolor="#c0c0c0";
 	fgcolor1="#000000";
 	fgcolor2="#c0c0c0";
-	Connector1 "widget/connector" { event="Click"; target="Window2"; action="ToggleVisibility"; }
+	Connector2 "widget/connector" { event="Click"; target="Window2"; action="ToggleVisibility"; }
 	}
     Textbutton3 "widget/textbutton"
 	{
@@ -39,7 +39,7 @@ Page1 "widget/page"
 	bgcolor="#c0c0c0";
 	fgcolor1="#000000";
 	fgcolor2="#c0c0c0";
-	Connector1 "widget/connector" { event="Click"; target="Window3"; action="ToggleVisibility"; }
+	Connector3 "widget/connector" { event="Click"; target="Window3"; action="ToggleVisibility"; }
 	}
     Textbutton4 "widget/textbutton"
 	{
@@ -49,7 +49,7 @@ Page1 "widget/page"
 	bgcolor="#c0c0c0";
 	fgcolor1="#000000";
 	fgcolor2="#c0c0c0";
-	Connector1 "widget/connector" { event="Click"; target="Window4"; action="ToggleVisibility"; }
+	Connector4 "widget/connector" { event="Click"; target="Window4"; action="ToggleVisibility"; }
 	}
     Textbutton5 "widget/textbutton"
 	{
@@ -59,7 +59,7 @@ Page1 "widget/page"
 	bgcolor="#c0c0c0";
 	fgcolor1="#000000";
 	fgcolor2="#c0c0c0";
-	Connector1 "widget/connector" { event="Click"; target="Window5"; action="ToggleVisibility"; }
+	Connector5 "widget/connector" { event="Click"; target="Window5"; action="ToggleVisibility"; }
 	}
 
     Window1 "widget/htmlwindow"

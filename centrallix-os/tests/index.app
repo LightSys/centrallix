@@ -60,7 +60,7 @@ Page1 "widget/page"
 		    textcolor="black";
 		    textcolorhighlight="black";
 		    titlecolor="#000000";
-		    name "widget/table-column" { title="<b>File Name</b>"; width=300; }
+		    fname "widget/table-column" { fieldname="name"; title="<b>File Name</b>"; width=300; }
 
 		    Connector1 "widget/connector"
 			{

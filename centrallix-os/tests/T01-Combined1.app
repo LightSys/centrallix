@@ -72,9 +72,9 @@ Page1 "widget/page"
 			textcolorhighlight="black";
 			titlecolor="#000000";
 
-			id "widget/table-column" { title="<b>ID</b>"; width=50; }
-			abbrev "widget/table-column" { title="<b>Abbrev.</b>"; width=60; }
-			full_name "widget/table-column" { title="<b>Full State Name</b>"; width=250; }
+			id "widget/table-column" { fieldname="id"; title="<b>ID</b>"; width=50; }
+			abbrev "widget/table-column" { fieldname="abbrev"; title="<b>Abbrev.</b>"; width=60; }
+			full_name "widget/table-column" { fieldname="full_name"; title="<b>Full State Name</b>"; width=250; }
 
 			Connector1 "widget/connector" { event="DblClick"; target="Window1"; action="SetVisibility"; IsVisible=1; }
 			}
