@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.3 2002/02/14 00:51:17 gbeeley Exp $
+    $Id: mtsession.c,v 1.4 2002/03/23 06:25:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.4  2002/03/23 06:25:10  gbeeley
+    Updated MSS to have a larger error string buffer, as a lot of errors
+    were getting chopped off.  Added BDQS protocol files with some very
+    simple initial implementation.
+
     Revision 1.3  2002/02/14 00:51:17  gbeeley
     Fixed a problem where if an error occurs before mssInitialize(), it
     would default progname to "".  Now it defaults to "error", which causes
@@ -541,7 +546,7 @@ mssPrintError(pFile fd)
     {
     int i;
     pMtSession s;
-    char sbuf[128];
+    char sbuf[200];
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
@@ -552,7 +557,7 @@ mssPrintError(pFile fd)
 	fdWrite(fd,sbuf,strlen(sbuf),0,0);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
-	    sprintf(sbuf,"--- %.100s\r\n",(char*)(s->ErrList.Items[i]));
+	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
 	    fdWrite(fd,sbuf,strlen(sbuf),0,0);
 	    }
 
@@ -566,7 +571,7 @@ mssPrintError(pFile fd)
 int
 mssStringError(pXString str)
     {
-    char sbuf[128];
+    char sbuf[200];
     int i;
     pMtSession s;
 
@@ -579,7 +584,7 @@ mssStringError(pXString str)
 	xsConcatenate(str,sbuf,-1);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
-	    sprintf(sbuf,"--- %.100s\r\n",(char*)(s->ErrList.Items[i]));
+	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
 	    xsConcatenate(str,sbuf, -1);
 	    }
     	
