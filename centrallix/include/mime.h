@@ -86,6 +86,15 @@ extern char* TypeStrings[];
 
 #define MIME_BUFSIZE          64
 
+#define MIME_TYPE_TEXT        1
+#define MIME_TYPE_MULTIPART   2
+#define MIME_TYPE_APPLICATION 3
+#define MIME_TYPE_MESSAGE     4
+#define MIME_TYPE_IMAGE       5
+#define MIME_TYPE_AUDIO       6
+#define MIME_TYPE_VIDEO       7
+
+
 /** mime_parse.c **/
 int libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end);
 int libmime_ParseHeaderElement(char *buf, char *element);

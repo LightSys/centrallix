@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.9 2002/08/14 14:24:18 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.10 2002/08/22 13:44:53 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.10  2002/08/22 13:44:53  lkehresman
+    * defined the 7 top-level media types in mime.h
+    * added better support for printing any of the 5 discrete top-level media
+      types as per rfc2046 section 3.  Multipart and Message types can not be
+      printed.
+
     Revision 1.9  2002/08/14 14:24:18  lkehresman
     Coded the mimeRead() function so that content can be read from a message.
 
@@ -156,40 +162,28 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pMimeData inf;
     pMimeMsg msg;
 
+    printf("MIMEOPEN()\n");
     if (MIME_DEBUG) fprintf(stderr, "\n");
     if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
     if (MIME_DEBUG) fprintf(stderr, "objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
 	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
 
-    /*
-    **  Handle the content-type: message/rfc822
-    */
-    if (!strcasecmp(systype->Name, "message/rfc822"))
+    /** Allocate and initialize the MIME structure **/
+    inf = (pMimeData)nmMalloc(sizeof(MimeData));
+    if (!inf) return NULL;
+    msg = (pMimeMsg)nmMalloc(sizeof(MimeMsg));
+    memset(inf,0,sizeof(MimeData));
+    memset(msg,0,sizeof(MimeMsg));
+    /** Set object parameters **/
+    strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
+    inf->Message = msg;
+    inf->Obj = obj;
+    inf->Mask = mask;
+    inf->InternalSeek = 0;
+    if (libmime_ParseHeader(obj, msg, 0, 0) < 0)
 	{
-	/** Allocate and initialize the MIME structure **/
-	inf = (pMimeData)nmMalloc(sizeof(MimeData));
-	msg = (pMimeMsg)nmMalloc(sizeof(MimeMsg));
-	if (!inf) return NULL;
-	memset(inf,0,sizeof(MimeData));
-	/** Set object parameters **/
-	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
-	inf->Message = msg;
-	inf->Obj = obj;
-	inf->Mask = mask;
-	inf->InternalSeek = 0;
-	if (libmime_ParseHeader(obj, msg, 0, 0) < 0)
-	    {
-	    if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error somewhere so I'm returning NULL from mimeOpen().\n");
-	    return NULL;
-	    }
-	}
-
-    /*
-    **  Handle MIME parsing of the content
-    */
-    else if (!strcasecmp(systype->Name, "multipart/mixed") ||
-             !strcasecmp(systype->Name, "multipart/alternative"))
-	{
+	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error somewhere so I'm returning NULL from mimeOpen().\n");
+	return NULL;
 	}
 
     /** assume we're only going to handle one level **/
@@ -247,15 +241,25 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     int size;
     pMimeData inf = (pMimeData)inf_v;
 
-    if (!offset && !inf->InternalSeek)
-	inf->InternalSeek = inf->Message->MsgSeekStart;
-    else if (offset)
-	inf->InternalSeek = inf->Message->MsgSeekStart + offset;
-
-    size = objRead(inf->Obj->Prev, buffer, maxcnt, inf->InternalSeek, FD_U_SEEK);
-    inf->InternalSeek += size;
-
-    return size;
+    /*
+    **  We can read content from any of the five discrete top-level media types,
+    **  but not from the two composite media types (rfc2046 section 3)
+    */
+    if (inf->Message->ContentMainType != MIME_TYPE_MULTIPART &&
+        inf->Message->ContentMainType != MIME_TYPE_MESSAGE)
+	{
+	if (!offset && !inf->InternalSeek)
+	    inf->InternalSeek = inf->Message->MsgSeekStart;
+	else if (offset)
+	    inf->InternalSeek = inf->Message->MsgSeekStart + offset;
+	size = objRead(inf->Obj->Prev, buffer, maxcnt, inf->InternalSeek, FD_U_SEEK);
+	inf->InternalSeek += size;
+	return size;
+	}
+    else
+	{
+	return -1;
+	}
     }
 
 
@@ -357,7 +361,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	{
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 	inf->AttrValue = (char*)malloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Message->ContentMainType], inf->Message->ContentSubType);
+	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Message->ContentMainType-1], inf->Message->ContentSubType);
 	*((char**)val) = inf->AttrValue;
 	return 0;
 	}

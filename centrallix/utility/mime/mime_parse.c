@@ -70,7 +70,7 @@ libmime_ParseHeader(pObject obj, pMimeMsg msg, int start, int end)
     msg->ContentLength = 0;
     msg->ContentDisp[0] = 0;
     msg->ContentDispFilename[0] = 0;
-    msg->ContentMainType = 0;
+    msg->ContentMainType = MIME_TYPE_APPLICATION;
     msg->ContentSubType[0] = 0;
     msg->Boundary[0] = 0;
     msg->PartName[0] = 0;
@@ -436,7 +436,7 @@ libmime_SetContentType(pMimeMsg msg, char *buf)
 	{
 	if (!libmime_StringFirstCaseCmp(maintype, TypeStrings[i]))
 	    {
-	    msg->ContentMainType = i;
+	    msg->ContentMainType = i+1;
 	    }
 	}
     
