@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.5 2002/04/25 22:51:29 gbeeley Exp $
+    $Id: ht_render.c,v 1.6 2002/04/25 22:54:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.6  2002/04/25 22:54:48  gbeeley
+    Set the starting tmpbuf back to 512 from the 8 bytes I was using to
+    test the auto-realloc logic... ;)
+
     Revision 1.5  2002/04/25 22:51:29  gbeeley
     Added vararg versions of some key htrAddThingyItem() type of routines
     so that all of this sbuf stuff doesn't have to be done, as we have
@@ -598,8 +602,8 @@ htrRender(pFile output, pObject appstruct)
 	if (!s) return -1;
 
 	/** Setup the page structures **/
-	s->Tmpbuf = nmSysMalloc(8);
-	s->TmpbufSize = 8;
+	s->Tmpbuf = nmSysMalloc(512);
+	s->TmpbufSize = 512;
 	if (!s->Tmpbuf) 
 	    {
 	    nmFree(s, sizeof(HtSession));
