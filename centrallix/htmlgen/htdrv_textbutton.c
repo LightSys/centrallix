@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.3 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.4 2002/01/09 15:27:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.4  2002/01/09 15:27:37  gbeeley
+    Fixed a bug where the borders of a textbutton would sometimes show up
+    when the button's container was not visible.
+
     Revision 1.3  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -266,20 +270,20 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                layer.btm.visibility = 'hidden';\n"
 		"                break;\n"
 		"            case 1: /* point, but no click */\n"
-		"                layer.rgt.visibility = 'visible';\n"
-		"                layer.lft.visibility = 'visible';\n"
-		"                layer.tp.visibility = 'visible';\n"
-		"                layer.btm.visibility = 'visible';\n"
+		"                layer.rgt.visibility = 'inherit';\n"
+		"                layer.lft.visibility = 'inherit';\n"
+		"                layer.tp.visibility = 'inherit';\n"
+		"                layer.btm.visibility = 'inherit';\n"
 		"                layer.tp.bgColor = '#FFFFFF';\n"
 		"                layer.lft.bgColor = '#FFFFFF';\n"
 		"                layer.btm.bgColor = '#7A7A7A';\n"
 		"                layer.rgt.bgColor = '#7A7A7A';\n"
 		"                break;\n"
 		"            case 2: /* point and click */\n"
-		"                layer.rgt.visibility = 'visible';\n"
-		"                layer.lft.visibility = 'visible';\n"
-		"                layer.tp.visibility = 'visible';\n"
-		"                layer.btm.visibility = 'visible';\n"
+		"                layer.rgt.visibility = 'inherit';\n"
+		"                layer.lft.visibility = 'inherit';\n"
+		"                layer.tp.visibility = 'inherit';\n"
+		"                layer.btm.visibility = 'inherit';\n"
 		"                layer.tp.bgColor = '#7A7A7A';\n"
 		"                layer.lft.bgColor = '#7A7A7A';\n"
 		"                layer.btm.bgColor = '#FFFFFF';\n"
