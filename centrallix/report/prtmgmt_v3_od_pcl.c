@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.16 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.17 2005/03/01 07:10:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.17  2005/03/01 07:10:23  gbeeley
+    - adjust PCL driver for changes to the way page margins are handled.
+
     Revision 1.16  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -219,6 +222,7 @@ typedef struct _PPCL
     double		MarginRight;
     double		PageWidth;
     double		PageHeight;
+    double		Xadj;
     }
     PrtPclodInf, *pPrtPclodInf;
 
@@ -369,10 +373,14 @@ prt_pclod_SetPageGeom(void* context_v, double width, double height, double t, do
 	context->MarginRight = r;
 	context->PageWidth = width;
 	context->PageHeight = height;
+	context->Xadj = 2.5;
 
-	snprintf(pclbuf, sizeof(pclbuf), "\33&l%.2fE\33&l%.2fF", 
+	/*snprintf(pclbuf, sizeof(pclbuf), "\33&l%.2fE\33&l%.2fF", 
 		context->MarginTop,
-		context->PageHeight - context->MarginTop - context->MarginBottom);
+		context->PageHeight - context->MarginTop - context->MarginBottom);*/
+	snprintf(pclbuf, sizeof(pclbuf), "\33&l%.2fE\33&l%.2fF", 
+		0.0,
+		context->PageHeight - context->MarginBottom);
 	prt_pclod_Output(context, pclbuf, -1);
 
     return 0;
@@ -550,6 +558,8 @@ prt_pclod_SetHPos(void* context_v, double x)
     char pclbuf[64];
 
 	/** Generate the horiz-index positioning command. **/
+	x -= context->Xadj;
+	if (x < 0) x = 0;
 	snprintf(pclbuf, 64, "\33&a%.1fH", (x)*72 + 0.000001);
 	prt_pclod_Output(context, pclbuf, -1);
 
