@@ -7,7 +7,7 @@ AC_PREFIX_DEFAULT(/usr/local)
 
 dnl Checks for programs.
 AC_PROG_CC
-CFLAGS="${CFLAGS/-O2} -pg"
+CFLAGS=`echo $CFLAGS | sed -e "s/-O2//"`
 AC_PROG_MAKE_SET
 AC_PROG_AWK
 AC_PATH_PROG([STRIP], [strip], [])
