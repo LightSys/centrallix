@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.14 2002/03/23 06:26:49 gbeeley Exp $
+    $Id: lsmain.c,v 1.15 2002/04/25 03:13:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.15  2002/04/25 03:13:50  jorupp
+     * added label widget
+     * bug fixes in form and osrc
+
     Revision 1.14  2002/03/23 06:26:49  gbeeley
     Added BDQS network listener.  Be sure to cvs update the centrallix-os
     module to get a fresh copy of the centrallix.conf with the net_bdqs
@@ -248,6 +252,7 @@ start(void* v)
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
 	htalrtInitialize();			/* alert module */
+	htlblInitialize();			/* label module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */

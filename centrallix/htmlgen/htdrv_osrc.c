@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.15 2002/04/10 00:36:20 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.16 2002/04/25 03:13:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.16  2002/04/25 03:13:50  jorupp
+     * added label widget
+     * bug fixes in form and osrc
+
     Revision 1.15  2002/04/10 00:36:20  jorupp
      * fixed 'visible' bug in imagebutton
      * removed some old code in form, and changed the order of some callbacks
@@ -182,7 +186,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
   /** Ok, write the style header items. **/
   snprintf(sbuf3, 200, "    <STYLE TYPE=\"text/css\">\n");
   htrAddHeaderItem(s,sbuf3);
-  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:300;  WIDTH:500; HEIGHT:500; Z-INDEX:20; }\n",id);
+  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:300;  WIDTH:500; HEIGHT:500; Z-INDEX:-20; }\n",id);
   htrAddHeaderItem(s,sbuf3);
   snprintf(sbuf3, 200, "    </STYLE>\n");
   htrAddHeaderItem(s,sbuf3);

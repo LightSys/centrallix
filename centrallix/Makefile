@@ -57,6 +57,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_osrc.o \
 	   htdrv_spinner.o \
 	   htdrv_dropdown.o \
+	   htdrv_label.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 

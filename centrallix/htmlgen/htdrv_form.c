@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.25  2002/04/25 03:13:50  jorupp
+     * added label widget
+     * bug fixes in form and osrc
+
     Revision 1.24  2002/04/25 01:13:43  jorupp
      * increased buffer size for query in form
      * changed sybase driver to not put strings in two sets of quotes on update
@@ -256,7 +260,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***/
 
 	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
-	    snprintf(basequery,300,"%s",ptr);
+	    snprintf(basequery,FORM_BUF_SIZE,"%s",ptr);
 	else
 	    {
 	    mssError(1,"HTFORM","Form must have a 'basequery' property");
@@ -264,7 +268,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 	
 	if (objGetAttrValue(w_obj,"basewhere",POD(&ptr)) == 0)
-	    snprintf(basewhere,300,"%s",ptr);
+	    snprintf(basewhere,FORM_BUF_SIZE,"%s",ptr);
 	else
 	    strcpy(basewhere,"");
 
