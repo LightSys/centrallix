@@ -266,6 +266,8 @@ function form_action_delete(aparam)
 	    this.ClearAll();
 	    break;
 	case "View":
+	    dataobj = this.BuildDataObj();
+	    this.osrc.ActionDelete(dataobj,this);
 	    break;
 	case "Query":
 	    this.ClearAll();
@@ -656,18 +658,8 @@ function form_action_queryexec()
     delete query;
     }
 
-function form_action_save()
+function form_build_dataobj()
     {
-    if(!this.IsUnsaved)
-	{
-	return 0;
-	}
-    this.cb['OperationCompleteSuccess'].add(this,
-	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ActionView();this.cb['OperationCompleteFail'].clear();"),null,-100);
-     this.cb['OperationCompleteFail'].add(this,
-	   new Function("this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
-    
-/** build the object to pass to objectsource **/
     var dataobj=new Array();
     for(var i in this.elements)
 	{
@@ -681,6 +673,22 @@ function form_action_save()
 	    }
 	}
     dataobj.oid=this.data.oid;
+    return dataobj;
+    }
+
+function form_action_save()
+    {
+    if(!this.IsUnsaved)
+	{
+	return 0;
+	}
+    this.cb['OperationCompleteSuccess'].add(this,
+	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ActionView();this.cb['OperationCompleteFail'].clear();"),null,-100);
+     this.cb['OperationCompleteFail'].add(this,
+	   new Function("this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
+    
+/** build the object to pass to objectsource **/
+    dataobj = this.BuildDataObj();
     this.DisableAll();
     this.Pending=true;
     if (this.mode == 'New')
@@ -867,6 +875,7 @@ function form_init(aq,an,am,av,and,me,name,_3b,ro)
     form.ReadOnlyAll = form_readonly_all;
     form.ChangeMode = form_change_mode;
     form.SendEvent = form_send_event;
+    form.BuildDataObj = form_build_dataobj;
     //form.InitQuery = form_init_query;
     return form;
     }

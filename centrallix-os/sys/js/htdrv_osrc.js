@@ -180,16 +180,49 @@ function osrc_action_delete(up,formobj)
 function osrc_action_delete_cb()
     {
     var links = pg_links(this);
-    if(links[0].target != 'ERR')
+    if(links && links[0] && links[0].target != 'ERR')
 	{
 	var recnum=this.CurrentRecord;
-	var cr=this.replica[this.CurrentRecord];
+	var cr=this.replica[recnum];
 	if(cr)
 	    {
+	    // Notify osrc clients (forms/tables/etc)
+	    for(var i in this.children)
+		this.children[i].ObjectDeleted(recnum);
+
+	    // Remove the deleted row
+	    delete this.replica[recnum];
+
+	    // Adjust replica row id's to fill up the 'hole'
+	    for(var i=recnum; i<this.LastRecord; i++)
+		{
+		this.replica[i] = this.replica[i+1];
+		this.replica[i].id = i;
+		}
+	    delete this.replica[this.LastRecord];
+	    this.LastRecord--;
+	    if (this.OSMLRecord > 0) this.OSMLRecord--;
+
+	    // Need to fetch another record (delete was on last one in replica)?
+	    if (this.CurrentRecord > this.LastRecord)
+		{
+		this.CurrentRecord--;
+		this.MoveToRecord(this.CurrentRecord+1);
+		}
+	    else
+		{
+		this.MoveToRecord(this.CurrentRecord);
+		}
 	    }
+	this.formobj.OperationComplete(true);
+	}
+    else
+	{
+	// delete failed
+	this.formobj.OperationComplete(false);
 	}
     this.formobj=null;
-    delete this.createddata;
+    delete this.deleteddata;
     return 0;
     }
 
