@@ -161,13 +161,23 @@ function dd_select_item(l,i)
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
     if(l.form)
+	{
 	l.form.DataNotify(l);
+	cn_activate(l, "DataChange");
+	}
     l.PaneLayer.visibility = 'hide';
     dd_current = null;
     }
 
+function dd_getfocus()
+    {
+    cn_activate(this, "GetFocus");
+    return true;
+    }
+
 function dd_losefocus()
     {
+    cn_activate(this, "LoseFocus");
     return true;
     }
 
@@ -281,7 +291,7 @@ function dd_create_pane(l)
     p.document.write("</TABLE>");
     p.document.write("</BODY>");
     p.document.close();
-    htutil_tag_images(p.document,'dt_pn',p);
+    htutil_tag_images(p.document,'dt_pn',p,l);
 
     /**  Create scroll background layer  **/
     p.ScrLayer = new Layer(1024, p);
@@ -319,6 +329,7 @@ function dd_create_pane(l)
 	var pd = p.TmbLayer.document;
 	pd.write('<IMG src=/sys/images/ico14b.gif NAME=t>');
 	pd.close();
+	pd.mainlayer = l;
 	pd.images[0].mainlayer = l;
 	pd.images[0].thum = p.TmbLayer;
 	pd.images[0].kind = 'dd_sc';
@@ -358,23 +369,27 @@ function dd_create_pane(l)
 function dd_add_items(l,ary)
     {
     l.Values = ary;
+    l.NumElements = l.Values.length;
+    l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*16)+4;
+    l.PaneLayer = dd_create_pane(l);
+    l.PaneLayer.h = l.NumElements*16;
+    l.PaneLayer.document.mainlayer = l;
     }
 
 function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     {
     l.NumDisplay = d;
-    l.NumElements = l.Values.length;
     l.Mode = m;
     l.SQL = s;
     l.VisLayer = c1;
     l.HidLayer = c2;
     l.VisLayer.document.layer = l.HidLayer.document.layer = l;
+    l.VisLayer.document.mainlayer = l.HidLayer.document.mainlayer = l;
     l.Items = new Array();
     if (l.NumDisplay < 5)
 	{
 	l.NumDisplay = 5;
 	}
-    l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*16)+4;
     l.setvalue   = dd_setvalue;
     l.getvalue   = dd_getvalue;
     l.enable     = dd_enable;
@@ -384,6 +399,7 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.resetvalue = dd_resetvalue;
     l.keyhandler = dd_keyhandler;
     l.losefocushandler = dd_losefocus;
+    l.getfocushandler = dd_getfocus;
     l.bg = bg;
     l.hl = hl;
     l.w = w; l.h = h;
@@ -393,9 +409,8 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.document.layer = l;
     l.document.mainlayer = l;
     l.kind = 'dd';
-    htutil_tag_images(l.document,'dd',l);
+    htutil_tag_images(l.document,'dd',l,l);
     pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dd', 'dd', 0);
-    l.PaneLayer = dd_create_pane(l,bg);
-    l.PaneLayer.h = l.NumElements*16;
     if (fm_current) fm_current.Register(l);
+    return l;
     }

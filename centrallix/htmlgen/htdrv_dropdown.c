@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.26 2002/07/25 15:06:47 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.27 2002/07/26 18:15:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.27  2002/07/26 18:15:40  lkehresman
+    Added standard events to dropdown
+    MouseUp,MouseDown,MouseOut,MouseOver,MouseMove,Click,DataChange,GetFocus,LoseFocus
+
     Revision 1.26  2002/07/25 15:06:47  lkehresman
     * Fixed bug where dropdown wasn't going away
     * Added enable/disable/readonly support
@@ -186,17 +190,19 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
    char fieldname[30];
-   char *ptr;
+   char name[64];
+   char *ptr, *nptr;
    char *sql;
    char *str;
    char *attr;
-   int type, rval, mode, count=0;
+   int type, rval, mode, flag=0;
    int x,y,w,h;
    int id;
    int num_disp;
    ObjData od;
    pObject qy_obj;
    pObjQuery qy;
+   XString xs;
 
    /** Get an id for this. **/
    id = (HTDD.idcnt++);
@@ -232,6 +238,13 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	fieldname[0]='\0';
    }
 
+    /** Get name **/
+    if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+    memccpy(name,ptr,0,63);
+    name[63] = 0;
+    nptr = (char*)nmMalloc(strlen(name)+1);
+    strcpy(nptr,name);
+
     /** Ok, write the style header items. **/
     htrAddStylesheetItem_va(s,"\t#dd%dbtn { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
     htrAddStylesheetItem_va(s,"\t#dd%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:1024; HEIGHT:%d; Z-INDEX:%d; }\n",id,h-2,z+1);
@@ -245,6 +258,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     htrAddScriptGlobal(s, "dd_click_x","0",0);
     htrAddScriptGlobal(s, "dd_click_y","0",0);
     htrAddScriptGlobal(s, "dd_incr","0",0);
+    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
     htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
     htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js", 0);
@@ -267,10 +281,16 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        dd_scroll(0);\n"
 	"        return false;\n"
 	"        }\n"
+	"    if (ly.document && ly.document.mainlayer && ly.document.mainlayer.kind == 'dd') cn_activate(ly.document.mainlayer, 'MouseMove');\n"
+	"\n");
+
+    htrAddEventHandler(s, "document","MOUSEOUT", "dd", 
+	"    if (ly.kind=='dd') cn_activate(ly, 'MouseOut');\n"
 	"\n");
 
     htrAddEventHandler(s, "document","MOUSEOVER", "dd", 
 	"\n"
+	"    if (ly.kind=='dd') cn_activate(ly, 'MouseOver');\n"
 	"    if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')\n"
 	"        {\n"
 	"        dd_lastkey = null;\n"
@@ -280,6 +300,11 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     htrAddEventHandler(s, "document","MOUSEUP", "dd", 
 	"\n"
+	"    if (ly.document && ly.document.mainlayer && ly.document.mainlayer.kind == 'dd')\n"
+	"        {\n"
+	"        cn_activate(ly.document.mainlayer, 'MouseUp');\n"
+	"        cn_activate(ly.document.mainlayer, 'Click');\n"
+	"        }\n"
 	"    if (dd_timeout != null)\n"
 	"        {\n"
 	"        clearTimeout(dd_timeout);\n"
@@ -300,6 +325,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     htrAddEventHandler(s, "document","MOUSEDOWN", "dd", 
 	"\n"
+	"    if (ly.document && ly.document.mainlayer && ly.document.mainlayer.kind == 'dd') cn_activate(ly.document.mainlayer, 'MouseDown');\n"
 	"    dd_target_img = e.target;\n"
 	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
 	"        {\n"
@@ -371,81 +397,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
     }
-
-    /* Read and initialize the dropdown items */
-    if (mode == 1) {
-	if ((qy = objMultiQuery(w_obj->Session, sql))) {
-	    count=0;
-	    htrAddScriptInit_va(s,"    dd_add_items(%s.layers.dd%dbtn, Array(",parentname,id);
-	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
-		// Label
-		attr = objGetFirstAttr(qy_obj);
-		if (!attr) {
-		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
-		    return -1;
-		}
-		type = objGetAttrType(qy_obj, attr);
-		rval = objGetAttrValue(qy_obj, attr, &od);
-		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
-		    str = objDataToStringTmp(type, (void*)(&od), 0);
-		} else {
-		    str = objDataToStringTmp(type, (void*)(od.String), 0);
-		}
-		if (count) htrAddScriptInit(s,",");
-		htrAddScriptInit_va(s,"Array('%s',",str);
-		// Value
-		attr = objGetNextAttr(qy_obj);
-		if (!attr) {
-		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
-		    return -1;
-		}
-
-		type = objGetAttrType(qy_obj, attr);
-		rval = objGetAttrValue(qy_obj, attr, &od);
-		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
-		    str = objDataToStringTmp(type, (void*)(&od), 0);
-		} else {
-		    str = objDataToStringTmp(type, (void*)(od.String), 0);
-		}
-		htrAddScriptInit_va(s,"'%s')", str);
-		objClose(qy_obj);
-		count++;
-	    }
-	    htrAddScriptInit_va(s,"));\n", str);
-	    objQueryClose(qy);
-	}
-    } else if (mode == 0) {
-	if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
-	    count=0;
-	    htrAddScriptInit_va(s, "    dd_add_items(%s.layers.dd%dbtn, Array(", parentname, id);
-	    while((w_obj = objQueryFetch(qy, O_RDONLY))) {
-		objGetAttrValue(w_obj,"outer_type",POD(&ptr));
-		if (!strcmp(ptr,"widget/dropdownitem")) {
-		    if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
-			mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-			return -1;
-		    }
-		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		    if (count) htrAddScriptInit_va(s, ",");
-		    htrAddScriptInit_va(s,"Array('%s',", string);
-    
-		    if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
-			mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-			return -1;
-		    }
-		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		    htrAddScriptInit_va(s,"'%s')", string);
-	        }
-		count++;
-		objClose(w_obj);
-	    }
-	    htrAddScriptInit_va(s, "));\n");
-	    objQueryClose(qy);
-	}
-    }
-
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init(%s.layers.dd%dbtn,%s.layers.dd%dbtn.document.layers.dd%dcon1,%s.layers.dd%dbtn.document.layers.dd%dcon2,'%s','%s','%s',%d,%d,'%s',%d,%d);\n", parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
+    htrAddScriptInit_va(s,"    %s = dd_init(%s.layers.dd%dbtn,%s.layers.dd%dbtn.document.layers.dd%dcon1,%s.layers.dd%dbtn.document.layers.dd%dcon2,'%s','%s','%s',%d,%d,'%s',%d,%d);\n", nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%dbtn\"><BODY bgcolor=\"%s\">\n", id,bgstr);
@@ -464,6 +417,87 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     htrAddBodyItem_va(s,"<DIV ID=\"dd%dcon2\"></DIV>\n",id);
     htrAddBodyItem_va(s,"</BODY></DIV>\n");
     
+    /* Read and initialize the dropdown items */
+    if (mode == 1) {
+	if ((qy = objMultiQuery(w_obj->Session, sql))) {
+	    flag=0;
+	    htrAddScriptInit_va(s,"    dd_add_items(%s.layers.dd%dbtn, Array(",parentname,id);
+	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
+		// Label
+		attr = objGetFirstAttr(qy_obj);
+		if (!attr) {
+		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+		    return -1;
+		}
+		type = objGetAttrType(qy_obj, attr);
+		rval = objGetAttrValue(qy_obj, attr, &od);
+		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
+		    str = objDataToStringTmp(type, (void*)(&od), 0);
+		} else {
+		    str = objDataToStringTmp(type, (void*)(od.String), 0);
+		}
+		if (flag) htrAddScriptInit(s,",");
+		htrAddScriptInit_va(s,"Array('%s',",str);
+		// Value
+		attr = objGetNextAttr(qy_obj);
+		if (!attr) {
+		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+		    return -1;
+		}
+
+		type = objGetAttrType(qy_obj, attr);
+		rval = objGetAttrValue(qy_obj, attr, &od);
+		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
+		    str = objDataToStringTmp(type, (void*)(&od), 0);
+		} else {
+		    str = objDataToStringTmp(type, (void*)(od.String), 0);
+		}
+		htrAddScriptInit_va(s,"'%s')", str);
+		objClose(qy_obj);
+		flag=1;
+	    }
+	    htrAddScriptInit_va(s,"));\n", str);
+	    objQueryClose(qy);
+	}
+    }
+    if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
+	flag=0;
+	while((w_obj = objQueryFetch(qy, O_RDONLY))) {
+	   objGetAttrValue(w_obj,"outer_type",POD(&ptr));
+	   if (!strcmp(ptr,"widget/dropdownitem") && mode == 0) {
+		if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
+		  mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+		  return -1;
+		}
+		memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		if (flag) {
+		    xsConcatPrintf(&xs, ",");
+		} else {
+		    xsInit(&xs);
+		    xsConcatPrintf(&xs, "    dd_add_items(%s.layers.dd%dbtn, Array(", parentname, id);
+		    flag=1;
+		}
+		xsConcatPrintf(&xs,"Array('%s',", string);
+    
+		if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
+		    mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+		    return -1;
+		}
+		memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		xsConcatPrintf(&xs,"'%s')", string);
+	    } else {
+		htrRenderWidget(s, w_obj, z+1, parentname, nptr);
+	    }
+	    objClose(w_obj);
+	}
+	if (flag) {
+	    xsConcatPrintf(&xs, "));\n");
+	    htrAddScriptInit(s,xs.String);
+	    xsDeInit(&xs);
+	}
+	objQueryClose(qy);
+    }
+
     return 0;
 }
 
@@ -485,17 +519,16 @@ int htddInitialize() {
    drv->Verify = htddVerify;
    strcpy(drv->Target, "Netscape47x:default");
 
-#if 00
-   /** Add the 'load page' action **/
-   action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-   strcpy(action->Name,"LoadPage");
-   xaInit(&action->Parameters,16);
-   param = (pHtParam)nmSysMalloc(sizeof(HtParam));
-   strcpy(param->ParamName,"Source");
-   param->DataType = DATA_T_STRING;
-   xaAddItem(&action->Parameters,(void*)param);
-   xaAddItem(&drv->Actions,(void*)action);
-#endif
+   /** Register events **/
+   htrAddEvent(drv,"Click");
+   htrAddEvent(drv,"MouseUp");
+   htrAddEvent(drv,"MouseDown");
+   htrAddEvent(drv,"MouseOver");
+   htrAddEvent(drv,"MouseOut");
+   htrAddEvent(drv,"MouseMove");
+   htrAddEvent(drv,"DataChange");
+   htrAddEvent(drv,"GetFocus");
+   htrAddEvent(drv,"LoseFocus");
 
    /** Register. **/
    htrRegisterDriver(drv);
