@@ -1,0 +1,119 @@
+## $Id: Makefile.in,v 1.1 2002/06/13 15:24:04 mattphillips Exp $
+## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
+##
+## Centrallix-Lib Makefile
+##
+## This library is made available under the GNU Lesser General Public
+## License, version 2.1.
+##
+## Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+##
+
+@SET_MAKE@
+SHELL = @SHELL@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+top_builddir = .
+
+EXEEXT = @EXEEXT@
+OBJEXT = @OBJEXT@
+PATH_SEPARATOR = @PATH_SEPARATOR@
+AWK = @AWK@
+CC = @CC@
+STRIP = @STRIP@
+AR = @AR@
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+INSTALL_DATA = @INSTALL_DATA@
+
+## CFLAGS.  "MTCFLAGS" is used exclusively by the MTASK module
+## compilation.  DO NOT OPTIMIZE MTASK!!!!  It will cause it to
+## stop working!!!
+##
+CFLAGS=@CFLAGS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg
+MTCFLAGS=@CFLAGS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg
+
+XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o
+STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
+
+XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo
+DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
+
+.SUFFIXES:	.c .o .lo
+
+.PHONY: all
+all:	libCentrallix.so libCentrallix.a
+
+src/mtask.o: src/mtask.c
+	$(CC) $(MTCFLAGS) -c $< -o $@
+
+src/mtask.lo: src/mtask.c
+	$(CC) $(MTCFLAGS) -shared -fPIC -c $< -o $@
+
+.c.lo:	$<
+	$(CC) $(CFLAGS) -shared -fPIC -c $< -o $@
+
+.c.o:	$<
+	$(CC) $(CFLAGS) -c $< -o $@
+
+libCentrallix.so:	$(DYNAMICFILES)
+	$(CC) $(CFLAGS) -shared -fPIC $(DYNAMICFILES) -o libCentrallix.so
+
+libCentrallix.a:	$(STATICFILES)
+	$(AR) -r libCentrallix.a $(STATICFILES)
+	$(AR) -s libCentrallix.a
+
+install: all
+	mkdir -p $(includedir)
+	$(INSTALL) include/*.h $(includedir)
+	mkdir -p $(libdir)
+	$(INSTALL) libCentrallix.a $(libdir)
+	$(INSTALL) libCentrallix.so $(libdir)
+	@echo ""
+	@echo "***************************************************************"
+	@echo "Libraries have been installed in $(libdir)"
+	@echo ""
+	@echo "Please ensure that $(libdir) is in"
+	@echo '$$LD_LIBRARY_PATH or added to /etc/ld.so.conf.'
+	@echo "***************************************************************"
+	@echo ""
+
+.PHONY: clean
+clean:
+	@rm -f src/*.o src/*.lo libCentrallix.a libCentrallix.so 2>/dev/null
+
+distclean: clean
+	@rm -f config.status config.cache config.log
+	@rm -rf autom4te-2.5x.cache/
+	@rm -f config.h
+	@rm -f Makefile stamp-h
+	@rm -f .depend
+
+distreallyclean: distclean
+	@rm -f configure
+	@rm -f config.h.in
+	@rm -f install-sh
+
+.PHONY: depend
+depend: .depend
+
+.depend:
+	makedepend -I include -f - src/*.c >.depend 2>/dev/null
+
+include .depend

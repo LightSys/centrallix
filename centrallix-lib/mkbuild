@@ -1,0 +1,5 @@
+#!/bin/sh
+
+autoheader
+autoconf
+cp -f /usr/share/autoconf/install-sh install-sh
