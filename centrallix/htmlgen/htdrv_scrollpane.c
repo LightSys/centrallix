@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.5 2002/06/19 16:31:04 lkehresman Exp $
+    $Id: htdrv_scrollpane.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.6  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.5  2002/06/19 16:31:04  lkehresman
     * Changed snprintf to *_va functions in several places
     * Allow fading to both static and dynamic pages
@@ -164,16 +167,11 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	    }
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,w-18,z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,w-18,z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	htrAddHeaderItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,w-18,z+1);
+	htrAddHeaderItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,w-18,z+1);
+	htrAddHeaderItem_va(s,"    </STYLE>\n");
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sp_target_img", "null", 0);

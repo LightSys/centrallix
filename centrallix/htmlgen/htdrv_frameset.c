@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.3 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_frameset.c,v 1.4 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
+    Revision 1.4  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.3  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -86,7 +89,6 @@ int
 htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
     {
     char* ptr;
-    char sbuf[HT_SBUF_SIZE];
     pObject sub_w_obj;
     pObjQuery qy;
     char geom_str[64] = "";
@@ -96,8 +98,7 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     	/** Check for a title. **/
 	if (objGetAttrValue(w_obj,"title",POD(&ptr)) == 0)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TITLE>%s</TITLE>\n",ptr);
-	    htrAddHeaderItem(s, sbuf);
+	    htrAddHeaderItem_va(s,"    <TITLE>%s</TITLE>\n",ptr);
 	    }
 
 	/** Loop through the frames (widget/page items) for geometry data **/
@@ -145,8 +146,7 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Build the frameset tag. **/
-	snprintf(sbuf, HT_SBUF_SIZE, "<FRAMESET %s=%s border=%d>\n", direc?"rows":"cols", geom_str, bdr);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s, "<FRAMESET %s=%s border=%d>\n", direc?"rows":"cols", geom_str, bdr);
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
@@ -156,19 +156,16 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	        {
 		objGetAttrValue(sub_w_obj,"name",POD(&ptr));
 		if (objGetAttrValue(sub_w_obj,"marginwidth",POD(&n)) != 0)
-		    snprintf(sbuf,HT_SBUF_SIZE,"    <FRAME SRC=./%s>\n",ptr);
+		    htrAddBodyItem_va(s,"    <FRAME SRC=./%s>\n",ptr);
 		else
-		    snprintf(sbuf,HT_SBUF_SIZE,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);
-		htrAddBodyItem(s,sbuf);
+		    htrAddBodyItem_va(s,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);
 		objClose(sub_w_obj);
 		}
 	    objQueryClose(qy);
 	    }
 
 	/** End the framset. **/
-	snprintf(sbuf, HT_SBUF_SIZE, "</FRAMESET>\n");
-	htrAddBodyItem(s, sbuf);
-
+	htrAddBodyItem_va(s, "</FRAMESET>\n");
     return 0;
     }
 

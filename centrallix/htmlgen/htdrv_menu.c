@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_menu.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_menu.c,v 1.5 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_menu.c,v $
 
     $Log: htdrv_menu.c,v $
+    Revision 1.5  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.4  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -102,7 +105,7 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
+    char sbuf[HT_SBUF_SIZE];
     char bgimg[128] = "";
     char bgcolor[128] = "";
     pObject sub_w_obj;
@@ -156,12 +159,9 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#mn%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; %s%s%s }\n",id,(x==-1)?0:x,(y==-1)?0:y,w,z, (*bgcolor)?"LAYER-BACKGROUND-COLOR:":"",bgcolor,(*bgcolor)?";":"");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#mn%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; %s%s%s }\n",id,(x==-1)?0:x,(y==-1)?0:y,w,z, (*bgcolor)?"LAYER-BACKGROUND-COLOR:":"",bgcolor,(*bgcolor)?";":"");
+	htrAddHeaderItem_va(s,"    </STYLE>\n");
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -234,12 +234,10 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 
 	/** Script initialization call.   Do this part before the child objs init. **/
-	snprintf(sbuf,160,"    %s = %s.layers.mn%dpane;\n",nptr, parentname, id);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s,"    %s = %s.layers.mn%dpane;\n",nptr, parentname, id);
 
 	/** HTML body <DIV> elements for the menu layer. **/
-	snprintf(sbuf,160,"<DIV ID=\"mn%dpane\">\n",id);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"<DIV ID=\"mn%dpane\">\n",id);
 
 	/** Add the event handling scripts **/
 	/** For mousedown, record the coordinates, and check to see if click in a menu. **/
@@ -285,7 +283,7 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n");
 
 	/** Check for more sub-widgets within the imagebutton. **/
-	snprintf(sbuf,160,"%s.document",nptr);
+	snprintf(sbuf,HT_SBUF_SIZE,"%s.document",nptr);
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
 	if (qy)
 	    {
@@ -301,8 +299,7 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddBodyItem(s,"</DIV>\n");
 
 	/** Script initialization call.   Do the main mn_init _AFTER_ the child objs init. **/
-	snprintf(sbuf,160,"    mn_init(%s,%d,%d,%s);\n", nptr, is_permanent, is_horizontal, parentobj);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s,"    mn_init(%s,%d,%d,%s);\n", nptr, is_permanent, is_horizontal, parentobj);
 
     return 0;
     }

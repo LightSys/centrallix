@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.5 2002/06/19 16:31:04 lkehresman Exp $
+    $Id: htdrv_html.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.6  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.5  2002/06/19 16:31:04  lkehresman
     * Changed snprintf to *_va functions in several places
     * Allow fading to both static and dynamic pages
@@ -145,30 +148,22 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Ok, write the style header items. **/
 	if (mode == 1)
 	    {
-	    snprintf(sbuf,320,"    <STYLE TYPE=\"text/css\">\n");
-	    htrAddHeaderItem(s,sbuf);
+	    htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
 	
 	    /** Only give x and y if supplied. **/
 	    if (x==-1 || y==-1)
 	        {
-	        snprintf(sbuf,320,"\t#ht%dpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
-	        htrAddHeaderItem(s,sbuf);
-	        snprintf(sbuf,320,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
-	        htrAddHeaderItem(s,sbuf);
-	        snprintf(sbuf,320,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z+1);
-	        htrAddHeaderItem(s,sbuf);
+	        htrAddHeaderItem_va(s,"\t#ht%dpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
+	        htrAddHeaderItem_va(s,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
+	        htrAddHeaderItem_va(s,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z+1);
 	        }
 	    else
 	        {
-	        snprintf(sbuf,320,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	        htrAddHeaderItem(s,sbuf);
-	        snprintf(sbuf,320,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	        htrAddHeaderItem(s,sbuf);
-	        snprintf(sbuf,320,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z+1);
-	        htrAddHeaderItem(s,sbuf);
+	        htrAddHeaderItem_va(s,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	        htrAddHeaderItem_va(s,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	        htrAddHeaderItem_va(s,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z+1);
 	        }
-	    snprintf(sbuf,320,"    </STYLE>\n");
-	    htrAddHeaderItem(s,sbuf);
+	    htrAddHeaderItem_va(s,"    </STYLE>\n");
 
             /** Write named global **/
             nptr = (char*)nmMalloc(strlen(name)+1);

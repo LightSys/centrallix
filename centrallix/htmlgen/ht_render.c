@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.11 2002/06/09 23:44:46 nehresma Exp $
+    $Id: ht_render.c,v 1.12 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.12  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.11  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -295,8 +298,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 		    strcpy(drv_key, "MSIE");
 		    break;
 		default:
-		    snprintf(buf, 384, "No widgets have been defined for your browser type.<br>Your browser was identified as: %s", agent);
-		    htrAddBodyItem(session, buf);
+		    htrAddBodyItem_va(session, "No widgets have been defined for your browser type.<br>Your browser was identified as: %s", agent);
 		    mssError(1, "HTR", "Unknown browser type");
 		    return -1;
 	    }
@@ -311,8 +313,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 	widget_drivers = (pXHashTable)xhLookup(&(htWidgetSets), drv_key);
 	if (!widget_drivers)
 	    {
-	    snprintf(buf, 384, "No widgets have been defined for your browser type and requested style combination.<br>Your browser and style have been identified as: %s", drv_key);
-	    htrAddBodyItem(session, buf);
+	    htrAddBodyItem_va(session, "No widgets have been defined for your browser type and requested style combination.<br>Your browser and style have been identified as: %s", drv_key);
 	    mssError(1, "HTR", "Invalid UserAgent:style combination %s.", drv_key);
 	    return -1;
 	    }

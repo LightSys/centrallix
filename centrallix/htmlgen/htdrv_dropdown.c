@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.16 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_dropdown.c,v 1.17 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.17  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.16  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -129,7 +132,6 @@ int htddVerify() {
    htddRender - generate the HTML code for the page.
 */
 int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-   char sbuf[HT_SBUF_SIZE];
    char bgstr[HT_SBUF_SIZE];
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
@@ -180,12 +182,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    }
 
    /** Ok, write the style header items. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
-   htrAddHeaderItem(s,sbuf);
+   htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+   htrAddHeaderItem_va(s,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+   htrAddHeaderItem_va(s,"    </STYLE>\n");
 
    htrAddScriptGlobal(s, "dd_current", "null", 0);
 
@@ -434,8 +433,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"\n");
 
    /** Script initialization call. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain, '%s', '%s', '%s', %d);\n", parentname, id, bgstr, hilight, fieldname, num_disp);
-   htrAddScriptInit(s, sbuf);
+   htrAddScriptInit_va(s,"    dd_init(%s.layers.dd%dmain, '%s', '%s', '%s', %d);\n", parentname, id, bgstr, hilight, fieldname, num_disp);
 
    /* Read and initialize the dropdown items */
    if (objGetAttrValue(w_obj,"sql",POD(&sql)) == 0) {
@@ -454,8 +452,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	     } else {
 	        str = objDataToStringTmp(type, (void*)(od.String), 0);
 	     }
-	     snprintf(sbuf,HT_SBUF_SIZE,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, str);
-	     htrAddScriptInit(s, sbuf);
+	     htrAddScriptInit_va(s,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, str);
 	     // Value
 	     attr = objGetNextAttr(qy_obj);
 	     if (!attr) {
@@ -470,8 +467,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	     } else {
 	        str = objDataToStringTmp(type, (void*)(od.String), 0);
 	     }
-	     snprintf(sbuf,HT_SBUF_SIZE," '%s');\n", str);
-	     htrAddScriptInit(s, sbuf);
+	     htrAddScriptInit_va(s," '%s');\n", str);
 	     objClose(qy_obj);
 	  }
 	  objQueryClose(qy);
@@ -486,16 +482,14 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	           return -1;
 	           }
 	        memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	        snprintf(sbuf,HT_SBUF_SIZE,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, string);
-	        htrAddScriptInit(s, sbuf);
+	        htrAddScriptInit_va(s,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, string);
     
 	        if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
 	           mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	           return -1;
 	           }
 	        memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	        snprintf(sbuf,HT_SBUF_SIZE,"'%s');\n", string);
-	        htrAddScriptInit(s, sbuf);
+	        htrAddScriptInit_va(s,"'%s');\n", string);
 	     }
 	     objClose(w_obj);
 	  }
@@ -504,34 +498,20 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    }
 
    /** HTML body <DIV> element for the layers. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"dd%dmain\">\n", id);
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"  <TABLE width=%d cellspacing=0 cellpadding=0 border=0 bgcolor=\"%s\"><TR><TD>\n",w,bgstr);
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"  <TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w-19);
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-20);
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=16 width=1></TD>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"       <TD ALIGN=right></TD>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=16 width=1></TD></TR>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-20);
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"  </TABLE></TD><TD width=18><IMG SRC=/sys/images/ico15b.gif></TD></TR></TABLE>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"</DIV>\n");
-   htrAddBodyItem(s, sbuf);
+   htrAddBodyItem_va(s,"<DIV ID=\"dd%dmain\">\n", id);
+   htrAddBodyItem_va(s,"  <TABLE width=%d cellspacing=0 cellpadding=0 border=0 bgcolor=\"%s\"><TR><TD>\n",w,bgstr);
+   htrAddBodyItem_va(s,"  <TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w-19);
+   htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>\n");
+   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-20);
+   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>\n");
+   htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=16 width=1></TD>\n");
+   htrAddBodyItem_va(s,"       <TD ALIGN=right></TD>\n");
+   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=16 width=1></TD></TR>\n");
+   htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>\n");
+   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-20);
+   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>\n");
+   htrAddBodyItem_va(s,"  </TABLE></TD><TD width=18><IMG SRC=/sys/images/ico15b.gif></TD></TR></TABLE>\n");
+   htrAddBodyItem_va(s,"</DIV>\n");
 
    return 0;
 }

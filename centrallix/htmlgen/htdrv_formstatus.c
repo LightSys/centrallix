@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.5 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_formstatus.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.6  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.5  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -88,7 +91,6 @@ int htfsVerify() {
    htfsRender - generate the HTML code for the page.
 */
 int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-   char sbuf[HT_SBUF_SIZE];
    int x=-1,y=-1;
    int id;
 
@@ -100,12 +102,9 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
 
    /** Ok, write the style header items. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
-   htrAddHeaderItem(s,sbuf);
+   htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+   htrAddHeaderItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   htrAddHeaderItem_va(s,"    </STYLE>\n");
 
    /** Clear function **/
    htrAddScriptFunction(s, "fs_setvalue", "\n"
@@ -155,13 +154,9 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"}\n", 0);
 
    /** Script initialization call. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    fs_init(%s.layers.fs%dmain);\n", parentname, id);
-   htrAddScriptInit(s, sbuf);
-
+   htrAddScriptInit_va(s,"    fs_init(%s.layers.fs%dmain);\n", parentname, id);
    /** HTML body <DIV> element for the layers. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
-   htrAddBodyItem(s, sbuf);
-
+   htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
    return 0;
 }
 

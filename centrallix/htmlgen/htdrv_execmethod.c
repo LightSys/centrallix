@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_execmethod.c,v 1.5 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.5  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.4  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -154,8 +157,7 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf, HT_SBUF_SIZE, "    %s = ex_init('%s', '%s', '%s');\n", nptr, objname, methodname, methodparam);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s, "    %s = ex_init('%s', '%s', '%s');\n", nptr, objname, methodname, methodparam);
 
 	/** Check for objects within the timer. **/
 	snprintf(sbuf, HT_SBUF_SIZE, "%s.document",nptr);

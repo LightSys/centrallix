@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.7 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_pane.c,v 1.8 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.8  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.7  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -166,14 +169,10 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	htrAddHeaderItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
+	htrAddHeaderItem_va(s,"    </STYLE>\n");
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -197,30 +196,18 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		nptr, parentname, id, parentname, id, id);
 
 	/** HTML body <DIV> element for the base layer. **/
-	snprintf(sbuf,160,"<DIV ID=\"pn%dbase\">\n",id);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "            <TD>&nbsp;</TD>\n");
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160, "<DIV ID=\"pn%dmain\">\n",id);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
+	htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	htrAddBodyItem_va(s,"            <TD>&nbsp;</TD>\n");
+	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\">\n",id);
 
 	/** Check for objects within the pane. **/
 	snprintf(sbuf,160,"%s.mainlayer.document",nptr);

@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.13 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_checkbox.c,v 1.14 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.14  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.13  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -126,7 +129,6 @@ int htcbVerify() {
    htcbRender - generate the HTML code for the page.
 */
 int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-   char sbuf[HT_SBUF_SIZE];
    char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
    int id;
@@ -157,12 +159,9 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       } 
 
    /** Ok, write the style header items. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
-   htrAddHeaderItem(s,sbuf);
+   htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+   htrAddHeaderItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   htrAddHeaderItem_va(s,"    </STYLE>\n");
 
    /** Get value function **/
    htrAddScriptFunction(s, "checkbox_getvalue", "\n"
@@ -315,24 +314,19 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "\n");
 
    /** Script initialization call. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", parentname, id,fieldname,checked);
-   htrAddScriptInit(s, sbuf);
+   htrAddScriptInit_va(s,"    checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", parentname, id,fieldname,checked);
 
    /** HTML body <DIV> element for the layers. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"   <DIV ID=\"cb%dmain\">\n",id);
-   htrAddBodyItem(s, sbuf);
+   htrAddBodyItem_va(s,"   <DIV ID=\"cb%dmain\">\n",id);
    if (checked)
       {
-      snprintf(sbuf,HT_SBUF_SIZE,"     <IMG SRC=/sys/images/checkbox_checked.gif>\n");
+      htrAddBodyItem_va(s,"     <IMG SRC=/sys/images/checkbox_checked.gif>\n");
       }
    else
       {
-      snprintf(sbuf,HT_SBUF_SIZE,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
+      htrAddBodyItem_va(s,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
       }
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"   </DIV>\n");
-   htrAddBodyItem(s, sbuf);
-
+   htrAddBodyItem_va(s,"   </DIV>\n");
    return 0;
 }
 

@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.16 2002/06/18 15:41:52 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.17 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.17  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.16  2002/06/18 15:41:52  lkehresman
     Fixed a bug that made window header backgrounds transparent if the color
     wasn't specifically set.  Now it grabs the normal background color/image
@@ -258,16 +261,12 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
+	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
 		id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
+	htrAddHeaderItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
 		id, bx, by, bw, bh, bw, bh, z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem_va(s,"    </STYLE>\n");
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "wn_top_z","10000",0);
@@ -469,105 +468,77 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** HTML body <DIV> elements for the layers. **/
 	/** This is the top white edge of the window **/
-	snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"wn%dbase\"><TABLE border=0 cellspacing=0 cellpadding=0>\n",id);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"<DIV ID=\"wn%dbase\"><TABLE border=0 cellspacing=0 cellpadding=0>\n",id);
+	htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	if (!is_dialog_style)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem(s, sbuf);
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	    }
-	snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",is_dialog_style?(tbw):(tbw-2));
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",is_dialog_style?(tbw):(tbw-2));
 	if (!is_dialog_style)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem(s, sbuf);
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	    }
-	snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD></TR>\n");
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD></TR>\n");
 	
 	/** Titlebar for window, if specified. **/
 	if (has_titlebar)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD width=1><IMG SRC=/sys/images/white_1x1.png width=1 height=22></TD>\n");
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=%d %s colspan=%d><TABLE border=0><TR><TD><IMG SRC=/sys/images/01close.gif name=close align=left></TD><TD valign=\"middle\"><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
+	    htrAddBodyItem_va(s,"<TR><TD width=1><IMG SRC=/sys/images/white_1x1.png width=1 height=22></TD>\n");
+	    htrAddBodyItem_va(s,"    <TD width=%d %s colspan=%d><TABLE border=0><TR><TD><IMG SRC=/sys/images/01close.gif name=close align=left></TD><TD valign=\"middle\"><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
 	    	tbw,hdr_bgnd,is_dialog_style?1:3,txtcolor,title);
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=1><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=22></TD></TR>\n");
-	    htrAddBodyItem(s, sbuf);
+	    htrAddBodyItem_va(s,"    <TD width=1><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=22></TD></TR>\n");
 	    }
 
 	/** This is the beveled-down edge below the top of the window **/
 	if (!is_dialog_style)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD>\n",w-3);
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
-	    htrAddBodyItem(s, sbuf);
+	    htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    htrAddBodyItem_va(s,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD>\n",w-3);
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
 	    }
 	else
 	    {
 	    if (has_titlebar)
 	        {
-	        snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	        htrAddBodyItem(s, sbuf);
-	        snprintf(sbuf,HT_SBUF_SIZE,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w-1);
-	        htrAddBodyItem(s, sbuf);
-	        snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD colspan=2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-1);
-	        htrAddBodyItem(s, sbuf);
-	        snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
-	        htrAddBodyItem(s, sbuf);
+	        htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	        htrAddBodyItem_va(s,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w-1);
+	        htrAddBodyItem_va(s,"<TR><TD colspan=2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-1);
+	        htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
 		}
 	    }
 
 	/** This is the left side of the window. **/
-	snprintf(sbuf,HT_SBUF_SIZE,"<TR %s><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n", bgnd, bh);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"<TR %s><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n", bgnd, bh);
 	if (!is_dialog_style)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD>\n",bh);
-	    htrAddBodyItem(s, sbuf);
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD>\n",bh);
 	    }
 
 	/** Here's where the content goes... **/
-	snprintf(sbuf,HT_SBUF_SIZE,"    <TD>\n");
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"    <TD>\n");
 	htrAddBodyItem(s,"&nbsp;</TD>\n");
 
 	/** Right edge of the window **/
 	if (!is_dialog_style)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
-	    htrAddBodyItem(s, sbuf);
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
 	    }
-	snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD></TR>\n",bh);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD></TR>\n",bh);
 
 	/** And... bottom edge of the window. **/
 	if (!is_dialog_style)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD colspan = 2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-3);
-	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
-	    htrAddBodyItem(s, sbuf);
+	    htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD>\n");
+	    htrAddBodyItem_va(s,"    <TD colspan = 2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-3);
+	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
 	    }
-	snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD colspan=5><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"<TR><TD colspan=5><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w);
 	htrAddBodyItem(s,"</TABLE>\n");
 
-	snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"wn%dmain\">\n",id);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\">\n",id);
 
 
 	/** Check for more sub-widgets within the page. **/

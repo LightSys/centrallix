@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.7  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.6  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -397,8 +400,7 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n",0);
 
 	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"    %s=alrt_init();\n",name);
-	htrAddScriptInit(s,sbuf3);
+	htrAddScriptInit_va(s,"    %s=alrt_init();\n",name);
 	nmFree(sbuf3,200);
 
     return 0;

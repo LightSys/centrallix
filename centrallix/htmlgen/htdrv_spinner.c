@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.5 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_spinner.c,v 1.6 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.6  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.5  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -108,7 +111,6 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
-    char sbuf[512];
     /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
@@ -141,9 +143,9 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Background color/image? **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgcolor='%.40s'",ptr);
+	    snprintf(main_bg,128,"bgcolor='%.40s'",ptr);
 	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
-	    sprintf(main_bg,"background='%.110s'",ptr);
+	    snprintf(main_bg,128,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
@@ -166,22 +168,14 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,512,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-12,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1,w,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1+9,w,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,512,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#spnr%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddHeaderItem_va(s,"\t#spnr%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-12,z);
+	htrAddHeaderItem_va(s,"\t#spnr%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
+	htrAddHeaderItem_va(s,"\t#spnr%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
+	htrAddHeaderItem_va(s,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1,w,z);
+	htrAddHeaderItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1+9,w,z);
+	htrAddHeaderItem_va(s,"    </STYLE>\n");
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -390,51 +384,34 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,512,"    %s = spnr_init(%s.layers.spnr%dmain, %s.layers.spnr%dmain.layers.spnr%dbase, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon1, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon2);\n",
+	htrAddScriptInit_va(s,"    %s = spnr_init(%s.layers.spnr%dmain, %s.layers.spnr%dmain.layers.spnr%dbase, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon1, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon2);\n",
 		nptr, parentname, id, 
                 parentname, id, id,
 		parentname, id, id, id, 
 		parentname, id, id, id);
-	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> element for the base layer. **/
 
-	snprintf(sbuf,512,"<DIV ID=\"spnr%dmain\">\n",id);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512,"<DIV ID=\"spnr%dbase\">\n",id);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w-12,main_bg);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2-12);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "            <TD>&nbsp;</TD>\n");
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2-12);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "<DIV ID=\"spnr%dcon1\"></DIV>\n",id);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,512, "<DIV ID=\"spnr%dcon2\"></DIV>\n",id);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s,"<DIV ID=\"spnr%dmain\">\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"spnr%dbase\">\n",id);
+	htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w-12,main_bg);
+	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2-12);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2-12);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%dcon1\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%dcon2\"></DIV>\n",id);
 	htrAddBodyItem(s, "</DIV>\n");
 	/*Add the spinner buttons*/
-	snprintf(sbuf,512, "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
-	htrAddBodyItem(s,sbuf);
-	snprintf(sbuf,512, "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
-	htrAddBodyItem(s,sbuf);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
   	htrAddBodyItem(s, "</DIV>\n"); 
-    return 0;
+	return 0;
     }
 
 

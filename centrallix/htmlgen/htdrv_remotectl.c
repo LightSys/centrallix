@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_remotectl.c,v 1.3 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_remotectl.c,v 1.4 2002/06/19 19:08:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_remotectl.c,v $
 
     $Log: htdrv_remotectl.c,v $
+    Revision 1.4  2002/06/19 19:08:55  lkehresman
+    Changed all snprintf to use the *_va functions
+
     Revision 1.3  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -127,12 +130,9 @@ htrmtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	snprintf(name,64,"%s",ptr);
 
 	/** Invisible loader layer to get cmds from the channel on centrallix **/
-	snprintf(sbuf,320,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,320,"\t#rc%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; WIDTH:1; Z-INDEX:0; }\n",id);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,320,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#rc%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; WIDTH:1; Z-INDEX:0; }\n",id);
+	htrAddHeaderItem_va(s,"    </STYLE>\n");
 
         /** Write named global **/
         nptr = (char*)nmMalloc(strlen(name)+1);
@@ -249,15 +249,12 @@ htrmtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    "        }\n");
     
             /** Script initialization call. **/
-            snprintf(sbuf,320,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,\"%s\",%s,%d,%d,%s);\n",
+            htrAddScriptInit_va(s,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,\"%s\",%s,%d,%d,%s);\n",
                     parentname, id, parentname, id, src, parentname, w,h, parentobj);
-            htrAddScriptInit(s, sbuf);
-            snprintf(sbuf,320,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
-            htrAddScriptInit(s, sbuf);
+            htrAddScriptInit_va(s,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
     
             /** HTML body <DIV> element for the layer. **/
-            snprintf(sbuf,320,"<DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id);
-            htrAddBodyItem(s, sbuf);
+            htrAddBodyItem_va(s,"<DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id);
 	    }
 
         /** If prefix text given, put it. **/
