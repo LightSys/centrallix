@@ -57,10 +57,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.7 2003/07/09 18:13:20 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.8 2003/08/11 14:18:52 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.8  2003/08/11 14:18:52  jorupp
+     * fixing the bug lehresma reported -- I had it fixed in my copy, just forgot to commit it...
+
     Revision 1.7  2003/07/09 18:13:20  gbeeley
     Further polishing/work on the table output in the report writer.  Re-
     enabled uxprint OSD once its dependence on prtmgmt was removed.
@@ -3115,7 +3118,7 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Mask = mask;
 	inf->AttrOverride = stCreateStruct(NULL,NULL);
 	if (!usrtype)
-	    memccpy(inf->ContentType, "text/plain");
+	    memccpy(inf->ContentType, "text/plain", 0, 63);
 	else
 	    memccpy(inf->ContentType, usrtype, 0, 63);
 	inf->ContentType[63] = 0;
