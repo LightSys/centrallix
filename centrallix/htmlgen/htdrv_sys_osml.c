@@ -44,10 +44,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_sys_osml.c,v 1.5 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_sys_osml.c,v 1.6 2004/07/19 15:30:40 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_sys_osml.c,v $
 
     $Log: htdrv_sys_osml.c,v $
+    Revision 1.6  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.5  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -98,7 +138,7 @@ htosmlVerify()
 /*** htosmlRender - generate the HTML code for the page.
  ***/
 int
-htosmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htosmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char* vstr;
@@ -115,7 +155,7 @@ htosmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     pObject sub_w_obj;
     pObjQuery qy;
     int x=-1,y=-1,w,h;
-    int id,cnt;
+    int id,cnt, i;
     char* nptr;
     pObject content_obj;
     XString xs;
@@ -124,7 +164,7 @@ htosmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTOSML.idcnt++);
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",POD(&ptr)) != 0) return -1;
 	strcpy(name,ptr);
 
 	/** Write named global **/
@@ -147,23 +187,23 @@ htosmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		     	"    {\n" ,id);
 	xsConcatenate(&xs,sbuf,-1);
 	xsConcatenate(&xs,"    aparam = new Object();\n",-1);
-	for(ptr = objGetFirstAttr(w_obj); ptr; ptr = objGetNextAttr(w_obj))
+	for(ptr = wgtrFirstProperty(tree); ptr; ptr = wgtrNextProperty(tree))
 	    {
 	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action")) continue;
-	    switch(objGetAttrType(w_obj, ptr))
+	    switch(wgtrGetPropertyType(tree, ptr))
 	        {
 		case DATA_T_INTEGER:
-	    	    objGetAttrValue(w_obj, ptr, POD(&vint));
+	    	    wgtrGetPropertyValue(tree, ptr, POD(&vint));
 		    sprintf(sbuf, "    aparam.%s = %d;\n",ptr,vint);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_DOUBLE:
-		    objGetAttrValue(w_obj, ptr, POD(&vdbl));
+		    wgtrGetPropertyValue(tree, ptr, POD(&vdbl));
 		    sprintf(sbuf, "    aparam.%s = %lf;\n",ptr,vdbl);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_STRING:
-	    	    objGetAttrValue(w_obj, ptr, POD(&vstr));
+	    	    wgtrGetPropertyValue(w_tree, ptr, POD(&vstr));
 		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
 		        {
 			sprintf(sbuf, "    aparam.%s = eparam.%s\n", ptr, vstr);
@@ -196,16 +236,8 @@ htosmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInit(s, "    if (aparam == null) aparam = new cn_init();\n");*/
 
 	/** Check for more sub-widgets within the conn entity. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while(sub_w_obj = objQueryFetch(qy, O_RDONLY))
-	        {
-		htrRenderWidget(s, sub_w_obj, z+2, parentname, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, parentname, nptr);
 
     return 0;
     }

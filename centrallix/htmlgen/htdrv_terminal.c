@@ -43,6 +43,46 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_terminal.c,v $
+    Revision 1.3  2004/07/19 15:30:41  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.2  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -79,13 +119,13 @@ httermVerify()
 /*** httermRender - generate the HTML code for the form 'glue'
  ***/
 int
-httermRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
     int id;
     char* nptr;
-    pObject sub_w_obj;
+    pWgtrNode sub_tree;
     pObjQuery qy;
 #define MAX_COLORS 8
 #define MAX_COLOR_LEN 32
@@ -110,45 +150,45 @@ httermRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    char color[32];
 	    sprintf(color,"color%i",i);
-	    if (objGetAttrValue(w_obj,color,DATA_T_STRING,POD(&ptr)) == 0) 
+	    if (wgtrGetPropertyValue(tree,color,DATA_T_STRING,POD(&ptr)) == 0) 
 		{
 		strncpy(colors[i],ptr,MAX_COLOR_LEN);
 		colors[i][MAX_COLOR_LEN-1]='\0';
 		}
 	    }
 
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(0,"TERM","x is required");
 	    return -1;
 	    }
 
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) 
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) 
 	    {
 	    mssError(0,"TERM","y is required");
 	    return -1;
 	    }
 
-	if (objGetAttrValue(w_obj,"rows",DATA_T_INTEGER,POD(&rows)) != 0) 
+	if (wgtrGetPropertyValue(tree,"rows",DATA_T_INTEGER,POD(&rows)) != 0) 
 	    {
 	    mssError(0,"TERM","rows is required");
 	    return -1;
 	    }
 
-	if (objGetAttrValue(w_obj,"cols",DATA_T_INTEGER,POD(&cols)) != 0) 
+	if (wgtrGetPropertyValue(tree,"cols",DATA_T_INTEGER,POD(&cols)) != 0) 
 	    {
 	    mssError(0,"TERM","cols is required");
 	    return -1;
 	    }
 
-	if (objGetAttrValue(w_obj,"fontsize",DATA_T_INTEGER,POD(&fontsize)) != 0) 
+	if (wgtrGetPropertyValue(tree,"fontsize",DATA_T_INTEGER,POD(&fontsize)) != 0) 
 	    {
 	    fontsize = 12;
 	    }
 
 	xsInit(&source);
 
-	if (objGetAttrValue(w_obj,"source",DATA_T_STRING,POD(&ptr)) == 0) 
+	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) == 0) 
 	    {
 	    xsCopy(&source,ptr,strlen(ptr));
 	    }
@@ -160,7 +200,7 @@ httermRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 	
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -197,20 +237,15 @@ httermRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInit(s,"));\n");
 
 	/** Check for and render all subobjects. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
+	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
-		if (strcmp(ptr,"widget/connector") == 0)
-		    htrRenderWidget(s, sub_w_obj, z+1, "", name);
-		else
-		    /** probably shouldn't render anything other than connectors, but who knows... **/
-		    htrRenderWidget(s, sub_w_obj, z+1, parentname, parentobj);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
+	    sub_tree = xaGetItem(&(tree->Children), i);
+	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
+	    if (strcmp(ptr,"widget/connector") == 0)
+		htrRenderWidget(s, sub_tree, z+1, "", name);
+	    else
+		/** probably shouldn't render anything other than connectors, but who knows... **/
+		htrRenderWidget(s, sub_tree, z+1, parentname, parentobj);
 	    }
 
     return 0;

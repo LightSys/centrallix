@@ -41,10 +41,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.21 2004/04/29 16:26:43 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.22 2004/07/19 15:30:40 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.22  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.21  2004/04/29 16:26:43  gbeeley
     - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
     - Added inline-include feature to help with debugging in IE, which does
@@ -185,7 +225,7 @@ httabVerify()
 /*** httabRender - generate the HTML code for the page.
  ***/
 int
-httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -194,10 +234,9 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char main_bg[128];
     char inactive_bg[128];
     char sel[128];
-    pObject tabpage_obj,sub_w_obj;
-    pObjQuery qy,subqy;
+    pWgtrNode tabpage_obj;
     int x=-1,y=-1,w,h;
-    int id,tabcnt;
+    int id,tabcnt, i, j;
     char* nptr;
     char* subnptr;
     enum httab_locations tloc;
@@ -218,26 +257,26 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTTAB.idcnt++);
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63]=0;
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(0,"HTTAB","Tab widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(0,"HTTAB","Tab widget must have a 'height' property");
 	    return -1;
 	    }
 
 	/** Which side are the tabs on? **/
-	if (objGetAttrValue(w_obj,"tab_location",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"tab_location",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcasecmp(ptr,"top")) tloc = Top;
 	    else if (!strcasecmp(ptr,"bottom")) tloc = Bottom;
@@ -255,7 +294,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** How wide should left/right tabs be? **/
-	if (objGetAttrValue(w_obj,"tab_width",DATA_T_INTEGER,POD(&tab_width)) != 0)
+	if (wgtrGetPropertyValue(tree,"tab_width",DATA_T_INTEGER,POD(&tab_width)) != 0)
 	    {
 	    if (tloc == Right || tloc == Left)
 		{
@@ -269,8 +308,8 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Which tab is selected? **/
-	if (objGetAttrType(w_obj,"selected") == DATA_T_STRING &&
-		objGetAttrValue(w_obj,"selected",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyType(tree,"selected") == DATA_T_STRING &&
+		wgtrGetPropertyValue(tree,"selected",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    snprintf(sel,128,"%s",ptr);
 	    }
@@ -280,20 +319,20 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** User requesting expression for selected tab? **/
-	if (objGetAttrType(w_obj,"selected") == DATA_T_CODE)
+	if (wgtrGetPropertyType(tree,"selected") == DATA_T_CODE)
 	    {
-	    objGetAttrValue(w_obj,"selected",DATA_T_CODE,POD(&code));
+	    wgtrGetPropertyValue(tree,"selected",DATA_T_CODE,POD(&code));
 	    htrAddExpression(s, name, "selected", code);
 	    }
 
 	/** Background color/image? **/
-	htrGetBackground(w_obj, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
+	htrGetBackground(tree, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
 
 	/** Inactive tab color/image? **/
-	htrGetBackground(w_obj, "inactive", s->Capabilities.Dom2CSS, inactive_bg, sizeof(inactive_bg));
+	htrGetBackground(tree, "inactive", s->Capabilities.Dom2CSS, inactive_bg, sizeof(inactive_bg));
 
 	/** Text color? **/
-	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(tab_txt,"%.127s",ptr);
 	else
 	    strcpy(tab_txt,"black");
@@ -359,96 +398,91 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
 	tabcnt = 0;
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
+	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
-	    while((tabpage_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		objGetAttrValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-		if (!strcmp(ptr,"widget/tabpage"))
+	    tabpage_obj = xaGetItem(&(tree->Children), i);
+	    wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+	    if (!strcmp(ptr,"widget/tabpage"))
+		{
+		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
+		tabcnt++;
+		is_selected = ((!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+		bg = is_selected?main_bg:inactive_bg;
+		if (wgtrGetPropertyValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
+		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
+
+		/** Add stylesheet headers for the layers (tab and tabpage) **/
+		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 		    {
-		    objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
-		    tabcnt++;
-		    is_selected = ((!*sel && tabcnt == 1) || !strcmp(sel,ptr));
-		    bg = is_selected?main_bg:inactive_bg;
-		    if (objGetAttrValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
-			objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
-
-		    /** Add stylesheet headers for the layers (tab and tabpage) **/
-		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-			{
-			htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; Z-INDEX:%d; }\n",
-				id,tabcnt,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
-			htrAddStylesheetItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:%s; LEFT:1px; TOP:1px; WIDTH:%dpx; Z-INDEX:%d; }\n",
-				id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
-			}
-
-		    /** Generate the tabs along the edge of the control **/
-		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"tc%dtab%d\" %s>\n",id,tabcnt,bg);
-			if (tab_width == 0)
-			    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0>\n");
-			else
-			    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 width=%d>\n", tab_width);
-			if (tloc != Bottom)
-			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
-			htrAddBodyItem(s,"        <TR>");
-			if (tloc != Right)
-			    {
-			    htrAddBodyItem(s,"<TD width=6><IMG SRC=/sys/images/white_1x1.png height=24 width=1>");
-			    if (is_selected)
-				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24></TD>\n");
-			    else
-				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24></TD>\n");
-			    }
-			htrAddBodyItem_va(s,"            <TD valign=middle align=center><FONT COLOR=%s><b>&nbsp;%s&nbsp;</b></FONT></TD>\n", tab_txt, tabname);
-			if (tloc != Left && tloc != Right)
-			    htrAddBodyItem(s,"           <TD align=right>");
-			if (tloc == Right)
-			    {
-			    htrAddBodyItem(s,"           <TD align=right width=6>");
-			    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
-				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24>");
-			    else
-				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24>");
-			    }
-			if (tloc != Left)
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>");
-			htrAddBodyItem(s,"</TR>\n");
-			if (tloc != Top)
-			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
-			htrAddBodyItem(s,"    </TABLE>\n");
-			htrAddBodyItem(s, "</DIV>\n");
-			}
-		    else if (s->Capabilities.Dom2CSS)
-			{
-			htrAddStylesheetItem_va(s, "\t#tc%dtab%d { %s }\n",
-				id, tabcnt, bg);
-			if (tab_width <= 0)
-			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
-			else
-			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; width:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
-			if (tloc != Right)
-			    {
-			    if (tab_width <= 0)
-				htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
-				    (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
-			    else
-				htrAddBodyItem_va(s, "    <table width=%d style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
-				    tab_width, (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
-			    }
-			else
-			    {
-			    htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: 1px 1px 1px 0px; border-color: white gray gray white;\" width=%d border=0 cellspacing=0 cellpadding=0><tr><td valign=middle align=center><b>&nbsp;%s&nbsp;</b></td><td><img src=/sys/images/tab_lft%d.gif align=right width=5 height=24></td></tr></table>\n",
-				    tab_width, tabname, is_selected?2:3);
-			    }
-			htrAddBodyItem(s, "</div>\n");
-			}
+		    htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; Z-INDEX:%d; }\n",
+			    id,tabcnt,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
+		    htrAddStylesheetItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:%s; LEFT:1px; TOP:1px; WIDTH:%dpx; Z-INDEX:%d; }\n",
+			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
 		    }
-		objClose(tabpage_obj);
+
+		/** Generate the tabs along the edge of the control **/
+		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+		    {
+		    htrAddBodyItem_va(s,"<DIV ID=\"tc%dtab%d\" %s>\n",id,tabcnt,bg);
+		    if (tab_width == 0)
+			htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0>\n");
+		    else
+			htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 width=%d>\n", tab_width);
+		    if (tloc != Bottom)
+			htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
+		    htrAddBodyItem(s,"        <TR>");
+		    if (tloc != Right)
+			{
+			htrAddBodyItem(s,"<TD width=6><IMG SRC=/sys/images/white_1x1.png height=24 width=1>");
+			if (is_selected)
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24></TD>\n");
+			else
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24></TD>\n");
+			}
+		    htrAddBodyItem_va(s,"            <TD valign=middle align=center><FONT COLOR=%s><b>&nbsp;%s&nbsp;</b></FONT></TD>\n", tab_txt, tabname);
+		    if (tloc != Left && tloc != Right)
+			htrAddBodyItem(s,"           <TD align=right>");
+		    if (tloc == Right)
+			{
+			htrAddBodyItem(s,"           <TD align=right width=6>");
+			if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24>");
+			else
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24>");
+			}
+		    if (tloc != Left)
+			htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>");
+		    htrAddBodyItem(s,"</TR>\n");
+		    if (tloc != Top)
+			htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
+		    htrAddBodyItem(s,"    </TABLE>\n");
+		    htrAddBodyItem(s, "</DIV>\n");
+		    }
+		else if (s->Capabilities.Dom2CSS)
+		    {
+		    htrAddStylesheetItem_va(s, "\t#tc%dtab%d { %s }\n",
+			    id, tabcnt, bg);
+		    if (tab_width <= 0)
+			htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
+		    else
+			htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; width:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
+		    if (tloc != Right)
+			{
+			if (tab_width <= 0)
+			    htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
+				(tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
+			else
+			    htrAddBodyItem_va(s, "    <table width=%d style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
+				tab_width, (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
+			}
+		    else
+			{
+			htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: 1px 1px 1px 0px; border-color: white gray gray white;\" width=%d border=0 cellspacing=0 cellpadding=0><tr><td valign=middle align=center><b>&nbsp;%s&nbsp;</b></td><td><img src=/sys/images/tab_lft%d.gif align=right width=5 height=24></td></tr></table>\n",
+				tab_width, tabname, is_selected?2:3);
+			}
+		    htrAddBodyItem(s, "</div>\n");
+		    }
 		}
-	    objQueryClose(qy);
 	    }
 
 	/** HTML body <DIV> element for the base layer. **/
@@ -476,60 +510,46 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Check for tabpages within the tab control entity, this time to do the pages themselves **/
 	tabcnt = 0;
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
+	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
-	    while((tabpage_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		objGetAttrValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-		if (!strcmp(ptr,"widget/tabpage"))
-		    {
-		    /** First, render the tabpage and add stuff for it **/
-		    objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
-		    tabcnt++;
-		    is_selected = ((!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+	    tabpage_obj = xaGetItem(&(tree->Children), i);
+	    wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+	    if (!strcmp(ptr,"widget/tabpage"))
+		{
+		/** First, render the tabpage and add stuff for it **/
+		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
+		tabcnt++;
+		is_selected = ((!*sel && tabcnt == 1) || !strcmp(sel,ptr));
 
-		    /** Add script initialization to add a new tabpage **/
-		    htrAddScriptInit_va(s,"    %s = %s.addTab(%s.cxSubElement(\"tc%dtab%d\"),%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",
-			ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt, nptr, ptr);
+		/** Add script initialization to add a new tabpage **/
+		htrAddScriptInit_va(s,"    %s = %s.addTab(%s.cxSubElement(\"tc%dtab%d\"),%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",
+		    ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt, nptr, ptr);
 
-		    /** Add named global for the tabpage **/
-		    subnptr = (char*)nmMalloc(strlen(ptr)+1);
-		    strcpy(subnptr,ptr);
-		    htrAddScriptGlobal(s, subnptr, "null", HTR_F_NAMEALLOC);
+		/** Add named global for the tabpage **/
+		subnptr = (char*)nmMalloc(strlen(ptr)+1);
+		strcpy(subnptr,ptr);
+		htrAddScriptGlobal(s, subnptr, "null", HTR_F_NAMEALLOC);
 
-		    /** Add DIV section for the tabpage. **/
-		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-			htrAddBodyItem_va(s,"<DIV ID=\"tc%dpane%d\">\n",id,tabcnt);
-		    else
-			htrAddBodyItem_va(s,"<div id=\"tc%dpane%d\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:1px; TOP:1px; WIDTH:%dpx; Z-INDEX:%d;\">\n",
-				id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
+		/** Add DIV section for the tabpage. **/
+		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+		    htrAddBodyItem_va(s,"<DIV ID=\"tc%dpane%d\">\n",id,tabcnt);
+		else
+		    htrAddBodyItem_va(s,"<div id=\"tc%dpane%d\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:1px; TOP:1px; WIDTH:%dpx; Z-INDEX:%d;\">\n",
+			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
 
-		    /** Now look for sub-items within the tabpage. **/
-		    snprintf(sbuf,160,"%s.tabpage.document",subnptr);
-		    snprintf(name,64,"%s.tabpage",subnptr);
-		    subqy = objOpenQuery(tabpage_obj,"",NULL,NULL,NULL);
-		    if (subqy)
-		        {
-			while((sub_w_obj = objQueryFetch(subqy, O_RDONLY)))
-			    {
-		            htrRenderWidget(s, sub_w_obj, z+3, sbuf, name);
-			    objClose(sub_w_obj);
-			    }
-			}
-		    objQueryClose(subqy);
-		    htrAddBodyItem(s, "</DIV>\n");
-		    }
-		else if (!strcmp(ptr,"widget/connector"))
-		    {
-		    snprintf(sbuf,160,"%s.mainlayer.document",nptr);
-		    snprintf(name,64,"%s.mainlayer",nptr);
-		    htrRenderWidget(s, tabpage_obj, z+2, sbuf, name);
-		    }
-		objClose(tabpage_obj);
+		/** Now look for sub-items within the tabpage. **/
+		snprintf(sbuf,160,"%s.tabpage.document",subnptr);
+		snprintf(name,64,"%s.tabpage",subnptr);
+		for (j=0;j<xaCount(&(tabpage_obj->Children));j++)
+		    htrRenderWidget(s, xaGetItem(&(tabpage_obj->Children), j), z+3, sbuf, name);
+		htrAddBodyItem(s, "</DIV>\n");
 		}
-
-	    objQueryClose(qy);
+	    else if (!strcmp(ptr,"widget/connector"))
+		{
+		snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+		snprintf(name,64,"%s.mainlayer",nptr);
+		htrRenderWidget(s, tabpage_obj, z+2, sbuf, name);
+		}
 	    }
 
 	/** End the containing layer. **/

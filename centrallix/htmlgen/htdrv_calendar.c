@@ -46,10 +46,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_calendar.c,v 1.3 2004/06/12 03:59:00 gbeeley Exp $
+    $Id: htdrv_calendar.c,v 1.4 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_calendar.c,v $
 
     $Log: htdrv_calendar.c,v $
+    Revision 1.4  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.3  2004/06/12 03:59:00  gbeeley
     - starting to implement tree linkages to link the DHTML widgets together
       on the client in the same organization that they are in within the .app
@@ -83,7 +123,7 @@ htcaVerify()
 /*** htcaRender - generate the HTML code for the editbox widget.
  ***/
 int
-htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htcaRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -97,10 +137,8 @@ htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char eventpriofield[32] = "";
     int minpriority=0;
     int x=-1,y=-1,w,h;
-    int id;
+    int id, i;
     char* nptr;
-    pObject sub_w_obj;
-    pObjQuery qy;
 
 	/** Verify user-agent's capabilities allow us to continue... **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -113,75 +151,75 @@ htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTCA.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTCA","Calendar widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h = 0;
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = 0;
 	
 	/** Background color/image? **/
-	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"bgColor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
+	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
 	/** Cell background color/image? **/
-	if (objGetAttrValue(w_obj,"cell_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"cell_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(cell_bg,"bgColor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"cell_background",DATA_T_STRING,POD(&ptr)) == 0)
+	else if (wgtrGetPropertyValue(tree,"cell_background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(cell_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(cell_bg,"");
 
 	/** Text color? **/
-	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(textcolor,"%.31s",ptr);
 	else
 	    strcpy(textcolor,"black");
 
 	/** Data source field names **/
-	if (objGetAttrValue(w_obj, "eventdatefield", DATA_T_STRING, POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(tree, "eventdatefield", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCA","Calendar widget must have an 'eventdatefield' property");
 	    return -1;
 	    }
 	memccpy(eventdatefield, ptr, 0, 31);
 	eventdatefield[31] = 0;
-	if (objGetAttrValue(w_obj, "eventnamefield", DATA_T_STRING, POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(tree, "eventnamefield", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCA","Calendar widget must have an 'eventnamefield' property");
 	    return -1;
 	    }
 	memccpy(eventnamefield, ptr, 0, 31);
 	eventnamefield[31] = 0;
-	if (objGetAttrValue(w_obj, "eventpriofield", DATA_T_STRING, POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, "eventpriofield", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    memccpy(eventpriofield, ptr, 0, 31);
 	    eventpriofield[31] = 0;
 	    }
-	if (objGetAttrValue(w_obj, "eventdescfield", DATA_T_STRING, POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, "eventdescfield", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    memccpy(eventdescfield, ptr, 0, 31);
 	    eventdescfield[31] = 0;
 	    }
 
 	/** display mode **/
-	if (objGetAttrValue(w_obj, "displaymode", DATA_T_STRING, POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, "displaymode", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    memccpy(dispmode, ptr, 0, 31);
 	    dispmode[31] = 0;
 	    }
 
 	/** minimum priority **/
-	objGetAttrValue(w_obj, "displaymode", DATA_T_STRING, POD(&minpriority));
+	wgtrGetPropertyValue(tree, "displaymode", DATA_T_STRING, POD(&minpriority));
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -248,16 +286,8 @@ htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddBodyItem_va(s, "<DIV ID=\"ca%dbase\"><BODY %s text='%s'>\n",id, main_bg, textcolor);
 
 	/** Check for more sub-widgets **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-		{
-		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</BODY></DIV>\n");

@@ -42,10 +42,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.10 2004/06/12 03:59:00 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.11 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.11  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.10  2004/06/12 03:59:00  gbeeley
     - starting to implement tree linkages to link the DHTML widgets together
       on the client in the same organization that they are in within the .app
@@ -113,7 +153,7 @@ htclVerify()
 /*** htclRender - generate the HTML code for the clock widget.
  ***/
 int
-htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -130,11 +170,9 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     int showampm = 1;
     int miltime = 0;
     int x=-1,y=-1,w,h;
-    int id;
+    int id, i;
     char* nptr;
     char fieldname[HT_FIELDNAME_SIZE];
-    pObject sub_w_obj;
-    pObjQuery qy;
 
 	if(!s->Capabilities.Dom0NS)
 	    {
@@ -146,85 +184,85 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTCL.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTCL","Clock widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTCL","Clock widget must have a 'height' property");
 	    return -1;
 	    }
 	
 	/** Background color/image? **/
-	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"bgcolor=%.40s",ptr);
-	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
+	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
 	/** Military Time? **/
-	if (objGetAttrValue(w_obj,"hrtype",DATA_T_INTEGER,POD(&ptr)) == 0 && (int)ptr == 24)
+	if (wgtrGetPropertyValue(tree,"hrtype",DATA_T_INTEGER,POD(&ptr)) == 0 && (int)ptr == 24)
 	    {
 	    miltime = 1;
 	    showampm = 0;
 	    }
-	else if (objGetAttrValue(w_obj,"ampm",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
+	else if (wgtrGetPropertyValue(tree,"ampm",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
 	    {
 	    showampm = 0;
 	    }
 
 	/** Get text color **/
-	if (objGetAttrValue(w_obj,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
 	   sprintf(fgcolor1,"%.40s",ptr);
 	else
 	   strcpy(fgcolor1,"black");
 
 	/* Shadowed text? */
-	if (objGetAttrValue(w_obj,"shadowed",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"true") || !strcasecmp(ptr,"yes")))
+	if (wgtrGetPropertyValue(tree,"shadowed",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"true") || !strcasecmp(ptr,"yes")))
 	    {
 	    shadowed = 1;
-	    if (objGetAttrValue(w_obj,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
+	    if (wgtrGetPropertyValue(tree,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
 		strcpy(fgcolor2,ptr);
 	    else
 	        strcpy(fgcolor2,"#777777");
-	    if (objGetAttrValue(w_obj,"shadowx",DATA_T_INTEGER,POD(&ptr)) == 0)
+	    if (wgtrGetPropertyValue(tree,"shadowx",DATA_T_INTEGER,POD(&ptr)) == 0)
 	        shadowx = (int)ptr;
 	    else
 	        shadowx = 1;
-	    if (objGetAttrValue(w_obj,"shadowy",DATA_T_INTEGER,POD(&ptr)) == 0)
+	    if (wgtrGetPropertyValue(tree,"shadowy",DATA_T_INTEGER,POD(&ptr)) == 0)
 	        shadowy = (int)ptr;
 	    else
 	        shadowy = 1;
 	    }
 
 	/** Bold text? **/
-	if (objGetAttrValue(w_obj,"bold",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
+	if (wgtrGetPropertyValue(tree,"bold",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
 	    bold = 1;
 
 	/** Get text size **/
-	if (objGetAttrValue(w_obj,"size",DATA_T_INTEGER,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"size",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    size = (int)ptr;
 
 	/** Movable? **/
-	if (objGetAttrValue(w_obj,"moveable",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
+	if (wgtrGetPropertyValue(tree,"moveable",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
 	    moveable = 1;
 
 	/** Show Seconds **/
-	if (objGetAttrValue(w_obj,"seconds",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
+	if (wgtrGetPropertyValue(tree,"seconds",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
 	    showsecs = 0;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
 	/** Get fieldname **/
-	if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
+	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
 	    strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
 	else 
 	    fieldname[0]='\0';
@@ -314,16 +352,8 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddBodyItem(s,    "</DIV>\n");
 
 	/** Check for more sub-widgets **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-		{
-		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
 
     return 0;
     }

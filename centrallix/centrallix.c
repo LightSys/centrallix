@@ -17,7 +17,7 @@
 #include "stparse.h"
 #include "mtlexer.h"
 #include <signal.h>
-
+#include "wgtr.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -52,10 +52,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.26 2004/02/24 19:59:31 gbeeley Exp $
+    $Id: centrallix.c,v 1.27 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.27  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.26  2004/02/24 19:59:31  gbeeley
     - adding component-declaration widget driver
     - adding image widget driver
@@ -425,6 +465,8 @@ cxInitialize(void* v)
 	nmRegister(sizeof(File),"File");
 	nmRegister(sizeof(EventReq),"EventReq");
 	nmRegister(sizeof(Thread),"Thread");
+	nmRegister(sizeof(WgtrNode), "WgtrNode");
+	nmRegister(sizeof(ObjProperty), "ObjProperty");
 
 	/** Init the multiquery system and drivers **/
 	mqInitialize();				/* MultiQuery system */

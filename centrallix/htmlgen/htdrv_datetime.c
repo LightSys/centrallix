@@ -8,6 +8,7 @@
 #include "xarray.h"
 #include "xhash.h"
 #include "mtsession.h"
+#include "wgtr.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -59,7 +60,7 @@ htdtVerify()
 /*** htdtRender - generate the HTML code for the page.
  ***/
 int
-htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char *sql;
@@ -72,11 +73,9 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char fieldname[30];
     int type, rval;
     int x,y,w,h,w2=184,h2=190;
-    int id;
+    int id, i;
     DateTime dt;
     ObjData od;
-    pObject qy_obj;
-    pObjQuery qy;
 
 	if(!s->Capabilities.Dom0NS)
 	    {
@@ -88,42 +87,59 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTDT.idcnt++);
 
 	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0)
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0)
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) 
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) 
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have a 'height' property");
 	    return -1;
 	    }
 
-	if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
+	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
 	    strncpy(fieldname,ptr,30);
 	else 
 	    fieldname[0]='\0';
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 
 	/** Get initial date **/
-	if (objGetAttrValue(w_obj, "sql", DATA_T_STRING,POD(&sql)) == 0) 
+	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING,POD(&sql)) == 0) 
 	    {
+	    for (i=0;i<xaCount(&(tree->Children));i++)
+		{
+		attr = wgtrFirstPropertyName(tree);
+		if (!attr)
+		    {
+		    mssError(1, "HTDT", "There was an error getting date from your SQL query");
+		    return -1;
+		    }
+		type = wgtrGetPropertyType(tree, attr);
+		wgtrGetPropertyValue(tree, attr, type, &od);
+		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
+		    str = objDataToStringTmp(type, (void*)(&od), 0);
+		else
+		    str = objDataToStringTmp(type, (void*)(od.String), 0);
+		snprintf(initialdate, 64, "%s", str);
+		}
+/*
 	    if ((qy = objMultiQuery(w_obj->Session, sql))) 
 		{
 		while ((qy_obj = objQueryFetch(qy, O_RDONLY)))
@@ -145,8 +161,9 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		    }
 		objQueryClose(qy);
 		}
+*/
 	    }
-	else if (objGetAttrValue(w_obj,"initialdate",DATA_T_STRING,POD(&ptr)) == 0)
+	else if (wgtrGetPropertyValue(tree,"initialdate",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(initialdate, ptr, '\0', 63);
 	    }
@@ -167,10 +184,10 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	
 
 	/** Get colors **/
-	htrGetBackground(w_obj, NULL, 0, bgcolor, sizeof(bgcolor));
+	htrGetBackground(tree, NULL, 0, bgcolor, sizeof(bgcolor));
 	if (!*bgcolor) strcpy(bgcolor,"bgcolor=#c0c0c0");
 
-	if (objGetAttrValue(w_obj,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(fgcolor,"%.63s",ptr);
 	else
 	    strcpy(fgcolor,"black");
@@ -256,16 +273,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly, 'MouseOut');\n");
 
 	/** Check for more sub-widgets within the datetime. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((qy_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, qy_obj, z+1, parentname, nptr);
-		objClose(qy_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
 
     return 0;
     }
@@ -311,10 +320,50 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.27 2004/06/12 03:59:00 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.28 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.28  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.27  2004/06/12 03:59:00  gbeeley
     - starting to implement tree linkages to link the DHTML widgets together
       on the client in the same organization that they are in within the .app

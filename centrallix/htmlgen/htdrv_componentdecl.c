@@ -47,10 +47,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.1 2004/02/24 19:59:30 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.2 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.2  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.1  2004/02/24 19:59:30  gbeeley
     - adding component-declaration widget driver
     - adding image widget driver
@@ -90,18 +130,19 @@ htcmpdVerify()
 /*** htcmpdRender - generate the HTML code for the component.
  ***/
 int
-htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htcmpdRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
     char subobj_name[64];
     int id;
     char* nptr;
-    pObject subobj = NULL;
+//    pObject subobj = NULL;
+    pWgtrNode sub_tree = NULL;
     pObjQuery subobj_qy = NULL;
     XArray attrs;
     pHTCmpdParam param;
-    int i,t;
+    int i,t, j;
     int rval = 0;
     int is_visual = 1;
 
@@ -116,13 +157,13 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTCMPD.idcnt++);
 
 	/** Is this a visual component? **/
-	if ((is_visual = htrGetBoolean(w_obj, "visual", 1)) < 0)
+	if ((is_visual = htrGetBoolean(tree, "visual", 1)) < 0)
 	    {
 	    return -1;
 	    }
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 	if (cxsecVerifySymbol(name) < 0)
@@ -144,17 +185,20 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Hunt for parameters for this component **/
 	xaInit(&attrs, 16);
-	if ((subobj_qy = objOpenQuery(w_obj,":outer_type == 'system/parameter'",NULL,NULL,NULL)) != NULL)
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	//if ((subobj_qy = objOpenQuery(w_obj,":outer_type == 'system/parameter'",NULL,NULL,NULL)) != NULL)
 	    {
 	    /** Loop through each param we get **/
-	    while((subobj = objQueryFetch(subobj_qy, O_RDONLY)) != NULL)
+	    //while((subobj = objQueryFetch(subobj_qy, O_RDONLY)) != NULL)
+	    sub_tree = xaGetItem(&(tree->Children), i);
+	    if (!strcmp(sub_tree->Type, "system/parameter"))
 		{
 		param = (pHTCmpdParam)nmMalloc(sizeof(HTCmpdParam));
 		if (!param) break;
 		xaAddItem(&attrs, param);
 
 		/** Get component parameter name **/
-		objGetAttrValue(subobj, "name", DATA_T_STRING, POD(&ptr));
+		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr));
 		param->Name = nmSysStrdup(ptr);
 		if (cxsecVerifySymbol(param->Name) < 0)
 		    {
@@ -167,7 +211,7 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		param->StrVal = htrParamValue(s, param->Name);
 
 		/** Get component type **/
-		if (objGetAttrValue(subobj, "type", DATA_T_STRING, POD(&ptr)) == 0)
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING, POD(&ptr)) == 0)
 		    {
 		    t = objTypeID(ptr);
 		    if (t < 0)
@@ -185,7 +229,7 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    }
 
 		/** Get hints **/
-		param->Hints = hntObjToHints(subobj);
+		param->Hints = wgtrWgtToHints(sub_tree);
 		if (!param->Hints)
 		    {
 		    rval = -1;
@@ -193,10 +237,10 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    }
 
 		/** Close the object **/
-		objClose(subobj);
-		subobj = NULL;
+//		objClose(subobj);
+		sub_tree = NULL;
 		}
-	    objQueryClose(subobj_qy);
+//	    objQueryClose(subobj_qy);
 	    subobj_qy = NULL;
 	    }
 
@@ -263,12 +307,14 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Add actions, events, and client properties **/
-	if ((subobj_qy=objOpenQuery(w_obj,NULL,NULL,NULL,NULL)) != NULL)
+	for (i=0;i<xaCount(&(tree->Children));i++)
+//	if ((subobj_qy=objOpenQuery(w_obj,NULL,NULL,NULL,NULL)) != NULL)
 	    {
-	    while((subobj=objQueryFetch(subobj_qy,O_RDONLY)) != NULL)
-		{
+	    sub_tree = xaGetItem(&(tree->Children), i);
+//	    while((subobj=objQueryFetch(subobj_qy,O_RDONLY)) != NULL)
+//		{
 		/** Get component action/event/cprop name **/
-		objGetAttrValue(subobj, "name", DATA_T_STRING, POD(&ptr));
+		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr));
 		memccpy(subobj_name, ptr, 0, sizeof(subobj_name)-1);
 		subobj_name[sizeof(subobj_name)-1] = '\0';
 		if (cxsecVerifySymbol(subobj_name) < 0)
@@ -279,7 +325,7 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    }
 
 		/** Get type **/
-		objGetAttrValue(subobj, "outer_type", DATA_T_STRING, POD(&ptr));
+		wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
 		if (!strcmp(ptr,"widget/component-decl-action"))
 		    htrAddScriptInit_va(s, "    %s.addAction('%s');\n", name, subobj_name);
 		else if (!strcmp(ptr,"widget/component-decl-event"))
@@ -287,10 +333,10 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		else if (!strcmp(ptr,"widget/component-decl-cprop"))
 		    htrAddScriptInit_va(s, "    %s.addProp('%s');\n", name, subobj_name);
 
-		objClose(subobj);
-		subobj = NULL;
-		}
-	    objQueryClose(subobj_qy);
+//		objClose(subobj);
+		sub_tree = NULL;
+//		}
+//	    objQueryClose(subobj_qy);
 	    subobj_qy = NULL;
 	    }
 
@@ -298,8 +344,8 @@ htcmpdRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInit_va(s, "    cmpd_endinit(%s);\n", name);
 
     htcmpd_cleanup:
-	if (subobj) objClose(subobj);
-	if (subobj_qy) objQueryClose(subobj_qy);
+//	if (subobj) objClose(subobj);
+//	if (subobj_qy) objQueryClose(subobj_qy);
 	for(i=0;i<attrs.nItems;i++)
 	    {
 	    if (attrs.Items[i])

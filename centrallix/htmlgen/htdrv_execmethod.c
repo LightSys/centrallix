@@ -44,10 +44,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.13 2004/06/12 03:59:00 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.14 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.14  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.13  2004/06/12 03:59:00  gbeeley
     - starting to implement tree linkages to link the DHTML widgets together
       on the client in the same organization that they are in within the .app
@@ -140,7 +180,7 @@ htexVerify()
 /*** htexRender - generate the HTML code for the timer nonvisual widget.
  ***/
 int
-htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htexRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -162,12 +202,12 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTEX.idcnt++);
 
 	/** Get params. **/
-	if (objGetAttrValue(w_obj,"object",DATA_T_STRING,POD(&objname)) != 0) objname="";
-	if (objGetAttrValue(w_obj,"method",DATA_T_STRING,POD(&methodname)) != 0) methodname="";
-	if (objGetAttrValue(w_obj,"parameter",DATA_T_STRING,POD(&methodparam)) != 0) methodparam="";
+	if (wgtrGetPropertyValue(tree,"object",DATA_T_STRING,POD(&objname)) != 0) objname="";
+	if (wgtrGetPropertyValue(tree,"method",DATA_T_STRING,POD(&methodname)) != 0) methodname="";
+	if (wgtrGetPropertyValue(tree,"parameter",DATA_T_STRING,POD(&methodparam)) != 0) methodparam="";
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -187,7 +227,7 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Check for objects within the exec method object. **/
 	snprintf(sbuf, HT_SBUF_SIZE, "%s.document",nptr);
 	snprintf(sbuf2,160,"%s",nptr);
-	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
+	htrRenderSubwidgets(s, tree, sbuf, sbuf2, z+2);
 
 	htrAddScriptInclude(s,"/sys/js/htdrv_execmethod.js",0);
 

@@ -42,10 +42,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.3 2004/03/10 10:51:09 jasonyip Exp $
+    $Id: htdrv_scrollbar.c,v 1.4 2004/07/19 15:30:40 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.4  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.3  2004/03/10 10:51:09  jasonyip
 
     These are the latest IE-Port files.
@@ -83,15 +123,13 @@ htsbVerify()
 /*** htsbRender - generate the HTML code for the page.
  ***/
 int
-htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
     char sbuf[160];
-    pObject sub_w_obj;
-    pObjQuery qy;
     int x,y,w,h,r;
-    int id;
+    int id, i;
     int visible = 1;
     char* nptr;
     char bcolor[64] = "";
@@ -109,24 +147,24 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTSB.idcnt++);
 
 	/** Which direction? **/
-	if (objGetAttrValue(w_obj,"direction",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"direction",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcasecmp(ptr,"vertical")) is_horizontal = 0;
 	    else if (!strcasecmp(ptr,"horizontal")) is_horizontal = 1;
 	    }
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTSB","Scrollbar widget must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTSB","Scrollbar widget must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    if (is_horizontal)
 		{
@@ -143,7 +181,7 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    mssError(1,"HTSB","Horizontal scrollbar width must be greater than %d", 18*3);
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    if (!is_horizontal)
 		{
@@ -162,36 +200,36 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,'\0',63);
 	name[63]=0;
 
 	/** Range of scrollbar (static or dynamic property) **/
-	if (objGetAttrType(w_obj,"range") == DATA_T_INTEGER && objGetAttrValue(w_obj,"range",DATA_T_INTEGER,POD(&r)) != 0)
+	if (wgtrGetPropertyType(tree,"range") == DATA_T_INTEGER && wgtrGetPropertyValue(tree,"range",DATA_T_INTEGER,POD(&r)) != 0)
 	    {
 	    if (is_horizontal) r = w;
 	    else r = h;
 	    }
-	if (objGetAttrType(w_obj,"range") == DATA_T_CODE)
+	if (wgtrGetPropertyType(tree,"range") == DATA_T_CODE)
 	    {
-	    objGetAttrValue(w_obj,"range", DATA_T_CODE, POD(&code));
+	    wgtrGetPropertyValue(tree,"range", DATA_T_CODE, POD(&code));
 	    htrAddExpression(s, name, "range", code);
 	    }
 
 	/** Check background color **/
-	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(bcolor,ptr,'\0',63);
 	    bcolor[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(bimage,ptr,'\0',63);
 	    bimage[63]=0;
 	    }
 
 	/** Marked not visible? **/
-	if (objGetAttrValue(w_obj,"visible",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"visible",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"false")) visible = 0;
 	    }
@@ -321,17 +359,8 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        }\n");
 
 	/** Check for more sub-widgets within the scrollbar (visual ones not allowed). **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	snprintf(sbuf,160,"%s.document",name);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, sub_w_obj, z+2, sbuf, name);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, sbuf, name);
 
 	/** Finish off the last <DIV> **/
 	htrAddBodyItem(s,"</DIV>\n");

@@ -42,10 +42,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.21 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_radiobutton.c,v 1.22 2004/07/19 15:30:40 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.22  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.21  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -187,7 +227,7 @@ int htrbVerify() {
 
 
 /** htrbRender - generate the HTML code for the page.  **/
-int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
    char* ptr;
    char name[64];
    char title[64];
@@ -198,11 +238,9 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char main_bgcolor[32];
    char main_background[128];
    char outline_bg[64];
-   pObject sub_w_obj;
-   pObject radiobutton_obj;
-   pObjQuery qy;
+   pWgtrNode radiobutton_obj, sub_tree;
    int x=-1,y=-1,w,h;
-   int id;
+   int id, i, j;
    char fieldname[32];
 
    if(!s->Capabilities.Dom0NS)
@@ -215,52 +253,52 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    id = (HTRB.idcnt++);
 
    /** Get x,y,w,h of this object **/
-   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) {
+   if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) {
       mssError(1,"HTRB","RadioButtonPanel widget must have a 'width' property");
       return -1;
    }
-   if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) {
+   if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) {
       mssError(1,"HTRB","RadioButtonPanel widget must have a 'height' property");
       return -1;
    }
 
    /** Background color/image? **/
-   if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
       strncpy(main_bgcolor,ptr,31);
    else 
       strcpy(main_bgcolor,"");
 
-   if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
       strncpy(main_background,ptr,127);
    else
       strcpy(main_background,"");
 
    /** Text color? **/
-   if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
       snprintf(textcolor,32,"%s",ptr);
    else
       strcpy(textcolor,"black");
 
    /** Outline color? **/
-   if (objGetAttrValue(w_obj,"outlinecolor",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"outlinecolor",DATA_T_STRING,POD(&ptr)) == 0)
       snprintf(outline_bg,64,"%s",ptr);
    else
       strcpy(outline_bg,"black");
 
    /** Get name **/
-   if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+   if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(name,ptr,0,63);
    name[63]=0;
 
    /** Get title **/
-   if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+   if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(title,ptr,0,63);
    title[63] = 0;
 
    /** Get fieldname **/
-   if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
+   if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
       {
       strncpy(fieldname,ptr,30);
       }
@@ -299,22 +337,18 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       Now lets loop through and create a style sheet for each optionpane on the
       radiobuttonpanel
    */   
-   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-   if (qy) {
-      int i = 1;
-      while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-         if (!strcmp(ptr,"widget/radiobutton")) {
-            htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
-                    id,i,7,10+((i-1)*25)+3,w-(2*3 +2+7),25,z+2,w-(2*3 +2+7),25);
-            i++;
-         }
-         objClose(radiobutton_obj);
-      }
-   }
-   objQueryClose(qy);
-   
-
+    for (j=0;j<xaCount(&(tree->Children));j++)
+	{
+	i = 1;
+	radiobutton_obj = xaGetItem(&(tree->Children), j);
+	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+	if (!strcmp(ptr,"widget/radiobutton"))
+	    {
+	    htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
+		    id,i,7,10+((i-1)*25)+3,w-(2*3 +2+7),25,z+2,w-(2*3 +2+7),25);
+	    i++;
+	    }
+	}
 
    /** Script initialization call. **/
    if (strlen(main_bgcolor) > 0) {
@@ -375,30 +409,29 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /*
       Now lets loop through and add each radiobutton
    */
-   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-   if (qy) {
-      int i = 1;
-      while((sub_w_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(sub_w_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-         if (!strcmp(ptr,"widget/radiobutton")) {
-            if (objGetAttrValue(sub_w_obj,"selected",DATA_T_STRING,POD(&ptr)) != 0)
-               strcpy(sbuf2,"false");
-            else {
-               memccpy(sbuf2,ptr,0,199);
-	       sbuf2[199] = 0;
-	    }
+    for (j=0;j<xaCount(&(tree->Children));j++)
+	{
+	int i = 1;
+	sub_tree = xaGetItem(&(tree->Children), j);
+	wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+        if (!strcmp(ptr,"widget/radiobutton")) 
+	    {
+            if (wgtrGetPropertyValue(sub_tree,"selected",DATA_T_STRING,POD(&ptr)) != 0)
+		strcpy(sbuf2,"false");
+            else 
+		{
+		memccpy(sbuf2,ptr,0,199);
+		sbuf2[199] = 0;
+		}
 
-            htrAddScriptInit_va(s,"    add_radiobutton(%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.layers.radiobuttonpanel%doption%dpane, %s.layers.radiobuttonpanel%dparentpane, %s, %s);\n",
-               parentname, id, id, id, id, i, parentname, id, sbuf2, nptr);
+            htrAddScriptInit_va(s,"    add_radiobutton(%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.layers.radiobuttonpanel%doption%dpane, %s.layers.radiobuttonpanel%dparentpane, %s, %s);\n", parentname, id, id, id, id, i, parentname, id, sbuf2, nptr);
             i++;
-         }
-	 else {
-	    htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
-	 }
-         objClose(sub_w_obj);
-      }
-   }
-   objQueryClose(qy);
+	    }
+	 else 
+	    {
+	    htrRenderWidget(s, sub_tree, z+1, parentname, nptr);
+	    }
+	}
 
    /*
       Do the HTML layers
@@ -408,24 +441,24 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddBodyItem_va(s,"         <DIV ID=\"radiobuttonpanel%dcoverpane\">\n", id);
 
    /* Loop through each radio button and do the option pane and sub layers */
-   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-   if (qy) {
-      int i = 1;
-      while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-         if (!strcmp(ptr,"widget/radiobutton")) {
+    for (j=0;j<xaCount(&(tree->Children));j++)
+	{
+	int i = 1;
+	radiobutton_obj = xaGetItem(&(tree->Children), j);
+        wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+        if (!strcmp(ptr,"widget/radiobutton")) 
+	    {
             htrAddBodyItem_va(s,"            <DIV ID=\"radiobuttonpanel%doption%dpane\">\n", id, i);
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelbuttonsetpane\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n");
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
-
-	    
-            objGetAttrValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
+ 
+            wgtrGetPropertyValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
             memccpy(sbuf2,ptr,0,199);
 	    sbuf2[199]=0;
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
 
 	    /* use label (from above) as default value if no value given */
-	    if(objGetAttrValue(radiobutton_obj,"value",DATA_T_STRING,POD(&ptr))==0)
+	    if(wgtrGetPropertyValue(radiobutton_obj,"value",DATA_T_STRING,POD(&ptr))==0)
 		{
 		memccpy(sbuf2,ptr,0,199);
 		sbuf2[199] = 0;
@@ -434,11 +467,8 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);
             htrAddBodyItem_va(s,"            </DIV>\n");
             i++;
-         }
-         objClose(radiobutton_obj);
-      }
-   }
-   objQueryClose(qy);
+	    }
+	}
    
    htrAddBodyItem_va(s,"         </DIV>\n");
    htrAddBodyItem_va(s,"      </DIV>\n");

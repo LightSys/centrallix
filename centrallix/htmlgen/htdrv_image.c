@@ -42,6 +42,46 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_image.c,v $
+    Revision 1.2  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.1  2004/02/24 19:59:30  gbeeley
     - adding component-declaration widget driver
     - adding image widget driver
@@ -69,13 +109,13 @@ htimgVerify()
 /*** htimgRender - generate the HTML code for the label widget.
  ***/
 int
-htimgRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htimgRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
     char src[128];
     int x=-1,y=-1,w,h;
-    int id;
+    int id, i;
     char* nptr;
     char *text;
     pObject sub_w_obj;
@@ -91,20 +131,20 @@ htimgRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTIMG.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'height' property");
 	    return -1;
 	    }
 
-	if(objGetAttrValue(w_obj,"text",DATA_T_STRING,POD(&ptr)) == 0)
+	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    text=nmMalloc(strlen(ptr)+1);
 	    strcpy(text,ptr);
@@ -116,7 +156,7 @@ htimgRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** image source **/
-	if (objGetAttrValue(w_obj,"source",DATA_T_STRING,POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'source' property");
 	    return -1;
@@ -124,7 +164,7 @@ htimgRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	snprintf(src,sizeof(src),"%s",ptr);
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -168,16 +208,8 @@ htimgRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    "\n<img width=%d height=%d src=\"%s\">\n",w,h,src);
 
 	/** Check for more sub-widgets **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-		{
-		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
 
 	nmFree(text,strlen(text)+1);
 

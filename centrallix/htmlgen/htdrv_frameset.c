@@ -42,10 +42,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.8 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_frameset.c,v 1.9 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
+    Revision 1.9  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.8  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -108,61 +148,56 @@ htsetVerify()
 /*** htsetRender - generate the HTML code for the page.
  ***/
 int
-htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htsetRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
-    pObject sub_w_obj;
+    pWgtrNode sub_tree;
     pObjQuery qy;
     char geom_str[64] = "";
-    int t,n,bdr=0,direc=0;
+    int t,n,bdr=0,direc=0, i;
     char nbuf[16];
 
     	/** Check for a title. **/
-	if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddHeaderItem_va(s,"    <TITLE>%s</TITLE>\n",ptr);
 	    }
 
 	/** Loop through the frames (widget/page items) for geometry data **/
 	htrDisableBody(s);
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
+	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		t = objGetAttrType(sub_w_obj, "framesize");
-		if (t < 0) 
-		    {
-		    snprintf(nbuf,16,"*");
-		    }
-		else if (t == DATA_T_INTEGER)
-		    {
-		    objGetAttrValue(sub_w_obj, "framesize", DATA_T_INTEGER,POD(&n));
-		    snprintf(nbuf,16,"%d",n);
-		    }
-		else if (t == DATA_T_STRING)
-		    {
-		    objGetAttrValue(sub_w_obj, "framesize", DATA_T_STRING,POD(&ptr));
-		    memccpy(nbuf, ptr, 0, 15);
-		    nbuf[15] = 0;
-		    }
-		if (geom_str[0] != '\0')
-		    {
-		    strcat(geom_str,",");
-		    }
-		strcat(geom_str,nbuf);
-		objClose(sub_w_obj);
+	    sub_tree = xaGetItem(&(tree->Children), i);
+	    t = wgtrGetPropertyType(sub_tree, "framesize");
+	    if (t < 0) 
+		{
+		snprintf(nbuf,16,"*");
 		}
-	    objQueryClose(qy);
+	    else if (t == DATA_T_INTEGER)
+		{
+		wgtrGetPropertyValue(sub_tree, "framesize", DATA_T_INTEGER,POD(&n));
+		snprintf(nbuf,16,"%d",n);
+		}
+	    else if (t == DATA_T_STRING)
+		{
+		wgtrGetPropertyValue(sub_tree, "framesize", DATA_T_STRING,POD(&ptr));
+		memccpy(nbuf, ptr, 0, 15);
+		nbuf[15] = 0;
+		}
+	    if (geom_str[0] != '\0')
+		{
+		strcat(geom_str,",");
+		}
+	    strcat(geom_str,nbuf);
 	    }
 
 	/** Check for some optional params **/
-	if (objGetAttrValue(w_obj,"direction",DATA_T_STRING,POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(tree,"direction",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    if (!strcmp(ptr,"rows")) direc=1;
 	    else if (!strcmp(ptr,"columns")) direc=0;
 	    }
-	if (objGetAttrValue(w_obj,"borderwidth",DATA_T_INTEGER,POD(&n)) != 0)
+	if (wgtrGetPropertyValue(tree,"borderwidth",DATA_T_INTEGER,POD(&n)) != 0)
 	    { 
 	    bdr = n;
 	    }
@@ -171,19 +206,13 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddBodyItem_va(s, "<FRAMESET %s=%s border=%d>\n", direc?"rows":"cols", geom_str, bdr);
 
 	/** Check for more sub-widgets within the page. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
+	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		objGetAttrValue(sub_w_obj,"name",DATA_T_STRING,POD(&ptr));
-		if (objGetAttrValue(sub_w_obj,"marginwidth",DATA_T_INTEGER,POD(&n)) != 0)
-		    htrAddBodyItem_va(s,"    <FRAME SRC=./%s>\n",ptr);
-		else
-		    htrAddBodyItem_va(s,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
+	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
+	    if (wgtrGetPropertyValue(sub_tree,"marginwidth",DATA_T_INTEGER,POD(&n)) != 0)
+		htrAddBodyItem_va(s,"    <FRAME SRC=./%s>\n",ptr);
+	    else
+		htrAddBodyItem_va(s,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);
 	    }
 
 	/** End the framset. **/

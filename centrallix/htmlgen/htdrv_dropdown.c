@@ -8,6 +8,7 @@
 #include "xarray.h"
 #include "xhash.h"
 #include "mtsession.h"
+#include "wgtr.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -56,7 +57,7 @@ int htddVerify() {
 /* 
    htddRender - generate the HTML code for the page.
 */
-int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
    char bgstr[HT_SBUF_SIZE];
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
@@ -68,12 +69,13 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char *attr;
    int type, rval, mode, flag=0;
    int x,y,w,h;
-   int id;
+   int id, i;
    int num_disp;
    ObjData od;
-   pObject qy_obj;
-   pObjQuery qy;
    XString xs;
+   pObjQuery qy;
+   pObject qy_obj;
+   pWgtrNode subtree;
 
    if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
@@ -85,38 +87,38 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    id = (HTDD.idcnt++);
 
    /** Get x,y of this object **/
-   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h=20;
-   if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) {
+   if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h=20;
+   if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) {
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	return -1;
    }
 
-   if (objGetAttrValue(w_obj,"numdisplay",DATA_T_INTEGER,POD(&num_disp)) != 0) num_disp=3;
+   if (wgtrGetPropertyValue(tree,"numdisplay",DATA_T_INTEGER,POD(&num_disp)) != 0) num_disp=3;
 
-   if (objGetAttrValue(w_obj,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
+   if (wgtrGetPropertyValue(tree,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
 	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
 	return -1;
    }
 
-   if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
+   if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
 	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'bgcolor' property");
 	return -1;
    }
 
-   if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) {
+   if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) {
 	strncpy(fieldname,ptr,30);
    } else {
 	fieldname[0]='\0';
    }
 
     /** Get name **/
-    if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
     memccpy(name,ptr,0,63);
     name[63] = 0;
     nptr = (char*)nmMalloc(strlen(name)+1);
@@ -269,7 +271,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     /** Get the mode (default to 1, dynamicpage) **/
     mode = 0;
-    if (objGetAttrValue(w_obj,"mode",DATA_T_STRING,POD(&ptr)) == 0) {
+    if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0) {
 	if (!strcmp(ptr,"static")) mode = 0;
 	else if (!strcmp(ptr,"dynamic_server")) mode = 1;
 	else if (!strcmp(ptr,"dynamic")) mode = 2;
@@ -281,7 +283,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     }
 
     sql = 0;
-    if (objGetAttrValue(w_obj,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != 0) {
+    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != 0) {
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
     }
@@ -311,7 +313,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     
     /* Read and initialize the dropdown items */
     if (mode == 1) {
-	if ((qy = objMultiQuery(w_obj->Session, sql))) {
+	if ((qy = objMultiQuery(s->ObjSession, sql))) {
 	    flag=0;
 	    htrAddScriptInit_va(s,"    dd_add_items(%s.layers.dd%dbtn, Array(",parentname,id);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
@@ -352,43 +354,50 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	    objQueryClose(qy);
 	}
     }
-    if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
-	flag=0;
-	while((w_obj = objQueryFetch(qy, O_RDONLY))) {
-	   objGetAttrValue(w_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-	   if (!strcmp(ptr,"widget/dropdownitem") && mode == 0) {
-		if (objGetAttrValue(w_obj,"label",DATA_T_STRING,POD(&ptr)) != 0) {
-		  mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-		  return -1;
+
+    flag=0;
+    for (i=0;i<xaCount(&(tree->Children));i++)
+	{
+	subtree = xaGetItem(&(tree->Children), i);
+	if (!strcmp(subtree->Type,"widget/dropdownitem") && mode == 0) 
+	    {
+	    if (wgtrGetPropertyValue(subtree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
+		{
+		mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+		return -1;
 		}
-		memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		if (flag) {
-		    xsConcatPrintf(&xs, ",");
-		} else {
-		    xsInit(&xs);
-		    xsConcatPrintf(&xs, "    dd_add_items(%s.layers.dd%dbtn, Array(", parentname, id);
-		    flag=1;
+	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+	    if (flag) 
+		{
+		xsConcatPrintf(&xs, ",");
 		}
-		xsConcatPrintf(&xs,"Array('%s',", string);
-    
-		if (objGetAttrValue(w_obj,"value",DATA_T_STRING,POD(&ptr)) != 0) {
-		    mssError(1,"HTDD","Drop Down widget must have a 'value' property");
-		    return -1;
+	    else 
+		{
+		xsInit(&xs);
+		xsConcatPrintf(&xs, "    dd_add_items(%s.layers.dd%dbtn, Array(", parentname, id);
+		flag=1;
 		}
-		memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		xsConcatPrintf(&xs,"'%s')", string);
-	    } else {
-		htrRenderWidget(s, w_obj, z+1, parentname, nptr);
+	    xsConcatPrintf(&xs,"Array('%s',", string);
+
+	    if (wgtrGetPropertyValue(subtree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
+		{
+		mssError(1,"HTDD","Drop Down widget must have a 'value' property");
+		return -1;
+		}
+	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+	    xsConcatPrintf(&xs,"'%s')", string);
+	    } 
+	else 
+	    {
+	    htrRenderWidget(s, subtree, z+1, parentname, nptr);
 	    }
-	    objClose(w_obj);
 	}
-	if (flag) {
-	    xsConcatPrintf(&xs, "));\n");
-	    htrAddScriptInit(s,xs.String);
-	    xsDeInit(&xs);
+    if (flag) 
+	{
+	xsConcatPrintf(&xs, "));\n");
+	htrAddScriptInit(s,xs.String);
+	xsDeInit(&xs);
 	}
-	objQueryClose(qy);
-    }
 
     return 0;
 }
@@ -432,10 +441,50 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.41 2004/06/12 03:59:00 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.42 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.42  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.41  2004/06/12 03:59:00  gbeeley
     - starting to implement tree linkages to link the DHTML widgets together
       on the client in the same organization that they are in within the .app

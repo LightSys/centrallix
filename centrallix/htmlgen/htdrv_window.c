@@ -43,10 +43,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.35 2003/11/22 16:37:18 jorupp Exp $
+    $Id: htdrv_window.c,v 1.36 2004/07/19 15:30:42 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.36  2004/07/19 15:30:42  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.35  2003/11/22 16:37:18  jorupp
      * add support for moving event handler scripts to the .js code
      	note: the underlying implimentation in ht_render.c_will_ change, this was
@@ -243,7 +283,7 @@ htwinVerify()
 /*** htwinRender - generate the HTML code for the page.
  ***/
 int
-htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -251,11 +291,10 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char sbuf2[HT_SBUF_SIZE];
     char sbuf3[HT_SBUF_SIZE];
     char sbuf4[HT_SBUF_SIZE];
-    pObject sub_w_obj;
-    pObjQuery qy;
+    pWgtrNode sub_tree;
     int x,y,w,h;
     int tbw,tbh,bx,by,bw,bh;
-    int id;
+    int id, i;
     int visible = 1;
     char* nptr;
     char bgnd[128] = "";
@@ -279,32 +318,32 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTWIN.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x = 0;
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x = 0;
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTWIN","HTMLWindow widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) 
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) 
 	    {
 	    mssError(1,"HTWIN","HTMLWindow widget must have a 'height' property");
 	    return -1;
 	    }
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,'\0',63);
 	name[63]=0;
 
 	/** Check background color **/
-	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
+	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
 	    sprintf(bgnd,"bgcolor='%.40s'",ptr);
 	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
 	    sprintf(bgnd_style,"background-color: %.40s;",ptr);
 	    sprintf(hdr_bgnd_style,"background-color: %.40s;",ptr);
 	}
-	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0) {
+	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0) {
 	    sprintf(bgnd,"background='%.100s'",ptr);
 	    sprintf(hdr_bgnd,"background='%.100s'",ptr);
 	    sprintf(bgnd_style,"background-image: %.100s;",ptr);
@@ -312,49 +351,49 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	}
 
 	/** Check header background color/image **/
-	if (objGetAttrValue(w_obj,"hdr_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"hdr_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
 	    sprintf(hdr_bgnd_style,"background-color: %.40s;",ptr);
 	    }
-	else if (objGetAttrValue(w_obj,"hdr_background",DATA_T_STRING,POD(&ptr)) == 0)
+	else if (wgtrGetPropertyValue(tree,"hdr_background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    sprintf(hdr_bgnd,"background='%.100s'",ptr);
 	    sprintf(hdr_bgnd_style,"background-image: %.100s;",ptr);
 	    }
 
 	/** Check title text color. **/
-	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(txtcolor,"%.63s",ptr);
 	else
 	    strcpy(txtcolor,"black");
 
 	/** Check window title. **/
-	if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(title,"%.127s",ptr);
 	else
 	    strcpy(title,name);
 
 	/** Marked not visible? **/
-	if (objGetAttrValue(w_obj,"visible",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"visible",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"false")) visible = 0;
 	    }
 
 	/** No titlebar? **/
-	if (objGetAttrValue(w_obj,"titlebar",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no"))
+	if (wgtrGetPropertyValue(tree,"titlebar",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no"))
 	    has_titlebar = 0;
 
 	/** Dialog or window style? **/
-	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
+	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
 	    is_dialog_style = 1;
 
 	/** Graphical window shading? **/
-	if (objGetAttrValue(w_obj,"gshade",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
+	if (wgtrGetPropertyValue(tree,"gshade",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
 	    gshade = 1;
 
 	/** Graphical window close? **/
-	if (objGetAttrValue(w_obj,"closetype",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"closetype",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"shrink1")) closetype = 1;
 	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
@@ -548,7 +587,6 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 
 	/** Check for more sub-widgets within the page. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
 	if(s->Capabilities.Dom1HTML)
 	    {
 	    snprintf(sbuf,HT_SBUF_SIZE,"%s.ContentLayer",name);
@@ -568,22 +606,18 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer.document",name);
 	    }
 	snprintf(sbuf4,HT_SBUF_SIZE,"%s.mainlayer",name);
-	if (qy)
+	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		objGetAttrValue(sub_w_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-		if (!strcmp(ptr,"widget/connector"))
-		    {
-		    htrRenderWidget(s, sub_w_obj, z+2, sbuf3, sbuf4);
-		    }
-		else
-		    {
-		    htrRenderWidget(s, sub_w_obj, z+2, sbuf, sbuf2);
-		    }
-		objClose(sub_w_obj);
+	    sub_tree = xaGetItem(&(tree->Children), i);
+	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	    if (!strcmp(ptr,"widget/connector"))
+		{
+		htrRenderWidget(s, sub_tree, z+2, sbuf3, sbuf4);
 		}
-	    objQueryClose(qy);
+	    else
+		{
+		htrRenderWidget(s, sub_tree, z+2, sbuf, sbuf2);
+		}
 	    }
 
 	htrAddBodyItem(s,"</DIV></DIV>\n");

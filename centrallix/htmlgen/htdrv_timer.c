@@ -43,10 +43,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.8 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_timer.c,v 1.9 2004/07/19 15:30:41 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.9  2004/07/19 15:30:41  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.8  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -115,7 +155,7 @@ httmVerify()
 /*** httmRender - generate the HTML code for the timer nonvisual widget.
  ***/
 int
-httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+httmRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -137,18 +177,18 @@ httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTTM.idcnt++);
 
 	/** Get msec for timer countdown **/
-	if (objGetAttrValue(w_obj,"msec",DATA_T_INTEGER,POD(&msec)) != 0)
+	if (wgtrGetPropertyValue(tree,"msec",DATA_T_INTEGER,POD(&msec)) != 0)
 	    {
 	    mssError(1,"HTTM","Timer widget must have 'msec' time specified");
 	    return -1;
 	    }
 
 	/** Get auto reset and auto start settings **/
-	if (objGetAttrValue(w_obj,"auto_reset",DATA_T_INTEGER,POD(&auto_reset)) != 0) auto_reset = 0;
-	if (objGetAttrValue(w_obj,"auto_start",DATA_T_INTEGER,POD(&auto_start)) != 0) auto_start = 1;
+	if (wgtrGetPropertyValue(tree,"auto_reset",DATA_T_INTEGER,POD(&auto_reset)) != 0) auto_reset = 0;
+	if (wgtrGetPropertyValue(tree,"auto_start",DATA_T_INTEGER,POD(&auto_start)) != 0) auto_start = 1;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63]=0;
 
@@ -166,7 +206,7 @@ httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Check for objects within the timer. **/
 	snprintf(sbuf,200,"%s.document",nptr);
 	snprintf(sbuf2,160,"%s",nptr);
-	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
+	htrRenderSubwidgets(s, tree, sbuf, sbuf2, z+2);
 
     return 0;
     }

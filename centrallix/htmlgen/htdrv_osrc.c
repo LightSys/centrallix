@@ -43,10 +43,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.53 2004/06/12 03:56:05 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.54 2004/07/19 15:30:40 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.54  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.53  2004/06/12 03:56:05  gbeeley
     - adding preliminary support for client notification of changes to an open
       object.
@@ -325,7 +365,7 @@ int htosrcVerify() {
    Don't know what this is, but we're keeping it for now - JJP, JDH
 */
 int
-htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
    {
    int id;
    char name[40];
@@ -337,10 +377,11 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    char *sql;
    char *filter;
    char *baseobj;
-   pObject sub_w_obj;
-   pObjQuery qy;
+   pWgtrNode sub_tree;
+//   pObjQuery qy;
    enum htosrc_autoquery_types aq;
    int receive_updates;
+   int count, i;
 
    if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
@@ -352,15 +393,15 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    id = (HTOSRC.idcnt++);
 
    /** Get name **/
-   if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+   if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(name,ptr,0,39);
    name[39] = 0;
 
-   if (objGetAttrValue(w_obj,"replicasize",DATA_T_INTEGER,POD(&replicasize)) != 0)
+   if (wgtrGetPropertyValue(tree,"replicasize",DATA_T_INTEGER,POD(&replicasize)) != 0)
       replicasize=6;
-   if (objGetAttrValue(w_obj,"readahead",DATA_T_INTEGER,POD(&readahead)) != 0)
+   if (wgtrGetPropertyValue(tree,"readahead",DATA_T_INTEGER,POD(&readahead)) != 0)
       readahead=replicasize/2;
-   if (objGetAttrValue(w_obj,"scrollahead",DATA_T_INTEGER,POD(&scrollahead)) != 0)
+   if (wgtrGetPropertyValue(tree,"scrollahead",DATA_T_INTEGER,POD(&scrollahead)) != 0)
       scrollahead=readahead;
 
    /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
@@ -376,7 +417,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       }
 
    /** Query autostart types **/
-   if (objGetAttrValue(w_obj,"autoquery",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"autoquery",DATA_T_STRING,POD(&ptr)) == 0)
       {
       if (!strcasecmp(ptr,"onLoad")) aq = OnLoad;
       else if (!strcasecmp(ptr,"onFirstReveal")) aq = OnFirstReveal;
@@ -394,9 +435,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       }
 
    /** Get replication updates from server? **/
-   receive_updates = htrGetBoolean(w_obj, "receive_updates", 0);
+   receive_updates = htrGetBoolean(tree, "receive_updates", 0);
 
-   if (objGetAttrValue(w_obj,"sql",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&ptr)) == 0)
       {
       sql=nmMalloc(strlen(ptr)+1);
       strcpy(sql,ptr);
@@ -407,7 +448,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       return -1;
       }
 
-   if (objGetAttrValue(w_obj,"baseobj",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"baseobj",DATA_T_STRING,POD(&ptr)) == 0)
       {
       baseobj = nmMalloc(strlen(ptr)+1);
       strcpy(baseobj, ptr);
@@ -417,7 +458,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       baseobj = NULL;
       }
 
-   if (objGetAttrValue(w_obj,"filter",DATA_T_STRING,POD(&ptr)) == 0)
+   if (wgtrGetPropertyValue(tree,"filter",DATA_T_STRING,POD(&ptr)) == 0)
       {
       filter=nmMalloc(strlen(ptr)+1);
       strcpy(filter,ptr);
@@ -468,13 +509,14 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%dloader",id);
    htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
    htrAddBodyItem(s, "\n");
-   
+  
+   /**
    qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
    if (qy)
    {
    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
        {
-       objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
+       wgtrGetPropertyValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
        if (strcmp(ptr,"widget/connector") == 0)
 	   htrRenderWidget(s, sub_w_obj, z, "", name);
        else
@@ -483,7 +525,18 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
        }
    objQueryClose(qy);
    }
-   
+   **/
+    count = xaCount(&(tree->Children));
+    for (i=0;i<count;i++)
+	{
+	sub_tree = xaGetItem(&(tree->Children), i);
+	if (strcmp(sub_tree->Type, "widget/connector") == 0)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z, "", name);
+	else
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z, parentname, parentobj);
+	}
+    
+
    /** We set osrc_current=null so that orphans can't find us  **/
    htrAddScriptInit(s, "    //osrc_current.InitQuery();\n");
    htrAddScriptInit_va(s,"    osrc_current=%s.oldosrc;\n\n",name);

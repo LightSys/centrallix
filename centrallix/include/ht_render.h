@@ -34,10 +34,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.21 2004/06/25 16:46:31 gbeeley Exp $
+    $Id: ht_render.h,v 1.22 2004/07/19 15:30:42 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.22  2004/07/19 15:30:42  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.21  2004/06/25 16:46:31  gbeeley
     - Auto-detect size of user-agent's window
 
@@ -160,6 +200,7 @@
 #include "obj.h"
 #include "expression.h"
 #include "xarray.h"
+#include "wgtr.h"
 
 #define HT_SBUF_SIZE	(256)
 /** This is the max fieldname size -- John Peebles and Joe Heth **/
@@ -366,12 +407,12 @@ int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... ) __attribute__((format
 
 int htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp);
 int htrDisableBody(pHtSession s);
-int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);
-int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
+int htrRenderWidget(pHtSession session, pWgtrNode widget, int z, char* parentname, char* parentobj);
+int htrRenderSubwidgets(pHtSession s, pWgtrNode widget, char* docname, char* layername, int zlevel);
 
 /** Utility routines **/
-int htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen);
-int htrGetBoolean(pObject obj, char* attr, int default_value);
+int htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen);
+int htrGetBoolean(pWgtrNode obj, char* attr, int default_value);
 
 /** Content-intelligent (useragent-sensitive) rendering engine functions **/
 int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...);
@@ -381,7 +422,7 @@ int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
-int htrRender(pFile output, pObject appstruct, pStruct params);
+int htrRender(pFile output, pObjSession s, pWgtrNode tree, pStruct params);
 int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);

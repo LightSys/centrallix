@@ -56,7 +56,7 @@ int htmnVerify() {
 /* 
    htmenuRender - generate the HTML code for the menu widget.
 */
-int htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
    char bgstr[HT_SBUF_SIZE];
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
@@ -64,8 +64,8 @@ int htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* par
    char *ptr, *nptr;
    int flag=0;
    int x,y,w,h;
-   int id;
-   pObjQuery qy;
+   int id, i;
+   pWgtrNode sub_tree;
    XString xs;
 
    if(!s->Capabilities.Dom0NS)
@@ -78,23 +78,23 @@ int htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* par
    id = (HTMN.idcnt++);
 
    /** Get x,y,height,& width of this object **/
-   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h=20;
-   if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) {
+   if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h=20;
+   if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) {
 	mssError(1,"HTMN","Menu widget must have a 'width' property");
 	return -1;
    }
 
 
-   if (objGetAttrValue(w_obj,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
+   if (wgtrGetPropertyValue(tree,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
 	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
 	mssError(1,"HTMN","Menu widget must have a 'hilight' property");
 	return -1;
    }
 
-   if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
+   if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
 	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
 	mssError(1,"HTMN","Menu widget must have a 'bgcolor' property");
@@ -103,7 +103,7 @@ int htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* par
 
 
     /** Get name **/
-    if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
     memccpy(name,ptr,0,63);
     name[63] = 0;
     nptr = (char*)nmMalloc(strlen(name)+1);
@@ -286,52 +286,59 @@ int htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* par
     
     /* Read and initialize the menu items */
 
-    //Note: w_obj here needs to be a sub object variable...
-    if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
-	flag=0;
-	while((w_obj = objQueryFetch(qy, O_RDONLY))) {
-	   objGetAttrValue(w_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-	   if (!strcmp(ptr,"widget/menuitem")) {
-		    if (objGetAttrValue(w_obj,"label",DATA_T_STRING,POD(&ptr)) != 0) {
-		      mssError(1,"HTMN","Menu Item  widget must have a 'label' property");
-		      return -1;
-		    }
-		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		    if (flag) { //create mn_add_top_layer function call...
-		        xsConcatPrintf(&xs, ",");
-		    } else {
-		        xsInit(&xs);
-		        xsConcatPrintf(&xs, "    mn_add_top_layer_items(%s.layers.mn%dmain, Array(", parentname, id);
-		        flag=1;
-		    }
-		    xsConcatPrintf(&xs,"Array('%s',", string); //fill in the menu items parameters for the function...
-    
-		    if (objGetAttrValue(w_obj,"value",DATA_T_STRING,POD(&ptr)) != 0) {
-		        mssError(1,"HTMN","Menu Item widget must have a 'value' property");
-		        return -1;
-		    }
-		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		    xsConcatPrintf(&xs,"'%s',", string);
-    
-		    if (objGetAttrValue(w_obj,"width",DATA_T_STRING,POD(&ptr)) != 0) {
-		        mssError(1,"HTMN","Menu Item widget must have a 'width' property");
-		        return -1;
-		    }
-		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		    xsConcatPrintf(&xs,"%s)", string);
+    flag=0;
+    for (i=0;i<xaCount(&(tree->Children));i++)
+	{
+	sub_tree = xaGetItem(&(tree->Children), i);
+	wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	if (!strcmp(ptr,"widget/menuitem")) 
+	    {
+	    if (wgtrGetPropertyValue(sub_tree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
+		{
+		mssError(1,"HTMN","Menu Item  widget must have a 'label' property");
+		return -1;
+		}
+	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+	    if (flag) //create mn_add_top_layer function call...
+		{
+		xsConcatPrintf(&xs, ",");
+		} 
+	    else 
+		{
+		xsInit(&xs);
+		xsConcatPrintf(&xs, "    mn_add_top_layer_items(%s.layers.mn%dmain, Array(", parentname, id);
+		flag=1;
+		}
+	    xsConcatPrintf(&xs,"Array('%s',", string); //fill in the menu items parameters for the function...
 
-	    } else {
-	        htrRenderWidget(s, w_obj, z+1, parentname, nptr);
+	    if (wgtrGetPropertyValue(sub_tree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
+		{
+		mssError(1,"HTMN","Menu Item widget must have a 'value' property");
+		return -1;
+		}
+	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+	    xsConcatPrintf(&xs,"'%s',", string);
+
+	    if (wgtrGetPropertyValue(sub_tree,"width",DATA_T_STRING,POD(&ptr)) != 0)
+		{
+		mssError(1,"HTMN","Menu Item widget must have a 'width' property");
+		return -1;
+		}
+		memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		xsConcatPrintf(&xs,"%s)", string);
+
+	    } 
+	else 
+	    {
+	    htrRenderWidget(s, sub_tree, z+1, parentname, nptr);
 	    }
-	    objClose(w_obj);
 	}
-	if (flag) {
+	if (flag)
+	    {
 	    xsConcatPrintf(&xs, "));\n");
 	    htrAddScriptInit(s,xs.String);
 	    xsDeInit(&xs);
-	}
-	objQueryClose(qy);
-    }
+	    }
 
     return 0;
 }

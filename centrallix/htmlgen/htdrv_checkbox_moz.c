@@ -2,7 +2,7 @@
 /* 
    htcbMozDefRender - generate the HTML code for the page (Mozilla:Default).
 */
-int htcbMozDefRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+int htcbMozDefRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
    char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
    int id;
@@ -12,9 +12,9 @@ int htcbMozDefRender(pHtSession s, pObject w_obj, int z, char* parentname, char*
    id = (HTCB.idcnt++);
 
    /** Get x,y of this object **/
-   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
+   if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
       {
       strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
       }
@@ -23,7 +23,7 @@ int htcbMozDefRender(pHtSession s, pObject w_obj, int z, char* parentname, char*
       fieldname[0]='\0';
       } 
 
-   if (objGetAttrValue(w_obj,"checked",DATA_T_STRING,POD(&ptr)) != 0)
+   if (wgtrGetPropertyValue(tree,"checked",DATA_T_STRING,POD(&ptr)) != 0)
       { 
       checked = 0;
       } 

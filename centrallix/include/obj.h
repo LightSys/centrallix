@@ -35,10 +35,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.28 2004/06/22 16:06:53 mmcgill Exp $
+    $Id: obj.h,v 1.29 2004/07/19 15:30:42 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.29  2004/07/19 15:30:42  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.28  2004/06/22 16:06:53  mmcgill
     Added the flag OBJ_F_NOCACHE, which a driver can set in its xxxOpen call
     to tell OSML not to add the opened object to the Directory Cache.
@@ -676,6 +716,24 @@ typedef struct
     }
     ObjParam, *pObjParam;
 
+/** Generic property struct **/
+typedef struct
+    {
+    int		    Magic;			/** Magic Number **/
+    void*	    Reserved;
+    char	    Name[64];
+    int		    Type;
+    ObjData	    Val;
+    union
+	{
+	char	    String[16];
+	MoneyType   Money;
+	DateTime    Date;
+	IntVec	    IV;
+	StringVec   SV;
+	}
+	Buf;	/** buffer for various data types **/
+    } ObjProperty, *pObjProperty;
 
 /*** Flags to be passed to objOpen() in the 'mode' ***/
 #define OBJ_O_CREAT	(O_CREAT)

@@ -9,6 +9,7 @@
 #include "xhash.h"
 #include "xstring.h"
 #include "mtsession.h"
+#include "wgtr.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +45,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.13 2004/06/12 03:59:00 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.14 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.14  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.13  2004/06/12 03:59:00  gbeeley
     - starting to implement tree linkages to link the DHTML widgets together
       on the client in the same organization that they are in within the .app
@@ -150,7 +191,7 @@ htconnVerify()
 /*** htconnRender - generate the HTML code for the page.
  ***/
 int
-htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char* vstr;
@@ -164,9 +205,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char event[32];
     char target[32];
     char action[32];
-    pObject sub_w_obj;
-    pObjQuery qy;
-    int id;
+    int id, i;
     char* nptr;
     XString xs;
     pExpression code;
@@ -181,21 +220,21 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTCONN.idcnt++);
 
 	/** Get the event linkage information **/
-	if (objGetAttrValue(w_obj,"event",DATA_T_STRING,POD(&ptr)) != 0) 
+	if (wgtrGetPropertyValue(tree,"event",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'event' property");
 	    return -1;
 	    }
 	memccpy(event,ptr,0,31);
 	event[31]=0;
-	if (objGetAttrValue(w_obj,"target",DATA_T_STRING,POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have a 'target' property");
 	    return -1;
 	    }
 	memccpy(target,ptr,0,31);
 	target[31]=0;
-	if (objGetAttrValue(w_obj,"action",DATA_T_STRING,POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(tree,"action",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'action' property");
 	    return -1;
@@ -204,7 +243,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	action[31]=0;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -233,29 +272,29 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		     	"function cn_%d(eparam)\n"
 		     	"    {\n" ,id);
 	xsConcatenate(&xs,"    aparam = new Object();\n",-1);
-	for(ptr = objGetFirstAttr(w_obj); ptr; ptr = objGetNextAttr(w_obj))
+	for(ptr = wgtrFirstPropertyName(tree); ptr; ptr = wgtrNextPropertyName(tree))
 	    {
 	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action")) continue;
-	    switch(objGetAttrType(w_obj, ptr))
+	    switch(wgtrGetPropertyType(tree, ptr))
 	        {
 		case DATA_T_CODE:
-		    objGetAttrValue(w_obj, ptr, DATA_T_CODE, POD(&code));
+		    wgtrGetPropertyValue(tree, ptr, DATA_T_CODE, POD(&code));
 		    xsConcatPrintf(&xs,"    with(eparam) { aparam.%s = ", ptr);
 		    expGenerateText(code, NULL, xsWrite, &xs, NULL, "javascript");
 		    xsConcatenate(&xs,"; }\n",4);
 		    break;
 		case DATA_T_INTEGER:
-	    	    objGetAttrValue(w_obj, ptr, DATA_T_INTEGER,POD(&vint));
+	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_INTEGER,POD(&vint));
 		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %d;\n",ptr,vint);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_DOUBLE:
-		    objGetAttrValue(w_obj, ptr, DATA_T_DOUBLE,POD(&vdbl));
+		    wgtrGetPropertyValue(tree, ptr, DATA_T_DOUBLE,POD(&vdbl));
 		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %f;\n",ptr,vdbl);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_STRING:
-	    	    objGetAttrValue(w_obj, ptr, DATA_T_STRING,POD(&vstr));
+	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_STRING,POD(&vstr));
 		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
 		        {
 			snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = eparam.%s\n", ptr, vstr);
@@ -283,16 +322,8 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	xsDeInit(&xs);
 
 	/** Check for more sub-widgets within the conn entity. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, sub_w_obj, z+2, parentname, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
 
     return 0;
     }

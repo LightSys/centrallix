@@ -143,6 +143,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_componentdecl.o \
 	   htdrv_image.o \
 	   htdrv_hints.o \
+	   wgtr.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 

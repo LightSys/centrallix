@@ -2,14 +2,14 @@
 /*** htpageRenderMozDefault - generate the HTML code for Mozilla default style
  ***/
 int
-htpageRenderMozDefault(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htpageRenderMozDefault(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     pObject sub_w_obj;
     pObjQuery qy;
     int watchdogtimer;
     HtPageStruct t;
 
-	htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"IFRAME");
+	htpageRenderCommon(s,tree,z,parentname,parentobj,&t,"IFRAME");
 
 	/** Add focus box **/
 	htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
@@ -202,16 +202,8 @@ htpageRenderMozDefault(pHtSession s, pObject w_obj, int z, char* parentname, cha
 		"    pg_keytimeoutid = null;\n");
 
 	/** Check for more sub-widgets within the page. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, sub_w_obj, z+1, parentname, "document");
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, "document");
 
 	//htrAddScriptInit(s,"    return false;\n");
 	htrAddScriptInit(s,

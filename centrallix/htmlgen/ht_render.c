@@ -51,10 +51,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.45 2004/06/25 16:46:30 gbeeley Exp $
+    $Id: ht_render.c,v 1.46 2004/07/19 15:30:39 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.46  2004/07/19 15:30:39  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.45  2004/06/25 16:46:30  gbeeley
     - Auto-detect size of user-agent's window
 
@@ -628,9 +668,9 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
  *** widget's objectsystem descriptor...
  ***/
 int
-htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj)
+htrRenderWidget(pHtSession session, pWgtrNode widget, int z, char* parentname, char* parentobj)
     {
-    char* w_name;
+    char* w_type;
     pHtDriver drv;
     pXHashTable widget_drivers = NULL;
 
@@ -651,22 +691,21 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 	    }
 
 	/** Get the name of the widget.. **/
-	objGetAttrValue(widget_obj, "outer_type", DATA_T_STRING, POD(&w_name));
-	if (strncmp(w_name,"widget/",7))
+	if (strncmp(widget->Type,"widget/",7))
 	    {
 	    mssError(1,"HTR","Invalid content type for widget - must be widget/xxx");
 	    return -1;
 	    }
 
 	/** Lookup the driver **/
-	drv = (pHtDriver)xhLookup(widget_drivers,w_name+7);
+	drv = (pHtDriver)xhLookup(widget_drivers,widget->Type+7);
 	if (!drv)
 	    {
-	    mssError(1,"HTR","Unknown widget object type '%s'", w_name);
+	    mssError(1,"HTR","Unknown widget object type '%s'", widget->Type);
 	    return -1;
 	    }
 
-    return drv->Render(session, widget_obj, z, parentname, parentobj);
+    return drv->Render(session, widget, z, parentname, parentobj);
     }
 
 
@@ -1303,12 +1342,14 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
  *** as panes and tab pages.
  ***/
 int
-htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel)
+htrRenderSubwidgets(pHtSession s, pWgtrNode widget, char* docname, char* layername, int zlevel)
     {
-    pObjQuery qy;
-    pObject sub_widget_obj;
+//    pObjQuery qy;
+//    pObject sub_widget_obj;
+    int i, count;
 
 	/** Open the query for subwidgets **/
+	/*
 	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL);
 	if (qy)
 	    {
@@ -1319,6 +1360,10 @@ htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layer
 		}
 	    objQueryClose(qy);
 	    }
+	**/
+	count = xaCount(&(widget->Children));
+	for (i=0;i<count;i++) 
+	    htrRenderWidget(s, xaGetItem(&(widget->Children), i), zlevel, docname, layername);
 
     return 0;
     }
@@ -1390,7 +1435,7 @@ htr_internal_GetGeom(pFile output)
  *** as an open ObjectSystem object.
  ***/
 int
-htrRender(pFile output, pObject appstruct, pStruct params)
+htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
     {
     pHtSession s;
     int i,n,j,k,l;
@@ -1419,7 +1464,8 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	if (!s) return -1;
 	memset(s,0,sizeof(HtSession));
 	s->Params = params;
-	s->ObjSession = appstruct->Session;
+//	s->ObjSession = appstruct->Session;
+	s->ObjSession = obj_s;
 
 	/** Width and Height of user agent specified? **/
 	hptr = htrParamValue(s, "cx__height");
@@ -1532,7 +1578,7 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	s->DisableBody = 0;
 
 	/** Render the top-level widget. **/
-	rval = htrRenderWidget(s, appstruct, 10, "document", "document");
+	rval = htrRenderWidget(s, tree, 10, "document", "document");
 
 	if (rval < 0)
 	    {
@@ -1914,7 +1960,7 @@ htrInitialize()
  *** returns with buf set to "" if any error occurs.
  ***/
 int
-htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen)
+htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen)
     {
     char bgcolor_name[64];
     char background_name[128];
@@ -1936,7 +1982,7 @@ htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen)
 	    }
 
 	/** Image? **/
-	if (objGetAttrValue(obj, background, DATA_T_STRING, POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, background, DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    if (strpbrk(ptr,"\"'\n\r\t")) return -1;
 	    if (as_style)
@@ -1944,7 +1990,7 @@ htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen)
 	    else
 		snprintf(buf,buflen,"background='%s'",ptr);
 	    }
-	else if (objGetAttrValue(obj, bgcolor, DATA_T_STRING, POD(&ptr)) == 0)
+	else if (wgtrGetPropertyValue(tree, bgcolor, DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    /** Background color **/
 	    if (strpbrk(ptr,"\"'\n\r\t;}<>&")) return -1;
@@ -1966,7 +2012,7 @@ htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen)
  *** on a nonexistent attribute.
  ***/
 int
-htrGetBoolean(pObject obj, char* attrname, int default_value)
+htrGetBoolean(pWgtrNode wgt, char* attrname, int default_value)
     {
     int t;
     int rval = default_value;
@@ -1974,13 +2020,13 @@ htrGetBoolean(pObject obj, char* attrname, int default_value)
     int n;
 
 	/** type of attr (need to check number if 1/0) **/
-	t = objGetAttrType(obj,attrname);
+	t = wgtrGetPropertyType(wgt,attrname);
 	if (t < 0) return default_value;
 
 	/** integer? **/
 	if (t == DATA_T_INTEGER)
 	    {
-	    if (objGetAttrValue(obj,attrname,t,POD(&n)) == 0)
+	    if (wgtrGetPropertyValue(wgt,attrname,t,POD(&n)) == 0)
 		{
 		rval = (n != 0);
 		}
@@ -1988,7 +2034,7 @@ htrGetBoolean(pObject obj, char* attrname, int default_value)
 	else if (t == DATA_T_STRING)
 	    {
 	    /** string? **/
-	    if (objGetAttrValue(obj,attrname,t,POD(&ptr)) == 0)
+	    if (wgtrGetPropertyValue(wgt,attrname,t,POD(&ptr)) == 0)
 		{
 		if (!strcasecmp(ptr,"yes") || !strcasecmp(ptr,"true") || !strcasecmp(ptr,"on") || !strcasecmp(ptr,"y"))
 		    {

@@ -9,6 +9,7 @@
 #include "xhash.h"
 #include "mtsession.h"
 #include "centrallix.h"
+#include "wgtr.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.63 2004/06/12 03:57:56 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.64 2004/07/19 15:30:40 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.64  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.63  2004/06/12 03:57:56  gbeeley
     - mechanism to receive control messages from the server.  For NS4, it has
       to use a polled approach.  Not sure if Moz or IE will be better in this
@@ -411,17 +452,18 @@ htpageVerify()
     }
 
 int
-htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+//htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char *ptr;
     char *nptr;
     char name[64];
     int attract = 0;
-    pObject sub_w_obj;
+    pObject sub_tree;
     pObjQuery qy;
     int watchdogtimer;
     char bgstr[128];
-    int show;
+    int show, i, count;
     char kbfocus1[64];	/* kb focus = 3d raised */
     char kbfocus2[64];
     char msfocus1[64];	/* ms focus = black rectangle */
@@ -447,71 +489,71 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (z != 10) return 0;
 
     	/** Check for a title. **/
-	if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddHeaderItem_va(s, "    <TITLE>%s</TITLE>\n",ptr);
 	    }
 
     	/** Check for page load status **/
-	show = htrGetBoolean(w_obj, "loadstatus", 0);
+	show = htrGetBoolean(tree, "loadstatus", 0);
 
 	strcpy(bgstr, "");
 	/** Check for bgcolor. **/
-	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    snprintf(bgstr, 128, " BGCOLOR=%s", ptr);
 	    htrAddBodyParam_va(s, " BGCOLOR=%s",ptr);
 	    }
-	if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    snprintf(bgstr, 128, " BACKGROUND=\"%s\"", ptr);
 	    htrAddBodyParam_va(s, " BACKGROUND=\"%s\"",ptr);
 	    }
 
 	/** Check for text color **/
-	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddBodyParam_va(s, " TEXT=%s",ptr);
 	    }
 
 	/** Keyboard Focus Indicator colors 1 and 2 **/
-	if (objGetAttrValue(w_obj,"kbdfocus1",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"kbdfocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(kbfocus1,ptr,0,63);
 	    kbfocus1[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"kbdfocus2",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"kbdfocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(kbfocus2,ptr,0,63);
 	    kbfocus2[63]=0;
 	    }
 
 	/** Mouse Focus Indicator colors 1 and 2 **/
-	if (objGetAttrValue(w_obj,"mousefocus1",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"mousefocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(msfocus1,ptr,0,63);
 	    msfocus1[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"mousefocus2",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"mousefocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(msfocus2,ptr,0,63);
 	    msfocus2[63]=0;
 	    }
 
 	/** Data Focus Indicator colors 1 and 2 **/
-	if (objGetAttrValue(w_obj,"datafocus1",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"datafocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(dtfocus1,ptr,0,63);
 	    dtfocus1[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"datafocus2",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"datafocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(dtfocus2,ptr,0,63);
 	    dtfocus2[63]=0;
 	    }
 
 	/** Cx windows attract to browser edges? if so, by how much **/
-	if (objGetAttrValue(w_obj,"attract",DATA_T_INTEGER,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"attract",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    attract = (int)ptr;
 
 	/** Add global for page metadata **/
@@ -559,7 +601,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 
 	/** Write named global **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,'\0',63);
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
@@ -787,6 +829,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Check for more sub-widgets within the page. **/
+	/*
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
 	if (qy)
 	    {
@@ -796,6 +839,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		objClose(sub_w_obj);
 		}
 	    objQueryClose(qy);
+	    }
+	*/
+	count = xaCount(&(tree->Children));
+	for (i=0;i<count;i++)
+	    {
+	    htrRenderWidget(s, xaGetItem(&(tree->Children),i), z+1, parentname, "document");
 	    }
 
 #if 0

@@ -42,6 +42,46 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.20  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.19  2004/02/24 20:04:06  gbeeley
     - adding fgcolor support to label.
 
@@ -159,7 +199,7 @@ htlblVerify()
 /*** htlblRender - generate the HTML code for the label widget.
  ***/
 int
-htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htlblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -167,7 +207,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char main_bg[128];
     char fgcolor[64];
     int x=-1,y=-1,w,h;
-    int id;
+    int id, i;
     int fontsize;
     char* nptr;
     char *text;
@@ -184,20 +224,20 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTLBL.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTLBL","Label widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTLBL","Label widget must have a 'height' property");
 	    return -1;
 	    }
 
-	if(objGetAttrValue(w_obj,"text",DATA_T_STRING,POD(&ptr)) == 0)
+	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    text=nmMalloc(strlen(ptr)+1);
 	    strcpy(text,ptr);
@@ -209,17 +249,17 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** label text color **/
-	if (objGetAttrValue(w_obj,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    snprintf(fgcolor,sizeof(fgcolor)," color='%.40s'",ptr);
 	else
 	    fgcolor[0] = '\0';
 
 	/** font size in points **/
-	if (objGetAttrValue(w_obj,"fontsize",DATA_T_INTEGER,POD(&fontsize)) != 0)
+	if (wgtrGetPropertyValue(tree,"fontsize",DATA_T_INTEGER,POD(&fontsize)) != 0)
 	    fontsize = 3;
 
 	align[0]='\0';
-	if(objGetAttrValue(w_obj,"align",DATA_T_STRING,POD(&ptr)) == 0)
+	if(wgtrGetPropertyValue(tree,"align",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(align,ptr,0,63);
 	    align[63] = '\0';
@@ -230,15 +270,15 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 	
 	/** Background color/image? **/
-	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"bgcolor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
+	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -294,16 +334,8 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>%s</font></td></tr></table>\n",w,align,fontsize,fgcolor,text);
 
 	/** Check for more sub-widgets **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-		{
-		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, tree, z+1, parentname, nptr);
 
 	nmFree(text,strlen(text)+1);
 

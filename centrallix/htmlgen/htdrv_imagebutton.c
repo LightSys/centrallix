@@ -44,10 +44,50 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.27 2004/03/10 10:51:09 jasonyip Exp $
+    $Id: htdrv_imagebutton.c,v 1.28 2004/07/19 15:30:40 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.28  2004/07/19 15:30:40  mmcgill
+    The DHTML generation system has been updated from the 2-step process to
+    a three-step process:
+        1)	Upon request for an application, a widget-tree is built from the
+    	app file requested.
+        2)	The tree is Verified (not actually implemented yet, since none of
+    	the widget drivers have proper Verify() functions - but it's only
+    	a matter of a function call in net_http.c)
+        3)	The widget drivers are called on their respective parts of the
+    	tree structure to generate the DHTML code, which is then sent to
+    	the user.
+
+    To support widget tree generation the WGTR module has been added. This
+    module allows OSML objects to be parsed into widget-trees. The module
+    also provides an API for building widget-trees from scratch, and for
+    manipulating existing widget-trees.
+
+    The Render functions of all widget drivers have been updated to make their
+    calls to the WGTR module, rather than the OSML, and to take a pWgtrNode
+    instead of a pObject as a parameter.
+
+    net_internal_GET() in net_http.c has been updated to call
+    wgtrParseOpenObject() to make a tree, pass that tree to htrRender(), and
+    then free it.
+
+    htrRender() in ht_render.c has been updated to take a pWgtrNode instead of
+    a pObject parameter, and to make calls through the WGTR module instead of
+    the OSML where appropriate. htrRenderWidget(), htrRenderSubwidgets(),
+    htrGetBoolean(), etc. have also been modified appropriately.
+
+    I have assumed in each widget driver that w_obj->Session is equivelent to
+    s->ObjSession; in other words, that the object being passed in to the
+    Render() function was opened via the session being passed in with the
+    HtSession parameter. To my understanding this is a valid assumption.
+
+    While I did run through the test apps and all appears to be well, it is
+    possible that some bugs were introduced as a result of the modifications to
+    all 30 widget drivers. If you find at any point that things are acting
+    funny, that would be a good place to check.
+
     Revision 1.27  2004/03/10 10:51:09  jasonyip
 
     These are the latest IE-Port files.
@@ -227,7 +267,7 @@ htibtnVerify()
 /*** htibtnRender - generate the HTML code for the page.
  ***/
 int
-htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
     {
     char* ptr;
     char name[64];
@@ -236,10 +276,8 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char c_img[128];
     char d_img[128];
     int is_enabled = 1;
-    pObject sub_w_obj;
-    pObjQuery qy;
     int x,y,w,h;
-    int id;
+    int id, i;
     char* nptr;
     pExpression code;
 
@@ -253,37 +291,37 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTIBTN.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
+	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
+	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
 	/** Get normal, point, and click images **/
-	if (objGetAttrValue(w_obj,"image",DATA_T_STRING,POD(&ptr)) != 0) 
+	if (wgtrGetPropertyValue(tree,"image",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have an 'image' property");
 	    return -1;
 	    }
 	memccpy(n_img,ptr,'\0',127);
 	n_img[127]=0;
-	if (objGetAttrValue(w_obj,"pointimage",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"pointimage",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(p_img,ptr,'\0',127);
 	    p_img[127]=0;
@@ -292,7 +330,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    strcpy(p_img, n_img);
 	    }
-	if (objGetAttrValue(w_obj,"clickimage",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"clickimage",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(c_img,ptr,'\0',127);
 	    c_img[127]=0;
@@ -301,7 +339,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    strcpy(c_img, p_img);
 	    }
-	if (objGetAttrValue(w_obj,"disabledimage",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree,"disabledimage",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(d_img,ptr,'\0',127);
 	    d_img[127]=0;
@@ -311,7 +349,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    strcpy(d_img, n_img);
 	    }
 
-	if (objGetAttrType(w_obj,"enabled") == DATA_T_STRING && objGetAttrValue(w_obj,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
+	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_STRING && wgtrGetPropertyValue(tree,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
 	    {
 	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
 	    }
@@ -328,9 +366,9 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
 
 	/** User requesting expression for enabled? **/
-	if (objGetAttrType(w_obj,"enabled") == DATA_T_CODE)
+	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
 	    {
-	    objGetAttrValue(w_obj,"enabled",DATA_T_CODE,POD(&code));
+	    wgtrGetPropertyValue(tree,"enabled",DATA_T_CODE,POD(&code));
 	    is_enabled = 0;
 	    htrAddExpression(s, name, "enabled", code);
 	    }
@@ -414,16 +452,8 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n");
 
 	/** Check for more sub-widgets within the imagebutton. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
 
     return 0;
     }
