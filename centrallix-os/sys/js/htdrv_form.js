@@ -864,7 +864,17 @@ function form_cb_reveal(element,event)
     return 0;
     }
 
-/** Form initializer **/
+/** Form initializer
+ ** aq - allow query?
+ ** an - allow new?
+ ** am - allow modify?
+ ** av - allow view?
+ ** and - allow no-data?
+ ** me - multi-entry mode?
+ ** name - name of the form
+ ** _3b - three-button confirm window
+ ** ro - is the form readonly?
+ **/
 function form_init(aq,an,am,av,and,me,name,_3b,ro)
     {
     var form = new Object();

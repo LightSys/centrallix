@@ -325,10 +325,9 @@ function cx_hints_startmodify(e)
 
 // cx_hints_checkmodify() - validate a modified value; returns ov if nv
 // is not valid, or nv if the new value is valid.  May return a 
-// modified new value.
-function cx_hints_checkmodify(e, ov, nv)
+// modified new value. type is 
+function cx_hints_checkmodify(e, ov, nv, type)
     {
-
 	// no change or no hints?
 	if (ov == nv || !e.cx_hints) return nv;
 	var h = e.cx_hints['all'];

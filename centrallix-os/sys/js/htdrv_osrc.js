@@ -525,9 +525,10 @@ function osrc_fetch_next()
 	this.replica[this.OSMLRecord][colnum]['value'] = htutil_rtrim(unescape(lnk[i].text));
 	this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);
 	this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;
+	pg_dbg_msg('type of '+lnk[i].host+' is '+lnk[i].hash.substr(1));
 	/** MJM - this is actually done in the form widget. We need only save the hint string **/
 	//this.replica[this.OSMLRecord][colnum]['hints'] = cx_parse_hints(lnk[i].search);
-	this.replica[this.OSMLRecord][colnum].hints = lnk[i].search;	// scope issues?
+	this.replica[this.OSMLRecord][colnum].hints = lnk[i].search;
 	}
 /** make sure we bring this.LastRecord back down to the top of our replica...**/
     while(!this.replica[this.LastRecord])

@@ -107,7 +107,7 @@ function eb_keyhandler(l,e,k)
 	}
     if (k >= 32 && k < 127)
 	{
-	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length));
+	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length), l._form_type);
 	if (newtxt != txt)
 	    {
 	    l.cursorCol++;
