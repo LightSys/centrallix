@@ -39,16 +39,6 @@ Where options is:
     -h
         Print this text.
 
-    --context=#
-    -C #
-        Include # lines of context around lines that differ (default: 2).
-
-    -c
-        Produce a context diff (default).
-
-    -u
-        Produce a unified diff (smaller, but harder to read).
-
     <%%S>
         CVS %%s loginfo expansion.  When invoked by CVS, this will be a single
         string containing the directory the checkin is being made in, relative
@@ -87,7 +77,7 @@ def usage(code, msg=''):
 
 
 
-def calculate_diff(filespec, contextlines):
+def calculate_diff(filespec):
     try:
         file, oldrev, newrev = string.split(filespec, ',')
     except ValueError:
@@ -102,7 +92,7 @@ def calculate_diff(filespec, contextlines):
                 fp = os.popen(update_cmd)
             lines = fp.readlines()
             fp.close()
-            lines.insert(0, '--- NEW FILE: %s ---\n' % file)
+            lines.insert(0, '--- NEW FILE ---\n')
         except IOError, e:
             lines = ['***** Error reading new file: ',
                      str(e), '\n***** file: ', file, ' cwd: ', os.getcwd()]
@@ -111,12 +101,8 @@ def calculate_diff(filespec, contextlines):
     else:
         # This /has/ to happen in the background, otherwise we'll run into CVS
         # lock contention.  What a crock.
-        if contextlines > 0:
-            difftype = "-C " + str(contextlines)
-        else:
-            difftype = "-u"
-        diffcmd = "/usr/bin/cvs -f diff -kk %s --minimal -r %s -r %s '%s'" % (
-            difftype, oldrev, newrev, file)
+        diffcmd = '/usr/bin/cvs -f diff -u -w -kk -r %s -r %s %s' % (
+            oldrev, newrev, file)
         fp = os.popen(diffcmd)
         lines = fp.readlines()
         sts = fp.close()
@@ -132,7 +118,7 @@ def calculate_diff(filespec, contextlines):
 
 
 
-def blast_mail(mailcmd, filestodiff, contextlines):
+def blast_mail(mailcmd, filestodiff):
     # cannot wait for child process or that will cause parent to retain cvs
     # lock for too long.  Urg!
     if not os.fork():
@@ -144,7 +130,7 @@ def blast_mail(mailcmd, filestodiff, contextlines):
         fp.write('\n')
         # append the diffs if available
         for file in filestodiff:
-            fp.write(calculate_diff(file, contextlines))
+            fp.write(calculate_diff(file))
             fp.write('\n')
         fp.close()
         # doesn't matter what code we return, it isn't waited on
@@ -154,10 +140,8 @@ def blast_mail(mailcmd, filestodiff, contextlines):
 
 # scan args for options
 def main():
-    contextlines = 2
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hC:cu',
-                                   ['context=', 'cvsroot=', 'help'])
+        opts, args = getopt.getopt(sys.argv[1:], 'h', ['cvsroot=', 'help'])
     except getopt.error, msg:
         usage(1, msg)
 
@@ -167,13 +151,6 @@ def main():
             usage(0)
         elif opt == '--cvsroot':
             os.environ['CVSROOT'] = arg
-        elif opt in ('-C', '--context'):
-            contextlines = int(arg)
-        elif opt == '-c':
-            if contextlines <= 0:
-                contextlines = 2
-        elif opt == '-u':
-            contextlines = 0
 
     # What follows is the specification containing the files that were
     # modified.  The argument actually must be split, with the first component
@@ -198,17 +175,8 @@ def main():
         return
     if specs[-3:] == ['-', 'New', 'directory']:
         del specs[-3:]
-    elif len(specs) > 2:
-        L = specs[:2]
-        for s in specs[2:]:
-            prev = L[-1]
-            if string.count(prev, ",") < 2:
-                L[-1] = "%s %s" % (prev, s)
-            else:
-                L.append(s)
-        specs = L
     print 'Generating notification message...'
-    blast_mail(mailcmd, specs[1:], contextlines)
+    blast_mail(mailcmd, specs[1:])
     print 'Generating notification message... done.'
 
 
