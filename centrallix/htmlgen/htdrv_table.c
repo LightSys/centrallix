@@ -59,10 +59,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.13 2002/05/30 05:01:31 jorupp Exp $
+    $Id: htdrv_table.c,v 1.14 2002/05/31 02:40:38 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.14  2002/05/31 02:40:38  lkehresman
+    Added a horrible hack to fix the hang problem.  The previous hack involved
+    alert windows.  This one is at least transparent (as it uses a while loop
+    to pause).  Still VERY ugly, but I have no other ideas.
+
     Revision 1.13  2002/05/30 05:01:31  jorupp
      * OSRC has a Sync Action (best used to tie two OSRCs together on a table selection)
      * NOTE: with multiple tables in an app file, netscape seems to like to hang (the JS engine at least)
@@ -511,7 +516,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    t.subkind='table';\n"
 		"    t.document.layer=t;\n"
 		"    var voffset=0;\n"
-		"    //alert('a'); // HANG ALERT -- UNCOMMENT THIS IF NETSCAPE HANGS!!\n"
+		"    var q=0; while (q<10000) { q++; }\n" // HORRIBLE HACK!! I HATE NETSCAPE FOR MAKING ME DO THIS! 
 		/** build layers **/
 		"    for(var i=0;i<t.windowsize+1;i++)\n"
 		"        {\n"
