@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.4 2003/02/28 16:36:48 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.5 2003/03/01 07:24:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.5  2003/03/01 07:24:02  gbeeley
+    Ok.  Balanced columns now working pretty well.  Algorithm is currently
+    somewhat O(N^2) however, and is thus a bit expensive, but still not
+    bad.  Some algorithmic improvements still possible with both word-
+    wrapping and column balancing, but this is 'good enough' for the time
+    being, I think ;)
+
     Revision 1.4  2003/02/28 16:36:48  gbeeley
     Fixed most problems with balanced mode multi-column sections.  Still
     a couple of them remain and require some restructuring, so doing a
@@ -151,6 +158,8 @@ prt_collm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    new_object = prt_internal_AllocObjByID(parent->ObjType->TypeID);
 	    prt_internal_CopyAttrs(parent, new_object);
 	    prt_internal_CopyGeom(parent, new_object);
+	    new_object->Height = parent->ConfigHeight;
+	    new_object->Width = parent->ConfigWidth;
 	    new_object->Session = parent->Session;
 	    new_object->Flags = parent->Flags;
 
@@ -468,6 +477,7 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 	/** section objects have a minimum height of one LineHeight. **/
 	if (this->Height < this->LineHeight + this->MarginTop + this->MarginBottom) 
 	    this->Height = this->LineHeight + this->MarginTop + this->MarginBottom;
+	this->ConfigHeight = this->Height;
 
 	/** Allocate our layout manager specific info **/
 	lm_inf = (pPrtColLMData)nmMalloc(sizeof(PrtColLMData));

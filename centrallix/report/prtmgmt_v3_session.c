@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.6 2003/02/27 22:02:25 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.7 2003/03/01 07:24:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.7  2003/03/01 07:24:02  gbeeley
+    Ok.  Balanced columns now working pretty well.  Algorithm is currently
+    somewhat O(N^2) however, and is thus a bit expensive, but still not
+    bad.  Some algorithmic improvements still possible with both word-
+    wrapping and column balancing, but this is 'good enough' for the time
+    being, I think ;)
+
     Revision 1.6  2003/02/27 22:02:25  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -145,6 +152,8 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	page_os->Flags &= ~PRT_OBJ_F_REQCOMPLETE;   /* disallow reqcomplete on a page */
 	page_os->Width = 80;
 	page_os->Height = 60;
+	page_os->ConfigWidth = 80;
+	page_os->ConfigHeight = 60;
 	prt_internal_Add(this->StreamHead, page_os);
 
 	/** Create a handle for the initial page. **/
@@ -212,6 +221,8 @@ prtSetPageGeometry(pPrtSession s, double width, double height)
 	    for(obj=s->StreamHead->ContentHead;obj;obj=obj->Next)
 		{
 		obj->LayoutMgr->Resize(obj,s->PageWidth,s->PageHeight);
+		obj->ConfigWidth = obj->Width;
+		obj->ConfigHeight = obj->Height;
 		}
 	    }
 

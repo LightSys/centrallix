@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.3 2003/02/25 03:57:50 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.4 2003/03/01 07:24:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.4  2003/03/01 07:24:02  gbeeley
+    Ok.  Balanced columns now working pretty well.  Algorithm is currently
+    somewhat O(N^2) however, and is thus a bit expensive, but still not
+    bad.  Some algorithmic improvements still possible with both word-
+    wrapping and column balancing, but this is 'good enough' for the time
+    being, I think ;)
+
     Revision 1.3  2003/02/25 03:57:50  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -98,6 +105,8 @@ prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
 	    if (!next_page) return -1;
 	    prt_internal_CopyAttrs(this, next_page);
 	    prt_internal_CopyGeom(this, next_page);
+	    next_page->Height = this->ConfigHeight;
+	    next_page->Width = this->ConfigWidth;
 	    next_page->Session = this->Session;
 	    next_page->Flags = this->Flags;
 	    prt_internal_Add(this->Parent, next_page);
@@ -227,6 +236,8 @@ prt_pagelm_InitContainer(pPrtObjStream this, va_list va)
 	    page_obj->Y = 0.0;
 	    page_obj->Width = PRTSESSION(this)->PageWidth;
 	    page_obj->Height = PRTSESSION(this)->PageHeight;
+	    page_obj->ConfigWidth = PRTSESSION(this)->PageWidth;
+	    page_obj->ConfigHeight = PRTSESSION(this)->PageHeight;
 	    page_obj->Session = this->Session;
 	    page_obj->Flags |= PRT_OBJ_F_ALLOWBREAK;
 	    page_obj->ObjID = 1;

@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.9 2003/02/27 22:02:20 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.10 2003/03/01 07:24:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.10  2003/03/01 07:24:02  gbeeley
+    Ok.  Balanced columns now working pretty well.  Algorithm is currently
+    somewhat O(N^2) however, and is thus a bit expensive, but still not
+    bad.  Some algorithmic improvements still possible with both word-
+    wrapping and column balancing, but this is 'good enough' for the time
+    being, I think ;)
+
     Revision 1.9  2003/02/27 22:02:20  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -254,6 +261,8 @@ prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst)
 	/** Copy just the formatting attributes, nothing else **/
 	dst->Height = src->Height;
 	dst->Width = src->Width;
+	dst->ConfigHeight = src->ConfigHeight;
+	dst->ConfigWidth = src->ConfigWidth;
 	dst->X = src->X;
 	dst->Y = src->Y;
 	dst->MarginLeft = src->MarginLeft;
@@ -538,7 +547,8 @@ prt_internal_GetPage(pPrtObjStream obj)
 
 
 /*** prt_internal_CreateEmptyObj() - creates an empty object but does not 
- *** add it to the container.
+ *** add it to the container.  We make sure the content has room to be 
+ *** expanded to a single space (for resolving reflow / unwordwrap stuff).
  ***/
 pPrtObjStream
 prt_internal_CreateEmptyObj(pPrtObjStream container)
@@ -550,7 +560,8 @@ prt_internal_CreateEmptyObj(pPrtObjStream container)
 
 	obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
 	obj->Session = container->Session;
-	obj->Content = nmSysStrdup("");
+	obj->Content = nmSysMalloc(2);
+	obj->Content[0] = '\0';
 	obj->Width = 0.0;
 	prev_obj = (container->ContentTail)?(container->ContentTail):container;
 	prt_internal_CopyAttrs(prev_obj, obj);
@@ -604,11 +615,13 @@ prt_internal_Dump_r(pPrtObjStream obj, int level)
 	    case PRT_OBJ_T_PAGE: printf("PAGE: "); break;
 	    case PRT_OBJ_T_AREA: printf("AREA: "); break;
 	    case PRT_OBJ_T_STRING: printf("STRG(%s): ", obj->Content); break;
+	    case PRT_OBJ_T_SECTION: printf("SECT: "); break;
+	    case PRT_OBJ_T_SECTCOL: printf("COLM: "); break;
 	    }
-	printf("x=%.3g y=%.3g w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g\n",
+	printf("x=%.3g y=%.3g w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g flg=%d\n",
 		obj->X, obj->Y, obj->Width, obj->Height,
 		obj->PageX, obj->PageY, obj->YBase, obj->TextStyle.FontSize,
-		obj->Y + obj->YBase);
+		obj->Y + obj->YBase, obj->Flags);
 	for(subobj=obj->ContentHead;subobj;subobj=subobj->Next)
 	    {
 	    prt_internal_Dump_r(subobj, level+1);

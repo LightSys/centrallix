@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.10 2003/02/28 16:36:46 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.11 2003/03/01 07:24:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.11  2003/03/01 07:24:01  gbeeley
+    Ok.  Balanced columns now working pretty well.  Algorithm is currently
+    somewhat O(N^2) however, and is thus a bit expensive, but still not
+    bad.  Some algorithmic improvements still possible with both word-
+    wrapping and column balancing, but this is 'good enough' for the time
+    being, I think ;)
+
     Revision 1.10  2003/02/28 16:36:46  gbeeley
     Fixed most problems with balanced mode multi-column sections.  Still
     a couple of them remain and require some restructuring, so doing a
@@ -272,6 +279,7 @@ prtSetTextStyle(int handle_id, pPrtTextStyle style)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -287,11 +295,12 @@ prtSetTextStyle(int handle_id, pPrtTextStyle style)
 	memcpy(&(set_obj->TextStyle), style, sizeof(PrtTextStyle));
 	set_obj->LineHeight = style->FontSize/12.0;
 	set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	set_obj->ConfigHeight = set_obj->Height;
 	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -331,6 +340,7 @@ prtSetAttr(int handle_id, int attrs)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -340,7 +350,7 @@ prtSetAttr(int handle_id, int attrs)
 	set_obj = prt_internal_AddEmptyObj(obj);
 	set_obj->TextStyle.Attr = attrs;
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -377,6 +387,7 @@ prtSetFont(int handle_id, char* fontname)
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
     int newid;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -393,12 +404,15 @@ prtSetFont(int handle_id, char* fontname)
 	if (newid < 0) return -1;
 	set_obj->TextStyle.FontID = newid; 
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    {
 	    set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	    set_obj->ConfigHeight = set_obj->Height;
+	    }
 	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -437,6 +451,7 @@ prtSetFontSize(int handle_id, int fontsize)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -452,12 +467,15 @@ prtSetFontSize(int handle_id, int fontsize)
 	set_obj->TextStyle.FontSize = fontsize;
 	set_obj->LineHeight = fontsize/12.0;
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    {
 	    set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	    set_obj->ConfigHeight = set_obj->Height;
+	    }
 	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -494,6 +512,7 @@ prtSetColor(int handle_id, int color)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -503,7 +522,7 @@ prtSetColor(int handle_id, int color)
 	set_obj = prt_internal_AddEmptyObj(obj);
 	set_obj->TextStyle.Color = color;
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -540,6 +559,7 @@ prtSetHPos(int handle_id, double x)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream tgt_obj;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -562,7 +582,7 @@ prtSetHPos(int handle_id, double x)
 	    return -1;
 	    }
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -576,6 +596,7 @@ prtSetVPos(int handle_id, double y)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream tgt_obj;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj and its type (must be an AREA) **/
 	if (!obj) return -1;
@@ -598,7 +619,7 @@ prtSetVPos(int handle_id, double y)
 	    return -1;
 	    }
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -637,12 +658,14 @@ prtWriteString(int handle_id, char* str)
 	    string_obj->Session = obj->Session;
 
 	    /** Format it and add it to the container **/
-	    string_obj->Content = nmSysMalloc(len+1);
+	    string_obj->Content = nmSysMalloc(len+2);
 	    strncpy(string_obj->Content, str, len);
 	    string_obj->Content[len] = 0;
 	    prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,string_obj);
 	    string_obj->Width = prt_internal_GetStringWidth(obj->ContentTail, string_obj->Content, -1);
+	    string_obj->ConfigWidth = string_obj->Width;
 	    string_obj->Height = prt_internal_GetFontHeight(string_obj);
+	    string_obj->ConfigHeight = string_obj->Height;
 	    string_obj->YBase = prt_internal_GetFontBaseline(string_obj);
 	    rval = obj->LayoutMgr->AddObject(obj,string_obj);
 	    if (rval < 0) break;
@@ -664,6 +687,7 @@ prtWriteString(int handle_id, char* str)
 		    {
 		    x = floor(floor((obj->ContentTail->X + obj->ContentTail->Width)/8.0 + 0.00000001)*8.0 + 8.00000001);
 		    rval = prtSetHPos(handle_id, x);
+		    if (rval < 0) rval = prtWriteNL(handle_id);
 		    if (rval < 0) break;
 		    }
 		else if (*special_char_ptr == '\14')
@@ -695,6 +719,7 @@ prtWriteNL(int handle_id)
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream nl_obj;
     int rval;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -704,15 +729,18 @@ prtWriteNL(int handle_id)
 	nl_obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
 	if (!nl_obj) return -1;
 	nl_obj->Session = obj->Session;
-	nl_obj->Content = nmSysStrdup("");
+	nl_obj->Content = nmSysMalloc(2);
+	nl_obj->Content[0] = '\0';
 	nl_obj->Width = 0.0;
+	nl_obj->ConfigWidth = 0.0;
 	prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,nl_obj);
 	nl_obj->Height = prt_internal_GetFontHeight(nl_obj);
+	nl_obj->ConfigHeight = nl_obj->Height;
 	nl_obj->YBase = prt_internal_GetFontBaseline(nl_obj);
 	nl_obj->Flags |= PRT_OBJ_F_NEWLINE;
 	rval = obj->LayoutMgr->AddObject(obj,nl_obj);
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return rval;
     }
@@ -727,6 +755,7 @@ prtWriteFF(int handle_id)
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream new_obj;
     int rval;
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -736,7 +765,7 @@ prtWriteFF(int handle_id)
 	if (!(obj->Flags & PRT_OBJ_F_ALLOWHARDBREAK)) return -1;
 	rval = obj->LayoutMgr->Break(obj, &new_obj);
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return rval;
     }
@@ -757,6 +786,7 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream new_obj;
     int new_handle_id; 
+    pPrtSession s = PRTSESSION(obj);
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -771,6 +801,8 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	new_obj->Flags |= (flags & PRT_OBJ_UFLAGMASK);
 	new_obj->Height = height;
 	new_obj->Width = width;
+	new_obj->ConfigHeight = height;
+	new_obj->ConfigWidth = width;
 	if (flags & PRT_OBJ_U_XSET)
 	    new_obj->X = x;
 	else
@@ -793,7 +825,7 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	/** Add the object to the given parent object. **/
 	obj->LayoutMgr->AddObject(obj, new_obj);
 
-	prt_internal_DispatchEvents(PRTSESSION(obj));
+	prt_internal_DispatchEvents(s);
 
     return new_handle_id;
     }

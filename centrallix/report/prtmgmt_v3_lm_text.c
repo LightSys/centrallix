@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "barcode.h"
 #include "report.h"
 #include "mtask.h"
@@ -52,10 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.13 2003/02/28 16:36:48 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.14 2003/03/01 07:24:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.14  2003/03/01 07:24:02  gbeeley
+    Ok.  Balanced columns now working pretty well.  Algorithm is currently
+    somewhat O(N^2) however, and is thus a bit expensive, but still not
+    bad.  Some algorithmic improvements still possible with both word-
+    wrapping and column balancing, but this is 'good enough' for the time
+    being, I think ;)
+
     Revision 1.13  2003/02/28 16:36:48  gbeeley
     Fixed most problems with balanced mode multi-column sections.  Still
     a couple of them remain and require some restructuring, so doing a
@@ -145,8 +153,7 @@
  **END-CVSDATA***********************************************************/
 
 
-#define PRT_TEXTLM_F_RMSPACE	PRT_OBJ_F_LMFLAG1	/* space was removed */
-#define PRT_TEXTLM_F_NLBREAK	PRT_OBJ_F_LMFLAG2	/* NL caused Break */
+#define PRT_TEXTLM_F_RMSPACE	PRT_OBJ_F_LMFLAG1	/* space was removed at end */
 
 
 /*** prt_textlm_Break() - performs a break operation on this area, which 
@@ -177,6 +184,8 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    new_object = prt_internal_AllocObjByID(this->ObjType->TypeID);
 	    prt_internal_CopyAttrs(this, new_object);
 	    prt_internal_CopyGeom(this, new_object);
+	    new_object->Height = this->ConfigHeight;
+	    new_object->Width = this->ConfigWidth;
 	    new_object->Session = this->Session;
 	    new_object->Flags = this->Flags;
 
@@ -287,22 +296,23 @@ prt_textlm_LineGeom(pPrtObjStream starting_point, double* bottom, double* top)
 	*top = 9999999.0;
 
 	/** Scan forwards first **/
-	for(scan=starting_point; scan && !(scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)); scan=scan->Next)
-	    {
-	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND) && scan->Y + scan->Height > *bottom) 
-	        *bottom = scan->Y + scan->Height;
-	    if (scan->Y < *top) 
-	        *top = scan->Y;
-	    }
-
-	/** Now scan backwards **/
-	for(scan=starting_point; scan; scan=scan->Prev)
+	for(scan=starting_point; scan; scan=scan->Next)
 	    {
 	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND) && scan->Y + scan->Height > *bottom) 
 	        *bottom = scan->Y + scan->Height;
 	    if (scan->Y < *top) 
 	        *top = scan->Y;
 	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
+	    }
+
+	/** Now scan backwards **/
+	for(scan=starting_point; scan; scan=scan->Prev)
+	    {
+	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
+	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND) && scan->Y + scan->Height > *bottom) 
+	        *bottom = scan->Y + scan->Height;
+	    if (scan->Y < *top) 
+	        *top = scan->Y;
 	    }
 
     return 0;
@@ -318,22 +328,23 @@ prt_textlm_UpdateLineY(pPrtObjStream starting_point, double y_offset)
     pPrtObjStream scan;
 
 	/** Scan forwards first **/
-	for(scan=starting_point; scan && !(scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)); scan=scan->Next)
-	    {
-	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND)) 
-		{
-		scan->Y += y_offset;
-		}
-	    }
-
-	/** Now scan backwards **/
-	for(scan=starting_point->Prev; scan; scan=scan->Prev)
+	for(scan=starting_point; scan; scan=scan->Next)
 	    {
 	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND)) 
 		{
 		scan->Y += y_offset;
 		}
 	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
+	    }
+
+	/** Now scan backwards **/
+	for(scan=starting_point->Prev; scan; scan=scan->Prev)
+	    {
+	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
+	    if (!(scan->Flags & PRT_OBJ_F_FLOWAROUND)) 
+		{
+		scan->Y += y_offset;
+		}
 	    }
 
     return 0;
@@ -352,16 +363,17 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     int n_items;
 
 	/** Locate the beginning and end of the line **/
+	start = scan;
 	for(scan=starting_point; scan; scan=scan->Prev)
 	    {
-	    start = scan;
 	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_XSET)) break;
+	    start = scan;
 	    }
 	end = scan;
 	for(scan=starting_point; scan; scan=scan->Next)
 	    {
-	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_XSET)) break;
 	    end = scan;
+	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_XSET)) break;
 	    }
 
 	/** Compute the amount of "slack space" in the region.  We need to count
@@ -432,7 +444,7 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 int
 prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint, double* brkwidth)
     {
-    int sl,n,last_sep;
+    int sl,n,last_sep,sw;
     double lastw, w, ckw;
 
 	/** If empty, we can't wrap it!! **/
@@ -455,6 +467,17 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 		{
 		last_sep = n;
 		lastw = w;
+		}
+
+	    /** Catch hyphens where the objects are already split **/
+	    if (n == 0 && stringobj->Content[0] >= 'A' && stringobj->Prev && stringobj->Prev->ObjType->TypeID == PRT_OBJ_T_STRING)
+		{
+		sw = strlen(stringobj->Prev->Content);
+		if (sw > 1 && stringobj->Prev->Content[sw-1] == '-' && stringobj->Prev->Content[sw-2] >= 'A')
+		    {
+		    last_sep = n;
+		    lastw = w;
+		    }
 		}
 
 	    /** Is that all that will fit? **/
@@ -502,22 +525,46 @@ pPrtObjStream
 prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, double new_width)
     {
     pPrtObjStream split_obj;
+    int n;
 
+	/** Create a new object for the second half of the string **/
 	split_obj = prt_internal_AllocObj("string");
 	split_obj->Session = stringobj->Session;
 	split_obj->Justification = stringobj->Justification;
 	prt_internal_CopyAttrs(stringobj, split_obj);
-	split_obj->Content = nmSysStrdup(stringobj->Content+splitpt+splitlen);
+
+	/** Copy the second part of the content; leave room to add a space if needed 
+	 ** later during a reflow 
+	 **/
+	n = strlen(stringobj->Content+splitpt+splitlen);
+	split_obj->Content = nmSysMalloc(n+2);
+	strcpy(split_obj->Content, stringobj->Content+splitpt+splitlen);
+
+	/** Truncate the first string to give the first part. **/
 	stringobj->Content[splitpt] = '\0';
 	if (new_width >= 0)
 	    stringobj->Width = new_width;
 	else
 	    stringobj->Width = prt_internal_GetStringWidth(stringobj, stringobj->Content, -1);
-	if (stringobj->Flags & PRT_TEXTLM_F_RMSPACE)
+
+	/** Transfer newlines or rmspace flags to the second half **/
+	if (stringobj->Flags & PRT_TEXTLM_F_RMSPACE && n > 0)
 	    {
 	    split_obj->Flags |= PRT_TEXTLM_F_RMSPACE;
 	    stringobj->Flags &= ~PRT_TEXTLM_F_RMSPACE;
 	    }
+	if (stringobj->Flags & PRT_OBJ_F_NEWLINE)
+	    {
+	    split_obj->Flags |= PRT_OBJ_F_NEWLINE;
+	    stringobj->Flags &= ~PRT_OBJ_F_NEWLINE;
+	    }
+	if (stringobj->Flags & PRT_OBJ_F_SOFTNEWLINE)
+	    {
+	    split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+	    stringobj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
+	    }
+
+	/** Set up the second half of the string's width etc **/
 	if (splitlen == 1) stringobj->Flags |= PRT_TEXTLM_F_RMSPACE;
 	split_obj->Height = stringobj->Height;
 	split_obj->YBase = stringobj->YBase;
@@ -526,6 +573,152 @@ prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, doubl
     return split_obj;
     }
 
+
+/*** prt_textlm_WordWrap() - this does the word wrapping logic by finding
+ *** a suitable point, given the current object and those already
+ *** in the area's content, and then splitting the appropriate object
+ *** up and returning the new split-off chain of objects.
+ ***
+ *** This function *may* modify the existing content of the area if
+ *** it has to search backwards for the wrap point far enough.
+ ***
+ *** NOTE: the ->Prev pointer on the first returned list item will point to
+ *** the last one in the list for convenience.  Be sure to appropriately
+ *** account for that as needed.
+ ***/
+pPrtObjStream
+prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
+    {
+    double maxw;
+    pPrtObjStream search;
+    pPrtObjStream splitlist=NULL;
+    pPrtObjStream splitobj;
+    pPrtObjStream oldcurobj;
+    int rval,n;
+    int sep,worstcasesep=-1;
+    double sepw,worstcasesepw;
+
+	/** First, temporarily add the curobj to the area's content **/
+	oldcurobj = *curobj;
+	prt_internal_Add(area, *curobj);
+
+	/** Search for the appropriate point **/
+	search = area->ContentTail;
+	while(1)
+	    {
+	    /** Can we wrap in the selected object? **/
+	    maxw = area->Width - area->MarginLeft - area->MarginRight - search->X;
+	    rval = prt_textlm_FindWrapPoint(search, maxw, &sep, &sepw);
+
+	    /** Could wrap? **/
+	    if (rval == 0 || (rval == 1 && sep >= 0)) break;
+
+	    /** If tail object, record worst case wrap point. **/
+	    if (search == area->ContentTail)
+		{
+		worstcasesep = sep;
+		worstcasesepw = sepw;
+		}
+
+	    /** Try previous objects. **/
+	    if (search->Prev && !(search->Prev->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) &&
+		    search->Prev->ObjType->TypeID == PRT_OBJ_T_STRING && !(search->Flags & PRT_OBJ_F_XSET) &&
+		    search->Y == search->Prev->Y)
+		{
+		search = search->Prev;
+		}
+	    else
+		{
+		search = area->ContentTail;
+		sep = worstcasesep;
+		sepw = worstcasesepw;
+		break;
+		}
+	    }
+
+	/** Ok, found a wrap point.  Split the thing?  At the end of this
+	 ** stuff, the 'search' pointer should point to the object beginning
+	 ** the new line.
+	 **/
+	n = strlen(search->Content);
+	if (sep == 0 && search->Content[0] != ' ')
+	    {
+	    /** No good split point; split must occur with this object. **/
+	    assert(search->Prev != NULL);
+	    search->Prev->Flags |= (PRT_OBJ_F_SOFTNEWLINE);
+	    splitobj = NULL;
+	    }
+	else if (sep == 0)
+	    {
+	    /** object begins w/ a space - no split, just remove the space
+	     ** and get on with it.  Soft newline and space removal indicators
+	     ** belong to previous object, for sanity's sake.
+	     **/
+	    memmove(search->Content, search->Content+1, n);
+	    search->Width -= prt_internal_GetStringWidth(search, " ", 1);
+	    assert(search->Prev != NULL);
+	    search->Prev->Flags |= (PRT_TEXTLM_F_RMSPACE | PRT_OBJ_F_SOFTNEWLINE);
+	    splitobj = NULL;
+	    }
+	else if (sep == n-1 && search->Content[sep] == ' ')
+	    {
+	    /** removing a single space at the end.  Again, no split, just
+	     ** remove the space and get on with things.
+	     **/
+	    search->Content[n-1] = '\0';
+	    search->Width -= prt_internal_GetStringWidth(search, " ", 1);
+	    search->Flags |= (PRT_TEXTLM_F_RMSPACE | PRT_OBJ_F_SOFTNEWLINE);
+	    search = search->Next;
+	    splitobj = NULL;
+	    }
+	else
+	    {
+	    /** Need to split the object. **/
+	    splitobj = prt_textlm_SplitString(search, sep, (search->Content[sep]==' ')?1:0, sepw);
+	    splitobj->Justification = area->Justification;
+	    search->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+	    splitobj->Prev = search;
+	    splitobj->Next = search->Next;
+	    search->Next = splitobj;
+	    if (splitobj->Next) splitobj->Next->Prev = splitobj;
+	    search = splitobj;
+	    }
+
+	/** Grab the list of split-off objects starting at 'search'.  We
+	 ** may need to go one further back to grab curobj if it is still
+	 ** there.
+	 **/
+	if (search)
+	    {
+	    splitlist = search;
+	    }
+	else
+	    {
+	    splitlist = *curobj;
+	    }
+	if (splitlist->Prev == *curobj) splitlist=splitlist->Prev;
+	area->ContentTail = splitlist->Prev;
+	splitlist->Prev->Next = NULL;
+	splitlist->Prev = NULL;
+	splitlist->Parent = NULL;
+
+	/** Get ourselves a 'curobj' again. **/
+	*curobj = splitlist;
+	splitlist = splitlist->Next;
+	(*curobj)->Next = NULL;
+	(*curobj)->Prev = NULL;
+
+	/** Set up the tail pointer on the splitlist **/
+	if (splitlist)
+	    {
+	    if (!(splitlist->Next)) 
+		splitlist->Prev = splitlist;
+	    else
+		splitlist->Prev = oldcurobj;
+	    }
+
+    return splitlist;
+    }
 
 
 /*** prt_textlm_ChildResizeReq() - this is called when a child object
@@ -558,24 +751,47 @@ prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_widt
  *** given objects by restoring the space to one of them as needed.
  ***/
 int
-prt_textlm_UndoWrap(pPrtObjStream obj1, pPrtObjStream obj2)
+prt_textlm_UndoWrap(pPrtObjStream obj)
     {
     int n;
-    char* newptr;
 
-	n = strlen(obj1->Content);
-	if (obj1->Flags & PRT_TEXTLM_F_RMSPACE)
+	/** We can just use the extra byte in the string since we made sure
+	 ** anything with an RMSPACE flag has extra space allocated, either
+	 ** inherently or because we forced it.
+	 **/
+	if (obj->Flags & PRT_TEXTLM_F_RMSPACE)
 	    {
-	    obj1->Flags &= ~PRT_TEXTLM_F_RMSPACE;
-	    newptr = nmSysMalloc(strlen(obj2->Content)+2);
-	    strcpy(newptr+1, obj2->Content);
-	    newptr[0] = ' ';
-	    nmSysFree(obj2->Content);
-	    obj2->Content = newptr;
-	    obj2->Width = prt_internal_GetStringWidth(obj2, obj2->Content, -1);
+	    n = strlen(obj->Content);
+	    obj->Content[n] = ' ';
+	    obj->Content[n+1] = '\0';
+	    obj->Flags &= ~PRT_TEXTLM_F_RMSPACE;
+	    obj->Width += prt_internal_GetStringWidth(obj, " ", 1);
 	    }
 
+	/** Remove newline indication **/
+	obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
+
     return 0;
+    }
+
+
+/*** prt_textlm_GetSplitObj() - get a 'split object' from the stack of objects
+ *** being stored temporarily.
+ ***/
+pPrtObjStream
+prt_textlm_GetSplitObj(pPrtObjStream* split_obj_list)
+    {
+    pPrtObjStream tmpobj;
+
+	tmpobj = *split_obj_list;
+	if (tmpobj) 
+	    {
+	    *split_obj_list = tmpobj->Next;
+	    tmpobj->Next = NULL;
+	    tmpobj->Prev = NULL;
+	    }
+
+    return tmpobj;
     }
 
 
@@ -600,49 +816,55 @@ prt_textlm_UndoWrap(pPrtObjStream obj1, pPrtObjStream obj2)
 int
 prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
-    double top,bottom,maxw,sepw,newsepw;
-    /*double oldheight;*/
-    int sep,newsep,rval;
+    double top,bottom;
     pPrtObjStream objptr;
     pPrtObjStream split_obj = NULL;
-    /*unsigned char* spaceptr;*/
+    pPrtObjStream split_obj_list = NULL;
     pPrtObjStream new_parent;
     double x,y;
+    int handle_id;
 
-	/** Undo soft newline (wrap) stuff if this is a reflow **/
-	if (new_child_obj->Flags & PRT_OBJ_F_SOFTNEWLINE && new_child_obj->ObjType->TypeID == PRT_OBJ_T_STRING && new_child_obj->Content)
-	    {
-	    if (this->ContentTail && this->ContentTail->Content && this->ContentTail->ObjType->TypeID == PRT_OBJ_T_STRING)
-		{
-		prt_textlm_UndoWrap(this->ContentTail, new_child_obj);
-		}
-	    new_child_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
-	    }
+	/** Space removed from object previously (e.g., linewrap)? **/
+	prt_textlm_UndoWrap(new_child_obj);
 
 	/** Loop, adding one piece of the string at a time if it is wrappable **/
 	new_child_obj->Justification = this->Justification;
 	objptr = new_child_obj;
-	while(1)
+	while(objptr)
 	    {
+	    /** Ignore empty objects **/
+	    if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && !*(objptr->Content) &&
+		    !(objptr->Flags) && !memcmp(&(objptr->TextStyle), &(this->ContentTail->TextStyle), sizeof(PrtTextStyle)) &&
+		    objptr->LineHeight == this->ContentTail->LineHeight &&
+		    objptr->FGColor == this->ContentTail->FGColor &&
+		    objptr->BGColor == this->ContentTail->BGColor &&
+		    objptr->Justification == this->ContentTail->Justification)
+		{
+		prt_internal_FreeObj(objptr);
+		objptr = prt_textlm_GetSplitObj(&split_obj_list);
+		continue;
+		}
+
+	    /** Run any pending events.  We need to save the handle, because the
+	     ** actual object being written into may change as a result of
+	     ** a reflow occurring, and so 'this' might be different :)
+	     **/
+	    handle_id = prtLookupHandle(this);
+	    prt_internal_DispatchEvents(PRTSESSION(this));
+	    this = prtHandlePtr(handle_id);
+
 	    /** Get geometries for current line. **/
 	    prt_textlm_LineGeom(this->ContentTail, &bottom, &top);
 
 	    /** Determine X and Y for the new object.  Skip to next line if newline
-	     ** is indicated BUT the newline wasn't a 'break' from a previous
-	     ** linked part of this area.
+	     ** is indicated.
 	     **/
-	    if ((objptr->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)))
+	    if ((this->ContentTail && this->ContentTail->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)))
 		{
 		/** Justify previous line? **/
-		if (this->ContentTail)
-		    {
-		    prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
-		    }
+		prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
 		objptr->X = 0.0;
-		if (objptr->Flags & PRT_TEXTLM_F_NLBREAK)
-		    objptr->Y = 0.0;
-		else
-		    objptr->Y = bottom;
+		objptr->Y = bottom;
 		}
 	    else
 		{
@@ -657,11 +879,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    y = top;
 		    }
 
-		/*if (objptr->Height > bottom - top)
-		    y = top;
-		else
-		    y = bottom - objptr->Height;*/
-
 		/** Set X position **/
 		if (!(objptr->Flags & PRT_OBJ_F_XSET) || (objptr->X < x) || (objptr->X >= this->Width - this->MarginLeft - this->MarginRight))
 		    {
@@ -675,70 +892,25 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    }
 		}
 
-	    /** Make sure this flag doesn't "stick around" in case of later reflow. **/
-	    objptr->Flags &= ~PRT_TEXTLM_F_NLBREAK;
-
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width > this->Width - this->MarginLeft - this->MarginRight)
 	        {
 		if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING)
 		    {
-		    /** String.  First, try to find a suitable break point. **/
-		    maxw = this->Width - this->MarginLeft - this->MarginRight - objptr->X;
-		    rval = prt_textlm_FindWrapPoint(objptr, maxw, &sep, &sepw);
+		    split_obj = prt_textlm_WordWrap(this,&objptr);
 
-		    /** Did we find a break point?  result is 0 if so. **/
-		    split_obj = NULL;
-		    if (rval == 0)
+		    /** If no split obj, then we made it fit without a split **/
+		    if (split_obj)
 			{
-			split_obj = prt_textlm_SplitString(objptr, sep, (objptr->Content[sep]==' ')?1:0, sepw);
-			split_obj->Justification = this->Justification;
-			split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+			/** Prev refers to the tail in this case **/
+			split_obj->Prev->Next = split_obj_list;
+			split_obj->Prev = NULL;
+			split_obj_list = split_obj;
 			}
-		    else if (rval == -1 && this->ContentTail && objptr->Y == this->ContentTail->Y && !(objptr->Flags & PRT_OBJ_F_XSET) && objptr->X == this->ContentTail->X + this->ContentTail->Width && this->ContentTail->Content && this->ContentTail->ObjType->TypeID == PRT_OBJ_T_STRING)
+		    if (this->ContentTail->Flags & PRT_OBJ_F_SOFTNEWLINE)
 			{
-			/** Ok, no nice break point, but we might find something in the
-			 ** previous string object, a string with content which connects
-			 ** with the current string.  Let's see....  We won't look any
-			 ** further back than just the one string object (for now).
-			 **/
-			rval = prt_textlm_FindWrapPoint(this->ContentTail, maxw + this->ContentTail->Width, 
-				&newsep, &newsepw);
-			if (rval >= 0)
-			    {
-			    /** Goodie!! Found a break point **/
-			    split_obj = objptr;
-			    objptr = prt_textlm_SplitString(this->ContentTail, newsep, (this->ContentTail->Content[newsep]==' ')?1:0, newsepw);
-			    objptr->Justification = this->Justification;
-			    objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
-
-			    /** We need to reset the location on this one. **/
-			    objptr->X = 0.0;
-			    objptr->Y = bottom;
-			    }
-			}
-
-		    if (!split_obj)
-			{
-			/** No 'nice' breaking point found in the strings!  Sigh.
-			 ** If the line is less than 50% full, split it, otherwise move 
-			 ** it down to the next line.   maxw is *remaining* area on line.
-			 ** Don't move to next line if X was manually set.
-			 **/
-			if (maxw/(this->Width - this->MarginLeft - this->MarginRight) < 0.50 && !(objptr->Flags & PRT_OBJ_F_XSET))
-			    {
-			    /** Move down to the next line. **/
-			    objptr->X = 0.0;
-			    objptr->Y = bottom;
-			    objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
-			    }
-			else
-			    {
-			    /** Split it. **/
-			    split_obj = prt_textlm_SplitString(objptr, sep, 0, sepw);
-			    split_obj->Justification = this->Justification;
-			    split_obj->Flags |= PRT_OBJ_F_SOFTNEWLINE;
-			    }
+			objptr->X = 0.0;
+			objptr->Y = bottom;
 			}
 		    }
 		else
@@ -748,7 +920,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		        {
 			objptr->X = 0.0;
 			objptr->Y = bottom;
-			objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
+			this->ContentTail->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 			}
 		    split_obj = NULL;
 		    }
@@ -774,7 +946,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    /** Resize denied.  If container is empty, we can't continue on, so error out here. **/
 		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
 			{
-			if (split_obj) 
+			while ((split_obj = prt_textlm_GetSplitObj(&split_obj_list)) != NULL) 
 			    {
 			    if (split_obj->Content) nmSysFree(split_obj->Content);
 			    prt_internal_FreeObj(split_obj);
@@ -786,7 +958,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
 			{
 			/** Break also denied?  Fail if so. **/
-			if (split_obj) 
+			while ((split_obj = prt_textlm_GetSplitObj(&split_obj_list)) != NULL) 
 			    {
 			    if (split_obj->Content) nmSysFree(split_obj->Content);
 			    prt_internal_FreeObj(split_obj);
@@ -798,21 +970,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Bumped to a new container? **/
 		if (new_parent && this != new_parent)
 		    {
-		    if (objptr->Flags & PRT_OBJ_F_NEWLINE)
-			objptr->Flags |= PRT_TEXTLM_F_NLBREAK;
 		    this = new_parent;
 		    objptr->X = 0.0;
 		    objptr->Y = 0.0;
-		    if (objptr->Flags & PRT_OBJ_F_SOFTNEWLINE)
-			{
-			prt_textlm_UndoWrap(this->ContentTail, objptr);
-			objptr->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
-			}
-		    if (split_obj && (split_obj->Flags & PRT_OBJ_F_SOFTNEWLINE)) 
-			{
-			prt_textlm_UndoWrap(objptr, split_obj);
-			split_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
-			}
+		    prt_textlm_UndoWrap(this->ContentTail);
+		    prt_textlm_UndoWrap(objptr);
 		    continue;
 		    }
 		}
@@ -820,12 +982,8 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** Now add the object to the container **/
 	    prt_internal_Add(this, objptr);
 
-	    /** No split_obj?  If not, we're done! **/
-	    if (!split_obj) break;
-
 	    /** Repeat the procedure for the split-off part of the object **/
-	    objptr = split_obj;
-	    split_obj = NULL;
+	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
 	    }
 
     return 0;
@@ -845,7 +1003,8 @@ prt_textlm_InitContainer(pPrtObjStream this, va_list va)
 	/** Allocate the initial object **/
 	first_obj = prt_internal_AllocObj("string");
 	prt_internal_CopyAttrs(this, first_obj);
-	first_obj->Content = nmSysStrdup("");
+	first_obj->Content = nmSysMalloc(2);
+	first_obj->Content[0] = '\0';
 	first_obj->X = 0.0;
 	first_obj->Y = 0.0;
 	first_obj->Width = 0.0;

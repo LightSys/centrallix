@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.9 2003/02/27 22:02:18 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.10 2003/03/01 07:24:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.10  2003/03/01 07:24:01  gbeeley
+    Ok.  Balanced columns now working pretty well.  Algorithm is currently
+    somewhat O(N^2) however, and is thus a bit expensive, but still not
+    bad.  Some algorithmic improvements still possible with both word-
+    wrapping and column balancing, but this is 'good enough' for the time
+    being, I think ;)
+
     Revision 1.9  2003/02/27 22:02:18  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -178,6 +185,8 @@ typedef struct _POS
     double		YBase;			/* Relative Y baseline to the object's Y position */
     double		Width;			/* Width of object */
     double		Height;			/* Height of object */
+    double		ConfigWidth;		/* initially configured width of object */
+    double		ConfigHeight;		/* initially configured height of object */
     double		MarginLeft;
     double		MarginRight;
     double		MarginTop;
