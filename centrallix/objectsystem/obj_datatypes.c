@@ -51,10 +51,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.6 2002/08/01 08:25:21 mattphillips Exp $
+    $Id: obj_datatypes.c,v 1.7 2002/08/10 02:00:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.7  2002/08/10 02:00:15  gbeeley
+    Starting work on better date formatting and internationalization of
+    date formats.  Main change that has taken effect now is that the
+    presence of "II" at the beginning of a date format string causes the
+    server to interpret something like 01/02/2002 as Feb 1st (international)
+    instead of Jan 2nd (united states).
+
     Revision 1.6  2002/08/01 08:25:21  mattphillips
     Include sys/time.h if configure tells us that struct tm is defined there.
 
@@ -121,6 +128,18 @@ char* obj_long_week[] = {"Sunday","Monday","Tuesday","Wednesday","Thursday",
  ***   hh = hour in 12-hour format, appends AM/PM also
  ***   mm = minutes
  ***   ss = seconds
+ ***   II = at beginning of date format, indicates that the month and day,
+ ***        if ambiguous, should be interpreted as dd/mm (international)
+ ***        instead of the default mm/dd (United States).  Does not influence
+ ***        how dates are printed, just how they are interpreted.
+ ***   Lm[], LM[], Lw[], LW[] = specify the short (m,w) and long (M,W) names
+ ***        for months and weekdays that will be used in interpretation and
+ ***        in generation.  U.S. english month/week names are always accepted
+ ***        on input.  List of names should be comma-separated inside the [].
+ ***
+ ***   example:
+ ***
+ ***        "dd-MMM-yyyy HH:mm:ss Lm[Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec]"
  ***/
 char* obj_default_date_fmt = "dd MMM yyyy HH:mm";
 
@@ -147,6 +166,56 @@ char* obj_default_money_fmt = "$0.00";
 char* obj_default_null_fmt = "NULL";
 
 
+/*** obj_internal_ParseDateLang - looks up a list of language internationalization
+ *** strings inside the date format.  WARNING - modifies the "srcptr" data in
+ *** place.
+ ***/
+int
+obj_internal_ParseDateLang(char *dest_array[], int dest_array_len, char* srcptr, char* searchstart, char* searchend)
+    {
+    char* ptr;
+    char* endptr;
+    char* enditemptr;
+    int n_items;
+
+	/** No format string? **/
+	if (!srcptr)
+	    {
+	    return -1;
+	    }
+
+	/** Locate a possible list of language strings **/
+	ptr = strstr(srcptr, searchstart);
+	if (!ptr || !strstr(ptr+strlen(searchstart),searchend)) return -1;
+
+	/** Ok, got it.  Now start parsing 'em **/
+	n_items = 0;
+	ptr = ptr + strlen(searchstart);
+	endptr = strstr(ptr,searchend);
+	while(1)
+	    {
+	    /** Find the end of the current item. **/
+	    enditemptr = strpbrk(ptr,",[]|;");
+	    if (!enditemptr)
+		{
+		/* a work in progress... */
+		}
+	    }
+
+    return 0;
+    }
+
+
+/*** obj_internal_SetDateLang - set date formatting language stuff from a
+ *** simple array rather than from a text string.
+ ***/
+int
+obj_internal_SetDateLang(char* dest_array[], int array_cnt, char* src_array[])
+    {
+    return 0;
+    }
+
+
 /*** obj_internal_FormatDate - formats a date/time value to the given string
  *** value.
  ***/
@@ -154,11 +223,30 @@ int
 obj_internal_FormatDate(pDateTime dt, char* str)
     {
     char* fmt;
+    char* myfmt;
     int append_ampm = 0;
+    char *Lw[7], *LW[7], *Lm[12], *LM[12];
+    char* ptr;
+    char *Lwptr, *LWptr, *Lmptr, *LMptr;
 
     	/** Get the current date format. **/
 	fmt = mssGetParam("dfmt");
 	if (!fmt) fmt = obj_default_date_fmt;
+	myfmt = nmSysStrdup(fmt);
+
+	/** Lookup language internationalization in the format. **/
+	Lwptr = strstr(myfmt,"Lw[");
+	LWptr = strstr(myfmt,"LW[");
+	Lmptr = strstr(myfmt,"Lm[");
+	LMptr = strstr(myfmt,"LM[");
+	if (obj_internal_ParseDateLang(Lw, 7, Lwptr, "Lw[", "]") < 0)
+	    obj_internal_SetDateLang(Lw, 7, obj_short_week);
+	if (obj_internal_ParseDateLang(LW, 7, LWptr, "LW[", "]") < 0)
+	    obj_internal_SetDateLang(LW, 7, obj_long_week);
+	if (obj_internal_ParseDateLang(Lm, 12, Lmptr, "Lm[", "]") < 0)
+	    obj_internal_SetDateLang(Lm, 12, obj_short_months);
+	if (obj_internal_ParseDateLang(LM, 12, LMptr, "LM[", "]") < 0)
+	    obj_internal_SetDateLang(LM, 12, obj_long_months);
 
 	/** Step through the fmt string one piece at a time **/
 	while(*fmt) switch(*fmt)
@@ -291,11 +379,30 @@ obj_internal_FormatDate(pDateTime dt, char* str)
 		    }
 		break;
 
+	    case 'I':
+		/** Data-entry date-order internationalization **/
+		if (fmt[1] == 'I')
+		    {
+		    fmt++;
+		    }
+		fmt++;
+		break;
+
+	    case 'L':
+		/** Language internationalization **/
+		if ((fmt[1] == 'm' || fmt[1] == 'M' || fmt[1] == 'w' || fmt[1] == 'W') && fmt[2] == '[' && strchr(fmt,']'))
+		    {
+		    while(*fmt != ']') fmt++;
+		    }
+		break;
+
 	    default:
 	        *(str++) = *(fmt++);
 		break;
 	    }
 	*str = '\0';
+
+	nmSysFree(myfmt);
 
     return 0;
     }
@@ -850,10 +957,12 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     	/** Only accept string... **/
 	if (data_type != DATA_T_STRING) return -1;
 
-	/** Check for reversed days (ie, British format) **/
+	/** Check for reversed days (ie, international format, dd-mm-yyyy)
+	 ** Default is to interpret as mm-dd-yyyy (U.S. format)
+	 **/
 	if (format)
 	    {
-	    if (strstr(format,"M") > strstr(format,"d")) reversed_day = 1;
+	    if (!strncmp(format,"II",2)) reversed_day = 1;
 	    }
 
 	startptr = (char*)data_ptr;
