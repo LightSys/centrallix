@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.18 2003/11/30 02:09:40 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.19 2003/12/01 19:04:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.19  2003/12/01 19:04:40  gbeeley
+    - fixed error in drawing tabs which was causing a minor visual issue
+      when tabs are on the righthand side of the tab control.
+
     Revision 1.18  2003/11/30 02:09:40  gbeeley
     - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
       oneachreveal)
@@ -399,7 +403,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			    htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>");
 			htrAddBodyItem(s,"</TR>\n");
 			if (tloc != Top) 
-			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
+			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
 			htrAddBodyItem(s,"    </TABLE>\n");
 			htrAddBodyItem(s, "</DIV>\n");
 			}
