@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.28 2002/07/17 20:09:12 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.29 2002/07/18 14:27:25 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.29  2002/07/18 14:27:25  pfinley
+    fixed another bug i created yesterday. cleaned up code a bit.
+
     Revision 1.28  2002/07/17 20:09:12  lkehresman
     Two changes to htdrv_page event handlers
       *  getfocushandler() function now is passed a reference to the current
@@ -421,16 +424,12 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
 		"        var w = pg_curarea.width;\n"
 		"        var h = pg_curarea.height;\n"
-		"        if (pg_curkbdlayer && pg_curlayer != pg_curkbdlayer)\n"
+		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler && pg_curlayer != pg_curkbdlayer)\n"
 		"            {\n"
-		"            if (pg_curkbdlayer.losefocushandler)\n"
-		"                {\n"
-		"                if (!pg_curkbdlayer.losefocushandler()) return true;\n"
-		"                pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
-		"                pg_insame = false;\n"
-		"                }\n"
+		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
+		"            pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"            }\n"
-		"        else pg_insame = true;\n"
+		"        var prevLayer = pg_curkbdlayer;\n"
 		"        pg_curkbdarea = pg_curarea;\n"
 		"        pg_curkbdlayer = pg_curlayer;\n"
 		"        if (pg_curkbdlayer.getfocushandler)\n"
@@ -438,7 +437,8 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name,pg_curarea);\n"
 		"            if (v & 1)\n"
 		"                {\n"
-		"                if (!pg_insame) pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
+		"                if (prevLayer != pg_curlayer)\n"
+		"                    pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"                }\n"
 		"            if (v & 2)\n"
 		"                {\n"
@@ -471,7 +471,6 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return true;\n"
 		"        pg_curkbdarea = null;\n"
 		"        pg_curkbdlayer = null;\n"
-		"        pg_insame = false;\n"
 		"        }\n");
 
 	/** This resets the keyboard focus. **/
