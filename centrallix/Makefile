@@ -63,14 +63,17 @@ XTESTSUITE=ts1.c ts2.c ts3.c
 TESTSUITE=$(patsubst %,testsuite/%,$(XTESTSUITE))
 
 # Some basic build parameters.
+MASTERHOST=greg
 PROFILE=-pg
 SYBASE=/opt/sybase
 BUILD=$(shell cat .build)
+SUBBUILD=$(shell cat .subbuild)
 PREVBUILD=$(shell expr $(BUILD) - 1)
+BLDFILE=$(shell if [ "$$HOSTNAME" = "$(MASTERHOST)" ]; then echo ".build"; echo '1' >.subbuild; else echo ".subbuild"; if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; fi)
 #YEARS=$(shell YR=1998; while [ $$YR != `date +%Y` ]; do /bin/echo -n $$YR,; YR=`expr $$YR + 1`; done; /bin/echo -n $$YR)
 YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
 VERSION=$(shell cat .version)
-CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include -DBUILD=$(BUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -Wall -Wno-implicit-function-declaration
+CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -Wall -Wno-implicit-function-declaration
 #CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include -DBUILD=$(BUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -Wall
 #LIBS=-lnsl -lsocket
 #LIBS=-lsybtcl -lct -linsck -lcomn -lintl -lcs -lm
@@ -85,10 +88,10 @@ LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
 
 centrallix: lsmain.o $(LSOBJS)
 	@echo ''
-	@echo "Linking Build #"`cat .build`
+	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo
 	cc lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -o centrallix
-	@sh -c 'BLD=`cat .build`; BLD=`expr $$BLD + 1`; echo $$BLD > .build'
+	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
 	@rm lsmain.o
 
 jsengine: $(JSVM)
