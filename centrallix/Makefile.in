@@ -122,6 +122,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_datetime.o \
 	   htdrv_label.o \
 	   htdrv_textarea.o \
+	   htdrv_clock.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 

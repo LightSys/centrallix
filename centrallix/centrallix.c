@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.5 2002/07/29 01:39:18 jorupp Exp $
+    $Id: centrallix.c,v 1.6 2002/08/08 21:58:36 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.6  2002/08/08 21:58:36  pfinley
+    changes to Makefile & centrallix.c for the clock widget.
+
     Revision 1.5  2002/07/29 01:39:18  jorupp
      * prints error message explaining itself if it fails loading a module
 
@@ -344,6 +347,7 @@ cxHtInit()
 	htddInitialize();			/* dropdown htdrv module */
 	htdtInitialize();			/* datetime htdrv module */
 	httxInitialize();			/* textarea htdrv module */
+	htclInitialize();			/* clock htdrv module */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
