@@ -237,23 +237,28 @@ print "Mailing the commit email to $mailto\n";
 
 #print $email;
 
-my $paddr = sockaddr_in($smtpport, inet_aton($smtpserver));
-socket(SOCK, PF_INET, SOCK_STREAM, 0) || die "socket failed";
-connect(SOCK, $paddr) || die "connect $smtpserver:$smtpport failed";
-select(SOCK);
-$|=1;
+#my $paddr = sockaddr_in($smtpport, inet_aton($smtpserver));
+#socket(SOCK, PF_INET, SOCK_STREAM, 0) || die "socket failed";
+#connect(SOCK, $paddr) || die "connect $smtpserver:$smtpport failed";
+#select(SOCK);
+#$|=1;
 
-print "HELO cvsserver\r\n".
-"MAIL FROM:<this-will-bounce\@centrallix.org>\r\n" . 
-"RCPT TO:<$envaddr>\r\n" .
-"DATA\r\n".
-"$email\r\n".
-".\r\n".
-"QUIT\r\n";
+#print "HELO cvsserver\r\n".
+#"MAIL FROM:<this-will-bounce\@centrallix.org>\r\n" . 
+#"RCPT TO:<$envaddr>\r\n" .
+#"DATA\r\n".
+#"$email\r\n".
+#".\r\n".
+#"QUIT\r\n";
 
-while(<SOCK>) { alarm(20); };
+#while(<SOCK>) { alarm(20); };
 
-close(SOCK);
+#close(SOCK);
+
+open(FH, "| /usr/sbin/sendmail $envaddr") or die "could not open sendmail process: $!";
+print FH "$email";
+close FH;
+
 exit 0;
 
 sub get_log_message {
