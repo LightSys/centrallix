@@ -45,10 +45,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.11 2002/09/20 20:38:08 jorupp Exp $
+    $Id: mtask.c,v 1.12 2002/09/24 18:59:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.12  2002/09/24 18:59:17  gbeeley
+    Fixed some problems relating to non-blocking netConnectTCP() operations
+    (where FD_U_NOBLOCK was specified).  MTask was not correctly retrieving
+    the SO_ERROR value once writability was confirmed on the socket
+    (writability is the indication of completion, whether successful or
+    not).  Note: the connect is always internally nonblocking, but if the
+    FD_U_NOBLOCK flag is given, then the call returns to the user before
+    the connect has completed.  Do a Wait or MultiWait for writability to
+    determine whether it has completed, and check the event status for
+    successful completion.
+
     Revision 1.11  2002/09/20 20:38:08  jorupp
      * netAcceptTCP now sets the returned pFile to non-blocking IO
 
@@ -204,6 +215,7 @@ evFile(int ev_type, void* obj)
     int code = 0;
     fd_set readfds,writefds,exceptfds;
     struct timeval tmout;
+    int arg,len;
 
     	if (fd->Status == FD_S_CLOSING) return -1;
 
@@ -238,6 +250,15 @@ evFile(int ev_type, void* obj)
                 FD_SET(fd->FD,&exceptfds);
                 select(fd->FD+1,&readfds,&writefds,&exceptfds,&tmout);
                 if (FD_ISSET(fd->FD,&writefds)) code=1;
+		if (fd->Status == FD_S_OPENING && getsockopt(fd->FD, SOL_SOCKET, SO_ERROR, (void*)&arg, &len) >= 0) 
+		    {
+		    if (arg == EINPROGRESS)
+			code = 0;
+		    else if (arg == 0)
+			code = 1;
+		    else
+			code = -1;
+		    }
                 if (FD_ISSET(fd->FD,&exceptfds)) code=-1;
                 if (code == 0) fd->Flags |= FD_F_WRBLK;
                 if (code == 1) fd->Flags &= ~(FD_F_WRBLK | FD_F_WRERR);
@@ -559,6 +580,7 @@ mtSched()
     pThread thr_sleep_init = NULL; /* if thread just did a thSleep */
     pEventReq event;
     int k = 0;
+    int arg,len;
 
     	dbg_write(0,"x",1);
 
@@ -765,9 +787,35 @@ mtSched()
 			    ((pFile)(event->Object))->Flags &= ~FD_F_WRBLK;
 			    if (((pFile)(event->Object))->Status == FD_S_OPENING) 
 			        {
-				((pFile)(event->Object))->Status = FD_S_OPEN;
+				/** Check getsockopt() to see if successful.
+				 ** We interpret getsockopt() error as a success,
+				 ** as if the fd is not a socket.  If a socket,
+				 ** we check the SO_ERROR value itself.
+				 **/
+				len = sizeof(arg);
+				if (getsockopt(((pFile)(event->Object))->FD, SOL_SOCKET, SO_ERROR, (void*)&arg, &len) < 0 || arg == 0)
+				    {
+				    ((pFile)(event->Object))->Status = FD_S_OPEN;
+				    event->Status = EV_S_COMPLETE;
+				    }
+				else
+				    {
+				    ((pFile)(event->Object))->Status = FD_S_ERROR;
+				    event->Status = EV_S_ERROR;
+
+				    /** Probably we shouldn't be directly setting
+				     ** the errno like this, but I'm gonna go and
+				     ** do it anyhow.  This may get us in trouble
+				     ** if we use native threads, but (duh!) this
+				     ** scheduler won't even be used then!!!
+				     **/
+				    errno = arg;
+				    }
 				}
-			    event->Status = EV_S_COMPLETE;
+			    else
+				{
+				event->Status = EV_S_COMPLETE;
+				}
 			    }
 		        }
 
