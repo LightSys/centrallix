@@ -201,6 +201,42 @@ function Element_PageYSetter(val)
     pg_set_style(this,'top', val - this.parentNode.pageY);
     }
 
+function _Layer_open()
+    {
+    this._is_open = true;
+    this._tmptxt = "";
+    }
+function _Layer_write(t)
+    {
+    if (!this._is_open) this.open();
+    this._tmptxt += t;
+    }
+function _Layer_writeln(t)
+    {
+    this.write(t + '\n');
+    }
+function _Layer_close()
+    {
+    this._is_open = false;
+    this.innerHTML = this._tmptxt;
+    }
+
+function Layer (w,p)
+    {
+    var l = document.createElement("div");
+    l.style.position = "absolute";
+    if (w) l.style.width = w;
+    if (p) l = p.appendChild(l);
+    l.document = l;
+    l.document._is_open = false;
+    l.document._tmptxt = "";
+    l.document.open = _Layer_open;
+    l.document.write = _Layer_write;
+    l.document.writeln = _Layer_writeln;
+    l.document.close = _Layer_close;
+    return l;
+    }
+
 HTMLElement.prototype.pageX getter = Element_PageXGetter;
 HTMLElement.prototype.pageX setter = Element_PageXSetter;
 HTMLElement.prototype.pageY getter = Element_PageYGetter;
