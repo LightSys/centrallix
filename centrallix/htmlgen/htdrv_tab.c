@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.10 2002/07/20 19:44:25 lkehresman Exp $
+    $Id: htdrv_tab.c,v 1.11 2002/07/23 15:22:39 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.11  2002/07/23 15:22:39  mcancel
+    Changing htrAddHeaderItem to htrAddStylesheetItem for a couple of files
+    that missed the API change - for adding style sheet definitions.
+
     Revision 1.10  2002/07/20 19:44:25  lkehresman
     Event handlers now have the variable "ly" defined as the target layer
     and it will be global for all the events.  We were finding that nearly
@@ -298,22 +302,20 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    tabcnt++;
 
 		    /** Add stylesheet headers for the layers (tab and tabpage) **/
-		    htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
 		    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
 		        {
-		        htrAddHeaderItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
+		        htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,x,y,1,z+2);
-		        htrAddHeaderItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
+		        htrAddStylesheetItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,w-2,z+2);
 			}
 		    else
 		        {
-		        htrAddHeaderItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
+		        htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,x,y,1,z);
-		        htrAddHeaderItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
+		        htrAddStylesheetItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,w-2,z+2);
 			}
-		    htrAddHeaderItem_va(s,"    </STYLE>\n");
 
 		    /** Add script initialization to add a new tabpage **/
 		    htrAddScriptInit_va(s,"    %s = %s.addTab(%s.layers.tc%dtab%d,%s.document.layers.tc%dpane%d);\n",

@@ -33,9 +33,7 @@ int htcbMozDefRender(pHtSession s, pObject w_obj, int z, char* parentname, char*
       } 
 
    /** Ok, write the style header items. **/
-   htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
-   htrAddHeaderItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:13pX; Z-INDEX:%d; }\n",id,x,y,z);
-   htrAddHeaderItem_va(s,"    </STYLE>\n");
+   htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:13pX; Z-INDEX:%d; }\n",id,x,y,z);
 
    /** Get value function **/
    htrAddScriptFunction(s, "checkbox_getvalue", "\n"
