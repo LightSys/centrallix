@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.5 2002/07/21 04:52:51 jorupp Exp $
+    $Id: mtask.c,v 1.6 2002/07/23 02:30:55 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.6  2002/07/23 02:30:55  jorupp
+     (commiting for ctaylor)
+     * removed unnecessary field from pFile and associated enum values
+     * added a dup on the fd which eliminated a lot of checking
+       -- we can close the fd without worry about the fd used by MTASK
+
     Revision 1.5  2002/07/21 04:52:51  jorupp
      * support for gzip encoding added by ctaylor
      * updated autoconf files to account for the new library (I think..)
@@ -1507,11 +1513,12 @@ thClearFlags(pThread thr, int flags)
 int
 fdSetOptions(pFile filedesc, int options)
     {
+    int old_options;
+    old_options = filedesc->Flags;
     filedesc->Flags |= (options & (FD_UF_RDCACHE | FD_UF_WRCACHE | FD_UF_GZIP));
-    if (options & FD_UF_GZIP)
+    if ( (options & FD_UF_GZIP) && !(old_options & FD_UF_GZIP) )
 	{
-	filedesc->GzFile = gzdopen(filedesc->FD, (filedesc->Flags & FD_F_WR ? "wb" : "rb"));
-	if (filedesc->GzFile != NULL) filedesc->GzStatus = GZ_FILE_OPENED;
+	filedesc->GzFile = gzdopen(dup(filedesc->FD), (filedesc->Flags & FD_F_WR ? "wb" : "rb"));
 	}
     return 0;
     }
@@ -1526,7 +1533,7 @@ fdUnSetOptions(pFile filedesc, int options)
     int old_options;
 
     	old_options = filedesc->Flags;
-        filedesc->Flags &= ~(options & (FD_UF_RDCACHE | FD_UF_WRCACHE));
+        filedesc->Flags &= ~(options & (FD_UF_RDCACHE | FD_UF_WRCACHE | FD_UF_GZIP));
     	
 	/** Make sure we flush the write-cache. **/
 	if ((old_options & FD_UF_WRCACHE) && (options & FD_UF_WRCACHE))
@@ -1536,6 +1543,13 @@ fdUnSetOptions(pFile filedesc, int options)
 		fdWrite(filedesc, filedesc->WrCacheBuf, filedesc->WrCacheLen, 0, FD_U_PACKET);
 		}
 	    }
+
+        /** Make sure and close the gzip part if the flag was set but is not currently. **/
+        if ((old_options & FD_UF_GZIP) && !(options & FD_UF_GZIP))
+            {
+                gzclose(filedesc->GzFile);
+                filedesc->GzFile = NULL;
+            }
 
     return 0;
     }
@@ -1569,7 +1583,6 @@ fdOpen(char* filename, int mode, int create_mode)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
-	new_fd->GzStatus = GZ_FILE_CLOSED;
 	new_fd->GzFile = NULL;
 
 	/** Set nonblocking mode **/
@@ -1605,7 +1618,6 @@ fdOpenFD(int fd, int mode)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
-	new_fd->GzStatus = GZ_FILE_CLOSED;
 	new_fd->GzFile = NULL;
 
 	/** Set nonblocking mode **/
@@ -1992,19 +2004,16 @@ fdClose(pFile filedesc, int flags)
 	    if (filedesc->Flags & FD_UF_GZIP)
 		{
 		gzclose(filedesc->GzFile);
-		filedesc->GzStatus = GZ_FILE_CLOSED;
 		}
-	    else
-		{
-		close(filedesc->FD);
-		}
+	    close(filedesc->FD);
 	    if (filedesc->WrCacheBuf) nmFree(filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	    if (filedesc->RdCacheBuf) nmFree(filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
             nmFree(filedesc,sizeof(File));
 	    }
 	else
+	    if (filedesc->Flags & FD_UF_GZIP)
 		{
-		gzflush(filedesc->GzFile,Z_FINISH);
+		gzclose(filedesc->GzFile);
 		}
 
     return 0;
@@ -2080,7 +2089,6 @@ netListenTCP(char* service_name, int queue_length, int flags)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
-	new_fd->GzStatus = GZ_FILE_CLOSED;
 	new_fd->GzFile = NULL;
 	memcpy(&(new_fd->LocalAddr),&localaddr,sizeof(struct sockaddr_in));
 
@@ -2166,7 +2174,6 @@ netAcceptTCP(pFile net_filedesc, int flags)
 	connected_fd->UnReadLen = 0;
 	connected_fd->WrCacheBuf = NULL;
 	connected_fd->RdCacheBuf = NULL;
-	connected_fd->GzStatus = GZ_FILE_CLOSED;
 	connected_fd->GzFile = NULL;
 	memcpy(&(connected_fd->RemoteAddr),&remoteaddr,sizeof(struct sockaddr_in));
 	memcpy(&(connected_fd->LocalAddr),&(net_filedesc->LocalAddr),sizeof(struct sockaddr_in));
@@ -2272,7 +2279,6 @@ netConnectTCP(char* host_name, char* service_name, int flags)
 	connected_fd->UnReadLen = 0;
 	connected_fd->WrCacheBuf = NULL;
 	connected_fd->RdCacheBuf = NULL;
-	connected_fd->GzStatus = GZ_FILE_CLOSED;
 	connected_fd->GzFile = NULL;
 
 	/** Try to connect **/
@@ -2371,8 +2377,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
 
 	/** Shutdown read and write sides of the connection. **/
-	if(!(net_filedesc->Flags & FD_UF_GZIP))
-	    shutdown(net_filedesc->FD, 2);
+	shutdown(net_filedesc->FD, 2);
 
 	/** Try to close the socket, keeping track of timeout **/
 	rval = -1;
@@ -2381,14 +2386,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    t2 = mtTicks();
 	    linger_msec -= (t2-t)*(1000/MTASK.TicksPerSec);
 	    t = t2;
-	    if (net_filedesc->Flags & FD_UF_GZIP)
-		{
-		rval=gzclose(net_filedesc->GzFile);
-		}
-	    else
-		{
-		rval=close(net_filedesc->FD);
-		}
+	    rval=close(net_filedesc->FD);
 	    if (rval FAIL && errno == EWOULDBLOCK)
 	        {
 		thSleep(1000/MTASK.TicksPerSec);
@@ -2407,14 +2405,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
 	    arg=0;
 	    ioctl(net_filedesc->FD, FIONBIO, &arg);
-		if (net_filedesc->Flags & FD_UF_GZIP)
-		    {
-		    gzclose(net_filedesc->GzFile);
-		    }
-		else
-		    {
-		    close(net_filedesc->FD);
-		    }
+	    close(net_filedesc->FD);
 	    }
 
 	/** Now we destroy the structure. **/

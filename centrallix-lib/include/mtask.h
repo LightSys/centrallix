@@ -23,10 +23,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.3 2002/07/21 04:52:51 jorupp Exp $
+    $Id: mtask.h,v 1.4 2002/07/23 02:30:54 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.4  2002/07/23 02:30:54  jorupp
+     (commiting for ctaylor)
+     * removed unnecessary field from pFile and associated enum values
+     * added a dup on the fd which eliminated a lot of checking
+       -- we can close the fd without worry about the fd used by MTASK
+
     Revision 1.3  2002/07/21 04:52:51  jorupp
      * support for gzip encoding added by ctaylor
      * updated autoconf files to account for the new library (I think..)
@@ -141,8 +147,7 @@ typedef struct _FD
     char*	RdCacheBuf;
     int		RdCacheLen;
     char*	RdCachePtr;
-	gzFile	GzFile;
-	int		GzStatus;
+    gzFile	GzFile;
     }
     File, *pFile;
 
@@ -174,10 +179,6 @@ typedef struct _FD
 
 #define SEM_U_HARDCLOSE	1		/* User: semdestroy kills waiting events */
 #define SEM_U_NOBLOCK	2		/* User: dont block on empty sem */
-
-/** Zlib gzFile Status **/
-#define GZ_FILE_CLOSED	0		/* gzFile has not been opened */
-#define GZ_FILE_OPENED	1		/* gzFile has been opened */
 
 /** Event Request structure **/
 typedef struct _EV
