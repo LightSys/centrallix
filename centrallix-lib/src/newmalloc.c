@@ -34,10 +34,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.4 2003/03/04 06:28:22 jorupp Exp $
+    $Id: newmalloc.c,v 1.5 2003/03/30 22:41:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
+    Revision 1.5  2003/03/30 22:41:21  jorupp
+     * split up headers a bit
+     	cxlibconfig.h -- all configuration-related definitions
+    	cxlibconfig-internal.h -- all PACKAGE_* definitions
+    		(this file is not installed and should never be included from a public header)
+    	cxlibconfig-all.h -- both of the above combined
+    		(autoconf requires one file with them all -- we just won't ever #include it)
+     * fix a bug in newmalloc
+
     Revision 1.4  2003/03/04 06:28:22  jorupp
      * added buffer overflow checking to newmalloc
     	-- define BUFFER_OVERFLOW_CHECKING in newmalloc.c to enable
@@ -505,7 +514,7 @@ nmSysMalloc(int size)
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]++;
     return (void*)(ptr+4);
 #else
-    return (void*)nmMallocDebug(size);
+    return (void*)nmDebugMalloc(size);
 #endif
     }
 
