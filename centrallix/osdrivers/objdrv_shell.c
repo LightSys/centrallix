@@ -52,7 +52,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.10 2002/12/24 09:36:06 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.11 2002/12/24 19:22:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -163,11 +163,14 @@ shl_internal_Launch(pShlData inf)
 	pEV=(pEnvVar)xhLookup(&inf->envHash,name);
 	if(pEV)
 	    {
-	    p = (char*)malloc(strlen(name)+2+(pEV->value?strlen(pEV->value):0));
-	    sprintf(p,"%s=%s",name,pEV->value?pEV->value:"");
+	    int len = strlen(name)+2+(pEV->value?strlen(pEV->value):0);
+	    p = (char*)malloc(len);
+	    snprintf(p,len,"%s=%s",name,pEV->value?pEV->value:"");
+	    p[len-1]='\0';
 	    xaAddItem(&inf->envArray,p);
 	    }
 	}
+    xaAddItem(&inf->envArray,NULL);
 
     
     if(SHELL_DEBUG & SHELL_DEBUG_LAUNCH)
@@ -179,18 +182,18 @@ shl_internal_Launch(pShlData inf)
 	printf("program: %s\n",inf->program);
 
 	ptr=(char**)(inf->argArray.Items);
-	while(*ptr)
+	do
 	    {
 	    printf("arg: %p: %s\n",ptr,*ptr);
-	    ptr++;
 	    }
+	while(*(ptr++));
 
 	ptr=(char**)(inf->envArray.Items);
-	while(*ptr)
+	do
 	    {
 	    printf("env: %p: %s\n",ptr,*ptr);
-	    ptr++;
 	    }
+	while(*(ptr++));
 	
 	}
 
