@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.8 2003/04/04 05:02:44 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.9 2003/04/30 02:15:35 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.9  2003/04/30 02:15:35  jorupp
+     * added stat calls before returning any data that would have come from it
+       -- it's a bit inefficent -- really should just set a flag after a write or
+          property change and clear that flag on stat(), and just run stat if
+    	  the flag is set and we need the data
+
     Revision 1.8  2003/04/04 05:02:44  gbeeley
     Added more flags to objInfo dealing with content and seekability.
     Added objInfo capability to objdrv_struct.
@@ -1070,6 +1076,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    if (!(inf->UsrName[0]))
 		{
+		stat(inf->RealPathname, &(inf->Fileinfo));
 		pw = getpwuid(inf->Fileinfo.st_uid);
 		if (!pw) snprintf(inf->UsrName,16,"%d",inf->Fileinfo.st_uid);
 		else snprintf(inf->UsrName,16,"%s",pw->pw_name);
@@ -1085,6 +1092,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    if (!(inf->GrpName[0]))
 		{
+		stat(inf->RealPathname, &(inf->Fileinfo));
 		gr = getgrgid(inf->Fileinfo.st_gid);
 		if (!gr) snprintf(inf->GrpName,16,"%d",inf->Fileinfo.st_gid);
 		else snprintf(inf->GrpName,16,"%s",gr->gr_name);
@@ -1098,6 +1106,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
 		return -1;
 		}
+	    stat(inf->RealPathname, &(inf->Fileinfo));
 	    *((int*)val) = inf->Fileinfo.st_size;
 	    }
 	else if (!strcmp(attrname,"permissions"))
@@ -1107,6 +1116,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
 		return -1;
 		}
+	    stat(inf->RealPathname, &(inf->Fileinfo));
 	    *((int*)val) = inf->Fileinfo.st_mode;
 	    }
 	else if (!strcmp(attrname,"last_modification"))
@@ -1118,6 +1128,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    if (inf->MTime.Value == 0)
 		{
+		stat(inf->RealPathname, &(inf->Fileinfo));
 		t = localtime(&(inf->Fileinfo.st_mtime));
 		inf->MTime.Part.Second = t->tm_sec;
 		inf->MTime.Part.Minute = t->tm_min;
@@ -1137,6 +1148,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    if (inf->CTime.Value == 0)
 		{
+		stat(inf->RealPathname, &(inf->Fileinfo));
 		t = localtime(&(inf->Fileinfo.st_ctime));
 		inf->CTime.Part.Second = t->tm_sec;
 		inf->CTime.Part.Minute = t->tm_min;
@@ -1156,6 +1168,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    if (inf->ATime.Value == 0)
 		{
+		stat(inf->RealPathname, &(inf->Fileinfo));
 		t = localtime(&(inf->Fileinfo.st_atime));
 		inf->ATime.Part.Second = t->tm_sec;
 		inf->ATime.Part.Minute = t->tm_min;
