@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.28 2002/07/25 20:05:15 mcancel Exp $
+    $Id: htdrv_table.c,v 1.29 2002/08/05 19:43:37 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.29  2002/08/05 19:43:37  lkehresman
+    Fixed the static table to reference the standard ".layer" rather than ".Layer"
+
     Revision 1.28  2002/07/25 20:05:15  mcancel
     Adding the function htrAddScriptInclude to the static table render
     function so the javascript code will be seen...
@@ -622,7 +625,7 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 
 	
 	/** Call init function **/
- 	htrAddScriptInit_va(s,"    tbls_init(%s.Layer,\"%s\",%d,%d,%d);\n",parentname,t.name,t.w,t.inner_padding,t.inner_border);
+ 	htrAddScriptInit_va(s,"    tbls_init(%s.layer,\"%s\",%d,%d,%d);\n",parentname,t.name,t.w,t.inner_padding,t.inner_border);
  
     return 0;
     }
