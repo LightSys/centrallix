@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.3 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.4 2002/02/22 23:48:39 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.4  2002/02/22 23:48:39  jorupp
+    allow editbox to work without form, form compiles, doesn't do much
+
     Revision 1.3  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -173,6 +176,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "pg_curkbdlayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_curkbdarea", "null", 0);
 	htrAddScriptGlobal(s, "pg_lastkey", "-1", 0);
+	htrAddScriptGlobal(s, "fm_current", "null", 0);
 
 	/** Add focus box **/
 	htrAddHeaderItem(s, 

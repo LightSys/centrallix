@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.6 2002/02/14 00:55:20 gbeeley Exp $
+    $Id: lsmain.c,v 1.7 2002/02/22 23:48:39 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.7  2002/02/22 23:48:39  jorupp
+    allow editbox to work without form, form compiles, doesn't do much
+
     Revision 1.6  2002/02/14 00:55:20  gbeeley
     Added configuration file centrallix.conf capability.  You now MUST have
     this file installed, default is /usr/local/etc/centrallix.conf, in order
@@ -211,6 +214,8 @@ start(void* v)
 	htebInitialize();			/* editbox module */
 	httmInitialize();			/* timer nonvisual module */
 	htexInitialize();			/* method exec module */
+
+	htformInitialize();			/* forms module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */

@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.2  2002/02/22 23:48:39  jorupp
+    allow editbox to work without form, form compiles, doesn't do much
+
     Revision 1.1  2002/02/21 18:15:14  jorupp
     Initial commit of form widget
 
@@ -196,16 +199,38 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_action_next", "\n"
 		"function form_action_next(aparam)\n"
 		"    {\n"
-		"	if(this.changed);\n"
-		"	    {\n"
-		"	    this.ActionSave();\n"
-		"	    }\n"
-		"	objsource.next();\n"
+		"    var flag=0\n;"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        if(this.elements[i].IsUnsaved) flag=1;\n"
+		"        }\n"
+		"    if(flag) this.ActionSave();\n"
+		"    objsource.next();\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "form_change_mode", "\n"
+		"function form_change_mode(form,newmode)\n"
+		"    {\n"
+		"    alert(\"Form is going from \"+form.mode+\" to \"+newmode+\" mode.\");\n"	/*in-prog*/
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        this.elements[i].setvalue(new String(\"\"));\n"
+		"        }\n"
+		"    var event = new Object();\n"
+		"    event.Caller = this;\n"
+		"    this.oldmode = this.mode;\n"
+		"    this.mode = \"query\";\n"
+		"    this.changed = false;\n"
+		"    cn_activate(this, 'StatusChange', event);\n"
+		"    delete event;\n"
+		"    return 1;\n"
 		"    }\n", 0);
 
 	htrAddScriptFunction(s, "form_action_query", "\n"
 		"function form_action_query(aparam)\n"
 		"    {\n"
+		"    if(!this.allowquery) {alert(\"Query mode not allowed\");return 0;}\n"
+		"    return form_change_mode(this,\"Query\");\n"
 		"    }\n", 0);
 
 	htrAddScriptFunction(s, "form_action_queryexec", "\n"
@@ -226,7 +251,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    form = new Object();\n"
 		"    form.elements = new Array();\n"
-		"    form.mode = \"New\";\n"
+		"    form.mode = \"No Data\";\n"
+		"    form.oldmode = null;\n"
 		"    form.objsrc = new Object();\n"
 		"    form.changed = false;\n"
 
@@ -246,6 +272,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.ActionNew = form_action_new;\n"
 		"    form.ActionPrev = form_action_next;\n"
 		"    form.ActionQuery = form_action_query;\n"
+		/*"    form.ActionQuery = form_action_query;\n"*/
 		"    form.ActionQueryExec = form_action_queryexec;\n"
 		"    form.ActionSave = form_action_save;\n"
 		"    form.IsDiscardReady = form_cb_is_discard_ready;\n"
@@ -269,7 +296,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n", 0);
 
 	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i)\n",
+	snprintf(sbuf3,200,"    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter);
 	htrAddScriptInit(s,sbuf3);
 	nmFree(sbuf3,200);
@@ -318,6 +345,7 @@ htformInitialize()
 	htrAddAction(drv,"Save");
 
 	/*htrAddParam(drv,"ExecuteMethod","Parameter",DATA_T_STRING);*/
+	htrAddEvent(drv,"StatusChange");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

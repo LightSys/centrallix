@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.3 2002/02/22 23:48:39 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.3  2002/02/22 23:48:39  jorupp
+    allow editbox to work without form, form compiles, doesn't do much
+
     Revision 1.2  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -233,11 +236,13 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        {\n"
 		"        newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);\n"
 		"        l.cursorCol++;\n"
+		"        l.changed=true;\n"
 		"        }\n"
 		"    else if (k == 8 && l.cursorCol > 0)\n"
 		"        {\n"
 		"        newtxt = txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol,txt.length);\n"
 		"        l.cursorCol--;\n"
+		"        l.changed=true;\n"
 		"        }\n"
 		"    else\n"
 		"        {\n"
@@ -275,7 +280,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    eb_ibeam.moveToAbsolute(eb_current.ContentLayer.pageX + eb_current.cursorCol*eb_metric.charWidth, eb_current.ContentLayer.pageY);\n"
 		"    eb_ibeam.zIndex = eb_current.zIndex + 2;\n"
 		"    eb_ibeam.visibility = 'inherit';\n"
-		"    l.form.focusnotify(l);\n"
+		"    if(l.form) l.form.FocusNotify(l);\n"
 		"    return 1;\n"
 		"    }\n", 0);
 
@@ -285,6 +290,11 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    {\n"
 		"    eb_ibeam.visibility = 'hidden';\n"
 		"    if (eb_current) eb_current.cursorlayer = null;\n"
+		"    if(eb_current && eb_current.changed)\n"
+		"        {\n"
+		"        if(eb_current.form) eb_current.form.DataNotify(eb_current);\n"
+		"        eb_current.changed=false;\n"
+		"        }\n"
 		"    eb_current = null;\n"
 		"    return true;\n"
 		"    }\n", 0);
@@ -332,8 +342,9 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', 1);\n"
 		"    c1.y = ((l.clip.height - eb_metric.charHeight)/2);\n"
 		"    c2.y = ((l.clip.height - eb_metric.charHeight)/2);\n"
-		"    if (fm_current) fm_current.register(l);\n"
+		"    if (fm_current) fm_current.Register(l);\n"
 		"    l.form = fm_current;\n"
+		"    l.changed = false;\n"
 		"    return l;\n"
 		"    }\n", 0);
 
