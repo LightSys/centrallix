@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include "obj.h"
 #include "st_node.h"
+#include "magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -47,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.c,v 1.3 2002/09/27 22:26:06 gbeeley Exp $
+    $Id: st_node.c,v 1.4 2004/08/30 03:15:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/st_node.c,v $
 
     $Log: st_node.c,v $
+    Revision 1.4  2004/08/30 03:15:03  gbeeley
+    - adding magic number support to SnNode.  there is a BUG in this module
+      regarding a rewritten file and existing references in osdrivers to the
+      now-released Node and StructInf tree.  Need to do reference counting
+      and double-check intelligence in drivers re. a modified Node.
+
     Revision 1.3  2002/09/27 22:26:06  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -107,6 +114,7 @@ snReadNode(pObject obj)
 
     	/** Check in the node cache first. **/
 	node = (pSnNode)xhLookup(&(SN_INF.NodeCache),path);
+	ASSERTMAGIC(node, MGK_STNODE);
 
 	/** If found node, quickly verify the file's timestamp. **/
 	if (node) 
@@ -147,6 +155,7 @@ snReadNode(pObject obj)
 	node->Status = SN_NS_CLEAN;
 	xaInit(&(node->Opens),16);
 	node->Data = inf;
+	SETMAGIC(node, MGK_STNODE);
 	if (objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,&pod) == 0)
 	    {
 	    memcpy(&(node->LastModification), pod.DateTime, sizeof(DateTime));
@@ -178,6 +187,8 @@ snWriteNode(pObject obj, pSnNode node)
     pObject new_obj;
     char* path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr + obj->SubCnt - 1);
     char* openas_path;
+
+	ASSERTMAGIC(node, MGK_STNODE);
 
     	/** Make sure that the date/time hasn't changed. **/
 	if (objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,&pod) == 0)
@@ -244,6 +255,7 @@ snNewNode(pObject obj, char* content_type)
     	/** Allocate the node. **/
 	new_node = (pSnNode)nmMalloc(sizeof(SnNode));
 	if (!new_node) return NULL;
+	SETMAGIC(new_node, MGK_STNODE);
 
 	/** Allocate an initial inf structure **/
 	ptr = strrchr(path,'/')+1;
@@ -265,6 +277,8 @@ int
 snDelete(pSnNode node)
     {
 
+	ASSERTMAGIC(node, MGK_STNODE);
+
     	/** Release from hash table cache. **/
 	xhRemove(&(SN_INF.NodeCache), node->NodePath);
 
@@ -282,6 +296,7 @@ snDelete(pSnNode node)
 int
 snGetSerial(pSnNode node)
     {
+    ASSERTMAGIC(node, MGK_STNODE);
     return node->RevisionCnt;
     }
 
@@ -297,6 +312,8 @@ snSetParamString(pSnNode node, pObject obj, char* paramname, char* default_val)
     {
     char* ptr;
     pStructInf attr_inf;
+
+	ASSERTMAGIC(node, MGK_STNODE);
 
     	/** Look it up in the open ctl. **/
 	if (stAttrValue_ne(stLookup_ne(obj->Pathname->OpenCtl[obj->SubPtr],paramname),&ptr) < 0) ptr = default_val;
@@ -324,6 +341,8 @@ snSetParamInteger(pSnNode node, pObject obj, char* paramname, int default_val)
     int used_default = 0;
     pStructInf attr_inf;
     char* intptr;
+
+	ASSERTMAGIC(node, MGK_STNODE);
 
     	/** Look it up in the open ctl. **/
 	if (stAttrValue_ne(stLookup_ne(obj->Pathname->OpenCtl[obj->SubPtr],paramname),&intptr) < 0) 
