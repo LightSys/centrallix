@@ -119,6 +119,7 @@ AC_DEFUN(CHECK_OPTIMIZE,
 	    AC_MSG_ERROR([Optimization and security hardening are mutually exclusive; please at most specify one or the other but not both])
 	else
 	    AC_MSG_RESULT(yes)
+	    PROFILE=""
 	    CFLAGS="$CFLAGS -O2"
 	    AC_DEFINE(USING_OPTIMIZATION,1,[defined to 1 if -On is being passed to the compiler])
 	fi

@@ -3622,6 +3622,7 @@ echo "$as_me: error: Optimization and security hardening are mutually exclusive;
 	else
 	    echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
+	    PROFILE=""
 	    CFLAGS="$CFLAGS -O2"
 
 cat >>confdefs.h <<\_ACEOF

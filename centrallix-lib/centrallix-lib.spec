@@ -8,6 +8,7 @@ Source: centrallix-lib-%{version}.tgz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
 BuildPrereq: zlib-devel
 URL: http://www.centrallix.net/
+Vendor: LightSys (http://www.lightsys.org)
 
 %description
 The centrallix-lib package provides required base functionality for the
