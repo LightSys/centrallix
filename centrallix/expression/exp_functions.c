@@ -56,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.6 2004/02/24 20:02:26 gbeeley Exp $
+    $Id: exp_functions.c,v 1.7 2004/06/30 19:26:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.7  2004/06/30 19:26:09  gbeeley
+    - Adding lztrim() function for suppressing leading zeroes.
+
     Revision 1.6  2004/02/24 20:02:26  gbeeley
     - adding proper support for external references in an expression, so
       that they get re-evaluated each time.  Example - getdate().
@@ -640,6 +643,31 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	}
     return 0;
     }
+
+
+int exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* ptr;
+
+    if (!i0 || i0->Flags & EXPR_F_NULL) 
+        {
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    if (i0->DataType != DATA_T_STRING) 
+        {
+	mssError(1,"EXP","lztrim() only works on STRING data types");
+	return -1;
+	}
+    tree->DataType = DATA_T_STRING;
+    ptr = i0->String;
+    while(*ptr == '0' && (ptr[1] >= '0' && ptr[1] <= '9')) ptr++;
+    tree->String = ptr;
+    tree->Alloc = 0;
+    return 0;
+    }
+
 
 int exp_fn_ltrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
@@ -1333,6 +1361,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "datepart", (char*)exp_fn_datepart);
 	xhAdd(&EXP.Functions, "isnull", (char*)exp_fn_isnull);
 	xhAdd(&EXP.Functions, "ltrim", (char*)exp_fn_ltrim);
+	xhAdd(&EXP.Functions, "lztrim", (char*)exp_fn_lztrim);
 	xhAdd(&EXP.Functions, "rtrim", (char*)exp_fn_rtrim);
 	xhAdd(&EXP.Functions, "substring", (char*)exp_fn_substring);
 	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
