@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.17 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_table.c,v 1.18 2002/06/10 21:47:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.18  2002/06/10 21:47:45  jorupp
+     * bit of code cleanup
+     * added movable borders to the dynamic table
+
     Revision 1.17  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -195,6 +199,9 @@ typedef struct
     int cellhspacing;
     int cellvspacing;
     int followcurrent;
+    int dragcols;
+    int colsep;
+    int gridinemptyrows;
     } httbl_struct;
 
 /*** httblVerify - not written yet.
@@ -235,6 +242,9 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddBodyItem(s,"</DIV>\n");
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
+	htrAddScriptGlobal(s,"tbldb_current","null",0);
+	htrAddScriptGlobal(s,"tbldb_start","null",0);
+	htrAddScriptGlobal(s,"tbldbdbl_current","null",0);
 
 	htrAddScriptFunction(s,"tbld_update","\n"
 		"function tbld_update(p1)\n"
@@ -320,6 +330,14 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        else\n"
 		"            this.rows[i].fg.deselect();\n"
 		"        }\n"
+		"    for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)\n"
+		"        {\n"
+		"        this.rows[i].y=((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1));\n"
+		"        if(this.gridinemptyrows)\n"
+		"            this.rows[i].visibility='inherit';\n"
+		"        else\n"
+		"            this.rows[i].visibility='hidden';\n"
+		"        }\n"
 		"    t.a++;\n"
 		"    for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)\n"
 		"        {\n"
@@ -385,37 +403,15 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_mouseover", "\n"
 		"function tbld_mouseover()\n"
 		"    {\n"
-		"    if(this.fg.recnum==null) return 0;\n"
-		"    if(this.subkind=='headerrow') return 0;\n"
-		"    else this.bgColor=0;\n"
-		"    return 0;\n"
-		"    \n"
-		"    if(this.oldbgColor) return;\n"
-		"    this.oldbgColor=this.bgColor;\n"
-		"    var r,g,b;\n"
-		"    r=Math.floor(this.bgColor/256/256)\%256;\n"
-		"    g=Math.floor(this.bgColor/256)\%256;\n"
-		"    b=this.bgColor\%256;\n"
-		"    //confirm(r+','+g+','+b);\n"
-		"    r*=1.1;\n"
-		"    g*=1.1;\n"
-		"    b*=1.1;\n"
-		"    r=(r>255)?255:Math.floor(r);\n"
-		"    g=(g>255)?255:Math.floor(g);\n"
-		"    b=(b>255)?255:Math.floor(b);\n"
-		"    //confirm(r+','+g+','+b);\n"
-		"    this.bgColor=r*256*256+g*256+b;\n"
+		"    if(this.fg.recnum!=null && this.subkind!='headerrow')\n"
+		"        this.bgColor=0;\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_mouseout", "\n"
 		"function tbld_mouseout()\n"
 		"    {\n"
-		"    if(this.subkind=='headerrow') return 0;\n"
-		"    else this.bgColor=null;\n"
-		"    return 0;\n"
-		"    \n"
-		"    this.bgColor=this.oldbgColor;\n"
-		"    this.oldbgColor=null;\n"
+		"    if(this.subkind!='headerrow')\n"
+		"        this.bgColor=null;\n"
 		"    }\n",0);
 
 	
@@ -449,7 +445,35 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        }\n"
 		"    }\n",0);
 
-	
+	htrAddScriptFunction(s,"tbld_change_width", "\n"
+		"function tbld_change_width(move)\n"
+		"    {\n"
+		"    l=this;\n"
+		"    t=l.row.table;\n"
+		"    if(l.clip.w==undefined) l.clip.w=l.clip.width\n"
+		"    if(l.x+l.clip.w+move+l.rb.clip.w>l.row.clip.w)\n"
+		"        move=l.row.clip.w-l.rb.clip.w-l.x-l.clip.w;\n"
+		"    if(l.clip.w+l.rb.clip.width+move<0)\n"
+		"        move=0-l.clip.w-l.rb.clip.width;\n"
+		"    if(l.rb.x+move<0)\n"
+		"        move=0-l.rb.x;\n"
+		"    //alert(move);\n"
+		"    for(var i=0;i<t.maxwindowsize+1;i++)\n"
+		"        for(var j=l.colnum; j<t.colcount; j++)\n"
+		"            {\n"
+		"            var c=t.rows[i].fg.cols[j];\n"
+		"            if(c.clip.w==undefined) c.clip.w=c.clip.width;\n"
+		"            if(j==l.colnum)\n"
+		"                {\n"
+		"                c.clip.w+=move;\n"
+		"                c.clip.width=c.clip.w;\n"
+		"                }\n"
+		"            else\n"
+		"                c.x+=move;\n"
+		"            if(c.rb) c.rb.x+=move;\n"
+		"            if(c.rb && c.rb.b) c.rb.b.x+=move;\n"
+		"           }\n"
+		"    }\n",0);
 	
 	// OSRC records are 1-osrc.replicasize
 	// Window slots are 1-this.windowsize
@@ -457,20 +481,24 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_recnum_to_slot","\n"
 		"function tbld_recnum_to_slot(recnum,start)\n"
 		"    {\n"
-		"    return ((((recnum-this.startat)\%this.windowsize+(this.startat\%this.windowsize)-1)\%this.windowsize)+1);\n"
+		"    return ((((recnum-this.startat)\%this.maxwindowsize+(this.startat\%this.maxwindowsize)-1)\%this.maxwindowsize)+1);\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_slot_to_recnum","\n"
 		"function tbld_slot_to_recnum(slot,start)\n"
 		"    {\n"
-		"    return (this.windowsize-((this.startat-1)\%this.windowsize)+slot-1)\%this.windowsize+this.startat;\n"
+		"    return (this.maxwindowsize-((this.startat-1)\%this.maxwindowsize)+slot-1)\%this.maxwindowsize+this.startat;\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_init","\n"
-		"function tbld_init(t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,followcurrent,cols)"
+		"function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,followcurrent,dragcols,colsep,gridinemptyrows,cols)"
 		"    {\n"
 		"    //alert('table init start');\n"
 		"    t.startat=1;\n"
+		"    t.tablename=nm;\n"
+		"    t.dragcols=dragcols;\n"
+		"    t.colsep=colsep;\n"
+		"    t.gridinemptyrows;\n"
 		"    t.cr=1;\n"
 		"    t.followcurrent=followcurrent>0?true:false;\n"
 		"    t.hdr_bgnd=hdr_bgnd;\n"
@@ -571,16 +599,51 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        var hoffset=0;\n"
 		"        for(var j=0;j<t.colcount;j++)\n"
 		"            {\n"
-		"            t.rows[i].fg.cols[j]=new Layer(t.cols[j][2]*2,t.rows[i].fg);\n"
-		"            t.rows[i].fg.cols[j].row=t.rows[i].fg;\n"
+		"            t.rows[i].fg.cols[j]=new Layer(width,t.rows[i].fg);\n"
+		"            var l = t.rows[i].fg.cols[j];\n"
+		"            l.ChangeWidth = tbld_change_width;\n"
+		"            l.row=t.rows[i].fg;\n"
+		"            l.colnum=j;\n"
 		"            if(i==j&&j==0) t.down.m+='4a6f6 52048 657468 0d4c756b 652045';\n"
-		"            t.rows[i].fg.cols[j].kind='tabledynamic';t.rows[i].fg.cols[j].subkind='cell';\n"
-		"            t.rows[i].fg.cols[j].document.layer=t.rows[i].fg.cols[j];\n"
-		"            t.rows[i].fg.cols[j].colnum=j;\n"
-		"            t.rows[i].fg.cols[j].x=hoffset+t.innerpadding;\n"
-		"            t.rows[i].fg.cols[j].y=t.innerpadding;\n"
-		"            t.rows[i].fg.cols[j].clip.width=t.cols[j][2]-t.innerpadding*2;\n"
-		"            t.rows[i].fg.cols[j].clip.height=t.rowheight-t.cellvspacing*2-t.innerpadding*2;\n"
+		"            l.kind='tabledynamic';l.subkind='cell';\n"
+		"            l.document.layer=t.rows[i].fg.cols[j];\n"
+		"            l.colnum=j;\n"
+		"            l.x=hoffset+t.innerpadding;\n"
+		"            l.y=t.innerpadding;\n"
+		"            l.clip.width=t.cols[j][2]-t.innerpadding*2;\n"
+		"            l.initwidth=l.clip.width;\n"
+		"            l.clip.height=t.rowheight-t.cellvspacing*2-t.innerpadding*2;\n"
+		"            if(t.dragcols>0 || t.colsep>0)\n"
+		"                {\n" // build draggable column heading things
+		"                var b=3;\n"
+		"                l.clip.width=l.clip.width-(b*2+t.colsep);\n"
+		"                l.initwidth=l.clip.width;\n"
+		"                l.rb=new Layer(b*2+1,t.rows[i].fg);\n"
+		"                l.rb.kind='tabledynamic';\n"
+		"                l.rb.subkind='cellborder';\n"
+		"                if(t.dragcols)\n" //no document.layer = no events...
+		"                	l.rb.document.layer=l.rb;\n"
+		"                l.rb.cell=l;\n"
+		"                l.rb.x=l.x+l.clip.width;\n"
+		"                l.rb.y=l.y\n"
+		"                l.rb.clip.height=t.rowheight-t.cellvspacing*2;\n"
+		"                l.rb.clip.width=b*2+t.colsep;\n"
+		"                l.rb.visibility='inherit';\n"
+		"                l.rb.bgColor=null;\n"
+		"                \n"
+		"                if(t.colsep>0)\n"
+		"                    {\n"
+		"                    l.rb.b=new Layer(t.colsep,t.rows[i]);\n"
+		"                    if(t.dragcols)\n" //no document.layer = no events...
+		"                        l.rb.b.document.layer=l.rb;\n" // point events to l.rb
+		"                    l.rb.b.x=l.rb.x+t.cellhspacing+b;\n"
+		"                    l.rb.b.y=0;\n"
+		"                    l.rb.b.clip.height=t.rowheight;\n"
+		"                    l.rb.b.clip.width=t.colsep;\n"
+		"                    l.rb.b.visibility='inherit';\n"
+		"                    l.rb.b.bgColor='black';\n"
+		"                    }\n"
+		"                }\n"
 		"            //t.rows[i].fg.cols[j].document.write('hi');\n"
 		"            //t.rows[i].fg.cols[j].document.close();\n"
 		"            hoffset+=t.cols[j][2]+t.innerpadding*2;\n"
@@ -618,10 +681,11 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    return t;\n"
 		"    }\n",0);
 
-	htrAddScriptInit_va(s,"    %s = tbld_init(%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%i,new Array(",
-		t.name,parentname,t.id,parentname,t.id,t.id,t.name,t.h,t.w-18,t.inner_padding,t.inner_border,t.windowsize, 
-		t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor, t.textcolorhighlight, t.titlecolor,
-		t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh,t.hdr_bgnd,t.followcurrent);
+	htrAddScriptInit_va(s,"    %s = tbld_init('%s',%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%i,%i,%i,%i,new Array(",
+		t.name,t.name,parentname,t.id,parentname,t.id,t.id,t.name,t.h,t.w-18,t.inner_padding,
+		t.inner_border,t.windowsize,t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor, 
+		t.textcolorhighlight, t.titlecolor,t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh,t.hdr_bgnd,
+		t.followcurrent,t.dragcols,t.colsep,t.gridinemptyrows);
 	
 	for(colid=0;colid<t.ncols;colid++)
 	    {
@@ -648,24 +712,29 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddEventHandler(s,"document","MOUSEOVER","tabledynamic",
 		"\n"
 		"    targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && (targetLayer.subkind=='row' || targetLayer.subkind=='cell' || targetLayer.subkind=='bg'))\n"
+		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic')\n"
 		"        {\n"
-		"        if(targetLayer.row) targetLayer=targetLayer.row;\n"
-		"        if(targetLayer.bg) targetLayer=targetLayer.bg;\n"
-		"        if(tbld_current) tbld_current.mouseout();\n"
-		"        tbld_current=targetLayer;\n"
-		"        tbld_current.mouseover();\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        if(tbld_current)\n"
+		"        if(targetLayer.subkind=='cellborder')\n"
 		"            {\n"
-		"            tbld_current.mouseout();\n"
-		"            tbld_current=null;\n"
+		"            targetLayer=targetLayer.cell.row;\n"
+		"            }\n"
+		"        if(targetLayer.subkind=='row' || targetLayer.subkind=='cell' || targetLayer.subkind=='bg')\n"
+		"            {\n"
+		"            if(targetLayer.row) targetLayer=targetLayer.row;\n"
+		"            if(targetLayer.bg) targetLayer=targetLayer.bg;\n"
+		"            if(tbld_current) tbld_current.mouseout();\n"
+		"            tbld_current=targetLayer;\n"
+		"            tbld_current.mouseover();\n"
 		"            }\n"
 		"        }\n"
-		"        \n"
-		"    \n"
+		"    if(!(  targetLayer.kind && targetLayer.kind=='tabledynamic' && \n"
+		"           (targetLayer.subkind=='row' || targetLayer.subkind=='cell' ||\n"
+		"            targetLayer.subkind=='bg'\n"
+		"           )) && tbld_current)\n"
+		"        {\n"
+		"        tbld_current.mouseout();\n"
+		"        tbld_current=null;\n"
+		"        }\n"
 		"\n");
 
 	htrAddEventHandler(s,"document","MOUSEDOWN","tabledynamic",
@@ -673,6 +742,18 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    targetLayer = (e.target.layer == null) ? t=e.target : e.target.layer;\n"
 		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic')\n"
 		"        {\n"
+		"        if(targetLayer.subkind=='cellborder')\n"
+		"            {\n"
+		"            if(targetLayer.cell.row.rownum==0)\n"
+		"                {\n" // handle event on header
+		"                tbldb_start=e.pageX;\n"
+		"                tbldb_current=targetLayer;\n"
+		"                }\n"
+		"            else\n"
+		"                {\n" // pass through event if not header
+		"                targetLayer=targetLayer.cell.row;\n"
+		"                }\n"
+		"            }\n"
 		"        if(targetLayer.subkind=='row' || targetLayer.subkind=='cell' || targetLayer.subkind=='bg')\n"
 		"            {\n"    
 		"            if(targetLayer.row) targetLayer=targetLayer.row;\n"
@@ -724,7 +805,63 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        }\n"
 		"    \n"
 		"\n");
+//#if 0
+	htrAddEventHandler(s, "document","MOUSEMOVE","tbld",
+		"    if (tbldb_current != null)\n"
+		"        {\n"
+		"        var l=tbldb_current.cell;\n"
+		"        var t=l.row.table;\n"
+		"        var move=e.pageX-tbldb_start;\n"
+		"        if(l.clip.w==undefined) l.clip.w=l.clip.width\n"
+		"        if(l.x+l.clip.w+move+l.rb.clip.w>l.row.clip.w)\n"
+		"            move=l.row.clip.w-l.rb.clip.w-l.x-l.clip.w;\n"
+		"        if(l.clip.w+l.rb.clip.width+move<0)\n"
+		"            move=0-l.clip.w-l.rb.clip.width;\n"
+		"        if(l.rb.x+move<0)\n"
+		"            move=0-l.rb.x;\n"
+		"        tbldb_start+=move;\n"
+		"        l.ChangeWidth(move);\n"
+		"        }\n"
+		"\n");
 
+	htrAddEventHandler(s, "document","MOUSEUP","tbld",
+		"    if (tbldb_current != null)\n"
+		"        {\n"
+		"        tbldb_current=null;\n"
+		"        tbldb_start=null;\n"
+		"        }\n"
+		"    targetLayer = (e.target.layer == null) ? t=e.target : e.target.layer;\n"
+		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic')\n"
+		"        {\n"
+		"        if(targetLayer.subkind=='cellborder')\n"
+		"            {\n"
+		"            if(tbldbdbl_current==targetLayer)\n"
+		"                {\n"
+		"                clearTimeout(tbldbdbl_current.time);\n"
+		"                tbldbdbl_current=null;\n"
+		"                var l = targetLayer.cell;\n"
+		"                var t = l.row.table;\n"
+		"                if(l.clip.w==undefined) l.clip.w=l.clip.width;\n"
+		"                var maxw = 0;\n"
+		"                for(var i=0;i<t.maxwindowsize+1;i++)\n"
+		"                    {\n"
+		"                    j=l.colnum;\n"
+		"                    if(t.rows[i].fg.cols[j].document.width>maxw)\n"
+		"                        maxw=t.rows[i].fg.cols[j].document.width;\n"
+		"                    }\n"
+		"                l.ChangeWidth(maxw-l.clip.w);\n"
+		"                }\n"
+		"            else\n"
+		"                {\n"
+		"                if(tbldbdbl_current && tbldbdbl_current.time)\n"
+		"                    clearTimeout(tbldbdbl_current.time);\n"
+		"                tbldbdbl_current=targetLayer;\n"
+		"                tbldbdbl_current.time=setTimeout('tbldbdbl_current=null;',1000);\n"
+		"                }\n"
+		"            }\n"
+		"        }\n"
+		"\n");
+//#endif
     return 0;
     }
 
@@ -958,6 +1095,10 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	if (objGetAttrValue(w_obj,"rowheight",POD(&t.rowheight)) != 0) t.rowheight = 15;
 	if (objGetAttrValue(w_obj,"cellhspacing",POD(&t.cellhspacing)) != 0) t.cellhspacing = 1;
 	if (objGetAttrValue(w_obj,"cellvspacing",POD(&t.cellvspacing)) != 0) t.cellvspacing = 1;
+
+	if (objGetAttrValue(w_obj,"dragcols",POD(&t.dragcols)) != 0) t.dragcols = 1;
+	if (objGetAttrValue(w_obj,"colsep",POD(&t.colsep)) != 0) t.colsep = 1;
+	if (objGetAttrValue(w_obj,"gridinemptyrows",POD(&t.gridinemptyrows)) != 0) t.gridinemptyrows = 1;
 
 	/** Should we follow the current record around? **/
 	if (objGetAttrValue(w_obj,"followcurrent",POD(&ptr)) == 0)

@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.35 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_osrc.c,v 1.36 2002/06/10 21:47:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.36  2002/06/10 21:47:45  jorupp
+     * bit of code cleanup
+     * added movable borders to the dynamic table
+
     Revision 1.35  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -590,6 +594,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "              }\n"
       "         }\n"
       "    //everyone looks ready, let's go\n"
+      "    this.init=true;\n"
       "    if(this.pendingquery) // this could be a movement or a new query....\n"
       "        {  // new query\n"
       "        this.query=this.pendingquery;\n"
