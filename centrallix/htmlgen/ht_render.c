@@ -51,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.53 2004/08/15 01:57:51 gbeeley Exp $
+    $Id: ht_render.c,v 1.54 2004/08/15 03:10:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.54  2004/08/15 03:10:48  gbeeley
+    - moving client canvas size detection logic from htmlgen to net_http so
+      that it can be passed to wgtrVerify(), later to be used in adjusting
+      geometry of application to fit browser window.
+
     Revision 1.53  2004/08/15 01:57:51  gbeeley
     - adding CSSBox capability - not a standard, but IE and Moz differ in how
       they handle the box model.  IE draws borders within the width and height,
@@ -1572,33 +1577,6 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     }
 
 
-/*** htr_internal_GetGeom() - deploy a snippet of javascript to the browser
- *** to fetch the window geometry and reload the application.
- ***/
-int
-htr_internal_GetGeom(pFile output)
-    {
-
-	fdPrintf(output, "<html><head></head><script language='javascript'>\n");
-	fdPrintf(output, "function startup()\n"
-			 "    {\n"
-			 "    var loc = window.location.href;\n"
-			 "    if (loc.indexOf('?') >= 0)\n"
-			 "        loc += '&';\n"
-			 "    else\n"
-			 "        loc += '?';\n"
-			 "    if (window.document.body && window.document.body.clientWidth)\n"
-			 "        loc += 'cx__width=' + window.document.body.clientWidth + '&cx__height=' + window.document.body.clientHeight;\n"
-			 "    else\n"
-			 "        loc += 'cx__width=' + window.innerWidth + '&cx__height=' + window.innerHeight;\n"
-			 "    window.location.href = loc;\n"
-			 "    }\n");
-	fdPrintf(output, "</script><body onload='startup();'>Please Wait...</body></html>\n");
-
-    return 0;
-    }
-
-
 /*** htr_internal_BuildClientWgtr_r - the recursive part of client-side wgtr generation
  ***/
 int
@@ -1681,22 +1659,6 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	s->Params = params;
 //	s->ObjSession = appstruct->Session;
 	s->ObjSession = obj_s;
-
-	/** Width and Height of user agent specified? **/
-	hptr = htrParamValue(s, "cx__height");
-	wptr = htrParamValue(s, "cx__width");
-	if (!hptr || !wptr)
-	    {
-	    htr_internal_GetGeom(output);
-	    nmFree(s, sizeof(HtSession));
-	    return 0;
-	    }
-	s->Width = strtol(wptr,NULL,10);
-	if (s->Width < 0) s->Width = 0;
-	if (s->Width > 10000) s->Width = 10000;
-	s->Height = strtol(hptr,NULL,10);
-	if (s->Height < 0) s->Height = 0;
-	if (s->Height > 10000) s->Height = 10000;
 
 	/** Parent container name specified? **/
 	if ((ptr = htrParamValue(s, "cx__parent")))

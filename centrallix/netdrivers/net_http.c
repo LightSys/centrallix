@@ -63,10 +63,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.44 2004/08/13 18:46:13 mmcgill Exp $
+    $Id: net_http.c,v 1.45 2004/08/15 03:10:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.45  2004/08/15 03:10:48  gbeeley
+    - moving client canvas size detection logic from htmlgen to net_http so
+      that it can be passed to wgtrVerify(), later to be used in adjusting
+      geometry of application to fit browser window.
+
     Revision 1.44  2004/08/13 18:46:13  mmcgill
     *   Differentiated between non-visual widgets and widgets without associated
         objects during the rendering process. Widgets without associated objects
@@ -2218,6 +2223,50 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
     return 0;
     }
 
+/*** nht_internal_GetGeom() - deploy a snippet of javascript to the browser
+ *** to fetch the window geometry and reload the application.
+ ***/
+int
+nht_internal_GetGeom(pObject target_obj, pFile output)
+    {
+    char bgnd[128];
+    char* ptr;
+
+	/** Do we have a bgcolor / background? **/
+	if (objGetAttrValue(target_obj, "bgcolor", DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    snprintf(bgnd, sizeof(bgnd), "bgcolor='%.100s'", ptr);
+	    }
+	else if (objGetAttrValue(target_obj, "background", DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    snprintf(bgnd, sizeof(bgnd), "background='%.100s'", ptr);
+	    }
+	else
+	    {
+	    strcpy(bgnd, "bgcolor='white'");
+	    }
+
+	/** Generate the snippet **/
+	fdPrintf(output, "<html><head><meta http-equiv=\"Pragma\" CONTENT=\"no-cache\"></head><script language='javascript'>\n");
+	fdPrintf(output, "function startup()\n"
+			 "    {\n"
+			 "    var loc = window.location.href;\n"
+			 "    if (loc.indexOf('?') >= 0)\n"
+			 "        loc += '&';\n"
+			 "    else\n"
+			 "        loc += '?';\n"
+			 "    if (window.document.body && window.document.body.clientWidth)\n"
+			 "        loc += 'cx__width=' + window.document.body.clientWidth + '&cx__height=' + window.document.body.clientHeight;\n"
+			 "    else\n"
+			 "        loc += 'cx__width=' + window.innerWidth + '&cx__height=' + window.innerHeight;\n"
+			 "    window.location.href = loc;\n"
+			 "    }\n");
+	fdPrintf(output, "</script><body %s onload='startup();'><img src='/sys/images/loading.gif'></body></html>\n", bgnd);
+
+    return 0;
+    }
+
+
 
 /*** nht_internal_GET - handle the HTTP GET method, reading a document or
  *** attribute list, etc.
@@ -2248,6 +2297,10 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
     char tbuf[32];
     int send_info = 0;
     pObjectInfo objinfo;
+    char* hptr;
+    char* wptr;
+    int client_h, client_w;
+    int gzip;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -2386,7 +2439,26 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset") ||
 		    !strcmp(ptr,"widget/component-decl"))
 	        {
-		int gzip=0;
+		/** Width and Height of user agent specified? **/
+		wptr = hptr = NULL;
+		stAttrValue_ne(stLookup_ne(url_inf,"cx__height"),&hptr);
+		stAttrValue_ne(stLookup_ne(url_inf,"cx__width"),&wptr);
+		if (!hptr || !wptr)
+		    {
+		    /** Deploy snippet to get geom from browser **/
+		    fdPrintf(conn,"Content-Type: text/html\r\n\r\n");
+		    nht_internal_GetGeom(target_obj, conn);
+		    return 0;
+		    }
+		client_w = strtol(wptr,NULL,10);
+		if (client_w < 0) client_w = 0;
+		if (client_w > 10000) client_w = 10000;
+		client_h = strtol(hptr,NULL,10);
+		if (client_h < 0) client_h = 0;
+		if (client_h > 10000) client_h = 10000;
+
+		/** Check for gzip encoding **/
+		gzip=0;
 #ifdef HAVE_LIBZ
 		if(NHT.EnableGzip && acceptencoding && strstr(acceptencoding,"gzip"))
 		    gzip=1; /* enable gzip for this request */
@@ -2399,12 +2471,13 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 		if(gzip==1)
 		    fdSetOptions(conn, FD_UF_GZIP);
 
+		/** Read the app spec, verify it, and generate it to DHTML **/
 		if ( (widget_tree = wgtrParseOpenObject(target_obj)) == NULL)
 		    mssError(1, "HTTP", "Couldn't parse %s of type %s", url_inf->StrVal, ptr);
 		else
 		    {
 		    /*wgtrPrint(widget_tree, 0);*/
-		    if (wgtrVerify(widget_tree) < 0)
+		    if (wgtrVerify(widget_tree, client_w, client_h, client_w, client_h) < 0)
 			{
 			mssError(0, "HTTP", "Couldn't verify widget tree for '%s'", target_obj->Pathname->Pathbuf);
 			}

@@ -872,7 +872,7 @@ wgtr_internal_BuildVerifyQueue(pWgtrVerifySession vs, pWgtrNode node)
     }
 
 int
-wgtrVerify(pWgtrNode tree)
+wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh)
     {
     WgtrVerifySession vs;
     pWgtrDriver drv;
@@ -883,6 +883,12 @@ wgtrVerify(pWgtrNode tree)
 	vs.Tree = tree;
 	xaInit(&(vs.VerifyQueue), 128);
 	xaInit(&Names, 128);
+
+	/** Set top-level width and height **/
+	if (tree->width < minw) tree->width = minw;
+	if (tree->width > maxw) tree->width = maxw;
+	if (tree->height < minh) tree->height = minh;
+	if (tree->height > maxh) tree->height = maxh;
 
 	/** Build the verification queue **/
 	wgtr_internal_BuildVerifyQueue(&vs, tree);

@@ -128,7 +128,7 @@ pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints
 pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression from a widget node **/
 
 /** verification functions **/
-int wgtrVerify(pWgtrNode tree);	/** Verify a widget-tree. s must be pHtSession **/
+int wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh);	/** Verify a widget-tree. s must be pHtSession **/
 int wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget); /** add a widget to the Verify Queue **/
 int wgtrCancelVerify(pWgtrVerifySession cs, pWgtrNode widget);	/** remove a widget from the Verify Queue **/
 
