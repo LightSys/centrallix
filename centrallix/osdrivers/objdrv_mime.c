@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.23 2002/09/09 20:12:58 uid20175 Exp $
+    $Id: objdrv_mime.c,v 1.24 2002/09/10 01:02:49 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.24  2002/09/10 01:02:49  jorupp
+     * should return a null query object when there are no attachments
+
     Revision 1.23  2002/09/09 20:12:58  uid20175
     Fixed a bug that wasn't properly returning attributes for a given path
     element.
@@ -425,6 +428,11 @@ mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     pMimeInfo inf;
 
     inf = (pMimeInfo)inf_v;
+
+    /** Don't open a query when there are no attachments **/
+    if ( xaCount(&(inf->Header->Parts)) == 0)
+	return NULL;
+
     qy = (pMimeQuery)nmMalloc(sizeof(MimeQuery));
     if (!qy) return NULL;
     memset(qy,0,sizeof(MimeQuery));
