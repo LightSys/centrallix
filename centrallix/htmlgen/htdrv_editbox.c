@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.17 2002/05/31 04:03:02 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.18 2002/06/03 05:09:25 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.18  2002/06/03 05:09:25  jorupp
+     * impliment the form view mode correctly
+     * fix scrolling back in the OSRC (from the table)
+     * throw DataChange event when any data is changed
+
     Revision 1.17  2002/05/31 04:03:02  lkehresman
     Added check if the background color doesn't exist.
 
@@ -335,7 +340,9 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_keyhandler", "\n"
 		"function eb_keyhandler(l,e,k)\n"
 		"    {\n"
+		"    if(!eb_current) return;\n"
 		"    if(eb_current.enabled!='full') return 1;\n"
+		"    if(eb_current.form) eb_current.form.DataNotify(eb_current);\n"
 		"    txt = l.content;\n"
 		"    if (k == 9)\n"
 		"        {\n"
@@ -404,10 +411,6 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if(eb_current && eb_current.changed)\n"
 		"        {\n"
 		"        eb_current.changed=false;\n"
-		"        if (eb_current.form)\n"
-		"            {\n"
-		"            eb_current.form.DataNotify(eb_current);\n"
-		"            }\n"
 		"        }\n"
 		"    eb_current = null;\n"
 		"    return true;\n"

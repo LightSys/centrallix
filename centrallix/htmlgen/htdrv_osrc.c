@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.29 2002/06/02 22:13:21 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.30 2002/06/03 05:09:25 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.30  2002/06/03 05:09:25  jorupp
+     * impliment the form view mode correctly
+     * fix scrolling back in the OSRC (from the table)
+     * throw DataChange event when any data is changed
+
     Revision 1.29  2002/06/02 22:13:21  jorupp
      * added disable functionality to image button (two new Actions)
      * bugfixes
@@ -373,12 +378,27 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                switch(q[i].type)\n"
       "                    {\n"
       "                    case 'integer':\n"
+      "                        str=':'+q[i].oid+'='+val;"
       "                        break;\n"
       "                    default:\n"
-      "                        val='\"'+val+'\"';\n"
+      "                        /**/ if(val.substring(0,2)=='>=')\n"
+      "                            str=':'+q[i].oid+' >= '+val.substring(1);\n"
+      "                        else if(val.substring(0,2)=='<=')\n"
+      "                            str=':'+q[i].oid+' <= '+val.substring(1);\n"
+      "                        else if(val.substring(0,2)=='=>')\n"
+      "                            str=':'+q[i].oid+' >= '+val.substring(1);\n"
+      "                        else if(val.substring(0,2)=='=<')\n"
+      "                            str=':'+q[i].oid+' <= '+val.substring(1);\n"
+      "                        else if(val.substring(0,1)=='>')\n"
+      "                            str=':'+q[i].oid+' > '+val.substring(1);\n"
+      "                        else if(val.substring(0,1)=='<')\n"
+      "                            str=':'+q[i].oid+' < '+val.substring(1);\n"
+      "                        else if((/\\%/).test(val))\n"
+      "                            str=':'+q[i].oid+' LIKE \"'+val+'\"';\n"
+      "                        else\n"
+      "                            str=':'+q[i].oid+'='+'\"'+val+'\"';\n"
       "                        break;\n"
       "                    }\n"
-      "                str=':'+q[i].oid+'='+val;"
       "                }\n"
       "            if(firstone)\n"
       "                {\n"
@@ -714,6 +734,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                    this.FirstRecord++;\n"
       "                    }\n"
       "                }\n"
+      "            alert(this.FirstRecord+' -- '+this.OSMLRecord);\n"
       "            if(this.FirstRecord>this.OSMLRecord)\n"
       "                {\n"
       "                this.FirstRecord=this.OSMLRecord;\n"
@@ -936,9 +957,10 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    this.qid=this.document.links[0].target;\n"
       "    this.OSMLRecord=this.startat-1;\n"
       "    this.onload=osrc_fetch_next;\n"
-      "    if(this.FirstRecord-this.TargetRecord<this.replicasize)\n"
+      "    //this.FirstRecord=this.startat;\n"
+      "    if(this.startat-this.TargetRecord+1<this.replicasize)\n"
       "        {\n"
-      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.FirstRecord-this.TargetRecord)+'&ls__startat='+this.startat;\n"
+      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat;\n"
       "        }\n"
       "    else\n"
       "        {\n"
@@ -997,6 +1019,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    {\n"
       "    this.moveop=false;\n"
       "    this.TargetRecord=recnum;\n"
+      "    alert('scrolling to '+recnum);\n"
       "    if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)\n"
       "        {\n"
       "        this.TellAllReplicaMoved();\n"
@@ -1015,6 +1038,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                {\n"
       "                this.startat=this.TargetRecord;\n"
       "                }\n"
+      "            alert('scrolling back, startat:'+this.startat);\n"
       "            this.onload=osrc_open_query_startat;\n"
       "            if(this.qid)\n"
       "                {\n"

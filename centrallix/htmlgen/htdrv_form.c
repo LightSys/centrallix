@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.42  2002/06/03 05:09:25  jorupp
+     * impliment the form view mode correctly
+     * fix scrolling back in the OSRC (from the table)
+     * throw DataChange event when any data is changed
+
     Revision 1.41  2002/06/03 04:52:45  lkehresman
     Made saving throw you out of modify mode in the form.
 
@@ -344,7 +349,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    control._form_IsChanged=true;\n"
 		"    if(this.mode=='New' || this.mode=='Modify')\n"
 		"        {\n"
-		"        this.IsUnsaved=true;\n"
+		"        if(!this.IsUnsaved)\n"
+		"            {\n"
+		"            this.IsUnsaved=true;\n"
+		"            this.SendEvent('StatusChange');\n"
+		"            this.SendEvent('DataChange');\n"
+		"            }\n"
 		"        }\n"
 		"    }\n", 0);
 
@@ -688,6 +698,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    }\n", 0);
 
+	htrAddScriptFunction(s, "form_action_view", "\n"
+		"function form_action_view(aparam)\n"
+		"    {\n"
+		"    this.ChangeMode(\"View\");\n"
+		"    }\n", 0);
+
 	/** tell osrc to go to first record **/
 	htrAddScriptFunction(s, "form_action_first", "\n"
 		"function form_action_first(aparam)\n"
@@ -767,6 +783,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    var evobj = new Object();\n"
 		"    evobj.Caller = this;\n"
 		"    evobj.Status = this.mode;\n"
+		"    evobj.IsUnsaved = this.IsUnsaved;\n"
 		"    cn_activate(this, event, evobj);\n"
 		"    delete evobj;\n"
 		"    }\n",0);
@@ -983,8 +1000,8 @@ old query code
 		"        return 0;\n"
 		"        }\n"
 		"    this.cb['OperationCompleteSuccess'].add(this,\n"
-		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableModifyAll();this.cb['OperationCompleteFail'].clear();this.ChangeMode('View');\"),null,-100);\n"
-		"    this.cb['OperationCompleteFail'].add(this,\n"
+		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableModifyAll();this.ActionView();this.cb['OperationCompleteFail'].clear();\"),null,-100);\n"
+		"     this.cb['OperationCompleteFail'].add(this,\n"
 		"           new Function(\"this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();\"),null,-100);\n"
 	    
 		/** build the object to pass to objectsource **/
@@ -1158,6 +1175,7 @@ old query code
 		"    form.ActionDelete = form_action_delete;\n"
 		"    form.ActionDiscard = form_action_discard;\n"
 		"    form.ActionEdit = form_action_edit;\n"
+		"    form.ActionView = form_action_view;\n"
 		"    form.ActionFirst = form_action_first;\n"
 		"    form.ActionLast = form_action_last;\n"
 		"    form.ActionNew = form_action_new;\n"
@@ -1196,6 +1214,7 @@ old query code
 	htrAddScriptInit_va(s,"\n    %s=form_init(%i,%i,%i,%i,%i,%i,'%s',%s,%i);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
 		_3bconfirmwindow,readonly);
+	htrAddScriptInit_va(s,"    %s.ChangeMode('NoData');\n",name);
 	htrAddScriptInit_va(s,"    %s.oldform=fm_current;\n",name);
 	htrAddScriptInit_va(s,"    fm_current=%s;\n",name);
 
@@ -1256,6 +1275,7 @@ htformInitialize()
 
 	/* these don't really do much, since the form doesn't have a layer, so nothing can find it... */
 	htrAddEvent(drv,"StatusChange");
+	htrAddEvent(drv,"DataChange");
 	htrAddEvent(drv,"NoData");
 	htrAddEvent(drv,"View");
 	htrAddEvent(drv,"Modify");
