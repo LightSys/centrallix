@@ -8,6 +8,7 @@
 #include "xarray.h"
 #include "xhash.h"
 #include "mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.10 2002/04/28 03:19:53 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.11 2002/05/08 00:46:30 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.11  2002/05/08 00:46:30  jorupp
+     * added client-side support for the session watchdog.  The client will ping every timer/2 seconds (just to be safe)
+
     Revision 1.10  2002/04/28 03:19:53  gbeeley
     Fixed a bit of a bug in ht_render where it did not properly set the
     length on the StrValue structures when adding script functions.  This
@@ -118,7 +122,6 @@ htpageVerify()
     return 0;
     }
 
-
 /*** htpageRender - generate the HTML code for the page.
  ***/
 int
@@ -133,6 +136,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char dtfocus2[64] = "#000080";
     pObject sub_w_obj;
     pObjQuery qy;
+    int watchdogtimer;
 
     	/** If not at top-level, don't render the page. **/
 	/** Z is set to 10 for the top-level page. **/
@@ -226,6 +230,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        #pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
 		"        #pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
 		"        #pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
+		"        #pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n"
 		"    </STYLE>\n" );
 	htrAddBodyItem(s, "<DIV ID=\"pgtop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
@@ -237,7 +242,38 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"<DIV ID=\"pgkbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n"
 		"<DIV ID=\"pgkrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n"
 		"<DIV ID=\"pgklft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgping\"></DIV>\n");
+
+	htrAddScriptFunction(s, "pg_ping_init","\n"
+		"function pg_ping_init(l,i)\n"
+		"    {\n"
+		"    l.tid=setInterval(pg_ping_send,i,l);\n"
+		"    }\n"
+		"\n",0);
 	
+	htrAddScriptFunction(s, "pg_ping_recieve","\n"
+		"function pg_ping_recieve()\n"
+		"    {\n"
+		"    if(this.document.links[0].target!=='OK')\n"
+		"        {\n"
+		"        clearInterval(this.tid);\n"
+		"        confirm('you have been disconnected from the server');\n"
+		"        }\n"
+		"    }\n"
+		"\n",0);
+
+	htrAddScriptFunction(s, "pg_ping_send","\n"
+		"function pg_ping_send(p)\n"
+		"    {\n"
+		"    //confirm('sending');\n"
+		"    p.onload=pg_ping_recieve;\n"
+		"    p.src='/INTERNAL/ping';\n"
+		"    }\n"
+		"\n",0);
+
+	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
+	htrAddScriptInit_va(s,"    pg_ping_init(%s.layers.pgping,%i);\n",parentname,watchdogtimer/2*1000);
+
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandler(s, "document", "MOUSEMOVE","pg",
 		"    if (pg_modallayer)\n"
