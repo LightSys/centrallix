@@ -53,12 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_main.c,v 1.1 2001/08/13 18:01:15 gbeeley Exp $
+    $Id: prtmgmt_main.c,v 1.2 2001/09/28 20:03:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_main.c,v $
 
     $Log: prtmgmt_main.c,v $
-    Revision 1.1  2001/08/13 18:01:15  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/28 20:03:13  gbeeley
+    Updated magic number system syntax to remove the semicolons from within
+    the macro expansions.  Semicolons now are (more naturally) placed after
+    the macro calls.
+
+    Revision 1.1.1.1  2001/08/13 18:01:15  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:17  gbeeley
     Centrallix Core Initial Import
@@ -144,7 +149,7 @@ prt_internal_FreeOS(pPrtObjStream element)
     {
 
 #if 00
-	ASSERTMAGIC(element, MGK_PRTOBJSTRM)
+	ASSERTMAGIC(element, MGK_PRTOBJSTRM);
 	if (element->Type == PRT_OS_T_STRING && element->String.Text) nmSysFree(element->String.Text);
 	if (element->Type == PRT_OS_T_PICTURE && element->Picture.Data) nmSysFree(element->Picture.Data);
 	nmFree(element, sizeof(PrtObjStream));
@@ -163,7 +168,7 @@ prt_internal_FreeStream(pPrtObjStream element_stream)
 
 	while(element_stream)
 	    {
-	    ASSERTMAGIC(element_stream, MGK_PRTOBJSTRM)
+	    ASSERTMAGIC(element_stream, MGK_PRTOBJSTRM);
 
     	    /** Free sub-streams? **/
 #if 00
@@ -205,7 +210,7 @@ prt_internal_CopyOS(pPrtObjStream element)
     {
     pPrtObjStream new_element;
 
-	ASSERTMAGIC(element, MGK_PRTOBJSTRM)
+	ASSERTMAGIC(element, MGK_PRTOBJSTRM);
 
     	/** Allocate the new element **/
 	new_element = (pPrtObjStream)nmMalloc(sizeof(PrtObjStream));
@@ -252,7 +257,7 @@ prt_internal_CopyStream(pPrtObjStream stream, pPrtObjStream new_parent, pPrtObjS
 	while(stream)
 	    {
 	    stream = xqGetStruct(qptr,Seq,pPrtObjStream);
-	    ASSERTMAGIC(stream, MGK_PRTOBJSTRM)
+	    ASSERTMAGIC(stream, MGK_PRTOBJSTRM);
 
 	    /** Copy the element **/
 	    tmp = prt_internal_CopyOS(stream);
@@ -346,7 +351,7 @@ prt_internal_AddOS(pPrtObjStream parent, pPrtObjStream* streamhead, pPrtObjStrea
     {
     pXQueue q;
 
-	ASSERTMAGIC(new_element, MGK_PRTOBJSTRM)
+	ASSERTMAGIC(new_element, MGK_PRTOBJSTRM);
 
     	/** Link in to the next/prev **/
 	if (!streamhead) streamhead = stream->Head;
@@ -367,7 +372,7 @@ int
 prt_internal_RemoveOS(pPrtObjStream rm_element)
     {
 
-	ASSERTMAGIC(rm_element, MGK_PRTOBJSTRM)
+	ASSERTMAGIC(rm_element, MGK_PRTOBJSTRM);
 
     	/** Remove from Ynext/Yprev? **/
 	xqRemove(&rm_element->YSeq);
@@ -423,7 +428,7 @@ int
 prt_internal_FreeSession(pPrtSession this)
     {
 
-    	ASSERTMAGIC(this, MGK_PRTOBJSSN)
+    	ASSERTMAGIC(this, MGK_PRTOBJSSN);
 
     	/** Free the objstream for the session **/
 	if (this->ObjStreamHead) obj_internal_FreeStream(this->ObjStreamHead);

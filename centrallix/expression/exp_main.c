@@ -45,12 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.1 2001/08/13 18:00:48 gbeeley Exp $
+    $Id: exp_main.c,v 1.2 2001/09/28 20:03:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
-    Revision 1.1  2001/08/13 18:00:48  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/28 20:03:13  gbeeley
+    Updated magic number system syntax to remove the semicolons from within
+    the macro expansions.  Semicolons now are (more naturally) placed after
+    the macro calls.
+
+    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -112,7 +117,7 @@ expFreeExpression(pExpression this)
     {
     int i;
 
-    	ASSERTMAGIC(this,MGK_EXPRESSION)
+    	ASSERTMAGIC(this,MGK_EXPRESSION);
 
 	/** Link count check **/
 	if ((--this->LinkCnt) > 0) return 0;
@@ -164,8 +169,8 @@ exp_internal_CopyNode(pExpression src, pExpression dst)
     {
     pExpression new_tree = dst;
 
-    	ASSERTMAGIC(src,MGK_EXPRESSION)
-    	ASSERTMAGIC(dst,MGK_EXPRESSION)
+    	ASSERTMAGIC(src,MGK_EXPRESSION);
+    	ASSERTMAGIC(dst,MGK_EXPRESSION);
 
 	/** Copy the static fields **/
 	new_tree->NodeType = src->NodeType;
@@ -210,7 +215,7 @@ exp_internal_CopyTree(pExpression orig_exp)
     pExpression new_subexp;
     int i;
 
-    	ASSERTMAGIC(orig_exp,MGK_EXPRESSION)
+    	ASSERTMAGIC(orig_exp,MGK_EXPRESSION);
 
     	/** First, copy the current node. **/
 	new_exp = expAllocExpression();
@@ -238,8 +243,8 @@ exp_internal_SplitTree_r(pExpression src, pExpression split, pExpression* result
     pExpression new_trees[16];
     int i,j;
 
-    	ASSERTMAGIC(src,MGK_EXPRESSION)
-    	ASSERTMAGIC(split,MGK_EXPRESSION)
+    	ASSERTMAGIC(src,MGK_EXPRESSION);
+    	ASSERTMAGIC(split,MGK_EXPRESSION);
 
     	/** Is this the split point? **/
 	if (src == split)
@@ -289,8 +294,8 @@ expSplitTree(pExpression src_tree, pExpression split_point, pExpression result_t
     pExpression* result_ptrs[16];
     int i;
 
-    	ASSERTMAGIC(split_point,MGK_EXPRESSION)
-    	ASSERTMAGIC(src_tree,MGK_EXPRESSION)
+    	ASSERTMAGIC(split_point,MGK_EXPRESSION);
+    	ASSERTMAGIC(src_tree,MGK_EXPRESSION);
 
     	/** Setup the result tree ptrs **/
 	for(i=0;i<split_point->Children.nItems;i++) result_ptrs[i] = &(result_trees[i]);
@@ -310,7 +315,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
     {
     int i;
 
-    	ASSERTMAGIC(this,MGK_EXPRESSION)
+    	ASSERTMAGIC(this,MGK_EXPRESSION);
 
     	/** Print the contents of this expression first **/
 	printf("%*.*s",level,level,"");
