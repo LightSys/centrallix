@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.21 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: mtask.c,v 1.22 2003/06/05 04:22:54 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.22  2003/06/05 04:22:54  jorupp
+     * added support for mTask-based signal handlers
+       - go ahead greg -- pick apart my implimentation.....
+
     Revision 1.21  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -175,6 +179,8 @@
 #include "newmalloc.h"
 #include "mtask.h"
 #include "xstring.h"
+#include "xhash.h"
+#include "xringqueue.h"
 
 /** Internal stuff **/
 int mtRunStartFn(pThread new_thr, int idx);
@@ -206,6 +212,8 @@ typedef struct _MTS
     int		CurGroupID;
     unsigned long LastTick;
     unsigned int DebugLevel;
+    XRingQueue	PendingSignals;
+    XHashTable	SignalHandlers;
     }
     MTSystem, *pMTSystem;
 
@@ -470,6 +478,103 @@ mtSigSegv()
     return;
     }
 
+/*** mtTrapSignal is the signal handler for every signal that has an application-level
+ ***   MTASK signal handler installed for it -- it simply queues the signals for processing
+ ***/
+void mtTrapSignal(int signum)
+    {
+    int* sig;
+    sig = (int*)nmMalloc(sizeof(int));
+    if(!sig)
+	{
+	printf("Could not allocate memory to handle signal: %i\n",signum);
+	return;
+	}
+    *sig = signum;
+    xrqEnqueue(&MTASK.PendingSignals,sig);
+    }
+
+
+/*** mtAddSignalHandler is called from user code to register a signal handler for the whole application
+ ***   returns 0 on success and -1 on failure
+ ***   signum is the signal to catch, and start_fn is the function to use to start the thread to handle it
+ *** NOTE: signal handlers are _not_ protected from having more than one running at once -- you
+ ***   must use semaphores in start_fn if you want to guarantee this
+ ***/
+int mtAddSignalHandler(int signum, void(*start_fn)())
+    {
+    pXArray list;
+
+    /** can't trap SIGPIPE or SIGSEGV right now **/
+    if(signum == SIGPIPE || signum == SIGSEGV)
+	{
+	return -1;
+	}
+    
+    list = (pXArray)xhLookup(&MTASK.SignalHandlers,(char*)&signum);
+    if(!list)
+	{
+	int* sig;
+	sig = (int*)nmMalloc(sizeof(int));
+	if(!sig)
+	    {
+	    return -1;
+	    }
+	*sig = signum;
+	list = (pXArray)nmMalloc(sizeof(XArray));
+	if(!list)
+	    {
+	    nmFree(sig,sizeof(int));
+	    return -1;
+	    }
+	xaInit(list,4);
+	xhAdd(&MTASK.SignalHandlers,(char*)sig, (char*)list);
+	}
+    if(xaAddItem(list,start_fn)<0)
+	{
+	return -1;
+	}
+    else
+	{
+	signal(signum,mtTrapSignal);
+	return 0;
+	}
+    }
+
+/*** mtRemoveSignalHandler is called from user code to remove a signal handler for the whole application
+ ***   returns 0 on success, -1 if the signal is not registered, and -2 if unable to remove
+ ***/
+int mtRemoveSignalHandler(int signum, void(*start_fn)())
+    {
+    pXArray list;
+    int i;
+    list = (pXArray) xhLookup(&MTASK.SignalHandlers,(char*)&signum);
+    if(!list)
+	{
+	return -1;
+	}
+    for(i=0;i<xaCount(list);i++)
+	{
+	if(xaGetItem(list,i)==start_fn)
+	    {
+	    if(xaRemoveItem(list,i)<0)
+		{
+		return -2;
+		}
+	    else
+		{
+		/** reset the signal handler to the default for this signal if there's no handler functions left **/
+		if(xaCount(list)==0)
+		    {
+		    signal(signum,SIG_DFL);
+		    }
+		return 0;
+		}
+	    }
+	}
+    return -1;
+    }
+
 
 /*** MTTICKS is a friendly interface to times() so we can get the clock ticks 
  *** since the program started.
@@ -535,6 +640,12 @@ mtInitialize(int flags, void (*start_fn)())
 	/** Initialize the system-event-wait table **/
 	MTASK.nEvents = 0;
 	for(i=0;i<MAX_EVENTS;i++) MTASK.EventWaitTable[i] = NULL;
+
+	/** initialize the ring buffer for pending signals **/
+	xrqInit(&MTASK.PendingSignals,4);
+	
+	/** initialize the hash table for signal handlers **/
+	xhInit(&MTASK.SignalHandlers,16,4);
 
 	/** If we are running as root, clear the supplementary groups
 	 ** list.  This isn't optimal, but solves the security issue for
@@ -666,6 +777,31 @@ r_mtRunStartFn()
     return 0;	/* should never return */
     }
 
+/*** mtProcessSignals is an internal-only function to process the list of pending signals
+ ***   I had to add this, as there's three places to process signals, and I didn't want to put this code
+ ***   in all three places (beginning of mtSched, and after an EINTR or EAGAIN on either select())
+ ***/
+int mtProcessSignals()
+    {
+    int processed = 0;
+    int *sig;
+    while((sig = (int*)xrqDequeue(&MTASK.PendingSignals)))
+	{
+	pXArray list;
+	list = (pXArray) xhLookup(&MTASK.SignalHandlers,(char*)sig);
+	if(list)
+	    {
+	    int i;
+	    for(i=0;i<xaCount(list);i++)
+		{
+		void (*start_fn)() = xaGetItem(list,i);
+		thCreate(start_fn,0,NULL);
+		processed++;
+		}
+	    }
+	}
+    return processed;
+    }
 
 /*** MTSCHED is the main thread scheduling and blocking i/o processing
  *** piece of the MTASK system.  This routine is internal-only and not
@@ -843,6 +979,10 @@ mtSched()
 	if (n_runnable+n_timerblock == 0)
 	    {
           REISSUE_SELECT:
+	    if(mtProcessSignals()>0)
+		{
+		return mtSched();
+		}
 #ifdef MTASK_DEBUG
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
 		printf("IO select (no timeout)\n");
@@ -862,6 +1002,10 @@ mtSched()
 	    /*if (num_fds > 0)*/
 	        {
 	      REISSUE_SELECT2:
+		if(mtProcessSignals()>0)
+		    {
+		    return mtSched();
+		    }
 	        tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
 	        tmout.tv_usec = (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)*(1000000/(64*MTASK.TicksPerSec));
 		/** if we need 4.5 ticks, we need to select for at least 5 to make sure we don't get 4 and 'deadlock' **/

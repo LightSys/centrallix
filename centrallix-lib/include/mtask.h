@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.10 2003/02/20 22:57:41 jorupp Exp $
+    $Id: mtask.h,v 1.11 2003/06/05 04:22:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.11  2003/06/05 04:22:53  jorupp
+     * added support for mTask-based signal handlers
+       - go ahead greg -- pick apart my implimentation.....
+
     Revision 1.10  2003/02/20 22:57:41  jorupp
      * added quite a bit of debugging to mTask
      	* call mtSetDebug() to set debugging level
@@ -344,6 +348,11 @@ pThread mtInitialize(int flags, void (*start_fn)());
 unsigned long mtRealTicks();
 unsigned long mtTicks();
 unsigned long mtLastTick();
+
+
+/** MTASK Signal handing functions **/
+int mtAddSignalHandler(int signum, void(*start_fn)());
+int mtRemoveSignalHandler(int signum, void(*start_fn)());
 
 
 /** MTASK Threading functions. **/
