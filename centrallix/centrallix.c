@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.4 2002/07/12 15:04:20 pfinley Exp $
+    $Id: centrallix.c,v 1.5 2002/07/29 01:39:18 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.5  2002/07/29 01:39:18  jorupp
+     * prints error message explaining itself if it fails loading a module
+
     Revision 1.4  2002/07/12 15:04:20  pfinley
     Multiline textarea widget initial commit (still a some bugs)
 
@@ -135,6 +138,7 @@ cx_internal_LoadModules(char* type)
 		{
 		nmFree(moduledata, sizeof(CxModule));
 		mssError(1,"CX","Module '%s' could not be loaded",modpath);
+		mssError(1,"CX","ERROR: %s",dlerror());
 		continue;
 		}
 
