@@ -11,7 +11,7 @@
 
 function cn_activate(t,f,eparam)
     {
-    if (!t['Event'+f]) return;
+    if (!t || !t['Event'+f]) return;
     if (!eparam)
 	{
 	eparam = new Object();
