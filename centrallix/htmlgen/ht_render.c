@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.8 2002/04/28 06:00:38 jorupp Exp $
+    $Id: ht_render.c,v 1.9 2002/05/02 01:12:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.9  2002/05/02 01:12:43  gbeeley
+    Fixed some buggy initialization code where an XArray was not being
+    setup prior to being used.  Was causing potential bad pointers to
+    realloc() and other various problems, especially once the dynamic
+    loader was messing with things.
+
     Revision 1.8  2002/04/28 06:00:38  jorupp
      * added htrAddScriptCleanup* stuff
      * added cleanup stuff to osrc
@@ -526,6 +532,7 @@ htrAddEvent(pHtDriver drv, char* event_name)
 	if (!event) return -1;
 	memccpy(event->Name, event_name, 0, 31);
 	event->Name[31] = '\0';
+	xaInit(&(event->Parameters),16);
 	xaAddItem(&drv->Events, (void*)event);
 
     return 0;
@@ -544,6 +551,7 @@ htrAddAction(pHtDriver drv, char* action_name)
 	if (!action) return -1;
 	memccpy(action->Name, action_name, 0, 31);
 	action->Name[31] = '\0';
+	xaInit(&(action->Parameters),16);
 	xaAddItem(&drv->Actions, (void*)action);
 
     return 0;

@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.6 2002/04/10 00:36:20 jorupp Exp $
+    $Id: htdrv_imagebutton.c,v 1.7 2002/05/02 01:12:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.7  2002/05/02 01:12:43  gbeeley
+    Fixed some buggy initialization code where an XArray was not being
+    setup prior to being used.  Was causing potential bad pointers to
+    realloc() and other various problems, especially once the dynamic
+    loader was messing with things.
+
     Revision 1.6  2002/04/10 00:36:20  jorupp
      * fixed 'visible' bug in imagebutton
      * removed some old code in form, and changed the order of some callbacks
@@ -291,8 +297,6 @@ int
 htibtnInitialize()
     {
     pHtDriver drv;
-    pHtEventAction event;
-    /*pHtParam value;*/
 
     	/** Allocate the driver **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
@@ -309,9 +313,7 @@ htibtnInitialize()
 	xaInit(&(drv->Actions),16);
 
 	/** Add the 'click' event **/
-	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(event->Name,"Click");
-	xaAddItem(&drv->Events,(void*)event);
+	htrAddEvent(drv,"Click");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

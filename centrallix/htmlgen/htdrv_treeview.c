@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.11 2002/04/25 22:51:29 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.12 2002/05/02 01:12:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.12  2002/05/02 01:12:43  gbeeley
+    Fixed some buggy initialization code where an XArray was not being
+    setup prior to being used.  Was causing potential bad pointers to
+    realloc() and other various problems, especially once the dynamic
+    loader was messing with things.
+
     Revision 1.11  2002/04/25 22:51:29  gbeeley
     Added vararg versions of some key htrAddThingyItem() type of routines
     so that all of this sbuf stuff doesn't have to be done, as we have
@@ -737,8 +743,6 @@ int
 httreeInitialize()
     {
     pHtDriver drv;
-    pHtEventAction event;
-    pHtParam value;
 
     	/** Allocate the driver **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
@@ -755,22 +759,12 @@ httreeInitialize()
 	xaInit(&(drv->Actions),16);
 
 	/** Add the 'click item' event **/
-	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(event->Name,"ClickItem");
-	value = (pHtParam)nmSysMalloc(sizeof(HtParam));
-	strcpy(value->ParamName,"Pathname");
-	value->DataType = DATA_T_STRING;
-	xaAddItem(&event->Parameters,(void*)value);
-	xaAddItem(&drv->Events,(void*)event);
+	htrAddEvent(drv,"ClickItem");
+	htrAddParam(drv,"ClickItem","Pathname",DATA_T_STRING);
 
 	/** Add the 'rightclick item' event **/
-	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(event->Name,"RightClickItem");
-	value = (pHtParam)nmSysMalloc(sizeof(HtParam));
-	strcpy(value->ParamName,"Pathname");
-	value->DataType = DATA_T_STRING;
-	xaAddItem(&event->Parameters,(void*)value);
-	xaAddItem(&drv->Events,(void*)event);
+	htrAddEvent(drv,"RightClickItem");
+	htrAddParam(drv,"RightClickItem","Pathname",DATA_T_STRING);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

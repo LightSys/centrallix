@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_menu.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_menu.c,v 1.3 2002/05/02 01:12:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_menu.c,v $
 
     $Log: htdrv_menu.c,v $
+    Revision 1.3  2002/05/02 01:12:43  gbeeley
+    Fixed some buggy initialization code where an XArray was not being
+    setup prior to being used.  Was causing potential bad pointers to
+    realloc() and other various problems, especially once the dynamic
+    loader was messing with things.
+
     Revision 1.2  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -303,8 +309,6 @@ int
 htmenuInitialize()
     {
     pHtDriver drv;
-    pHtEventAction action;
-    pHtParam value;
 
     	/** Allocate the driver **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
@@ -321,17 +325,9 @@ htmenuInitialize()
 	xaInit(&(drv->Actions),16);
 
 	/** Add the 'click' event **/
-	action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(action->Name,"Activate");
-	value = (pHtParam)nmSysMalloc(sizeof(HtParam));
-	strcpy(value->ParamName,"X");
-	value->DataType = DATA_T_INTEGER;
-	xaAddItem(&action->Parameters,(void*)value);
-	value = (pHtParam)nmSysMalloc(sizeof(HtParam));
-	strcpy(value->ParamName,"Y");
-	value->DataType = DATA_T_INTEGER;
-	xaAddItem(&action->Parameters,(void*)value);
-	xaAddItem(&drv->Events,(void*)action);
+	htrAddAction(drv,"Activate");
+	htrAddParam(drv,"Activate","X",DATA_T_INTEGER);
+	htrAddParam(drv,"Activate","Y",DATA_T_INTEGER);
 
 	/** Register. **/
 	htrRegisterDriver(drv);
