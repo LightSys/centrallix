@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.20 2002/06/09 23:55:23 nehresma Exp $
+    $Id: net_http.c,v 1.21 2002/06/10 00:21:00 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.21  2002/06/10 00:21:00  nehresma
+    Much cleaner (and safer) way of copying multiple lexer tokens into a buffer.
+    Should have been doing this all along.  :)
+
     Revision 1.20  2002/06/09 23:55:23  nehresma
     sanity checking..
 
@@ -2110,7 +2114,7 @@ nht_internal_ConnHandler(void* conn_v)
 	        {
 		/** Copy whole User-Agent. **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected str after Cookie:",Throw(e);
+		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected str after User-Agent:",Throw(e);
 		/** NOTE: This needs to be freed up at the end of the session.  Is that taken
 		          care of by mssEndSession?  I don't think it is, since xhClear is passed
 			  a NULL function for free_fn.  This will be a 160 byte memory leak for
@@ -2118,16 +2122,9 @@ nht_internal_ConnHandler(void* conn_v)
 		    January 6, 2002   NRE
 		 **/
 		useragent = (char*)nmMalloc(160);
-		strncpy(useragent, mlxStringVal(s,NULL), 160);
-		/** lets put the delimeter back into the string **/
-		strncat(useragent, " ", 160);
-		while((toktype = mlxNextToken(s)))
-		    {
+		mlxCopyToken(s,useragent,160);
+		while((toktype=mlxNextToken(s)))
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
-		    strncat(useragent, mlxStringVal(s,NULL), 160);
-		    /** lets put the delimeter back into the string **/
-		    strncat(useragent, " ", 160);
-		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
 		}
 	    else
