@@ -255,7 +255,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"\n");
 
     /** Get the mode (default to 1, dynamicpage) **/
-    mode = 1;
+    mode = 0;
     if (objGetAttrValue(w_obj,"mode",POD(&ptr)) == 0) {
 	if (!strcmp(ptr,"static")) mode = 0;
 	else if (!strcmp(ptr,"dynamic_server")) mode = 1;
@@ -414,10 +414,15 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.28 2002/07/31 13:35:59 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.29 2002/07/31 15:03:11 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.29  2002/07/31 15:03:11  lkehresman
+    Changed the default dropdown population mode to be static rather than
+    dynamic_client to retain backwards compatibility with the previous
+    dropdown widget revisions.
+
     Revision 1.28  2002/07/31 13:35:59  lkehresman
     * Made x.mainlayer always point to the top layer in dropdown
     * Fixed a netscape crash bug with the event stuff from the last revision of dropdown
