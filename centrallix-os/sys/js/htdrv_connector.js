@@ -32,11 +32,13 @@ function cn_activate(t,f,eparam)
 	}
     }
 
-function cn_add(w,e)
+//function cn_add(w,e)
+function cn_add(e)
     {
-    if (w['Event' + e] == null)
-	w['Event' + e] = new Array();
-    w['Event' + e][w['Event' + e].length] = this.RunEvent;
+//	wgtrAddEventFunc(wgtrGetNode(wgt_name), e);
+    if (this.LSParent['Event' + e] == null)
+	this.LSParent['Event' + e] = new Array();
+    this.LSParent['Event' + e][this.LSParent['Event' + e].length] = this.RunEvent;
     }
 
 function cn_init(p,f)
