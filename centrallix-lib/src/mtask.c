@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.18 2003/03/07 19:30:57 gbeeley Exp $
+    $Id: mtask.c,v 1.19 2003/03/09 18:58:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.19  2003/03/09 18:58:45  jorupp
+     * change to allow the scheduler (or the interrupt handler interupting the
+    	 scheduler) to spawn new threads
+
     Revision 1.18  2003/03/07 19:30:57  gbeeley
     Fixed some retry problems with read/write/recvfrom/sendto dealing
     with the EINTR error condition which should be considered a retryable
@@ -1106,7 +1110,13 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->StartParam = start_param;
 	thr->UserID = MTASK.CurUserID;
 	thr->GroupID = MTASK.CurGroupID;
-	thr->ThrParam = MTASK.CurrentThread->ThrParam;
+	/** copy the thread param from the current thread, if there is one
+	      this allows the signal handler, which will sometimes get called while
+	      the scheduler is in a select() call to spawn a new thread **/
+	if(MTASK.CurrentThread)
+	    thr->ThrParam = MTASK.CurrentThread->ThrParam;
+	else
+	    thr->ThrParam = NULL;
 
 	/** Add to the thread table. **/
 	for(i=0;i<MAX_THREADS;i++)
