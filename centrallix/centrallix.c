@@ -52,10 +52,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.24 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: centrallix.c,v 1.25 2004/01/15 14:34:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.25  2004/01/15 14:34:06  jorupp
+     * switch to using MTask's signal handlers instead of 'real' signal handlers
+
     Revision 1.24  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -324,7 +327,10 @@ cx_internal_LoadModules(char* type)
 void cxShutdownThread(void *v)
     {
     int i;
-    mssError(0,"CX","Centrallix is shutting down");
+    if(CxGlobals.ShuttingDown)
+	return;
+    CxGlobals.ShuttingDown = 1;
+    mssError(0,"CN","Centrallix is shutting down");
     for(i=0;i<xaCount(&CxGlobals.ShutdownHandlers);i++)
 	{
 	ShutdownHandlerFunc handler = (ShutdownHandlerFunc) xaGetItem(&CxGlobals.ShutdownHandlers,i);
@@ -333,17 +339,6 @@ void cxShutdownThread(void *v)
 	}
     exit(0);
     thExit();
-    }
-
-
-/** cxShutdown - handler for SIGINT
-**/
-void cxShutdown(int signal)
-    {
-    if(CxGlobals.ShuttingDown)
-	return;
-    CxGlobals.ShuttingDown = 1;
-    thCreate(cxShutdownThread,0,NULL);
     }
 
 int cxAddShutdownHandler(ShutdownHandlerFunc handler)
@@ -367,7 +362,7 @@ cxInitialize(void* v)
 	xaInit(&CxGlobals.ShutdownHandlers,4);
 
 	/** set up the interrupt handler so we can shutdown properly **/
-	signal(SIGINT,cxShutdown);
+	mtAddSignalHandler(SIGINT,cxShutdownThread);
 
 	/** Startup message **/
 	if (!CxGlobals.QuietInit)
