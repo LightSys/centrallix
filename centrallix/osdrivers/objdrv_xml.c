@@ -56,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.10 2002/08/06 05:27:06 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.11 2002/08/07 14:52:14 cwtryon Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.11  2002/08/07 14:52:14  cwtryon
+    replace naked reference to children structure member with accessor function (for XML1/2 differences)
+
     Revision 1.10  2002/08/06 05:27:06  jorupp
      * added basic caching mechanism (no expiration -- couldn't figure that out)
      * attributes are returned as pointers to malloc()ed memory -- this breaks test_obj's ls function
@@ -305,7 +308,7 @@ int
 xml_internal_IsObject(xmlNodePtr p)
 {
     if(p->properties) return -1;
-    p=p->children;
+    p=xml_internal_GetChildren(p);
     if(!p) return 0;
     while(p)
     {
