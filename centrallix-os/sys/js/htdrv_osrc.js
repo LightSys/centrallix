@@ -431,6 +431,7 @@ function osrc_open_query()
 	this.qid=null;
 	return 0;
 	}
+    //confirm('mq normal');
     pg_serialized_load(this,"/?ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql=" + this.query, osrc_get_qid);
     //this.onload = osrc_get_qid;
     //pg_set(this,'src',"/?ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql=" + this.query);
@@ -451,7 +452,7 @@ function osrc_fetch_next()
     //alert('fetching....');
     if(!this.qid)
 	{
-	//alert('something is wrong...');
+	alert('something is wrong...');
 	//alert(this.src);
 	}
     var lnk=pg_links(this);
@@ -477,6 +478,7 @@ function osrc_fetch_next()
 	    this.ActionDoubleSyncCB();
 	if(qid)
 	    {
+	    //confirm('close query');
 	    pg_serialized_load(this, "/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
 	    //this.onload=osrc_close_query;
 	    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid);
@@ -522,7 +524,13 @@ function osrc_fetch_next()
 	    }
 	colnum++;
 	this.replica[this.OSMLRecord][colnum] = new Array();
-	this.replica[this.OSMLRecord][colnum]['value'] = htutil_rtrim(unescape(lnk[i].text));
+	if (lnk[i].text.charAt(0) == 'N')
+	    this.replica[this.OSMLRecord][colnum]['value'] = null;
+	else if (lnk[i].text.charAt(0) == 'V')
+	    this.replica[this.OSMLRecord][colnum]['value'] = htutil_rtrim(unescape(lnk[i].text.substr(2)));
+	else
+	    this.replica[this.OSMLRecord][colnum]['value'] = '** ERROR **';
+	//confirm(lnk[i].text + ' ==> ' + this.replica[this.OSMLRecord][colnum]['value']);
 	this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);
 	this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;
 	/** MJM - this is actually done in the form widget. We need only save the hint string **/
@@ -534,6 +542,7 @@ function osrc_fetch_next()
 	this.LastRecord--;
     if(this.LastRecord<this.TargetRecord)
 	{ /* We're going farther down this... */
+	//alert('qf osrc_fetch_next 1');
 	pg_serialized_load(this, "/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount="+this.readahead, osrc_fetch_next);
 	//this.onload = osrc_fetch_next;
 	//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+this.readahead);
@@ -542,6 +551,7 @@ function osrc_fetch_next()
 	{ /* we've got the one we need */
 	if((this.LastRecord-this.FirstRecord+1)<this.replicasize)
 	    { /* make sure we have a full replica if possible */
+	//alert('qf osrc_fetch_next 2');
 	    pg_serialized_load(this, "/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount="+(this.replicasize-(this.LastRecord-this.FirstRecord+1)), osrc_fetch_next);
 	    //this.onload = osrc_fetch_next;
 	    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+(this.replicasize-(this.LastRecord-this.FirstRecord+1)));
@@ -734,12 +744,18 @@ function osrc_move_to_record_cb(recnum)
 		{
 		this.onload=osrc_fetch_next;
 		if(this.CurrentRecord == Number.MAX_VALUE)
+		    {
 		    /* rowcount defaults to a really high number if not set */
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0");
+	//alert('qf osrc_move_to_record_cb 1');
 		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0", osrc_fetch_next);
+		    }
 		else
+		    {
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.readahead);
+	//alert('qf osrc_move_to_record_cb 2');
 		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.readahead, osrc_fetch_next);
+		    }
 		}
 	    else
 		{
@@ -754,6 +770,7 @@ function osrc_move_to_record_cb(recnum)
 
 function osrc_open_query_startat()
     {
+    //confirm('mq startat');
     pg_serialized_load(this, "/?ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql="+this.query, osrc_get_qid_startat);
     //this.onload = osrc_get_qid_startat;
     //pg_set(this,'src',"/?ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql=" + this.query);
@@ -768,11 +785,13 @@ function osrc_get_qid_startat()
     if(this.startat-this.TargetRecord+1<this.replicasize)
 	{
 	//pg_set(this,'src','/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat);
+	//alert('qf get_qid_startat 1');
 	pg_serialized_load(this,'/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__notify=' + this.request_updates + '&ls__rowcount='+(this.TargetRecord-this.startat+1)+'&ls__startat='+this.startat, osrc_fetch_next);
 	}
     else
 	{
 	//pg_set(this,'src','/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat);
+	//alert('qf get_qid_startat 2');
 	pg_serialized_load(this,'/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=' + this.request_updates + '&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat, osrc_fetch_next);
 	}
     this.startat=null;
@@ -857,12 +876,18 @@ function osrc_scroll_to(recnum)
 		{
 		this.onload=osrc_fetch_next;
 		if(this.TargetRecord == Number.MAX_VALUE)
+		    {
 		    /* rowcount defaults to a really high number if not set */
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0");
+	//alert('qf osrc_scroll_to 1');
 		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0", osrc_fetch_next);
+		    }
 		else
+		    {
 		    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.scrollahead);
+	//alert('qf osrc_scroll_to 2');
 		    pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryfetch&ls__encode=1&ls__notify=" + this.request_updates + "&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__rowcount="+this.scrollahead, osrc_fetch_next);
+		    }
 		}
 	    else
 		{
