@@ -7,6 +7,7 @@
 #include "obj.h"
 #include "stparse.h"
 #include "hints.h"
+#include "ptod.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -39,10 +40,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.3 2004/02/24 20:07:01 gbeeley Exp $
+    $Id: hints.c,v 1.4 2004/05/04 18:21:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.4  2004/05/04 18:21:05  gbeeley
+    - moving location of PTOD definition
+
     Revision 1.3  2004/02/24 20:07:01  gbeeley
     - adding hntObjToHints() to retrieve hints from an object in the
       objectsystem
