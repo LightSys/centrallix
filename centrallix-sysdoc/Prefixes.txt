@@ -8,8 +8,10 @@ exp	Expression compiler/parser/evaluator
 fd	MTASK Module file I/O
 fxp	PrtDriver - Epson-FX (text/x-epson-fx) output
 htcb    HTDriver - Checkbox
+htcbx   HTDriver - Combo Box
 htconn	HTDriver - event-action connector
-htdd    HTDriver - drop down list
+htdd	HTDriver - drop down list
+htdt	HTDriver - date/time
 hteb	HTDriver - edit box
 htex	HTDriver - exec method
 htform	HTDriver - form
@@ -31,6 +33,7 @@ httbtn	HTDriver - Text button
 httm	HTDriver - Timer
 http	OSDriver - HTTP source protocol driver
 httree	HTDriver - TreeView
+httx    HTDriver - Text Area
 htvbl	HTDriver - global javascript variable
 htwin	HTDriver - draggable popup window
 idx	OSDriver - indexed data file (B+ tree)
