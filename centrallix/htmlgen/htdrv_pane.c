@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.12 2002/07/29 21:34:40 lkehresman Exp $
+    $Id: htdrv_pane.c,v 1.13 2002/08/01 14:25:15 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.13  2002/08/01 14:25:15  lkehresman
+    Removed closing body tag.  There was no opening body tag, so Netscape was
+    thinking that this was the close of the HTML body.  Thus, it wasn't properly
+    rendering widgets after any pane widget.  This was an interesting one to
+    try and track down.  ;)
+
     Revision 1.12  2002/07/29 21:34:40  lkehresman
     fixed typo by peter
 
@@ -249,7 +255,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</td></tr></table></body></DIV></DIV>\n");
+	htrAddBodyItem(s, "</td></tr></table></DIV></DIV>\n");
 
     return 0;
     }
