@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.5 2002/02/23 19:35:28 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.6 2002/03/02 03:06:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.6  2002/03/02 03:06:50  jorupp
+    * form now has basic QBF functionality
+    * fixed function-building problem with radiobutton
+    * updated checkbox, radiobutton, and editbox to work with QBF
+    * osrc now claims it's global name
+
     Revision 1.5  2002/02/23 19:35:28  lkehresman
     * Radio button widget is now forms aware.
     * Fixes a couple of oddities in the checkbox.
@@ -89,9 +95,11 @@ int htcbVerify() {
    htcbRender - generate the HTML code for the page.
 */
 int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-   char sbuf[160];
+   char sbuf[200];
+   char fieldname[30];
    int x=-1,y=-1;
    int id;
+   char *ptr;
 
    /** Get an id for this. **/
    id = (HTCB.idcnt++);
@@ -99,6 +107,14 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Get x,y of this object **/
    if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
    if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+      {
+      strncpy(fieldname,ptr,30);
+      }
+   else 
+      { 
+      fieldname[0]='\0';
+      } 
 
    /** Ok, write the style header items. **/
    sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
@@ -112,7 +128,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptFunction(s, "checkbox_getvalue", "\n"
       "function checkbox_getvalue()\n"
       "    {\n"
-      "    return this.is_checked;\n"
+      "    return this.document.images[0].is_checked;\n" /* not sure why, but it works - JDR */
       "    }\n",0);
 
    /** Set value function **/
@@ -135,8 +151,9 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Checkbox initializer **/
    htrAddScriptFunction(s, "checkbox_init", "\n"
-      "function checkbox_init(l) {\n"
+      "function checkbox_init(l,fieldname) {\n"
 	  "   l.kind = 'checkbox';\n"
+	  "   l.fieldname = fieldname;\n"
 	  "   l.is_checked = 0;\n"
 	  "   l.document.images[0].kind = 'checkbox';\n"
 	  "   l.document.images[0].is_checked = l.is_checked;\n"
@@ -177,7 +194,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "\n");
 
    /** Script initialization call. **/
-   sprintf(sbuf,"    checkbox_init(%s.layers.cb%dmain);\n", parentname, id);
+   sprintf(sbuf,"    checkbox_init(%s.layers.cb%dmain,\"%s\");\n", parentname, id,fieldname);
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/

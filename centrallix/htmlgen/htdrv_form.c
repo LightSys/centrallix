@@ -43,6 +43,12 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.6  2002/03/02 03:06:50  jorupp
+    * form now has basic QBF functionality
+    * fixed function-building problem with radiobutton
+    * updated checkbox, radiobutton, and editbox to work with QBF
+    * osrc now claims it's global name
+
     Revision 1.5  2002/02/27 02:37:19  jorupp
     * moved editbox I-beam movement functionality to function
     * cleaned up form, added comments, etc.
@@ -94,6 +100,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char *sbuf3;
     int id;
     char* nptr;
+    char basequery[300];
+    char basewhere[300];
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
     
     	/** Get an id for this. **/
@@ -117,6 +125,15 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) 
 	    tabmode[0]='\0';
 
+	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
+	    sprintf(basequery,"%.300s",ptr);
+	else
+	    strcpy(basequery,"");
+	
+	if (objGetAttrValue(w_obj,"basewhere",POD(&ptr)) == 0)
+	    sprintf(basewhere,"%.300s",ptr);
+	else
+	    strcpy(basewhere,"");
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
@@ -178,12 +195,34 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_is_discard_ready", "\n"
 		"function form_cb_is_discard_ready(aparam)\n"
 		"    {\n"
+		"    return 0;\n"	/* FIXME -- not ready yet */
+		"    if(!this.IsUnsaved)\n"
+		"        {\n"	/* the osrc really shouldn't have called us... */
+		"        window.setTimeout(this.osrc.name+\".QueryContinue()\",100);\n"
+		"        return 0;\n"
+		"        }\n"
+		"    if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
+		"        {\n"
+		"        if(confirm(\"OK to save CANCEL to discard them.\"))\n"
+		"            {\n"
+		"            \n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            window.setTimeout(this.osrc.name+\".QueryContinue()\",100);\n"
+		"            }\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        window.setTimeout(this.osrc.name+\".QueryCancel()\",100);\n"
+		"        }\n"
 		"    }\n", 0);
 	
 	/** Objectsource says our object is available **/
 	htrAddScriptFunction(s, "form_cb_object_available", "\n"
 		"function form_cb_object_available(aparam)\n"
 		"    {\n"
+		"    \n"
 		"    }\n", 0);
 
 	/** Objectsource says the operation is complete **/
@@ -278,6 +317,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		/*"        form.elements[i].Clear();\n" -- change soon */
 		"        form.elements[i].setvalue('');\n"
+		/* temp check"        confirm(form.elements[i].fieldname);\n"*/
 		"        }\n"
 		"    this.IsUnsaved=false;\n"
 		"    return form_change_mode(this,\"Query\");\n"
@@ -288,15 +328,65 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_action_queryexec()\n"
 		"    {\n"
 		"    if(!this.allowquery) {alert(\"Query not allowed\");return 0;}\n"
+		"    if(!(this.mode==\"Query\")) {alert(\"Must be in QBF mode\");return 0;}\n"
+		"    var where = new String;\n"
+		"    var firstone = true;\n"
+		/** Build the SQL query, do I have to?...... **/
 		"    for(var i in form.elements)\n"
 		"        {\n"
-		/*"        form.elements[i].Clear();\n" -- change soon */
-		"        form.elements[i].setvalue('');\n"
+		"        //confirm(form.elements[i].kind+\": \"+form.elements[i].getvalue());\n"
+		"        if(form.elements[i].getvalue()!='')\n"
+		"            {\n"
+		"            if(firstone)\n"
+		"                {\n"
+		"                firstone=false;\n"
+		"                }\n"
+		"            else\n"
+		"                {\n"
+		"                where+=\" AND \";\n"
+		"                }\n"
+		"            var ele=form.elements[i];\n"
+		"            switch(ele.kind)\n"
+		"                {\n"
+		"                case \"checkbox\":\n"
+		"                    if(ele.getvalue())\n"
+		"                        {\n"
+		"                        where+=ele.fieldname+\"=true\";\n"
+		"                        }\n"
+		"                    else\n"
+		"                        {\n"
+		"                        where+=ele.fieldname+\"=false\";\n"
+		"                        }\n"
+		"                    break;\n"
+		"                case \"editbox\":\n"
+		"                    where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
+		"                    break;\n"
+		"                case \"radiobutton\":\n"
+		"                    where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
+		"                    break;\n"
+		"                default:\n"
+		"                    confirm(\"don't know what to do with \\\"\"+ele.kind+\"\\\"\");\n"
+		"                    break;\n"
+		"                }\n"
+		"            }\n"
 		"        }\n"
-		"    query=new String;\n"
-		/* Build the query, I think, oh joy......*/
-		"    form.Pending=true;\n"
-		"    this.osrc.ActionQuery(query);\n"
+		/** Done with the query -- YEAH **/
+		"    var query;\n"
+		"    if(where==\"\")\n"
+		"        {\n"
+		"        query=this.basequery+\";\";\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        query=form_build_query(this.basequery,where);\n"
+		"        }\n"
+		"    delete where;\n"
+		"    if(confirm(\"Send to \\\"\"+this.osrc.name+\"\\\"(osrc):\\\n\"+query))\n"
+		"        {\n"
+		"        form.Pending=true;\n"
+		"        form.IsUnsaved=false;\n"
+		"        this.osrc.ActionQuery(query);\n"
+		"        }\n"
 		"    delete query;\n"
 		"    }\n", 0);
 
@@ -308,18 +398,33 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    	alert(\"There isn't any reason to save.\");\n"
 		"    	return 0;\n"
 		"    	}\n"
-		/** either have to build the query, or build the object to
-		 ** pass to objectsource **/
+		/** build the object to pass to objectsource **/
 		"    \n"
 		"    }\n", 0);
 
+	/** Helper function to build a query */
+	htrAddScriptFunction(s, "form_build_query", "\n"
+		"function form_build_query(base,where)\n"
+		"    {\n"
+		"    re=/where/i;\n"
+		"    if(re.test(base))\n"
+		"        {\n"
+		"        return base+\" \"+where+\";\";\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        return base+\" WHERE \"+where+\";\";\n"
+		"        }\n"
+		"    }\n", 0);
 
 
 	/** Form initializer **/
 	htrAddScriptFunction(s, "form_init", "\n"
-		"function form_init(aq,an,am,av,and,me,name)\n"
+		"function form_init(aq,an,am,av,and,me,name,bq,bw)\n"
 		"    {\n"
 		"    form = new Object();\n"
+		"    form.basequery = bq;\n"
+		"    form.currentquery = form_build_query(bq,bw);\n"
 		"    form.elements = new Array();\n"
 		"    form.mode = \"No Data\";\n"
 		"    form.oldmode = null;\n"
@@ -367,8 +472,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
 	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,%s);\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name);
+	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,\"%s\",\"%s\",\"%s\");\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,basequery,basewhere);
 	htrAddScriptInit(s,sbuf3);
 	nmFree(sbuf3,200);
 

@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.2 2002/02/23 19:35:28 lkehresman Exp $
+    $Id: htdrv_radiobutton.c,v 1.3 2002/03/02 03:06:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.3  2002/03/02 03:06:50  jorupp
+    * form now has basic QBF functionality
+    * fixed function-building problem with radiobutton
+    * updated checkbox, radiobutton, and editbox to work with QBF
+    * osrc now claims it's global name
+
     Revision 1.2  2002/02/23 19:35:28  lkehresman
     * Radio button widget is now forms aware.
     * Fixes a couple of oddities in the checkbox.
@@ -82,14 +88,16 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char title[64];
    char sbuf[1024];
    char sbuf2[200];
-   char bigbuf[4096];
+   //char bigbuf[4096];
    char textcolor[32];
-   char main_bg[128];
+   char main_bgcolor[32];
+   char main_background[128];
    char outline_bg[64];
    pObject radiobutton_obj;
    pObjQuery qy;
    int x=-1,y=-1,w,h;
    int id;
+   char fieldname[32];
 
 
    /** Get an id for this. **/
@@ -109,11 +117,14 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Background color/image? **/
    if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
-      sprintf(main_bg,"bgColor='%.40s'",ptr);
-   else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
-      sprintf(main_bg,"background.src='%.110s'",ptr);
+      strncpy(main_bgcolor,ptr,31);
+   else 
+      strcpy(main_bgcolor,"");
+
+   if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+      strncpy(main_background,ptr,127);
    else
-      strcpy(main_bg,"");
+      strcpy(main_background,"");
 
    /** Text color? **/
    if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
@@ -135,6 +146,15 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (objGetAttrValue(w_obj,"title",POD(&ptr)) != 0) return -1;
       strcpy(title,ptr);
 
+   /** Get fieldname **/
+   if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+      {
+      strncpy(fieldname,ptr,30);
+      }
+   else 
+      { 
+      fieldname[0]='\0';
+      } 
 
    
 
@@ -190,7 +210,14 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    htrAddScriptFunction(s, "rb_getvalue", "\n"
       "   function rb_getvalue() {\n"
-      "       return this.selectedOption.layers.radiobuttonpanelvaluepane.document.anchors[0].name;\n"
+      "       if (this.selectedOption)\n"	/* return "" if nothing is selected */
+      "           {\n"
+      "           return this.selectedOption.layers.radiobuttonpanelvaluepane.document.anchors[0].name;\n"
+      "           }\n"
+      "       else\n"
+      "           {\n"
+      "           return \"\";\n"
+      "           }\n"
       "   }\n",0);
 
    /*
@@ -249,28 +276,48 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "      }\n"
       "   }\n", 0);
 
-   // do a check for transparency
-   if (strlen(main_bg) > 0) {
-      sprintf(bigbuf, "\n"
-         "   function radiobuttonpanel_init(parentPane) {\n"
-         "      parentPane.%s;\n"
-         "      parentPane.layers.radiobuttonpanel%dborderpane.bgColor='%s';\n"
-         "      parentPane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.%s;\n"
-         "      parentPane.layers.radiobuttonpanel%dtitlepane.%s;\n"
+   htrAddScriptFunction(s, "radiobuttonpanel_init",
+         "   function radiobuttonpanel_init(parentPane,fieldname,flag,borderpane,coverpane,titlepane,main_bg,outline_bg) {\n"
+         "      if(flag==1)\n"
+         "          {\n"
+         "          parentPane.bgColor=main_bg;\n"
+         "          borderpane.bgColor=outline_bg;\n"
+         "          coverpane.bgColor=main_bg;\n"
+         "          titlepane.bgColor=main_bg;\n"
+         "          }\n"
+         "      if(flag==2)\n"
+         "          {\n"
+         "          parentPane.background.src=main_bg;\n"
+         "          borderpane.background.src=outline_bg;\n"
+         "          coverpane.background.src=main_bg;\n"
+         "          titlepane.background.src=main_bg;\n"
+         "          }\n"
 	 "      parentPane.setvalue = rb_setvalue;\n"
 	 "      parentPane.getvalue = rb_getvalue;\n"
+	 "      parentPane.kind = 'radiobutton';\n"
+	 "      parentPane.fieldname = fieldname;\n"
 	 "      if (fm_current) fm_current.Register(parentPane);\n"
-         "   }\n",
-         main_bg, id, outline_bg, id, id, main_bg, id, main_bg);
+         "   }\n",0);
+
+   /** Script initialization call. **/
+   if (strlen(main_bgcolor) > 0) {
+      sprintf(sbuf,"    radiobuttonpanel_init(
+            %s.layers.radiobuttonpanel%dparentpane,\"%s\",1,
+            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
+            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
+            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
+	    \"%s\",\"%s\");", parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
+   } else if (strlen(main_background) > 0) {
+      sprintf(sbuf,"    radiobuttonpanel_init(
+            %s.layers.radiobuttonpanel%dparentpane,\"%s\",2,
+            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
+            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
+            %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
+	    \"%s\",\"%s\");", parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
    } else {
-      sprintf(bigbuf, "\n"
-         "   function radiobuttonpanel_init(parentPane) {\n"
-	 "      parentPane.setvalue = rb_setvalue;\n"
-	 "      parentPane.getvalue = rb_getvalue;\n"
-	 "      if (fm_current) fm_current.Register(parentPane);\n"
-         "   }\n");
+      sprintf(sbuf,"    radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", parentname, id,fieldname);
    }
-   htrAddScriptFunction(s, "radiobuttonpanel_init", bigbuf, 0);
+   htrAddScriptInit(s, sbuf);
 
    htrAddScriptFunction(s, "radiobutton_toggle", "\n"
       "   function radiobutton_toggle(layer) {\n"
@@ -289,9 +336,6 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "      radiobutton_toggle(targetLayer);\n"
       "   }\n");
 
-   /** Script initialization call. **/
-   sprintf(sbuf,"    radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane);\n", parentname, id);
-   htrAddScriptInit(s, sbuf);
 
    /*
       Now lets loop through and add each radiobutton
@@ -341,16 +385,21 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
             sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
             htrAddBodyItem(s, sbuf);
 
-	    objGetAttrValue(radiobutton_obj,"value",POD(&ptr));
-	    strcpy(sbuf2,ptr);
-            sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);
-            htrAddBodyItem(s, sbuf);
 	    
             objGetAttrValue(radiobutton_obj,"label",POD(&ptr));
             strcpy(sbuf2,ptr);
             sprintf(sbuf,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
-            
 	    htrAddBodyItem(s, sbuf);
+
+	    /* use label (from above) as default value if no value given */
+	    if(objGetAttrValue(radiobutton_obj,"value",POD(&ptr))==0)
+		{
+		strcpy(sbuf2,ptr);
+		}
+
+            sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);
+            htrAddBodyItem(s, sbuf);
+            
             sprintf(sbuf,"            </DIV>\n");
             htrAddBodyItem(s, sbuf);
             i++;

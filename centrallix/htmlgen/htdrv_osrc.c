@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.1 2002/02/27 01:38:51 jheth Exp $
+    $Id: htdrv_osrc.c,v 1.2 2002/03/02 03:06:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.2  2002/03/02 03:06:50  jorupp
+    * form now has basic QBF functionality
+    * fixed function-building problem with radiobutton
+    * updated checkbox, radiobutton, and editbox to work with QBF
+    * osrc now claims it's global name
+
     Revision 1.1  2002/02/27 01:38:51  jheth
     Initial commit of object source
 
@@ -71,9 +77,25 @@ int htosrcVerify() {
 */
    int htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
    int id;
+   char name[40];
+   char *ptr;
+   char *sbuf3;
+   char *nptr;
 
    /** Get an id for this. **/
    id = (HTCB.idcnt++);
+
+   /** Get name **/
+   if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+   strcpy(name,ptr);
+
+   /** Write named global **/
+   nptr = (char*)nmMalloc(strlen(name)+1);
+   strcpy(nptr,name);
+
+   /** create our instance variable **/
+   htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
+
 
    htrAddScriptFunction(s, "osrc_clear", "\n"
       "function osrc_clear()\n"
@@ -138,7 +160,6 @@ int htosrcVerify() {
       "    return osrc;\n"
       "    }\n", 0);
 
-   char *sbuf3;
 
    /** Script initialization call. **/
    sbuf3 = nmMalloc(200);

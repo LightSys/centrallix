@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.5 2002/02/27 02:37:19 jorupp Exp $
+    $Id: htdrv_editbox.c,v 1.6 2002/03/02 03:06:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.6  2002/03/02 03:06:50  jorupp
+    * form now has basic QBF functionality
+    * fixed function-building problem with radiobutton
+    * updated checkbox, radiobutton, and editbox to work with QBF
+    * osrc now claims it's global name
+
     Revision 1.5  2002/02/27 02:37:19  jorupp
     * moved editbox I-beam movement functionality to function
     * cleaned up form, added comments, etc.
@@ -94,7 +100,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     {
     char* ptr;
     char name[64];
-    char sbuf[200];
+    char sbuf[250];
     /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
@@ -104,6 +110,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char* c1;
     char* c2;
     int maxchars;
+    char fieldname[30];
 
     	/** Get an id for this. **/
 	id = (HTEB.idcnt++);
@@ -149,6 +156,15 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    c1 = "dkgrey_1x1.png";
 	    c2 = "white_1x1.png";
 	    }
+
+	if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+	    {
+	    strncpy(fieldname,ptr,30);
+	    }
+	else 
+	    { 
+	    fieldname[0]='\0';
+	    } 
 
 	/** Ok, write the style header items. **/
 	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
@@ -336,11 +352,13 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Editbox initializer **/
 	htrAddScriptFunction(s, "eb_init", "\n"
-		"function eb_init(l,c1,c2)\n"
+		"function eb_init(l,c1,c2,fieldname)\n"
 		"    {\n"
+		"    l.kind = 'editbox'\n"
 		"    l.document.Layer = l;\n"
 		"    l.ContentLayer = c1;\n"
 		"    l.HiddenLayer = c2;\n"
+		"    l.fieldname = fieldname\n"
 		"    if (!eb_ibeam || !eb_metric)\n"
 		"        {\n"
 		"        eb_metric = new Layer(24);\n"
@@ -385,10 +403,11 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2);\n",
+	snprintf(sbuf,250,"    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\");\n",
 		nptr, parentname, id, 
 		parentname, id, id, 
-		parentname, id, id);
+		parentname, id, id,
+		fieldname);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> element for the base layer. **/
