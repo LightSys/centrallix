@@ -413,7 +413,7 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if (!tx_current) return true;\n"
                 "    if (tx_current.enabled!='full') return 1;\n"
                 "    if (tx_current.form) tx_current.form.DataNotify(tx_current);\n"
-		"    else if (k >= 32 && k < 127)\n"
+		"    if (k >= 32 && k < 127)\n"
 		"        {\n"
 		"        txt = l.rows[l.cursorRow].content;\n"
 		"        if(txt.length == l.rowCharLimit && k!=32)\n"			// This is a work-around for a bug:
