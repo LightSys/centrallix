@@ -824,6 +824,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-http          disable HTTP support
+  --enable-mime           enable MIME support
   --enable-dbl            enable DBL support
   --disable-sybase        disable Sybase support
   --disable-xml           disable xml support
@@ -4238,6 +4239,36 @@ fi;
 _ACEOF
 
 	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_http.so"
+	    echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+	else
+	    echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+	fi
+
+
+
+
+
+
+	echo "$as_me:$LINENO: checking if MIME support is desired" >&5
+echo $ECHO_N "checking if MIME support is desired... $ECHO_C" >&6
+
+	# Check whether --enable-mime or --disable-mime was given.
+if test "${enable_mime+set}" = set; then
+  enableval="$enable_mime"
+  WITH_MIME="$enableval"
+else
+  WITH_MIME="no"
+
+fi;
+
+	if test "$WITH_MIME" = "yes"; then
+	    cat >>confdefs.h <<\_ACEOF
+#define USE_MIME 1
+_ACEOF
+
+	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_mime.so"
 	    echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
 	else

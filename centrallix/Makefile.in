@@ -221,7 +221,7 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
 	@echo
 	$(CC) centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl,-export-dynamic -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
-	@rm centrallix.o
+	#@rm centrallix.o
 	@echo ''
 
 install: all config_install modules_install
@@ -342,6 +342,9 @@ osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SYBASE_LIBS@ -o $@
 
 osdrivers/objdrv_http.so: osdrivers/objdrv_http.c
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+
+osdrivers/objdrv_mime.so: osdrivers/objdrv_mime.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
 
 osdrivers/objdrv_dbl.so: osdrivers/objdrv_dbl.c

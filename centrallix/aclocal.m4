@@ -202,6 +202,29 @@ AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
     ]
 )
 
+dnl Test for the MIME os driver.
+AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
+    [
+	AC_MSG_CHECKING(if MIME support is desired)
+
+	AC_ARG_ENABLE(mime,
+	    AC_HELP_STRING([--enable-mime],
+		[enable MIME support]
+	    ),
+	    WITH_MIME="$enableval", 
+	    WITH_MIME="no"
+	)
+ 
+	if test "$WITH_MIME" = "yes"; then
+	    AC_DEFINE(USE_MIME)
+	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_mime.so"
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+    ]
+)
+
 dnl Test for the DBL os driver.
 AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
     [

@@ -132,6 +132,9 @@
 /* Define for backward compatibility with libxml1 */
 #undef USE_LIBXML1
 
+/* Define for MIME support */
+#undef USE_MIME
+
 /* Define for Sybase support */
 #undef USE_SYBASE
 

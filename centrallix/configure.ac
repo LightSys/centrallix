@@ -52,6 +52,10 @@ dnl HTTP osdriver support.
 AH_TEMPLATE([USE_HTTP], [Define for HTTP support])
 CENTRALLIX_CHECK_HTTP_OS
 
+dnl MIME osdriver support.
+AH_TEMPLATE([USE_MIME], [Define for MIME support])
+CENTRALLIX_CHECK_MIME_OS
+
 dnl DBL osdriver support.
 AH_TEMPLATE([USE_DBL], [Define for DBL support])
 CENTRALLIX_CHECK_DBL_OS
