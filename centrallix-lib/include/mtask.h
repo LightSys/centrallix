@@ -23,10 +23,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.5 2002/07/31 18:36:05 mattphillips Exp $
+    $Id: mtask.h,v 1.6 2002/08/13 02:30:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.6  2002/08/13 02:30:59  gbeeley
+    Made several of the changes recommended by dman.  Most places where
+    const char* would be appropriate have been updated to reflect that,
+    plus a handful of other minor changes.  gzwrite() somehow is not
+    happy with a const ____* buffer, so that is typecast to just void*.
+
     Revision 1.5  2002/07/31 18:36:05  mattphillips
     Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
     to test for libz, but we didn't do anything with the results of its test.
@@ -311,9 +317,9 @@ int thWait(pMTObject obj, int obj_type, int event_type, int arg_count);
 int thMultiWait(int event_cnt, pEventReq event_req[]);
 char* thGetName(pThread thr);
 pThread thCurrent();
-int thSetName(pThread thr, char* new_name);
+int thSetName(pThread thr, const char* new_name);
 int thGetThreadList(int max_cnt, char* names[], int stati[], int flags[]);
-pThread thGetByName(char* name);
+pThread thGetByName(const char* name);
 int thGetPrio(pThread thr);
 int thSetPrio(pThread thr, int prio);
 int thLock();
@@ -321,18 +327,18 @@ int thUnlock();
 int thSleep(int msec);
 int thSetUserID(pThread thr, int new_uid);
 int thGetUserID(pThread thr);
-int thSetParam(pThread thr, char* name, void* param);
-void* thGetParam(pThread thr, char* name);
+int thSetParam(pThread thr, const char* name, void* param);
+void* thGetParam(pThread thr, const char* name);
 int thSetFlags(pThread thr, int flags);
 int thClearFlags(pThread thr, int flags);
 
 
 /** MTASK File i/o functions **/
-pFile fdOpen(char* filename, int mode, int create_mode);
+pFile fdOpen(const char* filename, int mode, int create_mode);
 pFile fdOpenFD(int fd, int mode);
 int fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags);
-int fdUnRead(pFile filedesc, char* buffer, int length, int offset, int flags);
-int fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags);
+int fdUnRead(pFile filedesc, const char* buffer, int length, int offset, int flags);
+int fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags);
 int fdClose(pFile filedesc, int flags);
 int fdFD(pFile filedesc);
 int fdSetOptions(pFile filedesc, int options);
@@ -340,9 +346,9 @@ int fdUnSetOptions(pFile filedesc, int options);
 
 
 /** MTASK Networking Functions **/
-pFile netListenTCP(char* service_name, int queue_length, int flags);
+pFile netListenTCP(const char* service_name, int queue_length, int flags);
 pFile netAcceptTCP(pFile net_filedesc, int flags);
-pFile netConnectTCP(char* host_name, char* service_name, int flags);
+pFile netConnectTCP(const char* host_name, const char* service_name, int flags);
 int netCloseTCP(pFile net_filedesc, int linger_msec, int flags);
 char* netGetRemoteIP(pFile net_filedesc, int flags);
 unsigned short netGetRemotePort(pFile net_filedesc);

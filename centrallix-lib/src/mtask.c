@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.7 2002/07/31 18:36:05 mattphillips Exp $
+    $Id: mtask.c,v 1.8 2002/08/13 02:30:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.8  2002/08/13 02:30:59  gbeeley
+    Made several of the changes recommended by dman.  Most places where
+    const char* would be appropriate have been updated to reflect that,
+    plus a handful of other minor changes.  gzwrite() somehow is not
+    happy with a const ____* buffer, so that is typecast to just void*.
+
     Revision 1.7  2002/07/31 18:36:05  mattphillips
     Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
     to test for libz, but we didn't do anything with the results of its test.
@@ -375,7 +381,7 @@ mtLastTick()
  *** select() manual page for more information.
  ***/
 int
-mtFdMax(cur_max, new_fd)
+mtFdMax(int cur_max, int new_fd)
     {
     return (new_fd+1 > cur_max)?(new_fd+1):cur_max;
     }
@@ -808,8 +814,10 @@ mtSched()
 	/** Detect a deadlock, exit the program for now. **/
 	if (!lowest_run_thr) 
 	    {
-	    puts("FAILURE!  Deadlock occurred.");
-	    exit(0);
+	    puts("MTASK: Failure: deadlock occurred, aborting...");
+            /* Leave a stack trace behind, in case it is useful to someone */
+            kill( getpid() , SIGABRT ) ;
+	    exit(1);
 	    }
 
 	/** If locked, we need to continue with that thread. **/
@@ -1245,7 +1253,7 @@ thCurrent()
  *** thread.  If thr is NULL, it means current thread.
  ***/
 int
-thSetName(pThread thr, char* name)
+thSetName(pThread thr, const char* name)
     {
     if (!thr) thr=MTASK.CurrentThread;
     strncpy(thr->Name, name, STR_LEN-1);
@@ -1285,7 +1293,7 @@ thGetThreadList(int max_cnt, char* names[], int stati[], int flags[])
  *** thread descriptor is returned.
  ***/
 pThread
-thGetByName(char* name)
+thGetByName(const char* name)
     {
     pThread thr = NULL;
     int i,cnt;
@@ -1438,7 +1446,7 @@ thGetUserID(pThread thr)
  *** management.
  ***/
 int
-thSetParam(pThread thr, char* name, void* param)
+thSetParam(pThread thr, const char* name, void* param)
     {
 #if 0
     int i;
@@ -1470,7 +1478,7 @@ thSetParam(pThread thr, char* name, void* param)
 /*** THGETPARAM returns the specified thread's generic parameter.
  ***/
 void*
-thGetParam(pThread thr, char* name)
+thGetParam(pThread thr, const char* name)
     {
 #if 0
     int i;
@@ -1523,6 +1531,18 @@ fdSetOptions(pFile filedesc, int options)
     old_options = filedesc->Flags;
     filedesc->Flags |= (options & (FD_UF_RDCACHE | FD_UF_WRCACHE | FD_UF_GZIP));
 #ifdef HAVE_LIBZ
+    if ((old_options & FD_UF_WRCACHE) && (options & FD_UF_GZIP))
+	{
+	if (filedesc->WrCacheBuf && filedesc->WrCacheLen > 0)
+	    {
+	    filedesc->Flags &= ~(FD_UF_WRCACHE | FD_UF_GZIP);
+	    fdWrite(filedesc, filedesc->WrCacheBuf, filedesc->WrCacheLen, 0, FD_U_PACKET);
+	    filedesc->WrCacheLen = 0;
+	    filedesc->WrCachePtr = filedesc->WrCacheBuf;
+	    filedesc->Flags |= (FD_UF_WRCACHE | FD_UF_GZIP);
+	    }
+	}
+
     if ( (options & FD_UF_GZIP) && !(old_options & FD_UF_GZIP) )
 	{
 	filedesc->GzFile = gzdopen(dup(filedesc->FD), (filedesc->Flags & FD_F_WR ? "wb" : "rb"));
@@ -1568,7 +1588,7 @@ fdUnSetOptions(pFile filedesc, int options)
 /*** FDOPEN opens a new file or device.  Similar to UNIX open() call.
  ***/
 pFile
-fdOpen(char* filename, int mode, int create_mode)
+fdOpen(const char* filename, int mode, int create_mode)
     {
     pFile new_fd;
     int fd,arg;
@@ -1810,7 +1830,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
  *** the app as streams (no seeks performed).
  ***/
 int
-fdUnRead(pFile filedesc, char* buffer, int length, int offset, int flags)
+fdUnRead(pFile filedesc, const char* buffer, int length, int offset, int flags)
     {
 
     	/** Unread already done but not read yet? **/
@@ -1833,7 +1853,7 @@ fdUnRead(pFile filedesc, char* buffer, int length, int offset, int flags)
  *** by a call to fdWrite with the FD_U_PACKET option set.
  ***/
 int
-fd_internal_WritePkt(pFile filedesc, char* buffer, int length, int offset, int flags)
+fd_internal_WritePkt(pFile filedesc, const char* buffer, int length, int offset, int flags)
     {
     int wcnt = 0, cnt=0;
 
@@ -1855,7 +1875,7 @@ fd_internal_WritePkt(pFile filedesc, char* buffer, int length, int offset, int f
  *** the seek offset is ignored.
  ***/
 int
-fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
+fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
     {
     pEventReq event = NULL;
     int rval = -1;
@@ -1945,7 +1965,7 @@ fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
 #ifdef HAVE_LIBZ
 	    if (filedesc->Flags & FD_UF_GZIP)
 		{
-		rval = gzwrite(filedesc->GzFile, buffer, length); 
+		rval = gzwrite(filedesc->GzFile, (void*)buffer, length); 
 		}
 	    else
 		{
@@ -2010,7 +2030,7 @@ fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
 #ifdef HAVE_LIBZ
 		if (filedesc->Flags & FD_UF_GZIP)
 		    {
-    		    rval = gzwrite(filedesc->GzFile, buffer, length); 
+    		    rval = gzwrite(filedesc->GzFile, (void*)buffer, length); 
 		    }
 		else
 		    {
@@ -2135,7 +2155,7 @@ fdFD(pFile filedesc)
  *** backlogged connections that can't be immediately serviced).
  ***/
 pFile
-netListenTCP(char* service_name, int queue_length, int flags)
+netListenTCP(const char* service_name, int queue_length, int flags)
     {
     pFile new_fd = NULL;
     int s,arg;
@@ -2323,7 +2343,7 @@ netGetRemotePort(pFile net_filedesc)
  *** establishes or fails.
  ***/
 pFile
-netConnectTCP(char* host_name, char* service_name, int flags)
+netConnectTCP(const char* host_name, const char* service_name, int flags)
     {
     pFile connected_fd;
     struct sockaddr_in remoteaddr;
