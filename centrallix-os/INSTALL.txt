@@ -1,10 +1,10 @@
-Centrallix Objectsystem.
+Installing Centrallix Objectsystem
 
-Install this package as /var/centrallix/os on RedHat 7.x and as
-/home/centrallix/os on RedHat 6.x and similar distributions.
+The Centrallix Objectsystem is a collection of objects of various types
+arranged in a familiar tree-and-directory type of structure.  This package
+(centrallix-os) is the base Objectsystem directory.  Install this package as
+/var/centrallix/os on RedHat 7.x and as /home/centrallix/os on RedHat 6.x and
+similar distributions.
 
-See the file
-
-    doc/install/INSTALL.txt
-
-for further installation instructions.
+See the INSTALL.txt document in the centrallix package under the "etc"
+directory for more details on setting the rootnode.
