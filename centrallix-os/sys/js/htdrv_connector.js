@@ -11,28 +11,27 @@
 
 function cn_activate(t,f,eparam)
     {
-    if (!t['Event'+f]) {return;}
+    if (!t['Event'+f]) return;
     if (!eparam)
 	{
 	eparam = new Object();
 	eparam.Caller = t;
-	var del = 1;
+	var d = 1;
 	}
     if (t['Event' + f].constructor == Array)
 	{
 	for(var fn in t['Event' + f])
 	    x = t['Event' + f][fn](eparam);
-	if (del) delete eparam;
+	if(d) delete eparam;
 	return x;
 	}
     else
-	if (del) delete eparam;
+	if(d) delete eparam;
 	return t['Event' + f](eparam);
     }
 
 function cn_add(w,e)
     {
-    if (e == "Click") e = "MouseUp"; // Click events converted to MouseUp events
     if (w['Event' + e] == null)
 	w['Event' + e] = new Array();
     w['Event' + e][w['Event' + e].length] = this.RunEvent;
