@@ -76,7 +76,7 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 	centrallix_libdir="$prefix/lib"
 	AC_ARG_WITH(centrallix-inc,
 	    AC_HELP_STRING([--with-centrallix-inc=DIR],
-		[Location of centrallix-libs include directory (default is PREFIX/include)]
+		[Location of centrallix-lib include directory (default is PREFIX/include)]
 	    ),
 	    centrallix_incdir="$withval",
 	    centrallix_incdir="$prefix/include"
@@ -87,9 +87,9 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 
  	CFLAGS="$CFLAGS -I$centrallix_incdir"
  	CPPFLAGS="$CPPFLAGS -I$centrallix_incdir"
- 	AC_CHECK_HEADER(mtask.h, 
+ 	AC_CHECK_HEADER([cxlib/mtask.h], 
 	    [],
- 	    AC_MSG_ERROR([Please ensure that Centrallix-libs is installed and use --with-centrallix-inc=DIR to specify the path to the header files])
+ 	    AC_MSG_ERROR([Please ensure that Centrallix-lib is installed and use --with-centrallix-inc=DIR to specify the path to the header files])
  	)
 	AC_SUBST(CXINCDIR, $centrallix_incdir)
 
@@ -999,3 +999,18 @@ AC_DEFUN(CENTRALLIX_OUTPUT_SUMMARY,
     ]
 )
 
+dnl Allow logging method to be configured with this script.
+AC_DEFUN(CHECK_LOGMETHOD,
+    [
+	AC_MSG_CHECKING(for logmethod setting)
+	AC_ARG_WITH(logmethod,
+	    AC_HELP_STRING([--with-logmethod=method],
+		[Error logging method, stdout or syslog, default stdout]
+	    ),
+	    logmethod="$withval",
+	    logmethod="stdout"
+	)
+	AC_MSG_RESULT($logmethod)
+	AC_SUBST(LOGMETHOD, $logmethod)
+    ]
+)

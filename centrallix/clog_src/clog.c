@@ -4,13 +4,13 @@
 #include <fcntl.h>
 #include "config.h"
 #include "centrallix.h"
-#include "mtask.h"
+#include "cxlib/mtask.h"
 #include "obj.h"
-#include "xstring.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/xstring.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
-#include "mtlexer.h"
+#include "cxlib/mtlexer.h"
 #include <signal.h>
 
 
@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: clog.c,v 1.1 2004/08/15 01:56:03 gbeeley Exp $
+    $Id: clog.c,v 1.2 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/clog_src/clog.c,v $
 
     $Log: clog.c,v $
+    Revision 1.2  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.1  2004/08/15 01:56:03  gbeeley
     - adding Commit Logger - a utility to help us standardize our commit log
       messages.  Only stubbed out at this point.  Planned are both text and

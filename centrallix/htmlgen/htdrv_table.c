@@ -4,11 +4,11 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -59,10 +59,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.44 2004/08/13 18:46:13 mmcgill Exp $
+    $Id: htdrv_table.c,v 1.45 2005/02/26 06:42:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.45  2005/02/26 06:42:37  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.44  2004/08/13 18:46:13  mmcgill
     *   Differentiated between non-visual widgets and widgets without associated
         objects during the rendering process. Widgets without associated objects

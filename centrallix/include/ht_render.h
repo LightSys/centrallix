@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.27 2004/08/15 01:57:51 gbeeley Exp $
+    $Id: ht_render.h,v 1.28 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.28  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.27  2004/08/15 01:57:51  gbeeley
     - adding CSSBox capability - not a standard, but IE and Moz differ in how
       they handle the box model.  IE draws borders within the width and height,
@@ -298,10 +304,10 @@
 
  **END-CVSDATA***********************************************************/
 
-#include "mtask.h"
+#include "cxlib/mtask.h"
 #include "obj.h"
 #include "expression.h"
-#include "xarray.h"
+#include "cxlib/xarray.h"
 #include "wgtr.h"
 
 #define HT_SBUF_SIZE	(256)

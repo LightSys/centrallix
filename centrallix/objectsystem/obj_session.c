@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "magic.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_session.c,v 1.6 2003/04/25 05:06:58 gbeeley Exp $
+    $Id: obj_session.c,v 1.7 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_session.c,v $
 
     $Log: obj_session.c,v $
+    Revision 1.7  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.6  2003/04/25 05:06:58  gbeeley
     Added insert support to OSML-over-HTTP, and very remedial Trx support
     with the objCommit API method and Commit osdriver method.  CSV datafile

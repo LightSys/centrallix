@@ -3,12 +3,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
 #include "st_node.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_intertel.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_intertel.c,v 1.3 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_intertel.c,v $
 
     $Log: objdrv_intertel.c,v $
+    Revision 1.3  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is

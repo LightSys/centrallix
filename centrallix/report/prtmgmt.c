@@ -5,12 +5,12 @@
 #include <stdlib.h>
 #include "barcode.h"
 #include "report.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xstring.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
 #include "prtmgmt.h"
 #include "htmlparse.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt.c,v 1.2 2002/06/19 23:29:34 gbeeley Exp $
+    $Id: prtmgmt.c,v 1.3 2005/02/26 06:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt.c,v $
 
     $Log: prtmgmt.c,v $
+    Revision 1.3  2005/02/26 06:42:40  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.2  2002/06/19 23:29:34  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other

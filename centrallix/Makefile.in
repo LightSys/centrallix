@@ -298,6 +298,11 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY:	mods
 .PHONY:	depend
 .PHONY: all
+.PHONY: config
+.PHONY: install
+.PHONY: config_install
+.PHONY: rhinit_install
+.PHONY: clean distclean distreallyclean
 
 all:	centrallix mods config
 
@@ -328,13 +333,13 @@ modules: mods
 	@echo "*** Be sure to do a 'make modules_install'"
 
 modules_install: mods config_install
-	@mkdir -p $(libdir)
-	$(if $(strip ${MODULES}),@$(INSTALL) $(MODULES) $(libdir))
+	@mkdir -p $(libdir)/centrallix
+	$(if $(strip ${MODULES}),@$(INSTALL) $(MODULES) $(libdir)/centrallix)
 	@echo ""
 	@echo "***************************************************************"
-	@echo "Libraries have been installed in $(libdir)"
+	@echo "Libraries have been installed in $(libdir)/centrallix"
 	@echo ""
-	@echo "Please ensure that $(libdir) is in"
+	@echo "Please ensure that $(libdir)/centrallix is in"
 	@echo '$$LD_LIBRARY_PATH or added to /etc/ld.so.conf.'
 	@echo "***************************************************************"
 	@echo ""
@@ -342,13 +347,16 @@ modules_install: mods config_install
 config: etc/rootnode etc/centrallix.conf etc/centrallix.init
 
 config_install: config
-	@mkdir -p "${sysconfdir}"
+	@mkdir -p "${sysconfdir}/centrallix"
 	@for CFILE in $(CONFFILES) ; do \
-		if ! [ -a "$(sysconfdir)/$${CFILE}" ] ; then \
+		if ! [ -a "$(sysconfdir)/centrallix/$${CFILE}" ] ; then \
 			echo "Installing default version of $${CFILE}" ; \
-			$(INSTALL) -m 644 "etc/$${CFILE}" "$(sysconfdir)/$${CFILE}" ; \
+			$(INSTALL) -m 644 "etc/$${CFILE}" "$(sysconfdir)/centrallix/$${CFILE}" ; \
 		fi \
-	done
+	done ; \
+	if [ ! -a "$(sysconfdir)/centrallix.conf" ]; then \
+	    mv "$(sysconfdir)/centrallix/centrallix.conf" "$(sysconfdir)/centrallix.conf" ;
+	fi
 
 rhinit_install: config
 	$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
@@ -377,9 +385,6 @@ test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QY
 
 ts: ts.o $(LSOBJS) $(TESTSUITE)
 	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) -o ts $(LIBS)
-
-domatches: domatches.o $(BASEOBJS)
-	$(CC) domatches.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -o domatches $(LIBS)
 
 lsclient: lsclient.o $(BASIC)
 	$(CC) lsclient.o $(BASIC) $(PROFILE) -o lsclient

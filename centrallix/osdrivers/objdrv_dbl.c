@@ -13,17 +13,17 @@
 #include <math.h>
 
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtsession.h"
 #include "expression.h"
-#include "xstring.h"
+#include "cxlib/xstring.h"
 #include "stparse.h"
 #include "st_node.h"
-#include "xhashqueue.h"
+#include "cxlib/xhashqueue.h"
 #include "multiquery.h"
-#include "magic.h"
+#include "cxlib/magic.h"
 #include "centrallix.h"
 
 /************************************************************************/
@@ -61,10 +61,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_dbl.c,v 1.6 2005/01/22 06:14:41 gbeeley Exp $
+    $Id: objdrv_dbl.c,v 1.7 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_dbl.c,v $
 
     $Log: objdrv_dbl.c,v $
+    Revision 1.7  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.6  2005/01/22 06:14:41  gbeeley
     - don't depend on obj->Type during the open process, use systype passed
       in to driver->Open.

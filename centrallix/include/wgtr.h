@@ -39,7 +39,7 @@
 
 #include "obj.h"
 #include "expression.h"
-#include "xarray.h"
+#include "cxlib/xarray.h"
 #include "iface.h"
 
 

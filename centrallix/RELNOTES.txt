@@ -1,6 +1,6 @@
 Centrallix Release Notes
 -------------------------------------------------------------------------------
-Version 0.7.4, (unreleased)
+Version 0.7.4, 26-Feb-2005
 
 This is a major development release of Centrallix.  See the release notes for
 the previous versions for further details.
@@ -56,10 +56,10 @@ the previous versions for further details.
 	$ vi ~/cxinst/etc/centrallix.conf
 	    (change the port to something non-privileged, like 8800)
 	    (switch to altpasswd auth and set altpasswd file)
-	$ htpasswd -c ~/etc/cxpasswd yourusername
+	$ htpasswd -c ~/etc/centrallix/cxpasswd yourusername
 	    (enter a password to access centrallix with)
 	    (only use the -c flag the first time you do this)
-	$ vi ~/cxinst/etc/rootnode
+	$ vi ~/cxinst/etc/centrallix/rootnode
 	    (change the path to /home/yourusername/centrallix/centrallix-os)
 	$ vi ~/.bashrc
 	    (add ~/cxinst/sbin to $PATH, ~/cxinst/lib to $LD_LIBRARY_PATH)

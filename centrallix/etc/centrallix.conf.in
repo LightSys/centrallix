@@ -7,10 +7,10 @@ $Version=2$
 centrallix "system/config"
     {
     // General Configuration Data
-    types_config = "##SYSCONFDIR##/types.cfg";
-    useragent_config = "##SYSCONFDIR##/useragent.cfg";
+    types_config = "##SYSCONFDIR##/centrallix/types.cfg";
+    useragent_config = "##SYSCONFDIR##/centrallix/useragent.cfg";
     rootnode_type = "system/uxfile";
-    rootnode_file = "##SYSCONFDIR##/rootnode";
+    rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     
     // Configuration for various modules follows....
@@ -25,7 +25,7 @@ centrallix "system/config"
 	session_inactivity_timer = 1800; //seconds
 	enable_gzip = 0; // false - NS4 fails on this
 	condense_js = 1; // true
-	dir_index = "index.html","index.htm","index.app","index.rpt";
+	dir_index = "index.app","index.html","index.htm","index.rpt";
 	}
 
     // The BDQS network interface module.
@@ -43,7 +43,7 @@ centrallix "system/config"
 //	    {
 //	    export1 "system/config" { path="/"; readonly=1; }
 //	    }
-//	inode_map = "##SYSCONFDIR##/inode.map";
+//	inode_map = "##SYSCONFDIR##/centrallix/inode.map";
 //	}
 
     // The MSS MTask Session Manager module.
@@ -52,10 +52,10 @@ centrallix "system/config"
 	// Authentication method - "system" or "altpasswd".
 	auth_method = "system";
 	//auth_method = "altpasswd";
-	//altpasswd_file = "##SYSCONFDIR##/cxpasswd";
+	//altpasswd_file = "##SYSCONFDIR##/centrallix/cxpasswd";
 
 	// Error message logging mechanism.  Method is 'stdout' or 'syslog'.
-	log_method = "stdout";
+	log_method = "##LOGMETHOD##";
 
 	// Log all errors, or just those occurring outside a session?
 	log_all_errors = "yes";
@@ -67,16 +67,16 @@ centrallix "system/config"
     // Loadable Modules
     modules "system/config"
 	{
-	sybd "system/config-module" { enable_module=@ENABLE_SYBASE@; path="##LIBDIR##/objdrv_sybase.so"; type="osdriver"; }
-	http "system/config-module" { enable_module=@ENABLE_HTTP@; path="##LIBDIR##/objdrv_http.so"; type="osdriver"; }
-	xml "system/config-module" { enable_module=@ENABLE_XML@; path="##LIBDIR##/objdrv_xml.so"; type="osdriver"; }
-	mime "system/config-module" { enable_module=@ENABLE_MIME@; path="##LIBDIR##/objdrv_mime.so"; type="osdriver"; }
-	gzip "system/config-module" { enable_module=@ENABLE_GZIP@; path="##LIBDIR##/objdrv_gzip.so"; type="osdriver"; }
-	dbl "system/config-module" { enable_module=@ENABLE_DBL@; path="##LIBDIR##/objdrv_dbl.so"; type="osdriver"; }
-	mbox "system/config-module" { enable_module=@ENABLE_MBOX@; path="##LIBDIR##/objdrv_mbox.so"; type="osdriver"; }
-	shell "system/config-module" { enable_module=@ENABLE_SHELL@; path="##LIBDIR##/objdrv_shell.so"; type="osdriver"; }
-	nnfs "system/config-module" { enable_module=@ENABLE_NETNFS@; path="##LIBDIR##/net_nfs.so"; type="netdriver"; }
-	pop3 "system/config-module" { enable_module=@ENABLE_POP3@; path="##LIBDIR##/objdrv_pop3_v3.so"; type="osdriver"; }
+	sybd "system/config-module" { enable_module=@ENABLE_SYBASE@; path="##LIBDIR##/centrallix/objdrv_sybase.so"; type="osdriver"; }
+	http "system/config-module" { enable_module=@ENABLE_HTTP@; path="##LIBDIR##/centrallix/objdrv_http.so"; type="osdriver"; }
+	xml "system/config-module" { enable_module=@ENABLE_XML@; path="##LIBDIR##/centrallix/objdrv_xml.so"; type="osdriver"; }
+	mime "system/config-module" { enable_module=@ENABLE_MIME@; path="##LIBDIR##/centrallix/objdrv_mime.so"; type="osdriver"; }
+	gzip "system/config-module" { enable_module=@ENABLE_GZIP@; path="##LIBDIR##/centrallix/objdrv_gzip.so"; type="osdriver"; }
+	dbl "system/config-module" { enable_module=@ENABLE_DBL@; path="##LIBDIR##/centrallix/objdrv_dbl.so"; type="osdriver"; }
+	mbox "system/config-module" { enable_module=@ENABLE_MBOX@; path="##LIBDIR##/centrallix/objdrv_mbox.so"; type="osdriver"; }
+	shell "system/config-module" { enable_module=@ENABLE_SHELL@; path="##LIBDIR##/centrallix/objdrv_shell.so"; type="osdriver"; }
+	nnfs "system/config-module" { enable_module=@ENABLE_NETNFS@; path="##LIBDIR##/centrallix/net_nfs.so"; type="netdriver"; }
+	pop3 "system/config-module" { enable_module=@ENABLE_POP3@; path="##LIBDIR##/centrallix/objdrv_pop3_v3.so"; type="osdriver"; }
 	}
     }
 

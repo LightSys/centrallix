@@ -4,12 +4,12 @@
 #include <fcntl.h>
 #include <time.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
 #include "expression.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.9 2004/02/24 20:02:26 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.10 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.10  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.9  2004/02/24 20:02:26  gbeeley
     - adding proper support for external references in an expression, so
       that they get re-evaluated each time.  Example - getdate().

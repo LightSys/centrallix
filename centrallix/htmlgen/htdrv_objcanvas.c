@@ -4,10 +4,10 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_objcanvas.c,v 1.1 2004/12/31 04:35:17 gbeeley Exp $
+    $Id: htdrv_objcanvas.c,v 1.2 2005/02/26 06:42:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_objcanvas.c,v $
 
     $Log: htdrv_objcanvas.c,v $
+    Revision 1.2  2005/02/26 06:42:37  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.1  2004/12/31 04:35:17  gbeeley
     - Adding the Object Canvas widget, an objectsource client which allows
       data to be displayed visually on a canvas (useful with maps and diagrams

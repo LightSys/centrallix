@@ -6,13 +6,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include "centrallix.h"
-#include "bdqs.h"
-#include "mtask.h"
-#include "mtsession.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
-#include "exception.h"
+#include "cxlib/bdqs.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/exception.h"
 #include "obj.h"
 #include "stparse_ne.h"
 #include "stparse.h"
@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_bdqs.c,v 1.1 2002/03/23 06:26:49 gbeeley Exp $
+    $Id: net_bdqs.c,v 1.2 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_bdqs.c,v $
 
     $Log: net_bdqs.c,v $
+    Revision 1.2  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.1  2002/03/23 06:26:49  gbeeley
     Added BDQS network listener.  Be sure to cvs update the centrallix-os
     module to get a fresh copy of the centrallix.conf with the net_bdqs

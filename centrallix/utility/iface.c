@@ -40,8 +40,8 @@
 #include <string.h>
 #include "iface.h"
 #include "iface_private.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
 #include "obj.h"
 #include "centrallix.h"

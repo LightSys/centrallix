@@ -4,11 +4,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <time.h>
-#include "mtask.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
 #include "obj.h"
 #include "expression.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_rootnode.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: obj_rootnode.c,v 1.6 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_rootnode.c,v $
 
     $Log: obj_rootnode.c,v $
+    Revision 1.6  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.5  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which

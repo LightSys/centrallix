@@ -12,17 +12,17 @@
 #include <ctype.h>
 #include <ctpublic.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtsession.h"
 #include "expression.h"
-#include "xstring.h"
+#include "cxlib/xstring.h"
 #include "stparse.h"
 #include "st_node.h"
-#include "xhashqueue.h"
+#include "cxlib/xhashqueue.h"
 #include "multiquery.h"
-#include "magic.h"
+#include "cxlib/magic.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #else
@@ -70,10 +70,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.20 2004/07/07 21:14:51 mmcgill Exp $
+    $Id: objdrv_sybase.c,v 1.21 2005/02/26 06:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.21  2005/02/26 06:42:40  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.20  2004/07/07 21:14:51  mmcgill
     Fixed a few errors I had made in the sybase driver, added support for
     'uppercase' and 'lowercase' presentation hints styles in the sybase

@@ -2,8 +2,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include "mtask.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "obj.h"
 #include "stparse.h"
 #include "hints.h"
@@ -40,10 +40,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.6 2004/07/02 00:23:25 mmcgill Exp $
+    $Id: hints.c,v 1.7 2005/02/26 06:42:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.7  2005/02/26 06:42:41  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.6  2004/07/02 00:23:25  mmcgill
     Changes include, but are not necessarily limitted to:
         - fixed test_obj hints printing, added printing of hints to show command

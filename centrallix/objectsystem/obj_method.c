@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_method.c,v 1.3 2004/06/15 19:43:03 gbeeley Exp $
+    $Id: obj_method.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_method.c,v $
 
     $Log: obj_method.c,v $
+    Revision 1.4  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.3  2004/06/15 19:43:03  gbeeley
     - Fix for .c param not matching the .h param
 

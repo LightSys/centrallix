@@ -2,8 +2,8 @@
 #include <string.h>
 #include <unistd.h>
 #include "obj.h"
-#include "mtask.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "wgtr.h"
 
 /************************************************************************/

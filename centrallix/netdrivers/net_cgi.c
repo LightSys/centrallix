@@ -3,12 +3,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include "mtask.h"
-#include "mtsession.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
-#include "exception.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/exception.h"
 #include "obj.h"
 #include "stparse.h"
 
@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_cgi.c,v 1.3 2004/02/24 20:25:41 gbeeley Exp $
+    $Id: net_cgi.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_cgi.c,v $
 
     $Log: net_cgi.c,v $
+    Revision 1.4  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.3  2004/02/24 20:25:41  gbeeley
     - misc changes: runclient check in evaltree in stparse, eval() function
       rejected in sybase driver, update version in centrallix.conf, .cmp

@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include "datatypes.h"
+#include "cxlib/datatypes.h"
 #include "ptod.h"
 
 /************************************************************************/
@@ -40,10 +40,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ptod.c,v 1.3 2004/08/27 01:28:33 jorupp Exp $
+    $Id: ptod.c,v 1.4 2005/02/26 06:42:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/ptod.c,v $
 
     $Log: ptod.c,v $
+    Revision 1.4  2005/02/26 06:42:41  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.3  2004/08/27 01:28:33  jorupp
      * cleaning up some compile warnings
 

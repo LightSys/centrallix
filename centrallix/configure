@@ -848,7 +848,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-centrallix-inc=DIR
-                          Location of centrallix-libs include directory
+                          Location of centrallix-lib include directory
                           (default is PREFIX/include)
   --with-centrallix-lib=DIR
                           Location of centrallix-libs lib directory (default
@@ -868,6 +868,8 @@ Optional Packages:
                           /usr/include)
   --with-libxml-inc=PATH  include path for libxml headers (default is
                           /usr/include/gnome-xml)
+  --with-logmethod=method Error logging method, stdout or syslog, default
+                          stdout
 
 Some influential environment variables:
   CC          C compiler command
@@ -4120,23 +4122,23 @@ fi;
 
  	CFLAGS="$CFLAGS -I$centrallix_incdir"
  	CPPFLAGS="$CPPFLAGS -I$centrallix_incdir"
- 	if test "${ac_cv_header_mtask_h+set}" = set; then
-  echo "$as_me:$LINENO: checking for mtask.h" >&5
-echo $ECHO_N "checking for mtask.h... $ECHO_C" >&6
-if test "${ac_cv_header_mtask_h+set}" = set; then
+ 	if test "${ac_cv_header_cxlib_mtask_h+set}" = set; then
+  echo "$as_me:$LINENO: checking for cxlib/mtask.h" >&5
+echo $ECHO_N "checking for cxlib/mtask.h... $ECHO_C" >&6
+if test "${ac_cv_header_cxlib_mtask_h+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 fi
-echo "$as_me:$LINENO: result: $ac_cv_header_mtask_h" >&5
-echo "${ECHO_T}$ac_cv_header_mtask_h" >&6
+echo "$as_me:$LINENO: result: $ac_cv_header_cxlib_mtask_h" >&5
+echo "${ECHO_T}$ac_cv_header_cxlib_mtask_h" >&6
 else
   # Is the header compilable?
-echo "$as_me:$LINENO: checking mtask.h usability" >&5
-echo $ECHO_N "checking mtask.h usability... $ECHO_C" >&6
+echo "$as_me:$LINENO: checking cxlib/mtask.h usability" >&5
+echo $ECHO_N "checking cxlib/mtask.h usability... $ECHO_C" >&6
 cat >conftest.$ac_ext <<_ACEOF
 #line $LINENO "configure"
 #include "confdefs.h"
 $ac_includes_default
-#include <mtask.h>
+#include <cxlib/mtask.h>
 _ACEOF
 rm -f conftest.$ac_objext
 if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
@@ -4161,12 +4163,12 @@ echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
 echo "${ECHO_T}$ac_header_compiler" >&6
 
 # Is the header present?
-echo "$as_me:$LINENO: checking mtask.h presence" >&5
-echo $ECHO_N "checking mtask.h presence... $ECHO_C" >&6
+echo "$as_me:$LINENO: checking cxlib/mtask.h presence" >&5
+echo $ECHO_N "checking cxlib/mtask.h presence... $ECHO_C" >&6
 cat >conftest.$ac_ext <<_ACEOF
 #line $LINENO "configure"
 #include "confdefs.h"
-#include <mtask.h>
+#include <cxlib/mtask.h>
 _ACEOF
 if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
   (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
@@ -4198,34 +4200,34 @@ echo "${ECHO_T}$ac_header_preproc" >&6
 # So?  What about this header?
 case $ac_header_compiler:$ac_header_preproc in
   yes:no )
-    { echo "$as_me:$LINENO: WARNING: mtask.h: accepted by the compiler, rejected by the preprocessor!" >&5
-echo "$as_me: WARNING: mtask.h: accepted by the compiler, rejected by the preprocessor!" >&2;}
-    { echo "$as_me:$LINENO: WARNING: mtask.h: proceeding with the preprocessor's result" >&5
-echo "$as_me: WARNING: mtask.h: proceeding with the preprocessor's result" >&2;};;
+    { echo "$as_me:$LINENO: WARNING: cxlib/mtask.h: accepted by the compiler, rejected by the preprocessor!" >&5
+echo "$as_me: WARNING: cxlib/mtask.h: accepted by the compiler, rejected by the preprocessor!" >&2;}
+    { echo "$as_me:$LINENO: WARNING: cxlib/mtask.h: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: cxlib/mtask.h: proceeding with the preprocessor's result" >&2;};;
   no:yes )
-    { echo "$as_me:$LINENO: WARNING: mtask.h: present but cannot be compiled" >&5
-echo "$as_me: WARNING: mtask.h: present but cannot be compiled" >&2;}
-    { echo "$as_me:$LINENO: WARNING: mtask.h: check for missing prerequisite headers?" >&5
-echo "$as_me: WARNING: mtask.h: check for missing prerequisite headers?" >&2;}
-    { echo "$as_me:$LINENO: WARNING: mtask.h: proceeding with the preprocessor's result" >&5
-echo "$as_me: WARNING: mtask.h: proceeding with the preprocessor's result" >&2;};;
+    { echo "$as_me:$LINENO: WARNING: cxlib/mtask.h: present but cannot be compiled" >&5
+echo "$as_me: WARNING: cxlib/mtask.h: present but cannot be compiled" >&2;}
+    { echo "$as_me:$LINENO: WARNING: cxlib/mtask.h: check for missing prerequisite headers?" >&5
+echo "$as_me: WARNING: cxlib/mtask.h: check for missing prerequisite headers?" >&2;}
+    { echo "$as_me:$LINENO: WARNING: cxlib/mtask.h: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: cxlib/mtask.h: proceeding with the preprocessor's result" >&2;};;
 esac
-echo "$as_me:$LINENO: checking for mtask.h" >&5
-echo $ECHO_N "checking for mtask.h... $ECHO_C" >&6
-if test "${ac_cv_header_mtask_h+set}" = set; then
+echo "$as_me:$LINENO: checking for cxlib/mtask.h" >&5
+echo $ECHO_N "checking for cxlib/mtask.h... $ECHO_C" >&6
+if test "${ac_cv_header_cxlib_mtask_h+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  ac_cv_header_mtask_h=$ac_header_preproc
+  ac_cv_header_cxlib_mtask_h=$ac_header_preproc
 fi
-echo "$as_me:$LINENO: result: $ac_cv_header_mtask_h" >&5
-echo "${ECHO_T}$ac_cv_header_mtask_h" >&6
+echo "$as_me:$LINENO: result: $ac_cv_header_cxlib_mtask_h" >&5
+echo "${ECHO_T}$ac_cv_header_cxlib_mtask_h" >&6
 
 fi
-if test $ac_cv_header_mtask_h = yes; then
+if test $ac_cv_header_cxlib_mtask_h = yes; then
   :
 else
-  { { echo "$as_me:$LINENO: error: Please ensure that Centrallix-libs is installed and use --with-centrallix-inc=DIR to specify the path to the header files" >&5
-echo "$as_me: error: Please ensure that Centrallix-libs is installed and use --with-centrallix-inc=DIR to specify the path to the header files" >&2;}
+  { { echo "$as_me:$LINENO: error: Please ensure that Centrallix-lib is installed and use --with-centrallix-inc=DIR to specify the path to the header files" >&5
+echo "$as_me: error: Please ensure that Centrallix-lib is installed and use --with-centrallix-inc=DIR to specify the path to the header files" >&2;}
    { (exit 1); exit 1; }; }
 
 fi
@@ -6177,6 +6179,25 @@ _ACEOF
 
 
 
+
+	echo "$as_me:$LINENO: checking for logmethod setting" >&5
+echo $ECHO_N "checking for logmethod setting... $ECHO_C" >&6
+
+# Check whether --with-logmethod or --without-logmethod was given.
+if test "${with_logmethod+set}" = set; then
+  withval="$with_logmethod"
+  logmethod="$withval"
+else
+  logmethod="stdout"
+
+fi;
+	echo "$as_me:$LINENO: result: $logmethod" >&5
+echo "${ECHO_T}$logmethod" >&6
+	LOGMETHOD=$logmethod
+
+
+
+
 if test "$WITH_DYNAMIC_LOAD" = "yes"; then
 
 cat >>confdefs.h <<\_ACEOF
@@ -6798,6 +6819,7 @@ s,@NETDRIVERS@,$NETDRIVERS,;t t
 s,@STATIC_CFLAGS@,$STATIC_CFLAGS,;t t
 s,@STATIC_LIBS@,$STATIC_LIBS,;t t
 s,@PROFILE@,$PROFILE,;t t
+s,@LOGMETHOD@,$LOGMETHOD,;t t
 CEOF
 
 _ACEOF

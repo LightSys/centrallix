@@ -3,12 +3,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
 #include "st_node.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 #include <zlib.h>
 #include <time.h>
 /** module definintions **/
@@ -47,7 +47,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_gzip.c,v 1.4 2004/06/23 21:33:55 mmcgill Exp $
+    $Id: objdrv_gzip.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_gzip.c,v $
 
  **END-CVSDATA***********************************************************/

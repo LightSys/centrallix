@@ -30,9 +30,9 @@
 #include <rpc/rpc_msg.h>
 
 /** XRingQueue **/
-#include "xringqueue.h"
+#include "cxlib/xringqueue.h"
 
-#include "magic.h"
+#include "cxlib/magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -68,10 +68,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.27 2003/06/05 03:57:06 anoncvs_obe Exp $
+    $Id: net_nfs.c,v 1.28 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.28  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.27  2003/06/05 03:57:06  anoncvs_obe
     net_nfs would not compile on my rh73 system with these local variables
     declared in a block with these statements before the declarations.
@@ -276,8 +282,8 @@ typedef struct
     CXSEC_DS_END;
     } ObjectUse, *pObjectUse;
 
-#include "xarray.h"
-#include "mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/mtask.h"
 
 typedef struct 
     {

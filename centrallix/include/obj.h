@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.30 2004/07/20 21:28:52 mmcgill Exp $
+    $Id: obj.h,v 1.31 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.31  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.30  2004/07/20 21:28:52  mmcgill
     *   ht_render
         -   Added code to perform verification of widget-tree prior to
@@ -304,17 +310,17 @@
 
  **END-CVSDATA***********************************************************/
 
-#include "xarray.h"
-#include "xhash.h"
-#include "xstring.h"
-#include "xhashqueue.h"
-#include "mtask.h"
-#include "datatypes.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
+#include "cxlib/xhashqueue.h"
+#include "cxlib/mtask.h"
+#include "cxlib/datatypes.h"
 #include "stparse_ne.h"
-#include "newmalloc.h"
+#include "cxlib/newmalloc.h"
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "xhandle.h"
+#include "cxlib/xhandle.h"
 #include "ptod.h"
 
 #define OBJSYS_DEFAULT_ROOTNODE		"/usr/local/etc/rootnode"

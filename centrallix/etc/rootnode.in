@@ -1,7 +1,9 @@
+$Version=2$
 // See LICENSE.txt for licensing information.
 // Copyright (C) 2001 LightSys Technology Services, Inc.
 //
 rootnode "system/uxfile"
     {
-    path = "##OSDIR##"
+    // This should point to your ObjectSystem root directory.
+    path = "##OSDIR##";
     }

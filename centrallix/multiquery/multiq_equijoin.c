@@ -3,11 +3,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtlexer.h"
+#include "cxlib/mtlexer.h"
 #include "expression.h"
-#include "xstring.h"
+#include "cxlib/xstring.h"
 #include "multiquery.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 
 /************************************************************************/
@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.4 2004/12/31 04:19:43 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.5  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.4  2004/12/31 04:19:43  gbeeley
     - bug fix for 'cannot be inner and outer member of an outer join'
     - bug fix for WHERE expression not being completely reevaluated

@@ -3,14 +3,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "xhashqueue.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xhashqueue.h"
 #include "expression.h"
-#include "magic.h"
+#include "cxlib/magic.h"
 #include "htmlparse.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 #include "stparse_ne.h"
 
 /************************************************************************/
@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.21 2005/01/22 06:15:16 gbeeley Exp $
+    $Id: obj_object.c,v 1.22 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.22  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.21  2005/01/22 06:15:16  gbeeley
     - I broke it.  This fixes it back.
 

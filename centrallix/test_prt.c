@@ -2,8 +2,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "mtask.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
 #include "obj.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.22 2005/02/24 05:44:32 gbeeley Exp $
+    $Id: test_prt.c,v 1.23 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.23  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.22  2005/02/24 05:44:32  gbeeley
     - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
     - Special Thanks to Tim Irwin who participated in the Apex NC CODN

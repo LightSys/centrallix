@@ -3,13 +3,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
 #include "expression.h"
-#include "magic.h"
-#include "mtsession.h"
+#include "cxlib/magic.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.10 2004/08/27 01:28:32 jorupp Exp $
+    $Id: obj_query.c,v 1.11 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.11  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.10  2004/08/27 01:28:32  jorupp
      * cleaning up some compile warnings
 

@@ -39,10 +39,10 @@
 #include <string.h>
 #include "obj.h"
 #include "wgtr.h"
-#include "xarray.h"
-#include "datatypes.h"
-#include "magic.h"
-#include "xhash.h"
+#include "cxlib/xarray.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/magic.h"
+#include "cxlib/xhash.h"
 #include "ht_render.h"
 
 

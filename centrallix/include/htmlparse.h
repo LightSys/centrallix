@@ -36,10 +36,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htmlparse.h,v 1.2 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: htmlparse.h,v 1.3 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/htmlparse.h,v $
 
     $Log: htmlparse.h,v $
+    Revision 1.3  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.2  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -65,7 +71,7 @@
 
  **END-CVSDATA***********************************************************/
 
-#include "mtask.h"
+#include "cxlib/mtask.h"
 #include "obj.h"
 #include "stparse_ne.h"
 

@@ -3,12 +3,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
 #include "st_node.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 /** module definintions **/
 #include "centrallix.h"
 
@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: OBJDRV_PROTOTYPE.c,v 1.6 2004/12/31 04:21:49 gbeeley Exp $
+    $Id: OBJDRV_PROTOTYPE.c,v 1.7 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/OBJDRV_PROTOTYPE.c,v $
 
     $Log: OBJDRV_PROTOTYPE.c,v $
+    Revision 1.7  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.6  2004/12/31 04:21:49  gbeeley
     - bring prototype osdriver source file more up to date
 

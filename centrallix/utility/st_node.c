@@ -2,17 +2,17 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include "mtask.h"
-#include "mtlexer.h"
-#include "mtsession.h"
-#include "exception.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/exception.h"
 #include "stparse.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include <sys/stat.h>
 #include "obj.h"
 #include "st_node.h"
-#include "magic.h"
+#include "cxlib/magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -48,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.c,v 1.5 2004/09/01 02:36:27 gbeeley Exp $
+    $Id: st_node.c,v 1.6 2005/02/26 06:42:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/st_node.c,v $
 
     $Log: st_node.c,v $
+    Revision 1.6  2005/02/26 06:42:41  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.5  2004/09/01 02:36:27  gbeeley
     - get rid of last_modification warnings on qyt static elements by setting
       static element last_modification to that of the node itself.

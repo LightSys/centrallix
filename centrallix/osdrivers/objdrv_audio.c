@@ -11,16 +11,16 @@
 #include <grp.h>
 #include <time.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "xstring.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
 #include "stparse.h"
 #include "st_node.h"
 #include "expression.h"
 #include "report.h"
 #include "prtmgmt.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -57,10 +57,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_audio.c,v 1.4 2004/06/23 21:33:55 mmcgill Exp $
+    $Id: objdrv_audio.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_audio.c,v $
 
     $Log: objdrv_audio.c,v $
+    Revision 1.5  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.4  2004/06/23 21:33:55  mmcgill
     Implemented the ObjInfo interface for all the drivers that are currently
     a part of the project (in the Makefile, in other words). Authors of the

@@ -4,12 +4,12 @@
 #include <fcntl.h>
 #include <time.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
 #include "expression.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -56,10 +56,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.7 2004/06/30 19:26:09 gbeeley Exp $
+    $Id: exp_functions.c,v 1.8 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.8  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.7  2004/06/30 19:26:09  gbeeley
     - Adding lztrim() function for suppressing leading zeroes.
 

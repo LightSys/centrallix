@@ -34,8 +34,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include "mtask.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "obj.h"
 #include "mime.h"
 

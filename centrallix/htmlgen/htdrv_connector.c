@@ -4,11 +4,11 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "xstring.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
+#include "cxlib/mtsession.h"
 #include "wgtr.h"
 
 /************************************************************************/
@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.17 2004/08/04 20:03:07 mmcgill Exp $
+    $Id: htdrv_connector.c,v 1.18 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.18  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.17  2004/08/04 20:03:07  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,

@@ -10,13 +10,13 @@
 #include "config.h"
 #endif
 #include "centrallix.h"
-#include "mtask.h"
+#include "cxlib/mtask.h"
 #include "obj.h"
-#include "xstring.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/xstring.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
-#include "mtlexer.h"
+#include "cxlib/mtlexer.h"
 #ifndef CENTRALLIX_CONFIG
 #define CENTRALLIX_CONFIG "/usr/local/etc/centrallix.conf"
 #endif
@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.30 2003/06/04 00:23:13 gbeeley Exp $
+    $Id: lsmain.c,v 1.31 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.31  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.30  2003/06/04 00:23:13  gbeeley
     Turned MT_F_NOYIELD back off because it was causing centrallix to hang
     on session expire.

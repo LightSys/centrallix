@@ -5,13 +5,13 @@
 #include <stdlib.h>
 #include "barcode.h"
 #include "report.h"
-#include "mtask.h"
-#include "magic.h"
-#include "xarray.h"
-#include "xstring.h"
+#include "cxlib/mtask.h"
+#include "cxlib/magic.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.6 2005/02/24 05:44:32 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.7 2005/02/26 06:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.7  2005/02/26 06:42:40  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.6  2005/02/24 05:44:32  gbeeley
     - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
     - Special Thanks to Tim Irwin who participated in the Apex NC CODN

@@ -3,7 +3,7 @@
 
 #include "obj.h"
 #include "stparse.h"
-#include "xstring.h"
+#include "cxlib/xstring.h"
 #include "ptod.h"
 
 /************************************************************************/

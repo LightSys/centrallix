@@ -15,10 +15,10 @@
 #include <sys/time.h>
 #endif
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtsession.h"
 #include "stparse.h"
 #include "st_node.h"
 
@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.14 2004/06/12 00:10:15 mmcgill Exp $
+    $Id: objdrv_ux.c,v 1.15 2005/02/26 06:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.15  2005/02/26 06:42:40  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.14  2004/06/12 00:10:15  mmcgill
     Chalk one up under 'didn't understand the build process'. The remaining
     os drivers have been updated, and the prototype for objExecuteMethod

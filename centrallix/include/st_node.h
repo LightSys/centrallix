@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.h,v 1.3 2004/09/01 02:36:26 gbeeley Exp $
+    $Id: st_node.h,v 1.4 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/st_node.h,v $
 
     $Log: st_node.h,v $
+    Revision 1.4  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.3  2004/09/01 02:36:26  gbeeley
     - get rid of last_modification warnings on qyt static elements by setting
       static element last_modification to that of the node itself.
@@ -59,8 +65,8 @@
  **END-CVSDATA***********************************************************/
 
 #include "stparse.h"
-#include "xarray.h"
-#include "datatypes.h"
+#include "cxlib/xarray.h"
+#include "cxlib/datatypes.h"
 #include "obj.h"
 #include <sys/stat.h>
 

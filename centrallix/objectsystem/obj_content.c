@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "magic.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_content.c,v 1.4 2003/07/10 19:21:23 gbeeley Exp $
+    $Id: obj_content.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_content.c,v $
 
     $Log: obj_content.c,v $
+    Revision 1.5  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.4  2003/07/10 19:21:23  gbeeley
     Making sure offset and cnt/maxcnt values are not negative.  Just a
     safety check.

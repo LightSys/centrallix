@@ -11,16 +11,16 @@
 #include <grp.h>
 #include <time.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "xstring.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
 #include "stparse.h"
 #include "st_node.h"
 #include "expression.h"
 #include "report.h"
 #include "prtmgmt.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /** GRB - this file is becoming obsolete and should not be in any current
  ** build under 'normal' circumstances.  Will be removed from CVS later.
@@ -62,10 +62,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.10 2004/02/24 20:25:41 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.11 2005/02/26 06:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.11  2005/02/26 06:42:40  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.10  2004/02/24 20:25:41  gbeeley
     - misc changes: runclient check in evaltree in stparse, eval() function
       rejected in sybase driver, update version in centrallix.conf, .cmp

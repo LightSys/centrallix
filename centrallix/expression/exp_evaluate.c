@@ -4,12 +4,12 @@
 #include <fcntl.h>
 #include <time.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
 #include "expression.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -66,10 +66,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.11 2004/09/01 02:36:26 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.12 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.12  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.11  2004/09/01 02:36:26  gbeeley
     - get rid of last_modification warnings on qyt static elements by setting
       static element last_modification to that of the node itself.

@@ -37,7 +37,7 @@
 
  **END-CVSDATA***********************************************************/
 
-#include "xarray.h"
+#include "cxlib/xarray.h"
 #include "stparse.h"
 
 /* interface types */

@@ -9,13 +9,13 @@
 #include <dlfcn.h>
 #endif
 #include "centrallix.h"
-#include "mtask.h"
+#include "cxlib/mtask.h"
 #include "obj.h"
-#include "xstring.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/xstring.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
-#include "mtlexer.h"
+#include "cxlib/mtlexer.h"
 #include <signal.h>
 #include "wgtr.h"
 #include "iface.h"
@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.33 2005/02/24 05:44:32 gbeeley Exp $
+    $Id: centrallix.c,v 1.34 2005/02/26 06:42:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.34  2005/02/26 06:42:35  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.33  2005/02/24 05:44:32  gbeeley
     - Adding PostScript and PDF report output formats.  (pdf is via ps2pdf).
     - Special Thanks to Tim Irwin who participated in the Apex NC CODN

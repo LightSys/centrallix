@@ -4,8 +4,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <gtk/gtk.h>
-#include "mtask.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
 #include "stparse.h"
 
 /************************************************************************/
@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: sfedit.c,v 1.3 2002/10/17 18:45:49 gbeeley Exp $
+    $Id: sfedit.c,v 1.4 2005/02/26 06:42:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/sfeditor/sfedit.c,v $
 
     $Log: sfedit.c,v $
+    Revision 1.4  2005/02/26 06:42:41  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.3  2002/10/17 18:45:49  gbeeley
     Argh.  Retrofitting the original commit log message into this ol thing
 

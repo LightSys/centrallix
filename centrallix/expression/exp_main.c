@@ -4,13 +4,13 @@
 #include <fcntl.h>
 #include <time.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
 #include "expression.h"
-#include "mtsession.h"
-#include "magic.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.4 2003/06/27 21:19:47 gbeeley Exp $
+    $Id: exp_main.c,v 1.5 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.5  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.4  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...

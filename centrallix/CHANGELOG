@@ -1,6 +1,9 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
-0.7.3 --> 0.7.4	    (unreleased)    MAJOR DEVELOPMENT RELEASE
+0.7.4 --> 0.7.5	    (unreleased)
+
+-------------------------------------------------------------------------------
+0.7.3 --> 0.7.4	    26-Feb-2005     MAJOR DEVELOPMENT RELEASE
 
     Once again, this is a major development release - including a lot of new
     features and a lot of bug fixes.
@@ -47,6 +50,10 @@ Centrallix ChangeLog
 	19. NOTE: enforcement of unique namespace for widgets is now performed,
 	    so apps that reused names for things like connectors will have to
 	    be modified before use with 0.7.4.
+	20. Moved Centrallix-lib include files into their own directory instead
+	    of in the main /usr/include directory.
+	21. Unindexed and readonly DBL ISAM files ObjectSystem driver.
+	22. PDF/PostScript output from the report writer.
 
 
 -------------------------------------------------------------------------------

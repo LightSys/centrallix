@@ -5,12 +5,12 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 #include "stparse.h"
 #include "st_node.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_unixuser.c,v 1.5 2004/06/23 21:33:56 mmcgill Exp $
+    $Id: objdrv_unixuser.c,v 1.6 2005/02/26 06:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_unixuser.c,v $
 
     $Log: objdrv_unixuser.c,v $
+    Revision 1.6  2005/02/26 06:42:40  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.5  2004/06/23 21:33:56  mmcgill
     Implemented the ObjInfo interface for all the drivers that are currently
     a part of the project (in the Makefile, in other words). Authors of the

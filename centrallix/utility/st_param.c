@@ -2,15 +2,15 @@
 #include <string.h>
 #include <fcntl.h>
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "xstring.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
 #include "stparse.h"
 #include "st_node.h"
 #include "expression.h"
 #include "st_param.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -48,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_param.c,v 1.3 2002/11/22 19:29:38 gbeeley Exp $
+    $Id: st_param.c,v 1.4 2005/02/26 06:42:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/st_param.c,v $
 
     $Log: st_param.c,v $
+    Revision 1.4  2005/02/26 06:42:41  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.3  2002/11/22 19:29:38  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This

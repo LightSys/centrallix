@@ -36,10 +36,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.16 2003/04/21 21:00:40 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.17 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.17  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.16  2003/04/21 21:00:40  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -151,8 +157,8 @@
 
  **END-CVSDATA***********************************************************/
 
-#include "xarray.h"
-#include "xhash.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
 
 
 #define PRT_XY_CORRECTION_FACTOR	(72.0/120.0)

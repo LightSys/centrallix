@@ -5,13 +5,13 @@
 #include <stdlib.h>
 #include "barcode.h"
 #include "report.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xstring.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
 #include "prtmgmt_new.h"
 #include "prtmgmt_private.h"
 #include "htmlparse.h"
-#include "magic.h"
+#include "cxlib/magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -53,12 +53,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_layout_string.c,v 1.1 2001/08/13 18:01:15 gbeeley Exp $
+    $Id: prtmgmt_layout_string.c,v 1.2 2005/02/26 06:42:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_layout_string.c,v $
 
     $Log: prtmgmt_layout_string.c,v $
-    Revision 1.1  2001/08/13 18:01:15  gbeeley
-    Initial revision
+    Revision 1.2  2005/02/26 06:42:40  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
+    Revision 1.1.1.1  2001/08/13 18:01:15  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:18  gbeeley
     Centrallix Core Initial Import

@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse_ne.h,v 1.1 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: stparse_ne.h,v 1.2 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/stparse_ne.h,v $
 
     $Log: stparse_ne.h,v $
+    Revision 1.2  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.1  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -64,8 +70,8 @@
  **END-CVSDATA***********************************************************/
 
 
-#include "mtask.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
 
 /** Non-expression structured data storage **/
 typedef struct _SO

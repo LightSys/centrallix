@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.5 2004/06/12 04:02:27 gbeeley Exp $
+    $Id: multiquery.h,v 1.6 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.6  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.5  2004/06/12 04:02:27  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -76,9 +82,9 @@
  **END-CVSDATA***********************************************************/
 
 #include "obj.h"
-#include "mtlexer.h"
+#include "cxlib/mtlexer.h"
 #include "expression.h"
-#include "xstring.h"
+#include "cxlib/xstring.h"
 
 
 /*** Structure for a query driver.  A query driver basically manages a type

@@ -36,10 +36,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ptod.h,v 1.2 2004/06/12 04:02:27 gbeeley Exp $
+    $Id: ptod.h,v 1.3 2005/02/26 06:42:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ptod.h,v $
 
     $Log: ptod.h,v $
+    Revision 1.3  2005/02/26 06:42:38  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.2  2004/06/12 04:02:27  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -49,7 +55,7 @@
 
  **END-CVSDATA***********************************************************/
 
-#include "datatypes.h"
+#include "cxlib/datatypes.h"
 
 /** typed POD structure, PTOD **/
 typedef struct _TPOD

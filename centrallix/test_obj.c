@@ -2,8 +2,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "mtask.h"
-#include "mtlexer.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
 #include "obj.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -64,10 +64,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.34 2004/12/31 04:18:17 gbeeley Exp $
+    $Id: test_obj.c,v 1.35 2005/02/26 06:42:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.35  2005/02/26 06:42:36  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.34  2004/12/31 04:18:17  gbeeley
     - bug fix for printing Binary type attributes
     - bug fix for memory leaks due to open LxSession's

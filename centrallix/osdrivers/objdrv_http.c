@@ -5,12 +5,12 @@
 #include <sys/types.h>
 #include <regex.h>
 #include "obj.h"
-#include "mtask.h"
+#include "cxlib/mtask.h"
 #include "stparse.h"
 #include "st_node.h"
-#include "mtsession.h"
+#include "cxlib/mtsession.h"
 #include "centrallix.h"
-#include "mtlexer.h"
+#include "cxlib/mtlexer.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

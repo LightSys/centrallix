@@ -132,6 +132,9 @@ CHECK_HARDENING
 
 dnl Check optimization
 CHECK_OPTIMIZE
+
+dnl Check for log method
+CHECK_LOGMETHOD
     
 dnl Define WITH_DYNAMIC_LOAD in config.h
 if test "$WITH_DYNAMIC_LOAD" = "yes"; then

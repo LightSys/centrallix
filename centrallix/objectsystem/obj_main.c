@@ -3,12 +3,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "centrallix.h"
-#include "mtask.h"
-#include "mtlexer.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/mtsession.h"
 #include "obj.h"
 #include "expression.h"
-#include "xhandle.h"
+#include "cxlib/xhandle.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.11 2004/07/15 22:03:13 mmcgill Exp $
+    $Id: obj_main.c,v 1.12 2005/02/26 06:42:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.12  2005/02/26 06:42:39  gbeeley
+    - Massive change: centrallix-lib include files moved.  Affected nearly
+      every source file in the tree.
+    - Moved all config files (except centrallix.conf) to a subdir in /etc.
+    - Moved centrallix modules to a subdir in /usr/lib.
+
     Revision 1.11  2004/07/15 22:03:13  mmcgill
     Fixed a bug in the code that loads the types configuration file where
     some XArrays were used without being initialized (huzzah for Valgrind).
