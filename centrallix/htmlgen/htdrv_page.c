@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.17 2002/06/19 21:21:50 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.18 2002/06/24 19:45:35 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.18  2002/06/24 19:45:35  pfinley
+    eliminated the flicker in the border of an edit box when it is clicked when it already has keyboard focus..
+
     Revision 1.17  2002/06/19 21:21:50  lkehresman
     Bumped up the zIndex values so the hilights wouldn't be hidden.
 
@@ -239,6 +242,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "pg_modallayer", "null", 0);
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
+	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 
 	/** Add focus box **/
 	htrAddHeaderItem(s, 
@@ -364,7 +368,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
 		"            {\n"
 		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
-		"            pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
+		"            if(pg_curkbdlayer != pg_curlayer)\n"
+		"                {\n"
+		"                pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
+		"                pg_insame = false;\n"
+		"                }\n"
+		"            else pg_insame = true;\n"
 		"            }\n"
 		"        pg_curkbdarea = pg_curarea;\n"
 		"        pg_curkbdlayer = pg_curlayer;\n"
@@ -373,7 +382,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
 		"            if (v & 1)\n"
 		"                {\n"
-		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
+		"                if (!pg_insame) pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"                }\n"
 		"            if (v & 2)\n"
 		"                {\n"
@@ -406,6 +415,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        if (!pg_curkbdlayer.losefocushandler()) return true;\n"
 		"        pg_curkbdarea = null;\n"
 		"        pg_curkbdlayer = null;\n"
+		"        pg_insame = false;\n"
 		"        }\n");
 
 	/** This resets the keyboard focus. **/
