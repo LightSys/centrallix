@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.21 2002/07/15 21:58:02 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.22 2002/07/15 22:41:02 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.22  2002/07/15 22:41:02  lkehresman
+    Whoops!  Got copy-happy and removed an event with all the functions.
+
     Revision 1.21  2002/07/15 21:58:02  lkehresman
     Split the page out into include scripts
 
@@ -456,6 +459,17 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
 
 	htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
+
+	htrAddEventHandler(s, "document", "KEYDOWN", "pg",
+		"    k = e.which;\n"
+		"    if (k > 65280) k -= 65280;\n"
+		"    if (k >= 128) k -= 128;\n"
+		"    if (k == pg_lastkey) return false;\n"
+		"    pg_lastkey = k;\n"
+		"    /*pg_togglecursor();*/\n"
+		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
+		"    pg_keytimeoutid = setTimeout(pg_keytimeout, 200);\n"
+		"    return pg_keyhandler(k, e.modifiers, e);\n");
 
 	htrAddEventHandler(s, "document", "KEYUP", "pg",
 		"    k = e.which;\n"
