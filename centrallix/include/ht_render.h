@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.26 2004/08/04 20:03:11 mmcgill Exp $
+    $Id: ht_render.h,v 1.27 2004/08/15 01:57:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.27  2004/08/15 01:57:51  gbeeley
+    - adding CSSBox capability - not a standard, but IE and Moz differ in how
+      they handle the box model.  IE draws borders within the width and height,
+      but Moz draws them outside the width and height.  Neither compute borders
+      as being a part of the content area of the DIV.
+
     Revision 1.26  2004/08/04 20:03:11  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -453,6 +459,7 @@ typedef struct
     unsigned int Dom2Traversal:1; /* W3C DOM Level 2 traversal interfaces */
     unsigned int CSS1:1; /* W3C CSS Level 1 */
     unsigned int CSS2:1; /* W3C CSS Level 2 */
+    unsigned int CSSBox:1; /* Puts border outside declared box width */
     unsigned int HTML40:1; /* W3C HTML 4.0 */
     unsigned int JS15:1; /* Javacript 1.5 */
     }

@@ -51,10 +51,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.52 2004/08/14 20:28:29 gbeeley Exp $
+    $Id: ht_render.c,v 1.53 2004/08/15 01:57:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.53  2004/08/15 01:57:51  gbeeley
+    - adding CSSBox capability - not a standard, but IE and Moz differ in how
+      they handle the box model.  IE draws borders within the width and height,
+      but Moz draws them outside the width and height.  Neither compute borders
+      as being a part of the content area of the DIV.
+
     Revision 1.52  2004/08/14 20:28:29  gbeeley
     - fix for windowsize-getter script to work with IE.
 
@@ -524,7 +530,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
 	    if(!strcmp(data, "yes")) \
 		agentCap->Capabilities.attr = 1; \
 	    else if(!strcmp(data, "no")) \
-		agentCap->Capabilities.attr = 1; \
+		agentCap->Capabilities.attr = 0; \
 	    else \
 		mssError(1,"HTR","%s must be yes, no, 0, or 1 in %s", # attr ,node->Name); \
 	    } \
@@ -558,6 +564,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
     PROCESS_CAP_INIT(Dom2Traversal);
     PROCESS_CAP_INIT(CSS1);
     PROCESS_CAP_INIT(CSS2);
+    PROCESS_CAP_INIT(CSSBox);
     PROCESS_CAP_INIT(HTML40);
     PROCESS_CAP_INIT(JS15);
 
@@ -614,6 +621,7 @@ htr_internal_writeCxCapabilities(pHtSession s, pFile out)
     PROCESS_CAP_OUT(Dom2Traversal);
     PROCESS_CAP_OUT(CSS1);
     PROCESS_CAP_OUT(CSS2);
+    PROCESS_CAP_OUT(CSSBox);
     PROCESS_CAP_OUT(HTML40);
     PROCESS_CAP_OUT(JS15);
     }
@@ -2273,6 +2281,10 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 		snprintf(buf,buflen,"background-color: %s;",ptr);
 	    else
 		snprintf(buf,buflen,"bgcolor='%s'",ptr);
+	    }
+	else
+	    {
+	    return -1;
 	    }
 
     return 0;
