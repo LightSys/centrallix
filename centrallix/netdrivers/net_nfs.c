@@ -65,10 +65,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.14 2003/03/30 20:03:35 nehresma Exp $
+    $Id: net_nfs.c,v 1.15 2003/03/31 05:23:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.15  2003/03/31 05:23:50  jorupp
+     * fixed some error messages (caused a segfault if an invalid program was sent)
+     * implimented nfsstat
+       - this should be enough to mount the filesystem -- kudos to whoever tells me why it doesn't....
+
     Revision 1.14  2003/03/30 20:03:35  nehresma
     added open object caching for 30 seconds
         NOTES:
@@ -798,11 +803,16 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     {
     statfsres* retval = NULL;
     retval = (statfsres*)nmMalloc(sizeof(statfsres));
-    /** do work here **/
 
-    /** not implimented **/
-    retval->status = ENOSYS;
-    
+    /** return information on the file system referenced by the passed file handle **/
+    /** since there's no real drive here, just return sensible fake values **/
+    retval->status = NFS_OK;
+    retval->statfsres_u.info.tsize = 256; /* prefered transfer size */ /* small value for help with debugging */
+    retval->statfsres_u.info.bsize = 512; /* block size */
+    retval->statfsres_u.info.blocks = 1024; /* number of blocks on device */
+    retval->statfsres_u.info.bfree = 1024; /* number of free blocks on device */
+    retval->statfsres_u.info.bavail = 1024; /* number of blocks available for non-priviledged users */
+
     return retval;
     }
 
@@ -1251,7 +1261,7 @@ nnfs_internal_nfs_listener(void* v)
 				}
 			    else
 				{
-				mssError(0,"Invalid mount version requested: %i\n",msg_in.rm_call.cb_vers);
+				mssError(0,"NNFS","Invalid mount version requested: %i\n",msg_in.rm_call.cb_vers);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 				msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 				msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -1259,7 +1269,7 @@ nnfs_internal_nfs_listener(void* v)
 			    }
 			else
 			    {
-			    mssError(0,"Invalid program requested: %i\n",msg_in.rm_call.cb_prog);
+			    mssError(0,"NNFS","Invalid program requested: %i\n",msg_in.rm_call.cb_prog);
 			    msg_out.rm_reply.rp_acpt.ar_stat = PROG_UNAVAIL;
 			    }
 			}
