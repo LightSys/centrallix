@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.23 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: net_http.c,v 1.24 2002/07/11 21:03:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.24  2002/07/11 21:03:28  gbeeley
+    Fixed problem with doing "setattrs" OSML operation on money and
+    datetime data types.
+
     Revision 1.23  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -1066,6 +1070,8 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
     pStruct subinf;
     MoneyType m;
     DateTime dt;
+    pDateTime pdt;
+    pMoneyType pm;
     double dbl;
     char* where;
     char* orderby;
@@ -1415,12 +1421,14 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 
 			    case DATA_T_DATETIME:
 			        objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
-				retval=objSetAttrValue(obj,subinf->Name,POD(&dt));
+				pdt = &dt;
+				retval=objSetAttrValue(obj,subinf->Name,POD(&pdt));
 				break;
 
 			    case DATA_T_MONEY:
+				pm = &m;
 			        objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
-				retval=objSetAttrValue(obj,subinf->Name,POD(&m));
+				retval=objSetAttrValue(obj,subinf->Name,POD(&pm));
 				break;
 
 			    case DATA_T_STRINGVEC:
