@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
  
-    $Id: prtmgmt_v3_od_ps.c,v 1.2 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_od_ps.c,v 1.3 2005/03/01 07:09:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
  
     $Log: prtmgmt_v3_od_ps.c,v $
+    Revision 1.3  2005/03/01 07:09:55  gbeeley
+    - adding quality setting on ps2pdf conversion to gain better image
+      resolution.
+
     Revision 1.2  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -101,7 +105,7 @@ void* prt_psod_OpenPDF(pPrtSession);
 
 static PrtPsodFormat PsFormats[] =
     {
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	"/usr/bin/ps2pdf - -" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	"/usr/bin/ps2pdf -dPDFSETTINGS=/prepress - -" },
 	{ NULL,		NULL,			NULL,			NULL }
     };
 
@@ -184,7 +188,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.2 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.3 $ \n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
