@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.24 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.25 2002/07/17 15:32:17 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.25  2002/07/17 15:32:17  pfinley
+    Changed losefocushandler so that it is only called when another layer other than itself is clicked (getfocushandler is still called).
+
     Revision 1.24  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -399,16 +402,16 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
 		"        var w = pg_curarea.width;\n"
 		"        var h = pg_curarea.height;\n"
-		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
+		"        if (pg_curlayer != pg_curkbdlayer)\n"
 		"            {\n"
-		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
-		"            if(pg_curkbdlayer != pg_curlayer)\n"
+		"            if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
 		"                {\n"
+		"                if (!pg_curkbdlayer.losefocushandler()) return true;\n"
 		"                pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"                pg_insame = false;\n"
 		"                }\n"
-		"            else pg_insame = true;\n"
 		"            }\n"
+		"        else pg_insame = true;\n"
 		"        pg_curkbdarea = pg_curarea;\n"
 		"        pg_curkbdlayer = pg_curlayer;\n"
 		"        if (pg_curkbdlayer.getfocushandler)\n"
