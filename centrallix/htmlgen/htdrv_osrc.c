@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.2 2002/03/02 03:06:50 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.3 2002/03/09 02:38:48 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.3  2002/03/09 02:38:48  jheth
+    Make OSRC work with Form - Query at least
+
     Revision 1.2  2002/03/02 03:06:50  jorupp
     * form now has basic QBF functionality
     * fixed function-building problem with radiobutton
@@ -82,8 +85,10 @@ int htosrcVerify() {
    char *sbuf3;
    char *nptr;
 
+   sbuf3 = nmMalloc(200);
+   
    /** Get an id for this. **/
-   id = (HTCB.idcnt++);
+   id = (HTOSRC.idcnt++);
 
    /** Get name **/
    if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
@@ -94,47 +99,59 @@ int htosrcVerify() {
    strcpy(nptr,name);
 
    /** create our instance variable **/
-   htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
+   //htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
 
-
-   htrAddScriptFunction(s, "osrc_clear", "\n"
-      "function osrc_clear()\n"
+  /** Ok, write the style header items. **/
+  snprintf(sbuf3, 200, "    <STYLE TYPE=\"text/css\">\n");
+  htrAddHeaderItem(s,sbuf3);
+  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
+  htrAddHeaderItem(s,sbuf3);
+  snprintf(sbuf3, 200, "    </STYLE>\n");
+  htrAddHeaderItem(s,sbuf3);
+	 
+   
+   htrAddScriptFunction(s, "osrc_action_clear", "\n"
+      "function osrc_action_clear()\n"
       "    {\n"
       "    }\n",0);
 
 
-   htrAddScriptFunction(s, "osrc_query", "\n"
-      "function osrc_query()\n"
+   htrAddScriptFunction(s, "osrc_action_query", "\n"
+      "function osrc_action_query(query)\n"
       "    {\n"
+      "    //Send query as GET request\n"
+      "    query = escape(query);\n"
+      "    this.src = '/?ls__mode=osml&ls__req=' + query;\n"
+      "    alert(query);\n" 
       "    }\n",0);
    
-   htrAddScriptFunction(s, "osrc_delete", "\n"
-      "function osrc_delete()\n"
+   htrAddScriptFunction(s, "osrc_action_delete", "\n"
+      "function osrc_action_delete()\n"
       "    {\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc_create", "\n"
-      "function osrc_create()\n"
+   htrAddScriptFunction(s, "osrc_action_create", "\n"
+      "function osrc_action_create()\n"
       "    {\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc_modify", "\n"
-      "function osrc_modify()\n"
+   htrAddScriptFunction(s, "osrc_action_modify", "\n"
+      "function osrc_action_modify()\n"
       "    {\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc_query_continue", "\n"
-      "function osrc_query_continue()\n"
+   htrAddScriptFunction(s, "osrc_cb_query_continue", "\n"
+      "function osrc_cb_query_continue()\n"
       "    {\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc_query_cancle", "\n"
-      "function osrc_query_cancle()\n"
+   htrAddScriptFunction(s, "osrc_cb_query_cancel", "\n"
+      "function osrc_cb_query_cancel()\n"
       "    {\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc_request_object", "\n"
-      "function osrc_request_object()\n"
+   htrAddScriptFunction(s, "osrc_cb_request_object", "\n"
+      "function osrc_cb_request_object()\n"
       "    {\n"
       "    }\n",0);
 
@@ -142,39 +159,33 @@ int htosrcVerify() {
 
    /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
-      "function osrc_init(name)\n"
+      "function osrc_init(loader)\n"
       "    {\n"      
-      "    osrc = new Object();\n"
-      "    osrc.name=name;\n"	
-      
-      "    osrc.ActionClear=osrc_action_clear;\n"
-      "    osrc.ActionQuery=osrc_action_query;\n"
-      "    osrc.ActionDelete=osrc_action_delete;\n"
-      "    osrc.ActionCreate=osrc_action_create;\n"
-      "    osrc.ActionModify=osrc_action_modify;\n"
+      "    loader.ActionClear=osrc_action_clear;\n"
+      "    loader.ActionQuery=osrc_action_query;\n"
+      "    loader.ActionDelete=osrc_action_delete;\n"
+      "    loader.ActionCreate=osrc_action_create;\n"
+      "    loader.ActionModify=osrc_action_modify;\n"
             
-      "    osrc.QueryContinue = osrc_cb_query_continue;\n"
-      "    osrc.QueryCancel = osrc_cb_query_cancel;\n"
-      "    osrc.RequestObject = osrc_cb_request_object;\n"
-
-      "    return osrc;\n"
+      "    loader.QueryContinue = osrc_cb_query_continue;\n"
+      "    loader.QueryCancel = osrc_cb_query_cancel;\n"
+      "    loader.RequestObject = osrc_cb_request_object;\n"
+      "    return loader;\n"
       "    }\n", 0);
 
 
    /** Script initialization call. **/
-   sbuf3 = nmMalloc(200);
-   snprintf(sbuf3, 200, "\n %s=osrc_current=osrc_init(%s);\n", name, name);
+   snprintf(sbuf3, 200, "osrc_current=osrc_init(%s.layers.osrc%dloader);\n", parentname, id);
    htrAddScriptInit(s, sbuf3);
-   nmFree(sbuf3, 200);
 
    /** HTML body <DIV> element for the layers. **/
-   sprintf(sbuf,"   <DIV ID=\"cb%dmain\">\n",id);
-   htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
-   htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"   </DIV>\n");
-   htrAddBodyItem(s, sbuf);
-
+   snprintf(sbuf3, 200, "   <DIV ID=\"osrc%dloader\">\n",id);
+   htrAddBodyItem(s, sbuf3);
+   snprintf(sbuf3, 200, "   </DIV>\n");
+   htrAddBodyItem(s, sbuf3);
+   
+   nmFree(sbuf3, 200);
+   
    htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
    
    /** We set osrc_current=null so that orphans can't find us  **/

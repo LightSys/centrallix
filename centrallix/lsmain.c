@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.9 2002/03/08 02:07:13 jorupp Exp $
+    $Id: lsmain.c,v 1.10 2002/03/09 02:38:48 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.10  2002/03/09 02:38:48  jheth
+    Make OSRC work with Form - Query at least
+
     Revision 1.9  2002/03/08 02:07:13  jorupp
     * initial commit of alerter widget
     * build callback listing object for form
@@ -225,7 +228,8 @@ start(void* v)
 	htfsInitialize();			/* form status module */
 
 	htformInitialize();			/* forms module */
-	htalrtInitialize();			/* alert module */
+    htosrcInitialize();         /* osrc module */
+    htalrtInitialize();			/* alert module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */

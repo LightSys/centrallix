@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.11  2002/03/09 02:38:48  jheth
+    Make OSRC work with Form - Query at least
+
     Revision 1.10  2002/03/08 02:07:13  jorupp
     * initial commit of alerter widget
     * build callback listing object for form
@@ -608,9 +611,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    delete where;\n"
 		"    if(confirm(\"Send to \\\"\"+this.osrc.name+\"\\\"(osrc):\\\n\"+query))\n"
 		"        {\n"
-		"        //form.Pending=true;\n"
-		"        //form.IsUnsaved=false;\n"
-		"        //this.osrc.ActionQuery(query);\n"
+		"        form.Pending=true;\n"
+		"        form.IsUnsaved=false;\n"
+		"        this.osrc.ActionQuery(query);\n"
 		"        }\n"
 		"    delete query;\n"
 		"    }\n", 0);
@@ -743,7 +746,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.mode = \"No Data\";\n"
 		"    form.cobj = null;\n" /* current 'object' (record) */
 		"    form.oldmode = null;\n"
-		"    form.osrc = new Object();\n"
+		"    form.osrc = osrc_current;\n"
 		"    form.IsUnsaved = false;\n"
 		"    form.name = name;\n"
 		"    form.Pending = false;\n"
