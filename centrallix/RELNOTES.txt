@@ -1,7 +1,32 @@
-Centrallix version 0.7.0 Release Notes
-Date:	August 13th, 2001
-Author:	Greg Beeley (GRB)
+Centrallix Release Notes
 -------------------------------------------------------------------------------
+Version 0.7.1, 17-Oct-2001
+
+This is an interim development release of Centrallix.  See the release notes 
+below for 0.7.0; generally they still apply.  A few new notes and clarifications,
+though:
+
+1.  Be sure to download AT LEAST the centrallix, centrallix-lib, and 
+    centrallix-os packages.  The system will be nonfunctional without at least
+    those three packages.
+
+2.  Be sure to make sure that you update both centrallix-lib and centrallix
+    if you are upgrading.  There are some changes in APIs that make the
+    different versions incompatible.
+
+3.  A new note for non-Sybase users: you will also have to comment out the
+    sybdInitialize() function call in lsmain.c and test_obj.c to leave out
+    the Sybase-CT objectsystem driver.  See below for more information.
+
+4.  Users of newer GNU readline versions will need to add -lncurses or possibly
+    -lcurses to the LIBS line in the Makefile; different versions of Readline
+    evidently have different requirements regarding this.
+
+5.  Developers, please read the CHANGELOG.  Thanks!
+
+
+-------------------------------------------------------------------------------
+Version 0.7.0, 13-Aug-2001
 
 This is the initial public development release of the Centrallix Application
 Server System.  You should be aware of a few things before trying to use this
