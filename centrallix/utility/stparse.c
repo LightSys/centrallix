@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.2 2001/10/17 18:23:04 gbeeley Exp $
+    $Id: stparse.c,v 1.3 2001/10/22 17:36:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.3  2001/10/22 17:36:05  gbeeley
+    Beginning to add support for JS scripting facilities.
+
     Revision 1.2  2001/10/17 18:23:04  gbeeley
     Fixed incorrect licensing header (was LGPL; now GPL).
 
@@ -769,7 +772,7 @@ st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
 		    }
 		else if (toktype == MLX_TOK_OPENBRACE)
 		    {
-		    if (subinf->UsrType[0] == 0 || !subinf->UsrType)
+		    if (!subinf->UsrType || subinf->UsrType[0] == 0)
 		        {
 			mssError(1,"ST","Subgroup '%s' must have an object type",subinf->Name);
 		        mlxNotePosition(s);
@@ -777,6 +780,21 @@ st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
 			}
 		    subinf->Flags |= ST_F_GROUP;
 		    if (st_internal_ParseGroup(s,subinf,objlist) < 0) return -1; 
+		    }
+		else if (toktype == MLX_TOK_DBLOPENBRACE)
+		    {
+		    if (!subinf->UsrType || subinf->UsrType[0] == 0 || strcmp(subinf->UsrType,"system/script"))
+			{
+			mssError(1,"ST","Script '%s' must have an object type of 'system/script'",subinf->Name);
+		        mlxNotePosition(s);
+			return -1;
+			}
+		    if (st_internal_ParseScript(s,subinf) < 0) 
+		        {
+			mssError(1,"ST","Error parsing script '%s'", subinf->Name);
+			mlxNotePosition(s);
+			return -1;
+			}
 		    }
 		else
 		    {
@@ -874,20 +892,25 @@ st_internal_ParseScript(pLxSession s, pStructInf info)
 	    /** Get the value of the thing. **/
 	    alloc = 0;
 	    str = mlxStringVal(s,&alloc);
+	    xsConcatenate(&xs, str, -1);
+	    if (alloc) nmSysFree(str);
 
 	    /** Is this the end of the script? **/
 	    if (st_internal_IsDblClose(str))
 	        {
-		if (alloc) nmSysFree(str);
 		break;
 		}
 
 	    /** Breaking out of script and into structure file again? **/
-	    if (st_internal_IsDblOpen(str))
+	    /*if (st_internal_IsDblOpen(str))
 	        {
-		/*if (*/
-		}
+		}*/
 	    }
+
+	/** build the structinf entry **/
+	info->Flags |= ST_F_SCRIPT;
+	info->ScriptText = nmSysStrdup(xs.String);
+	info->ScriptCode = NULL;
 
 	/** Revert back to token mode **/
 	xsDeInit(&xs);

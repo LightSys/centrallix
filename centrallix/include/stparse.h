@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.h,v 1.1 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: stparse.h,v 1.2 2001/10/22 17:36:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/stparse.h,v $
 
     $Log: stparse.h,v $
+    Revision 1.2  2001/10/22 17:36:05  gbeeley
+    Beginning to add support for JS scripting facilities.
+
     Revision 1.1  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -82,6 +85,8 @@ typedef struct _SI
     unsigned short  nSubInf;	/* Number of attrs/groups - up to 65535 */
     unsigned char   nSubAlloc;	/* Amount of space allocated for subinf ptrs */
     unsigned char   Flags;	/* ST_F_xxx - either top, attrib, or group */
+    unsigned char*  ScriptText;	/* If a ST_F_SCRIPT node, here is the script text */
+    void*	    ScriptCode;	/* "compiled" script code */
     void*	    UserData;	/* Misc linkage for use by app */
     }
     StructInf, *pStructInf;
