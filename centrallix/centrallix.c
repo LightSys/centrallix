@@ -2,9 +2,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <dlfcn.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
+#ifdef HAVE_LIBDL
+#include <dlfcn.h>
 #endif
 #include "centrallix.h"
 #include "mtask.h"
@@ -60,10 +62,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.11 2002/08/24 04:38:31 gbeeley Exp $
+    $Id: centrallix.c,v 1.12 2002/09/24 09:53:58 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.12  2002/09/24 09:53:58  jorupp
+     * check to ensure that libdl is there before including the header for it
+
     Revision 1.11  2002/08/24 04:38:31  gbeeley
     We are still having trouble with conflicts between cxlibconfig.h and
     config.h - they both end up being included because mtask.h is including
