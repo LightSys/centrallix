@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function wn_init(l,ml,h)
+function wn_init(l,ml)
     {
     l.keep_kbd_focus = true;
     l.oldwin=window_current;
@@ -26,7 +26,14 @@ function wn_init(l,ml,h)
     l.ContentLayer = ml;
     ml.document.layer = ml;
     ml.mainlayer = l;
-    l.orig_height = h;
+    l.orig_width = l.clip.width;
+    l.orig_right = l.clip.right;
+    l.orig_left = l.clip.left;
+    l.orig_height = l.clip.height;
+    l.orig_bottom = l.clip.bottom;
+    l.orig_top = l.clip.top;
+    l.working = false;
+    l.shaded = false;
     l.kind = 'wn';
     ml.kind = 'wn';
     for(i=0;i<l.document.images.length;i++)
@@ -46,26 +53,149 @@ function wn_register_osrc(t)
     this.osrc.push(t);
     }
 
-function wn_unset_windowshade()
+function wn_unset_windowshade(l)
     {
-    wn_clicked = 0;
+    l.clicked = 0;
     }
 
-function wn_windowshade(layer)
+function wn_windowshade(l)
     {
-    if (wn_clicked == 1)
+    if (l.clicked == 1)
 	{
-	wn_clicked = 0;
-	if (layer.clip.height != 23)
-	    layer.clip.height = 23;
-	else
-	    layer.clip.height = layer.orig_height;
+	clearTimeout(l.tid);
+	l.clicked = 0;
+	var duration = 200;
+	var speed = 30;
+//	st = new Date();
+	if (!l.shaded && !l.working)
+	    {
+	    if (pg_gshade)
+		{
+		var size = Math.ceil((l.clip.height-24)*speed/duration);
+		l.working = true;
+		wn_graphical_shade(l,24,speed,size);
+		}
+	    else
+		{
+		l.clip.height = 24;
+		}
+	    l.shaded = true;
+	    }
+	else if (!l.working)
+	    {
+	    if (pg_gshade)
+		{
+		var size = Math.ceil((l.orig_height-24)*speed/duration);
+		l.working = true;
+		wn_graphical_shade(l,l.orig_height,speed,size);
+		}
+	    else
+		{
+		l.clip.height = l.orig_height;
+		}
+	    l.shaded = false;
+	    }
 	}
     else
 	{
-	wn_clicked = 1;
-	setTimeout("wn_unset_windowshade()", 1200);//2sec delay
+	l.clicked = 1;
+	clearTimeout(l.tid);
+	l.tid = setTimeout(wn_unset_windowshade, 500, l);
 	}
+    }
+
+function wn_manual_unshade(l)
+    {
+    l.ContentLayer.pageY += l.ContentLayer.clip.top;
+    l.ContentLayer.clip.top = 0;
+    }
+
+function wn_graphical_shade(l,to,speed,size)
+    {
+    if (to < l.clip.height)
+    	{
+	if (l.clip.height - size < to)
+	    {
+	    l.clip.height = to;
+//	    ft = new Date();
+//	    alert(ft-st);
+	    l.working = false;
+	    return;
+	    }
+	else l.clip.height-=size;
+	l.ContentLayer.clip.top +=size;
+	l.ContentLayer.pageY -= size;
+	}
+    else
+        {
+	if (l.clip.height + size > to)
+	    {
+	    l.clip.height = to;
+//	    ft=new Date();
+//	    alert(ft-st);
+	    l.working = false;
+	    return;
+	    }
+	else l.clip.height+=size;
+	l.ContentLayer.pageY += size;
+	l.ContentLayer.clip.top -= size;
+	}
+    setTimeout(wn_graphical_shade,speed,l,to,speed,size);
+    }
+
+function wn_close(l,type)
+    {
+    if (pg_closetype == 0) l.visibility = 'hidden';
+    else
+        {
+	st = new Date();
+	var speed = 20;
+	var duration = 150;
+	var sizeX = 0;
+	var sizeY = 0;
+	if (pg_closetype & 1)
+	    {
+	    var toX = Math.ceil(l.clip.width/2);
+	    sizeX = Math.ceil(toX*speed/duration);
+	    }
+	if (pg_closetype & 2)
+	    {
+	    var toY = Math.ceil(l.clip.height/2);
+	    sizeY = Math.ceil(toY*speed/duration);
+	    }
+	wn_graphical_close(l,speed,sizeX,sizeY);
+	}
+    }
+
+function wn_graphical_close(l,speed,sizeX,sizeY)
+    {
+    if (sizeX > 0)
+    	{
+	l.clip.right -= sizeX;
+	l.clip.left += sizeX;
+	if (l.clip.width <= 0) var reset = true;
+	}
+    if (sizeY > 0)
+    	{
+	l.clip.bottom -= sizeY;
+	l.clip.top += sizeY;
+	if (l.clip.height <= 0) var reset = true;
+	}
+    if (reset)
+    	{
+	    l.visibility = 'hidden';
+	    l.clip.width = l.orig_width;
+	    l.clip.right = l.orig_right;
+	    l.clip.left = l.orig_left;
+	    l.clip.height = l.orig_height;
+	    l.clip.bottom = l.orig_bottom;
+	    l.clip.top = l.orig_top;
+	    ft = new Date();
+//	    alert(ft-st);
+	    if (l.shaded) wn_manual_unshade(l);
+	    return;
+	}
+    setTimeout(wn_graphical_close,speed,l,speed,sizeX,sizeY);
     }
 
 function wn_togglevisibility(aparam)
@@ -119,8 +249,8 @@ function wn_domove()
 		newy = window.innerHeight-va-wn_current.clip.height;
         else newy = wn_newy;
         wn_current.moveToAbsolute(newx,newy);
+    	wn_current.clicked = 0;
         }
-    wn_clicked = 0;
     return true;
     }
 
@@ -133,7 +263,7 @@ function wn_adjust_z(l,zi)
 	}
     if (zi > 0) l.zIndex += zi;
     if (l.zIndex > wn_top_z) wn_top_z = l.zIndex;
-    wn_clicked = 0;
+//    wn_clicked = 0;
     return true;
     }
 
@@ -142,5 +272,5 @@ function wn_bring_top(l)
     if (wn_topwin == l) return true;
     wn_adjust_z(l, wn_top_z - l.zIndex + 4);
     wn_topwin = l;
-    wn_clicked = 0;
+//    wn_clicked = 0;
     }

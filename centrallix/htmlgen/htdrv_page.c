@@ -42,10 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.46 2002/08/13 05:23:25 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.47 2002/08/14 20:16:38 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.47  2002/08/14 20:16:38  pfinley
+    Added some visual effets for the window:
+     - graphical window shading (enable by setting gshade="true")
+     - added 3 new closing types (enable by setting closetype="shrink1","shrink2", or "shrink3")
+
+    These are gloabl changes, and can only be set on the page widget... these
+    will become part of theming once it is implemented (i think).
+
     Revision 1.46  2002/08/13 05:23:25  gbeeley
     I should have documented this one from the beginning.  The sense of the
     'flags' parameter ended up being changed, breaking the static mode table.
@@ -338,7 +346,9 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
     char *ptr;
     char *nptr;
     char name[64];
-    int attract;
+    int attract = 0;
+    int gshade = 0;
+    int closetype = 0;
 
 	strcpy(t->kbfocus1,"#ffffff");	/* kb focus = 3d raised */
 	strcpy(t->kbfocus2,"#7a7a7a");
@@ -419,6 +429,24 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	    t->dtfocus2[63]=0;
 	    }
 
+   
+	/** Cx windows attract to browser edges? if so, by how much **/
+	if (objGetAttrValue(w_obj,"attract",POD(&ptr)) == 0)
+	    attract = (int)ptr;
+
+	/** Graphical window shading? **/
+	if (objGetAttrValue(w_obj,"gshade",POD(&ptr)) == 0 && !strcmp(ptr,"true"))
+	    gshade = 1;
+
+	/** Graphical window close? **/
+	if (objGetAttrValue(w_obj,"closetype",POD(&ptr)) == 0)
+	    {
+	    if (!strcmp(ptr,"shrink1")) closetype = 1;
+	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
+	    else if (!strcmp(ptr,"shrink3")) closetype = 3;
+	    }
+
+
 	/** Add global for page metadata **/
 	htrAddScriptGlobal(s, "page", "new Object()", 0);
 
@@ -434,18 +462,14 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0);
 	htrAddScriptGlobal(s, "pg_modallayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_attract", "null", 0);
+	htrAddScriptGlobal(s, "pg_gshade", "null", 0);
+	htrAddScriptGlobal(s, "pg_closetype", "null", 0);
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
-
-	/** Cx windows attract to browser edges? if so, by how much **/
-	if (objGetAttrValue(w_obj,"attract",POD(&ptr)) == 0)
-	    attract = (int)ptr;
-	else
-	    attract = 0;
 
 	/** Add script include to get function declarations **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
@@ -458,7 +482,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d);\n", name, parentname, attract);
+	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d,%d,%d);\n", name, parentname, attract, gshade, closetype);
 
     return 0;
     }

@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.25 2002/08/12 17:51:16 pfinley Exp $
+    $Id: htdrv_window.c,v 1.26 2002/08/14 20:16:38 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.26  2002/08/14 20:16:38  pfinley
+    Added some visual effets for the window:
+     - graphical window shading (enable by setting gshade="true")
+     - added 3 new closing types (enable by setting closetype="shrink1","shrink2", or "shrink3")
+
+    These are gloabl changes, and can only be set on the page widget... these
+    will become part of theming once it is implemented (i think).
+
     Revision 1.25  2002/08/12 17:51:16  pfinley
     - added an attract option to the page widget. if this is set, centrallix
       windows will attract to the edges of the browser window. set to how many
@@ -338,7 +346,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (ly.kind == 'wn')\n"
 		"        {\n"
 		"        if (e.target.name == 'close') e.target.src = '/sys/images/02close.gif';\n"
-		"        else if (e.pageY < ly.mainlayer.pageY + 20)\n"
+		"        else if (e.pageY < ly.mainlayer.pageY + 24)\n"
 		"            {\n"
 		"            wn_current = ly.mainlayer;\n"
 		"            wn_msx = e.pageX;\n"
@@ -356,7 +364,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')\n"
 		"        {\n"
 		"        e.target.src = '/sys/images/01close.gif';\n"
-		"        e.target.layer.visibility = 'hidden';\n"
+		"        wn_close(ly.mainlayer);\n"
 		"        }\n"
 		"    else if (ly.document != null && ly.document.images.length > 6 && ly.document.images[6].name == 'close')\n"
 		"        {\n"
@@ -374,8 +382,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseMove');\n"
 		"    if (wn_current != null)\n"
 		"        {\n"
-		"        wn_clicked = 0;\n"
-		"        clearTimeout();\n"
+		"        wn_current.clicked = 0;\n"
+		"        clearTimeout(ly.mainlayer.tid);\n"
 		"        if (wn_newx == null)\n"
 		"            {\n"
 		"            wn_newx = wn_current.pageX + e.pageX-wn_msx;\n"
@@ -400,8 +408,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d);\n", 
-		name,parentname,id,parentname,id,id,h);
+	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain);\n", 
+		name,parentname,id,parentname,id,id);
 
 	/** HTML body <DIV> elements for the layers. **/
 	/** This is the top white edge of the window **/
@@ -447,15 +455,14 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** This is the left side of the window. **/
-	htrAddBodyItem_va(s,"<TR %s><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n", bgnd, bh);
+	htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n", bh);
 	if (!is_dialog_style)
 	    {
 	    htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD>\n",bh);
 	    }
 
 	/** Here's where the content goes... **/
-	htrAddBodyItem_va(s,"    <TD>\n");
-	htrAddBodyItem(s,"&nbsp;</TD>\n");
+	htrAddBodyItem(s,"    <TD></TD>\n");
 
 	/** Right edge of the window **/
 	if (!is_dialog_style)
@@ -475,7 +482,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddBodyItem_va(s,"<TR><TD colspan=5><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w);
 	htrAddBodyItem(s,"</TABLE>\n");
 
-	htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\">\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\"><table border=0 cellpadding=0 cellspacing=0 width=%d height=%d><tr %s><td>&nbsp;</td></tr></table>\n",id,bw,bh,bgnd);
 
 
 	/** Check for more sub-widgets within the page. **/
