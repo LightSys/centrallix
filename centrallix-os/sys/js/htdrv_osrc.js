@@ -416,7 +416,7 @@ function osrc_fetch_next()
 	    }
 	colnum++;
 	this.replica[this.OSMLRecord][colnum] = new Array();
-	this.replica[this.OSMLRecord][colnum]['value'] = unescape(lnk[i].text)
+	this.replica[this.OSMLRecord][colnum]['value'] = htutil_rtrim(unescape(lnk[i].text));
 	this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);
 	this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;
 	}
