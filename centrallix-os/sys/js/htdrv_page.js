@@ -196,6 +196,7 @@ function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam)
     kd.kbdlayer = klayer;
     kd.target_obj = tgt;
     kd.fnname = 'Action' + action;
+    alert(kd.fname);
     kd.aparam = aparam;
     pg_keylist.splice(0,0,kd);
     pg_keylist.sort(pg_cmpkey);
@@ -263,4 +264,15 @@ function pg_status_close()
     if (!document.layers.pgstat)
 	return false
     pg_status.visibility = 'hide';
+    }
+
+function pg_init(l)
+    {
+    l.ActionLoad = pg_load_page;
+    return l;
+    }
+
+function pg_load_page(aparam)
+    {
+    window.location.href = aparam.Page;
     }

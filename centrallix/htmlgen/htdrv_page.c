@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.33 2002/07/20 19:44:25 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.34 2002/07/23 13:45:32 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.34  2002/07/23 13:45:32  lkehresman
+    Added the "Load" action with the "Page" parameter to the page widget.  This
+    enables us to load different applications with button clicks or other events.
+    This will be useful for a program that spans several different app structure
+    files. (i.e. Kardia)
+
     Revision 1.33  2002/07/20 19:44:25  lkehresman
     Event handlers now have the variable "ly" defined as the target layer
     and it will be global for all the events.  We were finding that nearly
@@ -243,6 +249,9 @@ int
 htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj,pHtPageStruct t,const char* layer)
     {
     char *ptr;
+    char *nptr;
+    char name[64];
+
 	strcpy(t->kbfocus1,"#ffffff");	/* kb focus = 3d raised */
 	strcpy(t->kbfocus2,"#7a7a7a");
 	strcpy(t->msfocus1,"#000000");	/* ms focus = black rectangle */
@@ -344,6 +353,15 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 	/** Add script include to get function declarations **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
+
+	/** Write named global **/
+	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	memccpy(name,ptr,'\0',63);
+	nptr = (char*)nmMalloc(strlen(name)+1);
+	strcpy(nptr,name);
+	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
+	htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop);\n", name, parentname);
 
     return 0;
     }
@@ -607,6 +625,10 @@ htpageInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	/** Actions **/
+	htrAddAction(drv, "Load");
+	htrAddParam(drv, "Load", "Path", DATA_T_STRING);
 	
     	/** Allocate the driver **/
 	drv = htrAllocDriver();
