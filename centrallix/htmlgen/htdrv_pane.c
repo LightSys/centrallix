@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.19 2003/07/27 03:24:54 jorupp Exp $
+    $Id: htdrv_pane.c,v 1.20 2003/07/28 22:05:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.20  2003/07/28 22:05:25  gbeeley
+    Added 'flat' pane style which does not have a raised/lowered border.
+
     Revision 1.19  2003/07/27 03:24:54  jorupp
      * added Mozilla support for:
      	* connector
@@ -183,7 +186,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id;
-    int is_raised = 1;
+    int style = 1; /* 0 = lowered, 1 = raised, 2 = none */
     char* nptr;
     char* c1;
     char* c2;
@@ -245,8 +248,13 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	name[63] = 0;
 
 	/** Style of pane - raised/lowered **/
-	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
-	if (is_raised)
+	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    if (!strcmp(ptr,"lowered")) style = 0;
+	    if (!strcmp(ptr,"raised")) style = 1;
+	    if (!strcmp(ptr,"flat")) style = 2;
+	    }
+	if (style == 1) /* raised */
 	    {
 	    if(s->Capabilities.Dom0NS)
 		{
@@ -263,7 +271,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		mssError(0,"HTPN","Cannot render");
 		}
 	    }
-	else
+	else if (style == 0) /* lowered */
 	    {
 	    if(s->Capabilities.Dom0NS)
 		{
@@ -290,7 +298,10 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	else if(s->Capabilities.CSS1)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w-2,h-2,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%dmain { border-style: solid; border-width: 1px; border-color: %s %s %s %s; %s}\n",id,c1,c2,c2,c1,main_bg);
+	    if (style == 2) /* flat */
+		htrAddStylesheetItem_va(s,"\t#pn%dmain { %s}\n",id,main_bg);
+	    else /* lowered or raised */
+		htrAddStylesheetItem_va(s,"\t#pn%dmain { border-style: solid; border-width: 1px; border-color: %s %s %s %s; %s}\n",id,c1,c2,c2,c1,main_bg);
 	    }
 	else
 	    {
@@ -341,16 +352,23 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	    /** HTML body <DIV> element for the base layer. **/
 	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
-	    htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
-	    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	    htrAddBodyItem_va(s,"            <TD>&nbsp;</TD>\n");
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	    htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s height=%d>\n",w,main_bg,h);
+	    if (style == 2) /* flat */
+		{
+		htrAddBodyItem_va(s,"        <TR><TD>&nbsp;</TD></TR>\n    </TABLE>\n\n");
+		}
+	    else /* lowered or raised */
+		{
+		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+		htrAddBodyItem_va(s,"            <TD>&nbsp;</TD>\n");
+		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+		}
 	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
 
 	    /** Check for objects within the pane. **/
