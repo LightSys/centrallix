@@ -87,6 +87,7 @@ cn1 "widget/connector"
 			<p>The editbox can be placed within any visual widget (or within a form widget).=  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).=  Editboxes can contain no visual widgets.</p>
 		</usage>
 		<properties>
+			<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
 			<property name="background" type="string">A background image for the contents of the editbox.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, for the editbox contents. If neither bgcolor nor background transparent.</property>
 			<property name="height" type="integer">height, in pixels, of the editbox.</property>
@@ -106,11 +107,15 @@ cn1 "widget/connector"
 		<![CDATA[
 $Version=2$
 // Here is a single lonely edit box.
-my_editbox "widget/editbox"
+my_editbox "widget/editbox" 
 	{
-	style = "lowered";
-	bgcolor = "white";
-	x = 10; y = 10; width=100; height=19;
+	x=180; 
+	y=40; 
+	width=120; 
+	height=15; 
+	style="lowered"; 
+	fieldname="datasource_fieldname";
+    bgcolor="#ffffff";
 	}
 		]]>
 		</sample>
@@ -266,6 +271,10 @@ mySoundPlayer "widget/execmethod"
 		</actions>
 		<sample>
 		<![CDATA[
+form1 "widget/form"
+	{
+	//Form elements here
+	}
 		]]>
 		</sample>
 	</widget>
@@ -278,6 +287,8 @@ mySoundPlayer "widget/execmethod"
 			<p>The form status widget can only be used either directly or indirectly within a form widget.It can contain no visual widgets.</p>
 		</usage>
 		<properties>
+			<property name="x" type="integer">Allows you to set x position in pixels relative to the window.</property>
+			<property name="y" type="integer">Allows you to set y position in pixels relative to the window.</property>
 		</properties>
 		<children>
 		</children>
@@ -286,6 +297,9 @@ mySoundPlayer "widget/execmethod"
 		<actions></actions>
 		<sample>
 		<![CDATA[
+		  formstatus "widget/formstatus" {
+                 x=5; y=450;
+          }
 		]]>
 		</sample>
 	</widget>
@@ -297,7 +311,8 @@ mySoundPlayer "widget/execmethod"
 			<p>The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.</p>
 		</usage>
 		<properties>
-			<property name="borderwidth" type="integer">number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</property>
+			<property name="title" type="string">Title of the frameset for an html page.</property>
+			<property name="borderwidth" type="integer">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</property>
 			<property name="direction" type="string">Whether the frames are arranged in rows or columns.  Set this attribute to "rows" or "columns"respectively.</property>
 		</properties>
 		<children>
@@ -317,6 +332,7 @@ $Version=2$
 //
 BigFrameset "widget/frameset"
 	{
+	title = "MyTitle";
 	direction = "rows";
 	borderwidth = 3;
 	TopFrameset "widget/frameset"
@@ -517,14 +533,34 @@ myMenu "widget/menu"
 			<p>Objectsource widgets are normally used at the top-level of an application, within a "widget/page" object.A page may have more than one objectsource widget.</p>
 		</usage>
 		<properties>
+			<property name="replicasize" type="integer">Represents the number of records to store in its replica.</property>
+			<property name="readahead" type="integer">Represents the number to read-a-head when replica is over stepped.</property>
+			<property name="scrollahead" type="integer">Represents the number to step forward when viewing records (Currently set to readahead).</property>
 		</properties>
 		<children>
 		</children>
 		<events>
 		</events>
-		<actions></actions>
+		<actions>
+			<action name="Clear"><ni/>Clears the replica of data.</action>
+			<action name="Query"><ni/>Query</action>
+			<action name="QueryObject"><ni/>Query Object</action>
+			<action name="OrderObject"><ni/>Order Object</action>
+			<action name="Delete"><ni/>Deletes an object through OSML</action>
+			<action name="Create"><ni/>Creates an object though OSML</action>
+			<action name="Modify"><ni/>Modifies an object through OSML</action>
+			<action name="First"><ni/>Returns first record in the replica</action>
+			<action name="Next"><ni/>Returns next record in the replica</action>
+			<action name="Prev"><ni/>Returns previous record in the replica</action>
+			<action name="Last"><ni/>Returns last record in the replica</action>
+		</actions>
 		<sample>
 		<![CDATA[
+osrc1 "widget/osrc"
+	{
+	replicasize = 9;
+	readahead = 3;
+	}
 		]]>
 		</sample>
 	</widget>
@@ -610,6 +646,7 @@ mypane "widget/pane"
 			<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
 		</usage>
 		<properties>
+			<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
 			<property name="background" type="string">A background image for the radio button panel.</property>
 			<property name="bgcolor" type="string">A color, RGB or named, for the panel background. If neither bgcolor nor background transparent.</property>
 			<property name="height" type="integer">height, in pixels, of the panel.</property>
@@ -643,7 +680,7 @@ testradio "widget/radiobuttonpanel"
 
 	label1 "widget/radiobutton" { label="basketball";selected="true"; }
 	label2 "widget/radiobutton" { label="is fun"; }
-	}
+    }
 		]]>
 		</sample>
 	</widget>
@@ -706,6 +743,7 @@ testradio "widget/radiobuttonpanel"
 			<property name="width" type="integer">width, in pixels, of the scrollpane, including the scrollbar area on the right side.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the scrollpane, relative to its container.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the scrollpane, relative to its container.</property>
+			<property name="visible" type="string">allows user to set scroll pane to visible (true) or not (false).</property>
 		</properties>
 		<children>
 		</children>
@@ -732,6 +770,7 @@ MyScrollPane "widget/scrollpane"
 		// The source for the treeview.
 		source = "/";
 		}
+	visible = "true";
 	}
 		]]>
 		</sample>
