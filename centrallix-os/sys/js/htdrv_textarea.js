@@ -256,7 +256,7 @@ function tx_keyhandler(l,e,k)
         if(txt.length == l.rowCharLimit && k!=32)			// This is a work-around for a bug:
             {								// if you try inserting a character other
             for(var i=0;i<txt.length;i++) if(txt[i] == ' ') break;	// than a space when a row is full and
-            if(i==txt.length) { tx_insertRow(l,l.rows.length,"BUG!"); return false; }				// contains no spaces, it will go into an infinite
+            if(i==txt.length) return false;				// contains no spaces, it will go into an infinite
             }								// loop and crash netscape... needs fixing.
         if (l.rows[l.cursorRow+1] && l.cursorCol == l.rows[l.cursorRow].content.length && l.rows[l.cursorRow+1].content[0] != ' ' && k!=32 && !l.rows[l.cursorRow+1].newLine)
             {
