@@ -664,11 +664,15 @@ function form_action_queryexec()
 	{
 	if(this.elements[i]._form_IsChanged)
 	    {
-	    var t=new Object();
-	    t.oid=this.elements[i].fieldname;
-	    t.value=this.elements[i].getvalue();
-	    t.type=this.elements[i]._form_type;
-	    query.push(t);
+	    var v = this.elements[i].getvalue();
+	    if (v)
+		{
+		var t=new Object();
+		t.oid=this.elements[i].fieldname;
+		t.value=v;
+		t.type=this.elements[i]._form_type;
+		query.push(t);
+		}
 	    }
 	}
 /** Done with the query -- YEAH **/
