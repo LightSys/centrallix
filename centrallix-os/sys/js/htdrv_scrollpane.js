@@ -85,7 +85,7 @@ function sp_init(l,aname,tname,p)
 
 function sp_action_scrollto(aparam)
     {
-    var h=getClipHeight(this.area); // height of content
+    var h=getClipHeight(this.area)+getClipTop(this.area); // height of content
     var d=h-getClipHeight(this); // height of non-visible content (max scrollable distance)
     if (d < 0) d=0;
     if (aparam.Percent)
@@ -111,9 +111,11 @@ function sp_WatchHeight(property, oldvalue, newvalue)
         }
 
     // make sure region not offscreen now
+    newvalue += getClipTop(this.pane.area);
     if (getRelativeY(this.pane.area) + newvalue < getClipHeight(this.pane)) setRelativeY(this.pane.area, getClipHeight(this.pane) - newvalue);
     if (newvalue < getClipHeight(this.pane)) setRelativeY(this.pane.area, 0);
     this.pane.UpdateThumb(newvalue);
+    newvalue -= getClipTop(this.pane.area);
     this.bottom = this.top + newvalue; /* ns seems to unlink bottom = top + height if you modify clip obj */
     return newvalue;
     }
@@ -123,7 +125,7 @@ function sp_UpdateThumb(h)
     /** 'this' is a spXpane **/
     if(!h)
 	{ /** if h is supplied, it is the soon-to-be clip.height of the spXarea **/
-	h=getClipHeight(this.area); // height of content
+	h=getClipHeight(this.area)+getClipTop(this.area); // height of content
 	}
     var d=h-getClipHeight(this); // height of non-visible content (max scrollable distance)
     var v=getClipHeight(this)-(3*18);
@@ -142,7 +144,7 @@ function do_mv()
 	{
 	return;
 	}
-    var h=getClipHeight(ti.area); // height of content
+    var h=getClipHeight(ti.area)+getClipTop(ti.area); // height of content
     var d=h-getClipHeight(ti.pane); // height of non-visible content (max scrollable distance)
     var incr=sp_mv_incr;
     if(d<0)

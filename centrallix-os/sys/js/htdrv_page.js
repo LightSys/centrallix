@@ -711,8 +711,8 @@ function pg_resize(l)
 	var visibility = pg_get_style(cl,'visibility');
 	if (visibility == 'show' || visibility == 'visible' || visibility == 'inherit') 
 	    {
-	    var clh = getRelativeY(cl) + getClipHeight(cl);
-	    var clw = getRelativeX(cl) + getClipWidth(cl);
+	    var clh = getRelativeY(cl) + getClipHeight(cl) + getClipTop(cl);
+	    var clw = getRelativeX(cl) + getClipWidth(cl) + getClipLeft(cl);
 	    if(clh > maxheight)
 		maxheight = clh;
 	    if(clw > maxwidth)
@@ -727,7 +727,8 @@ function pg_resize(l)
 
     if (l!=window) 
 	{
-	//alert("setting h/w to " + maxheight + "/" + maxwidth);
+	maxheight -= getClipTop(l);
+	maxwidth -= getClipLeft(l);
 	setClipHeight(l, maxheight);
 	setClipWidth(l, maxwidth);
 	}
@@ -1376,8 +1377,15 @@ function pg_serialized_load_doone()
 	}
     else if (one_item.text)
 	{
-	one_item.lyr.document.write(one_item.text);
-	one_item.lyr.document.close();
+	if (cx__capabilities.Dom0NS)
+	    {
+	    one_item.lyr.document.write(one_item.text);
+	    one_item.lyr.document.close();
+	    }
+	else
+	    {
+	    one_item.lyr.innerHTML = one_item.text;
+	    }
 	if (one_item.lyr.__pg_onload) one_item.lyr.__pg_onload();
 	pg_loadqueue_busy = false;
 	if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());

@@ -16,17 +16,36 @@ var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
 var EVENT_PREVENT_DEFAULT_ACTION = 2;
 
-function user_name()
+// Functions used for cxsql-to-js support
+function cxjs_user_name()
     {
     return pg_username;
     }
-function getdate()
+function cxjs_getdate()
     {
     var dt = new Date();
     var dtstr = '' + (dt.getMonth()+1) + '/' + (dt.getDate()) + '/' + (dt.getFullYear()) + ' ' + (dt.getHours()) + ':' + (dt.getMinutes()) + ':' + (dt.getSeconds());
     return dtstr;
     }
+function cxjs_convert(dt,v)
+    {
+    if (dt == 'integer') return parseInt(v);
+    if (dt == 'string') return '' + v;
+    return v;
+    }
+function cxjs_substring(s,p,l)
+    {
+    if (l == null)
+	return s.substr(p);
+    else
+	return s.substr(p,l);
+    }
+function cxjs_eval(x)
+    {
+    return eval(x);
+    }
 
+// Cross-browser support functions
 function htr_event(e)
     {
     var cx__event = new Object();

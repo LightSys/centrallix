@@ -21,7 +21,9 @@ function cn_activate(t,f,eparam)
     if (t['Event' + f].constructor == Array)
 	{
 	for(var fn in t['Event' + f])
-	    x = t['Event' + f][fn](eparam);
+	    {
+	    var x = t['Event' + f][fn](eparam);
+	    }
 	if(d) delete eparam;
 	return x;
 	}

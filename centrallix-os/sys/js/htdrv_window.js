@@ -52,7 +52,7 @@ function wn_init(l,ml,gs,ct,titlebar)
     l.has_titlebar = 0;
     for(var i=0;i<pg_images(titlebar).length;i++)
 	{
-	pg_images(titlebar)[i].layer = l;
+	pg_images(titlebar)[i].layer = titlebar;
 	pg_images(titlebar)[i].kind = 'wn';
 	if (pg_images(titlebar)[i].name == 'close')
 	    l.has_titlebar = 1;
@@ -395,7 +395,7 @@ function wn_mousedown(e)
     if (ly.kind == 'wn')
         {
         if (e.target.name == 'close')
-            pg_set(e.target,'src','/sys/images/02close.gif');
+            pg_set(e.target,'src','/sys/images/02bigclose.gif');
         else if ((ly.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
                 (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' ))
             {
@@ -406,6 +406,7 @@ function wn_mousedown(e)
             wn_newy = null;
             wn_moved = 0;
 	    if (!cx__capabilities.Dom0IE) wn_windowshade_ns_moz(ly.mainlayer);
+	    return EVENT_CONTINUE | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
         cn_activate(ly.mainlayer, 'MouseDown');
         }
@@ -430,12 +431,12 @@ function wn_mouseup(e)
     var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
     if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')
         {
-        pg_set(e.target,'src','/sys/images/01close.gif');
+        pg_set(e.target,'src','/sys/images/01bigclose.gif');
 	ly.mainlayer.SetVisibilityTH(false);
         }
     else if (ly.document != null && pg_images(ly).length > 6 && pg_images(ly)[6].name == 'close')
         {
-        pg_set(pg_images(ly)[6],'src','/sys/images/01close.gif');
+        pg_set(pg_images(ly)[6],'src','/sys/images/01bigclose.gif');
         }
     if (wn_current != null)
         {
@@ -453,17 +454,8 @@ function wn_mousemove(e)
     if (wn_current != null)
         {
         wn_current.clicked = 0;
-        if (cx__capabilities.Dom0IE)
-            {
-            if (wn_current.tid) clearTimeout(wn_current.tid);
-	    wn_current.tid = null;
-            }
-        else
-            {
-            if (ly.mainlayer.tid) clearTimeout(ly.mainlayer.tid);
-	    ly.mainlayer.tid = null;
-	    ly.mainlayer.clicked = 0;
-            }
+	if (wn_current.tid) clearTimeout(wn_current.tid);
+	wn_current.tid = null;
         if (wn_newx == null)
             {
             wn_newx = getPageX(wn_current) + e.pageX-wn_msx;

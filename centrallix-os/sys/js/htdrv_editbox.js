@@ -26,6 +26,11 @@ function eb_update_cursor(eb,val)
 	}
     }
 
+function eb_actionsetvalue(aparam)
+    {
+    if (aparam.Value) this.setvalue(aparam.Value);
+    }
+
 function eb_setvalue(v,f)
     {
     eb_settext(this,String(v));
@@ -60,24 +65,28 @@ function eb_readonly()
     this.enabled='readonly';
     }
 
+function eb_settext_cb()
+    {
+    htr_setvisibility(this.mainlayer.HiddenLayer, 'inherit');
+    htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
+    
+    var tmp = this.mainlayer.ContentLayer;
+    this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
+    this.mainlayer.HiddenLayer = tmp;
+    this.mainlayer.is_busy = false;
+    if (this.mainlayer.content != this.mainlayer.tmpcontent)
+	eb_settext(this.mainlayer, this.mainlayer.tmpcontent);
+    }
+
 function eb_settext(l,txt)
     {
-    if (cx__capabilities.Dom0NS)
-        {
-    	l.HiddenLayer.document.write('<PRE>' + htutil_encode(txt) + '</PRE> ');    	
-    	l.HiddenLayer.document.close();    	
-    	}
-    else if (cx__capabilities.Dom1HTML)
-        {        
-    	l.HiddenLayer.innerHTML = '<PRE style="padding:0px; margin:0px;">' + htutil_encode(txt) + '</PRE> ';
-        }
-    htr_setvisibility(l.HiddenLayer, 'inherit');
-    htr_setvisibility(l.ContentLayer, 'hidden');
-    
-    var tmp = l.ContentLayer;
-    l.ContentLayer = l.HiddenLayer;
-    l.HiddenLayer = tmp;
-    l.content=txt;
+    l.tmpcontent = txt;
+    if (!l.is_busy)
+	{
+	l.is_busy = true;
+	l.content=txt;
+	pg_serialized_write(l.HiddenLayer, '<PRE style="padding:0px; margin:0px;">' + htutil_encode(txt) + '</PRE> ', eb_settext_cb);
+	}
     }
 
 function eb_keyhandler(l,e,k)
@@ -211,12 +220,15 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
     htr_init_layer(c2,l,'eb');
+    l.ActionSetValue = eb_actionsetvalue;
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
     l.fieldname = fieldname;
+    l.is_busy = false;
     ibeam_init();
     l.charWidth = Math.floor((getClipWidth(l)-3)/text_metric.charWidth);
     l.content = '';
+    l.tmpcontent = '';
     l.keyhandler = eb_keyhandler;
     l.getfocushandler = eb_select;
     l.losefocushandler = eb_deselect;

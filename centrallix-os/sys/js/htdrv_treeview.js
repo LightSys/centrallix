@@ -155,7 +155,8 @@ function tv_click(e)
 	if (e.target.href != null)
 	    {
 	    eparam = new Object();
-	    eparam.Pathname = e.target.href;
+	    eparam.Pathname = e.target.pathname;
+	    eparam.HRef = e.target.href;
 	    eparam.Caller = e.target.layer.root;
 	    if (e.target.layer.root.EventClickItem != null)
 		cn_activate(e.target.layer.root,'ClickItem', eparam);
@@ -265,8 +266,9 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	if (l.tvtext != tvtext)
 	    {
 	    l.tvtext = tvtext;
-	    l.document.writeln(l.tvtext);
-	    l.document.close();
+	    //l.document.writeln(l.tvtext);
+	    //l.document.close();
+	    pg_serialized_write(l, l.tvtext, null);
 	    }
 	}
     else if(cx__capabilities.Dom1HTML)
@@ -508,7 +510,8 @@ function tv_BuildNewLayers(l, linkcnt)
 	    {
 	    moveTo(one_layer, tgtX + 20, tgtY + 20);
 	    }*/
-	pg_set_style_string(one_layer,'visibility','inherit');
+	htr_setvisibility(one_layer, 'inherit');
+	//pg_set_style_string(one_layer,'visibility','inherit');
 	var images = pg_images(one_layer);
 	one_layer.img = images[images.length-1];
 	one_layer.img.kind = 'tv';
@@ -594,9 +597,15 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot,b)
     l.fname = fname;
     l.show_branches = b;
     if (htr_getvisibility(l) == 'inherit')
+	{
 	l.tree_depth = 0;
+	l.show_root = true;
+	}
     else
+	{
 	l.tree_depth = -1;
+	l.show_root = false;
+	}
     var t;
     if(!l.is_initialized)
 	{ /* not re-init */

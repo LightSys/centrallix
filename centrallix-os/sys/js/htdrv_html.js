@@ -76,9 +76,10 @@ function ht_dosourcechange(l)
     tmpl.visibility = 'hidden';
     l.curLayer = l.altLayer;
     l.altLayer = tmpl;
-    l.curLayer.onload = ht_reloaded;
     l.curLayer.bgColor = null;
-    l.curLayer.load(l.newsrc,l.clip.width);
+    pg_serialized_load(l.curLayer, l.newsrc, ht_reloaded);
+    //l.curLayer.onload = ht_reloaded;
+    //l.curLayer.load(l.newsrc,l.clip.width);
     }
 
 function ht_fadestep()
@@ -117,21 +118,21 @@ function ht_startfade(l,ftype,inout,fn)
 
 function ht_reloaded(e)
     {
-    e.target.mainlayer.watch('source',ht_sourcechanged);
-    e.target.clip.height = e.target.document.height;
-    e.target.mainlayer.faderLayer.moveAbove(e.target);
-    e.target.visibility = 'inherit';
-    if (htutil_url_cmp(e.target.mainlayer.source, document.location.href))
+    this.mainlayer.watch('source',ht_sourcechanged);
+    this.clip.height = this.document.height;
+    this.mainlayer.faderLayer.moveAbove(this);
+    this.visibility = 'inherit';
+    if (htutil_url_cmp(this.mainlayer.source, document.location.href))
 	{
-	for(var i=0;i<e.target.document.links.length;i++)
+	for(var i=0;i<this.document.links.length;i++)
 	    {
-	    e.target.document.links[i].layer = e.target.mainlayer;
-	    e.target.document.links[i].kind = 'ht';
+	    this.document.links[i].layer = this.mainlayer;
+	    this.document.links[i].kind = 'ht';
 	    }
 	}
-    pg_resize(e.target.mainlayer.parentLayer);
-    if (e.target.mainlayer.transition && e.target.mainlayer.transition != 'normal')
-	ht_startfade(e.target.mainlayer,e.target.mainlayer.transition,'in',null);
+    pg_resize(this.mainlayer.parentLayer);
+    if (this.mainlayer.transition && this.mainlayer.transition != 'normal')
+	ht_startfade(this.mainlayer,this.mainlayer.transition,'in',null);
     }
 
 function ht_click(e)
@@ -184,5 +185,6 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
     l.ActionShowText = ht_showtext;
     l.ActionSetValue = ht_setvalue;
     l.watch('source', ht_sourcechanged);
+    pg_resize(l.parentLayer);
     }
 
