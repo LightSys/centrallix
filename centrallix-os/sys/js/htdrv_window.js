@@ -101,7 +101,19 @@ function wn_setvisibility(aparam)
 
 function wn_domove()
     {
-    if (wn_current != null) wn_current.moveToAbsolute((wn_newx<0)?0:wn_newx,(wn_newy<0)?0:wn_newy);
+    if (wn_current != null)
+        {
+        var ha=(document.height-window.innerHeight-2)>=0?15:0;
+        var va=(document.width-window.innerWidth-2)>=0?15:0;
+        var newx,newy;
+        if (wn_newx+wn_current.document.width<25) newx = 25-wn_current.document.width;
+        else if (wn_newx > window.innerWidth - 35-ha) newx = window.innerWidth - 35-ha;
+        else newx = wn_newx;
+        if (wn_newy<0) newy = 0;
+        else if (wn_newy > window.innerHeight - 12-va) newy = window.innerHeight - 12-va;
+        else newy = wn_newy;
+        wn_current.moveToAbsolute(newx,newy);
+        }
     wn_clicked = 0;
     return true;
     }
