@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_main.c,v 1.4 2003/02/25 03:57:50 gbeeley Exp $
+    $Id: prtmgmt_v3_main.c,v 1.5 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_main.c,v $
 
     $Log: prtmgmt_v3_main.c,v $
+    Revision 1.5  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.4  2003/02/25 03:57:50  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -363,6 +369,22 @@ prtUpdateHandleByPtr(void* old_ptr, void* ptr)
     }
 
 
+/*** prtLookupHandle() - return the handle for a given object.
+ ***/
+int
+prtLookupHandle(void* ptr)
+    {
+    pPrtHandle h;
+
+	/** Look it up **/
+	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTableByPtr, (void*)&ptr);
+	if (!h) return -1;
+	ASSERTMAGIC(h, MGK_PRTHANDLE);
+
+    return h->HandleID;
+    }
+
+
 /*** prtFreeHandle() - release the handle and memory used by it.  The handle
  *** id will then become invalid and will not be reused until the id's wrap
  *** around (at 2^30 id's).
@@ -525,6 +547,12 @@ prtInitialize()
 	ot = prtAllocType();
 	ot->TypeID = PRT_OBJ_T_SECTION;
 	strcpy(ot->TypeName,"section");
+	ot->PrefLayoutMgr = prtLookupLayoutMgr("columnar");
+	prtRegisterType(ot);
+
+	ot = prtAllocType();
+	ot->TypeID = PRT_OBJ_T_SECTCOL;
+	strcpy(ot->TypeName,"sectcol");
 	ot->PrefLayoutMgr = prtLookupLayoutMgr("columnar");
 	prtRegisterType(ot);
 

@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.4 2003/02/19 22:53:54 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.5 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.5  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.4  2003/02/19 22:53:54  gbeeley
     Page break now somewhat operational, both with hard breaks (form feeds)
     and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
@@ -130,6 +136,8 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	page_os->Flags &= ~PRT_OBJ_UFLAGMASK;
 	page_os->Flags |= (page_flags & PRT_OBJ_UFLAGMASK);
 	page_os->Flags &= ~PRT_OBJ_F_REQCOMPLETE;   /* disallow reqcomplete on a page */
+	page_os->Width = 80;
+	page_os->Height = 60;
 	prt_internal_Add(this->StreamHead, page_os);
 
 	/** Create a handle for the initial page. **/

@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.7 2003/02/25 03:57:48 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.8 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.8  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.7  2003/02/25 03:57:48  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -344,6 +350,7 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_T_TABLEROW	    8		/* table row */
 #define PRT_OBJ_T_TABLECELL	    9		/* table cell */
 #define PRT_OBJ_T_SECTION	    10		/* columnar section */
+#define PRT_OBJ_T_SECTCOL	    11		/* one column in a section. */
 
 #define PRT_COLOR_T_MONO	    1		/* black/white only image */
 #define PRT_COLOR_T_GREY	    2		/* greyscale image */
@@ -377,6 +384,7 @@ void* prtHandlePtr(int handle_id);
 int prtUpdateHandle(int handle_id, void* ptr);
 int prtUpdateHandleByPtr(void* old_ptr, void* ptr);
 int prtFreeHandle(int handle_id);
+int prtLookupHandle(void* ptr);
 pPrtFormatter prtAllocFormatter();
 int prtRegisterFormatter(pPrtFormatter fmt);
 
@@ -415,10 +423,10 @@ pPrtOutputDriver prt_strictfm_AllocDriver();
 int prt_strictfm_RegisterDriver(pPrtOutputDriver drv);
 
 /** These macros are used for units conversion **/
-#define prtUnitX(s,x) ((x)*((s)->Units->AdjX))
-#define prtUnitY(s,y) ((y)*((s)->Units->AdjY))
-#define prtUsrUnitX(s,x) ((x)/((s)->Units->AdjX))
-#define prtUsrUnitY(s,y) ((y)/((s)->Units->AdjY))
+#define prtUnitX(s,x) ((x)*(((pPrtSession)(s))->Units->AdjX))
+#define prtUnitY(s,y) ((y)*(((pPrtSession)(s))->Units->AdjY))
+#define prtUsrUnitX(s,x) ((x)/(((pPrtSession)(s))->Units->AdjX))
+#define prtUsrUnitY(s,y) ((y)/(((pPrtSession)(s))->Units->AdjY))
 
 /*** General Printing Functions ***/
 int prtGetPageRef(pPrtSession s);

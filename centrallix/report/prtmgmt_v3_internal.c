@@ -48,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.7 2003/02/25 03:57:50 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.8 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.8  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.7  2003/02/25 03:57:50  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -656,23 +662,51 @@ prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment)
  *** we use that exclusively, otherwise we use our default method,
  *** which simply removes all content from the container and then
  *** does AddObject calls to put them all back.
+ ***
+ *** If there are LinkPrev/LinkNext linkages, then this affects the
+ *** current container and all Next ones, but not all Prev(ious)
+ *** ones.  To affect previous ones, follow the LinkPrev link(s)
+ *** *before* calling this function.
  ***/
 int
 prt_internal_Reflow(pPrtObjStream container)
     {
-    pPrtObjStream contentlist = NULL;
+    pPrtObjStream contentlist = NULL, contenttail;
     pPrtObjStream childobj;
+    pPrtObjStream cur_container;
+    pPrtObjStream search;
+    int handle_id;
 
-	/** First, remove the content. **/
-	contentlist = container->ContentHead;
+	/** If we don't have a handle for the container, grab one. **/
+	handle_id = -1;
+	cur_container = container;
+	while(cur_container)
+	    {
+	    handle_id = prtLookupHandle(cur_container);
+	    if (handle_id != -1) break;
+	    cur_container = cur_container->LinkNext;
+	    }
+	if (handle_id == -1) handle_id = prtAllocHandle(container);
 
-	/** Deinit and reinit the container **/
-	container->ContentHead = NULL;
-	container->ContentTail = NULL;
-	container->LayoutMgr->DeinitContainer(container);
-	container->LayoutMgr->InitContainer(container);
+	/** Clear the containers **/
+	for(search=container; search; search = search->LinkNext)
+	    {
+	    /** First, remove the content and save it in our list. **/
+	    if (!contentlist) 
+		contentlist = search->ContentHead;
+	    else
+		contenttail->Next = search->ContentHead;
+	    contenttail = search->ContentTail;
+
+	    /** Deinit and reinit the container **/
+	    search->ContentHead = NULL;
+	    search->ContentTail = NULL;
+	    search->LayoutMgr->DeinitContainer(search);
+	    search->LayoutMgr->InitContainer(search);
+	    }
 
 	/** Next, loop through the objects and re-add them **/
+	if (cur_container && cur_container != container) prtUpdateHandle(handle_id, container);
 	while(contentlist)
 	    {
 	    childobj = contentlist;
@@ -680,8 +714,10 @@ prt_internal_Reflow(pPrtObjStream container)
 	    childobj->Parent = NULL;
 	    childobj->Prev = NULL;
 	    childobj->Next = NULL;
-	    container->LayoutMgr->AddObject(container, childobj);
+	    search = prtHandlePtr(handle_id);
+	    search->LayoutMgr->AddObject(search, childobj);
 	    }
+	if (!cur_container) prtFreeHandle(handle_id);
 
     return 0;
     }

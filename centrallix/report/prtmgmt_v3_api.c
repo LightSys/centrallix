@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.7 2003/02/25 03:57:50 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.8 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.8  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.7  2003/02/25 03:57:50  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -371,7 +377,8 @@ prtSetFont(int handle_id, char* fontname)
 	newid = prtLookupFont(fontname);
 	if (newid < 0) return -1;
 	set_obj->TextStyle.FontID = newid; 
-	set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    set_obj->Height = prt_internal_GetFontHeight(set_obj);
 	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
@@ -427,7 +434,8 @@ prtSetFontSize(int handle_id, int fontsize)
 	/** Set the size and recalc the height/baseline **/
 	set_obj->TextStyle.FontSize = fontsize;
 	set_obj->LineHeight = fontsize/12.0;
-	set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    set_obj->Height = prt_internal_GetFontHeight(set_obj);
 	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
@@ -726,12 +734,6 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	new_obj = prt_internal_AllocObjByID(obj_type);
 	if (!new_obj) return -1;
 
-	/** Init container... including optional params **/
-	prt_internal_CopyAttrs(obj, new_obj);
-	new_obj->Session = obj->Session;
-	va_start(va, flags);
-	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj, va);
-	va_end(va);
 
 	/** Set the object's position, flags, etc. **/
 	new_obj->Flags |= (flags & PRT_OBJ_UFLAGMASK);
@@ -745,6 +747,13 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	    new_obj->Y = y;
 	else
 	    new_obj->Y = 0.0;
+
+	/** Init container... including optional params **/
+	prt_internal_CopyAttrs(obj, new_obj);
+	new_obj->Session = obj->Session;
+	va_start(va, flags);
+	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj, va);
+	va_end(va);
 
 	/** Bolt a handle onto the new object... **/
 	new_handle_id = prtAllocHandle(new_obj);

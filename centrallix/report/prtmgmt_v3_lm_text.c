@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.10 2003/02/25 03:57:50 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.11 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.11  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.10  2003/02/25 03:57:50  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -184,7 +190,7 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    /** Was page ejected?  If LinkPrev on our container is set, then the page
 	     ** is still valid.
 	     **/
-	    if (new_container->LinkPrev)
+	    if (new_container->LinkPrev || (new_container->Parent && new_container->Parent->LinkPrev))
 		{
 		this->LinkNext = new_object;
 		new_object->LinkPrev = this;
@@ -414,6 +420,14 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
     int sl,n,last_sep;
     double lastw, w, ckw;
 
+	/** If empty, we can't wrap it!! **/
+	if (stringobj->Content[0] == '\0') 
+	    {
+	    *brkpoint = 0;
+	    *brkwidth = 0.0;
+	    return -1;
+	    }
+
 	/** Start looking at beginning of string, computing width as we go **/
 	w = 0.0;
 	sl = strlen(stringobj->Content);
@@ -422,7 +436,7 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 	for(n=0;n<sl;n++)
 	    {
 	    /** Note a separation point (space, hyphen)? **/
-	    if (stringobj->Content[n] == ' ' || (n > 0 && stringobj->Content[n-1] == '-' && stringobj->Content[n] >= 'A'))
+	    if (stringobj->Content[n] == ' ' || (n > 1 && stringobj->Content[n-1] == '-' && stringobj->Content[n] >= 'A' && stringobj->Content[n-2] >= 'A'))
 		{
 		last_sep = n;
 		lastw = w;
@@ -519,6 +533,30 @@ prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_widt
     }
 
 
+/*** prt_textlm_UndoWrap() - undoes the effects of word wrapping on two
+ *** given objects by restoring the space to one of them as needed.
+ ***/
+int
+prt_textlm_UndoWrap(pPrtObjStream obj1, pPrtObjStream obj2)
+    {
+    int n;
+    char* newptr;
+
+	n = strlen(obj1->Content);
+	if (n >= 1 && obj1->Content[n-1] != '-')
+	    {
+	    newptr = nmSysMalloc(strlen(obj2->Content)+2);
+	    strcpy(newptr+1, obj2->Content);
+	    newptr[0] = ' ';
+	    nmSysFree(obj2->Content);
+	    obj2->Content = newptr;
+	    obj2->Width = prt_internal_GetStringWidth(obj2, obj2->Content, -1);
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_textlm_AddObject() - used to add a new object to this one, using
  *** textflow layout semantics.  This can, in some cases, result in a
  *** resize request / resized event being placed to the layout manager
@@ -542,29 +580,19 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
     double top,bottom,maxw,sepw,newsepw;
     /*double oldheight;*/
-    int sep,newsep,rval,n;
+    int sep,newsep,rval;
     pPrtObjStream objptr;
     pPrtObjStream split_obj = NULL;
     /*unsigned char* spaceptr;*/
     pPrtObjStream new_parent;
     double x,y;
-    char* newptr;
 
 	/** Undo soft newline (wrap) stuff if this is a reflow **/
 	if (new_child_obj->Flags & PRT_OBJ_F_SOFTNEWLINE && new_child_obj->ObjType->TypeID == PRT_OBJ_T_STRING && new_child_obj->Content)
 	    {
 	    if (this->ContentTail && this->ContentTail->Content && this->ContentTail->ObjType->TypeID == PRT_OBJ_T_STRING)
 		{
-		n = strlen(this->ContentTail->Content);
-		if (n >= 1 && this->ContentTail->Content[n-1] != '-')
-		    {
-		    newptr = nmSysMalloc(strlen(new_child_obj->Content)+2);
-		    strcpy(newptr+1, new_child_obj->Content);
-		    newptr[0] = ' ';
-		    nmSysFree(new_child_obj->Content);
-		    new_child_obj->Content = newptr;
-		    new_child_obj->Width = prt_internal_GetStringWidth(new_child_obj, new_child_obj->Content, -1);
-		    }
+		prt_textlm_UndoWrap(this->ContentTail, new_child_obj);
 		}
 	    new_child_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
 	    }
@@ -743,7 +771,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    objptr->Y = 0.0;
 		    this = new_parent;
 		    objptr->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
-		    if (split_obj) split_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
+		    if (split_obj) 
+			{
+			prt_textlm_UndoWrap(objptr, split_obj);
+			split_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
+			}
 		    continue;
 		    }
 		}

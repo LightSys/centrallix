@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.1 2003/02/25 03:57:50 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.2 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.2  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.1  2003/02/25 03:57:50  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -65,11 +71,28 @@
  **END-CVSDATA***********************************************************/
 
 
+#define PRT_COLLM_MAXCOLS	16	/* maximum allowed columns */
+#define PRT_COLLM_DEFAULT_COLS	1	/* default is 1 column */
+#define PRT_COLLM_DEFAULT_SEP	1.0	/* default column separation = 1.0 unit or 0.1 inch */
+
+#define PRT_COLLM_F_BALANCED	1	/* content balances between cols */
+#define PRT_COLLM_F_SOFTFLOW	2	/* content can flow from one col to next */
+
+#define PRT_COLLM_DEFAULT_FLAGS	(PRT_COLLM_F_SOFTFLOW)
+
+
 /*** multicolumn area specific data ***/
 typedef struct _PMC
     {
+    int		Flags;
+    int		nColumns;
+    double	ColSep;
+    double	ColWidths[PRT_COLLM_MAXCOLS];
+    pPrtObjStream CurrentCol;
     }
     PrtColLMData, *pPrtColLMData;
+
+int prt_collm_CreateCols(pPrtObjStream this);
 
 
 /*** prt_collm_Break() - this is called when we actually are going to do
@@ -77,21 +100,92 @@ typedef struct _PMC
  *** function later on here.
  ***/
 int
-prt_collm_Break(pPrtObjStream this, pPrtObjStream *new_container)
+prt_collm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     {
-    pPrtObjStream next_page;
-    int page_handle_id;
-    pPrtHandle h;
+    pPrtObjStream new_object,new_container;
+    pPrtColLMData lm_inf, new_lm_inf;
+    pPrtObjStream parent;
+
+	/** Shouldn't be called on the main section object but rather on a 
+	 ** child of that (a column object)!  Make sure first... 
+	 **/
+	if (this->ObjType->TypeID != PRT_OBJ_T_SECTCOL) return -1;
+	parent = this->Parent;
+	lm_inf = (pPrtColLMData)(parent->LMData);
+
+	/** Just move on to the next column? **/
+	if (this->Next)
+	    {
+	    *new_this = this->Next;
+	    lm_inf->CurrentCol = this->Next;
+	    return 0;
+	    }
+
+	/** Does object not allow break operations? **/
+	if (!(parent->Flags & PRT_OBJ_F_ALLOWBREAK)) return -1;
+
+	/** Object already has a continuing point? **/
+	if (parent->LinkNext)
+	    {
+	    *new_this = parent->LinkNext->ContentHead;
+
+	    /** Update the handle so that later adds go to the correct place. **/
+	    prtUpdateHandleByPtr(this->Parent, (*new_this)->Parent);
+	    }
+	else
+	    {
+	    /** Duplicate the object... without the content... but with the
+	     ** column child objects.
+	     **/
+	    new_object = prt_internal_AllocObjByID(parent->ObjType->TypeID);
+	    prt_internal_CopyAttrs(parent, new_object);
+	    prt_internal_CopyGeom(parent, new_object);
+	    new_object->Session = parent->Session;
+	    new_object->Flags = parent->Flags;
+
+	    /** Allocate layout manager specific info **/
+	    new_lm_inf = (pPrtColLMData)nmMalloc(sizeof(PrtColLMData));
+	    if (!new_lm_inf) return -ENOMEM;
+	    memcpy(new_lm_inf, lm_inf, sizeof(PrtColLMData));
+	    new_object->LMData = new_lm_inf;
+	    prt_collm_CreateCols(new_object);
+
+	    /** Update the handle so that later adds go to the correct place. **/
+	    prtUpdateHandleByPtr(parent, new_object);
+
+	    /** Request break from parent, which may eject the page...
+	     ** (which is why we copied our data from 'this' ahead of time) 
+	     **/
+	    if (parent->Parent->LayoutMgr->ChildBreakReq(parent->Parent, parent, &new_container) < 0)
+		{
+		/** Oops - put the handle back and get rid of new_object **/
+		prtUpdateHandleByPtr(new_object, parent);
+		prt_internal_FreeObj(new_object);
+		return -1;
+		}
+
+	    /** Add the new object to the new parent container, and set the linkages **/
+	    new_container->LayoutMgr->AddObject(new_container, new_object);
+	    *new_this = new_object->ContentHead;
+
+	    /** Was page ejected?  If LinkPrev on our container is set, then the page
+	     ** is still valid.
+	     **/
+	    if (new_container->LinkPrev || (new_container->Parent && new_container->Parent->LinkPrev))
+		{
+		parent->LinkNext = new_object;
+		new_object->LinkPrev = parent;
+		}
+	    }
 
     return 0;
     }
 
 
-/*** prt_collm_ChildBreakReq() - this is called when a child object
- *** actually requests a break, thus starting a chain of events that will
- *** create a new page, if it hasn't already been created.  This routine
- *** doesn't actually duplicate the child objects; that is done only once
- *** the respective objects need extension to the next page.
+/*** prt_collm_ChildBreakReq() - this is called when a child object requests
+ *** a break, which means we either spill to the next column in a multi column
+ *** situation, or request a break from our parent, which often means moving
+ *** to a new page.
  ***/
 int
 prt_collm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *new_this)
@@ -109,53 +203,238 @@ prt_collm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
 int
 prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
+    pPrtColLMData lm_inf;
+    pPrtObjStream parent;
+    double new_h;
+
+	/** Shouldn't be called on the main section object but rather on a 
+	 ** child of that (a column object)!  Make sure first... 
+	 **/
+	if (this->ObjType->TypeID != PRT_OBJ_T_SECTCOL) return -1;
+	parent = this->Parent;
+	lm_inf = (pPrtColLMData)(parent->LMData);
+
+	/** If this is just a width resize, allow it if it fits, otherwise
+	 ** outright deny the resize altogether.
+	 **/
+	if (req_width != child->Width && req_height == child->Height)
+	    {
+	    if (child->X + req_width <= this->Width - this->MarginLeft - this->MarginRight) 
+		return 0;
+	    else
+		return -1;
+	    }
+
+	/** Question is whether to resize or to force a break.  This depends
+	 ** on whether 'balanced' is enabled or not, on whether the child
+	 ** object allows soft breaks, and on which column is being written
+	 ** into.
+	 **/
+	if (!(lm_inf->Flags & PRT_COLLM_F_BALANCED) || !(child->Flags & PRT_OBJ_F_ALLOWSOFTBREAK))
+	    {
+	    /** Nonbalanced section, or a balanced section but the child can't
+	     ** do soft column/page breaks, so we try to make it fit anyhow.
+	     ** First check to see if it fits without needing any resizing.  
+	     **/
+	    if (child->Y + req_height <= this->Height - this->MarginTop - this->MarginBottom) return 0;
+	    
+	    /** Next, try resizing the container. **/
+	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom;
+	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && 
+		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
+		return 0;
+	    }
+	else  /* Balanced section. */
+	    {
+	    /** Like before, we allow if it fits without a resize.  This allows the
+	     ** app to construct a section that only starts balancing when it needs
+	     ** to expand vertically.
+	     **/
+	    if (child->Y + req_height <= this->Height - this->MarginTop - this->MarginBottom) return 0;
+
+	    /** If not in last column and can resize, and resize would not be more than
+	     ** one LineHeight larger than last column, then go ahead.
+	     **/
+	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom;
+	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && this != parent->ContentTail &&
+		    new_h <= parent->ContentTail->Height + this->LineHeight &&
+		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
+		return 0;
+
+	    /** If not in the last column, simply force a break to make things start
+	     ** spreading out between the columns. 
+	     **/
+	    if (this != parent->ContentTail) return -1;
+
+	    /** In last column.  Resize if we can, then a reflow will happen. **/
+	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && 
+		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
+		return 0;
+	    }
+
     return -1;
     }
 
 
 /*** prt_collm_ChildResized() - this function is called when a child
- *** object has actually been resized.
+ *** object has actually been resized.  This is where we actually force a
+ *** reflow of the child object if we're operating in balanced mode and
+ *** columns other than the last one changed height.
  ***/
 int
 prt_collm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width, double old_height)
     {
+    pPrtColLMData lm_inf;
+    pPrtObjStream parent;
+    pPrtObjStream reflow_obj;
+
+	/** Shouldn't be called on the main section object but rather on a 
+	 ** child of that (a column object)!  Make sure first... 
+	 **/
+	if (this->ObjType->TypeID != PRT_OBJ_T_SECTCOL) return -1;
+	parent = this->Parent;
+	lm_inf = (pPrtColLMData)(parent->LMData);
+
+	/** If balanced mode and last column affected, do a reflow.  Start
+	 ** the reflow from the *first* column.  Affect all child objects of
+	 ** the first column.
+	 **/
+	if ((lm_inf->Flags & PRT_COLLM_F_BALANCED) && this == parent->ContentTail)
+	    {
+	    reflow_obj = parent->ContentHead->ContentHead;
+	    while(reflow_obj)
+		{
+		prt_internal_Reflow(reflow_obj);
+		reflow_obj = reflow_obj->Next;
+		}
+	    }
+	
     return 0;
     }
 
 
-/*** prt_collm_Resize() - request to resize a columnar layout.  This only works if the
- *** page is empty.
+/*** prt_collm_Resize() - request to resize a columnar layout.
  ***/
 int
 prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
     {
-    return -1;
+    int rval;
+    double oh, ow;
+    pPrtObjStream col_obj;
+
+	/** Being called on a column rather than the section as a whole? If so,
+	 ** reflect the call to the parent section object instead.
+	 **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_SECTCOL)
+	    {
+	    ow = this->Width;
+	    rval = this->Parent->LayoutMgr->Resize(this->Parent,
+		    new_width - this->Width + this->Parent->Width,
+		    new_height - this->Height + this->Parent->Height);
+
+	    /** If width changed, we need to apply that here. **/
+	    if (rval >= 0 && new_width != ow)
+		{
+		this->Width = new_width;
+		for(col_obj=this->Next; col_obj; col_obj=col_obj->Next)
+		    {
+		    col_obj->X += (new_width - ow);
+		    }
+		}
+	    return rval;
+	    }
+
+	/** Do a resize request from our parent container. **/
+	if (this->Parent->LayoutMgr->ChildResizeReq(this->Parent, this, new_width, new_height) < 0)
+	    return -1;
+
+	/** Parent okayed the resize.  Go for it, and affect all column objects
+	 ** within this section.
+	 **/
+	ow = this->Width;
+	oh = this->Height;
+	for(col_obj = this->ContentHead; col_obj; col_obj=col_obj->Next)
+	    {
+	    col_obj->Height += (new_height - oh);
+	    }
+	this->Width = new_width;
+	this->Height = new_height;
+
+	/** Notify parent that resize finished. **/
+	this->Parent->LayoutMgr->ChildResized(this->Parent, this, ow, oh);
+
+    return 0;
     }
 
 
 /*** prt_collm_AddObject() - used to add a new object to the mcol section.  If the
  *** object is too big, it will end up being clipped by the formatting stage
- *** later on.
+ *** later on.  The hard work for the mcol module is mostly done in the ChildBreakReq
+ *** and ChildResizeReq methods.
  ***/
 int
 prt_collm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
+    pPrtColLMData lm_inf = (pPrtColLMData)(this->LMData);
 
-	/** Just add it... **/
-	prt_internal_Add(this, new_child_obj);
+	/** Called on child object? **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_SECTCOL)
+	    lm_inf = this->Parent->LMData;
+
+	/** Just makin' sure... **/
+	if (!lm_inf) return -1;
+
+	/** Just add it to the currently active column object **/
+	prt_internal_Add(lm_inf->CurrentCol, new_child_obj);
+
+    return 0;
+    }
+
+
+/*** prt_collm_CreateCols() - create the column objects within the section
+ *** object, based on the LMData set up.
+ ***/
+int
+prt_collm_CreateCols(pPrtObjStream this)
+    {
+    pPrtColLMData lm_inf = (pPrtColLMData)(this->LMData);
+    pPrtObjStream col_obj;
+    int i;
+    double totalwidth;
+
+	/** Create the required number of column objects **/
+	totalwidth = 0.0;
+	for(i=0;i<lm_inf->nColumns;i++)
+	    {
+	    col_obj = prt_internal_AllocObjByID(PRT_OBJ_T_SECTCOL);
+	    prt_internal_CopyAttrs(this, col_obj);
+	    col_obj->X = totalwidth;
+	    col_obj->Y = 0.0;
+	    col_obj->Width = lm_inf->ColWidths[i];
+	    col_obj->Session = this->Session;
+	    col_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
+	    col_obj->LMData = NULL;
+	    col_obj->ObjID = i;
+	    totalwidth += (lm_inf->ColSep + lm_inf->ColWidths[i]);
+	    prt_internal_Add(this, col_obj);
+	    }
+	lm_inf->CurrentCol = this->ContentHead;
 
     return 0;
     }
 
 
 /*** prt_collm_InitContainer() - initialize a newly created container that
- *** uses this layout manager.  Nothing for now.
+ *** uses this layout manager.  This involves adding a subcontainer for each
+ *** column that is configured.
  ***/
 int
 prt_collm_InitContainer(pPrtObjStream this, va_list va)
     {
-    pPrtObjStream page_obj;
     pPrtColLMData lm_inf;
+    char* attrname;
+    int i;
+    double totalwidth;
 
 	/** Allocate our layout manager specific info **/
 	lm_inf = (pPrtColLMData)nmMalloc(sizeof(PrtColLMData));
@@ -163,12 +442,120 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 	memset(lm_inf, 0, sizeof(PrtColLMData));
 	this->LMData = lm_inf;
 
+	/** Look for layoutmanager-specific settings passed in. **/
+	lm_inf->nColumns = PRT_COLLM_DEFAULT_COLS;
+	lm_inf->ColWidths[0] = -1.0;
+	lm_inf->ColSep = PRT_COLLM_DEFAULT_SEP;
+	lm_inf->Flags = PRT_COLLM_DEFAULT_FLAGS;
+	while((attrname = va_arg(va, char*)) != NULL)
+	    {
+	    if (!strcmp(attrname, "numcols"))
+		{
+		/** set number of columns; default = 1 **/
+		lm_inf->nColumns = va_arg(va, int);
+		if (lm_inf->nColumns > PRT_COLLM_MAXCOLS || lm_inf->nColumns < 1)
+		    {
+		    nmFree(lm_inf, sizeof(PrtColLMData));
+		    this->LMData = NULL;
+		    mssError(1,"COLLM","Invalid number of columns (%d) for a section; max is %d", lm_inf->nColumns, PRT_COLLM_MAXCOLS);
+		    return -EINVAL;
+		    }
+		}
+	    else if (!strcmp(attrname, "colwidths"))
+		{
+		/** Set widths of columns; default = 1 column and full width **/
+		for(i=0;i<lm_inf->nColumns;i++)
+		    {
+		    lm_inf->ColWidths[i] = va_arg(va, double);
+		    lm_inf->ColWidths[i] = prtUnitX(this->Session, lm_inf->ColWidths[i]);
+		    }
+		}
+	    else if (!strcmp(attrname, "colsep"))
+		{
+		/** Set separation between columns; default = 1.0 internal unit (0.1 inch) **/
+		lm_inf->ColSep = va_arg(va, double);
+		lm_inf->ColSep = prtUnitX(this->Session, lm_inf->ColSep);
+		if (lm_inf->ColSep < 0.0)
+		    {
+		    nmFree(lm_inf, sizeof(PrtColLMData));
+		    this->LMData = NULL;
+		    mssError(1,"COLLM","Column separation amount must not be negative");
+		    return -EINVAL;
+		    }
+		}
+	    else if (!strcmp(attrname, "balanced"))
+		{
+		/** Whether or not the content is balanced between the columns, thus making
+		 ** the section shorter but fuller.  This causes incremental reflows of the
+		 ** section's content VERY OFTEN.
+		 **/
+		if (va_arg(va,int) != 0)
+		    lm_inf->Flags |= PRT_COLLM_F_BALANCED;
+		else
+		    lm_inf->Flags &= ~PRT_COLLM_F_BALANCED;
+		}
+	    else if (!strcmp(attrname, "softflow"))
+		{
+		/** Whether or not content will automatically flow from one column to the
+		 ** next without a break.  This must be enabled if 'balanced' is enabled.
+		 **/
+		if (va_arg(va,int) != 0)
+		    lm_inf->Flags |= PRT_COLLM_F_SOFTFLOW;
+		else
+		    lm_inf->Flags &= ~PRT_COLLM_F_SOFTFLOW;
+		}
+	    }
+
+	/** Widths not yet set? **/
+	if (lm_inf->ColWidths[0] < 0)
+	    {
+	    for(i=0;i<lm_inf->nColumns;i++)
+		{
+		lm_inf->ColWidths[i] = (this->Width - this->MarginLeft - this->MarginRight - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
+		}
+	    }
+
+	/** Integrity checks on parameters **/
+	if (!(lm_inf->Flags & PRT_COLLM_F_SOFTFLOW) && (lm_inf->Flags & PRT_COLLM_F_BALANCED))
+	    {
+	    mssError(1,"COLLM","Section specifies 'balanced' but not 'softflow'");
+	    nmFree(lm_inf, sizeof(PrtColLMData));
+	    this->LMData = NULL;
+	    return -EINVAL;
+	    }
+	totalwidth = lm_inf->ColSep*(lm_inf->nColumns-1);
+	for(i=0;i<lm_inf->nColumns;i++)
+	    {
+	    /** Check column width constraints **/
+	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+		{
+		mssError(1,"COLLM","Invalid width for column #%d",i+1);
+		nmFree(lm_inf, sizeof(PrtColLMData));
+		this->LMData = NULL;
+		return -EINVAL;
+		}
+	    totalwidth += lm_inf->ColWidths[i];
+	    }
+	/** Check total of column widths. **/
+	if (totalwidth > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+	    {
+	    mssError(1,"COLLM","Total of column widths and separations exceeds available section width");
+	    nmFree(lm_inf, sizeof(PrtColLMData));
+	    this->LMData = NULL;
+	    return -EINVAL;
+	    }
+
+	/** Create the column objects. **/
+	prt_collm_CreateCols(this);
+
     return 0;
     }
 
 
 /*** prt_collm_DeinitContainer() - de-initialize a container using this
- *** layout manager.  In this case, it does basically nothing.
+ *** layout manager.  In this case, it does basically nothing.  We don't
+ *** need to free the column objects since those get handled just fine
+ *** all on their own via the standard FreeTree prtmgmt function.
  ***/
 int
 prt_collm_DeinitContainer(pPrtObjStream this)

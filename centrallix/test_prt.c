@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.9 2003/02/25 03:57:50 gbeeley Exp $
+    $Id: test_prt.c,v 1.10 2003/02/27 05:21:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.10  2003/02/27 05:21:19  gbeeley
+    Added multi-column layout manager functionality to support multi-column
+    sections (this is newspaper-style multicolumn formatting).  Tested in
+    test_prt "columns" command with various numbers of columns.  Balanced
+    mode not yet working.
+
     Revision 1.9  2003/02/25 03:57:50  gbeeley
     Added incremental reflow capability and test in test_prt.  Added stub
     multi-column layout manager.  Reflow is horribly inefficient, but not
@@ -188,7 +194,7 @@ start(void* v)
     int log_all_errors;
     pPrtSession prtsession;
     int rval;
-    int pagehandle, areahandle;
+    int pagehandle, areahandle, sectionhandle;
     int rcnt;
     void* outputfn;
     void* outputarg;
@@ -197,6 +203,7 @@ start(void* v)
     int i,j;
     char* fontnames[] = {"courier","helvetica","times"};
     pPrtObjStream prtobj;
+    int ncols;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -305,6 +312,79 @@ start(void* v)
 		{
 		break;
 		}
+	    else if (!strcmp(cmdname,"help"))
+		{
+		printf("Print Management Subsystem Test Suite Command Help:\n"
+		       "  colors      - outputs text in various colors\n"
+		       "  columns     - prints a file into a multicolumn format\n"
+		       "  fonts       - writes text in three fonts and five sizes\n"
+		       "  help        - show this help message\n"
+		       "  justify     - writes text in each of four justification modes\n"
+		       "  output      - redirects output to a file/device instead of screen\n"
+		       "  printfile   - output contents of a file into a whole-page area\n"
+		       "  session     - test open/close of a session for a given content type\n"
+		       "  text        - puts a given string of text in a given content type\n"
+		      );
+		}
+	    else if (!strcmp(cmdname,"columns"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: columns <mime type> <numcols> <filename> {balanced}\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
+		printf("columns: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (!prtsession)
+		    {
+		    continue;
+		    }
+		if (mlxNextToken(ls) != MLX_TOK_INTEGER)
+		    {
+		    printf("test_prt: usage: columns <mime type> <numcols> <filename> {balanced}\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		ncols = mlxIntVal(ls);
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: columns <mime type> <numcols> <filename> {balanced}\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		fd = fdOpen(ptr, O_RDONLY, 0600);
+		if (!fd)
+		    {
+		    printf("columns: %s: could not access file\n", ptr);
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		pagehandle = prtGetPageRef(prtsession);
+		printf("columns: prtGetPageRef returned page handle %d\n", pagehandle);
+		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"balanced"))
+		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", 1, NULL);
+		else
+		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, NULL);
+		printf("columns: prtAddObject(PRT_OBJ_T_SECTION) returned section handle %d\n", sectionhandle);
+		areahandle = prtAddObject(sectionhandle, PRT_OBJ_T_AREA, 0, 0, (80-2*(ncols-1))/ncols, 0, PRT_OBJ_U_ALLOWBREAK, NULL);
+		printf("columns: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+		while((rcnt = fdRead(fd, sbuf, 255, 0, 0)) > 0)
+		    {
+		    sbuf[rcnt] = '\0';
+		    rval = prtWriteString(areahandle, sbuf);
+		    printf("columns: prtWriteString returned %d\n", rval);
+		    }
+		fdClose(fd, 0);
+		rval = prtEndObject(areahandle);
+		printf("columns: prtEndObject(area) returned %d\n", rval);
+		rval = prtEndObject(sectionhandle);
+		printf("columns: prtEndObject(section) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("columns: prtCloseSession returned %d\n", rval);
+		}
 	    else if (!strcmp(cmdname,"session"))
 		{
 		if (mlxNextToken(ls) != MLX_TOK_STRING) 
@@ -325,7 +405,7 @@ start(void* v)
 		{
 		if (mlxNextToken(ls) != MLX_TOK_STRING) 
 		    {
-		    printf("test_prt: usage: printfile <mime type> <filename>\n");
+		    printf("test_prt: usage: printfile <mime type> <filename> {reflow}\n");
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
@@ -337,7 +417,7 @@ start(void* v)
 		    }
 		if (mlxNextToken(ls) != MLX_TOK_STRING) 
 		    {
-		    printf("test_prt: usage: printfile <mime type> <filename>\n");
+		    printf("test_prt: usage: printfile <mime type> <filename> {reflow}\n");
 		    prtCloseSession(prtsession);
 		    continue;
 		    }
