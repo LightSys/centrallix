@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.20 2002/07/24 20:51:24 pfinley Exp $
+    $Id: htdrv_checkbox.c,v 1.21 2002/07/25 20:33:29 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.21  2002/07/25 20:33:29  pfinley
+    changed 'Change' event to be the standard 'DataChange'.
+
     Revision 1.20  2002/07/24 20:51:24  pfinley
     updated to incorporate the change to cn_activate (reduce redundant code)
 
@@ -237,7 +240,7 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
       htrAddBodyItem_va(s,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
    htrAddBodyItem_va(s,"   </DIV>\n");
 
-   /** Check for more sub-widgets within the imagebutton. **/
+   /** Check for more sub-widgets **/
    qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
    if (qy)
 	{
@@ -286,12 +289,12 @@ int htcbInitialize() {
 
    /** Events **/
    htrAddEvent(drv,"Click");
-   htrAddEvent(drv,"MouseUp");	// same as Click
+   htrAddEvent(drv,"MouseUp");
    htrAddEvent(drv,"MouseDown");
    htrAddEvent(drv,"MouseOver");
    htrAddEvent(drv,"MouseOut");
    htrAddEvent(drv,"MouseMove");
-   htrAddEvent(drv,"OnChange");
+   htrAddEvent(drv,"DataChange");
    
    /** Register. **/
    htrRegisterDriver(drv);

@@ -137,5 +137,5 @@ function checkbox_toggleMode(layer)
 	layer.src = layer.checkedImage.src;
 	layer.is_checked = 1;
 	}
-    cn_activate(layer.parentLayer, 'OnChange');
+    cn_activate(layer.parentLayer, 'DataChange');
     }
