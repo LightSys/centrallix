@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.8  2002/07/08 23:45:58  jorupp
+     * commented out most of the alerter, as (if I remember correctly), most of it doesn't work
+        it's also not terribly useful since the DomViewer (treeviewer) supplies better functionality
+     * added Mozilla support (hey, adding the registration counts as adding support, doesn't it?)
+
     Revision 1.7  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -102,9 +107,6 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
-    //char sbuf[200];
-    //char sbuf2[160];
-    char *sbuf3;
     int id;
     char* nptr;
     
@@ -145,6 +147,11 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	note that global variables can be used (second example),
 	  but a paren must be present somewhere in the call
 #endif
+
+#if 0
+	/** This code never really worked that well
+	 **  -- this widget is just hanging around to serve as an easy way to test buttons
+	 **/
 
 	htrAddScriptFunction(s, "alrt_action_view_DOM", "\n"
 		"function alrt_action_view_DOM(param)\n"
@@ -235,7 +242,7 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    ret+=\"</UL>\\n\";\n"
 		"    return ret;\n"
 		"    }\n", 0);
-#if 0
+
 		"function alrt_search(arr,obj)\n"
 		"    {\n"
 		"    for(var i in arr)\n"
@@ -245,9 +252,6 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    return 0;\n"
 		"    }\n", 0);
-#endif
-
-
 
 /***  ---- Jonathan Rupp - 3/11/02 ----
  *** the tree_DOM functions are my attempt to get a tree-view type
@@ -386,7 +390,7 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    l2.onMouseDown=l.window.treeonMD;\n"
 		"    l.visibility='inherit';\n"
 		"    }\n", 0);
-	
+#endif	
 	/** Alert initializer **/
 	htrAddScriptFunction(s, "alrt_init", "\n"
 		"function alrt_init()\n"
@@ -394,14 +398,12 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    alrt = new Object();\n"
 		"    alrt.ActionAlert = alrt_action_alert;\n"
 		"    alrt.ActionConfirm = alrt_action_confirm;\n"
-		"    alrt.ActionViewDOM = alrt_action_view_DOM;\n"
-		"    alrt.ActionViewTreeDOM = alrt_action_view_tree_DOM;\n"
+		"    //alrt.ActionViewDOM = alrt_action_view_DOM;\n"
+		"    //alrt.ActionViewTreeDOM = alrt_action_view_tree_DOM;\n"
 		"    return alrt;\n"
 		"    }\n",0);
 
-	sbuf3 = nmMalloc(200);
 	htrAddScriptInit_va(s,"    %s=alrt_init();\n",name);
-	nmFree(sbuf3,200);
 
     return 0;
     }
@@ -423,16 +425,37 @@ htalrtInitialize()
 	strcpy(drv->WidgetName,"alerter");
 	drv->Render = htalrtRender;
 	drv->Verify = htalrtVerify;
-    strcpy(drv->Target, "Netscape47x:default");
+	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add a 'executemethod' action **/
 	htrAddAction(drv,"Alert");
 	htrAddParam(drv,"Alert","Parameter",DATA_T_STRING);
 	htrAddAction(drv,"Confirm");
 	htrAddParam(drv,"Confirm","Parameter",DATA_T_STRING);
-	htrAddAction(drv,"ViewDOM");
-	htrAddParam(drv,"ViewDOM","Paramater",DATA_T_STRING);
+	//htrAddAction(drv,"ViewDOM");
+	//htrAddParam(drv,"ViewDOM","Paramater",DATA_T_STRING);
 
+	/** Register. **/
+	htrRegisterDriver(drv);
+
+
+
+    	/** Allocate the driver **/
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+
+	/** Fill in the structure. **/
+	strcpy(drv->Name,"DHTML Alert Widget");
+	strcpy(drv->WidgetName,"alerter");
+	drv->Render = htalrtRender;
+	drv->Verify = htalrtVerify;
+	strcpy(drv->Target, "Mozilla:default");
+
+	/** Add a 'executemethod' action **/
+	htrAddAction(drv,"Alert");
+	htrAddParam(drv,"Alert","Parameter",DATA_T_STRING);
+	htrAddAction(drv,"Confirm");
+	htrAddParam(drv,"Confirm","Parameter",DATA_T_STRING);
 
 	/** Register. **/
 	htrRegisterDriver(drv);
