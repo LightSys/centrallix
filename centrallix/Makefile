@@ -29,6 +29,8 @@ OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 #XOBJDRIVERS=objdrv_ux.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_report.o objdrv_uxprint.o objdrv_datafile.o objdrv_unixuser.o
 XOBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_report.o objdrv_uxprint.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
+XV3OBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
+V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
 # DHTML generation subsystem, including drivers and the ht_render main system.
 XHTDRIVERS=htdrv_page.o \
@@ -72,6 +74,10 @@ NETDRIVERS=$(patsubst %,netdrivers/%,$(XNETDRIVERS))
 # Reporting subsystem, including printer drivers and print management system.
 XRPTMODS=epsonfx_prt.o hppcl_prt.o html_prt.o barcode.o prtmgmt.o text_prt.o
 RPTMODS=$(patsubst %,report/%,$(XRPTMODS))
+
+# V3 reporting subsystem
+XV3RPTMODS=prtmgmt_v3_api.o prtmgmt_v3_fm_strict.o prtmgmt_v3_internal.o prtmgmt_v3_lm_page.o prtmgmt_v3_lm_text.o prtmgmt_v3_main.o prtmgmt_v3_od_pcl.o prtmgmt_v3_session.o
+V3RPTMODS=$(patsubst %,report/%,$(XV3RPTMODS))
 
 # Expression evaluation/compilation manager.
 XEXPRMODS=exp_main.o exp_params.o exp_compiler.o exp_evaluate.o exp_functions.o exp_generator.o
@@ -127,8 +133,8 @@ jsengine: $(JSVM)
 test_obj: test_obj.o $(BASEOBJS)
 	cc test_obj.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -o test_obj $(LIBS)
 
-test_prt: test_prt.o $(BASEOBJS)
-	cc test_prt.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
+test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
+	cc test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
 
 ts: ts.o $(LSOBJS) $(TESTSUITE)
 	cc ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) -o ts $(LIBS)

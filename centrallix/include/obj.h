@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.6 2002/02/21 06:32:54 jorupp Exp $
+    $Id: obj.h,v 1.7 2002/04/25 04:26:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.7  2002/04/25 04:26:07  gbeeley
+    Basic overhaul of objdrv_sybase to fix some security issues, improve
+    robustness with key data in particular, and so forth.  Added a new
+    flag to the objDataToString functions: DATA_F_SYBQUOTE, which quotes
+    strings like Sybase wants them quoted (using a pair of quote marks to
+    escape a lone quote mark).
+
     Revision 1.6  2002/02/21 06:32:54  jorupp
     updated obj_rootnode.c to use supplied rootnode
     removed warning in obj.h
@@ -145,6 +152,7 @@ extern char* obj_default_null_fmt;
 #define DATA_F_QUOTED		1
 #define DATA_F_SINGLE		2
 #define DATA_F_NORMALIZE	4
+#define DATA_F_SYBQUOTE		8	/* use '' to quote a ', etc */
 
 
 /** Presentation Hints structure ---

@@ -45,10 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.3 2001/10/02 15:45:26 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.4 2002/04/25 04:26:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.4  2002/04/25 04:26:07  gbeeley
+    Basic overhaul of objdrv_sybase to fix some security issues, improve
+    robustness with key data in particular, and so forth.  Added a new
+    flag to the objDataToString functions: DATA_F_SYBQUOTE, which quotes
+    strings like Sybase wants them quoted (using a pair of quote marks to
+    escape a lone quote mark).
+
     Revision 1.3  2001/10/02 15:45:26  gbeeley
     Oops - fixed the adding of ".0" to whole integer double values so that
     the routine does NOT overwrite the trailing digit ;)
@@ -458,6 +465,7 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
     pDateTime d;
     pIntVec iv;
     pStringVec sv;
+    char* tmpstr;
 
     	/** Check for a NULL. **/
 	if (data_ptr == NULL)
@@ -481,9 +489,8 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 		break;
 
 	    case DATA_T_STRING:
-	        if (flags & DATA_F_QUOTED) xsConcatenate(dest, " '", 2);
-	        xsConcatenate(dest, data_ptr, -1);
-	        if (flags & DATA_F_QUOTED) xsConcatenate(dest, "' ", 2);
+		tmpstr = objDataToStringTmp(DATA_T_STRING, data_ptr, flags);
+	        xsConcatenate(dest, tmpstr, -1);
 		break;
 
 	    case DATA_T_DOUBLE:
@@ -699,8 +706,16 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		    *(ptr++) = quote;
 		    while(*tmpptr)
 		        {
-			if (*tmpptr == quote || *tmpptr == '\\')
-			    *(ptr++) = '\\';
+			if (flags & DATA_F_SYBQUOTE)
+			    {
+			    if (*tmpptr == quote) 
+				*(ptr++) = quote;
+			    }
+			else
+			    {
+			    if (*tmpptr == quote || *tmpptr == '\\')
+				*(ptr++) = '\\';
+			    }
 			*(ptr++) = *(tmpptr++);
 			}
 		    *(ptr++) = quote;

@@ -61,10 +61,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.3 2002/04/25 01:13:44 jorupp Exp $
+    $Id: objdrv_sybase.c,v 1.4 2002/04/25 04:26:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.4  2002/04/25 04:26:07  gbeeley
+    Basic overhaul of objdrv_sybase to fix some security issues, improve
+    robustness with key data in particular, and so forth.  Added a new
+    flag to the objDataToString functions: DATA_F_SYBQUOTE, which quotes
+    strings like Sybase wants them quoted (using a pair of quote marks to
+    escape a lone quote mark).
+
     Revision 1.3  2002/04/25 01:13:44  jorupp
      * increased buffer size for query in form
      * changed sybase driver to not put strings in two sets of quotes on update
@@ -93,6 +100,12 @@
 #define SYBD_SHOW_SQL		1	/* debug printout SQL issued to Sybase */
 #define SYBD_RESULTSET_CACHE	64	/* number of rows to hold in cache */
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
+
+
+/*** This is a hack.  Couldn't get -D__USE_GNU to work.  ***/
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW 0400000
+#endif
 
 
 /*** Structure for storing table-key information ***/
@@ -342,6 +355,13 @@ sybd_internal_GetConn(pSybdNode db_node, char* user, char* pwd)
     CS_COMMAND* cmd;
     char sbuf[64];
 
+	/** User/pass out of range? **/
+	if (strlen(user) > 31 || strlen(pwd) > 31)
+	    {
+	    mssError(1,"SYBD","Username or password invalid");
+	    return NULL;
+	    }
+
     	/** Scan to see if we already have a useable connection **/
 	for(i=0;i<db_node->Conns.nItems;i++)
 	    {
@@ -413,24 +433,29 @@ sybd_internal_GetConn(pSybdNode db_node, char* user, char* pwd)
 	/** Do a USE DATABASE only if database was specified in the node. **/
 	if (db_node->Database[0])
 	    {
-	    sprintf(sbuf,"use %s",db_node->Database);
+	    if (strpbrk(db_node->Database," \t\r\n"))
+		{
+		mssError(1,"SYBD","Invalid database name '%s'",db_node->Database);
+		return NULL;
+		}
+	    snprintf(sbuf,64,"use %s",db_node->Database);
 	    cmd = sybd_internal_Exec(conn->SessionID, sbuf);
 	    while((rval=ct_results(cmd, (CS_INT*)&i)))
 	        {
 	        if (rval == CS_FAIL)
 	            {
-		    mssError(0,"SYBD","Could not 'use' database!");
+		    mssError(0,"SYBD","Could not 'use' database '%s'!", db_node->Database);
 		    sybd_internal_Close(cmd);
 		    return NULL;
 		    }
 	        if (rval == CS_END_RESULTS || i == CS_CMD_DONE) break;
 	        }
 	    sybd_internal_Close(cmd);
-	    strcpy(conn->Username, user);
-	    strcpy(conn->Password, pwd);
-	    conn->Busy = 1;
-	    xaAddItem(&(db_node->Conns),(void*)conn);
 	    }
+	strcpy(conn->Username, user);
+	strcpy(conn->Password, pwd);
+	conn->Busy = 1;
+	xaAddItem(&(db_node->Conns),(void*)conn);
 
     return conn->SessionID;
     }
@@ -449,14 +474,14 @@ sybd_internal_ReleaseConn(pSybdNode db_node, CS_CONNECTION* session)
 	for(i=0;i<db_node->Conns.nItems;i++)
 	    {
 	    conn = (pSybdConn)(db_node->Conns.Items[i]);
-	    if (conn->SessionID == session)
+	    if (conn->SessionID == session && conn->Busy)
 	        {
 		conn->Busy = 0;
 		return 0;
 		}
 	    }
 
-	mssError(1,"SYBD","Critical internal error - releasing released connection!");
+	mssError(1,"SYBD","Bark! Critical internal error - releasing released connection!");
 
     return -1;
     }
@@ -583,6 +608,14 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 		}
 	    sybd_internal_ReleaseConn(db_node, s);
 	    }
+	else
+	    {
+	    mssError(0,"SYBD","Could not get connection to retrieve types list");
+	    xhDeInit(&(db_node->TableInf));
+	    xaDeInit(&(db_node->Conns));
+	    nmFree(db_node, sizeof(SybdNode));
+	    return NULL;
+	    }
 
     return db_node;
     }
@@ -602,6 +635,13 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
     int l,i,col,find_col,restype;
     CS_COMMAND* cmd;
 
+	/** Valid table name check. **/
+	if (strpbrk(table,"\" \t\r\n\""))
+	    {
+	    mssError(0,"SYBD","Table name '%s' invalid", table);
+	    return NULL;
+	    }
+
     	/** See if this table's metadata is cached. **/
 	tdata = (pSybdTableInf)xhLookup(&(node->TableInf),table);
 	if (tdata) return tdata;
@@ -610,6 +650,12 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	tdata = (pSybdTableInf)nmMalloc(sizeof(SybdTableInf));
 	if (!tdata) return NULL;
 	memset(tdata,0,sizeof(SybdTableInf));
+	if (strlen(table) > 31)
+	    {
+	    mssError(1,"SYBD","Table name too long");
+	    nmFree(tdata, sizeof(SybdTableInf));
+	    return NULL;
+	    }
 	strcpy(tdata->Table,table);
 	tdata->ColBufSize = 1024;
 	tdata->ColBuf = (char*)nmSysMalloc(tdata->ColBufSize);
@@ -623,7 +669,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	tdata->HasContent = 0;
 
 	/** Build the query to get the cols. **/
-	sprintf(sbuf,"SELECT c.name,c.colid,c.status,c.usertype FROM syscolumns c,sysobjects o WHERE c.id=o.id AND o.name='%s' ORDER BY c.colid",table);
+	snprintf(sbuf,160,"SELECT c.name,c.colid,c.status,c.usertype FROM syscolumns c,sysobjects o WHERE c.id=o.id AND o.name='%s' ORDER BY c.colid",table);
 	if (!(cmd=sybd_internal_Exec(session,sbuf)))
 	    {
 	    nmSysFree(tdata->ColBuf);
@@ -640,9 +686,18 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	    /** Get the col name. **/
 	    ct_get_data(cmd, 1, sbuf, 159, (CS_INT*)&i);
 	    sbuf[i] = 0;
+	    if (strpbrk(sbuf,"'\"\t\r\n "))
+		{
+		sybd_internal_Close(cmd);
+		nmSysFree(tdata->ColBuf);
+		nmFree(tdata,sizeof(SybdTableInf));
+		mssError(1,"SYBD","Column name %s in table %s is invalid.", sbuf, table);
+		return NULL;
+		}
 	    l = strlen(sbuf)+1;
 	    if (tdata->ColBufLen + l >= tdata->ColBufSize)
 	        {
+		/** Too many column names!  Realloc the buffer... **/
 		tmpptr = (char*)nmSysRealloc(tdata->ColBuf, tdata->ColBufSize+1024);
 		if (!tmpptr)
 		    {
@@ -651,6 +706,14 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 		    nmFree(tdata,sizeof(SybdTableInf));
 		    mssError(1,"SYBD","Realloc() failed while building column name list for table");
 		    return NULL;
+		    }
+
+		/** Realloc might have moved the block!!! sigh... **/
+		if (tmpptr != tdata->ColBuf)
+		    {
+		    ptr = ptr + (tmpptr - tdata->ColBuf);
+		    for(i=0;i<tdata->nCols;i++)
+			tdata->Cols[i] = tdata->Cols[i] + (tmpptr - tdata->ColBuf);
 		    }
 		tdata->ColBuf = tmpptr;
 		tdata->ColBufSize += 1024;
@@ -683,12 +746,12 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	    {
 	    nmSysFree(tdata->ColBuf);
 	    nmFree(tdata,sizeof(SybdTableInf));
-	    mssError(1,"SYBD","Nonexistent table");
+	    mssError(1,"SYBD","Nonexistent table '%s'", table);
 	    return NULL;
 	    }
 
 	/** Ok, done with that query.  Now load the primary key. **/
-	sprintf(sbuf,"SELECT keycnt,key1,key2,key3,key4,key5,key6,key7,key8 FROM syskeys k, sysobjects o where k.id=o.id and o.name='%s' and k.type=1",table);
+	snprintf(sbuf,160,"SELECT keycnt,key1,key2,key3,key4,key5,key6,key7,key8 FROM syskeys k, sysobjects o where k.id=o.id and o.name='%s' and k.type=1",table);
 	if ((cmd=sybd_internal_Exec(session,sbuf)))
 	    {
 	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
@@ -724,7 +787,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	tdata->RowAnnotExpr = NULL;
 	if (*(node->AnnotTable))
 	    {
-	    sprintf(sbuf, "SELECT a,b,c FROM %s WHERE a = '%s'", node->AnnotTable, table);
+	    snprintf(sbuf, 160, "SELECT a,b,c FROM %s WHERE a = '%s'", node->AnnotTable, table);
 	    if ((cmd=sybd_internal_Exec(session,sbuf)))
 	        {
 		while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
@@ -736,7 +799,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 			tdata->Annotation[i] = 0;
 
 			/** Get the annotation expression and compile it **/
-			ct_get_data(cmd, 3, sbuf, 255, (CS_INT*)&i);
+			ct_get_data(cmd, 3, sbuf, 159, (CS_INT*)&i);
 			sbuf[i] = 0;
 			tdata->ObjList = expCreateParamList();
 			expAddParamToList(tdata->ObjList, NULL, NULL, 0);
@@ -774,13 +837,15 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 char*
 sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
     {
-    static char fbuf[80];
+    static char fbuf[120];
     char* keyptrs[8];
     int i,col=0;
     char* ptr;
+    int n_left;
 
     	/** Get pointers to the key data. **/
 	ptr = fbuf;
+	n_left = 119;
 	for(i=0;i<tdata->nKeys;i++)
 	    {
 	    if (i>0) *(ptr++)='|';
@@ -790,25 +855,31 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
 	        {
 		case 7: /** INT **/
 		    memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
-		    sprintf(ptr,"%d",col);
+		    snprintf(ptr,n_left,"%d",col);
 		    break;
 		case 6: /** SMALLINT **/
 		    memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 2);
-		    sprintf(ptr, "%d", col);
+		    snprintf(ptr,n_left, "%d", col);
 		    break;
 		case 5: /** TINYINT **/
 		case 16: /** BIT **/
 		    memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 1);
-		    sprintf(ptr, "%d", col);
+		    snprintf(ptr,n_left, "%d", col);
 		    break;
 		case 1: /** CHAR **/
 		case 2: /** VARCHAR **/
 		case 18: /** SYSNAME **/
 		case 19: /** TEXT **/
-		    strcpy(ptr, inf->ColPtrs[tdata->KeyCols[i]]);
+		    snprintf(ptr,n_left,"%s", inf->ColPtrs[tdata->KeyCols[i]]);
 		    break;
 		}
+	    n_left -= strlen(ptr);
 	    ptr += strlen(ptr);
+	    if (n_left == 0)
+		{
+		mssError(1,"SYBD","Error - key/object name maximum length exceeded");
+		return NULL;
+		}
 	    }
 
     return fbuf;
@@ -824,17 +895,24 @@ char*
 sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table, char* filename)
     {
     static char wbuf[256];
-    static char fbuf[80];
+    static char fbuf[120];
     char* wptr;
     pSybdTableInf key;
     char* ptr;
     int i;
+    int is_string;
+    char* sptr;
 
 	/** Lookup the key data **/
 	key = sybd_internal_GetTableInf(node,session,table);
 	if (!key) return NULL;
 
 	/** Build the where clause condition **/
+	if (strlen(filename) > 119)
+	    {
+	    mssError(1,"SYBD","Filename too long for concat key");
+	    return NULL;
+	    }
 	strcpy(fbuf,filename);
 	ptr = strtok(fbuf,"|");
 	wbuf[0]=0;
@@ -847,6 +925,13 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		mssError(1,"SYBD","Illegal concat key length in filename (too long)");
 		return NULL;
 		}
+	    if ((wbuf + 255) - wptr <= 5 + 1 + strlen(key->Keys[i]) + strlen(ptr) + 2 + 1)
+		{
+		mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
+		return NULL;
+		}
+	    is_string = 1;
+	    if (strspn(ptr,"01234567890-") == strlen(ptr) && (!ptr[0] || !strchr(ptr+1,'-'))) is_string=0;
 	    if (wbuf[0]) 
 	        {
 		strcpy(wptr," AND ");
@@ -855,10 +940,22 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 	    strcpy(wptr, key->Keys[i]);
 	    wptr += strlen(wptr);
 	    *(wptr++) = '=';
-	    if (ptr[0] < '0' || ptr[0] > '9') *(wptr++)='"';
-	    strcpy(wptr,ptr);
-	    wptr += strlen(ptr);
-	    if (ptr[0] < '0' || ptr[0] > '9') *(wptr++)='"';
+	    if (is_string)
+		{
+		sptr = objDataToStringTmp(DATA_T_STRING,ptr,DATA_F_QUOTED | DATA_F_SYBQUOTE);
+		if ((wbuf + 255) - wptr <= strlen(sptr) + 1)
+		    {
+		    mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
+		    return NULL;
+		    }
+		strcpy(wptr,sptr);
+		wptr += strlen(sptr);
+		}
+	    else
+		{
+		strcpy(wptr,ptr);
+		wptr += strlen(ptr);
+		}
 	    ptr = strtok(NULL,"|");
 	    i++;
 	    }
@@ -995,12 +1092,19 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 			}
 		    else
 		        {
-			objDataToString(where_clause, DATA_T_STRING, tree->String, 0);
+			if (strpbrk(tree->String,"\"' \t\r\n"))
+			    {
+			    mssError(1,"SYBD","Invalid datepart() parameters in Expression Tree");
+			    }
+			else
+			    {
+			    objDataToString(where_clause, DATA_T_STRING, tree->String, 0);
+			    }
 			}
 		    }
 		else
 		    {
-	            objDataToString(where_clause, DATA_T_STRING, tree->String, DATA_F_QUOTED);
+	            objDataToString(where_clause, DATA_T_STRING, tree->String, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 		    }
 		break;
 
@@ -1044,7 +1148,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 			}
 		    else if (tree->DataType == DATA_T_STRING)
 		        {
-	                objDataToString(where_clause, DATA_T_STRING, &(tree->String), DATA_F_QUOTED);
+	                objDataToString(where_clause, DATA_T_STRING, &(tree->String), DATA_F_QUOTED | DATA_F_SYBQUOTE);
 			}
 		    else if (tree->DataType == DATA_T_DOUBLE)
 		        {
@@ -1246,13 +1350,22 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
     int i,n;
     char* ptr;
     char* endptr;
+    int maxlen;
 
     	/** Copy the row. **/
 	endptr = inf->RowBuf;
 	for(i=0;i<cnt;i++)
 	    {
 	    ptr = NULL;
-	    ct_get_data(s, i+1, endptr, 255, (CS_INT*)&n);
+	    maxlen = 255;
+	    if (((inf->RowBuf + 2048) - endptr) - 2 < maxlen) 
+		maxlen = ((inf->RowBuf + 2048) - endptr) - 2;
+	    if (maxlen <= 0)
+		{
+		mssError(1,"SYBD","Bark!  Row buffer overflow while retrieving record.");
+		return -1;
+		}
+	    ct_get_data(s, i+1, endptr, maxlen, (CS_INT*)&n);
 	    if (n==0) 
 	        {
 		inf->ColPtrs[i] = NULL;
@@ -1281,6 +1394,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pObjTrxTree new_oxt;
     pSybdTableInf tdata;
     CS_COMMAND* cmd;
+    char* ptr;
 
 	/** Allocate the structure **/
 	inf = (pSybdData)nmMalloc(sizeof(SybdData));
@@ -1318,11 +1432,18 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** Verify the table, if a table mentioned **/
 	if (inf->TablePtr)
 	    {
+	    if (strpbrk(inf->TablePtr," \t\r\n"))
+		{
+		mssError(1,"SYBD","Requested table %s is invalid", inf->TablePtr);
+		sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+		nmFree(inf,sizeof(SybdData));
+		return NULL;
+		}
 	    tdata = sybd_internal_GetTableInf(inf->Node, inf->SessionID, inf->TablePtr);
 	    inf->TData = tdata;
 	    if (!tdata && (!(obj->Mode & O_CREAT) || inf->TableSubPtr))
 	        {
-		mssError(1,"SYBD","Requested table does not exist");
+		mssError(0,"SYBD","Requested table does not exist or is inaccessible");
 		sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
 		nmFree(inf,sizeof(SybdData));
 		return NULL;
@@ -1409,8 +1530,14 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** If a row is being accessed, verify its existence / open its row **/
 	if (inf->Type == SYBD_T_ROW)
 	    {
-	    sprintf(sbuf,"SELECT * from %s WHERE %s",inf->TablePtr,
-	      sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr));
+	    ptr = sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr);
+	    if (!ptr)
+		{
+		sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+		nmFree(inf,sizeof(SybdData));
+		return NULL;
+		}
+	    snprintf(sbuf,256,"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
 	    if ((cmd=sybd_internal_Exec(inf->SessionID, sbuf)) == NULL)
 	        {
 		mssError(0,"SYBD","Could not retrieve row object from database");
@@ -1426,7 +1553,12 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	        while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
 	            {
 		    cnt++;
-		    sybd_internal_GetRow(inf,cmd,ncols);
+		    if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
+			{
+			sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+			nmFree(inf,sizeof(SybdData));
+			return NULL;
+			}
 		    }
 		}
 	    sybd_internal_Close(cmd);
@@ -1469,6 +1601,8 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
     pObjTrxTree attr_oxt, find_oxt;
     CS_COMMAND* cmd;
     pXString insbuf;
+    char* tmpptr;
+    char tmpch;
 
         /** Allocate a buffer for our insert statement. **/
 	insbuf = (pXString)nmMalloc(sizeof(XString));
@@ -1492,7 +1626,14 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 
 		/** Determine position,length within prikey-coded name **/
 		kptr = inf->RowColPtr;
-		for(i=0;i<inf->TData->ColKeys[j];i++) kptr = strchr(kptr,'|')+1;
+		for(i=0;i<inf->TData->ColKeys[j] && kptr != (char*)1;i++) kptr = strchr(kptr,'|')+1;
+		if (kptr == (char*)1)
+		    {
+		    mssError(1,"SYBD","Not enough components in concat primary key (name)");
+		    xsDeInit(insbuf);
+		    nmFree(insbuf,sizeof(XString));
+		    return -1;
+		    }
 		kendptr = strchr(kptr,'|');
 		if (!kendptr) len = strlen(kptr); else len = kendptr-kptr;
 
@@ -1504,9 +1645,11 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		    }
 		else if (ctype == 1 || ctype == 2 || ctype == 18 || ctype == 19)
 		    {
-		    xsConcatenate(insbuf, "\"", 1);
-		    xsConcatenate(insbuf, kptr, len);
-		    xsConcatenate(insbuf, "\"", 1);
+		    tmpch = kptr[len];
+		    kptr[len] = 0;
+		    tmpptr = objDataToStringTmp(DATA_T_STRING, kptr, DATA_F_QUOTED | DATA_F_SYBQUOTE);
+		    kptr[len] = tmpch;
+		    xsConcatenate(insbuf, tmpptr, -1);
 		    }
 		}
 	    else
@@ -1543,13 +1686,14 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		    else
                         {
                         mssError(1,"SYBD","Required column not specified in object create");
-                        nmFree(insbuf,4096);
+			xsDeInit(insbuf);
+			nmFree(insbuf,sizeof(XString));
                         return -1;
                         }
                     }
                 else 
 		    {
-		    objDataToString(insbuf, find_oxt->AttrType, find_oxt->AttrValue, DATA_F_QUOTED);
+		    objDataToString(insbuf, find_oxt->AttrType, find_oxt->AttrValue, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 		    }
                 }
 	    }
@@ -1640,6 +1784,12 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 		    /** Need to get a session? **/
 		    if (inf->SessionID == NULL) inf->SessionID = 
 		        sybd_internal_GetConn(inf->Node, mssUserName(), mssPassword());
+		    if (!inf->SessionID)
+			{
+			mssError(0,"SYBD","Database connection failed");
+			nmFree(inf, sizeof(SybdData));
+			return -1;
+			}
 
 		    /** Perform the insert. **/
 		    if (sybd_internal_InsertRow(inf,inf->SessionID, *oxt) < 0)
@@ -1704,6 +1854,7 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
     char sbuf[256];
     pSybdData inf;
     CS_COMMAND* cmd;
+    char* ptr;
 
 	/** Allocate the structure **/
 	inf = (pSybdData)nmMalloc(sizeof(SybdData));
@@ -1742,13 +1893,20 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Create the where clause for the delete. **/
-	sprintf(sbuf,"DELETE FROM %s WHERE %s",inf->TablePtr,
-	    sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr));
+	ptr = sybd_internal_FilenameToKey(inf->Node,inf->SessionID,inf->TablePtr,inf->RowColPtr);
+	if (!ptr)
+	    {
+	    sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
+	    nmFree(inf,sizeof(SybdData));
+	    return -1;
+	    }
+	snprintf(sbuf,256,"DELETE FROM %s WHERE %s",inf->TablePtr, ptr);
 
 	/** Run the delete **/
 	if ((cmd = sybd_internal_Exec(inf->SessionID,sbuf)) == NULL)
 	    {
 	    mssError(0,"SYBD","Delete operation failed");
+	    sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
 	    nmFree(inf,sizeof(SybdData));
 	    return -1;
 	    }
@@ -1777,6 +1935,7 @@ sybd_internal_PrepareText(pSybdData inf, CS_CONNECTION* session, int maxtextsize
     char buffer[1];
     char sbuf[160];
     int rcnt,rval;
+    char* ptr;
 
 	/** Determine column to use. **/
 	for(i=0;i<inf->TData->nCols;i++)
@@ -1796,9 +1955,12 @@ sybd_internal_PrepareText(pSybdData inf, CS_CONNECTION* session, int maxtextsize
 	/** If writing, make sure we have a textptr **/
 	if (inf->WriteSessID != NULL)
 	    {
-	    sprintf(sbuf,"UPDATE %s SET %s='' where %s", inf->TablePtr,col,
-	        sybd_internal_FilenameToKey(inf->Node, 
-		session,inf->TablePtr,inf->RowColPtr));
+	    ptr = sybd_internal_FilenameToKey(inf->Node, session,inf->TablePtr,inf->RowColPtr);
+	    if (!ptr)
+		{
+		return NULL;
+		}
+	    snprintf(sbuf,160,"UPDATE %s SET %s='' where %s", inf->TablePtr,col, ptr);
 	    if ((inf->RWCmd = sybd_internal_Exec(session, sbuf)) == NULL) 
 	        {
 		mssError(0,"SYBD","Could not run update to initialize textptr for content BLOB");
@@ -1809,9 +1971,13 @@ sybd_internal_PrepareText(pSybdData inf, CS_CONNECTION* session, int maxtextsize
 	    }
 
 	/** Build the command. **/
-	sprintf(sbuf,"set textsize %d select %s from %s where %s set textsize 255",
-	    maxtextsize,col,inf->TablePtr,sybd_internal_FilenameToKey(inf->Node,
-	        session,inf->TablePtr,inf->RowColPtr));
+	ptr = sybd_internal_FilenameToKey(inf->Node, session,inf->TablePtr,inf->RowColPtr);
+	if (!ptr)
+	    {
+	    return NULL;
+	    }
+	snprintf(sbuf,160,"set textsize %d select %s from %s where %s set textsize 255",
+	    maxtextsize,col,inf->TablePtr,ptr);
 	if ((inf->RWCmd = sybd_internal_Exec(session, sbuf)) == NULL) 
 	    {
 	    mssError(0,"SYBD","Could not run SQL to retrieve content BLOB from database");
@@ -1944,6 +2110,7 @@ sybd_internal_OpenTmpFile(char* name)
     {
     char ch;
     time_t t;
+    pFile fd;
 
 	/** Use 26 letters, with timestamp and random value **/
 	t = time(NULL);
@@ -1952,7 +2119,8 @@ sybd_internal_OpenTmpFile(char* name)
 	    sprintf(name,"/tmp/LS-%8.8lX%4.4lX%c",t,lrand48()&0xFFFF,ch);
 	    if (access(name,F_OK) < 0)
 	        {
-		return fdOpen(name, O_RDWR, 0600);
+		fd = fdOpen(name, O_RDWR | O_NOFOLLOW, 0600);
+		if (fd) return fd;
 		}
 	    }
 	mssErrorErrno(1,"SYBD","Could not open temp file");
@@ -2060,7 +2228,7 @@ sybdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	/** Alrighty then.  Send the data to Sybase or to the File. **/
 	if (inf->Size == -1)
 	    {
-	    if (fdWrite(inf->TmpFD, buffer, cnt, 0,0) < 0) 
+	    if (fdWrite(inf->TmpFD, buffer, cnt, 0, 0) < 0) 
 	        {
 		mssErrorErrno(1,"SYBD","Write to BLOB temp file failed");
 		return -1;
@@ -2111,9 +2279,9 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    case SYBD_T_DATABASE:
 	        /** Select the list of tables from the DB. **/
 		if (SYBD_USE_CURSORS)
-		    sprintf(qy->SQLbuf,"DECLARE _c CURSOR FOR SELECT name from sysobjects where type = 'U' ORDER BY name");
+		    snprintf(qy->SQLbuf,2048,"DECLARE _c CURSOR FOR SELECT name from sysobjects where type = 'U' ORDER BY name");
 		else
-		    sprintf(qy->SQLbuf,"SELECT name from sysobjects where type = 'U' ORDER BY name");
+		    snprintf(qy->SQLbuf,2048,"SELECT name from sysobjects where type = 'U' ORDER BY name");
 		qy->SessionID = inf->SessionID;
 		qy->ObjSession = inf->SessionID;
 		inf->SessionID = NULL;
@@ -2178,9 +2346,9 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			}
 	  	    }
 		if (SYBD_USE_CURSORS)
-		    sprintf(qy->SQLbuf,"DECLARE _c CURSOR FOR SELECT * FROM %s %s",inf->TablePtr, sql.String);
+		    snprintf(qy->SQLbuf,2048,"DECLARE _c CURSOR FOR SELECT * FROM %s %s",inf->TablePtr, sql.String);
 		else
-		    sprintf(qy->SQLbuf,"SELECT * FROM %s %s",inf->TablePtr, sql.String);
+		    snprintf(qy->SQLbuf,2048,"SELECT * FROM %s %s",inf->TablePtr, sql.String);
 		if (strcmp(qy->SQLbuf, SYBD_INF.LastSQL.String) || 1)
 		    {
 		    if (SYBD_SHOW_SQL) printf("SQL = %s\n",qy->SQLbuf);
@@ -2208,7 +2376,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    while(ct_results(qy->Cmd,(CS_INT*)&restype)==CS_SUCCEED && restype != CS_CMD_DONE);
 	    sybd_internal_Close(qy->Cmd);
-	    sprintf(qy->SQLbuf,"OPEN _c SET CURSOR ROWS %d FOR _c FETCH _c", SYBD_CURSOR_ROWCOUNT);
+	    snprintf(qy->SQLbuf,2048,"OPEN _c SET CURSOR ROWS %d FOR _c FETCH _c", SYBD_CURSOR_ROWCOUNT);
 	    qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
 	    if (!qy->Cmd)
 	        {
@@ -2216,7 +2384,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		mssError(0,"SYBD","Could not open cursor for query result set retrieval");
 		return NULL;
 		}
-	    sprintf(qy->SQLbuf,"FETCH _c");
+	    snprintf(qy->SQLbuf,2048,"FETCH _c");
 	    qy->RowsSinceFetch = 0;
 	    }
 
@@ -2231,7 +2399,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pSybdQuery qy = ((pSybdQuery)(qy_v));
     pSybdData inf;
-    char filename[80];
+    char filename[120];
     char* ptr;
     int new_type;
     int i,cnt;
@@ -2305,9 +2473,15 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    case SYBD_T_DATABASE:
 	        /** Get filename from the first column - table name. **/
 		new_type = SYBD_T_TABLE;
-		ct_get_data(qy->Cmd, 1, filename, 80, (CS_INT*)&i);
+		ct_get_data(qy->Cmd, 1, filename, 119, (CS_INT*)&i);
 		filename[i] = 0;
 		s2 = sybd_internal_GetConn(qy->ObjInf->Node, mssUserName(), mssPassword());
+		if (!s2)
+		    {
+		    mssError(0,"SYBD","Database connection failed");
+		    nmFree(inf, sizeof(SybdData));
+		    return NULL;
+		    }
 		tdata = sybd_internal_GetTableInf(qy->ObjInf->Node,s2,filename);
 		inf->TData = tdata;
 		sybd_internal_ReleaseConn(qy->ObjInf->Node,s2);
@@ -2335,9 +2509,19 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	    case SYBD_T_ROWSOBJ:
 	        /** Get the filename from the primary key of the row. **/
-		sybd_internal_GetRow(inf,qy->Cmd,qy->TableInf->nCols);
+		if (sybd_internal_GetRow(inf,qy->Cmd,qy->TableInf->nCols) < 0)
+		    {
+		    nmFree(inf,sizeof(SybdData));
+		    return NULL;
+		    }
 		new_type = SYBD_T_ROW;
-	        strcpy(filename,sybd_internal_KeyToFilename(qy->TableInf,inf));
+		ptr = sybd_internal_KeyToFilename(qy->TableInf,inf);
+		if (!ptr)
+		    {
+		    nmFree(inf,sizeof(SybdData));
+		    return NULL;
+		    }
+	        strcpy(filename,ptr);
 	        break;
 
 	    case SYBD_T_COLSOBJ:
@@ -2345,7 +2529,8 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		new_type = SYBD_T_COLUMN;
 		if (qy->RowCnt <= qy->TableInf->nCols)
 		    {
-		    strcpy(filename,qy->TableInf->Cols[qy->RowCnt-1]);
+		    memccpy(filename,qy->TableInf->Cols[qy->RowCnt-1], 0, 119);
+		    filename[119] = 0;
 		    }
 		else
 		    {
@@ -2357,6 +2542,12 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Build the filename. **/
 	ptr = memchr(obj->Pathname->Elements[obj->Pathname->nElements-1],'\0',256);
+	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(filename) >= 255)
+	    {
+	    mssError(1,"SYBD","Pathname too long for internal representation");
+	    nmFree(inf,sizeof(SybdData));
+	    return NULL;
+	    }
 	*(ptr++) = '/';
 	strcpy(ptr,filename);
 	obj->Pathname->Elements[obj->Pathname->nElements++] = ptr;
@@ -2398,7 +2589,7 @@ sybdQueryClose(void* qy_v, pObjTrxTree* oxt)
 	/** Deallocate the cursor? **/
 	if (SYBD_USE_CURSORS && (qy->ObjInf->Type == SYBD_T_DATABASE || qy->ObjInf->Type == SYBD_T_ROWSOBJ))
 	    {
-	    sprintf(qy->SQLbuf,"CLOSE _c DEALLOCATE CURSOR _c");
+	    snprintf(qy->SQLbuf,2048,"CLOSE _c DEALLOCATE CURSOR _c");
 	    qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
 	    if (qy->Cmd)
 	        {
@@ -2823,6 +3014,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
     CS_COMMAND* cmd;
     CS_CONNECTION* sess;
     char sbuf[160];
+    char* ptr;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -2855,6 +3047,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		case SYBD_T_TABLE:
 		    memccpy(inf->TData->Annotation, *(char**)val, '\0', 255);
 		    inf->TData->Annotation[255] = 0;
+		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    if (inf->Node->AnnotTable[0])
 		        {
 		        /** Get a session. **/
@@ -2863,7 +3056,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		        if (!sess) return -1;
 
 			/** Build the SQL to update the annotation table **/
-			sprintf(sbuf, "UPDATE %s set b = '%s' WHERE a = '%s'", inf->Node->AnnotTable,
+			snprintf(sbuf, 160, "UPDATE %s set b = \"%s\" WHERE a = '%s'", inf->Node->AnnotTable,
 				inf->TData->Annotation, inf->TData->Table);
 			cmd = sybd_internal_Exec(sess,sbuf);
 			if (cmd)
@@ -2907,6 +3100,11 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    (*oxt)->AllocObj = 0;
 		    (*oxt)->Object = NULL;
 		    (*oxt)->Status = OXT_S_VISITED;
+		    if (strlen(attrname) >= 64)
+			{
+			mssError(1,"SYBD","Attribute name '%s' too long",attrname);
+			return -1;
+			}
 		    strcpy((*oxt)->AttrName, attrname);
 		    obj_internal_SetTreeAttr(*oxt, type, val);
 		    }
@@ -2920,26 +3118,25 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    /** No transaction.  Simply do an update. **/
 		    type = sybdGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
+		    ptr = sybd_internal_FilenameToKey(inf->Node, sess,inf->TablePtr,inf->RowColPtr);
+		    if (!ptr)
+			{
+			return -1;
+			}
 		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
 		        {
-	                sprintf(sbuf,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
-	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED),
-			    sybd_internal_FilenameToKey(inf->Node,
-			    sess,inf->TablePtr,inf->RowColPtr));
+	                snprintf(sbuf,160,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
+	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_STRING)
 		        {   /** objDataToString quotes strings **/
-	                sprintf(sbuf,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
-	                    attrname,objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED),
-			    sybd_internal_FilenameToKey(inf->Node,
-			    sess,inf->TablePtr,inf->RowColPtr));
+	                snprintf(sbuf,160,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
+			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_MONEY || type == DATA_T_DATETIME)
 		        {
-	                sprintf(sbuf,"UPDATE %s SET %s='%s' WHERE %s",inf->TablePtr,
-	                    attrname,objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED),
-			    sybd_internal_FilenameToKey(inf->Node,
-			    sess,inf->TablePtr,inf->RowColPtr));
+	                snprintf(sbuf,160,"UPDATE %s SET %s='%s' WHERE %s",inf->TablePtr, attrname,
+			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 
 		    /** Start the update. **/
