@@ -3,9 +3,10 @@
 **  String manipulation functions
 */
 
-function dt_strpad(str, pad, len) {
+function htutil_strpad(str, pad, len) {
 	str = new String(str);
+	tmp = '';
 	for (var i=0; i < len-str.length; i++)
-		str = pad+str;
-	return str;
+		tmp = pad+tmp;
+	return tmp+str;
 }

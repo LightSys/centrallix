@@ -153,8 +153,8 @@ function dt_formatdate(l, d, fmt) {
 			str  = l.strMonthsAbbrev[d.getMonth()] + ' ';
 			str += d.getDate() + ', ';
 			str += d.getYear()+1900 + ', ';
-			str += dt_strpad(d.getHours(), '0', 2)+':';
-			str += dt_strpad(d.getMinutes(), '0', 2);
+			str += htutil_strpad(d.getHours(), '0', 2)+':';
+			str += htutil_strpad(d.getMinutes(), '0', 2);
 			break;
 	}
 	return str;
@@ -294,7 +294,7 @@ function dt_drawtime(l, d) {
 	lhr = l.ld.tl_hr;
 	lmn = l.ld.tl_mn;
 	lhr.document.write('<table width=70 height=20 cellpadding=0 cellspacing=0 border=0><tr><td align=right width=58>');
-	lmn.document.write(dt_strpad(l.wdate.getHours(), '0', 2));
+	lmn.document.write(htutil_strpad(l.wdate.getHours(), '0', 2));
 	lhr.document.write('&nbsp;</td><td width=12>');
 	lhr.document.write('<table cellpadding=0 cellspacing=0 border=0 width=12><tr><td valign=middle>');
 	lhr.document.write('<img src=/sys/images/spnr_up.gif></td></tr><tr><td>');
@@ -309,7 +309,7 @@ function dt_drawtime(l, d) {
 	lhr.document.images[1].mainlayer = l;
 	lhr.document.close();
 	lmn.document.write('<table width=70 height=20 cellpadding=0 cellspacing=0 border=0><tr><td align=right width=58>');
-	lmn.document.write(dt_strpad(l.wdate.getMinutes(), '0', 2));
+	lmn.document.write(htutil_strpad(l.wdate.getMinutes(), '0', 2));
 	lmn.document.write('&nbsp;</td><td width=12>');
 	lmn.document.write('<table cellpadding=0 cellspacing=0 border=0 width=12><tr><td valign=middle>');
 	lmn.document.write('<img src=/sys/images/spnr_up.gif></td></tr><tr><td>');
