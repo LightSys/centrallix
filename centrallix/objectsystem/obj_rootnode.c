@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_rootnode.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: obj_rootnode.c,v 1.3 2002/02/21 06:32:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_rootnode.c,v $
 
     $Log: obj_rootnode.c,v $
+    Revision 1.3  2002/02/21 06:32:53  jorupp
+    updated obj_rootnode.c to use supplied rootnode
+    removed warning in obj.h
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -96,7 +100,7 @@ rootOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     	/** Open the rootnode file **/
 	inf = (pRootData)nmMalloc(sizeof(RootData));
 	memset(inf,0,sizeof(RootData));
-	inf->fd = fdOpen(OBJSYS_DEFAULT_ROOTNODE, O_RDONLY, 0600);
+	inf->fd = fdOpen(OSYS.RootPath, O_RDONLY, 0600);
 	if (!inf->fd)
 	    {
 	    nmFree(inf,sizeof(RootData));

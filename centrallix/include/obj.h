@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.5 2002/02/14 00:55:20 gbeeley Exp $
+    $Id: obj.h,v 1.6 2002/02/21 06:32:54 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.6  2002/02/21 06:32:54  jorupp
+    updated obj_rootnode.c to use supplied rootnode
+    removed warning in obj.h
+
     Revision 1.5  2002/02/14 00:55:20  gbeeley
     Added configuration file centrallix.conf capability.  You now MUST have
     this file installed, default is /usr/local/etc/centrallix.conf, in order
@@ -506,5 +510,5 @@ int objRegisterEventHandler(char* class_code, int (*handler_function)());
 int objRegisterEvent(char* class_code, char* pathname, char* where_clause, int flags, char* xdata);
 int objUnRegisterEvent(char* class_code, char* xdata);
 
-#endif _OBJ_H
+#endif /*_OBJ_H*/
 
