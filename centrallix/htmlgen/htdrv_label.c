@@ -42,6 +42,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.12  2002/07/26 16:12:04  pfinley
+    Standardized event connectors for editbox widget.  It now has:
+      Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove
+
     Revision 1.11  2002/07/25 18:08:36  mcancel
     Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
 
@@ -126,6 +130,8 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     int id;
     char* nptr;
     char *text;
+    pObject sub_w_obj;
+    pObjQuery qy;
 
     	/** Get an id for this. **/
 	id = (HTLBL.idcnt++);
@@ -173,9 +179,6 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	else
 	    strcpy(main_bg,"");
 
-	
-	
-	
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
@@ -186,12 +189,61 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
+	strcpy(nptr,name);
+	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
+	/** Script include to get functions **/
+	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
+
+	/** Event Handlers **/
+	htrAddEventHandler(s, "document","MOUSEUP", "lbl", 
+	    "\n"
+	    "    if (ly.kind == 'lbl') cn_activate(ly, 'Click');\n"
+	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseUp');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEDOWN", "lbl", 
+	    "\n"
+	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseDown');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEOVER", "lbl", 
+	    "\n"
+	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseOver');\n"
+	    "\n");
+   
+	htrAddEventHandler(s, "document","MOUSEOUT", "lbl", 
+	    "\n"
+	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseOut');\n"
+	    "\n");
+   
+	htrAddEventHandler(s, "document","MOUSEMOVE", "lbl", 
+	    "\n"
+	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseMove');\n"
+	    "\n");
+
+	htrAddScriptInit_va(s,"    %s = lbl_init(%s.layers.lbl%d);\n", nptr, parentname, id);
+
+//	htrAddScriptInit_va(s,"    %s = %s.layers.lbl%d;\n", nptr, parentname, id);
+//	htrAddScriptInit_va(s,"    %s.layers.lbl%d.kind = 'lbl';\n", parentname, id);
+//	htrAddScriptInit_va(s,"    %s.layers.lbl%d.document.layer = %s;\n", parentname, id, nptr);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"lbl%d\">\n",id);
 	htrAddBodyItem_va(s, "<table border=0 width=\"%i\"><tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
 	htrAddBodyItem(s, "</DIV>\n");
+
+	/** Check for more sub-widgets **/
+	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+	if (qy)
+	    {
+	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
+		{
+		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
+		objClose(sub_w_obj);
+		}
+	    objQueryClose(qy);
+	    }
 
 	nmFree(text,strlen(text)+1);
 
@@ -216,6 +268,14 @@ htlblInitialize()
 	drv->Render = htlblRender;
 	drv->Verify = htlblVerify;
 	strcpy(drv->Target, "Netscape47x:default");
+
+	/** Events **/ 
+	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
