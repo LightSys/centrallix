@@ -141,6 +141,9 @@
 /* Define for backward compatibility with libxml1 */
 #undef USE_LIBXML1
 
+/* Define for Mbox support */
+#undef USE_MBOX
+
 /* Define for MIME support */
 #undef USE_MIME
 

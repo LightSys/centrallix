@@ -80,6 +80,10 @@ AH_TEMPLATE([USE_XML], [Define for XML support])
 AH_TEMPLATE([USE_LIBXML1], [Define for backward compatibility with libxml1])
 CENTRALLIX_CHECK_XML_OS
 
+dnl Mbox support.
+AH_TEMPLATE([USE_MBOX], [Define for Mbox support])
+CENTRALLIX_CHECK_MBOX_OS
+
 AC_SUBST(OBJDRIVERMODULES)
 AC_SUBST(OBJDRIVERS)
 AC_SUBST(STATIC_CFLAGS)

@@ -371,6 +371,33 @@ AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
     ]
 )
 
+dnl Test for the Mbox os driver.
+AC_DEFUN(CENTRALLIX_CHECK_MBOX_OS,
+    [
+	AC_MSG_CHECKING(if MBOX support is desired)
+
+	AC_ARG_ENABLE(mbox,
+	    AC_HELP_STRING([--disable-mbox],
+		[disable mbox support]
+	    ),
+	    WITH_MBOX="$enableval", 
+	    WITH_MBOX="yes"
+	)
+ 
+	if test "$WITH_MBOX" = "yes"; then
+	    AC_DEFINE(USE_MBOX)
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_mbox.so"
+	    else
+		OBJDRIVERS="$OBJDRIVERS objdrv_mbox.o"
+	    fi
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+    ]
+)
+
 
 dnl Test for the XML os driver.
 AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
