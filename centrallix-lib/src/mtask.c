@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.25 2004/06/12 04:09:37 gbeeley Exp $
+    $Id: mtask.c,v 1.26 2004/08/29 05:35:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.26  2004/08/29 05:35:21  jorupp
+     * fixed an overflow error under cygwin, where MTASK.TicksPerSec is 1000
+
     Revision 1.25  2004/06/12 04:09:37  gbeeley
     - supporting logic to allow saving of an MTask security context for later
       use in a new thread.  This is needed for the asynchronous event delivery
@@ -247,6 +250,7 @@ static MTSystem MTASK;
 #define MTASK_DEBUG_FDCLOSE 0x800
 #define MTASK_DEBUG_SHOW_IO_SELECT 0x1000
 #define MTASK_DEBUG_SHOW_NON_IO_SELECT 0x2000
+#define MTASK_DEBUG_SHOW_SELECT_TICKS_USED 0x4000
 #else
 #define MTASK_DEBUG_SHOW_READ_SELECTABLE 0
 #define MTASK_DEBUG_SHOW_WRITE_SELECTABLE 0
@@ -262,6 +266,7 @@ static MTSystem MTASK;
 #define MTASK_DEBUG_FDCLOSE 0
 #define MTASK_DEBUG_SHOW_IO_SELECT 0
 #define MTASK_DEBUG_SHOW_NON_IO_SELECT 0
+#define MTASK_DEBUG_SHOW_SELECT_TICKS_USED
 #endif
 
 /*** mtSetDebug - sets the debugging level ***/
@@ -948,7 +953,7 @@ mtSched()
 		    if (MTASK.EventWaitTable[i]->Thr->Status == THR_S_BLOCKED) n_timerblock++;
 #ifdef MTASK_DEBUG
 		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTABLE)
-			printf("%s is blocked on a timer (k=%i)\n",MTASK.EventWaitTable[i]->Thr->Name,k);
+			printf("%s is blocked on a timer (k=%i) (cnt=%i)\n",MTASK.EventWaitTable[i]->Thr->Name,k, MTASK.EventWaitTable[i]->TargetTickCnt);
 #endif
 		    }
 		}
@@ -1021,7 +1026,7 @@ mtSched()
 		    return mtSched();
 		    }
 	        tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
-	        tmout.tv_usec = (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)*(1000000/(64*MTASK.TicksPerSec));
+	        tmout.tv_usec = ((long long) (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)) * 1000000/(64*MTASK.TicksPerSec);
 		/** if we need 4.5 ticks, we need to select for at least 5 to make sure we don't get 4 and 'deadlock' **/
 		tmout.tv_usec= (tmout.tv_usec/ticklen)*ticklen+ticklen;
 		if(tmout.tv_usec>=1000000)
@@ -1045,6 +1050,14 @@ mtSched()
 	/** Did the select() delay?  If so, add to sleeping threads. **/
 	tx2 = mtRealTicks();
 	MTASK.LastTick = tx2;
+
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_SELECT_TICKS_USED)
+	    {
+	    printf("old ticks: %i\n", tx);
+	    printf("current ticks: %i\n", tx2);
+	    printf("ticks used: %i\n", tx2-tx);
+	    }
+
 	if (n_runnable+n_timerblock == 0 && highest_cntdn > 0) t = mtTicks();
 	if (tx2 - tx > 0)
 	    {
