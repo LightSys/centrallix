@@ -63,10 +63,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.46 2004/08/17 03:46:41 gbeeley Exp $
+    $Id: net_http.c,v 1.47 2004/08/28 06:48:08 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.47  2004/08/28 06:48:08  jorupp
+     * remove some unneed printfs
+     * add a check to make sure we get the right cookie, in case there is one for another application on the same server
+
     Revision 1.46  2004/08/17 03:46:41  gbeeley
     - ignore "null" connections from MSIE
     - better error reporting when wgtr routines fail
@@ -3062,6 +3066,11 @@ nht_internal_ConnHandler(void* conn_v)
 		while((toktype = mlxNextToken(s)))
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
+		    /** if the token is a string, and the current cookie doesn't look like ours, try the next one **/
+		    if (toktype == MLX_TOK_STRING && strncmp(cookie,"LSID=",5))
+			{
+			mlxCopyToken(s,cookie,160);
+			}
 		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
 		}
@@ -3206,7 +3215,6 @@ nht_internal_ConnHandler(void* conn_v)
 		/** Reset only the watchdog timer on a ping. **/
 		if (nht_internal_ResetWatchdog(w_timer))
 		    {
-		    //printf("ping request ERR\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
 				 "Pragma: no-cache\r\n"
@@ -3219,14 +3227,12 @@ nht_internal_ConnHandler(void* conn_v)
 		    }
 		else
 		    {
-		    //printf("ping request OK\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
 				 "Pragma: no-cache\r\n"
 				 "Content-Type: text/html\r\n"
 				 "\r\n"
 				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
-		    //printf("%s",sbuf);
 		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		    netCloseTCP(conn,1000,0);
 		    thExit();
@@ -3238,7 +3244,6 @@ nht_internal_ConnHandler(void* conn_v)
 		 ** want to automatically re-login the user since that defeats the purpose
 		 ** of session timeouts.
 		 **/
-		//printf("ping request ERR -- NO SESSION\n");
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
 			     "Pragma: no-cache\r\n"
