@@ -84,6 +84,10 @@ dnl Mbox support.
 AH_TEMPLATE([USE_MBOX], [Define for Mbox support])
 CENTRALLIX_CHECK_MBOX_OS
 
+dnl Shell osdriver support.
+AH_TEMPLATE([USE_SHELL], [Define for Shell osdriver support])
+CENTRALLIX_CHECK_SHELL_OS
+
 AC_SUBST(OBJDRIVERMODULES)
 AC_SUBST(OBJDRIVERS)
 AC_SUBST(STATIC_CFLAGS)

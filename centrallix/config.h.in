@@ -147,6 +147,9 @@
 /* Define for MIME support */
 #undef USE_MIME
 
+/* Define for Shell osdriver support */
+#undef USE_SHELL
+
 /* Define for Sybase support */
 #undef USE_SYBASE
 

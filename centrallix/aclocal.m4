@@ -398,6 +398,34 @@ AC_DEFUN(CENTRALLIX_CHECK_MBOX_OS,
     ]
 )
 
+dnl Test for the SHELL os driver.
+AC_DEFUN(CENTRALLIX_CHECK_SHELL_OS,
+    [
+	AC_MSG_CHECKING(if shell osdriver support is desired)
+
+	AC_ARG_ENABLE(shell-os,
+	    AC_HELP_STRING([--enable-shell-os],
+		[enable shell osdriver support]
+	    ),
+	    WITH_SHELL="$enableval", 
+	    WITH_SHELL="no"
+	)
+ 
+	if test "$WITH_SHELL" = "yes"; then
+	    AC_DEFINE(USE_SHELL)
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_shell.so"
+	    else
+		OBJDRIVERS="$OBJDRIVERS objdrv_shell.o"
+	    fi
+	    AC_MSG_RESULT(yes)
+	    AC_WARN(The shell driver can be _very_ insecure!!!)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+    ]
+)
+
 
 dnl Test for the XML os driver.
 AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
