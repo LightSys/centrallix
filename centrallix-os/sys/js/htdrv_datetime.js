@@ -56,6 +56,8 @@ function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	l.clearvalue = dt_clearvalue;
 	l.resetvalue = dt_resetvalue;
 	l.fieldname  = fn;
+	l.getfocushandler  = dt_getfocus;
+	l.losefocushandler = dt_losefocus;
 	l.kind  = c1.kind = c2.kind = 'dt';
 	l.document.layer  = c1.document.layer = c2.document.layer = l;
 	dt_tag_images(l.document, 'dt', l);
@@ -70,10 +72,10 @@ function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	l.PaneLayer = dt_create_pane(l,bg,w2,h2,h);
 	l.PaneLayer.ml = l;
 	l.PaneLayer.HidLayer.Areas = l.PaneLayer.VisLayer.Areas = new Array();
-	l.PaneLayer.VisLayer.getfocushandler = dt_getfocus;
-	l.PaneLayer.HidLayer.getfocushandler = dt_getfocus;
-	l.PaneLayer.VisLayer.losefocushandler = dt_losefocus;
-	l.PaneLayer.HidLayer.losefocushandler = dt_losefocus;
+	l.PaneLayer.VisLayer.getfocushandler = dt_getfocus_day;
+	l.PaneLayer.HidLayer.getfocushandler = dt_getfocus_day;
+	l.PaneLayer.VisLayer.losefocushandler = dt_losefocus_day;
+	l.PaneLayer.HidLayer.losefocushandler = dt_losefocus_day;
 	if (id) {
 		l.DateObj = new Date(id);
 		l.TmpDateObj = new Date(id);
@@ -86,6 +88,7 @@ function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	dt_drawmonth(l.PaneLayer, l.DateObj);
 	if (fm_current) fm_current.Register(l);
 	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dt', 'dt', 0);
+	return l;
 }
 
 function dt_formatdate(l, d, fmt) {
@@ -180,7 +183,11 @@ function dt_toggle(l) {
 	}
 }
 
-function dt_getfocus(a,b,c,d,e,f) {
+function dt_getfocus(a,b,c) {
+	cn_activate(c, 'GetFocus');
+}
+
+function dt_getfocus_day(a,b,c,d,e,f) {
 	dt_current.DateObj = new Date(f.DateVal);
 	dt_drawdate(dt_current, f.DateVal);
 	dt_current.PaneLayer.visibility = 'hide';
@@ -192,6 +199,11 @@ function dt_getfocus(a,b,c,d,e,f) {
 }
 
 function dt_losefocus() {
+	cn_activate(this, 'LoseFocus');
+	return true;
+}
+
+function dt_losefocus_day() {
 	return true;
 }
 

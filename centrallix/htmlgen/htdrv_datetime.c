@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.17 2002/07/25 17:06:45 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.18 2002/07/25 18:46:35 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.18  2002/07/25 18:46:35  lkehresman
+    Standardized event connectors for datetime widget.  It now has:
+    MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,Change,GetFocus,LoseFocus
+
     Revision 1.17  2002/07/25 17:06:45  lkehresman
     Added the width parameter to datetime drawing function.
 
@@ -142,8 +146,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char* ptr;
     char *sql;
     char *str;
-    char *attr;
-    char name[128];
+    char *attr, *nptr;
+    char name[64];
     char initialdate[64];
     char fgcolor[64];
     char bgcolor[128];
@@ -190,6 +194,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
+	nptr = (char*)nmMalloc(strlen(name)+1);
+	strcpy(nptr,name);
 
 	/** Get initial date **/
 	if (objGetAttrValue(w_obj, "sql", POD(&sql)) == 0) 
@@ -255,6 +261,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Write named global **/
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
+	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
@@ -262,11 +269,12 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init("
+	htrAddScriptInit_va(s, "    %s = dt_init("
 	                       "%s.layers.dt%dbtn, "
 	                       "%s.layers.dt%dbtn.document.layers.dt%dcon1, "
 	                       "%s.layers.dt%dbtn.document.layers.dt%dcon2, "
 	                       "\"%s\",\"%s\",\"%s\",\"%s\", %d, %d, %d, %d)\n",
+			nptr,
 			parentname,id, 
 			parentname,id,id, 
 			parentname,id,id, 
@@ -296,17 +304,40 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    } else {\n"
 		"        if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
 		"            dt_mousedown(ly);\n"
+		"            if (ly.kind == 'dt') cn_activate(ly, 'MouseDown');\n"
 		"        } else if (dt_current && dt_current != ly) {\n"
 		"            dt_current.PaneLayer.visibility = 'hide';\n"
 		"            dt_current = null;\n"
 		"        }\n"
 		"    }\n");
+
 	htrAddEventHandler(s, "document","MOUSEUP","dt",
 		"    if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
 		"        dt_mouseup(ly);\n"
+		"        if (ly.kind == 'dt') cn_activate(ly, 'MouseUp');\n"
+		"        if (ly.kind == 'dt') cn_activate(ly, 'Click');\n"
 		"    }\n");
 
+	htrAddEventHandler(s, "document","MOUSEMOVE","dt",
+		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly, 'MouseMove');\n");
 
+	htrAddEventHandler(s, "document","MOUSEOVER","dt",
+		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly, 'MouseOver');\n");
+
+	htrAddEventHandler(s, "document","MOUSEOUT","dt",
+		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly, 'MouseOut');\n");
+
+	/** Check for more sub-widgets within the datetime. **/
+	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+	if (qy)
+	    {
+	    while((qy_obj = objQueryFetch(qy, O_RDONLY)))
+	        {
+		htrRenderWidget(s, qy_obj, z+1, parentname, nptr);
+		objClose(qy_obj);
+		}
+	    objQueryClose(qy);
+	    }
 
     return 0;
     }
@@ -329,6 +360,17 @@ htdtInitialize()
 	drv->Render = htdtRender;
 	drv->Verify = htdtVerify;
 	strcpy(drv->Target, "Netscape47x:default");
+
+	/** Register events **/
+	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
+	htrAddEvent(drv,"Change");
+	htrAddEvent(drv,"GetFocus");
+	htrAddEvent(drv,"LoseFocus");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
