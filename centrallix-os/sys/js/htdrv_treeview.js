@@ -37,12 +37,13 @@ function tv_new_layer(width,pdoc,l)
 	else if(cx__capabilities.Dom1HTML)
 	    {
 	    nl = document.createElement('DIV');
-	    nl.style.setProperty('position','absolute','');
+	    /*nl.style.cssText = "position:absolute; width:" + width + "px; height:20px; clip:rect(0px," + width + "px, 20px, 0px); overflow:hidden; visibility:inherit";*/
+	    /*nl.style.setProperty('position','absolute','');
 	    nl.style.setProperty('width',width + 'px','');
 	    nl.style.setProperty('height','20px','');
 	    nl.style.setProperty('clip','rect(0px,' + width + 'px, 20px, 0px)','');
 	    nl.style.setProperty('overflow','hidden','');
-	    nl.style.setProperty('visibility','inherit','');
+	    nl.style.setProperty('visibility','inherit','');*/
 	    pdoc.appendChild(nl);
 	    }
 	else

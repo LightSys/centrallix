@@ -59,7 +59,55 @@ function wn_init(l,ml,gs,ct,titlebar)
     l.ActionSetVisibility = wn_setvisibility;
     l.ActionToggleVisibility = wn_togglevisibility;
     l.RegisterOSRC = wn_register_osrc;
+
+    // Register as a triggerer of reveal/obscure events
+    l.SetVisibilityBH = wn_setvisibility_bh;
+    l.SetVisibilityTH = wn_setvisibility_th;
+    l.Reveal = wn_cb_reveal;
+    pg_reveal_register_triggerer(l);
+    if (htr_getvisibility(l) == 'inherit') 
+	{
+	pg_addsched_fn(window, "pg_reveal_event", new Array(l,l,'Reveal'));
+	}
+
     return l;
+    }
+
+// Called when our reveal/obscure request has been acted upon.
+// context 'c' == whether to be visible (true) or not (false).
+function wn_cb_reveal(e) 
+    {
+    if ((e.eventName == 'RevealOK' && e.c == true) || (e.eventName == 'ObscureOK' && e.c == false))
+	this.SetVisibilityBH(e.c);
+    return true;
+    }
+
+// Top Half of set visibility routine - before obscure/reveal checks.
+function wn_setvisibility_th(v)
+    {
+    var cur_vis = htr_getvisibility(this);
+    if (v && (cur_vis != 'inherit'))
+	pg_reveal_event(this, v, 'RevealCheck');
+    else if (!v && (cur_vis == 'inherit'))
+	pg_reveal_event(this, v, 'ObscureCheck');
+    return;
+    }
+
+// Bottom Half of set visibility routine - after obscure/reveal checks.
+// this is where we really close it or make it visible.
+function wn_setvisibility_bh(v)
+    {
+    if (!v)
+	{
+	pg_reveal_event(this, v, 'Obscure');
+	wn_close(this);
+	}
+    else
+	{
+	pg_reveal_event(this, v, 'Reveal');
+	wn_bring_top(this);
+	htr_setvisibility(this,'inherit');
+	}
     }
 
 function wn_register_osrc(t)
@@ -236,12 +284,14 @@ function wn_togglevisibility(aparam)
     {
     if (this.visibility == 'hide')
 	{
-	aparam.IsVisible = 1;
-	this.ActionSetVisibility(aparam);
+	//aparam.IsVisible = 1;
+	//this.ActionSetVisibility(aparam);
+	this.SetVisibilityTH(true);
 	}
     else
 	{
-	this.visibility = 'hide';
+	//this.visibility = 'hide';
+	this.SetVisibilityTH(false);
 	}
     }
 
@@ -249,17 +299,19 @@ function wn_setvisibility(aparam)
     {
     if (aparam.IsVisible == null || aparam.IsVisible == 1 || aparam.IsVisible == '1')
 	{
-	wn_bring_top(this);
+	/*wn_bring_top(this);
 	this.visibility = 'inherit';
 	if(!(aparam.NoInit && aparam.NoInit!=false && aparam.NoInit!=0))
 	    {
 	    for (var t in this.osrc)
 		this.osrc[t].InitQuery();
-	    }
+	    }*/
+	this.SetVisibilityTH(true);
 	}
     else
 	{
-	this.visibility = 'hidden';
+	this.SetVisibilityTH(false);
+	//this.visibility = 'hidden';
 	}
     }
 
@@ -343,7 +395,7 @@ function wn_mouseup(e)
     if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')
         {
         pg_set(e.target,'src','/sys/images/01close.gif');
-        wn_close(ly.mainlayer);
+	ly.mainlayer.SetVisibilityTH(false);
         }
     else if (ly.document != null && pg_images(ly).length > 6 && pg_images(ly)[6].name == 'close')
         {

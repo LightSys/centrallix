@@ -50,6 +50,23 @@ function fs_setvalue(m) {
     }
 }
 
+// Reveal callback passes the info on to the form widget.
+function fs_cb_reveal(e) {
+    //alert(this.name + ' got ' + e.eventName);
+    switch (e.eventName) {
+	case 'Reveal':
+	case 'Obscure':
+	    if (this.form) this.form.Reveal(this,e);
+	    break;
+	case 'RevealCheck':
+	case 'ObscureCheck':
+	    if (this.form) this.form.Reveal(this,e);
+	    else pg_reveal_check_ok(e);
+	    break;
+    }
+    return true;
+}
+
 function fs_init(l,s) {
     l.kind = 'formstatus';
     l.mainlayer = l;
@@ -68,6 +85,17 @@ function fs_init(l,s) {
     l.isFormStatusWidget = true;
     l.setvalue = fs_setvalue;
     l.imagestyle = s;
-    if (fm_current) fm_current.Register(l);
+    if (fm_current) {
+	fm_current.Register(l);
+	l.form = fm_current;
+    }
+
+    // Request reveal/obscure notifications
+    l.Reveal = fs_cb_reveal;
+    if (pg_reveal_register_listener(l)) {
+	// already visible
+	l.form.Reveal(l,{ eventName:'Reveal' });
+    }
+
     return l;
 }

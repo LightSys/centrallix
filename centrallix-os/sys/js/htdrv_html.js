@@ -16,6 +16,21 @@ function ht_loadpage(aparam)
     this.source = aparam.Source;
     }
 
+function ht_addtext(aparam)
+    {
+    this.mainlayer.content += aparam.Text;
+    }
+function ht_addtext_bh()
+    {
+    pg_resize(this.mainlayer.parentLayer);
+    }
+function ht_showtext(aparam)
+    {
+    this.document.write("<pre>" + this.mainlayer.content + "</pre>\n");
+    this.document.close();
+    pg_resize(this.mainlayer.parentLayer);
+    }
+
 function ht_sourcechanged(prop,oldval,newval)
     {
     if (this.mode != 'dynamic' || (this.mode == 'dynamic' && newval.substr(0,5)=='http:'))
@@ -118,6 +133,7 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
     l.altLayer = l2;
     l.faderLayer = fl;
     l.LSParent = p;
+    l.content = '';
     if (h != -1)
 	{
 	l.clip.height = h;
@@ -133,7 +149,14 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
 	l.onload = ht_reloaded;
 	l.load(source,w);
 	}
+    else if (source.substr(0,6) == 'debug:')
+	{
+	pg_debug_register_log(l);
+	}
     l.source = source;
     l.ActionLoadPage = ht_loadpage;
+    l.ActionAddText = ht_addtext;
+    l.ActionShowText = ht_showtext;
     l.watch('source', ht_sourcechanged);
     }
+

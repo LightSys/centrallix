@@ -783,6 +783,46 @@ function form_cbobj_compare(a,b)
     if(a[0]<b[0]) return -1;
     }
 
+/** Called when a form element is 'revealed' or 'obscured' **/
+function form_cb_reveal(element,event)
+    {
+    //alert(this.name + ' got ' + event.eventName);
+    switch(event.eventName)
+	{
+	case 'Reveal':
+	    this.revealed_elements++;
+	    if (this.revealed_elements != 1) return 0;
+	    if (this.osrc) this.osrc.Reveal(this);
+	    break;
+	case 'Obscure':
+	    this.revealed_elements--;
+	    if (this.revealed_elements != 0) return 0;
+	    if (this.osrc) this.osrc.Obscure(this);
+	    break;
+	case 'RevealCheck':
+	    pg_reveal_check_ok(event);
+	    break;
+	case 'ObscureCheck':
+	    // unsaved data?
+	    if (this.IsUnsaved)
+		{
+		this._orsevent = event;
+		var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ActionSave();");
+		this.cb['_3bConfirmSave'].add(this,savefunc);
+		this.cb['_3bConfirmDiscard'].add(this,new Function('this.ActionDiscard();pg_reveal_check_ok(this._orsevent);'));
+		this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
+		this.show3bconfirm();
+		}
+	    else
+		{
+		this.ActionDiscard();
+		pg_reveal_check_ok(event);
+		}
+	    break;
+	}
+    return 0;
+    }
+
 /** Form initializer **/
 function form_init(aq,an,am,av,and,me,name,_3b,ro)
     {
@@ -795,6 +835,7 @@ function form_init(aq,an,am,av,and,me,name,_3b,ro)
     form.oldmode = null;
     form.didsearchlast = false;
     form.didsearch = false;
+    form.revealed_elements = 0;
     if(osrc_current)
 	{
 	form.osrc = osrc_current;
@@ -876,6 +917,7 @@ function form_init(aq,an,am,av,and,me,name,_3b,ro)
     form.ChangeMode = form_change_mode;
     form.SendEvent = form_send_event;
     form.BuildDataObj = form_build_dataobj;
+    form.Reveal = form_cb_reveal;
     //form.InitQuery = form_init_query;
     return form;
     }

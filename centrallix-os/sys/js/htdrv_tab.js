@@ -41,6 +41,7 @@ function tc_makecurrent()
     htr_unwatch(this.tabctl,"selected_index","tc_selection_changed");
     this.tabctl.selected_index = this.tabindex;
     this.tabctl.selected = this.tabname;
+    this.tabctl.current_tab = this;
     htr_watch(this.tabctl,"selected", "tc_selection_changed");
     htr_watch(this.tabctl,"selected_index", "tc_selection_changed");
     }
@@ -87,7 +88,9 @@ function tc_addtab(l_tab, l_page, l, nm)
 	newy += l.yo;
 	l_tab.clip[l.cl] -= l.ci;
 	if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
+	else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
 	if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
+	else if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
 	}
     else
 	{
@@ -95,6 +98,9 @@ function tc_addtab(l_tab, l_page, l, nm)
 	htr_unwatch(l,"selected_index","tc_selection_changed");
 	l.selected = l_tab.tabname;
 	l.selected_index = l_tab.tabindex;
+	l.current_tab = l_tab;
+	l.init_tab = l_tab;
+	pg_addsched_fn(window,"pg_reveal_event",new Array(l_page,l_page,'Reveal'));
 	htr_watch(l,"selected", "tc_selection_changed");
 	htr_watch(l,"selected_index", "tc_selection_changed");
 	if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
@@ -113,14 +119,23 @@ function tc_addtab(l_tab, l_page, l, nm)
     l_tab.makeCurrent = tc_makecurrent;
     l_tab.pageX = newx;
     l_tab.pageY = newy;
+    l_page.tabctl = this;
+    l_page.tab = l_tab;
     l_page.clip.width = this.clip.width-2;
     l_page.clip.height = this.clip.height-2;
+
+    // Indicate that we generate reveal/obscure notifications
+    l_page.Reveal = tc_cb_reveal;
+    pg_reveal_register_triggerer(l_page);
+    //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
+
     return l_tab;
     }
 
 function tc_selection_changed(prop,o,n)
     {
     var tabindex = null;
+    if (o == n) return n;
     // find index if name specified
     if (prop == 'selected')
 	{
@@ -137,7 +152,7 @@ function tc_selection_changed(prop,o,n)
 
     // okay to change tab.
     //this.tabs[tabindex-1].makeCurrent();
-    pg_addsched("makeCurrent()", this.tabs[tabindex-1]);
+    pg_addsched_fn(this,"ChangeSelection1", new Array(this.tabs[tabindex-1].tabpage));
     return n;
     }
 
@@ -147,6 +162,8 @@ function tc_init(l,tloc,mb,ib)
     htr_init_layer(l,l,'tc');
     l.tabs = new Array();
     l.addTab = tc_addtab;
+    l.current_tab = null;
+    l.init_tab = null;
     l.tloc = tloc;
     if (tc_tabs == null) tc_tabs = new Array();
     tc_tabs[tc_tabs.length++] = l;
@@ -164,6 +181,11 @@ function tc_init(l,tloc,mb,ib)
     htr_watch(l,"selected", "tc_selection_changed");
     htr_watch(l,"selected_index", "tc_selection_changed");
     l.tc_selection_changed = tc_selection_changed;
+
+    // Reveal/Obscure mechanism
+    l.ChangeSelection1 = tc_changeselection_1;
+    l.ChangeSelection2 = tc_changeselection_2;
+    l.ChangeSelection3 = tc_changeselection_3;
 
     // Movement geometries and clipping for tabs
     switch(l.tloc)
@@ -195,3 +217,43 @@ function tc_init(l,tloc,mb,ib)
 	}
     return l;
     }
+
+
+// Reveal() interface function - called when a triggerer event occurs.
+// c == tabpage (not tab) to make current.
+// this == tabpage (not tab) event (revealcheck/obscurecheck) was processed for.
+function tc_cb_reveal(e)
+    {
+    switch(e.eventName)
+	{
+	case 'ObscureOK': 
+	    this.tabctl.ChangeSelection2(e.c);
+	    break;
+	case 'RevealOK':
+	    this.tabctl.ChangeSelection3(e.c);
+	    break;
+	case 'ObscureFailed':
+	case 'RevealFailed':
+	    break;
+	}
+    return true;
+    }
+
+// change selection - first function, called initially.
+function tc_changeselection_1(c)
+    {
+    pg_reveal_event(c.tabctl.current_tab.tabpage, c, 'ObscureCheck');
+    }
+// change selection - second function, called when ObscureCheck succeeds.
+function tc_changeselection_2(c)
+    {
+    pg_reveal_event(c, c, 'RevealCheck');
+    }
+// change selection - third function, called when RevealCheck succeeds.
+function tc_changeselection_3(c)
+    {
+    pg_reveal_event(c, c, 'Reveal');
+    pg_reveal_event(c.tabctl.current_tab.tabpage, c, 'Obscure');
+    c.tab.makeCurrent();
+    }
+

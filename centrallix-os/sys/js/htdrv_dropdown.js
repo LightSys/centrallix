@@ -272,7 +272,7 @@ function dd_scroll(t)
 
 function dd_create_pane(l)
     {
-    var p = new Layer(1024);
+    var p = new Layer(1024,pg_toplevel_layer(l));
     p.kind = 'dd_pn';
     p.visibility = 'hide';
     p.document.layer = p;
@@ -293,6 +293,8 @@ function dd_create_pane(l)
     p.document.write("</BODY>");
     p.document.close();
     htutil_tag_images(p.document,'dt_pn',p,l);
+    //p.moveAbove(l);
+    p.zIndex = l.zIndex + 10;
 
     /**  Create scroll background layer  **/
     p.ScrLayer = new Layer(1024, p);

@@ -602,6 +602,8 @@ function pg_init(l,a,gs,ct)
     pg_attract = a;
     if (cx__capabilities.Dom0NS) pg_set_emulation(document);
     htr_init_layer(window,window,"window");
+    pg_reveal_register_triggerer(window);
+    pg_reveal_event(window,null,'Reveal');
     return l;
     }
 
@@ -658,6 +660,19 @@ function pg_addsched(e,o)
 	}
     }
 
+function pg_addsched_fn(o,f,p)
+    {
+    var sched = {func:f, obj:o, param:p};
+    pg_schedtimeoutlist.push(sched);
+    if(!pg_schedtimeout) 
+	{
+	if (window.pg_isloaded)
+	    pg_schedtimeout = setTimeout(pg_dosched, 0);
+	else
+	    pg_schedtimeout = setTimeout(pg_dosched, 100);
+	}
+    }
+
 function pg_expchange(p,o,n)
     {
     if (o==n) return n;
@@ -680,12 +695,23 @@ function pg_expchange(p,o,n)
 
 function pg_dosched()
     {
+    pg_schedtimeout = null;
     var sched_item = null;
     window.pg_isloaded = true;
     if (pg_schedtimeoutlist.length > 0)
     	{
-	sched_item = pg_schedtimeoutlist.pop();
-	with (sched_item.obj) { eval(sched_item.exp); }
+	sched_item = pg_schedtimeoutlist.splice(0,1)[0];
+	if (sched_item.exp)
+	    {
+	    // evaluate expression
+	    //alert('evaluating ' + sched_item.exp);
+	    with (sched_item.obj) { eval(sched_item.exp); }
+	    }
+	else
+	    {
+	    // call function
+	    sched_item.obj[sched_item.func].apply(sched_item.obj, sched_item.param);
+	    }
 	}
 
     if (pg_schedtimeoutlist.length > 0)
@@ -816,3 +842,285 @@ function pg_setkbdfocus(l, a, xo, yo)
     return true;
     }
 
+
+// pg_toplevel_layer() - returns the layer which contains the given
+// one, at the top level (i.e., a direct child of the page itself)
+function pg_toplevel_layer(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	{
+	while (l != window && l.parentLayer != window) l = l.parentLayer;
+	}
+    else
+	{
+	while (l.tagName != 'BODY' && l.parentNode.tagName != 'BODY' && 
+		l != window && l.parentNode != window) 
+	    l = l.parentNode;
+	}
+    return l;
+    }
+
+
+// pg_serialized_load() - schedules the reload of a layer, hidden or visible,
+// from the server in a manner that keeps things serialized so server loads
+// don't overlap.
+function pg_serialized_load(l, newsrc, cb)
+    {
+    pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
+    pg_loadqueue.push({lyr:l, src:newsrc, cb:cb});
+    pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
+    if (!pg_loadqueue_busy) //pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
+	pg_serialized_load_doone();
+    }
+
+// pg_serialized_write() - schedules the writing of content to a layer, so that
+// we don't have the document open while stuff is happening from the server.
+function pg_serialized_write(l, text, cb)
+    {
+    pg_loadqueue.push({lyr:l, text:text, cb:cb});
+    if (!pg_loadqueue_busy) //pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
+	pg_serialized_load_doone();
+    }
+
+// pg_serialized_load_doone() - loads the next item off of the
+// serialized loader list.
+function pg_serialized_load_doone()
+    {
+    if (pg_loadqueue.length == 0) return;
+    var one_item = pg_loadqueue.shift(); // remove first item
+    if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.src + ' into ' + one_item.lyr.name + '\n');
+    pg_loadqueue_busy = true;
+    one_item.lyr.__pg_onload = one_item.cb;
+    if (one_item.src)
+	{
+	one_item.lyr.onload = pg_serialized_load_cb;
+	pg_set(one_item.lyr, 'src', one_item.src);
+	}
+    else if (one_item.text)
+	{
+	one_item.lyr.document.write(one_item.text);
+	one_item.lyr.document.close();
+	if (one_item.lyr.__pg_onload) one_item.lyr.__pg_onload();
+	pg_loadqueue_busy = false;
+	if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
+	}
+    }
+
+// pg_serialized_load_cb() - called when a load finishes
+function pg_serialized_load_cb()
+    {
+    if (this.__pg_onload) this.__pg_onload();
+    pg_loadqueue_busy = false;
+    pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': ' + this.name + '\n');
+    if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
+    }
+
+
+// pg_reveal_register_listener() - when a layer/div requests to be
+// notified when it is made visible to the user or is hidden from
+// the user.
+function pg_reveal_register_listener(l)
+    {
+    // If listener reveal fn not set up, set it to the standard.
+    if (!l.__pg_reveal_listener_fn) l.__pg_reveal_listener_fn = l.Reveal;
+    l.__pg_reveal_is_listener = true;
+
+    // Search for the triggerer in question.
+    var trigger_layer = l;
+    do  {
+	if (cx__capabilities.Dom0NS)
+	    trigger_layer = trigger_layer.parentLayer;
+	else 
+	    trigger_layer = trigger_layer.parentNode;
+	} while (!trigger_layer.__pg_reveal_is_triggerer && trigger_layer != window && trigger_layer != document);
+
+    // Add us to the triggerer
+    if (trigger_layer && trigger_layer.__pg_reveal) trigger_layer.__pg_reveal.push(l);
+    return trigger_layer.__pg_reveal_visible && trigger_layer.__pg_reveal_parent_visible;
+    }
+
+// pg_reveal_register_triggerer() - when a layer/div states that it can
+// generate reveal/obscure events that need to be arbitrated by this
+// system.
+function pg_reveal_register_triggerer(l)
+    {
+    l.__pg_reveal_is_triggerer = true;
+    l.__pg_reveal = new Array();
+    l.__pg_reveal_visible = false;
+    l.__pg_reveal_listener_fn = pg_reveal_internal;
+    l.__pg_reveal_triggerer_fn = l.Reveal;
+    l.__pg_reveal_busy = false;
+    if (l != window && l != document)
+	l.__pg_reveal_parent_visible = pg_reveal_register_listener(l);
+    else
+	l.__pg_reveal_parent_visible = true;
+    return;
+    }
+
+// pg_reveal_internal() - this is basically the listener-style callback for
+// a triggerer that is used to link events generated by a parent triggerer
+// down to listeners on this triggerer.
+function pg_reveal_internal(e)
+    {
+    // Parent telling us something we already know?  (this is just a sanity check)
+    if ((this.__pg_reveal_parent_visible) && e.eventName == 'RevealCheck') return pg_reveal_check_ok(e);
+    if ((!this.__pg_reveal_parent_visible) && e.eventName == 'ObscureCheck') return pg_reveal_check_ok(e);
+    if (this.__pg_reveal_parent_visible && e.eventName == 'Reveal') return true;
+    if (!this.__pg_reveal_parent_visible && e.eventName == 'Obscure') return true;
+
+    // Does this change actually affect our listeners?  (don't bother them if it doesn't)
+    var was_visible = (this.__pg_reveal_parent_visible && this.__pg_reveal_visible);
+    var going_to_be_visible = ((e.eventName == 'RevealCheck' || e.eventName == 'Reveal') && this.__pg_reveal_visible);
+    var vis_changing = (was_visible != going_to_be_visible);
+
+    // For Reveal and Obscure, simply filter the events down.
+    if (vis_changing && (e.eventName == 'Reveal' || e.eventName == 'Obscure')) 
+	{
+	this.__pg_reveal_parent_visible = (e.eventName == 'Reveal');
+	return pg_reveal_send_events(this, e.eventName);
+	}
+
+    // For RevealCheck and ObscureCheck, start the notification process.
+    if (vis_changing && (e.eventName == 'RevealCheck' || e.eventName == 'ObscureCheck'))
+	{
+	if (this.__pg_reveal.length == 0) return pg_reveal_check_ok(e);
+	this.__pg_reveal_busy = true;
+	var our_e = new Object();
+	our_e.eventName = e.eventName;
+	our_e.parent_e = e;
+	our_e.triggerer = this;
+	our_e.listener_num = 0;
+	our_e.origName = null;   // not needed
+	our_e.triggerer_c = null;   // not needed
+	pg_addsched_fn(this.__pg_reveal[0], "Reveal", new Array(e));
+	}
+    return true;
+    }
+
+// pg_reveal_event() - called by a triggerer to indicate that the triggerer
+// desires to initiate an event.
+function pg_reveal_event(l,c,e_name)	
+    {
+    if (l.__pg_reveal_busy) return false;
+
+    // not a check event
+    if (e_name == 'Reveal' || e_name == 'Obscure')
+	{
+	if (l.__pg_reveal_visible == (e_name == 'Reveal')) return true; // already set
+	l.__pg_reveal_visible = (e_name == 'Reveal');
+	pg_reveal_send_events(l.__pg_reveal, e_name);
+	return true;
+	}
+
+    // short circuit check process?
+    if (e_name == 'RevealCheck' && (l.__pg_reveal.length == 0 || !l.__pg_reveal_parent_visible || l.__pg_reveal_visible))
+	{
+	var e = {eventName:'RevealOK', c:c};
+	l.__pg_reveal_visible = true;
+	pg_addsched_fn(l, "Reveal", new Array(e));
+	return true;
+	}
+    if (e_name == 'ObscureCheck' && (l.__pg_reveal.length == 0 || !l.__pg_reveal_visible || !l.__pg_reveal_parent_visible))
+	{
+	var e = {eventName:'ObscureOK', c:c};
+	l.__pg_reveal_visible = false;
+	pg_addsched_fn(l, "Reveal", new Array(e));
+	return true;
+	}
+
+    // send initial check event.
+    l.__pg_reveal_busy = true;
+    e = new Object();
+    e.eventName = e_name;
+    e.origName = e_name;
+    e.triggerer = l;
+    e.parent_e = null;   // not needed
+    e.triggerer_c = c;
+    e.listener_num = 0;
+    pg_addsched_fn(l.__pg_reveal[0], "Reveal", new Array(e));
+
+    return true;
+    }
+
+// pg_reveal_check_ok() - called when the listener approves the check event.
+function pg_reveal_check_ok(e)
+    {
+    e.listener_num++;
+    if (e.triggerer.__pg_reveal.length > e.listener_num)
+	{
+	pg_addsched_fn(__pg_reveal[e.listener_num], "Reveal", new Array(e));
+	}
+    else
+	{
+	if (e.parent_e)
+	    {
+	    e.triggerer.__pg_reveal_busy = false;
+	    return pg_reveal_check_ok(e.parent_e);
+	    }
+	else
+	    {
+	    // update visibility
+	    //if (e.origName == 'Reveal') e.triggerer.__pg_reveal_visible = true;
+	    //else e.triggerer.__pg_reveal_visible = false;
+
+	    // notify listeners
+	    //pg_reveal_send_events(e.triggerer.__pg_reveal, e.origName);
+
+	    // notify triggerer
+	    var triggerer_e = new Object();
+	    if (e.origName == 'RevealCheck') triggerer_e.eventName = 'RevealOK';
+	    else triggerer_e.eventName = 'ObscureOK';
+	    triggerer_e.c = e.triggerer_c;
+	    pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e));
+	    e.triggerer.__pg_reveal_busy = false;
+	    }
+	}
+    return true;
+    }
+
+// pg_reveal_check_veto() - when a listener veto's a triggerer's check
+// event.
+function pg_reveal_check_veto(e)
+    {
+    if (e.parent_e)
+	{
+	e.triggerer.__pg_reveal_busy = false;
+	return pg_reveal_check_veto(e.parent_e);
+	}
+    else
+	{
+	// notify triggerer
+	var triggerer_e = new Object();
+	if (e.origName == 'Reveal') triggerer_e.eventName = 'RevealFailed';
+	else triggerer_e.eventName = 'ObscureFailed';
+	triggerer_e.c = e.triggerer_c;
+	pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e));
+	e.triggerer.__pg_reveal_busy = false;
+	}
+    return true;
+    }
+
+// pg_reveal_send_events() - send an event to all listeners
+function pg_reveal_send_events(a, e)
+    {
+    var listener_e = new Object();
+    listener_e.eventName = e;
+    for (var i=0; i<a.length; i++)
+	{
+	pg_addsched_fn(a[i], "Reveal", new Array(listener_e));
+	}
+    return true;
+    }
+
+
+// set up for debug logging
+function pg_debug_register_log(l)
+    {
+    pg_debug_log = l;
+    }
+
+// send debug msg
+function pg_debug(msg)
+    {
+    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg});
+    }

@@ -248,6 +248,27 @@ function tbld_unsetclick(l,n)
     l.clicked[n] = 0;
     }
 
+// Called when the table's layer is revealed/shown to the user
+function tbld_cb_reveal(event)
+    {
+    switch(event.eventName)
+	{
+	case 'Reveal':
+	    if (this.osrc) this.osrc.Reveal(this);
+	    break;
+	case 'Obscure':
+	    if (this.osrc) this.osrc.Obscure(this);
+	    break;
+	case 'RevealCheck':
+	    pg_reveal_check_ok(event);
+	    break;
+	case 'ObscureCheck':
+	    pg_reveal_check_ok(event);
+	    break;
+	}
+    }
+
+
 function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,followcurrent,dragcols,colsep,gridinemptyrows,cols)
     {
     t.startat=1;
@@ -439,6 +460,11 @@ function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborde
     t.Update=tbld_update;
     t.RecnumToSlot=tbld_recnum_to_slot
     t.SlotToRecnum=tbld_slot_to_recnum
+
+    // Request reveal/obscure notifications
+    t.Reveal = tbld_cb_reveal;
+    pg_reveal_register_listener(t);
+
     return t;
     }
 
