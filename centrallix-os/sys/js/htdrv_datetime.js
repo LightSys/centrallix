@@ -44,7 +44,7 @@ function dt_disable() {
 
 // Date/Time Functions
 
-function dt_init(l,lp,c1,c2,c3,c4,c5,c6,id,bg,fg,fn,w) {
+function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	this.enabled = 'full';
 	c1.mainlayer = l;
 	c2.mainlayer = l;
@@ -57,17 +57,9 @@ function dt_init(l,lp,c1,c2,c3,c4,c5,c6,id,bg,fg,fn,w) {
 	l.resetvalue = dt_resetvalue;
 	l.fieldname  = fn;
 	l.kind  = c1.kind = c2.kind = 'dt';
-	lp.kind = c3.kind = c4.kind = c5.kind = c6.kind = 'dt_pn';
 	l.document.layer  = c1.document.layer = c2.document.layer = l;
-	lp.document.layer = c3.document.layer = c4.document.layer = lp;
-	c5.document.layer = c6.document.layer = lp;
 	dt_tag_images(l.document, 'dt', l);
-	dt_tag_images(lp.document, 'dt_pn', lp);
-	lp.document.images[4].kind = 'dtimg_yrdn';
-	lp.document.images[5].kind = 'dtimg_mndn';
-	lp.document.images[6].kind = 'dtimg_mnup';
-	lp.document.images[7].kind = 'dtimg_yrup';
-	l.w = w;
+	l.w = w; l.h = h;
 	l.bg = bg;
 	l.fg = fg;
 	l.form = fm_current;
@@ -75,17 +67,13 @@ function dt_init(l,lp,c1,c2,c3,c4,c5,c6,id,bg,fg,fn,w) {
 	l.MonthsAbbrev = Array('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
 	l.VisLayer = c1;
 	l.HidLayer = c2;
-	l.PaneLayer = lp;
+	l.PaneLayer = dt_create_pane(l,bg,w2,h2,h);
 	l.PaneLayer.ml = l;
-	c3.Areas = c4.Areas = new Array();
-	l.PaneLayer.VisLayer = c3;
-	l.PaneLayer.HidLayer = c4;
+	l.PaneLayer.HidLayer.Areas = l.PaneLayer.VisLayer.Areas = new Array();
 	l.PaneLayer.VisLayer.getfocushandler = dt_getfocus;
 	l.PaneLayer.HidLayer.getfocushandler = dt_getfocus;
 	l.PaneLayer.VisLayer.losefocushandler = dt_losefocus;
 	l.PaneLayer.HidLayer.losefocushandler = dt_losefocus;
-	l.PaneLayer.MonVisLayer = c5;
-	l.PaneLayer.MonHidLayer = c6;
 	if (id) {
 		l.DateObj = new Date(id);
 		l.TmpDateObj = new Date(id);
@@ -95,7 +83,7 @@ function dt_init(l,lp,c1,c2,c3,c4,c5,c6,id,bg,fg,fn,w) {
 		l.TmpDateObj = new Date();
 		dt_drawdate(l, '');
 	}
-	dt_drawmonth(lp, l.DateObj);
+	dt_drawmonth(l.PaneLayer, l.DateObj);
 	if (fm_current) fm_current.Register(l);
 	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dt', 'dt', 0);
 }
@@ -207,6 +195,59 @@ function dt_losefocus() {
 	return true;
 }
 
+function dt_create_pane(ml,bg,w,h,h2) {
+	l = new Layer(1024);
+	l.document.write("<BODY "+bg+">");
+	l.document.write("<TABLE border=0 cellpadding=0 cellspacing=0 width="+w+" height="+h+">");
+	l.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>");
+	l.document.write("	<TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(w-2)+"></TD>");
+	l.document.write("	<TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>");
+	l.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(h-2)+" width=1></TD>");
+	l.document.write("	<TD valign=top>");
+	l.document.write("	<TABLE height=25 cellpadding=0 cellspacing=0 border=0>");
+	l.document.write("	<TR><TD width=18><IMG SRC=/sys/images/ico16aa.gif></TD>");
+	l.document.write("		<TD width=18><IMG SRC=/sys/images/ico16ba.gif></TD>");
+	l.document.write("		<TD width="+(w-72)+"></TD>");
+	l.document.write("		<TD width=18><IMG SRC=/sys/images/ico16ca.gif></TD>");
+	l.document.write("		<TD width=18><IMG SRC=/sys/images/ico16da.gif></TD></TR>");
+	l.document.write("	</TABLE>");
+	l.document.write("	<TABLE width="+w+" cellpadding=0 cellspacing=0 border=0>");
+	l.document.write("	<TR><TD align=center><B>S</B></TD>");
+	l.document.write("		<TD align=center><B>M</B></TD>");
+	l.document.write("		<TD align=center><B>T</B></TD>");
+	l.document.write("		<TD align=center><B>W</B></TD>");
+	l.document.write("		<TD align=center><B>T</B></TD>");
+	l.document.write("		<TD align=center><B>F</B></TD>");
+	l.document.write("		<TD align=center><B>S</B></TD></TR>");
+	l.document.write("	</TABLE>");
+	l.document.write("	</TD>");
+	l.document.write("	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(h-2)+" width=1></TD></TR>");
+	l.document.write("<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>");
+	l.document.write("	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(w-2)+"></TD>");
+	l.document.write("	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>");
+	l.document.write("</TABLE>");
+	l.document.write("</BODY>");
+	l.document.close();
+	l.HidLayer = new Layer(1024, l);
+	l.VisLayer = new Layer(1024, l);
+	l.MonHidLayer = new Layer(1024, l);
+	l.MonVisLayer = new Layer(1024, l);
+	l.HidLayer.y = l.VisLayer.y = 48;
+	l.MonHidLayer.x = l.MonVisLayer.x = 38;
+	l.MonHidLayer.y = l.MonVisLayer.y = 2;
+	l.x = ml.pageX;
+	l.y = ml.pageY+h2;
+	l.kind = l.HidLayer.kind = l.VisLayer.kind = l.MonHidLayer.kind = l.MonVisLayer.kind = 'dt_pn';
+	l.document.layer = l.HidLayer.document.layer = l.VisLayer.document.layer = l;
+	l.MonVisLayer.document.layer = l.MonHidLayer.document.layer = l;
+	dt_tag_images(l.document, 'dt_pn', l);
+	l.document.images[4].kind = 'dtimg_yrdn';
+	l.document.images[5].kind = 'dtimg_mndn';
+	l.document.images[6].kind = 'dtimg_mnup';
+	l.document.images[7].kind = 'dtimg_yrup';
+	return l;
+}
+
 /*  Event Functions  */
 function dt_mousedown(l) {
 	p = l;
@@ -222,6 +263,8 @@ function dt_mousedown(l) {
 			p.PaneLayer.visibility = 'hide';
 		} else {
 			dt_current = p;
+			p.PaneLayer.x = p.pageX;
+			p.PaneLayer.y = p.pageY+p.h;
 			p.PaneLayer.visibility = 'inherit';
 		}
 	}
