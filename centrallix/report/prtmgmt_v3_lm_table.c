@@ -54,10 +54,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.10 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.11 2005/03/01 07:13:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.11  2005/03/01 07:13:13  gbeeley
+    - minor tweak to how breaking of tables is done when the page fills up.
+
     Revision 1.10  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -283,10 +286,10 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		    }
 		}
 
-	    /** If we are inside a row, and row cannot break, break table and move
-	     ** entire row to next page.
+	    /** If we are inside a row, and row cannot break (or row is empty), 
+	     ** break table and move entire row to next page.
 	     **/
-	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && !(this->Flags & PRT_OBJ_F_ALLOWBREAK))
+	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && (!(this->Flags & PRT_OBJ_F_ALLOWBREAK) || this->Height == 0))
 		{
 		table_obj = this->Parent;
 		prt_internal_MakeOrphan(this);
