@@ -26,10 +26,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.4 2002/03/23 06:25:09 gbeeley Exp $
+    $Id: magic.h,v 1.5 2002/04/25 17:56:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.5  2002/04/25 17:56:54  gbeeley
+    Added Handle support (xhandle module, XHN).  This is used to provide a
+    more flexible abstraction between API return values (handles vs. ptrs)
+    and the underlying structures they actually reference.  Handles are
+    64bit on glibc2 ia32 platforms (unsigned long long int).
+
     Revision 1.4  2002/03/23 06:25:09  gbeeley
     Updated MSS to have a larger error string buffer, as a lot of errors
     were getting chopped off.  Added BDQS protocol files with some very
@@ -54,8 +60,8 @@
 
 #ifdef 	DBMAGIC
 
-#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y)),(*((int*)(0)) = *((int*)(0)))))
-#define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(0)) = *((int*)(0)))))
+#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y)),(*((int*)(8)) = *((int*)(0)))))
+#define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(8)) = *((int*)(0)))))
 #define ISMAGIC(x,y) (((pMagicHdr)(x))->Magic == (y))
 #define ISNTMAGIC(x,y) (((pMagicHdr)(x))->Magic != (y))
 #define SETMAGIC(x,y) (((pMagicHdr)(x))->Magic = (y))
@@ -78,6 +84,8 @@ typedef struct
 
 #define	MGK_FILE	0x12340001	/* mtask.h::File */
 #define MGK_OBJECT	0x12340102	/* obj.h::Object */
+#define MGK_OBJQUERY	0x1234015a	/* obj.h::ObjQuery */
+#define MGK_OBJSESSION	0x1234019b	/* obj.h::ObjSession */
 #define MGK_LXSESSION	0x12340203	/* mtlexer.h::LxSession */
 #define MGK_FREEMEM	0x12340304	/* newmalloc.c::Overlay (in)*/
 #define MGK_ALLOCMEM	0x1234031f	/* newmalloc.c::Overlay (out,uninitialized)*/
@@ -91,6 +99,7 @@ typedef struct
 #define MGK_PRTFMTR 	0x12340593	/* prtmgmt_v3.h::PrtHandle */
 #define MGK_PRTOUTDRV 	0x123405a4	/* prtmgmt_v3.h::PrtHandle */
 #define MGK_STRUCTINF	0x123406fd	/* stparse_new.h::StructInf */
+#define MGK_HANDLE	0x12340707	/* xhandle.h::HandleData */
 
 
 #endif /* not defined _MAGIC_H */

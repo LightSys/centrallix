@@ -1,4 +1,4 @@
-## $Id: Makefile,v 1.5 2002/03/23 18:34:35 gbeeley Exp $
+## $Id: Makefile,v 1.6 2002/04/25 17:56:53 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Attic/Makefile,v $
 ##
 ## Centrallix-Lib Makefile
@@ -16,12 +16,12 @@
 CFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -g -pg
 MTCFLAGS=-Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -g -pg
 
-XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o
-#XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o net_raw_api.o
+XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o
+#XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o net_raw_api.o xhandle.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
 
-XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo
-#XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo stparse.lo net_raw_api.lo
+XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo
+#XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo stparse.lo net_raw_api.lo xhandle.lo
 DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
 
 .SUFFIXES:	.c .o .lo
