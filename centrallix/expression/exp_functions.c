@@ -56,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.3 2003/04/24 02:13:22 gbeeley Exp $
+    $Id: exp_functions.c,v 1.4 2003/04/24 02:54:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.4  2003/04/24 02:54:48  gbeeley
+    Added quote() function as a special case of escape().
+
     Revision 1.3  2003/04/24 02:13:22  gbeeley
     Added functionality to handle "domain of execution" to the expression
     module, allowing the developer to specify the nature of an expression
@@ -827,7 +830,9 @@ int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     {
     char* ptr;
     char* dst;
+    char* escchars;
     int esccnt,len;
+    tree->DataType = DATA_T_STRING;
     if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
         {
 	mssError(1,"EXP","escape() requires two or three string parameters");
@@ -838,12 +843,21 @@ int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 	mssError(1,"EXP","the optional third escape() parameter must be a string");
 	return -1;
 	}
-    if (i2 && (ptr=strpbrk(i0->String, i2->String)) != NULL)
+    if (i2 && !(i2->Flags & EXPR_F_NULL) && (ptr=strpbrk(i0->String, i2->String)) != NULL)
 	{
 	mssError(1,"EXP","WARNING!! String contains invalid character asc=%d", (int)(*ptr));
 	return -1;
 	}
-    ptr = strpbrk(i0->String, i1->String);
+    if ((i0->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (i1->Flags & EXPR_F_NULL)
+	escchars = "";
+    else
+	escchars = i1->String;
+    ptr = strpbrk(i0->String, escchars);
     if (!ptr) ptr = strchr(i0->String, '\\');
     if (!ptr)
 	{
@@ -856,7 +870,7 @@ int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     ptr++;
     while(*ptr)
 	{
-	if (strchr(i1->String, *ptr) || *ptr == '\\') esccnt++;
+	if (strchr(escchars, *ptr) || *ptr == '\\') esccnt++;
 	ptr++;
 	}
     len = strlen(i0->String);
@@ -874,10 +888,59 @@ int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     dst = tree->String;
     while(*ptr)
 	{
-	if (strchr(i1->String, *ptr) || *ptr == '\\')
+	if (strchr(escchars, *ptr) || *ptr == '\\')
 	    *(dst++) = '\\';
 	*(dst++) = *(ptr++);
 	}
+    *dst = '\0';
+    return 0;
+    }
+
+
+int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int len,quotecnt;
+    char* ptr;
+    char* dst;
+    tree->DataType = DATA_T_STRING;
+    if (!i0 || i0->DataType != DATA_T_STRING || i1)
+        {
+	mssError(1,"EXP","quote() requires one string parameter");
+	return -1;
+	}
+    if ((i0->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    len = strlen(i0->String);
+    ptr = i0->String;
+    quotecnt = 0;
+    while(*ptr)
+	{
+	if (*ptr == '\\' || *ptr == '"') quotecnt++;
+	ptr++;
+	}
+    if (len + quotecnt + 2 < 64)
+	{
+	tree->Alloc = 0;
+	tree->String = tree->Types.StringBuf;
+	}
+    else
+	{
+	tree->Alloc = 1;
+	tree->String = nmSysMalloc(len + quotecnt + 2 + 1);
+	}
+    ptr = i0->String;
+    dst = tree->String;
+    *(dst++) = '"';
+    while(*ptr)
+	{
+	if (*ptr == '\\' || *ptr == '"')
+	    *(dst++) = '\\';
+	*(dst++) = *(ptr++);
+	}
+    *(dst++) = '"';
     *dst = '\0';
     return 0;
     }
@@ -1223,6 +1286,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
 	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
+	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
