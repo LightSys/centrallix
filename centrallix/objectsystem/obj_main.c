@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.3 2002/06/19 23:29:34 gbeeley Exp $
+    $Id: obj_main.c,v 1.4 2002/08/03 02:36:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.4  2002/08/03 02:36:34  gbeeley
+    Made all hash tables the same size at 257 (a prime) entries.
+
     Revision 1.3  2002/06/19 23:29:34  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -193,12 +196,12 @@ objInitialize()
 
 	/** Initialize the arrays and hash tables **/
 	xaInit(&(OSYS.OpenSessions), 256);
-	xhInit(&(OSYS.TypeExtensions), 255, 0);
-	xhInit(&(OSYS.DriverTypes), 255, 0);
-	xhqInit(&(OSYS.DirectoryCache), 256, 0, 511, obj_internal_DiscardDC, 0);
+	xhInit(&(OSYS.TypeExtensions), 257, 0);
+	xhInit(&(OSYS.DriverTypes), 257, 0);
+	xhqInit(&(OSYS.DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);
 	/*xaInit(&(OSYS.DirectoryQueue), 256);*/
 	xaInit(&(OSYS.Drivers), 256);
-	xhInit(&(OSYS.Types), 255, 0);
+	xhInit(&(OSYS.Types), 257, 0);
 	xaInit(&(OSYS.TypeList), 256);
 
 	chdir("/");

@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.24 2002/08/02 19:44:20 gbeeley Exp $
+    $Id: ht_render.c,v 1.25 2002/08/03 02:36:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.25  2002/08/03 02:36:34  gbeeley
+    Made all hash tables the same size at 257 (a prime) entries.
+
     Revision 1.24  2002/08/02 19:44:20  gbeeley
     Have ht_render report the widget type when it complains about not knowing
     a widget type when generating a page.
@@ -713,7 +716,7 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 	    if (!obj) return -1;
 	    memccpy(obj->Name, event_src, 0, 127);
 	    obj->Name[127] = '\0';
-	    xhInit(&(obj->HashTable),31,0);
+	    xhInit(&(obj->HashTable),257,0);
 	    xaInit(&(obj->Array),16);
 	    xhAdd(&(s->Page.EventScripts.HashTable), obj->Name, (void*)(obj));
 	    xaAddItem(&(s->Page.EventScripts.Array), (void*)obj);
@@ -729,7 +732,7 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 	    if (!evt) return -1;
 	    memccpy(evt->Name, event,0,127);
 	    evt->Name[127] = '\0';
-	    xhInit(&(evt->HashTable),31,0);
+	    xhInit(&(evt->HashTable),257,0);
 	    xaInit(&(evt->Array),16);
 	    xhAdd(&(obj->HashTable), evt->Name, (void*)evt);
 	    xaAddItem(&(obj->Array), (void*)evt);
@@ -901,11 +904,11 @@ htrRender(pFile output, pObject appstruct)
 	    nmFree(s, sizeof(HtSession));
 	    return -1;
 	    }
-	xhInit(&(s->Page.NameFunctions),63,0);
+	xhInit(&(s->Page.NameFunctions),257,0);
 	xaInit(&(s->Page.Functions),32);
-	xhInit(&(s->Page.NameIncludes),31,0);
+	xhInit(&(s->Page.NameIncludes),257,0);
 	xaInit(&(s->Page.Includes),32);
-	xhInit(&(s->Page.NameGlobals),127,0);
+	xhInit(&(s->Page.NameGlobals),257,0);
 	xaInit(&(s->Page.Globals),64);
 	xaInit(&(s->Page.Inits),64);
 	xaInit(&(s->Page.Cleanups),64);
@@ -914,7 +917,7 @@ htrRender(pFile output, pObject appstruct)
 	xaInit(&(s->Page.HtmlStylesheet),64);
 	xaInit(&(s->Page.HtmlBodyParams),16);
 	xaInit(&(s->Page.EventScripts.Array),16);
-	xhInit(&(s->Page.EventScripts.HashTable),31,0);
+	xhInit(&(s->Page.EventScripts.HashTable),257,0);
 	s->Page.HtmlBodyFile = NULL;
 	s->Page.HtmlHeaderFile = NULL;
 	s->Page.HtmlStylesheetFile = NULL;
@@ -1236,19 +1239,19 @@ htrInitialize()
 
     	/** Initialize the global hash tables and arrays **/
 	xaInit(&(HTR.Drivers),64);
-	xhInit(&(HTR.WidgetDrivers),255,0);
+	xhInit(&(HTR.WidgetDrivers),257,0);
 
 	/** This is a hashtable that will be keyed with user-agent:style combinations
 	    that point to hashtables keyed with widget names that point to the widget 
 	    driver. **/
-	xhInit(&(htWidgetSets),32,0);
+	xhInit(&(htWidgetSets),257,0);
 
 	/** Each user-agent:style combination will have a hashtable of widget names
 	    that contain pointers to the widget driver to use.  Each widget set will
 	    need a hashtable. **/
-	xhInit(&(htNtsp47_default),32,0);
-	xhInit(&(htMSIE_default),32,0);
-	xhInit(&(htMoz_default),32,0);
+	xhInit(&(htNtsp47_default),257,0);
+	xhInit(&(htMSIE_default),257,0);
+	xhInit(&(htMoz_default),257,0);
 
 	/** Add the target User-Agent/styles to the hash of widget sets.  Each widget
 	    set will need to be added here. **/
