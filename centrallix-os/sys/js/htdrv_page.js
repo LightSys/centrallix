@@ -704,6 +704,8 @@ function pg_removearea(a)
 	{
 	if (pg_arealist[i] == a)
 	    {
+	    if (a == pg_curarea) pg_removemousefocus();
+	    if (a == pg_curkbdarea) pg_removekbdfocus();
 	    pg_arealist.splice(i,1);
 	    return 1;
 	    }
@@ -1236,6 +1238,54 @@ function pg_removekbdfocus()
     return true;
     }
 
+function pg_setdatafocus(a)
+    {
+    var x = getPageX(a.layer)+a.x;
+    var y = getPageY(a.layer)+a.y;
+    var w = a.width;
+    var h = a.height;
+    var l = a.layer;
+
+    // hide old data focus box
+    if (l.pg_dttop != null)
+	{
+	// data focus moving within a control - remove old one
+	pg_hidebox(l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft);
+	}
+    else
+	{
+	// mk new data focus box for this control.
+	if (cx__capabilities.Dom1HTML)
+	    {
+	    l.pg_dttop = document.createElement("div");
+	    l.pg_dttop.style.width = 1152;
+	    l.pg_dtbtm = document.createElement("div");
+	    l.pg_dtbtm.style.width = 1152;
+	    l.pg_dtrgt = document.createElement("div");
+	    l.pg_dtrgt.style.width = 2;
+	    l.pg_dtlft = document.createElement("div");
+	    l.pg_dtlft.style.width = 2;
+	    }
+	else if (cx__capabilities.Dom0NS)
+	    {
+	    l.pg_dttop = new Layer(1152);
+	    l.pg_dtbtm = new Layer(1152);
+	    l.pg_dtrgt = new Layer(2);
+	    l.pg_dtlft = new Layer(2);
+	    }		    
+	}
+
+    // draw new data focus box
+    if (cx__capabilities.Dom0NS)
+	{	        
+	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);
+	}
+    else if (cx__capabilities.Dom1HTML)
+	{
+	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, pg_get_style(document.getElementById("pgtop"),'zIndex')+100);
+	}
+    }
+
 function pg_setkbdfocus(l, a, xo, yo)
     {
     if (!a)
@@ -1273,43 +1323,7 @@ function pg_setkbdfocus(l, a, xo, yo)
 	    }
 	if (v & 2)
 	    {
-	    // mk box for data focus
-	    if (l.pg_dttop != null)
-		{
-		// data focus moving within a control - remove old one
-		pg_hidebox(l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft);
-		}
-	    else
-		{
-		// mk new data focus box for this control.
-		if (cx__capabilities.Dom1HTML)
-		    {
-		    l.pg_dttop = document.createElement("div");
-		    l.pg_dttop.style.width = 1152;
-		    l.pg_dtbtm = document.createElement("div");
-		    l.pg_dtbtm.style.width = 1152;
-		    l.pg_dtrgt = document.createElement("div");
-		    l.pg_dtrgt.style.width = 2;
-		    l.pg_dtlft = document.createElement("div");
-		    l.pg_dtlft.style.width = 2;
-		    }
-		else if (cx__capabilities.Dom0NS)
-		    {
-		    l.pg_dttop = new Layer(1152);
-		    l.pg_dtbtm = new Layer(1152);
-		    l.pg_dtrgt = new Layer(2);
-		    l.pg_dtlft = new Layer(2);
-		    }		    
-		}
-		
-	    if (cx__capabilities.Dom0NS)
-	        {	        
-	    	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);
-	    	}
-	    else if (cx__capabilities.Dom1HTML)
-	        {
-	        pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, pg_get_style(document.getElementById("pgtop"),'zIndex')+100);
-	        }
+	    pg_setdatafocus(a);
 	    }
 	}
 
@@ -1751,7 +1765,7 @@ function pg_mouseout(e)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
     if (e.target == pg_curlayer) pg_curlayer = null;
-    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer == pg_curarea.layer) || (e.target == pg_curarea.layer)))
+    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer == pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
         {
         pg_removemousefocus();
         }
