@@ -65,10 +65,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.24 2003/04/30 02:17:40 jorupp Exp $
+    $Id: net_nfs.c,v 1.25 2003/05/09 01:39:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.25  2003/05/09 01:39:06  jorupp
+     * implimented a basic xid tracking support -- it doesn't resend the reply, it just ignores it
+       -- note: this is _not_ standards compliant (we should resend the reply) -- it just gets vim to behave :)
+
     Revision 1.24  2003/04/30 02:17:40  jorupp
      * implimented rename and remove, added an internal function to close all objects for an inode
        -- remove works, but we can't figure out how to test rename -- but it _should_ work....
@@ -245,6 +249,16 @@ typedef struct
 #include "xarray.h"
 #include "mtask.h"
 
+typedef struct 
+    {
+    CXSEC_DS_BEGIN;
+    struct sockaddr_in source;
+    int xid;
+    CXSEC_DS_END;
+    } XidCacheEntry, *pXidCacheEntry;
+
+#define XID_CACHE_SIZE 32
+
 /*** GLOBALS ***/
 struct 
     {
@@ -263,6 +277,8 @@ struct
     pXArray openObjects;
     pObjSession objSess;
     pThreadInfo threads;
+    XidCacheEntry xidCache[XID_CACHE_SIZE];
+    int nextXidCacheEntry;
     CXSEC_DS_END;
     }
     NNFS;
@@ -1793,6 +1809,14 @@ nnfs_internal_nfs_listener(void* v)
 		//printf("auth flavor: %i\n",msg_in.rm_call.cb_cred.oa_flavor);
 		//printf("bytes of auth data: %u\n",msg_in.rm_call.cb_cred.oa_length);
 		entry->xid = msg_out.rm_xid = msg_in.rm_xid;
+
+		for(i=0;i<XID_CACHE_SIZE;i++)
+		    {
+		    if(entry->xid == NNFS.xidCache[i].xid && memcmp(&(entry->source),&(NNFS.xidCache[i].source),sizeof(struct sockaddr_in)) )
+			{
+			isDup = 1;
+			}
+		    }
 #if 0
 		if(NNFS.nextIn < NNFS.nextOut)
 		    {
@@ -1809,6 +1833,11 @@ nnfs_internal_nfs_listener(void* v)
 #endif
 		if(isDup==0)
 		    {
+		    NNFS.xidCache[NNFS.nextXidCacheEntry].xid = entry->xid;
+		    NNFS.xidCache[NNFS.nextXidCacheEntry].source = entry->source;
+		    NNFS.nextXidCacheEntry++;
+		    NNFS.nextXidCacheEntry%=XID_CACHE_SIZE;
+
 		    msg_out.rm_direction = REPLY;
 		    if(msg_in.rm_call.cb_rpcvers == 2)
 			{
@@ -2531,6 +2560,9 @@ nnfsInitialize()
 	xhInit(NNFS.fhToPath,16,0);
 	xhInit(NNFS.pathToFh,16,0);
 	nnfs_internal_create_inode_map();
+
+	memset(NNFS.xidCache,0,sizeof(XidCacheEntry)*XID_CACHE_SIZE);
+	NNFS.nextXidCacheEntry = 0;
 
 	/** add shutdown handler **/
 	cxAddShutdownHandler(nnfsShutdownHandler);
