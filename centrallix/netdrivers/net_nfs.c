@@ -7,6 +7,7 @@
 #include <time.h>
 #include <sys/types.h> //for regex functions
 #include <regex.h>
+#include <signal.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -65,10 +66,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.25 2003/05/09 01:39:06 jorupp Exp $
+    $Id: net_nfs.c,v 1.26 2003/06/04 09:59:51 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.26  2003/06/04 09:59:51  jorupp
+     * cleaned up debugging output (can turn back on via setting the bits in NNFS_DEBUG)
+     * properly terminates the list of directory entries
+     * still needs some work
+       * something with either mbox or mime isn't returning options that make sense to nfs,
+         so it's pounding us with getattr() calls
+       * re-requests (same xid) aren't cached and returned, they are just dropped
+         - this is _especially_ apparent when the above bug is still present....
+
     Revision 1.25  2003/05/09 01:39:06  jorupp
      * implimented a basic xid tracking support -- it doesn't resend the reply, it just ignores it
        -- note: this is _not_ standards compliant (we should resend the reply) -- it just gets vim to behave :)
@@ -197,6 +207,20 @@
 #define BLOCK_SIZE	512
 #define NFS_FN_KEY	(MGK_NNFS & 0xFFFF00FF)
 
+#define NNFS_DEBUG 0x00
+#define NNFS_DEBUG_FHANDLE_TO_PATH 0x01
+#define NNFS_DEBUG_PATH_TO_FHANDLE 0x02
+#define NNFS_DEBUG_MOUNT 0x04
+#define NNFS_DEBUG_READ_WRITE 0x08
+#define NNFS_DEBUG_CREATE 0x10
+#define NNFS_DEBUG_READDIR 0x20
+#define NNFS_DEBUG_REQUEST 0x40
+#define NNFS_DEBUG_LOCKING 0x80
+#define NNFS_DEBUG_LISTENER 0x0100
+#define NNFS_DEBUG_AUTH 0x0200
+#define NNFS_DEBUG_RAW_DUMP 0x0400
+#define NNFS_DEBUG_CLOSE 0x0800
+
 typedef unsigned int inode;
 
 typedef struct
@@ -279,6 +303,7 @@ struct
     pThreadInfo threads;
     XidCacheEntry xidCache[XID_CACHE_SIZE];
     int nextXidCacheEntry;
+    pSemaphore inodeFileSemaphore;
     CXSEC_DS_END;
     }
     NNFS;
@@ -529,7 +554,8 @@ nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
 	/** need to keep this memory around after this function returns **/
 	char *p;
 	p = strdup(path);
-	printf("path %s not found in hash\n",path);
+	if(NNFS_DEBUG & NNFS_DEBUG_FHANDLE_TO_PATH)
+	    printf("path %s not found in hash\n",path);
 	memset(fhandle_c.fhc,0,FHSIZE);
 	fhandle_c.fhi=NNFS.nextFileHandle++;
 	my_fh = (char*)nmMalloc(FHSIZE);
@@ -547,7 +573,8 @@ nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
 	{
 	strncpy(fhandle_c.fhc,result,FHSIZE);
 	strncpy(fh,result,FHSIZE);
-	printf("path %s found in hash: %d\n",path,fhandle_c.fhi);
+	if(NNFS_DEBUG & NNFS_DEBUG_FHANDLE_TO_PATH)
+	    printf("path %s found in hash: %d\n",path,fhandle_c.fhi);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return 0;
 	}
@@ -597,7 +624,8 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
 	}
     memset(retval,0,sizeof(fhstatus));
 
-    printf("mount request recieved for: %s\n",*param);
+    if(NNFS_DEBUG & NNFS_DEBUG_MOUNT)
+	printf("mount request recieved for: %s\n",*param);
     
     /** check the exportList **/
     for (i=0,f=0;i<xaCount(NNFS.exportList);i++)
@@ -611,7 +639,7 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
 	}
     if (!f)
 	{
-	printf("mount point %s is not exported\n",*param);
+	mssError(0,"NNFS","mount point %s is not exported",*param);
 	retval->status = ENODEV;
 	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
@@ -734,6 +762,7 @@ attrstat* nnfs_internal_nfsproc_getattr(fhandle* param)
     if(!obj)
 	{
 	retval->status = NFSERR_NOENT;
+	mssError(1,"NNFS","Could not open inode %i",*(int*)param);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
@@ -817,8 +846,6 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
 	return retval;
 	}
 
-    printf("got fhandle\n");
-
     nnfs_internal_close_inode(retval->diropres_u.diropok.file,O_RDWR);
     obj = nnfs_internal_open_inode(retval->diropres_u.diropok.file,O_RDWR);
     if(!obj)
@@ -828,7 +855,6 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
 	return retval;
 	}
 
-    printf("filling in attributes\n");
     retval->diropres_u.diropok.attributes = nnfs_internal_get_attributes(obj,retval->diropres_u.diropok.file);
     
     CXSEC_EXIT(NFS_FN_KEY);
@@ -869,7 +895,8 @@ readres* nnfs_internal_nfsproc_read(readargs* param)
     /** FIXME -- cap this amount!!! **/
     buffer = (char*)malloc(param->count);
     i = objRead(obj,buffer,param->count,param->offset,OBJ_U_SEEK);
-    printf("reading: %i -- %i -- %i\n",param->count,param->offset,i);
+    if(NNFS_DEBUG & NNFS_DEBUG_READ_WRITE)
+	printf("reading: %i -- %i -- %i\n",param->count,param->offset,i);
     if(i==-1)
 	{
 	retval->status = NFSERR_IO;
@@ -927,7 +954,8 @@ attrstat* nnfs_internal_nfsproc_write(writeargs* param)
     while(1)
 	{
 	i = objWrite(obj,buffer,len,offset,OBJ_U_SEEK);
-	printf("writing: %p -- %i -- %i -- %i\n",buffer,len,offset,i);
+	if(NNFS_DEBUG & NNFS_DEBUG_READ_WRITE)
+	    printf("writing: %p -- %i -- %i -- %i\n",buffer,len,offset,i);
 	/** there's a chance we only wrote some of the data, then failed -- there's nothing we can do about it **/
 	if(i==-1)
 	    {
@@ -1005,7 +1033,8 @@ diropres* nnfs_internal_nfsproc_create(createargs* param)
     retval->diropres_u.diropok.attributes = nnfs_internal_get_attributes(obj,retval->diropres_u.diropok.file);
     retval->status = NFS_OK;
 
-    printf("created: %s\n",path.String);
+    if(NNFS_DEBUG & NNFS_DEBUG_CREATE)
+	printf("created: %s\n",path.String);
     xsDeInit(&path);
 
     nnfs_internal_close_inode(retval->diropres_u.diropok.file,O_RDWR | O_CREAT | O_EXCL);
@@ -1149,9 +1178,10 @@ nfsstat* nnfs_internal_nfsproc_rename(renameargs* param)
 	{
 	if(objWrite(newObj,buf,i,0,0)!=i)
 	    {
-	    printf("problem copying file!");
+	    mssError("NNFS",0,"problem copying file!");
 	    }
-	printf("wrote %i bytes\n",i);
+	if(NNFS_DEBUG & NNFS_DEBUG_READ_WRITE)
+	    printf("wrote %i bytes\n",i);
 	}
     nnfs_internal_close_all_inode(oldFh);
     objDelete(NNFS.objSess,oldPath.String);
@@ -1247,7 +1277,8 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
 	return retval;
 	}
 
-    printf("got path: %s\n",currentPath);
+    if(NNFS_DEBUG & NNFS_DEBUG_READDIR)
+	printf("got path: %s\n",currentPath);
 
     /** partial directory listings not implimented **/
     if(cookie!=0)
@@ -1290,18 +1321,22 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
 		xsConcatenate(&childPath,"/",-1);
 	    xsConcatenate(&childPath,name,-1);
 
-	    printf("new file: %s\n",childPath.String);
+	    if(NNFS_DEBUG & NNFS_DEBUG_READDIR)
+		printf("new file: %s\n",childPath.String);
 
 	    if(nnfs_internal_get_fhandle(newFhandle,childPath.String)==0)
 		{
 		thisEntry = (entry*)malloc(sizeof(entry));
-		printf("entry: %p\n",thisEntry);
-		thisEntry->fileid = *(int*)newFhandle;
+		if(NNFS_DEBUG & NNFS_DEBUG_READDIR)
+		    printf("entry: %p\n",thisEntry);
+
 		thisEntry->name = strdup(name);
-
-		printf("name: %p: %s\n",thisEntry->name,thisEntry->name);
-
+		thisEntry->fileid = *(int*)newFhandle;
 		*(int*)(thisEntry->cookie) = *(int*)newFhandle;
+		thisEntry->nextentry = NULL;
+
+		if(NNFS_DEBUG & NNFS_DEBUG_READDIR)
+		    printf("name: %p: %s\n",thisEntry->name,thisEntry->name);
 
 		if(!firstEntry)
 		    {
@@ -1321,7 +1356,19 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
 
     xsDeInit(&childPath);
 
-
+    if(NNFS_DEBUG & NNFS_DEBUG_READDIR)
+	{
+	/** for debugging purposes, dump the map we're returning.... **/
+	printf("returned entries: \n");
+	printf("ptr -- name -- fileid -- cookie -- nextentryptr \n");
+	thisEntry = firstEntry;
+	while(thisEntry)
+	    {
+	    printf("%p -- %s -- %i -- %i -- %p\n",thisEntry,thisEntry->name,thisEntry->fileid,*(thisEntry->cookie),thisEntry->nextentry);
+	    thisEntry = thisEntry->nextentry;
+	    }
+	printf("----done----\n");
+	}
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1358,8 +1405,11 @@ nnfs_internal_create_inode_map()
     pStructInf nextHandle;
     int i;
 
+    syGetSem(NNFS.inodeFileSemaphore,1,0);
+
     if(!NNFS.inodeFile)
 	{
+	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
@@ -1368,6 +1418,7 @@ nnfs_internal_create_inode_map()
     if(!inFile)
 	{
 	mssError(1,"NNFS","Warning: cannot open %s: %s",NNFS.inodeFile,strerror(errno));
+	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
@@ -1376,6 +1427,7 @@ nnfs_internal_create_inode_map()
     if(!stInode)
 	{
 	mssError(1,"NNFS","Cannot parse %s",NNFS.inodeFile);
+	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
@@ -1419,6 +1471,8 @@ nnfs_internal_create_inode_map()
 
     stFreeInf(stInode);
     fdClose(inFile,0);
+    syPostSem(NNFS.inodeFileSemaphore,1,0);
+
     CXSEC_EXIT(NFS_FN_KEY);
     }
 
@@ -1462,9 +1516,12 @@ nnfs_internal_dump_inode_map()
     pStructInf nextHandle;
     int i;
 
+    syGetSem(NNFS.inodeFileSemaphore,1,0);
+
     if(!NNFS.inodeFile)
 	{
 	mssError(0,"NNFS","No inode map file specified in configuration");
+	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
@@ -1473,6 +1530,7 @@ nnfs_internal_dump_inode_map()
     if(!outFile)
 	{
 	mssError(1,"NNFS","Cannot open inode.map: %s",strerror(errno));
+	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
@@ -1480,6 +1538,7 @@ nnfs_internal_dump_inode_map()
     if(!stInode)
 	{
 	mssError(1,"NNFS","Cannot create StructInf");
+	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
@@ -1523,6 +1582,8 @@ nnfs_internal_dump_inode_map()
 
     fdClose(outFile,0);
     stFreeInf(stInode);
+    syPostSem(NNFS.inodeFileSemaphore,1,0);
+
     CXSEC_EXIT(NFS_FN_KEY);
     }
 
@@ -1642,8 +1703,11 @@ nnfs_internal_request_handler(void* v)
 	/** get the request **/
 	entry = xrqDequeue(&NNFS.queue);
 
-	printf("entry: %p\n",entry);
-	printf("xid: %x\n",entry->xid);
+	if(NNFS_DEBUG & NNFS_DEBUG_REQUEST)
+	    {
+	    printf("entry: %p\n",entry);
+	    printf("xid: %x\n",entry->xid);
+	    }
 
 	/** get the inode of the request **/
 	requestInode = nnfs_internal_get_inode(entry->param,nfs_program[entry->procedure].param);
@@ -1658,7 +1722,10 @@ nnfs_internal_request_handler(void* v)
 		    if(xrqEnqueue(&NNFS.threads[i].waitingRequests,entry)!=0)
 			mssError("NNFS",1,"Unable to give request on inode %i to thread %i",requestInode,i);
 		    else
-			printf("successfully gave request on %i to %i\n",requestInode,i);
+			if(NNFS_DEBUG & NNFS_DEBUG_REQUEST)
+			    {
+			    printf("successfully gave request on %i to %i\n",requestInode,i);
+			    }
 		    entry = NULL;
 		    break;
 		    }
@@ -1678,12 +1745,39 @@ nnfs_internal_request_handler(void* v)
 
 	/** lock the inode **/
 	cThread->lockedInode = requestInode;
-	printf("%i locked %i\n",threadNum,requestInode);
+	if(NNFS_DEBUG & NNFS_DEBUG_LOCKING)
+	    printf("thread #%i locked inode %i\n",threadNum,requestInode);
 
 	/** grab elements off the top of the queue until there are no more **/
 	while((entry = xrqDequeue(&(cThread->waitingRequests))) != NULL)
 	    {
-	    printf("procedure: %i\n",entry->procedure);
+#if NNFS_DEBUG
+	    static char *procedures[] = 
+		{
+		"null",
+		"getattr",
+		"setattr",
+		"root",
+		"lookup",
+		"readlink",
+		"read",
+		"writecache",
+		"write",
+		"create",
+		"remove",
+		"rename",
+		"link",
+		"symlink",
+		"mkdir",
+		"rmdir",
+		"readdir",
+		"statfs",
+		};
+	    if(NNFS_DEBUG & NNFS_DEBUG_REQUEST)
+		{
+		printf("procedure: %s (%i)\n",procedures[entry->procedure],entry->procedure);
+		}
+#endif
 	    msg_out.rm_xid = entry->xid;
 	    msg_out.rm_direction = REPLY;
 	    msg_out.rm_reply.rp_stat = MSG_ACCEPTED;
@@ -1691,6 +1785,9 @@ nnfs_internal_request_handler(void* v)
 	    msg_out.rm_reply.rp_acpt.ar_results.where = nfs_program[entry->procedure].func(entry->param);
 	    msg_out.rm_reply.rp_acpt.ar_results.proc = nfs_program[entry->procedure].ret;
 
+	    if(NNFS_DEBUG & NNFS_DEBUG_REQUEST)
+		printf("results: %p\n",msg_out.rm_reply.rp_acpt.ar_results.where);
+	    
 	    buf = (char*)nmMalloc(MAX_PACKET_SIZE);
 	    xdrmem_create(&xdr_out,buf,MAX_PACKET_SIZE,XDR_ENCODE);
 	    if(!xdr_replymsg(&xdr_out,&msg_out))
@@ -1701,7 +1798,8 @@ nnfs_internal_request_handler(void* v)
 		{
 		int i;
 		i = xdr_getpos(&xdr_out);
-		//nnfs_internal_dump_buffer(buf,i);
+		if(NNFS_DEBUG & NNFS_DEBUG_RAW_DUMP)
+		    nnfs_internal_dump_buffer(buf,i);
 		if(netSendUDP(NNFS.nfsSocket,buf,i,0,&(entry->source),NULL,0) == -1)
 		    {
 		    mssError(0,"NNFS","unable to send message: %s",strerror(errno));
@@ -1776,8 +1874,13 @@ nnfs_internal_nfs_listener(void* v)
 	buf = (char*)nmMalloc(MAX_PACKET_SIZE);
 	outbuf = (char*)nmMalloc(MAX_PACKET_SIZE);
 	/** Loop, accepting requests **/
-	while((i=netRecvUDP(NNFS.nfsSocket,buf,MAX_PACKET_SIZE,0,&remoteaddr,&remotehost,&remoteport)) != -1)
+	while(1)
 	    {
+	    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
+		printf("listener blocking waiting for request\n");
+	    i=netRecvUDP(NNFS.nfsSocket,buf,MAX_PACKET_SIZE,0,&remoteaddr,&remotehost,&remoteport);
+	    if(i==-1)
+		break;
 	    XDR xdr_in;
 	    XDR xdr_out; // only used on error
 	    struct rpc_msg msg_in;
@@ -1792,7 +1895,10 @@ nnfs_internal_nfs_listener(void* v)
 	    entry->source = remoteaddr; // copy address
 
 	    /** process packet **/
-	    printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
+	    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
+		printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
+	    if(NNFS_DEBUG & NNFS_DEBUG_RAW_DUMP)
+		nnfs_internal_dump_buffer(buf,i);
 	    xdrmem_create(&xdr_in,buf,i,XDR_DECODE);
 	    xdrmem_create(&xdr_out,outbuf,MAX_PACKET_SIZE,XDR_ENCODE);
 	    if(!xdr_callmsg(&xdr_in,&msg_in))
@@ -1806,8 +1912,11 @@ nnfs_internal_nfs_listener(void* v)
 		{
 		int i;
 		/** note: ignoring authorization for now... **/
-		//printf("auth flavor: %i\n",msg_in.rm_call.cb_cred.oa_flavor);
-		//printf("bytes of auth data: %u\n",msg_in.rm_call.cb_cred.oa_length);
+		if(NNFS_DEBUG & NNFS_DEBUG_AUTH)
+		    {
+		    printf("auth flavor: %i\n",msg_in.rm_call.cb_cred.oa_flavor);
+		    printf("bytes of auth data: %u\n",msg_in.rm_call.cb_cred.oa_length);
+		    }
 		entry->xid = msg_out.rm_xid = msg_in.rm_xid;
 
 		for(i=0;i<XID_CACHE_SIZE;i++)
@@ -1817,20 +1926,6 @@ nnfs_internal_nfs_listener(void* v)
 			isDup = 1;
 			}
 		    }
-#if 0
-		if(NNFS.nextIn < NNFS.nextOut)
-		    {
-		    for(i=NNFS.nextOut;i<NNFS.queueSize;i++)
-			if(NNFS.queue[i]->xid == entry->xid)
-			    isDup = 1;
-		    for(i=0;i<NNFS.nextIn;i++)
-			if(NNFS.queue[i]->xid == entry->xid)
-			    isDup = 1;
-		    }
-		for(i=NNFS.nextOut;i<NNFS.nextIn;i++)
-		    if(NNFS.queue[i]->xid == entry->xid)
-			isDup = 1;
-#endif
 		if(isDup==0)
 		    {
 		    NNFS.xidCache[NNFS.nextXidCacheEntry].xid = entry->xid;
@@ -1904,7 +1999,10 @@ nnfs_internal_nfs_listener(void* v)
 		    }
 		else
 		    {
-		    printf("recieved duplicate request: %i\n",entry->xid);
+		    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
+			{
+			printf("recieved duplicate request: %i\n",entry->xid);
+			}
 		    }
 		if(wasError==1 && isDup==0)
 		    {
@@ -2067,10 +2165,12 @@ nnfs_internal_mount_listener(void* v)
 	    struct rpc_msg msg_out;
 	    /** process packet **/
 
-	    printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
+	    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
+		printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
 	    xdrmem_create(&xdr_in,buf,i,XDR_DECODE);
 	    xdrmem_create(&xdr_out,outbuf,MAX_PACKET_SIZE,XDR_ENCODE);
-	    //nnfs_internal_dump_buffer(buf,i);
+	    if(NNFS_DEBUG & NNFS_DEBUG_RAW_DUMP)
+		nnfs_internal_dump_buffer(buf,i);
 	    /** next line crashes quite often -- need to debug this... **/
 	    if(!xdr_callmsg(&xdr_in,&msg_in))
 		{
@@ -2081,8 +2181,11 @@ nnfs_internal_mount_listener(void* v)
 	    if(msg_in.rm_direction==CALL)
 		{
 		/** note: ignoring authorization for now... **/
-		//printf("auth flavor: %i\n",msg_in.rm_call.cb_cred.oa_flavor);
-		//printf("bytes of auth data: %u\n",msg_in.rm_call.cb_cred.oa_length);
+		if(NNFS_DEBUG & NNFS_DEBUG_AUTH)
+		    {
+		    printf("auth flavor: %i\n",msg_in.rm_call.cb_cred.oa_flavor);
+		    printf("bytes of auth data: %u\n",msg_in.rm_call.cb_cred.oa_length);
+		    }
 		msg_out.rm_xid = msg_in.rm_xid;
 		msg_out.rm_direction = REPLY;
 		if(msg_in.rm_call.cb_rpcvers == 2)
@@ -2206,7 +2309,8 @@ nnfs_internal_mount_listener(void* v)
 		    {
 		    int i;
 		    i = xdr_getpos(&xdr_out);
-//		    nnfs_internal_dump_buffer(outbuf,i);
+		    if(NNFS_DEBUG & NNFS_DEBUG_RAW_DUMP)
+			nnfs_internal_dump_buffer(outbuf,i);
 		    if(netSendUDP(listen_socket,outbuf,i,0,&remoteaddr,NULL,0) == -1)
 			{
 			mssError(0,"NNFS","unable to send message: %s",strerror(errno));
@@ -2226,7 +2330,7 @@ nnfs_internal_mount_listener(void* v)
 		{
 		mssError(0,"NNFS","invalid message direction: %i",msg_in.rm_direction);
 		}
-	    xdr_free((xdrproc_t)xdr_callmsg,(char*)&msg_in);
+	    //xdr_free((xdrproc_t)xdr_callmsg,(char*)&msg_in);
 	    xdr_destroy(&xdr_in);
 	    xdr_destroy(&xdr_out);
 	    }
@@ -2261,12 +2365,21 @@ void nnfs_internal_monitor_objects()
 	    {
 	    /** examine time on each object **/
 	    obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
-	    if ((cur_time.tv_sec - obj->lastused.tv_sec) >= 30)
+	    if ((cur_time.tv_sec - obj->lastused.tv_sec) >= 5)
 	    	{
 		/** close the object, remove from cache, free memory **/
+		char *path;
+		fhandle fh;
+		memset(fh,0,sizeof(fhandle));
+		*(int*)fh = obj->inode;
+		nnfs_internal_get_path(&path, fh);
+		if(NNFS_DEBUG & NNFS_DEBUG_CLOSE)
+		    printf("net_nfs.c: Closing object: ptr: %p, inode: %i (path: %s), flags: %08x\n",obj->obj,obj->inode,path,obj->flags);
 		objClose(obj->obj);
 		xaRemoveItem(NNFS.openObjects,i);
 		nmFree(obj,sizeof(ObjectUse));
+		/** we just removed element i -- so what used to be i+1 is now I -- reprocess i **/
+		i--;
 		}
 	    }
 	}
@@ -2288,6 +2401,7 @@ fattr nnfs_internal_get_attributes(pObject obj, fhandle fh)
 	/** it is a directory unless it can't have subobjects **/
 	if(!(info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ))
 	    isdir = 1;
+	/** fixme -- why don't we nmFree() this? **/
 	//nmFree(info,sizeof(ObjectInfo));
 	}
 
@@ -2369,7 +2483,6 @@ pObject nnfs_internal_open_inode(fhandle fh, int flags)
     path = xhLookup(NNFS.fhToPath, fhandle_c.fhc);
     if (!path)
     	{
-	nmFree(obj,sizeof(ObjectUse));
 	CXSEC_EXIT(NFS_FN_KEY);
 	return NULL;
 	}
@@ -2483,6 +2596,23 @@ int nnfs_internal_close_all_inode(fhandle fh)
     return -1;
     }
 
+/*** nnfs_internal_SIGUSR1 -- handle SIGUSR1 (write inode list to disk)
+***/
+void
+nnfs_internal_SIGUSR1(void* p)
+    {
+    CXSEC_ENTRY(NFS_FN_KEY);
+    int i;
+    pObjectUse obj;
+
+    mssError(0,"NNFS","NFS netdriver is writing inode list");
+    nnfs_internal_dump_inode_map();
+    mssError(0,"NNFS","NFS netdriver is done writing inode list");
+
+    CXSEC_EXIT(NFS_FN_KEY);
+    thExit();
+    }
+
 /*** nnfsShutdownHandler - shutdown the NFS driver
 ***/
 void
@@ -2546,12 +2676,9 @@ nnfsInitialize()
 	    NNFS.inodeFile=NULL;
 	    }
 
-	//NNFS.queue = (pQueueEntry*)nmMalloc(NNFS.queueSize*sizeof(pQueueEntry));
-	//memset(NNFS.queue,0,NNFS.queueSize*sizeof(pQueueEntry));
-	//NNFS.nextIn=0;
-	//NNFS.nextOut=0;
 	xrqInit(&NNFS.queue,16);
 	NNFS.semaphore = syCreateSem(0,0);
+	NNFS.inodeFileSemaphore = syCreateSem(1,0); /* using this as a binary semaphore */
 	/** 0 is reserved **/
 	NNFS.nextFileHandle=1;
 
@@ -2566,6 +2693,9 @@ nnfsInitialize()
 
 	/** add shutdown handler **/
 	cxAddShutdownHandler(nnfsShutdownHandler);
+
+	/** add SIGUSR1 handler **/
+	mtAddSignalHandler(SIGUSR1,nnfs_internal_SIGUSR1);
 	
 	/** Start the mountd listener **/
 	thCreate(nnfs_internal_mount_listener, 0, NULL);
