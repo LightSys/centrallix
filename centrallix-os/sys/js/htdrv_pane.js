@@ -16,24 +16,8 @@ function pn_init(l,ml)
 	ml = l;
 	}
 
-    l.mainlayer = ml;
-    l.kind = "pn";
-    ml.kind = "pn";
-
-    if(cx__capabilities.Dom0NS)
-	{
-	l.document.layer = ml;
-	ml.document.layer = ml;
-	}
-    else if(cx__capabilities.Dom1HTML)
-	{
-	l.layer = ml;
-	ml.layer = ml;
-	}
-    else
-	{
-	alert('browser not supported');
-	}
+    htr_init_layer(ml,ml,"pn");
+    htr_init_layer(l,ml,"pn");
 
     ml.maxheight = l.clip.height-2;
     ml.maxwidth = l.clip.width-2;

@@ -58,28 +58,9 @@ function sp_init(l,aname,tname,p)
     alayer.minwidth=alayer.clip.width;
     tlayer.nofocus = true;
     alayer.nofocus = true;
-    alayer.mainlayer = l;
-    if(cx__capabilities.Dom0NS)
-	{
-	alayer.document.layer = alayer;
-	tlayer.document.layer = tlayer;
-	l.document.layer = l;
-	}
-    else if(cx__capabilities.Dom1HTML)
-	{
-	alayer.layer = alayer;
-	tlayer.layer = tlayer;
-	l.layer = l;
-	}
-    else
-	{
-	alert('browser not supported');
-	}
-    tlayer.mainlayer = l;
-    alayer.kind = 'sp';
-    tlayer.kind = 'sp';
-    l.mainlayer = l;
-    l.kind = 'sp';
+    htr_init_layer(l,l,"sp");
+    htr_init_layer(tlayer,l,"sp");
+    htr_init_layer(alayer,l,"sp");
     l.LSParent = p;
     l.thum = tlayer;
     l.area = alayer;
