@@ -31,6 +31,16 @@ centrallix "system/config"
 	enable_bdqs = "no";
 	}
 
+    // The NFS module
+//    net_nfs "system/config"
+//	{
+//	mount_port=5168;
+//	exports "system/config"
+//	    {
+//	    export1 "system/config" { path="/"; readonly=1; }
+//	    }
+//	}
+
     // The MSS MTask Session Manager module.
     mtsession "system/config"
 	{
