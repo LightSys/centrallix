@@ -7,6 +7,7 @@ ev	MTASK internal - event handling
 exp	Expression compiler/parser/evaluator
 fd	MTASK Module file I/O
 fxp	PrtDriver - Epson-FX (text/x-epson-fx) output
+gzip	OSDriver - gzip compressed file (RFC 1952)
 htcb    HTDriver - Checkbox
 htcbx   HTDriver - Combo Box
 htconn	HTDriver - event-action connector
@@ -47,6 +48,7 @@ nm	NewMalloc utility module
 obj	OSML Routines and OSML API
 oxt	Pseudo-OSDriver - OSML Transaction Tree Driver
 pcl	PrtDriver - HP PCL output (text/x-hp-pcl)
+pgdb	OSDriver - PostgreSQL
 prt	Printing management (for RPTs, etc)
 qyt	OSDriver - QueryTree
 root	Pseudo-OSDriver - Rootnode driver

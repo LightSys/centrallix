@@ -211,6 +211,85 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
     ]
 )
 
+dnl Test for the GZIP os driver.
+AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
+    [
+	AC_MSG_CHECKING(if gzip support is desired)
+
+	AC_ARG_ENABLE(gzip,
+	    AC_HELP_STRING([--disable-gzip],
+		[disable gzip support]
+	    ),
+	    WITH_GZIP="$enableval", 
+	    WITH_GZIP="yes"
+	)
+
+	if test "$WITH_GZIP" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+
+	    AC_ARG_WITH(zlib,
+		AC_HELP_STRING([--with-zlib=PATH],
+		    [library path for zlib library (default is /usr/lib)]
+		),
+		zlib_libdir="$withval",
+		zlib_libdir="/usr/lib",
+	    )
+
+	    AC_ARG_WITH(zlib-inc,
+		AC_HELP_STRING([--with-zlib-inc=PATH],
+		    [include path for zlib headers (default is /usr/include)]
+		),
+		zlib_incdir="-I$withval",
+		zlib_incdir="/usr/include"
+	    )
+
+	    temp=$CPPFLAGS
+	    CPPFLAGS="$CPPFLAGS $zlib_incdir"
+	    tempC=$CFLAGS
+	    CFLAGS="$CFLAGS $zlib_incdir"
+	    AC_CHECK_HEADER(zlib.h, 
+		WITH_GZIP="yes",
+		WITH_GZIP="no"
+	    )
+	    CPPFLAGS="$temp"
+	    CFLAGS="$tempC"
+
+	    if test "$WITH_GZIP" = "yes"; then
+		GZIP_CFLAGS="-I$zlib_incdir"
+		temp=$LIBS
+		LIBS="$LIBS -L$zlib_libdir -lz"
+		AC_CHECK_LIB(z, gzread, WITH_GZIP_ZLIB="yes", WITH_GZIP_ZLIB="no", -lz)
+		if test "$WITH_GZIP_ZLIB" = "no"; then
+		    WITH_GZIP="no"
+		else
+		    GZIP_LIBS="-L$zlib_libdir $zlib_lib"
+		fi
+		LIBS="$temp"
+	    fi
+	fi
+
+	AC_MSG_CHECKING(if GZIP support can be enabled)
+	if test "$WITH_GZIP" = "yes"; then
+	    AC_DEFINE(USE_GZIP)
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_gzip.so"
+	    else
+		STATIC_CFLAGS="$STATIC_CFLAGS $GZIP_CFLAGS"
+		STATIC_LIBS="$STATIC_LIBS $GZIP_LIBS"
+		OBJDRIVERS="$OBJDRIVERS objdrv_gzip.o"
+	    fi
+	    AC_MSG_RESULT(yes)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+
+	AC_SUBST(GZIP_CFLAGS)
+	AC_SUBST(GZIP_LIBS)
+    ]
+)
+
 dnl Test for the HTTP os driver.
 AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
     [

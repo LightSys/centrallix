@@ -331,8 +331,8 @@ depend:	.depend
 
 .depend: *.[ch] */*.[ch] */*/*.[ch]
 	@echo "Rebuilding dependencies..."
-	@makedepend -o.o -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c */*/*.c >.depend 2>/dev/null
-	@makedepend -o.so -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
+	@makedepend -o.o -Yinclude -I . -I $(CXLIBDIR)/include -f - *.c */*.c */*/*.c >.depend 2>/dev/null
+	@makedepend -o.so -Yinclude -I . -I $(CXLIBDIR)/include -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
 
 .subbuild:
 	@echo '1' >.subbuild
@@ -351,6 +351,9 @@ osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 
 osdrivers/objdrv_xml.so: osdrivers/objdrv_xml.c
 	$(CC) $(CFLAGS) @XML_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @XML_LIBS@ -o $@
+
+osdrivers/objdrv_gzip.so: osdrivers/objdrv_gzip.c
+	$(CC) $(CFLAGS) @GZIP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @GZIP_LIBS@ -o $@
 
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@

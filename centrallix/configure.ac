@@ -53,6 +53,10 @@ CENTRALLIX_CONF_FILE
 CENTRALLIX_OS_DIR
 AC_CACHE_SAVE
 
+dnl GZIP osdriver support.
+AH_TEMPLATE([USE_GZIP], [Define for GZIP support])
+CENTRALLIX_CHECK_GZIP_OS
+
 dnl HTTP osdriver support.
 AH_TEMPLATE([USE_HTTP], [Define for HTTP support])
 CENTRALLIX_CHECK_HTTP_OS

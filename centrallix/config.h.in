@@ -132,6 +132,9 @@
 /* Define for DBL support */
 #undef USE_DBL
 
+/* Define for GZIP support */
+#undef USE_GZIP
+
 /* Define for HTTP support */
 #undef USE_HTTP
 
