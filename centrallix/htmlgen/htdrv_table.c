@@ -59,10 +59,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.7 2002/04/27 18:42:22 jorupp Exp $
+    $Id: htdrv_table.c,v 1.8 2002/04/27 22:47:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.8  2002/04/27 22:47:45  jorupp
+     * re-wrote form and osrc interaction -- more happens now in the form
+     * lots of fun stuff in the table....check form.app for an example (not completely working yet)
+     * the osrc is still a little bit buggy.  If you get it screwed up, let me know how to reproduce it.
+
     Revision 1.7  2002/04/27 18:42:22  jorupp
      * the dynamicrow table widget will now change the current osrc row when you click a row...
 
@@ -136,6 +141,7 @@ typedef struct
     char row_bgnd2[128];
     char row_bgndhigh[128];
     char textcolor[64];
+    char textcolorhighlight[64];
     char titlecolor[64];
     int x,y,w,h;
     int id;
@@ -175,13 +181,27 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	/** HTML body <DIV> element for the layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dpane\"></DIV>\n",t.id);
 
+	htrAddScriptGlobal(s,"tbld_current","null",0);
+
 	htrAddScriptFunction(s,"tbld_update","\n"
 		"function tbld_update(p1)\n"
 		"    {\n"
 		"    this.start=this.osrc.FirstRecord;\n"
+		"    this.windowsize=(this.osrc.LastRecord-this.osrc.FirstRecord+1)<this.maxwindowsize?this.osrc.LastRecord-this.osrc.FirstRecord+1:this.maxwindowsize;\n"
 		"    for(var i=1;i<this.windowsize+1;i++)\n"
 		"        {\n"
+		/*  This would move them gradually, but netscape doesn't redraw fast enough....
+		"        var start=this.rows[i].y;\n"
+		"        var end=this.rowheight+((this.rowheight+this.cellvspacing)*(this.SlotToRecnum(i)-this.start));\n"
+		"        if(start>end)\n"
+		"            for(var q=start;q>end;q--)\n"
+		"                this.rows[i].y=q;\n"
+		"        else\n"
+		"            for(var q=start;q<end;q++)\n"
+		"                this.rows[i].y=q;\n"
+		*/
 		"        this.rows[i].y=this.rowheight+((this.rowheight+this.cellvspacing)*(this.SlotToRecnum(i)-this.start));\n"
+		"        this.rows[i].visibility='inherit';\n"
 		"        if(!(this.rows[i].recnum && this.rows[i].recnum==this.SlotToRecnum(i)))\n"
 		"            {\n"
 		"            this.rows[i].recnum=this.SlotToRecnum(i);\n"
@@ -192,10 +212,11 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"                    {\n"
 		"                    if(this.osrc.replica[this.rows[i].recnum][k].oid==this.cols[j][0])\n"
 		"                        {\n"
-		"                        if(t.textcolor)\n"
-		"                            this.rows[i].cols[j].document.write('<font color='+t.textcolor+'>'+this.osrc.replica[this.rows[i].recnum][k].value+'<font>');\n"
+		"                        this.rows[i].cols[j].data=this.osrc.replica[this.rows[i].recnum][k].value;\n"
+		"                        if(this.textcolor)\n"
+		"                            this.rows[i].cols[j].document.write('<font color='+this.textcolor+'>'+this.rows[i].cols[j].data+'<font>');\n"
 		"                        else\n"
-		"                            this.rows[i].cols[j].document.write(this.osrc.replica[this.rows[i].recnum][k].value);\n"
+		"                            this.rows[i].cols[j].document.write(his.rows[i].cols[j].data);\n"
 		"                        this.rows[i].cols[j].document.close();\n"
 		"                        }\n"
 		"                    }\n"
@@ -206,20 +227,96 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        else\n"
 		"            this.rows[i].deselect();\n"
 		"        }\n"
+		"    for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)\n"
+		"        {\n"
+		"        this.rows[i].recnum=null;\n"
+		"        this.rows[i].visibility='hide';\n"
+		"        }\n"
+		"    }\n",0);
+
+	htrAddScriptFunction(s,"tbld_object_modified", "\n"
+		"function tbld_object_modified(current)\n"
+		"    {\n"
+		"    this.rows[this.RecnumToSlot(current)].recnum=null;\n"
+		"    this.Update();\n"
+		"    }\n",0);
+
+	htrAddScriptFunction(s,"tbld_clear_layers", "\n"
+		"function tbld_clear_layers()\n"
+		"    {\n"
+		"    for(var i=1;i<this.maxwindowsize+1;i++)\n"
+		"        {\n"
+		"        this.rows[i].recnum=null;\n"
+		"        this.rows[i].visibility='hide';\n"
+		"        }\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_select", "\n"
 		"function tbld_select()\n"
 		"    {\n"
 		"    eval('this.'+this.table.row_bgndhigh+';');\n"
+		"    for(i in this.cols)\n"
+		"        {\n"
+		"        if(this.table.textcolorhighlight)\n"
+		"            {\n"
+		"            this.cols[i].document.write('<font color='+this.table.textcolorhighlight+'>'+this.cols[i].data+'<font>');\n"
+		"            this.cols[i].document.close();\n"
+		"            }\n"
+		"        }\n"
+		"    if(tbld_current==this)\n"
+		"        {\n"
+		"        this.oldbgColor=null;\n"
+		"        this.mouseover();\n"
+		"        }\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_deselect", "\n"
 		"function tbld_deselect()\n"
 		"    {\n"
 		"    eval('this.'+(this.recnum\%2?this.table.row_bgnd1:this.table.row_bgnd2)+';');\n"
+		"    for(i in this.cols)\n"
+		"        {\n"
+		"        if(this.table.textcolorhighlight)\n"
+		"            {\n"
+		"            if(this.table.textcolor)\n"
+		"                this.cols[i].document.write('<font color='+this.table.textcolor+'>'+this.cols[i].data+'<font>');\n"
+		"            else\n"
+		"                this.cols[i].document.write(this.cols[i].data);\n"
+		"            this.cols[i].document.close();\n"
+		"            }\n"
+		"        }\n"
 		"    }\n",0);
 
+	htrAddScriptFunction(s,"tbld_mouseover", "\n"
+		"function tbld_mouseover()\n"
+		"    {\n"
+		"    if(this.oldbgColor) return;\n"
+		"    this.oldbgColor=this.bgColor;\n"
+		"    var r,g,b;\n"
+		"    r=Math.floor(this.bgColor/256/256)\%256;\n"
+		"    g=Math.floor(this.bgColor/256)\%256;\n"
+		"    b=this.bgColor\%256;\n"
+		"    //confirm(r+','+g+','+b);\n"
+		"    r*=1.1;\n"
+		"    g*=1.1;\n"
+		"    b*=1.1;\n"
+		"    r=(r>255)?255:Math.floor(r);\n"
+		"    g=(g>255)?255:Math.floor(g);\n"
+		"    b=(b>255)?255:Math.floor(b);\n"
+		"    //confirm(r+','+g+','+b);\n"
+		"    this.bgColor=r*256*256+g*256+b;\n"
+		"    }\n",0);
+
+	htrAddScriptFunction(s,"tbld_mouseout", "\n"
+		"function tbld_mouseout()\n"
+		"    {\n"
+		"    this.bgColor=this.oldbgColor;\n"
+		"    this.oldbgColor=null;\n"
+		"    }\n",0);
+
+	
+	
+	
 	// OSRC records are 1-osrc.replicasize
 	// Window slots are 1-this.windowsize
 	
@@ -236,12 +333,13 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_init","\n"
-		"function tbld_init(t,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,cols)"
+		"function tbld_init(t,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,cols)"
 		"    {\n"
 		"    t.rowheight=rowheight>0?rowheight:15;\n"
 		"    t.cellhspacing=cellhspacing>0?cellhspacing:1;\n"
 		"    t.cellvspacing=cellvspacing>0?cellvspacing:1;\n"
 		"    t.textcolor=textcolor;\n"
+		"    t.textcolorhighlight=textcolorhighlight?textcolorhighlight:textcolor;\n"
 		"    t.titlecolor=titlecolor;\n"
 		"    t.row_bgnd1=row_bgnd1\n"
 		"    t.row_bgnd2=row_bgnd2?row_bgnd2:row_bgnd1;\n"
@@ -264,6 +362,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    osrc_current.Register(t);\n"
 		"    t.osrc=osrc_current;\n"
 		"    t.windowsize=windowsize>0?windowsize:t.osrc.replicasize;\n"
+		"    t.maxwindowsize=t.windowsize;\n"
 		"    t.rows=new Array(t.windowsize+1);\n"
 		"    t.clip.width=width;\n"
 		"    t.clip.height=height;\n"
@@ -280,6 +379,8 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        t.rows[i].document.layer=t.rows[i];\n"
 		"        t.rows[i].select=tbld_select;\n"
 		"        t.rows[i].deselect=tbld_deselect;\n"
+		"        t.rows[i].mouseover=tbld_mouseover;\n"
+		"        t.rows[i].mouseout=tbld_mouseout;\n"
 		"        t.rows[i].rownum=i;\n"
 		"        t.rows[i].table=t;\n"
 		"        t.rows[i].x=0;\n"
@@ -319,16 +420,14 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            t.rows[0].cols[i].document.write(t.cols[i][1]);\n"
 		"        t.rows[0].cols[i].document.close();\n"
 		"        }\n"
-		"    \n"
-		"    \n"
 		"    t.IsDiscardReady=new Function('return false;');\n"
 		"    //t.DataAvailable=new Function('this.osrc.ActionFirst(this)');\n"
-		"    t.DataAvailable=new Function();\n"
+		"    t.DataAvailable=tbld_clear_layers;\n"
 		"    t.ObjectAvailable=tbld_update;\n"
 		"    t.OperationComplete=new Function();\n"
 		"    t.ObjectDeleted=tbld_update;\n"
 		"    t.ObjectCreated=tbld_update;\n"
-		"    t.ObjectModified=tbld_update;\n"
+		"    t.ObjectModified=tbld_object_modified;\n"
 		"    \n"
 		"    t.Update=tbld_update;\n"
 		"    t.RecnumToSlot=tbld_recnum_to_slot\n"
@@ -337,9 +436,9 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    return t;\n"
 		"    }\n",0);
 
-	htrAddScriptInit_va(s,"   %s = tbld_init(%s.layers.tbld%dpane,\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",new Array(",
+	htrAddScriptInit_va(s,"   %s = tbld_init(%s.layers.tbld%dpane,\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",new Array(",
 		t.name,parentname,t.id,t.name,t.h,t.w,t.inner_padding,t.inner_border,t.windowsize, 
-		t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor,t.titlecolor,
+		t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor, t.textcolorhighlight, t.titlecolor,
 		t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh);
 	
 	for(colid=0;colid<t.ncols;colid++)
@@ -351,6 +450,29 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 	htrAddScriptInit(s,"null));\n");
 
+
+	htrAddEventHandler(s,"document","MOUSEOVER","tabledynamic",
+		"\n"
+		"    targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && (targetLayer.subkind=='row' || targetLayer.subkind=='cell'))\n"
+		"        {\n"
+		"        if(targetLayer.row) targetLayer=targetLayer.row;\n"
+		"        if(tbld_current) tbld_current.mouseout();\n"
+		"        tbld_current=targetLayer;\n"
+		"        tbld_current.mouseover();\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        if(tbld_current)\n"
+		"            {\n"
+		"            tbld_current.mouseout();\n"
+		"            tbld_current=null;\n"
+		"            }\n"
+		"        }\n"
+		"        \n"
+		"    \n"
+		"\n");
+
 	htrAddEventHandler(s,"document","MOUSEDOWN","tabledynamic",
 		"\n"
 		"    targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
@@ -359,9 +481,28 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        if(targetLayer.row) targetLayer=targetLayer.row;\n"
 		"        if(targetLayer.table.osrc.CurrentRecord!=targetLayer.recnum)\n"
 		"            {\n"
-		"            targetLayer.table.osrc.MoveToRecord(targetLayer.recnum);\n"
-		"            \n"
+		"            if(targetLayer.recnum)\n"
+		"                targetLayer.table.osrc.MoveToRecord(targetLayer.recnum);\n"
 		"            }\n"
+		"        }\n"
+		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && targetLayer.subkind=='headercell')\n"
+		"        {\n"
+		"        var neworder=new Array();\n"
+		"        for(i in targetLayer.row.table.osrc.orderobject)\n"
+		"            neworder[i]=targetLayer.row.table.osrc.orderobject[i];\n"
+		"        var colname=targetLayer.row.table.cols[targetLayer.colnum][0];\n"
+		/* Something is wrong with centrallix and ORDER BY, when it is fixed, uncomment
+		 *     this and remove the line after the comment*/
+		/*
+		"        if(colname+' ASC'==neworder[0])\n"
+		"            neworder[0]=colname+' DESC';\n"
+		"        else if (colname+' DESC'==neworder[0])\n"
+		"            neworder[0]=colname+' ASC';\n"
+		"        else\n"
+		"            neworder.push(colname+' ASC');\n"
+		*/
+		"        neworder.unshift(':'+colname);\n"
+		"        targetLayer.row.table.osrc.ActionOrderObject(neworder);\n"
 		"        }\n"
 		"    \n"
 		"\n");
@@ -657,6 +798,10 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** Text color information **/
 	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
 	    sprintf(t.textcolor,"%.63s",ptr);
+
+	/** Text color information **/
+	if (objGetAttrValue(w_obj,"textcolorhighlight",POD(&ptr)) == 0)
+	    sprintf(t.textcolorhighlight,"%.63s",ptr);
 
 	/** Title text color information **/
 	if (objGetAttrValue(w_obj,"titlecolor",POD(&ptr)) == 0)

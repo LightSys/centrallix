@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.28  2002/04/27 22:47:45  jorupp
+     * re-wrote form and osrc interaction -- more happens now in the form
+     * lots of fun stuff in the table....check form.app for an example (not completely working yet)
+     * the osrc is still a little bit buggy.  If you get it screwed up, let me know how to reproduce it.
+
     Revision 1.27  2002/04/27 06:37:45  jorupp
      * some bug fixes in the form
      * cleaned up some debugging output in the label
@@ -188,47 +193,11 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char* ptr;
     char name[64];
     char tabmode[64];
-    //char sbuf[200];
-    //char sbuf2[160];
-    char *sbuf3;
     int id;
     char* nptr;
-    char* basequery;
-    char* basewhere;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
     char _3bconfirmwindow[30];
     int readonly;
-#define FORM_BUF_SIZE 4096
-    
-#if 0
-    char *temp;
-    int type;
-	temp=objGetFirstAttr(w_obj);
-	while(temp && (type=objGetAttrType(w_obj,temp)))
-	    {
-	    int i;
-	    char* c;
-	    printf("name: %s -- type:%i\n",temp,type);
-	    switch (type)
-		{
-		case DATA_T_STRING:
-		    objGetAttrValue(w_obj,temp,POD(&c));
-		    printf("name:%s value:%s\n",temp,c);
-		    break;
-		case DATA_T_INTEGER:
-		    objGetAttrValue(w_obj,temp,POD(&i));
-		    printf("name:%s value:%i\n",temp,i);
-		    break;
-		}
-	    temp=objGetNextAttr(w_obj);
-	    }
-#endif
-
-
-
-    basequery=nmMalloc(FORM_BUF_SIZE);
-    basewhere=nmMalloc(FORM_BUF_SIZE);
-
 
     
     	/** Get an id for this. **/
@@ -295,19 +264,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***          in addition, at start, will only show where c is true
 	 ***          condition (c=true) can be overridden, (b=false) can't
 	 ***/
-
-	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
-	    snprintf(basequery,FORM_BUF_SIZE,"%s",ptr);
-	else
-	    {
-	    mssError(1,"HTFORM","Form must have a 'basequery' property");
-	    return -1;
-	    }
-	
-	if (objGetAttrValue(w_obj,"basewhere",POD(&ptr)) == 0)
-	    snprintf(basewhere,FORM_BUF_SIZE,"%s",ptr);
-	else
-	    strcpy(basewhere,"");
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
@@ -800,19 +756,10 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    return this.ChangeMode('Query');\n"
 		"    }\n", 0);
 
-	/** Execute query **/
-	htrAddScriptFunction(s, "form_action_queryexec", "\n"
-		"function form_action_queryexec()\n"
-		"    {\n"
-		"    if(!this.allowquery) {alert('Query not allowed');return 0;}\n"
-		"    if(!(this.mode=='Query')) {alert('Must be in QBF mode');return 0;}\n"
-		"    var where = new String;\n"
-		"    var firstone = true;\n"
-		/** Build the SQL query, do I have to?...... **/
-		"    for(var i in form.elements)\n"
-		"        {\n"
-		"        if(form.elements[i]._form_IsChanged)\n"
-		"            {\n"
+#if 0 
+old query code
+
+
 		"            if(firstone)\n"
 		"                {\n"
 		"                firstone=false;\n"
@@ -821,7 +768,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                {\n"
 		"                where+=\" AND \";\n"
 		"                }\n"
-		"            var ele=form.elements[i];\n"
 		"            switch(ele.kind)\n"
 		"                {\n"
 		"                case 'checkbox':\n"
@@ -896,9 +842,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                    confirm('don\\'t know what to do with \"'+ele.kind+'\"');\n"
 		"                    break;\n"
 		"                }\n"
-		"            }\n"
-		"        }\n"
-		/** Done with the query -- YEAH **/
+
 		"    var query;\n"
 		"    if(where=='')\n"
 		"        {\n"
@@ -909,12 +853,40 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        query=form_build_query(this.basequery,where,this.readonly);\n"
 		"        }\n"
 		"    delete where;\n"
-		"    if(confirm('Send to \"'+this.osrc.name+'\"(osrc):'+query))\n"
+
+#endif
+
+	
+	/** Execute query **/
+	htrAddScriptFunction(s, "form_action_queryexec", "\n"
+		"function form_action_queryexec()\n"
+		"    {\n"
+		"    if(!this.allowquery) {alert('Query not allowed');return 0;}\n"
+		"    if(!(this.mode=='Query')) {alert('Must be in QBF mode');return 0;}\n"
+		"    var where = new String;\n"
+		"    var firstone = true;\n"
+		/** build an query object to give the osrc **/
+		"    var query=new Array();\n"
+		"    query.oid=null;\n"
+		"    \n"
+		"    for(var i in form.elements)\n"
+		"        {\n"
+		"        if(form.elements[i]._form_IsChanged)\n"
+		"            {\n"
+		"            var t=new Object();\n"
+		"            t.oid=form.elements[i].fieldname;\n"
+		"            t.value=form.elements[i].getvalue();\n"
+		"            t.type=form.elements[i]._form_type;\n"
+		"            query.push(t);\n"
+		"            }\n"
+		"        }\n"
+		/** Done with the query -- YEAH **/
+		"    //if(confirm('Send to \"'+this.osrc.name+'\"(osrc):'+query))\n"
 		"        {\n"
 		"        form.Pending=true;\n"
 		"        form.IsUnsaved=false;\n"
-		"        this.cb['DataAvailable'].add(this,new Function('this.osrc.ActionFirst(this)'));\n"
-		"        this.osrc.ActionQuery(query, this);\n"
+		"        //this.cb['DataAvailable'].add(this,new Function('this.osrc.ActionFirst(this)'));\n"
+		"        this.osrc.ActionQueryObject(query, this);\n"
 		"        }\n"
 		"    delete query;\n"
 		"    }\n", 0);
@@ -944,7 +916,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.Pending=true;\n"
 		"    this.osrc.ActionModify(dataobj,this);\n"
 		"    }\n", 0);
-
+#if 0
 	/** Send Initial Query */
 	htrAddScriptFunction(s, "form_init_query", "\n"
 		"function form_init_query()\n"
@@ -954,7 +926,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.cb['DataAvailable'].add(this,new Function('this.osrc.ActionFirst(this)'));\n"
 		"    this.osrc.ActionQuery(this.currentquery)\n"
 		"    }\n", 0);
-
+#endif
 
 	/** Helper function to build a query */
 	htrAddScriptFunction(s, "form_build_query", "\n"
@@ -1002,7 +974,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    if(this.arr.length<1)\n"
 		"        {\n"
-		"        confirm('There are no callbacks registered for '+this.name+'.  This is a problem');\n"
+		"        //confirm('There are no callbacks registered for '+this.name+'.  This is a problem');\n"
 		"        return false;\n"
 		"        }\n"
 		"    this.arr.sort(form_cbobj_compare);\n"
@@ -1050,12 +1022,10 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Form initializer **/
 	htrAddScriptFunction(s, "form_init", "\n"
-		"function form_init(aq,an,am,av,and,me,name,bq,bw,_3b,ro)\n"
+		"function form_init(aq,an,am,av,and,me,name,_3b,ro)\n"
 		"    {\n"
 		"    form = new Object();\n"
 		"    form.readonly=ro;\n" 
-		"    form.basequery = bq;\n"
-		"    form.currentquery = form_build_query(bq,bw,form.readonly);\n"
 		"    form.elements = new Array();\n"
 		"    form.statuswidgets = new Array();\n"
 		"    form.mode = 'No Data';\n"
@@ -1124,34 +1094,25 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.EnableAll = form_enable_all;\n"
 		"    form.ReadOnlyAll = form_readonly_all;\n"
 		"    form.ChangeMode = form_change_mode;\n"
-		"    form.InitQuery = form_init_query;\n"
+		"    //form.InitQuery = form_init_query;\n"
 		"    return form;\n"
 		"    }\n",0);
-	//nmFree(sbuf3,800);
 
 	/** Write out the init line for this instance of the form
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	sbuf3 = nmMalloc(FORM_BUF_SIZE);
-	snprintf(sbuf3,FORM_BUF_SIZE,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s','%s','%s',%s,%i);\n",
+	htrAddScriptInit_va(s,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s',%s,%i);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
-		basequery,basewhere,_3bconfirmwindow,readonly);
-	htrAddScriptInit(s,sbuf3);
-	nmFree(sbuf3,FORM_BUF_SIZE);
+		_3bconfirmwindow,readonly);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/
 	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
 	
 
-	htrAddScriptInit(s,"    fm_current.InitQuery();");
-
 	/** Make sure we don't claim orphans **/
 	htrAddScriptInit(s,"    fm_current = null;\n\n");
-
-	nmFree(basequery,FORM_BUF_SIZE);
-	nmFree(basewhere,FORM_BUF_SIZE);
 
     return 0;
     }

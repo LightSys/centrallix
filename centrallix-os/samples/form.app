@@ -43,14 +43,13 @@ wholePage "widget/page"
 	    {
 	    x = 5; y = 5; height = 60; width = 80;
 	    fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";
-	    text = "Show self DOM";
+	    text = "Show debugger";
 	    tristate = "yes";
 	    cn5 "widget/connector"
 		{
 		event="Click";
-		target="alerter";
-		action="ViewTreeDOM";
-		param="(navBtn1)";
+		target="debugwin";
+		action="SetVisibility";
 		}
 	    }
 	showedit1 "widget/textbutton" 
@@ -78,12 +77,14 @@ wholePage "widget/page"
 	bgcolor = "#b0b0b0";
 	titlebar = yes;
 	style = "floating";
-	x = 95; y = 0; width = 600; height = 300;
+	x = 95; y = 0; width = 600; height = 400;
 	osrc1 "widget/osrc"
 	{
+	    sql = "SELECT objname = :name, :full_name, :num_days FROM /samples/Months.csv/rows";
+	    readahead=1;
+	    replicasize=6;
 	    form1 "widget/form"
 		{
-		basequery = "SELECT objname = :name, :full_name, :num_days FROM /samples/Months.csv/rows";
 		//ReadOnly = no;
 
 		_3bconfirmwindow = "_3bConfirmWindow";
@@ -345,6 +346,28 @@ wholePage "widget/page"
 			}
 		    }
 	        }
+	    tblMonths "widget/table" 
+		{
+		mode="dynamicrow";
+		width=400;
+		height=140;
+		x=10;y=260;
+		cellhspacing=2;
+		cellvspacing=2;
+		inner_border=1;
+		inner_padding=1;
+		bgcolor="#c0c0c0";
+		row_bgcolor1="#c0c0c0";
+		row_bgcolor2="#a0a0a0";
+		row_bgcolorhighlight="black";
+		hdr_bgcolor="white";
+		textcolor="black";
+		textcolorhighlight="white";
+		titlecolor="red";
+		objname "widget/table-column" { title="Number";width=100; }
+		full_name "widget/table-column" { title="Name"; width=100; }
+		num_days "widget/table-column" { title="Days"; width=40; }
+		}
 	    }	//end of osrc
 	}
     rightNavWindow "widget/htmlwindow" 
@@ -461,18 +484,23 @@ wholePage "widget/page"
 		}
 	    }
 	}
-    Treeview_pane "widget/pane"
-        {
-	x=0; y=300; width=800; height=300;
-	bgcolor="#e0e0e0";
-	style=lowered;
-	Tree_scroll "widget/scrollpane"
+    debugwin "widget/htmlwindow"
+	{
+	x=100;y=100;width=800;height=500;
+	visible=false;
+	Treeview_pane "widget/pane"
 	    {
-	    x=0; y=0; width=798; height=298;
-	    Tree "widget/treeview"
-	        {
-		x=0; y=1; width=778;
-		source = "javascript:form1";
+	    x=0; y=0; width=800; height=500;
+	    bgcolor="#e0e0e0";
+	    style=lowered;
+	    Tree_scroll "widget/scrollpane"
+		{
+		x=0; y=0; width=798; height=498;
+		Tree "widget/treeview"
+		    {
+		    x=0; y=1; width=20000;
+		    source = "javascript:form1";
+		    }
 		}
 	    }
 	}

@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.18 2002/04/26 22:12:27 jheth Exp $
+    $Id: htdrv_osrc.c,v 1.19 2002/04/27 22:47:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.19  2002/04/27 22:47:45  jorupp
+     * re-wrote form and osrc interaction -- more happens now in the form
+     * lots of fun stuff in the table....check form.app for an example (not completely working yet)
+     * the osrc is still a little bit buggy.  If you get it screwed up, let me know how to reproduce it.
+
     Revision 1.18  2002/04/26 22:12:27  jheth
     Added nextPage() prevPage() functions to OSRC - Didn't test it though - something is broken. I can't make depend.
 
@@ -157,6 +162,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    char *nptr;
    int readahead;
    int replicasize;
+   char *sql;
+   char *filter;
 
    sbuf3 = nmMalloc(200);
    
@@ -181,6 +188,28 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       mssError(1,"HTOSRC","You must give positive values for replicasize and readahead");
       return -1;
       }
+
+   if (objGetAttrValue(w_obj,"sql",POD(&ptr)) == 0)
+      {
+      sql=nmMalloc(strlen(ptr)+1);
+      strcpy(sql,ptr);
+      }
+   else
+      {
+      mssError(1,"HTOSRC","You must give a sql parameter");
+      }
+
+   if (objGetAttrValue(w_obj,"filter",POD(&ptr)) == 0)
+      {
+      filter=nmMalloc(strlen(ptr)+1);
+      strcpy(filter,ptr);
+      }
+   else
+      {
+      filter=nmMalloc(1);
+      filter[0]='\0';
+      }
+
 
 
    /** Write named global **/
@@ -213,6 +242,83 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    }\n",0);
 
 
+   htrAddScriptFunction(s, "osrc_init_query", "\n"
+      "function osrc_init_query()\n"
+      "    {\n"
+      "    this.init=true;\n"
+      "    this.ActionQueryObject(null,null);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_action_order_object", "\n"
+      "function osrc_action_order_object(order)\n"
+      "    {\n"
+      "    this.pendingorderobject=order;\n"
+      "    this.ActionQueryObject(this.queryobject);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_action_query_object", "\n"
+      "function osrc_action_query_object(q, formobj)\n"
+      "    {\n"
+      "    if(this.pending)\n"
+      "        {\n"
+      "        alert('There is already a query or movement in progress...');\n"
+      "        return 0;\n"
+      "        }\n"
+      "    this.pendingqueryobject=q;\n"
+      "    var statement=this.sql;\n"
+      "    var firstone=true;\n"
+      "    \n"
+      "    if(this.filter)\n"
+      "        {\n"
+      "        statement+=' WHERE ('+this.filter+')';\n"
+      "        firstone=false;\n"
+      "        }\n"
+      "    \n"
+      "    for(i in q)\n"
+      "        {\n"
+      "        if(i!='oid')\n"
+      "            {\n"
+      "            var val=q[i].value;;\n"
+      "            switch(q[i].type)\n"
+      "                {\n"
+      "                case 'integer':\n"
+      "                    break;\n"
+      "                default:\n"
+      "                    val='\"'+val+'\"';\n"
+      "                    break;\n"
+      "                }\n"
+      "            if(firstone)\n"
+      "                {\n"
+      "                statement+=' WHERE (:'+q[i].oid+'='+val+')';\n"
+      "                }\n"
+      "            else\n"
+      "                {\n"
+      "                statement+=' AND (:'+q[i].oid+'='+val+')';\n"
+      "                }\n"
+      "            }\n"
+      "        }\n"
+      "        \n"
+      "    firstone=true;\n"
+      "    if(this.pendingorderobject)\n"
+      "        for(i in this.pendingorderobject)\n"
+      "            {\n"
+      "            //alert('asdf'+this.pendingorderobject[i]);\n"
+      "            if(firstone)\n"
+      "                {\n"
+      "                statement+=' ORDER BY '+this.pendingorderobject[i];\n"
+      "                firstone=false;\n"
+      "                }\n"
+      "            else\n"
+      "                {\n"
+      "                statement+=', '+this.pendingorderobject[i];\n"
+      "                }\n"
+      "            }\n"
+      "    //statement+=';';\n"
+      "    this.ActionQuery(statement,formobj);\n"
+      "    \n"
+      "    }\n",0);
+
+
    htrAddScriptFunction(s, "osrc_action_query", "\n"
       "function osrc_action_query(q, formobj)\n"
       "    {\n"
@@ -225,6 +331,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        alert('There is already a query or movement in progress...');\n"
       "        return 0;\n"
       "        }\n"
+      "    //var win=window.open();\n"
+      "    //win.document.write(\"<PRE>\"+q+\"</PRE>\");\n"
+      "    //win.document.close();\n"
       "    this.pendingquery=String(escape(q)).replace(\"/\",\"%2F\",\"g\");\n"
       "    this.pending=true;\n"
       "    var someunsaved=false;\n"
@@ -322,10 +431,10 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddScriptFunction(s, "osrc_action_modify_cb", "\n"
       "function osrc_action_modify_cb()\n"
       "    {\n"
-      "    this.formobj.ObjectModified();\n"
       /** I don't know how to tell if we succeeded....assume we did... **/
       "    if(true)\n"
       "        {\n"
+      "        var recnum=this.CurrentRecord;\n"
       "        var cr=this.replica[this.CurrentRecord];\n"
       "        for(var i in this.modifieddata) // update replica\n"
       "            for(var j in cr)\n"
@@ -333,6 +442,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                    cr[j].value=this.modifieddata[i];\n"
       "        \n"
       "        this.formobj.OperationComplete(true);\n"
+      "        for(var i in this.children)\n"
+      "            this.children[i].ObjectModified(recnum);\n"
       "        }\n"
       "    else\n"
       "        {\n"
@@ -362,7 +473,11 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    if(this.pendingquery) // this could be a movement or a new query....\n"
       "        {  // new query\n"
       "        this.query=this.pendingquery;\n"
+      "        this.queryobject=this.pendingqueryobject;\n"
+      "        this.orderobject=this.pendingorderobject;\n"
       "        this.pendingquery=null;\n"
+      "        this.pendingqueryobject=null;\n"
+      "        this.pendingorderobject=null;\n"
       "        for(var i in this.children)\n"
       "             {\n"
       "             this.children[i]._osrc_ready=false;\n"
@@ -375,7 +490,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        if(this.replica) delete this.replica;\n"
       "        this.replica=new Array();\n"
       "        this.LastRecord=0;\n"
-      "        this.FirstRecord=0;\n"
+      "        this.FirstRecord=1;\n"
 
       "        this.OpenSession();\n"
       "        }\n"
@@ -438,15 +553,24 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    this.qid=this.document.links[0].target;\n"
       "    for(var i in this.children)\n"
       "        this.children[i].DataAvailable();\n"
-      /** Don't actually load the data...just let children know that the data is available **/
-      "    //this.onload = osrc_fetch_next;\n"
-      "    //this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
+      /** should this be a special case for our initialization ?**/
+      "    //if(this.init)\n"
+      "    //    {\n"
+      "        this.init=false;\n"
+      "        this.ActionFirst();\n"
+      "    //    }\n"
+      /** normally don't actually load the data...just let children know that the data is available **/
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_fetch_next", "\n"
       "function osrc_fetch_next()\n"
       "    {\n"
       "    //alert('fetching....');\n"
+      "    if(!this.qid)\n"
+      "        {\n"
+      "        alert('somethign is wrong...');\n"
+      "        alert(this.src);\n"
+      "        }\n"
       "    var lnk=this.document.links;\n"
       "    var lc=lnk.length;\n"
       "    if(lc < 2)\n"
@@ -500,6 +624,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);\n"
       "        this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;\n"
       "        }\n"
+      /** make sure we bring this.LastRecord back down to the top of our replica...**/
+      "    while(!this.replica[this.LastRecord])\n"
+      "        this.LastRecord--;\n"
       "    if(this.LastRecord<this.CurrentRecord)\n"
       "        {\n" /* We're going farther down this... */
       "        this.onload = osrc_fetch_next;\n"
@@ -507,8 +634,16 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        }\n"
       "    else\n"
       "        {\n" /* we've got the one we need */
-      "        this.GiveAllCurrentRecord();\n"
-      "        this.pending=false;\n"
+      "        if((this.LastRecord-this.FirstRecord+1)<this.replicasize)\n"
+      "            {\n" /* make sure we have a full replica if possible */
+      "            this.onload = osrc_fetch_next;\n"
+      "            this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+(this.replicasize-(this.LastRecord-this.FirstRecord+1));\n"
+      "            }\n"
+      "        else\n"
+      "            {\n"
+      "            this.GiveAllCurrentRecord();\n"
+      "            this.pending=false;\n"
+      "            }\n"
       "        }\n"
       "    }\n",0);
       
@@ -565,7 +700,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        }\n"
       "    if(this.pending)\n"
       "        {\n"
-      "        alert('you got ahead');\n"
+      "        //alert('you got ahead');\n"
       "        return 0;\n"
       "        }\n"
       "    this.pending=true;\n"
@@ -624,14 +759,22 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "            {\n" /* data is further back, need new query */
       "            if(this.FirstRecord-this.CurrentRecord<this.readahead)\n"
       "                {\n"
-      "                this.startat=this.FirstRecord-this.readahead;\n"
+      "                this.startat=(this.FirstRecord-this.readahead)>0?(this.FirstRecord-this.readahead):1;\n"
       "                }\n"
       "            else\n"
       "                {\n"
       "                this.startat=this.CurrentRecord;\n"
       "                }\n"
-      "            this.onload=osrc_open_query_startat;\n"
-      "            this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "            if(this.qid)\n"
+      "                {\n"
+      "                this.onload=osrc_open_query_startat;\n"
+      "                this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "                }\n"
+      "            else\n"
+      "                {\n"
+      "                this.onload=osrc_open_query_startat;\n"
+      "                this.onload();\n"
+      "                }\n"
       "            return 0;\n"
       "            }\n"
       "        else\n"
@@ -667,7 +810,14 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    this.qid=this.document.links[0].target;\n"
       "    this.OSMLRecord=this.startat-1;\n"
       "    this.onload=osrc_fetch_next;\n"
-      "    this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.readahead+'&ls__startat='+this.startat;\n"
+      "    if(this.FirstRecord-this.CurrentRecord<this.replicasize)\n"
+      "        {\n"
+      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.FirstRecord-this.CurrentRecord)+'&ls__startat='+this.startat;\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.replicasize+'&ls__startat='+this.startat;\n"
+      "        }\n"
       "    this.startat=null;\n"
       "    }\n",0);
 
@@ -705,16 +855,21 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
-      "function osrc_init(loader,ra,rs)\n"
+      "function osrc_init(loader,ra,rs,sql,filter)\n"
       "    {\n"
       "    loader.readahead=ra;\n"
       "    loader.replicasize=rs;\n"
+      "    loader.sql=sql;\n"
+      "    loader.filter=filter;\n"
+      "    \n"
       "    loader.GiveAllCurrentRecord=osrc_give_all_current_record;\n"
       "    loader.MoveToRecord=osrc_move_to_record;\n"
       "    loader.MoveToRecordCB=osrc_move_to_record_cb;\n"
       "    loader.children = new Array();\n"
       "    loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
+      "    loader.ActionQueryObject=osrc_action_query_object;\n"
+      "    loader.ActionOrderObject=osrc_action_order_object;\n"
       "    loader.ActionDelete=osrc_action_delete;\n"
       "    loader.ActionCreate=osrc_action_create;\n"
       "    loader.ActionModify=osrc_action_modify;\n"
@@ -736,25 +891,24 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    loader.ActionLast = osrc_move_last;\n"
       "    loader.ActionPrevPage = osrc_move_prev_page;\n"
       "    loader.ActionNextPage = osrc_move_next_page;\n"
+
+      "    loader.InitQuery = osrc_init_query;\n"
       
       "    return loader;\n"
       "    }\n", 0);
 
 
    /** Script initialization call. **/
-   snprintf(sbuf3, 200, "osrc_current=osrc_init(%s.layers.osrc%dloader,%i,%i);\n", parentname, id,readahead,replicasize);
-   htrAddScriptInit(s, sbuf3);
+   htrAddScriptInit_va(s,"    osrc_current=osrc_init(%s.layers.osrc%dloader,%i,%i,'%s','%s');\n", parentname, id,readahead,replicasize,sql,filter);
 
    /** HTML body <DIV> element for the layers. **/
-   snprintf(sbuf3, 200, "   <DIV ID=\"osrc%dloader\"></DIV>\n",id);
-   htrAddBodyItem(s, sbuf3);
-   
-   nmFree(sbuf3, 200);
+   htrAddBodyItem_va(s,"    <DIV ID=\"osrc%dloader\"></DIV>\n",id);
    
    htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
    
    /** We set osrc_current=null so that orphans can't find us  **/
-   htrAddScriptInit(s, "   osrc_current=null;\n\n");
+   htrAddScriptInit(s, "    osrc_current.InitQuery();\n\n");
+   htrAddScriptInit(s, "    osrc_current=null;\n\n");
 
    return 0;
 }
