@@ -5,9 +5,9 @@
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
-<!-- PAGE BREAK: 'editbox.html' -->
-<h2 class="widgetname"><a name="editbox">editbox</a></h2>
-<p class="widgettype">type: <span class="widgettypevalue">widget/editbox</span>
+<!-- PAGE BREAK: 'textarea.html' -->
+<h2 class="widgetname"><a name="textarea">textarea</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/textarea</span>
 </p>
 <p class="widgettype">visual: <span class="widgettypevalue">yes</span>
 </p>
@@ -17,10 +17,10 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).
+			The textarea is a multi-line text edit widget, allowing the user to enter text data containing line endings, tabs, and more.  It also contains a scrollbar which allows more text to be edited than can fit in the displayable area.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The editbox can be placed within any visual widget (or within a form widget).  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).  Editboxes cannot contain visual widgets.
+			The textarea is a visual form element widget, and can be contained inside any container capable of holding visual widgets.  It may only contain nonvisual widgets like the connector.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -29,69 +29,60 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">fieldname</td>
-<td class="type">string</td>
-<td class="description">Name of the column in the datasource you want to reference.</td>
-</tr>
-<tr>
 <td class="name">background</td>
 <td class="type">string</td>
-<td class="description">A background image for the contents of the editbox.</td>
+<td class="description">A background image for the textarea.</td>
 </tr>
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the editbox contents. If neither bgcolor nor background is specified, the editbox is transparent.</td>
+<td class="description">A color, RGB or named, to be used as the background.  If neither bgcolor nor background are specified, the textarea is transparent.</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">The field in the objectsource to associate this textarea with.</td>
 </tr>
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the editbox.</td>
+<td class="description">The height of the textarea, in pixels</td>
 </tr>
 <tr>
 <td class="name">maxchars</td>
 <td class="type">integer</td>
-<td class="description">number of characters to accept from the user.</td>
+<td class="description">The maximum number of characters the textarea should accept from the user</td>
 </tr>
 <tr>
 <td class="name">readonly</td>
 <td class="type">yes/no</td>
-<td class="description">set to 'yes' if the user cannot modify the value of the edit box (default 'no').</td>
+<td class="description">Set to 'yes' if the data in the text area should be viewed only and not be modified</td>
 </tr>
 <tr>
 <td class="name">style</td>
 <td class="type">string</td>
-<td class="description">Either &quot;raised&quot; or &quot;lowered&quot;, and determines the style of the border drawn around the editbox.  Default is &quot;lowered&quot;.</td>
+<td class="description">The border style of the text area, can be 'raised' or 'lowered'.  Default is 'raised'.</td>
 </tr>
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the editbox.</td>
+<td class="description">The width of the textarea, in pixels</td>
 </tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the editbox, default is 0.</td>
+<td class="description">The horizontal coordinate of the left edge of the textarea, relative to the container.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the editbox, default is 0.</td>
+<td class="description">The vertical coordinate of the top edge of the textarea, relative to the container.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<table class="actions">
-<tr>
-<th class="name">Action</th>
-<th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">SetValue</td>
-<td class="description">The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).</td>
-</tr>
-</table>
+<p class="none">none currently available</p>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>
@@ -124,33 +115,24 @@
 </tr>
 <tr>
 <td class="name">DataChange</td>
-<td class="description">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</td>
+<td class="description">This event occurs when the data value of the widget has changed.</td>
+</tr>
+<tr>
+<td class="name">Modified</td>
+<td class="description">This event occurs when the user modifies the data value of the widget (the distinction from 'DataChange' is that in this case the user modified the data value, whereas DataChange can occur even when the form containing the textarea views a new object, but also by user modification).</td>
 </tr>
 <tr>
 <td class="name">LoseFocus</td>
-<td class="description">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</td>
+<td class="description">This event occurs when the textarea loses keyboard focus (if the user tabs off of it, for instance).</td>
 </tr>
 <tr>
 <td class="name">GetFocus</td>
-<td class="description">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+<td class="description">This event occurs when the textarea receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
 </tr>
 </table>
+<h3 class="properties">Client Properties:</h3>
+<p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
-<pre>
-		
-$Version=2$
-// Here is a single lonely edit box.
-my_editbox &quot;widget/editbox&quot; 
-	{
-	x=180; 
-	y=40; 
-	width=120; 
-	height=15; 
-	style=&quot;lowered&quot;; 
-	fieldname=&quot;datasource_fieldname&quot;;
-	bgcolor=&quot;#ffffff&quot;;
-	}
-		
-		</pre>
+<p class="none">none currently available</p>
 </body>
 </html>

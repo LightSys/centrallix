@@ -9,52 +9,20 @@
 <h2 class="widgetname"><a name="treeview">treeview</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/treeview</span>
 </p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span>
+</p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			A treeview provides a way of viewing hierarchically-organized data via a &quot;traditional&quot; GUI point-and-click tree structure. A treeview has &quot;branches&quot; that can expand and collapse entire subtrees of data.
-			Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree.Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a &quot;querytree&quot;(QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.
+			Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a &quot;querytree&quot; (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.
-		</span><h3 class="properties">Properties:</h3>
-<table class="properties">
-<tr>
-<td class="name">source</td>
-<td class="type">string</td>
-<td class="description">The ObjectSystem path of the root of the treeview.</td>
-</tr>
-<tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">width, in pixels, of the treeview.</td>
-</tr>
-<tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the treeview's root object.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the treeview's root object.</td>
-</tr>
-</table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
-<h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
-<h3 class="events">Events:</h3>
-<table class="events">
-<tr>
-<td class="name">ClickItem</td>
-<td class="description">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is &quot;Pathname&quot;, or the ObjectSystem path to the object which was selected.</td>
-</tr>
-<tr>
-<td class="name">RightClickItem</td>
-<td class="description">to the above, but when the user right-clicks on an item in the treeview.</td>
-</tr>
-</table>
-<h3 class="sample">Sample Code:</h3>
+		</span><h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$

@@ -9,14 +9,25 @@
 <h2 class="widgetname"><a name="pane">pane</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/pane</span>
 </p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span>
+</p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			The pane is Centrallix's simplest container. It consists only of a background and a border, which can either have a &quot;raised&quot; edge or &quot;lowered&quot; edge style.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			This container can be placed inside any widget having a visible container.=  Visual or nonvisual widgets may be placed inside a pane.
+			This container can be placed inside any widget having a visible container.  Visual or nonvisual widgets may be placed inside a pane.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
 <tr>
 <td class="name">background</td>
 <td class="type">string</td>
@@ -25,7 +36,7 @@
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor transparent.</td>
+<td class="description">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor background is specified, the pane will be transparent.</td>
 </tr>
 <tr>
 <td class="name">height</td>

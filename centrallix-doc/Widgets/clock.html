@@ -1,0 +1,135 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'clock.html' -->
+<h2 class="widgetname"><a name="clock">clock</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/clock</span>
+</p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			The clock widget displays the current time on the client computer, and is very configurable in terms of appearance.
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			The clock widget can be used inside of any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">ampm</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to show &quot;AM&quot; and &quot;PM&quot;, default is 'yes' if 'hrtype' is 12, and cannot be set to 'yes' if 'hrtype' is 24.</td>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">An image for the background of the clock widget.  Should be an ObjectSystem path.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, for the background of the clock.  If neither bgcolor nor background are specified, the clock is transparent.</td>
+</tr>
+<tr>
+<td class="name">fgcolor1</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, for the foreground text of the clock.</td>
+</tr>
+<tr>
+<td class="name">fgcolor2</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, for the foreground text's shadow, if 'shadowed' is enabled.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">The height of the clock, in pixels.</td>
+</tr>
+<tr>
+<td class="name">hrtype</td>
+<td class="type">integer</td>
+<td class="description">Set to 12 for a 12-hour clock, or to 24 for military (24-hour) time.</td>
+</tr>
+<tr>
+<td class="name">seconds</td>
+<td class="type">integer</td>
+<td class="description">Whether or not the seconds should be displayed.  Default is 'yes'.</td>
+</tr>
+<tr>
+<td class="name">shadowed</td>
+<td class="type">yes/no</td>
+<td class="description">Whether or not the clock's text has a shadow.  Default is 'no'.</td>
+</tr>
+<tr>
+<td class="name">shadowx</td>
+<td class="type">integer</td>
+<td class="description">The horizontal offset, in pixels, of the shadow.</td>
+</tr>
+<tr>
+<td class="name">shadowy</td>
+<td class="type">integer</td>
+<td class="description">The vertical offset, in pixels, of the shadow.</td>
+</tr>
+<tr>
+<td class="name">size</td>
+<td class="type">integer</td>
+<td class="description">The size, in points, clock's text.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">The width of the clock, in pixels.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">The X location of the left edge of the widget.  Default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">The Y location of the top edge of the widget.  Default is 0.</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+</table>
+</body>
+</html>

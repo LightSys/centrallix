@@ -9,6 +9,12 @@
 <h2 class="widgetname"><a name="textbutton">textbutton</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/textbutton</span>
 </p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span>
+</p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.
@@ -19,6 +25,11 @@
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
 <td class="name">background</td>
 <td class="type">string</td>
 <td class="description">A background image for the button.</td>
@@ -26,7 +37,17 @@
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used as the button's background.If neither bgcolor transparent.</td>
+<td class="description">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</td>
+</tr>
+<tr>
+<td class="name">disable_color</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used for the button's text when it is disabled.</td>
+</tr>
+<tr>
+<td class="name">enabled</td>
+<td class="type">yes/no or expr</td>
+<td class="description">Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.</td>
 </tr>
 <tr>
 <td class="name">fgcolor1</td>
@@ -51,12 +72,12 @@
 <tr>
 <td class="name">tristate</td>
 <td class="type">yes/no</td>
-<td class="description">or not the button is tri-state. Default is yes.</td>
+<td class="description">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</td>
 </tr>
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the text button.</td>
+<td class="description">The width, in pixels, of the text button.</td>
 </tr>
 <tr>
 <td class="name">x</td>
@@ -74,10 +95,16 @@
 <h3 class="actions">Actions:</h3>
 <p class="none">none currently available</p>
 <h3 class="events">Events:</h3>
-<table class="events"><tr>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
 <td class="name">Click</td>
 <td class="description">This event occurs when the user clicks the button. No parameters are available from this event.</td>
-</tr></table>
+</tr>
+</table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		

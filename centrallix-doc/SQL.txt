@@ -193,3 +193,12 @@ VII FUNCTION SUPPORT
     right(s,n)		Returns the rightmost n characters of string s.
     ralign(s,n)		Right-justifies string s within n characters, padding
     			on the left with spaces if need be.
+    escape(s,e[,b])	Escapes all characters in <s> that are also in <e>,
+			as well as halting on error if any character in <s> is
+			also in <b> (badchars).  Escaping is done with the
+			standard backslash \ escape character.  The backslash
+			itself is always escaped.
+    quote(s)		Encloses string <s> in double quotation marks, and
+			escapes any quotation marks or backslashes that occur 
+			in the string using the backslash character.
+

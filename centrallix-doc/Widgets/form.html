@@ -9,61 +9,72 @@
 <h2 class="widgetname"><a name="form">form</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/form</span>
 </p>
+<p class="widgettype">visual: <span class="widgettypevalue">no</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span>
+</p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The form widget is used as a high-level container for form elements.=  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.
+			The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.
 			Forms have five different &quot;modes&quot;of operation, each of which can be specifically allowed or disallowed for the form.
-			
-				 No Data - form inactive/disabled, no data viewed/edited.
-				 View - data being viewed readonly.
-				 Modify - existing data being modified.
-				 Query - query criteria being entered (used for query-by-form applications)
-				 New - new object being entered/created.
-			
-			Note: at the time of this writing, the form widget was in its design phase and had not yet been implemented.
+		
+		 No Data - form inactive/disabled, no data viewed/edited.
+		 View - data being viewed readonly.
+		 Modify - existing data being modified.
+		 Query - query criteria being entered (used for query-by-form applications)
+		 New - new object being entered/created.
+		
+			Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a &quot;three-way confirm&quot; message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a &quot;three-way confirm&quot; window.  This should be a hidden (visible=no) &quot;widget/htmlwindow&quot; object which may contain any content, but should at least contain three buttons named &quot;_3bConfirmSave&quot;, &quot;_3bConfirmDiscard&quot;, and &quot;_3bConfirmCancel&quot; directly in the htmlwindow.  During a confirm operation, this window will become &quot;application-modal&quot;; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.=  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).
+			Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
 <tr class="notimplimented">
 <td class="name">AllowQuery</td>
-<td class="type">boolean</td>
+<td class="type">integer</td>
 <td class="description">Allow query by form</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">AllowNew</td>
-<td class="type">boolean</td>
+<td class="type">integer</td>
 <td class="description">Allow creation of new records</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">AllowModify</td>
-<td class="type">boolean</td>
+<td class="type">integer</td>
 <td class="description">Allow modification of existing records</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">AllowView</td>
-<td class="type">boolean</td>
+<td class="type">integer</td>
 <td class="description">Allow viewing of existing data</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">AllowNoData</td>
-<td class="type">boolean</td>
+<td class="type">integer</td>
 <td class="description">Allow the 'no data' state</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">MultiEnter</td>
-<td class="type">boolean</td>
+<td class="type">integer</td>
 <td class="description">Enable MultiEnter</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">TabMode</td>
-<td class="type">boolean</td>
+<td class="type">string</td>
 <td class="description">How to react to a tab in a control</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">ReadOnly</td>
-<td class="type">boolean</td>
+<td class="type">integer</td>
 <td class="description">Allow changes</td>
 </tr>
 <tr>
@@ -74,18 +85,29 @@
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="childname">(of formelement child widgets)</p>
-<table class="childproperties"><tr class="notimplimented">
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr class="notimplimented">
 <td class="name">fieldname</td>
 <td class="type">string</td>
 <td class="description">Fieldname (from the dataset) to bind this element to</td>
-</tr></table>
+</tr>
+</table>
 <p class="childname">(of formstatus child widgets)</p>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
 <table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
 <tr class="notimplimented">
 <td class="name">Clear</td>
-<td class="description">Clears the form to a 'no data' state.</td>
+<td class="description">Clears the form to a 'no data'state.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">Delete</td>
@@ -133,6 +155,55 @@
 </tr>
 </table>
 <h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="properties">Client Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">is_discardable</td>
+<td class="type">true/false</td>
+<td class="description">Whether the form has a status or modifications that can be discarded / canceled.</td>
+</tr>
+<tr>
+<td class="name">is_editable</td>
+<td class="type">true/false</td>
+<td class="description">True if the form is in a state where the data can be edited (but isn't currently being edited).</td>
+</tr>
+<tr>
+<td class="name">is_newable</td>
+<td class="type">true/false</td>
+<td class="description">True if the form is in a state where a new record can be created.</td>
+</tr>
+<tr>
+<td class="name">is_queryable</td>
+<td class="type">true/false</td>
+<td class="description">Whether the form can be placed into &quot;QBF&quot; (query by form) mode so that the user can enter query criteria.</td>
+</tr>
+<tr>
+<td class="name">is_queryexecutable</td>
+<td class="type">true/false</td>
+<td class="description">Whether the form is in &quot;QBF&quot; (query by form) mode so that the query can actually be run.</td>
+</tr>
+<tr>
+<td class="name">is_savable</td>
+<td class="type">true/false</td>
+<td class="description">Whether the form has data in it that can be saved with the Save action.</td>
+</tr>
+<tr>
+<td class="name">lastrecid</td>
+<td class="type">integer</td>
+<td class="description">The number of the last record in the query results, starting with '1'.  Null if no data is available or if the last record has not yet been determined.</td>
+</tr>
+<tr>
+<td class="name">recid</td>
+<td class="type">integer</td>
+<td class="description">The current record in the data source being viewed, starting with '1'.  Null if no data is available.</td>
+</tr>
+</table>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <pre>

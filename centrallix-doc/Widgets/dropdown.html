@@ -5,18 +5,29 @@
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
-<!-- PAGE BREAK: 'dropdown.html' -->
+		</span><!-- PAGE BREAK: 'dropdown.html' -->
 <h2 class="widgetname"><a name="dropdown">dropdown</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/dropdown</span>
+</p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">yes</span>
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 		  A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-		  This widget can be placed within any visual widget (or within a form widget).
+		  This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
@@ -35,7 +46,7 @@
 <tr>
 <td class="name">highlight</td>
 <td class="type">integer</td>
-<td class="description">The color of the highlighted option when the mouse goes over the itme.</td>
+<td class="description">The color of the highlighted option when the mouse goes over the item.</td>
 </tr>
 <tr>
 <td class="name">bgcolor</td>
@@ -47,20 +58,15 @@
 <td class="type">string</td>
 <td class="description">Fieldname (from the dataset) to bind this element to</td>
 </tr>
-<tr>
-<td class="name">numdisplay</td>
-<td class="type">integer</td>
-<td class="description">The number of elements to display before displaying the scroll bars</td>
-</tr>
-<tr>
-<td class="name">sql</td>
-<td class="type">string</td>
-<td class="description">The SQL query to be used for obtaining the data to populate the dropdown list.  The first elemnt in the SELECT statement will be the description, and the second will be the value. This query's result sets child widgets.</td>
-</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="childname">(of widget/dropdownitem child widgets)</p>
 <table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
 <tr>
 <td class="name">label</td>
 <td class="type">string</td>

@@ -1,0 +1,48 @@
+<?xml version='1.0'?>
+<components>
+	<component name="report" type="system/report" description="The top-level report object" visual="yes" container="yes">
+		<overview>
+			<p>The report object is the top-level container for a report, and is the first object that should be listed in the structure file.  It basically embodies the report itself.</p>
+			<p>Although there are only two properties listed for this component, others can be specified.  If they are, they become report parameters which can be referenced later on in the report and can be modified by the user running the report.</p>
+		</overview>
+		<usage>
+			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.</p>
+		</usage>
+		<properties>
+			<property name="title" type="string">The title for the report.</property>
+			<property name="titlebar" type="yes/no">Whether the report will contain a title section at the top giving the title, requesting user, date, and time.</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+myreport "system/report"
+	{
+	title = "This is a hello-world report";
+
+	comment "report/comment"
+		{
+		text = "Hello World";
+		}
+	}
+		]]>
+		</sample>
+	</component>
+<!--
+	<component name="" type="" description="" visual="" container="">
+		<overview>
+		</overview>
+		<usage>
+		</usage>
+		<properties>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+		]]>
+		</sample>
+	</component>
+-->
+</components>

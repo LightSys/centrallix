@@ -9,15 +9,35 @@
 <h2 class="widgetname"><a name="checkbox">checkbox</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/checkbox</span>
 </p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">yes</span>
+</p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			The checkbox widget is used to display a value that can be either true or false (or on/off, yes/no, etc.).It displays as a simple clickable check box.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).=  Checkboxes may not contain visual widgets.
-			Note: form widget interaction was not yet implemented as of the time of writing of this document.
+			The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Checkboxes may not contain visual widgets.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">checked</td>
+<td class="type">yes/no</td>
+<td class="description">whether this checkbox should be initially checked or not.  Default 'no'.</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">name of object source field that should be associated with this checkbox.</td>
+</tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
@@ -28,22 +48,47 @@
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the checkbox, default is 0.</td>
 </tr>
-<tr>
-<td class="name">fieldname</td>
-<td class="type">string</td>
-<td class="description">Name of the column in the datasource you want to reference.</td>
-</tr>
-<tr>
-<td class="name">checked</td>
-<td class="type">boolean</td>
-<td class="description">Whether or not the initial state is checked.</td>
-</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
 <p class="none">none currently available</p>
 <h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the checkbox. No parameters are available from this event.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the checkbox.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the checkbox.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">DataChange</td>
+<td class="description">This event occurs when the user has modified the data value of the checkbox (clicked or unclicked it).</td>
+</tr>
+</table>
+<h3 class="properties">Client Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <pre>

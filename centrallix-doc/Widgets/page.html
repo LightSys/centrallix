@@ -9,14 +9,26 @@
 <h2 class="widgetname"><a name="page">page</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/page</span>
 </p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span>
+</p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.=  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be &quot;widget/page&quot; or &quot;widget/frameset&quot;, where the latter is used to create a multi-framed application.
+			The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be &quot;widget/page&quot; or &quot;widget/frameset&quot;, where the latter is used to create a multi-framed application containing multiple page widgets.
+			Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 			The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
 <tr>
 <td class="name">background</td>
 <td class="type">string</td>
@@ -25,42 +37,42 @@
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">The background color for the page. Can either be a recognized color (such as &quot;red&quot;, an RGB color (such as &quot;#C0C0C0&quot;).</td>
+<td class="description">The background color for the page. Can either be a recognized color (such as &quot;red&quot;), or an RGB color (such as &quot;#C0C0C0&quot;).</td>
 </tr>
 <tr>
 <td class="name">datafocus1</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the top and left edges of rectangles drawn to indicate data blue).</td>
+<td class="description">A color, RGB or named, for the top and left edges of rectangles drawn to indicate data focus (default is dark blue).</td>
 </tr>
 <tr>
 <td class="name">datafocus2</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate blue).</td>
+<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate data focus (default is dark blue).</td>
 </tr>
 <tr>
 <td class="name">kbdfocus1</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to  &quot;white&quot;.</td>
+<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate keyboard focus (default is &quot;white&quot;).</td>
 </tr>
 <tr>
 <td class="name">kbdfocus2</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate grey).</td>
+<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate keyboard focus (default is dark grey).</td>
 </tr>
 <tr>
 <td class="name">mousefocus1</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to  &quot;black&quot;.</td>
+<td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate mouse focus (default is &quot;black&quot;).</td>
 </tr>
 <tr>
 <td class="name">mousefocus2</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate &quot;black&quot;.</td>
+<td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate mouse focus (default is &quot;black&quot;).</td>
 </tr>
 <tr>
 <td class="name">textcolor</td>
 <td class="type">string</td>
-<td class="description">The default color for text which appears on the page.  Can either be a named color or color.</td>
+<td class="description">The default color for text which appears on the page.  Can either be a named color or RGB (numeric) color.</td>
 </tr>
 <tr>
 <td class="name">title</td>
@@ -71,10 +83,7 @@
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<table class="actions"><tr>
-<td class="name">LoadPage</td>
-<td class="description">This action will reload the page with the URL specified in the &quot;Source&quot; parameter.</td>
-</tr></table>
+<p class="none">none currently available</p>
 <h3 class="events">Events:</h3>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
@@ -88,6 +97,8 @@ MyPage &quot;widget/page&quot;
 	title = &quot;This is an example page.&quot;;
 	bgcolor = &quot;white&quot;;
 	textcolor = &quot;black&quot;;
+
+	// widgets for application go here
 	}
 		
 		</pre>

@@ -1,0 +1,71 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'toc.html' -->
+<h1>Centrallix<br>Reporting System<br>Reference</h1>
+<br><p>The Centrallix reporting system provides the ability to generate reports in a variety of formats from ObjectSystem data and a report object.  This document describes the report object structure in detail and how to use the various report components to build a report.</p>
+<p>Sample code is generally given in &quot;structure file&quot; format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.</p>
+<p>Copyright (c)  1998-2003 LightSys Technology Services, Inc.</p>
+<br><p><b>Documentation on the following report components is available:</b></p>
+<table><tr>
+<td><a href="#report">report</a></td>
+<td>The top-level report object</td>
+</tr></table>
+<br><br>
+<!-- PAGE BREAK: 'report.html' -->
+<h2 class="componentname"><a name="report">report</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">system/report</span>
+</p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
+</p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The report object is the top-level container for a report, and is the first object that should be listed in the structure file.  It basically embodies the report itself.</p>
+			<p>Although there are only two properties listed for this component, others can be specified.  If they are, they become report parameters which can be referenced later on in the report and can be modified by the user running the report.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>This component should only be used at the top level, and should never be used inside another container.  It may contain other report components such as queries, forms, sections, tables, etc.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The title for the report.</td>
+</tr>
+<tr>
+<td class="name">titlebar</td>
+<td class="type">yes/no</td>
+<td class="description">Whether the report will contain a title section at the top giving the title, requesting user, date, and time.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+myreport &quot;system/report&quot;
+	{
+	title = &quot;This is a hello-world report&quot;;
+
+	comment &quot;report/comment&quot;
+		{
+		text = &quot;Hello World&quot;;
+		}
+	}
+		
+		</pre>
+<!-- PAGE BREAK: 'END' -->
+</body>
+</html>
