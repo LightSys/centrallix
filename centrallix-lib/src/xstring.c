@@ -26,10 +26,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.7 2002/09/28 01:08:07 jorupp Exp $
+    $Id: xstring.c,v 1.8 2002/10/15 22:01:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.8  2002/10/15 22:01:30  gbeeley
+    A few minor tweaks.  This commit was originally going to fix the xstring
+    null termination problems but evidently I hadn't done a cvs update in
+    a while since jorupp already fixed em...
+
     Revision 1.7  2002/09/28 01:08:07  jorupp
      * added xsFindRev()
      * fixed a couple bugs that pop up when using those functions I added
@@ -109,7 +114,7 @@ xsCheckAlloc(pXString this, int addl_needed)
     char* ptr;
 
     	/** See if more memory is needed. **/
-	if (this->AllocLen < this->Length + addl_needed + 1)
+	if (addl_needed > 0 && this->AllocLen < this->Length + addl_needed + 1)
 	    {
 	    new_cnt = (this->Length + addl_needed + XS_BLK_SIZ) & ~(XS_BLK_SIZ-1);
 
@@ -501,7 +506,7 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
     if(findlen==-1) findlen=strlen(find);
     if(replen==-1) replen=strlen(rep);
     offset=xsFind(this,find,findlen,offset);
-    if(offset==-1) return -1;
+    if(offset < 0) return -1;
     if(findlen>=replen)
 	{
 	memcpy(&(this->String[offset]),rep,replen);
@@ -519,6 +524,7 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
 	memcpy(&(this->String[offset]),rep,replen);
 	this->Length+=replen-findlen;
 	}
+    this->String[this->Length] = '\0';
     return offset;
     }
 
