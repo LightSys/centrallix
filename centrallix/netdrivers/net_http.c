@@ -63,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.48 2004/08/29 04:19:40 jorupp Exp $
+    $Id: net_http.c,v 1.49 2004/08/29 04:21:38 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.49  2004/08/29 04:21:38  jorupp
+     * fix Greg's variant of this issue
+
     Revision 1.48  2004/08/29 04:19:40  jorupp
      * make the URL rewriting with the client dimensions a bit more robust.
 
@@ -2273,6 +2276,7 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 			 "        {\n"
 			 "        loc = loc.replace(re2,'');\n"
 			 "        }\n"
+			 "    loc = loc.replace(new RegExp('[?&]*$','');\n"
 			 "    if (loc.indexOf('?') >= 0)\n"
 			 "        loc += '&';\n"
 			 "    else\n"
