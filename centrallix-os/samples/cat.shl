@@ -2,5 +2,5 @@ $Version=2$
 myshell "system/shell"
 {
     program = "/bin/cat";
-    arg="cat","/etc/fstab","/ets/mtab";
+    arg="cat","/etc/fstab","/etc/mtab";
 }
