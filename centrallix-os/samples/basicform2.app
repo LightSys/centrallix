@@ -283,6 +283,7 @@ basicform2 "widget/page"
 	baseobj = "/samples/computers.csv/rows";
 	readahead=1;
 	replicasize=8;
+	autoquery = never;
 
 	mainpane2 "widget/pane"
 	    {
