@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.36 2002/07/26 14:42:04 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.37 2002/07/26 16:57:44 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.37  2002/07/26 16:57:44  lkehresman
+    a couple bugfixes to the scrollbar detection
+
     Revision 1.36  2002/07/26 14:42:04  lkehresman
     Added detection for scrollbars.  If they exist, set a timeout function
     to watch for scrolling activity.  If scroling happens, move the textarea
@@ -605,8 +608,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	    }
 
 	htrAddScriptInit(s,
-		"    if ((document.width-(window.innerWidth-2))>=0)\n" // if scrollbars are present
-		"        setTimeout(pg_mvpginpt, 500, document.layers.pginpt);\n"
+		"    setTimeout(pg_mvpginpt, 1, document.layers.pginpt);\n"
 		"    document.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
 		"    document.layers.pginpt.visibility = 'inherit';\n");
 	htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");

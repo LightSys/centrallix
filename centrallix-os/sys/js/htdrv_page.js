@@ -278,7 +278,8 @@ function pg_load_page(aparam)
 
 function pg_mvpginpt(ly)
     {
-    p=((document.width-(window.innerWidth-2))>=0?18:2);
-    ly.moveTo(window.innerWidth-p+window.pageXOffset, 20+window.pageYOffset);
-    setTimeout(pg_mvpginpt, 500, ly);
+    var a=(document.height-window.innerHeight-2)>=0?16:1;
+    var b=(document.width-window.innerWidth-2)>=0?22:5;
+    ly.moveTo(window.innerWidth-a+window.pageXOffset, window.innerHeight-b+window.pageYOffset);
+    if (a>1||b>5) setTimeout(pg_mvpginpt, 500, ly);
     }
