@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.9 2002/03/05 01:59:32 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.10 2002/03/08 23:11:11 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.10  2002/03/08 23:11:11  lkehresman
+    Added all of the specified functions to the checkbox:
+      * resetvalue()
+      * enable()
+      * disable()
+      * readonly()
+
     Revision 1.9  2002/03/05 01:59:32  lkehresman
     fixed my error
 
@@ -106,7 +113,7 @@ int htcbVerify() {
 int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
    char sbuf[200];
    char fieldname[30];
-   int x=-1,y=-1;
+   int x=-1,y=-1,checked=0;
    int id;
    char *ptr;
 
@@ -123,6 +130,15 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    else 
       { 
       fieldname[0]='\0';
+      } 
+
+   if (objGetAttrValue(w_obj,"checked",POD(&ptr)) != 0)
+      { 
+      checked = 0;
+      } 
+   else
+      { 
+      checked = 1;
       } 
 
    /** Ok, write the style header items. **/
@@ -160,33 +176,96 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Clear function **/
    htrAddScriptFunction(s, "checkbox_clearvalue", "\n"
-	  "function checkbox_clearvalue() {\n"
-	  "   this.setvalue(false);\n"
-	  "}\n", 0);
+      "function checkbox_clearvalue()\n"
+      "    {\n"
+      "    this.setvalue(false);\n"
+      "    }\n", 0);
+
+   /** reset value function **/
+   htrAddScriptFunction(s, "checkbox_resetvalue", "\n"
+      "function checkbox_resetvalue()\n"
+      "    {\n"
+      "    this.setvalue(false);\n"
+      "    }\n",0);
+
+   /** enable function **/
+   htrAddScriptFunction(s, "checkbox_enable", "\n"
+      "function checkbox_enable()\n"
+      "    {\n"
+      "    this.enabled = true;\n"
+      "    this.document.images[0].uncheckedImage.enabled = this.enabled;\n"
+      "    this.document.images[0].checkedImage.enabled = this.enabled;\n"
+      "    this.document.images[0].enabled = this.enabled;\n"
+      "    this.document.images[0].uncheckedImage.src = '/sys/images/checkbox_unchecked.gif';\n"
+      "    this.document.images[0].checkedImage.src = '/sys/images/checkbox_checked.gif';\n"
+      "    if (this.is_checked)\n"
+      "        {\n"
+      "        this.document.images[0].src = this.document.images[0].checkedImage.src;\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        this.document.images[0].src = this.document.images[0].uncheckedImage.src;\n"
+      "        }\n"
+      "    }\n",0);
+
+   /** read-only function - marks the widget as "readonly" **/
+   htrAddScriptFunction(s, "checkbox_readonly", "\n"
+      "function checkbox_readonly()\n"
+      "    {\n"
+      "    this.enabled = false;\n"
+      "    this.document.images[0].uncheckedImage.enabled = this.enabled;\n"
+      "    this.document.images[0].checkedImage.enabled = this.enabled;\n"
+      "    this.document.images[0].enabled = this.enabled;\n"
+      "    }\n",0);
+
+   /** disable function - disables the widget completely (visually too) **/
+   htrAddScriptFunction(s, "checkbox_disable", "\n"
+      "function checkbox_disable()\n"
+      "    {\n"
+      "    this.readonly();\n"
+      "    this.document.images[0].uncheckedImage.src = '/sys/images/checkbox_unchecked_dis.gif';\n"
+      "    this.document.images[0].checkedImage.src = '/sys/images/checkbox_checked_dis.gif';\n"
+      "    if (this.is_checked)\n"
+      "        {\n"
+      "        this.document.images[0].src = this.document.images[0].checkedImage.src;\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        this.document.images[0].src = this.document.images[0].uncheckedImage.src;\n"
+      "        }\n"
+      "    }\n",0);
 
    /** Checkbox initializer **/
    htrAddScriptFunction(s, "checkbox_init", "\n"
-      "function checkbox_init(l,fieldname) {\n"
-	  "   l.kind = 'checkbox';\n"
-	  "   l.fieldname = fieldname;\n"
-	  "   l.is_checked = 0;\n"
-	  "   l.form = fm_current;\n"
-	  "   l.document.images[0].kind = 'checkbox';\n"
-	  "   l.document.images[0].form = l.form;\n"
-	  "   l.document.images[0].parentLayer = l;\n"
-	  "   l.document.images[0].is_checked = l.is_checked;\n"
-	  "   l.document.images[0].uncheckedImage = new Image();\n"
-	  "   l.document.images[0].uncheckedImage.kind = 'checkbox';\n"
-	  "   l.document.images[0].uncheckedImage.src = \"/sys/images/checkbox_unchecked.gif\";\n"
-	  "   l.document.images[0].uncheckedImage.is_checked = l.is_checked;\n"
-	  "   l.document.images[0].checkedImage = new Image();\n"
-	  "   l.document.images[0].checkedImage.kind = 'checkbox';\n"
-	  "   l.document.images[0].checkedImage.src = \"/sys/images/checkbox_checked.gif\";\n"
-	  "   l.document.images[0].checkedImage.is_checked = l.is_checked;\n"
-	  "   l.clearvalue = checkbox_clearvalue;\n"
-	  "   l.setvalue = checkbox_setvalue;\n"
-	  "   l.getvalue = checkbox_getvalue;\n"
-	  "   if (fm_current) fm_current.Register(l);\n"
+      "function checkbox_init(l,fieldname,checked) {\n"
+      "   l.kind = 'checkbox';\n"
+      "   l.fieldname = fieldname;\n"
+      "   l.is_checked = checked;\n"
+      "   l.enabled = true;\n"
+      "   l.form = fm_current;\n"
+      "   l.document.images[0].kind = 'checkbox';\n"
+      "   l.document.images[0].form = l.form;\n"
+      "   l.document.images[0].parentLayer = l;\n"
+      "   l.document.images[0].is_checked = l.is_checked;\n"
+      "   l.document.images[0].enabled = l.enabled;\n"
+      "   l.document.images[0].uncheckedImage = new Image();\n"
+      "   l.document.images[0].uncheckedImage.kind = 'checkbox';\n"
+      "   l.document.images[0].uncheckedImage.src = \"/sys/images/checkbox_unchecked.gif\";\n"
+      "   l.document.images[0].uncheckedImage.is_checked = l.is_checked;\n"
+      "   l.document.images[0].uncheckedImage.enabled = l.enabled;\n"
+      "   l.document.images[0].checkedImage = new Image();\n"
+      "   l.document.images[0].checkedImage.kind = 'checkbox';\n"
+      "   l.document.images[0].checkedImage.src = \"/sys/images/checkbox_checked.gif\";\n"
+      "   l.document.images[0].checkedImage.is_checked = l.is_checked;\n"
+      "   l.document.images[0].checkedImage.enabled = l.enabled;\n"
+      "   l.setvalue   = checkbox_setvalue;\n"
+      "   l.getvalue   = checkbox_getvalue;\n"
+      "   l.clearvalue = checkbox_clearvalue;\n"
+      "   l.resetvalue = checkbox_resetvalue;\n"
+      "   l.enable     = checkbox_enable;\n"
+      "   l.readonly   = checkbox_readonly;\n"
+      "   l.disable    = checkbox_disable;\n"
+      "   if (fm_current) fm_current.Register(l);\n"
       "}\n", 0);
 
    /** Checkbox toggle mode function **/
@@ -215,18 +294,26 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "         layer = e.target.layer;\n"
       "      else\n"
       "         layer = e.target;\n"
-      "      checkbox_toggleMode(layer);\n"
+      "      if (layer.enabled)\n"
+      "         checkbox_toggleMode(layer);\n"
       "   }\n"
       "\n");
 
    /** Script initialization call. **/
-   sprintf(sbuf,"    checkbox_init(%s.layers.cb%dmain,\"%s\");\n", parentname, id,fieldname);
+   sprintf(sbuf,"    checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", parentname, id,fieldname,checked);
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/
    sprintf(sbuf,"   <DIV ID=\"cb%dmain\">\n",id);
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
+   if (checked)
+      {
+      sprintf(sbuf,"     <IMG SRC=/sys/images/checkbox_checked.gif>\n");
+      }
+   else
+      {
+      sprintf(sbuf,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
+      }
    htrAddBodyItem(s, sbuf);
    sprintf(sbuf,"   </DIV>\n");
    htrAddBodyItem(s, sbuf);
