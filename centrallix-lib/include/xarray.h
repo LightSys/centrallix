@@ -23,10 +23,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xarray.h,v 1.2 2002/11/14 03:44:27 gbeeley Exp $
+    $Id: xarray.h,v 1.3 2003/06/27 21:18:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xarray.h,v $
 
     $Log: xarray.h,v $
+    Revision 1.3  2003/06/27 21:18:34  gbeeley
+    Added xarray xaSetItem() method
+
     Revision 1.2  2002/11/14 03:44:27  gbeeley
     Added a new function to the XArray module to do sorted array adds
     based on an integer field, which is portable between LSB and MSB
@@ -63,6 +66,7 @@ int xaFindItem(pXArray this, void* item);
 int xaRemoveItem(pXArray this, int index);
 int xaClear(pXArray this);
 int xaCount(pXArray this);
+int xaSetItem(pXArray this, int index, void* item);
 
 #define CLD(x,y,z) ((x)((y)->Children.Items[(z)]))
 

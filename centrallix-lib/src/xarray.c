@@ -29,10 +29,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xarray.c,v 1.3 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: xarray.c,v 1.4 2003/06/27 21:18:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xarray.c,v $
 
     $Log: xarray.c,v $
+    Revision 1.4  2003/06/27 21:18:35  gbeeley
+    Added xarray xaSetItem() method
+
     Revision 1.3  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -255,5 +258,37 @@ int
 xaCount(pXArray this)
     {
     return this->nItems;
+    }
+
+
+/*** xaSetItem - set a specific item in the xarray to a given value
+ ***/
+int
+xaSetItem(pXArray this, int index, void* item)
+    {
+    int new_alloc;
+    void* ptr;
+    int i, oldend;
+
+	if (index < 0) return -1;
+	oldend = this->nItems;
+
+	/** Need more memory? **/
+	if (index >= this->nAlloc)
+	    {
+	    new_alloc = this->nAlloc;
+	    while (new_alloc <= index) new_alloc += BLK_INCR;
+	    ptr = (void**)nmSysRealloc(this->Items, new_alloc*sizeof(void*));
+	    if (!ptr) return -1;
+	    this->nAlloc = new_alloc;
+	    this->Items = ptr;
+	    }
+	if (this->nItems < index+1) this->nItems = index+1;
+
+	/** Plop the item in its spot. **/
+	this->Items[index] = item;
+	if (oldend != this->nItems) for(i=oldend;i<this->nItems-1;i++) this->Items[i] = NULL;
+
+    return index;
     }
 
