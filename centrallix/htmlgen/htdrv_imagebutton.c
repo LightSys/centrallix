@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.24 2003/05/30 17:39:49 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.25 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.25  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.24  2003/05/30 17:39:49  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -217,6 +224,12 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int id;
     char* nptr;
     pExpression code;
+
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTIBTN","Netscape DOM support required");
+	    return -1;
+	    }
 
     	/** Get an id for this. **/
 	id = (HTIBTN.idcnt++);
@@ -402,7 +415,6 @@ htibtnInitialize()
 	strcpy(drv->WidgetName,"imagebutton");
 	drv->Render = htibtnRender;
 	drv->Verify = htibtnVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	htrAddAction(drv,"Enable");
 	htrAddAction(drv,"Disable");
@@ -417,6 +429,8 @@ htibtnInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTIBTN.idcnt = 0;
 

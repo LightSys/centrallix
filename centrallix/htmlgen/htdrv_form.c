@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.50  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.49  2003/05/30 17:39:49  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -291,6 +298,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     pObject sub_w_obj;
     pObjQuery qy;
 
+	/** form widget should work on any browser **/
     
     	/** Get an id for this. **/
 	id = (HTFORM.idcnt++);
@@ -423,8 +431,6 @@ htformInitialize()
 	strcpy(drv->WidgetName,"form");
 	drv->Render = htformRender;
 	drv->Verify = htformVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
-	htrAddSupport(drv, HTR_UA_MOZILLA);
 
 	/** Add our actions **/
 	htrAddAction(drv,"Clear");
@@ -452,6 +458,8 @@ htformInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTFORM.idcnt = 0;
 

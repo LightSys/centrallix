@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.28 2003/06/03 19:27:09 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.29 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.29  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.28  2003/06/03 19:27:09  gbeeley
     Updates to properties mostly relating to true/false vs. yes/no
 
@@ -218,6 +225,12 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     pObject sub_w_obj;
     pObjQuery qy;
 
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTEB","Netscape DOM support required");
+	    return -1;
+	    }
+
     	/** Get an id for this. **/
 	id = (HTEB.idcnt++);
 
@@ -384,7 +397,6 @@ htebInitialize()
 	strcpy(drv->WidgetName,"editbox");
 	drv->Render = htebRender;
 	drv->Verify = htebVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Events **/ 
 	htrAddEvent(drv,"Click");
@@ -409,6 +421,8 @@ htebInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTEB.idcnt = 0;
 

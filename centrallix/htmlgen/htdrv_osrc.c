@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.48 2003/05/30 17:39:50 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.49 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.49  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.48  2003/05/30 17:39:50  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -302,6 +309,12 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    pObject sub_w_obj;
    pObjQuery qy;
 
+   if(!s->Capabilities.Dom0NS)
+       {
+       mssError(1,"HTOSRC","Netscape DOM support required");
+       return -1;
+       }
+
    sbuf3 = nmMalloc(200);
    
    /** Get an id for this. **/
@@ -428,7 +441,6 @@ int htosrcInitialize() {
    strcpy(drv->WidgetName,"osrc");
    drv->Render = htosrcRender;
    drv->Verify = htosrcVerify;
-   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
    /** Add actions **/
    htrAddAction(drv,"Clear");
@@ -442,6 +454,8 @@ int htosrcInitialize() {
 
    /** Register. **/
    htrRegisterDriver(drv);
+
+   htrAddSupport(drv, "dhtml");
 
    HTOSRC.idcnt = 0;
 

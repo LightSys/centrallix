@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.20 2003/03/30 22:49:23 jorupp Exp $
+    $Id: htdrv_radiobutton.c,v 1.21 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.21  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.20  2003/03/30 22:49:23  jorupp
      * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
 
@@ -197,6 +204,12 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    int x=-1,y=-1,w,h;
    int id;
    char fieldname[32];
+
+   if(!s->Capabilities.Dom0NS)
+       {
+       mssError(1,"HTRB","Netscape DOM support required");
+       return -1;
+       }
 
    /** Get an id for this. **/
    id = (HTRB.idcnt++);
@@ -449,7 +462,6 @@ int htrbInitialize() {
    strcpy(drv->WidgetName,"radiobuttonpanel");
    drv->Render = htrbRender;
    drv->Verify = htrbVerify;
-   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
    /** Events **/ 
    htrAddEvent(drv,"Click");
@@ -462,6 +474,8 @@ int htrbInitialize() {
 
    /** Register. **/
    htrRegisterDriver(drv);
+
+   htrAddSupport(drv, "dhtml");
 
    HTRB.idcnt = 0;
 

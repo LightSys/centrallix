@@ -315,10 +315,12 @@ function form_action_edit(aparam)
 function form_show_3bconfirm()
     {
     var discard,save,cancel;
-    if(cn_browser.mozilla)
+    if(cx__capabilities.Dom1HTML)
 	var lay=this._3bconfirmwindow.ContentLayer.getElementsByTagName('div');
-    else if(cn_browser.netscape47)
+    else if(cx__capabilities.Dom0NS)
 	var lay=this._3bconfirmwindow.ContentLayer.layers;
+    else if(cx__capabilities.Dom0IE)
+	var lay=this._3bconfirmwindow.ContentLayer.all;
     else
 	return false;
     for(var i in lay)

@@ -42,6 +42,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.16  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.15  2003/05/30 17:39:49  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -156,6 +163,12 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     pObject sub_w_obj;
     pObjQuery qy;
 
+	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
+	    {
+	    mssError(1,"HTTBL","Netscape DOM support or W3C DOM Level 1 HTML required");
+	    return -1;
+	    }
+
     	/** Get an id for this. **/
 	id = (HTLBL.idcnt++);
 
@@ -246,14 +259,17 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseMove');\n"
 	    "\n");
 
-	htrAddScriptInit_va(s,"    %s = lbl_init(%s.layers.lbl%d);\n", nptr, parentname, id);
-
-//	htrAddScriptInit_va(s,"    %s = %s.layers.lbl%d;\n", nptr, parentname, id);
-//	htrAddScriptInit_va(s,"    %s.layers.lbl%d.kind = 'lbl';\n", parentname, id);
-//	htrAddScriptInit_va(s,"    %s.layers.lbl%d.document.layer = %s;\n", parentname, id, nptr);
+	if(s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s,"    %s = lbl_init(%s.getElementById('lbl%d'));\n", nptr, parentname, id);
+	    }
+	else if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s,"    %s = lbl_init(%s.layers.lbl%d);\n", nptr, parentname, id);
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "lbl%d", id, 
+	htrAddBodyItemLayer_va(s, 0, "lbl%d", id, 
 	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
 
 	/** Check for more sub-widgets **/
@@ -290,8 +306,6 @@ htlblInitialize()
 	strcpy(drv->WidgetName,"label");
 	drv->Render = htlblRender;
 	drv->Verify = htlblVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
-	htrAddSupport(drv, HTR_UA_MOZILLA);
 
 	/** Events **/ 
 	htrAddEvent(drv,"Click");
@@ -303,6 +317,8 @@ htlblInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTLBL.idcnt = 0;
 

@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.25 2003/06/03 19:27:08 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.26 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.26  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.25  2003/06/03 19:27:08  gbeeley
     Updates to properties mostly relating to true/false vs. yes/no
 
@@ -173,18 +180,6 @@ int htcbVerify() {
 }
 
 int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-    if (s->WidgetSet == HTR_UA_NETSCAPE_47)
-	return htcbNs47DefRender(s,w_obj,z,parentname,parentobj);
-    else
-	return htcbMozDefRender(s,w_obj,z,parentname,parentobj);
-}
-
-#include "htdrv_checkbox_moz.c"
-
-/* 
-   htcbNs47DefRender - generate the HTML code for the page (Netscape 4.7x:Default).
-*/
-int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
    char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
    int id;
@@ -193,6 +188,12 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    pObjQuery qy;
    char name[64];
    char* nptr;
+
+   if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
+      {
+      mssError(1,"HTCB","Netscape DOM support or W3C DOM Level 1 HTML required");
+      return -1;
+      }
 
    /** Get an id for this. **/
    id = (HTCB.idcnt++);
@@ -221,14 +222,14 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "checkbox", 
       "\n"
       "    if (ly.kind == 'checkbox' && ly.enabled)\n"
       "       {\n"
-      "       checkbox_toggleMode(e.target);\n"
+      "       checkbox_toggleMode(ly);\n"
       "       cn_activate(ly, 'MouseDown');\n"
       "       }\n"
       "\n");
@@ -254,15 +255,22 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
       "\n");
    
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    %s=checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", nptr, parentname, id,fieldname,checked);
+   if(s->Capabilities.Dom1HTML)
+       {
+       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.getElementById('cb%dmain'),\"%s\",%d);\n", nptr, parentname, id,fieldname,checked);
+       }
+   else if(s->Capabilities.Dom0NS)
+       {
+       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", nptr, parentname, id,fieldname,checked);
+       }
 
    /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItem_va(s,"   <DIV ID=\"cb%dmain\">\n",id);
+   htrAddBodyItemLayerStart(s, 0, "cb%dmain", id);
    if (checked)
-      htrAddBodyItem_va(s,"     <IMG SRC=/sys/images/checkbox_checked.gif>\n");
+      htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_checked.gif\">\n");
    else
-      htrAddBodyItem_va(s,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
-   htrAddBodyItem_va(s,"   </DIV>\n");
+      htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_unchecked.gif\">\n");
+   htrAddBodyItemLayerEnd(s, 0);
 
    /** Check for more sub-widgets **/
    qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
@@ -295,8 +303,6 @@ int htcbInitialize() {
    strcpy(drv->WidgetName,"checkbox");
    drv->Render = htcbRender;
    drv->Verify = htcbVerify;
-   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
-   htrAddSupport(drv, HTR_UA_MOZILLA);
 
    /** Events **/
    htrAddEvent(drv,"Click");
@@ -309,6 +315,8 @@ int htcbInitialize() {
 
    /** Register. **/
    htrRegisterDriver(drv);
+
+   htrAddSupport(drv, "dhtml");
    
    HTCB.idcnt = 0;
 

@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_terminal.c,v $
+    Revision 1.2  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.1  2002/12/24 09:51:56  jorupp
      * yep, this is what it looks like -- inital commit of the terminal widget :)
        -- the first Mozilla-only widget
@@ -87,7 +94,14 @@ httermRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     XString source;
     int rows, cols, fontsize, x, y;
 
-    
+	/** our first Mozilla-only widget :) **/
+	if(!s->Capabilities.Dom1HTML)
+	    {
+	    mssError(1,"HTTERM","W3C DOM Level 1 support required");
+	    return -1;
+	    }
+
+
     	/** Get an id for this. **/
 	id = (HTTERM.idcnt++);
 
@@ -220,8 +234,6 @@ httermInitialize()
 	drv->Render = httermRender;
 	drv->Verify = httermVerify;
 
-	/** our first Mozilla-only widget :) **/
-	htrAddSupport(drv, HTR_UA_MOZILLA);
 
 	/** Add our actions **/
 	htrAddAction(drv,"Disconnect");
@@ -233,6 +245,8 @@ httermInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTTERM.idcnt = 0;
 

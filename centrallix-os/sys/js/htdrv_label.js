@@ -13,7 +13,10 @@
 function lbl_init(l)
     {
     l.kind = 'lbl';
-    l.document.layer = l;
+    if(cx__capabilities.Dom0NS)
+	{
+	l.document.layer = l;
+	}
     l.mainlayer = l;
     return l;
     }

@@ -34,10 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.12 2003/05/30 17:39:50 gbeeley Exp $
+    $Id: ht_render.h,v 1.13 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.13  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.12  2003/05/30 17:39:50  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -153,7 +160,6 @@ typedef struct
     XArray	Properties;		/* Properties this thing will have. */
     XArray	Events;			/* Events for this widget type */
     XArray	Actions;		/* Actions on this widget type */
-    int		Target;			/* Browser types the widget supports */
     }
     HtDriver, *pHtDriver;
 
@@ -207,20 +213,10 @@ typedef struct
 typedef struct
     {
     char	ClassName[32];
-    int		UAmask;			/* which ua/class combinations this class uses */
+    XArray	Agents;
+    XHashTable	WidgetDrivers;		/* widget -> driver map */
     }
     HtClass, *pHtClass;
-
-/** max number of user agents we can support **/
-#define HTR_MAX_USERAGENTS	16
-
-/** User agent codes **/
-#define HTR_UA_UNKNOWN		0	/* unknown user agent */
-#define HTR_UA_NETSCAPE_47	1	/* netscape 4.7x series using DHTML */
-#define HTR_UA_MOZILLA		2	/* mozilla/gecko/ns6/ns7 series using DHTML */
-#define HTR_UA_MSIE		3	/* ie5/ie6 series using DHTML */
-
-#define HTR_CLASS_ALL		(0xFFFFFFFF)
 
     
 /** Structure for a named array, for using arrays in lookups. **/
@@ -256,6 +252,34 @@ typedef struct
     }
     HtPage, *pHtPage;
 
+#define HT_CAPABILITY_NOT_SUPPORTED 0
+#define HT_CAPABILITY_SUPPORTED 1
+
+/** Capabilities structure **/
+typedef struct
+    {
+    unsigned int Dom0NS:1; /* DOM Level 0 (ie. non-W3C DOM -- Netscape */
+    unsigned int Dom0IE:1; /* DOM Level 0 (ie. non-W3C DOM -- IE */
+    unsigned int Dom1HTML:1; /* Core W3C DOM Level 1 for HTML */
+    unsigned int Dom1XML:1; /* Core W3C DOM Level 1 for XML */
+    unsigned int Dom2Core:1; /* Core W3C DOM Level 2 */
+    unsigned int Dom2HTML:1; /* W3C DOM Level 2 for HTML */
+    unsigned int Dom2XML:1; /* W3C DOM Level 2 for XML */
+    unsigned int Dom2Views:1; /* W3C DOM Level 2 Views */
+    unsigned int Dom2StyleSheets:1; /* W3C DOM Level 2 StyleSheet traversal */
+    unsigned int Dom2CSS:1; /* W3C DOM Level 2 CSS Styles */
+    unsigned int Dom2CSS2:1; /* W3C DOM Level 2 CSS2Properties Interface */
+    unsigned int Dom2Events:1; /* W3C DOM Level 2 Event handling */
+    unsigned int Dom2MouseEvents:1; /* W3C DOM Level 2 MouseEvent handling */
+    unsigned int Dom2HTMLEvents:1; /* W3C DOM Level 2 HTMLEvent handling */
+    unsigned int Dom2MutationEvents:1; /* W3C DOM Level 2 MutationEvent handling */
+    unsigned int Dom2Range:1; /* W3C DOM Level 2 range interfaces */
+    unsigned int Dom2Traversal:1; /* W3C DOM Level 2 traversal interfaces */
+    unsigned int CSS1:1; /* W3C CSS Level 1 */
+    unsigned int CSS2:1; /* W3C CSS Level 2 */
+    unsigned int HTML40:1; /* W3C HTML 4.0 */
+    }
+    HtCapabilities, *pHtCapabilities;
 
 /** Session structure, used for page creation **/
 typedef struct
@@ -265,9 +289,8 @@ typedef struct
     int		DisableBody;
     char*	Tmpbuf;			/* temp buffer used in _va() functions */
     int		TmpbufSize;
-    int		BrowserMask;		/* results from GetBrowser() */
-    int		WidgetSet;		/* which widget set we are using */
-    int		WidgetClasses;		/* classes requested by user */
+    HtCapabilities Capabilities;	/* the capabilities supported by the browser */
+    pHtClass	Class;			/* the widget class to use **/
     }
     HtSession, *pHtSession;
 
@@ -311,7 +334,7 @@ int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
 pHtDriver htrAllocDriver();
-int htrAddSupport(pHtDriver drv, int user_agent);
+int htrAddSupport(pHtDriver drv, char* className);
 
 
 #endif /* _HT_RENDER_H */

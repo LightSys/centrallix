@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.14 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_textarea.c,v 1.15 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.15  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.14  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -123,6 +130,12 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char fieldname[HT_FIELDNAME_SIZE];
     pObject sub_w_obj;
     pObjQuery qy;
+
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTTX","Netscape DOM support required");
+	    return -1;
+	    }
 
     	/** Get an id for this. **/
 	id = (HTTX.idcnt++);
@@ -289,7 +302,6 @@ httxInitialize()
 	strcpy(drv->WidgetName,"textarea");
 	drv->Render = httxRender;
 	drv->Verify = httxVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Add a 'set value' action **/
 	htrAddAction(drv,"SetValue");
@@ -314,6 +326,8 @@ httxInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTTX.idcnt = 0;
 

@@ -208,7 +208,8 @@ MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES) $(NETDRIVERMOD
 # Configuration Files
 CONFFILES=centrallix.conf \
    	  rootnode \
-	  types.cfg
+	  types.cfg \
+	  useragent.cfg
 
 # Some basic build parameters.
 MASTERHOST=greg

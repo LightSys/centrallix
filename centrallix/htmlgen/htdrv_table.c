@@ -59,10 +59,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.37 2003/06/05 20:53:02 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.38 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.38  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.37  2003/06/05 20:53:02  gbeeley
     Fix for "t not found" error on scrolling on some tables.
 
@@ -298,12 +305,18 @@ httblVerify()
 int
 httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj, httbl_struct* t)
     {
-	int colid;
-	int colw;
-	char *coltitle;
-	char *ptr;
-	pObject sub_w_obj;
-	pObjQuery qy;
+    int colid;
+    int colw;
+    char *coltitle;
+    char *ptr;
+    pObject sub_w_obj;
+    pObjQuery qy;
+
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTTBL","Netscape DOM support required");
+	    return -1;
+	    }
 
 	/** STYLE for the layer **/
 	htrAddStylesheetItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t->id,t->x,t->y,t->w-18,z+1);
@@ -917,13 +930,14 @@ httblInitialize()
 	strcpy(drv->WidgetName,"table");
 	drv->Render = httblRender;
 	drv->Verify = httblVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	htrAddEvent(drv,"Click");
 	htrAddEvent(drv,"DblClick");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTTBL.idcnt = 0;
 

@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.13 2003/05/30 17:39:49 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.14 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.14  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.13  2003/05/30 17:39:49  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -143,6 +150,12 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char* style;
    int w;
 
+   if(!s->Capabilities.Dom0NS)
+       {
+       mssError(1,"HTFS","Netscape DOM support required");
+       return -1;
+       }
+
    /** Get an id for this. **/
    id = (HTFS.idcnt++);
 
@@ -210,7 +223,6 @@ int htfsInitialize() {
    strcpy(drv->WidgetName,"formstatus");
    drv->Render = htfsRender;
    drv->Verify = htfsVerify;
-   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
    htrAddEvent(drv,"Click");
    htrAddEvent(drv,"MouseUp");
@@ -221,6 +233,8 @@ int htfsInitialize() {
 
    /** Register. **/
    htrRegisterDriver(drv);
+
+   htrAddSupport(drv, "dhtml");
 
    HTFS.idcnt = 0;
 

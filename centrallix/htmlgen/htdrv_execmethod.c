@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.11 2002/12/04 00:19:10 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.12 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.12  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.11  2002/12/04 00:19:10  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -140,6 +147,12 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char* methodname = NULL;
     char* methodparam = NULL;
 
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTTEX","Netscape DOM support required");
+	    return -1;
+	    }
+
     	/** Get an id for this. **/
 	id = (HTEX.idcnt++);
 
@@ -189,7 +202,6 @@ htexInitialize()
 	strcpy(drv->WidgetName,"execmethod");
 	drv->Render = htexRender;
 	drv->Verify = htexVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Add a 'executemethod' action **/
 	htrAddAction(drv,"ExecuteMethod");
@@ -199,6 +211,8 @@ htexInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTEX.idcnt = 0;
 

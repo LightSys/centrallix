@@ -68,6 +68,12 @@ int htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* par
    pObjQuery qy;
    XString xs;
 
+   if(!s->Capabilities.Dom0NS)
+       {
+       mssError(1,"HTMENU","Netscape DOM support required");
+       return -1;
+       }
+
    /** Get an id for this. **/
    id = (HTMN.idcnt++);
 
@@ -346,7 +352,6 @@ int htmenuInitialize() {
    strcpy(drv->WidgetName,"menu");
    drv->Render = htmenuRender;
    drv->Verify = htmnVerify;
-   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
    /** Register events **/
    htrAddEvent(drv,"MouseUp");
@@ -360,6 +365,8 @@ int htmenuInitialize() {
 
    /** Register. **/
    htrRegisterDriver(drv);
+
+   htrAddSupport(drv, "dhtml");
 
    HTMN.idcnt = 0;
 

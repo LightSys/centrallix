@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.12  2003/06/21 23:07:25  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.11  2002/12/04 00:19:10  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -165,8 +172,6 @@ htalrtInitialize()
 	strcpy(drv->WidgetName,"alerter");
 	drv->Render = htalrtRender;
 	drv->Verify = htalrtVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
-	htrAddSupport(drv, HTR_UA_MOZILLA);
 
 	/** Add actions **/
 	htrAddAction(drv,"Alert");
@@ -178,6 +183,8 @@ htalrtInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 
     return 0;

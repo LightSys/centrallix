@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.31 2002/12/04 00:19:12 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.32 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.32  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.31  2002/12/04 00:19:12  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -245,6 +252,12 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     int is_dialog_style = 0;
     int gshade = 0;
     int closetype = 0;
+
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTWIN","Netscape DOM support required");
+	    return -1;
+	    }
 
     	/** Get an id for this. **/
 	id = (HTWIN.idcnt++);
@@ -576,7 +589,6 @@ htwinInitialize()
 	strcpy(drv->WidgetName,"htmlwindow");
 	drv->Render = htwinRender;
 	drv->Verify = htwinVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Add the 'click' event **/
 	htrAddEvent(drv, "MouseUp");
@@ -596,6 +608,8 @@ htwinInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTWIN.idcnt = 0;
 

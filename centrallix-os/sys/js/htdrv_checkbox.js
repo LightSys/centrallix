@@ -92,22 +92,40 @@ function checkbox_init(l,fieldname,checked)
     l.is_checked = checked;
     l.enabled = true;
     l.form = fm_current;
-    l.document.images[0].kind = 'checkbox';
-    l.document.images[0].form = l.form;
-    l.document.images[0].parentLayer = l;
-    l.document.images[0].layer = l;
-    l.document.images[0].is_checked = l.is_checked;
-    l.document.images[0].enabled = l.enabled;
-    l.document.images[0].uncheckedImage = new Image();
-    l.document.images[0].uncheckedImage.kind = 'checkbox';
-    l.document.images[0].uncheckedImage.src = '/sys/images/checkbox_unchecked.gif';
-    l.document.images[0].uncheckedImage.is_checked = l.is_checked;
-    l.document.images[0].uncheckedImage.enabled = l.enabled;
-    l.document.images[0].checkedImage = new Image();
-    l.document.images[0].checkedImage.kind = 'checkbox';
-    l.document.images[0].checkedImage.src = '/sys/images/checkbox_checked.gif';
-    l.document.images[0].checkedImage.is_checked = l.is_checked;
-    l.document.images[0].checkedImage.enabled = l.enabled;
+    if(cx__capabilities.Dom1HTML)
+	{
+	l.img = l.getElementsByTagName("img")[0];
+	}
+    else if(cx__capabilities.Dom0NS)
+	{
+	l.img = l.document.images[0];
+	}
+    l.img.kind = 'checkbox';
+    l.img.form = l.form;
+    l.img.parentLayer = l;
+    l.img.layer = l;
+    l.img.is_checked = l.is_checked;
+    l.img.enabled = l.enabled;
+    l.img.uncheckedImage = new Image();
+    l.img.uncheckedImage.kind = 'checkbox';
+
+    if(cx__capabilities.Dom1HTML)
+	l.img.uncheckedImage.setAttribute('src','/sys/images/checkbox_unchecked.gif');
+    else
+	l.img.uncheckedImage.src = '/sys/images/checkbox_unchecked.gif';
+
+    l.img.uncheckedImage.is_checked = l.is_checked;
+    l.img.uncheckedImage.enabled = l.enabled;
+    l.img.checkedImage = new Image();
+    l.img.checkedImage.kind = 'checkbox';
+
+    if(cx__capabilities.Dom1HTML)
+	l.img.checkedImage.setAttribute('src','/sys/images/checkbox_checked.gif');
+    else
+	l.img.checkedImage.src = '/sys/images/checkbox_checked.gif';
+
+    l.img.checkedImage.is_checked = l.is_checked;
+    l.img.checkedImage.enabled = l.enabled;
     l.setvalue   = checkbox_setvalue;
     l.getvalue   = checkbox_getvalue;
     l.clearvalue = checkbox_clearvalue;
@@ -121,6 +139,7 @@ function checkbox_init(l,fieldname,checked)
 
 function checkbox_toggleMode(layer) 
     {
+    layer = layer.img;
     if (layer.form) 
 	{
 	if (layer.parentLayer)
@@ -130,12 +149,26 @@ function checkbox_toggleMode(layer)
 	}
     if (layer.is_checked) 
 	{
-	layer.src = layer.uncheckedImage.src;
+	if(cx__capabilities.Dom1HTML)
+	    {
+	    layer.setAttribute('src',layer.uncheckedImage.src);
+	    }
+	else
+	    {
+	    layer.src = layer.uncheckedImage.src;
+	    }
 	layer.is_checked = 0;
 	} 
     else 
 	{
-	layer.src = layer.checkedImage.src;
+	if(cx__capabilities.Dom1HTML)
+	    {
+	    layer.setAttribute('src',layer.checkedImage.src);
+	    }
+	else
+	    {
+	    layer.src = layer.checkedImage.src;
+	    }
 	layer.is_checked = 1;
 	}
     cn_activate(layer.parentLayer, 'DataChange');

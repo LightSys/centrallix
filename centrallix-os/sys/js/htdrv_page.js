@@ -307,13 +307,21 @@ function pg_keyhandler(k,m,e)
 function pg_status_init()
     {
     pg_status = null;
-    if(cn_browser.netscape47)
+    if(cx__capabilities.Dom1HTML)
+	{
+	pg_status = document.getElementById("pgstat");
+	}
+    else if(cx__capabilities.Dom0NS)
 	{
 	pg_status = document.layers.pgstat;
 	}
-    else if(cn_browser.mozilla)
+    else if(cx__capabilities.Dom0IE)
 	{
-	pg_status = document.getElementById("pgstat");
+	pg_status = document.all.pgstat;
+	}
+    else
+	{
+	return false;
 	}
     
     if (!pg_status)

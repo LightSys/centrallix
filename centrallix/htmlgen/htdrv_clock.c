@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.8 2003/06/03 19:27:09 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.9 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.9  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.8  2003/06/03 19:27:09  gbeeley
     Updates to properties mostly relating to true/false vs. yes/no
 
@@ -123,6 +130,12 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char fieldname[HT_FIELDNAME_SIZE];
     pObject sub_w_obj;
     pObjQuery qy;
+
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTCL","Netscape DOM support required");
+	    return -1;
+	    }
 
     	/** Get an id for this. **/
 	id = (HTCL.idcnt++);
@@ -323,7 +336,6 @@ htclInitialize()
 	strcpy(drv->WidgetName,"clock");
 	drv->Render = htclRender;
 	drv->Verify = htclVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Events **/ 
 	htrAddEvent(drv,"MouseUp");
@@ -334,6 +346,8 @@ htclInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTCL.idcnt = 0;
 

@@ -51,10 +51,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.35 2003/06/03 23:31:04 gbeeley Exp $
+    $Id: ht_render.c,v 1.36 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.36  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.35  2003/06/03 23:31:04  gbeeley
     Adding pro forma netscape 4.8 support.
 
@@ -231,14 +238,303 @@
 /*** GLOBALS ***/
 struct
     {
-    XHashTable	WidgetDrivers[HTR_MAX_USERAGENTS]; /* widget -> driver map */
     XArray	Drivers;		/* simple driver listing. */
-    XArray	UAreg[HTR_MAX_USERAGENTS]; /* xarrays of regex's for browsers */
     XHashTable	Classes;		/* classes of widget sets */
+#if 0
+    XHashTable	WidgetDrivers[HTR_MAX_USERAGENTS];/* widget -> driver map */
+    XArray	UAreg[HTR_MAX_USERAGENTS]; /* xarrays of regex's for browsers */
+#endif
     }
     HTR;
 
+/** a structure to store the detection code for a specific browser/set of browsers **/
+typedef struct
+    {
+    regex_t  UAreg;
+    XArray  Children;
+    HtCapabilities  Capabilities;
+    }
+    AgentCapabilities, *pAgentCapabilities;
 
+/**
+ * Processes a single node (and it's children) of the tree of useragents
+ **/
+pAgentCapabilities
+htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities parentCap)
+    {
+    int i;
+    pStructInf entry;
+    pAgentCapabilities agentCap;
+    char* data;
+
+    /** build the structure **/
+    agentCap = nmMalloc(sizeof(AgentCapabilities));
+    if(!agentCap)
+	{
+	mssError(0,"HTR","nmMalloc() failed");
+	return NULL;
+	}
+    memset(agentCap, 0, sizeof(AgentCapabilities));
+
+    /** if we're a top-level definition (under a class), there's no parent agentCapabilities to inherit **/
+    if(parentCap)
+	{
+	memcpy(&(agentCap->Capabilities), parentCap, sizeof(HtCapabilities));
+	}
+
+    /** find and build the regex for the useragent detection **/
+    entry = stLookup(node,"useragent");
+    if(!entry)
+	{
+	mssError(1,"HTR","Missing useragent for %s", node->Name);
+	nmFree(agentCap,sizeof(AgentCapabilities));
+	return NULL;
+	}
+    if(stGetAttrValue(entry, DATA_T_STRING, POD(&data), 0)<0)
+	{
+	mssError(1,"HTR","Can't read useragent for %s", node->Name);
+	nmFree(agentCap,sizeof(AgentCapabilities));
+	return NULL;
+	}
+    if(regcomp(&(agentCap->UAreg), data, REG_EXTENDED | REG_NOSUB | REG_ICASE))
+	{
+	mssError(1,"HTR","Could not compile regular expression: '%s' for %s", data, node->Name);
+	nmFree(agentCap,sizeof(AgentCapabilities));
+	return NULL;
+	}
+
+    /** 
+     * process all the listed agentCapabilities
+     * seriously... who wants to write this code for each attribute.... 
+     **/
+#define PROCESS_CAP_INIT(attr) \
+    if((entry = stLookup(node, # attr ))) \
+	{ \
+	if(stGetAttrValue(entry, DATA_T_STRING, POD(&data), 0)>=0) \
+	    { \
+	    if(!strcmp(data, "yes")) \
+		agentCap->Capabilities.attr = 1; \
+	    else if(!strcmp(data, "no")) \
+		agentCap->Capabilities.attr = 1; \
+	    else \
+		mssError(1,"HTR","%s must be yes, no, 0, or 1 in %s", # attr ,node->Name); \
+	    } \
+	else if(stGetAttrValue(entry, DATA_T_INTEGER, POD(&i), 0)>=0) \
+	    { \
+	    if(i==0) \
+		agentCap->Capabilities.attr = 0; \
+	    else \
+		agentCap->Capabilities.attr = 1; \
+	    } \
+	else \
+	    mssError(1,"HTR","%s must be yes, no, 0, or 1 in %s", # attr ,node->Name); \
+	}
+
+    PROCESS_CAP_INIT(Dom0NS);
+    PROCESS_CAP_INIT(Dom0IE);
+    PROCESS_CAP_INIT(Dom1HTML);
+    PROCESS_CAP_INIT(Dom1XML);
+    PROCESS_CAP_INIT(Dom2Core);
+    PROCESS_CAP_INIT(Dom2HTML);
+    PROCESS_CAP_INIT(Dom2XML);
+    PROCESS_CAP_INIT(Dom2Views);
+    PROCESS_CAP_INIT(Dom2StyleSheets);
+    PROCESS_CAP_INIT(Dom2CSS);
+    PROCESS_CAP_INIT(Dom2CSS2);
+    PROCESS_CAP_INIT(Dom2Events);
+    PROCESS_CAP_INIT(Dom2MouseEvents);
+    PROCESS_CAP_INIT(Dom2HTMLEvents);
+    PROCESS_CAP_INIT(Dom2MutationEvents);
+    PROCESS_CAP_INIT(Dom2Range);
+    PROCESS_CAP_INIT(Dom2Traversal);
+    PROCESS_CAP_INIT(CSS1);
+    PROCESS_CAP_INIT(CSS2);
+    PROCESS_CAP_INIT(HTML40);
+
+    /** now process children, passing a reference to our capabilities along **/
+    xaInit(&(agentCap->Children), 4);
+    for(i=0;i<node->nSubInf;i++)
+	{
+	pStructInf childNode;
+	childNode = node->SubInf[i];
+	/** UsrType is non-null if this is a sub-structure, ie. not an attribute **/
+	if(childNode && childNode->UsrType)
+	    {
+	    pAgentCapabilities childCap = htr_internal_ProcessUserAgent(childNode, &(agentCap->Capabilities));
+	    if(childCap)
+		{
+		xaAddItem(&(agentCap->Children), childCap);
+		}
+	    }
+	}
+
+    return agentCap;
+    }
+
+/***
+ ***  Writes the capabilities of the browser used in the passed session to the passed pFile
+ ***     as the cx__capabilities object (for javascript)
+ ***/
+void
+htr_internal_writeCxCapabilities(pHtSession s, pFile out)
+    {
+    fdWrite(out,"    cx__capabilities = new Object();\n",37,0,FD_U_PACKET);
+#define PROCESS_CAP_OUT(attr) \
+    fdWrite(out,"    cx__capabilities.",21,0,FD_U_PACKET); \
+    fdWrite(out, # attr ,strlen( # attr ),0,FD_U_PACKET); \
+    fdWrite(out," = ",3,0,FD_U_PACKET); \
+    fdWrite(out,(s->Capabilities.attr?"1;\n":"0;\n"),3,0,FD_U_PACKET);
+
+    PROCESS_CAP_OUT(Dom0NS);
+    PROCESS_CAP_OUT(Dom0IE);
+    PROCESS_CAP_OUT(Dom1HTML);
+    PROCESS_CAP_OUT(Dom1XML);
+    PROCESS_CAP_OUT(Dom2Core);
+    PROCESS_CAP_OUT(Dom2HTML);
+    PROCESS_CAP_OUT(Dom2XML);
+    PROCESS_CAP_OUT(Dom2Views);
+    PROCESS_CAP_OUT(Dom2StyleSheets);
+    PROCESS_CAP_OUT(Dom2CSS);
+    PROCESS_CAP_OUT(Dom2CSS2);
+    PROCESS_CAP_OUT(Dom2Events);
+    PROCESS_CAP_OUT(Dom2MouseEvents);
+    PROCESS_CAP_OUT(Dom2HTMLEvents);
+    PROCESS_CAP_OUT(Dom2MutationEvents);
+    PROCESS_CAP_OUT(Dom2Range);
+    PROCESS_CAP_OUT(Dom2Traversal);
+    PROCESS_CAP_OUT(CSS1);
+    PROCESS_CAP_OUT(CSS2);
+    PROCESS_CAP_OUT(HTML40);
+    }
+    
+/**
+ * Registers the tree of classes and user agents by reading the file specified in the config file
+**/
+int
+htrRegisterUserAgents()
+    {
+    pStructInf uaConfigEntry;
+    char *uaConfigFilename;
+    pFile uaConfigFile;
+    pStructInf uaConfigRoot;
+    int i,j;
+
+    /** find the name of the config file **/
+    uaConfigEntry = stLookup(CxGlobals.ParsedConfig,"useragent_config");
+    if(!uaConfigEntry)
+	{
+	mssError(1,"HTR","No configuration directive useragent_config found.  Unable to register useragents.");
+	return -1;
+	}
+    if(stGetAttrValue(uaConfigEntry, DATA_T_STRING, POD(&uaConfigFilename), 0) <0 || !uaConfigFilename )
+	{
+	mssError(0,"HTR","Unable to read useragent_config's value.  Unable to register useragents.");
+	return -1;
+	}
+    
+    /** open and parse it **/
+    uaConfigFile = fdOpen(uaConfigFilename, O_RDONLY, 0600);
+    if(!uaConfigFile)
+	{
+	mssError(0,"HTR","Unable to open useragent_config %s", uaConfigFilename);
+	return -1;
+	}
+    uaConfigRoot = stParseMsg(uaConfigFile, 0);
+    if(!uaConfigRoot)
+	{
+	mssError(0,"HTR","Unable to parse useragent_config %s", uaConfigFilename);
+	fdClose(uaConfigFile, 0);
+	}
+
+    /** iterate through the classes and create them **/
+    for(i=0;i<uaConfigRoot->nSubInf;i++)
+	{
+	pStructInf stClass;
+	stClass = uaConfigRoot->SubInf[i];
+	if(stClass)
+	    {
+	    pHtClass class = (pHtClass)nmMalloc(sizeof(HtClass));
+	    if(!class)
+		{
+		mssError(0,"HTR","nmMalloc() failed");
+		return -1;
+		}
+	    memset(class, 0, sizeof(HtClass));
+	    strncpy(class->ClassName, stClass->Name, 32);
+	    class->ClassName[31] = '\0';
+
+	    xaInit(&(class->Agents),4);
+	    xhInit(&(class->WidgetDrivers), 257, 0);
+	    
+	    for(j=0;j<stClass->nSubInf;j++)
+		{
+		pStructInf entry = stClass->SubInf[j];
+		if(entry && entry->UsrType)
+		    {
+		    pAgentCapabilities cap;
+		    if((cap = htr_internal_ProcessUserAgent(entry, NULL)))
+			{
+			xaAddItem(&(class->Agents), cap);
+			}
+		    }
+		}
+	    xhAdd(&(HTR.Classes), class->ClassName, (void*) class);
+	    }
+	}
+
+    fdClose(uaConfigFile, 0);
+    return 0;
+    }
+
+/**
+ * This function finds the capabilities of the specified browser for the specified class
+ * Both browser and class are required to not be null
+ * A null return value indicates that no match was found for the browser
+ * A non-null return value should not be freeed or modified in any way
+ **/
+pHtCapabilities
+htr_internal_GetBrowserCapabilities(char *browser, pHtClass class)
+    {
+    pXArray list;
+    pAgentCapabilities agentCap = NULL;
+    pHtCapabilities cap = NULL;
+    int i;
+    if(!browser || !class)
+	return NULL;
+
+    list = &(class->Agents);
+    for(i=0;i<xaCount(list);i++)
+	{
+	if ((agentCap = (pAgentCapabilities)xaGetItem(list,i)))
+	    {
+	    /** 0 signifies a match, REG_NOMATCH signifies the opposite **/
+	    if (regexec(&(agentCap->UAreg), browser, (size_t)0, NULL, 0) == 0)
+		{
+		list = &(agentCap->Children);
+		if(xaCount(list)>0)
+		    {
+		    /** remember this point in case there are no more matches **/
+		    cap = &(agentCap->Capabilities);
+		    /** reset to the beginning of the list **/
+		    i=0;
+		    }
+		else
+		    {
+		    /** no children -- this is a terminal node **/
+		    return &(agentCap->Capabilities);
+		    }
+		}
+	    }
+	}
+    
+    /** if we found a match while walking the tree (at a non-terminal node), but
+	nothing under it matched, cap will not be null, otherwise it will be 
+	(we don't get here if we matched a terminal node) **/
+    return cap;
+    }
+
+
+#if 0
 /*** htrRegisterUserAgents - creates a bunch of regular expressions that
  *** will be used to do lookups for detecting the user agent.
  ***/
@@ -323,6 +619,7 @@ htr_internal_GetBrowserMask(char *browser)
 
     return user_agent_mask;
     }
+#endif
 
 /*** htr_internal_AddTextToArray - adds a string of text to an array of 
  *** buffer blocks, allocating new blocks in the XArray if necessary.
@@ -386,11 +683,15 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 	/** Find the hashtable keyed with widget names for this combination of 
 	 ** user-agent:style that contains pointers to the drivers to use.
 	 **/
-	widget_drivers = &(HTR.WidgetDrivers[session->WidgetSet]);
+	if(!session->Class)
+	    {
+	    printf("Class not defined %s:%i\n",__FILE__,__LINE__);
+	    }
+	widget_drivers = &( session->Class->WidgetDrivers);
 	if (!widget_drivers)
 	    {
-	    htrAddBodyItem_va(session, "No widgets have been defined for your browser type and requested style combination.");
-	    mssError(1, "HTR", "Invalid UserAgent:style combination");
+	    htrAddBodyItem_va(session, "No widgets have been defined for your browser type and requested class combination.");
+	    mssError(1, "HTR", "Invalid UserAgent:class combination");
 	    return -1;
 	    }
 
@@ -923,21 +1224,16 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
     char* starttag;
     char id_sbuf[64];
 
-	/** Browser type? **/
-	switch(s->WidgetSet)
+	if(s->Capabilities.HTML40)
 	    {
-	    case HTR_UA_MOZILLA:
-	    case HTR_UA_MSIE:
-		if (flags & HTR_LAYER_F_DYNAMIC)
-		    starttag = "IFRAME frameBorder=\"0\"";
-		else
-		    starttag = "DIV";
-		break;
-	    case HTR_UA_NETSCAPE_47:
-	    case HTR_UA_UNKNOWN:
-	    default:
+	    if (flags & HTR_LAYER_F_DYNAMIC)
+		starttag = "IFRAME frameBorder=\"0\"";
+	    else
 		starttag = "DIV";
-		break;
+	    }
+	else
+	    {
+	    starttag = "DIV";
 	    }
 
 	/** Add it. **/
@@ -956,21 +1252,16 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
     {
     char* endtag;
 
-	/** Browser type? **/
-	switch(s->WidgetSet)
+	if(s->Capabilities.HTML40)
 	    {
-	    case HTR_UA_MOZILLA:
-	    case HTR_UA_MSIE:
-		if (flags & HTR_LAYER_F_DYNAMIC)
-		    endtag = "IFRAME";
-		else
-		    endtag = "DIV";
-		break;
-	    case HTR_UA_NETSCAPE_47:
-	    case HTR_UA_UNKNOWN:
-	    default:
+	    if (flags & HTR_LAYER_F_DYNAMIC)
+		endtag = "IFRAME";
+	    else
 		endtag = "DIV";
-		break;
+	    }
+	else
+	    {
+	    endtag = "DIV";
 	    }
 
 	/** Add it. **/
@@ -1076,7 +1367,6 @@ htrRender(pFile output, pObject appstruct)
     pHtNameArray tmp_a, tmp_a2, tmp_a3;
     char* agent = NULL;
     char* classname = NULL;
-    pHtClass class;
     int rval;
 
 	/** What UA is on the other end of the connection? **/
@@ -1087,23 +1377,80 @@ htrRender(pFile output, pObject appstruct)
 	    return -1;
 	    }
 
-	/** Did user request a class of widgets? **/
-	classname = (char*)mssGetParam("Class");
-	if (classname)
-	    class = (pHtClass)xhLookup(&(HTR.Classes), classname);
-	else	
-	    class = NULL;
-
     	/** Initialize the session **/
 	s = (pHtSession)nmMalloc(sizeof(HtSession));
 	if (!s) return -1;
+	memset(s,0,sizeof(HtSession));
+
+	/** Did user request a class of widgets? **/
+	classname = (char*)mssGetParam("Class");
+	if (classname)
+	    {
+	    s->Class = (pHtClass)xhLookup(&(HTR.Classes), classname);
+	    if(!s->Class)
+		mssError(1,"HTR","Warning: class %s is not defined... acting like it wasn't specified",classname);
+	    }
+	else	
+	    s->Class = NULL;
 
 	/** Which widget set do we use? **/
+#if 0
 	s->BrowserMask = htr_internal_GetBrowserMask(agent);
 	if (class)
 	    s->WidgetClasses = class->UAmask;
 	else
 	    s->WidgetClasses = HTR_CLASS_ALL;
+#endif
+	
+	/** find the right capabilities for the class we're using **/
+	if(s->Class)
+	    {
+	    pHtCapabilities pCap = htr_internal_GetBrowserCapabilities(agent, s->Class);
+	    if(pCap)
+		{
+		s->Capabilities = *pCap;
+		}
+	    else
+		{
+		mssError(1,"HTR","no capabilities found for %s in class %s",agent, s->Class->ClassName);
+		memset(&(s->Capabilities),0,sizeof(HtCapabilities));
+		}
+	    }
+	else
+	    {
+	    /** somehow decide on a widget priority, and go down the list
+		till you find a workable one **/
+	    /** for now, I'm going to get them in the order they are in the hash, 
+		which is no order at all :) **/
+	    /** also, this sets the class when it finds capabilities.... 
+		is that a good thing? -- not sure **/
+	    int i;
+	    pHtCapabilities pCap = NULL;
+	    for(i=0;i<HTR.Classes.nRows && !pCap;i++)
+		{
+		pXHashEntry ptr = (pXHashEntry)xaGetItem(&(HTR.Classes.Rows),i);
+		while(ptr && !pCap)
+		    {
+		    pCap = htr_internal_GetBrowserCapabilities(agent, (pHtClass)ptr->Data);
+		    if(pCap)
+			{
+			s->Class = (pHtClass)ptr->Data;
+			}
+		    ptr = ptr->Next;
+		    }
+		}
+	    if(pCap)
+		{
+		s->Capabilities = *pCap;
+		}
+	    else
+		{
+		mssError(1,"HTR","no capabilities found for %s in any class",agent);
+		memset(&(s->Capabilities),0,sizeof(HtCapabilities));
+		}
+	    }
+
+#if 0
 	s->WidgetSet = -1;
 	for(i=0;i<HTR_MAX_USERAGENTS;i++)
 	    {
@@ -1123,6 +1470,7 @@ htrRender(pFile output, pObject appstruct)
 	    nmFree(s, sizeof(HtSession));
 	    return -1;
 	    }
+#endif
 
 	/** Setup the page structures **/
 	s->Tmpbuf = nmSysMalloc(512);
@@ -1157,12 +1505,13 @@ htrRender(pFile output, pObject appstruct)
 
 	if (rval < 0)
 	    {
-	    fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error Occurred...</h1><br><pre>");
+	    fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
 	    mssPrintError(output);
 	    }
 
-	/** Output the DOCTYPE for Mozilla -- this will make Mozilla use HTML 4.0 Strict **/
-	if(s->WidgetSet == HTR_UA_MOZILLA)
+	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
+	/** FIXME: should probably specify the DTD.... **/
+	if(s->Capabilities.HTML40)
 	    fdWrite(output, "<!DOCTYPE HTML>\n",16,0,FD_U_PACKET);
 	
 	/** Write the HTML out... **/
@@ -1213,6 +1562,10 @@ htrRender(pFile output, pObject appstruct)
 
 	/** Write the includes **/
 	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,FD_U_PACKET);
+
+	/** include ht_render.js **/
+	snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=javascript src=\"/sys/js/ht_render.js\"></SCRIPT>\n\n");
+	fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
@@ -1236,6 +1589,8 @@ htrRender(pFile output, pObject appstruct)
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
 	        snprintf(sbuf,HT_SBUF_SIZE,"\nfunction e%d_%d(e)\n    {\n",i,j);
+		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
+	        snprintf(sbuf,HT_SBUF_SIZE,"    var e = htr_event(e);\n");
 		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
 		for(k=0;k<tmp_a2->Array.nItems;k++)
 		    {
@@ -1288,6 +1643,8 @@ htrRender(pFile output, pObject appstruct)
 
 	/** Write the initialization lines **/
 	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
+	htr_internal_writeCxCapabilities(s,output);
+#if 0
 	fdWrite(output,"    cn_browser = new Object();\n",31,0,FD_U_PACKET);
 	if(s->WidgetSet == HTR_UA_MOZILLA)
 	    {
@@ -1299,6 +1656,8 @@ htrRender(pFile output, pObject appstruct)
 	    fdWrite(output,"    cn_browser.netscape47 = true;\n",34,0,FD_U_PACKET);
 	    fdWrite(output,"    cn_browser.mozilla = false;\n",32,0,FD_U_PACKET);
 	    }
+#endif
+
 	fdWrite(output,"    if(typeof(pg_status_init)=='function')pg_status_init();\n",60,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
@@ -1458,25 +1817,46 @@ htrAllocDriver()
 	xaInit(&(drv->Properties),16);
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
+#if 0
 	drv->Target = 0;
+#endif
 
     return drv;
     }
 
 
+#if 0
 /*** htrAddSupport - adds support for a user agent / class to a driver's
  *** descriptor structure
  ***/
 int
 htrAddSupport(pHtDriver drv, int user_agent)
     {
+    
 
 	/** Add it to the bitmask **/
 	drv->Target |= (1<<user_agent);
 
     return 0;
     }
+#endif
 
+/*** htrAddSupport - adds support for a class to a driver (by telling the class)
+ ***   note: _must_ be called after the driver registers
+ ***/
+int
+htrAddSupport(pHtDriver drv, char* className)
+    {
+	pHtClass class = (pHtClass)xhLookup(&(HTR.Classes),className);
+	if(!class)
+	    {
+	    mssError(1,"HTR","unable to find class '%s' for widget driver '%s'",className,drv->WidgetName);
+	    return -1;
+	    }
+	return xhAdd(&(class->WidgetDrivers),drv->WidgetName, (void*)drv);
+
+    return 0;
+    }
 
 /*** htrRegisterDriver - register a new driver with the rendering system
  *** and map the widget name to the driver's structure for later access.
@@ -1484,12 +1864,15 @@ htrAddSupport(pHtDriver drv, int user_agent)
 int 
 htrRegisterDriver(pHtDriver drv)
     {
+#if 0
     pXHashTable lookupHash;
     int i;
+#endif
 
     	/** Add to the drivers listing and the widget name map. **/
 	xaAddItem(&(HTR.Drivers),(void*)drv);
 
+#if 0
 	/** Add the driver to all widget sets it supports **/
 	for(i=0;i<HTR_MAX_USERAGENTS;i++) if (drv->Target & (1<<i))
 	    {
@@ -1501,6 +1884,7 @@ htrRegisterDriver(pHtDriver drv)
 		}
 	    xhAdd(lookupHash,drv->WidgetName,(char*)drv);
 	    }
+#endif
 
     return 0;
     }
@@ -1512,27 +1896,33 @@ htrRegisterDriver(pHtDriver drv)
 int
 htrInitialize()
     {
+#if 0
     pHtClass class;
     int i;
+#endif
 
     	/** Initialize the global hash tables and arrays **/
 	xaInit(&(HTR.Drivers),64);
 	xhInit(&(HTR.Classes), 63, 0);
 
+#if 0
 	/** Init the list of classes **/
 	class = (pHtClass)nmMalloc(sizeof(HtClass));
 	strcpy(class->ClassName,"dhtml");
 	class->UAmask = HTR_UA_NETSCAPE_47 | HTR_UA_MOZILLA | HTR_UA_MSIE;
 	xhAdd(&(HTR.Classes), (char*)(class->ClassName), (void*)class);
+#endif
 
+#if 0
 	/** Init our arrays of user agent regular expressions **/
 	for(i=0;i<HTR_MAX_USERAGENTS;i++) 
 	    {
 	    xaInit(&(HTR.UAreg[i]),4);
 	    xhInit(&(HTR.WidgetDrivers[i]), 257, 0);
 	    }
+#endif
 
-	/** Register the user agents and the regular expressions to match them.  **/
+	/** Register the classes, user agents and the regular expressions to match them.  **/
 	htrRegisterUserAgents();
 
     return 0;

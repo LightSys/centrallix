@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.53 2003/05/30 17:39:50 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.54 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.54  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.53  2003/05/30 17:39:50  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -356,39 +363,38 @@ htpageVerify()
     return 0;
     }
 
-typedef struct
+int
+htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
     {
+    char *ptr;
+    char *nptr;
+    char name[64];
+    int attract = 0;
+    HtPageStruct t;
+    pObject sub_w_obj;
+    pObjQuery qy;
+    int watchdogtimer;
+    char bgstr[128];
+    int show;
     char kbfocus1[64];	/* kb focus = 3d raised */
     char kbfocus2[64];
     char msfocus1[64];	/* ms focus = black rectangle */
     char msfocus2[64];
     char dtfocus1[64];	/* dt focus = navyblue rectangle */
     char dtfocus2[64];
-    } HtPageStruct, *pHtPageStruct;
 
-typedef struct
-    {
-    char bgstr[128];
-    int show;
-    } HtPageStatusStruct, *pHtPageStatusStruct;
-HtPageStatusStruct htPageStatus;
+	if(!((s->Capabilities.Dom0NS || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
+	    {
+	    mssError(1,"HTPAGE","CSS Level 1 Support and (Netscape DOM support or (W3C Level 1 DOM support and W3C Level 2 Events support required))");
+	    return -1;
+	    }
 
-/*** htpageRenderCommon - do everything common to both browsers
- ***/
-int
-htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj,pHtPageStruct t,const char* layer)
-    {
-    char *ptr;
-    char *nptr;
-    char name[64];
-    int attract = 0;
-
-	strcpy(t->kbfocus1,"#ffffff");	/* kb focus = 3d raised */
-	strcpy(t->kbfocus2,"#7a7a7a");
-	strcpy(t->msfocus1,"#000000");	/* ms focus = black rectangle */
-	strcpy(t->msfocus2,"#000000");
-	strcpy(t->dtfocus1,"#000080");	/* dt focus = navyblue rectangle */
-	strcpy(t->dtfocus2,"#000080");
+	strcpy(kbfocus1,"#ffffff");	/* kb focus = 3d raised */
+	strcpy(kbfocus2,"#7a7a7a");
+	strcpy(msfocus1,"#000000");	/* ms focus = black rectangle */
+	strcpy(msfocus2,"#000000");
+	strcpy(dtfocus1,"#000080");	/* dt focus = navyblue rectangle */
+	strcpy(dtfocus2,"#000080");
 
     	/** If not at top-level, don't render the page. **/
 	/** Z is set to 10 for the top-level page. **/
@@ -401,22 +407,22 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	    }
 
     	/** Check for page load status **/
-	htPageStatus.show = 0;
+	show = 0;
 	if (objGetAttrValue(w_obj,"loadstatus",DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"yes") || !strcmp(ptr,"true")))
 	    {
-	    htPageStatus.show = 1;
+	    show = 1;
 	    }
 
-	strcpy(htPageStatus.bgstr, "");
+	strcpy(bgstr, "");
 	/** Check for bgcolor. **/
 	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    snprintf(htPageStatus.bgstr, 128, " BGCOLOR=%s", ptr);
+	    snprintf(bgstr, 128, " BGCOLOR=%s", ptr);
 	    htrAddBodyParam_va(s, " BGCOLOR=%s",ptr);
 	    }
 	if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    snprintf(htPageStatus.bgstr, 128, " BACKGROUND=%s", ptr);
+	    snprintf(bgstr, 128, " BACKGROUND=%s", ptr);
 	    htrAddBodyParam_va(s, " BACKGROUND=%s",ptr);
 	    }
 
@@ -429,37 +435,37 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	/** Keyboard Focus Indicator colors 1 and 2 **/
 	if (objGetAttrValue(w_obj,"kbdfocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(t->kbfocus1,ptr,0,63);
-	    t->kbfocus1[63]=0;
+	    memccpy(kbfocus1,ptr,0,63);
+	    kbfocus1[63]=0;
 	    }
 	if (objGetAttrValue(w_obj,"kbdfocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(t->kbfocus2,ptr,0,63);
-	    t->kbfocus2[63]=0;
+	    memccpy(kbfocus2,ptr,0,63);
+	    kbfocus2[63]=0;
 	    }
 
 	/** Mouse Focus Indicator colors 1 and 2 **/
 	if (objGetAttrValue(w_obj,"mousefocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(t->msfocus1,ptr,0,63);
-	    t->msfocus1[63]=0;
+	    memccpy(msfocus1,ptr,0,63);
+	    msfocus1[63]=0;
 	    }
 	if (objGetAttrValue(w_obj,"mousefocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(t->msfocus2,ptr,0,63);
-	    t->msfocus2[63]=0;
+	    memccpy(msfocus2,ptr,0,63);
+	    msfocus2[63]=0;
 	    }
 
 	/** Data Focus Indicator colors 1 and 2 **/
 	if (objGetAttrValue(w_obj,"datafocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(t->dtfocus1,ptr,0,63);
-	    t->dtfocus1[63]=0;
+	    memccpy(dtfocus1,ptr,0,63);
+	    dtfocus1[63]=0;
 	    }
 	if (objGetAttrValue(w_obj,"datafocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(t->dtfocus2,ptr,0,63);
-	    t->dtfocus2[63]=0;
+	    memccpy(dtfocus2,ptr,0,63);
+	    dtfocus2[63]=0;
 	    }
    
 	/** Cx windows attract to browser edges? if so, by how much **/
@@ -505,50 +511,60 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
-	if(s->WidgetSet == HTR_UA_MOZILLA)
+	if(s->Capabilities.Dom1HTML)
 	    {
 	    htrAddScriptInit_va(s, "    %s = pg_init(%s.getElementById('pgtop'),%d);\n", name, parentname, attract);
 	    }
-	else
+	else if(s->Capabilities.Dom0NS)
 	    {
 	    htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d);\n", name, parentname, attract);
 	    }
+	else if(s->Capabilities.Dom0IE)
+	    {
+	    htrAddScriptInit_va(s, "    %s = pg_init(%s.all.pgtop,%d);\n", name, parentname, attract);
+	    }
 
-    return 0;
-    }
+	if(s->Capabilities.HTML40)
+	    {
+	    /** Add focus box **/
+	    htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:1; Z-INDEX:0; }\n");
+	    htrAddStylesheetItem(s,"\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n");
+	    htrAddStylesheetItem(s,"\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; WIDTH:0; HEIGHT:0; Z-INDEX:0;}\n");
+	    }
+	else
+	    {
+	    /** Add focus box **/
+	    htrAddStylesheetItem(s, 
+		    "\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:1; Z-INDEX:0; }\n"
+		    "\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
+		    "\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
+		    "\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n");
+	    }
 
-/*** htpageRenderNtsp47xDefault - generate the HTML code for Netscape 4.7x default style
- ***/
-int
-htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
-    {
-    pObject sub_w_obj;
-    pObjQuery qy;
-    int watchdogtimer;
-    HtPageStruct t;
-
-        htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"DIV");
-
-	/** Add focus box **/
-	htrAddStylesheetItem(s, 
-		"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:1; Z-INDEX:0; }\n"
-		"\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		"\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
-		"\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n");
-
-	if (htPageStatus.show == 1)
+	if (show == 1)
 	    {
 	    htrAddStylesheetItem(s, "\t#pgstat { POSITION:absolute; VISIBILITY:visible; LEFT:0;TOP:0;WIDTH:100%;HEIGHT:99%; Z-INDEX:100000;}\n");
-	    htrAddBodyItem_va(s, "<DIV ID=\"pgstat\"><BODY%s>", htPageStatus.bgstr);
-	    htrAddBodyItem   (s, "<TABLE width=100\% height=100\% cellpadding=20><TR><TD valign=top><IMG src=/sys/images/loading.gif></TD></TR></TABLE></BODY></DIV>\n");
+	    htrAddBodyItemLayerStart(s,0,"pgstat",0);
+	    htrAddBodyItem_va(s, "<BODY%s>", bgstr);
+	    htrAddBodyItem   (s, "<TABLE width=100\% height=100\% cellpadding=20><TR><TD valign=top><IMG src=/sys/images/loading.gif></TD></TR></TABLE></BODY>\n");
+	    htrAddBodyItemLayerEnd(s,0);
 	    }
+
 	htrAddBodyItem(s, "<DIV ID=\"pgtop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
@@ -558,11 +574,19 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	htrAddBodyItem(s, "<DIV ID=\"pgkbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgping\"></DIV>\n");
+	
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0);
+	htrAddBodyItemLayerEnd(s,0);
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
-	htrAddScriptInit_va(s,"    pg_ping_init(%s.layers.pgping,%i);\n",parentname,watchdogtimer/2*1000);
-	//htrAddScriptInit_va(s,"    pg_ping_init(%s.layers.pgping,%i);\n",parentname,watchdogtimer/2*1000);
+	if(s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s,"    pg_ping_init(%s.getElementById('pgping'),%i);\n",parentname,watchdogtimer/2*1000);
+	    }
+	else if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s,"    pg_ping_init(%s.layers.pgping,%i);\n",parentname,watchdogtimer/2*1000);
+	    }
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandler(s, "document", "MOUSEMOVE","pg",
@@ -616,7 +640,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 
 	/** CLICK event handler is for making mouse focus the keyboard focus **/
 	htrAddEventHandler(s, "document", "MOUSEDOWN", "pg",
-		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
+		"    ly = (e.target.layer != null)?e.target.layer:t=e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
@@ -646,8 +670,15 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"    if (pg_modallayer)\n"
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
-		"        }\n"
-		"    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);\n");
+		"        }\n");
+
+	/** W3C DOM Level 2 Event model doesn't require a textbox to get keystrokes **/
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
+	    htrAddEventHandler(s, "document", "MOUSEUP", "pg2",
+		    "    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);\n");
+	    }
 
 	/** Set colors for the focus layers **/
 	htrAddScriptInit_va(s, "    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",t.kbfocus1,t.kbfocus2);
@@ -655,10 +686,8 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",t.dtfocus1,t.dtfocus2);
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
 
-	/** Start cursor blinking **/
 	htrAddScriptInit(s, "    pg_togglecursor();\n");
 
-	htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
 
 	htrAddEventHandler(s, "document", "KEYDOWN", "pg",
 		"    k = e.which;\n"
@@ -691,24 +720,26 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	    objQueryClose(qy);
 	    }
 
-	htrAddScriptInit(s,
-		"    setTimeout(pg_mvpginpt, 1, document.layers.pginpt);\n"
-		"    document.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
-		"    document.layers.pginpt.visibility = 'inherit';\n");
-	htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");
+	if(s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit(s,
+		    "    document.getElementById('pgtop').style.clip.left=0;\n"
+		    "    document.getElementById('pgtop').style.clip.top=0;\n"
+		    "    document.getElementById('pgtop').style.clip.x=1;\n"
+		    "    document.getElementById('pgtop').style.clip.y=1;\n");
+	    }
 
-    return 0;
-    }
+	/** keyboard input for NS4 **/
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit(s,
+		    "    setTimeout(pg_mvpginpt, 1, document.layers.pginpt);\n"
+		    "    document.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
+		    "    document.layers.pginpt.visibility = 'inherit';\n");
+	    htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");
+	    }
 
-#include "htdrv_page_moz.c"
-
-int
-htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
-    {
-    if (s->WidgetSet == HTR_UA_NETSCAPE_47)
-	return htpageRenderNtsp47xDefault(s,w_obj,z,parentname,parentobj);
-    else
-	return htpageRenderMozDefault(s,w_obj,z,parentname,parentobj);
+	return 0;
     }
 
 /*** htpageInitialize - register with the ht_render module.
@@ -727,15 +758,15 @@ htpageInitialize()
 	strcpy(drv->WidgetName,"page");
 	drv->Render = htpageRender;
 	drv->Verify = htpageVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
-	htrAddSupport(drv, HTR_UA_MOZILLA);
-
 	/** Actions **/
 	htrAddAction(drv, "LoadPage");
 	htrAddParam(drv, "LoadPage", "Source", DATA_T_STRING);
 	
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
+
 
     return 0;
     }

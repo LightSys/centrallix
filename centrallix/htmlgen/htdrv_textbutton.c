@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.20 2003/05/30 17:39:50 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.21 2003/06/21 23:07:26 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.21  2003/06/21 23:07:26  jorupp
+     * added framework for capability-based multi-browser support.
+     * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
+     * highly unlikely that keyboard events work in Mozilla, but hey, anything's possible.
+     * updated all htdrv_* modules to list their support for the "dhtml" class and make a simple
+     	capability check before in their Render() function (maybe this should be in Verify()?)
+
     Revision 1.20  2003/05/30 17:39:50  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -195,6 +202,12 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char* nptr;
     int is_enabled = 1;
     pExpression code;
+
+	if(!s->Capabilities.Dom0NS)
+	    {
+	    mssError(1,"HTTBTN","Netscape DOM support required");
+	    return -1;
+	    }
 
     	/** Get an id for this. **/
 	id = (HTTBTN.idcnt++);
@@ -386,7 +399,6 @@ httbtnInitialize()
 	strcpy(drv->WidgetName,"textbutton");
 	drv->Render = httbtnRender;
 	drv->Verify = httbtnVerify;
-	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Add the 'click' event **/
 	htrAddEvent(drv, "Click");
@@ -398,6 +410,8 @@ httbtnInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+	htrAddSupport(drv, "dhtml");
 
 	HTTBTN.idcnt = 0;
 
