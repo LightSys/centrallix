@@ -52,10 +52,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.19 2002/06/09 23:44:47 nehresma Exp $
+    $Id: net_http.c,v 1.20 2002/06/09 23:55:23 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.20  2002/06/09 23:55:23  nehresma
+    sanity checking..
+
     Revision 1.19  2002/06/09 23:44:47  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -2115,15 +2118,15 @@ nht_internal_ConnHandler(void* conn_v)
 		    January 6, 2002   NRE
 		 **/
 		useragent = (char*)nmMalloc(160);
-		strcpy(useragent, mlxStringVal(s,NULL));
+		strncpy(useragent, mlxStringVal(s,NULL), 160);
 		/** lets put the delimeter back into the string **/
-		strcat(useragent, " ");
+		strncat(useragent, " ", 160);
 		while((toktype = mlxNextToken(s)))
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
-		    strcat(useragent, mlxStringVal(s,NULL));
+		    strncat(useragent, mlxStringVal(s,NULL), 160);
 		    /** lets put the delimeter back into the string **/
-		    strcat(useragent, " ");
+		    strncat(useragent, " ", 160);
 		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
 		}
