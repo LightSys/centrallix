@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.14 2002/08/01 18:27:16 pfinley Exp $
+    $Id: htdrv_pane.c,v 1.15 2002/08/13 04:09:09 anoncvs_obe Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.15  2002/08/13 04:09:09  anoncvs_obe
+    Pane widget was adding several pixels' worth of offset as a container,
+    causing static content (such as a static widget/html) to be shifted
+    right and down a noticeable amount.  Problem was a table without the
+    needed border/spacing information set.
+
     Revision 1.14  2002/08/01 18:27:16  pfinley
     The border images of the pane widget are now tagged with .kind, .layer, &
     .mainlayer properties using the utils tag function.
@@ -252,7 +258,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d><tr><td>\n",id, w-2, h-2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
 
 	/** Check for objects within the pane. **/
 	snprintf(sbuf,160,"%s.mainlayer.document",nptr);
