@@ -10,6 +10,9 @@
 #include "st_node.h"
 #include "mtsession.h"
 /** module definintions **/
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "centrallix.h"
 #ifdef USE_LIBXML1
 #include <parser.h>
@@ -50,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.5 2002/08/01 08:47:28 mattphillips Exp $
+    $Id: objdrv_xml.c,v 1.6 2002/08/01 08:52:59 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.6  2002/08/01 08:52:59  mattphillips
+    This needs to include config.h in order to know if USE_LIBXML1 is defined.
+
     Revision 1.5  2002/08/01 08:47:28  mattphillips
     Compile against libxml2 or libxml.  This expects to find xml2-config or
     xml-config in the PATH.  Also defines USE_LIBXML1 to tell the xml os driver to
