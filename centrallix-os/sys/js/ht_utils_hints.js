@@ -53,12 +53,13 @@ function cx_merge_hint_integer_min(i1,i2)
     }
 
 // cx_merge_hint_bitmask() - takes the bitwise OR of the two given
-// integers.
-function cx_merge_hint_bitmask(b1, b2)
+// integers.  b1 and b2 are the actual values, bm1 and bm2 specify
+// which bits are valid in b1 and b2.  b1/bm1 settings take priority.
+function cx_merge_hint_bitmask(b1, bm1, b2, bm2)
     {
     if (b1 == null) return b2;
     if (b2 == null) return b1;
-    return b1 | b2;
+    return (b2 & ~bm1) | b1;
     }
 
 // cx_merge_hint_string() - if both strings are set, goes with the
@@ -115,39 +116,14 @@ function cx_merge_hint_array(a1, a2)
     return na;
     }
 
-// cx_merge_hints() - take the different type of hints available in
-// the form element, and merge them into one hints structure.
-// Currently supports 'app' hints and 'data' hints.  The resulting
-// hints info is the restrictive combination of the app and data hints.
-// In the event of a conflict, app hints take priority (the data ones
-// will be checked at the lower level in the server anyhow).
-function cx_merge_hints(element)
+function cx_merge_two_hints(h1,h2)
     {
     var nh;
-    var h1;
-    var h2;
 
-	// easy way out - no, or one, hint type?
-	if (!element.cx_hints || (!element.cx_hints['app'] && !element.cx_hints['data']))
-	    {
-	    element.cx_hints['all'] = cx_parse_hints('');
-	    return;
-	    }
-	else if (!element.cx_hints['app'])
-	    {
-	    element.cx_hints['all'] = element.cx_hints['data'];
-	    return;
-	    }
-	else if (!element.cx_hints['data'])
-	    {
-	    element.cx_hints['all'] = element.cx_hints['app'];
-	    return;
-	    }
-
-	// okay, gotta merge them.
 	nh = cx_parse_hints('');
-	h1 = element.cx_hints['app'];
-	h2 = element.cx_hints['data'];
+	if (!h1 && !h2) return null;
+	if (!h1) return h2;
+	if (!h2) return h1;
 	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h2.Constraint, 'cx_AND');
 	nh.DefaultExpr = cx_merge_hint_expr(h1.DefaultExpr, h2.DefaultExpr, 'cx_FIRST');
 	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h2.MinValue, 'min');
@@ -160,12 +136,31 @@ function cx_merge_hints(element)
 	nh.Length = cx_merge_hint_integer_min(h1.Length, h2.Length);
 	nh.VisualLength = cx_merge_hint_integer_min(h1.VisualLength, h2.VisualLength);
 	nh.VisualLength2 = cx_merge_hint_integer_min(h1.VisualLength2, h2.VisualLength2);
-	nh.BitmaskRO = cx_merge_hint_bitmask(h1.BitmaskRO, h2.BitmaskRO);
-	nh.Style = cx_merge_hint_bitmask(h1.Style, h2.Style);
+	nh.BitmaskRO = cx_merge_hint_bitmask(h1.BitmaskRO, 0, h2.BitmaskRO, 0);
+	nh.Style = cx_merge_hint_bitmask(h1.Style, h1.StyleMask, h2.Style, h2.StyleMask);
+	nh.StyleMask = cx_merge_hint_bitmask(h1.StyleMask, 0, h2.StyleMask, 0);
 	nh.GroupID = cx_merge_hint_integer_min(h1.GroupID, h2.GroupID);
 	nh.OrderID = cx_merge_hint_integer_min(h1.OrderID, h2.OrderID);
 	nh.GroupName = cx_merge_hint_string(h1.GroupNAme, h2.GroupName);
 	nh.FriendlyName = cx_merge_hint_string(h1.FriendlyName, h2.FriendlyName);
+
+    return nh;
+    }
+
+// cx_merge_hints() - take the different type of hints available in
+// the form element, and merge them into one hints structure.
+// Currently supports 'app' hints and 'data' hints.  The resulting
+// hints info is the restrictive combination of the app and data hints.
+// In the event of a conflict, app hints take priority (the data ones
+// will be checked at the lower level in the server anyhow).
+function cx_merge_hints(element)
+    {
+    var nh;
+
+	// merge them.
+	nh = cx_merge_two_hints(element.cx_hints['app'], element.cx_hints['data']);
+	nh = cx_merge_two_hints(nh, element.cx_hints['widget']);
+	if (!nh) nh = cx_parse_hints('');
 	element.cx_hints['all'] = nh;
 
 	// set display
@@ -190,6 +185,7 @@ function cx_parse_hints(hstr)
 	ph.VisualLength2 = null;
 	ph.BitmaskRO = 0;
 	ph.Style = 0;
+	ph.StyleMask = 0;
 	ph.GroupID = null;
 	ph.GroupName = null;
 	ph.OrderID = null;
@@ -258,7 +254,10 @@ function cx_parse_hints(hstr)
 			ph.BitmaskRO = parseInt(attrval[1]);
 			break;
 		    case "Style":
-			ph.Style = parseInt(attrval[1]);
+			var twostyles = attrval[1].split(",",2);
+			if (twostyles.length == 1) twostyles[1] = twostyles[0];
+			ph.Style = parseInt(twostyles[0]);
+			ph.StyleMask = parseInt(twostyles[1]);
 			break;
 		    case "GroupID":
 			ph.GroupID = parseInt(attrval[1]);
@@ -352,11 +351,12 @@ function cx_hints_checkmodify(e, ov, nv)
     }
 
 
-// cx_hints_teststyle() - test whether a given style bit is set or not.
+// cx_hints_teststyle() - test whether a given style bit is set or not.  Returns
+// 0 if off, 1 if on, and null if not set at all.
 function cx_hints_teststyle(e, b)
     {
-    if (!e.cx_hints) return 0;
+    if (!e.cx_hints) return null;
     var h = e.cx_hints['all'];
-    return h.Style & b;
+    if (!(h.StyleMask & b)) return null;
+    return (h.Style & b)?1:0;
     }
-
