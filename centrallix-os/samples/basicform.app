@@ -59,7 +59,7 @@ basicform "widget/page"
 
 	    mainpane "widget/pane"
 		{
-		x = 20; y=20; width=610; height=190;
+		x = 20; y=20; width=610; height=225;
 		//bgcolor="#c0c0c0";
 		background="/sys/images/slate2.gif";
 
@@ -191,6 +191,16 @@ basicform "widget/page"
 		    fgcolor1=black;fgcolor2=white;
 		    cn1 "widget/connector" { event="Click"; target="form1"; action="Discard"; }
 		    }
+		delbtn "widget/textbutton"
+		    {
+		    x = 10; y=185; height=30; width=70;
+		    tristate=no;
+		    background="/sys/images/grey_gradient.png";
+		    text="Delete";
+		    enabled = runclient(:form1:is_editable);
+		    fgcolor1=black;fgcolor2=white;
+		    cn1 "widget/connector" { event="Click"; target="form1"; action="Delete"; }
+		    }
 
 		id_label "widget/label"
 		    {
@@ -278,8 +288,8 @@ basicform "widget/page"
 		x=0; y=0; width=596; height=303;
 		Tree "widget/treeview"
 		    {
-		    x=0; y=1; width=20000;
-		    source = "javascript:Tree_scroll";
+		    x=0; y=1; width=576;
+		    source = "javascript:osrc1";
 		    }
 		}
 	    }
