@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.2  2002/04/25 04:30:14  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -232,7 +236,8 @@ prtGetUnits(pPrtSession s)
 int
 prtSetResolution(pPrtSession s, int dpi)
     {
-    s->Resolution = dpi;
+    s->ResolutionX = dpi;
+    s->ResolutionY = dpi;
     return 0;
     }
 

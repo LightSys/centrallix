@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.2  2002/04/25 04:30:14  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -304,7 +308,7 @@ prt_pclod_SetTextStyle(void* context_v, pPrtTextStyle style)
 	    }
 
 	/** Record the newly selected style **/
-	memcpy(&(context->SelectedStyle, style, sizeof(PrtTextStyle));
+	memcpy(&(context->SelectedStyle), style, sizeof(PrtTextStyle));
 
     return 0;
     }
@@ -330,7 +334,7 @@ prt_pclod_SetHPos(void* context_v, double x)
  *** independently of the x position (does not emit newlines)
  ***/
 int
-prt_pclod_SetHPos(void* context_v, double x)
+prt_pclod_SetVPos(void* context_v, double y)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[64];
@@ -375,7 +379,7 @@ prt_pclod_WriteRasterData(void* context_v, int xpixels, int ypixels, unsigned in
 int
 prt_pclod_WriteFF(void* context_v)
     {
-    /*pPrtPclodInf context = (pPrtPclodInf)context_v;*/
+    pPrtPclodInf context = (pPrtPclodInf)context_v;
 
 	/** Create the formfeed/home command. **/
 	prt_pclod_Output(context, "\14\33&a0V\33&a0H", -1);
@@ -399,7 +403,7 @@ prt_pclod_Initialize()
 	drv->Open = prt_pclod_Open;
 	drv->Close = prt_pclod_Close;
 	drv->GetResolutions = prt_pclod_GetResolutions;
-	drv->SetResolution = prt_pclod_SetResollution;
+	drv->SetResolution = prt_pclod_SetResolution;
 	drv->GetNearestFontSize = prt_pclod_GetNearestFontSize;
 	drv->GetCharacterMetric = prt_pclod_GetCharacterMetric;
 	drv->SetTextStyle = prt_pclod_SetTextStyle;

@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.2  2002/04/25 04:30:14  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -79,9 +83,9 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	if (!(this->Flags & PRT_OBJ_F_ALLOWBREAK)) return -1;
 
 	/** Object already has a continuing point? **/
-	if (this->NextLink)
+	if (this->LinkNext)
 	    {
-	    *new_this = this->NextLink;
+	    *new_this = this->LinkNext;
 	    }
 	else
 	    {
@@ -93,15 +97,15 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 
 	    /** Duplicate the object... without the content. **/
 	    new_object = prt_internal_AllocObjByID(this->ObjType->TypeID);
-	    prt_internal_CopyAttr(this, new_object);
+	    prt_internal_CopyAttrs(this, new_object);
 	    prt_internal_CopyGeom(this, new_object);
 	    new_object->LayoutMgr->InitContainer(new_object);
 
 	    /** Add the new object to the new parent container, and set the linkages **/
 	    new_container->LayoutMgr->AddObject(new_container, new_object);
 	    *new_this = new_object;
-	    this->NextLink = new_object;
-	    new_object->PrevLink = this;
+	    this->LinkNext = new_object;
+	    new_object->LinkPrev = this;
 	    }
 
 	/** Update the handle so that later adds go to the correct place. **/
@@ -251,11 +255,12 @@ prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_widt
 int
 prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
-    double top,bottom,w,maxw,lastw,ckw,oldheight;
+    double top,bottom,w,maxw,lastw,ckw;
+    /*double oldheight;*/
     int n,sl,last_sep;
     pPrtObjStream objptr;
     pPrtObjStream split_obj;
-    unsigned char* spaceptr;
+    /*unsigned char* spaceptr;*/
     pPrtObjStream new_parent;
     double x,y;
 
@@ -398,7 +403,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom) < 0)
 		    {
 		    /** Resize denied.  If container is empty, we can't continue on, so error out here. **/
-		    if (!this->ContentHead || this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next)
+		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
 			{
 			if (split_obj) 
 			    {

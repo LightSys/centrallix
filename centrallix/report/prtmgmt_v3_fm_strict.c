@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.2  2002/04/25 04:30:14  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -209,13 +213,13 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
     void* drvdata;
     PrtTextStyle cur_style;
     double cur_y;
-    XArray cur_objlist;
+    /*XArray cur_objlist;*/
     int i;
 
 	/** First, determine what resolution the graphics will be rendered at **/
 	drv = context->OutputDriver;
 	drvdata = context->OutputDriverData;
-	resolutions = drv->GetResolutions(drvdata);
+	resolutions = (pXArray)(drv->GetResolutions(drvdata));
 	if (!resolutions || resolutions->nItems == 0)
 	    {
 	    /** Graphics not supported (such as a textonly driver) **/

@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.2  2002/04/25 04:30:14  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -129,7 +133,7 @@ prt_internal_AllocObjByID(int type_id)
 	    }
 	if (!pobj->ObjType)
 	    {
-	    mssError(1,"PRT","Bark!  Unknown print stream object type '%s'", type);
+	    mssError(1,"PRT","Bark!  Unknown print stream object type '%d'", type_id);
 	    nmFree(pobj, sizeof(PrtObjStream));
 	    return NULL;
 	    }
@@ -194,7 +198,7 @@ prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst)
 	dst->MarginLeft = src->MarginLeft;
 	dst->MarginRight = src->MarginRight;
 	dst->MarginTop = src->MarginTop;
-	dst->MarginBottom = src->MarginBottm;
+	dst->MarginBottom = src->MarginBottom;
 
     return 0;
     }
@@ -276,15 +280,15 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
 	for(objptr=obj->ContentHead;objptr;objptr=objptr->Next)
 	    {
 	    /** Do the subtree **/
-	    prt_internal_YSetup(objptr, &notquite_first_obj, &notquite_last_obj);
+	    prt_internal_YSetup_r(objptr, &notquite_first_obj, &notquite_last_obj);
 
 	    /** Add the subtree to the list. **/
-	    *last_obj->YNext = notquite_first_obj;
-	    *last_obj->YNext->YPrev = *last_obj;
+	    (*last_obj)->YNext = notquite_first_obj;
+	    (*last_obj)->YNext->YPrev = *last_obj;
 	    *last_obj = notquite_last_obj;
 	    }
-	*last_obj->YNext = NULL;
-	*first_obj->YPrev = NULL;
+	(*last_obj)->YNext = NULL;
+	(*first_obj)->YPrev = NULL;
 
     return 0;
     }
@@ -317,7 +321,7 @@ prt_internal_YSort(pPrtObjStream obj)
 	 **/
 	do  {
 	    did_swap = 0;
-	    for(*sortptr=&first;*sortptr && (*sortptr)->Next;sortptr=&((*sortptr)->Next))
+	    for(sortptr= &first;*sortptr && (*sortptr)->Next;sortptr=&((*sortptr)->Next))
 		{
 		if ((*sortptr)->PageY > (*sortptr)->Next->PageY || (*sortptr)->PageX > (*sortptr)->Next->PageX)
 		    {
@@ -433,7 +437,7 @@ prt_internal_AddEmptyObj(pPrtObjStream container)
 	    obj->Width = 0.0;
 	    prev_obj = (container->ContentTail)?(container->ContentTail):container;
 	    obj->Height = prt_internal_GetFontHeight(prev_obj);
-	    container->LayoutManager->AddObject(obj);
+	    container->LayoutMgr->AddObject(obj);
 	    }
 	else
 	    {

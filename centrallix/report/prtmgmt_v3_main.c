@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_main.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_main.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_main.c,v $
 
     $Log: prtmgmt_v3_main.c,v $
+    Revision 1.2  2002/04/25 04:30:14  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -281,7 +285,7 @@ prtAllocHandle(void* ptr)
 
 	/** Add to the table **/
 	xhAdd(&PRTMGMT.HandleTable, (void*)&(h->HandleID), (void*)h);
-	xhAdd(&PRTMGMT.HandleTableByID, (void*)&(h->Ptr.Generic), (void*)h);
+	xhAdd(&PRTMGMT.HandleTableByPtr, (void*)&(h->Ptr.Generic), (void*)h);
 
     return h->HandleID;
     }
@@ -290,13 +294,13 @@ prtAllocHandle(void* ptr)
 /*** prtHandlePtr() - return the pointer for a given handle id
  ***/
 void*
-ptrHandlePtr(int handle_id)
+prtHandlePtr(int handle_id)
     {
     pPrtHandle h;
 
 	/** Look it up **/
-	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTable, &handle_id);
-	if (!h) return -1;
+	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTable, (void*)&handle_id);
+	if (!h) return NULL;
 	ASSERTMAGIC(h, MGK_PRTHANDLE);
 
     return h->Ptr.Generic;
@@ -312,14 +316,14 @@ prtUpdateHandle(int handle_id, void* ptr)
     pPrtHandle h;
 
 	/** Look it up **/
-	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTable, &handle_id);
+	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTable, (void*)&handle_id);
 	if (!h) return -1;
 	ASSERTMAGIC(h, MGK_PRTHANDLE);
 
 	/** Update the pointer **/
-	xhRemove(&PRTMGMT.HandleTableByPtr, &(h->Ptr.Generic));
+	xhRemove(&PRTMGMT.HandleTableByPtr, (void*)&(h->Ptr.Generic));
 	h->Ptr.Generic = ptr;
-	xhAdd(&PRTMGMT.HandleTableByPtr, &(h->Ptr.Generic), (void*)h);
+	xhAdd(&PRTMGMT.HandleTableByPtr, (void*)&(h->Ptr.Generic), (void*)h);
 
     return 0;
     }
@@ -329,7 +333,7 @@ prtUpdateHandle(int handle_id, void* ptr)
  *** requests for prtHandlePtr() return the new value.
  ***/
 int
-prtUpdateHandle(void* old_ptr, void* ptr)
+prtUpdateHandleByPtr(void* old_ptr, void* ptr)
     {
     pPrtHandle h;
 
@@ -339,9 +343,9 @@ prtUpdateHandle(void* old_ptr, void* ptr)
 	ASSERTMAGIC(h, MGK_PRTHANDLE);
 
 	/** Update the pointer **/
-	xhRemove(&PRTMGMT.HandleTableByPtr, &(h->Ptr.Generic));
+	xhRemove(&PRTMGMT.HandleTableByPtr, (void*)&(h->Ptr.Generic));
 	h->Ptr.Generic = ptr;
-	xhAdd(&PRTMGMT.HandleTableByPtr, &(h->Ptr.Generic), (void*)h);
+	xhAdd(&PRTMGMT.HandleTableByPtr, (void*)&(h->Ptr.Generic), (void*)h);
 
     return 0;
     }
@@ -357,7 +361,7 @@ prtFreeHandle(int handle_id)
     pPrtHandle h;
 
 	/** Look it up **/
-	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTable, &handle_id);
+	h = (pPrtHandle)xhLookup(&PRTMGMT.HandleTable, (void*)&handle_id);
 	if (!h) return -1;
 	ASSERTMAGIC(h, MGK_PRTHANDLE);
 
@@ -446,10 +450,10 @@ prtInitialize()
 	prtRegisterFont("serif", 3);
 
 	/** Setup list of layout managers **/
-	prt_txtlm_Initialize();
-	prt_tablm_Initialize();
-	prt_collm_Initialize();
-	prt_paglm_Initialize();
+	prt_textlm_Initialize();
+	/*prt_tablm_Initialize();*/
+	/*prt_collm_Initialize();*/
+	prt_pagelm_Initialize();
 
 	/** Setup list of object types **/
 	ot = prtAllocType();

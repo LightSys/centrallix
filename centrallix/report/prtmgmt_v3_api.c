@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <math.h>
 #include "barcode.h"
 #include "report.h"
 #include "mtask.h"
@@ -48,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.2  2002/04/25 04:30:14  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -73,7 +78,6 @@ prtGetPageRef(pPrtSession s)
 	obj = s->StreamHead;
 
 	/** Find the current page & get the handle. **/
-	obj = s->ContentHead;
 	found_obj = NULL;
 	while(obj)
 	    {
@@ -183,7 +187,7 @@ prtSetLineHeight(int handle_id, double line_height)
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
 
 	if (!obj) return -1;
-	obj->LineHeight = prtUnitY(line_height);
+	obj->LineHeight = prtUnitY(PRTSESSION(obj),line_height);
 
     return 0;
     }
@@ -196,7 +200,7 @@ double
 prtGetLineHeight(int handle_id)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
-    return obj?(prtUsrUnitY(obj->LineHeight)):(-1);
+    return obj?(prtUsrUnitY(PRTSESSION(obj),obj->LineHeight)):(-1);
     }
 
 
@@ -329,7 +333,7 @@ prtGetFont(int handle_id)
     pPrtObjStream tgt_obj;
 
 	/** Check the obj **/
-	if (!obj) return -1;
+	if (!obj) return NULL;
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
 	/** Check for a child object **/
@@ -346,7 +350,7 @@ prtGetFont(int handle_id)
  *** adjusts the line height accordingly.
  ***/
 int
-prtSetFontSize(int handle_id, int fontsize);
+prtSetFontSize(int handle_id, int fontsize)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
@@ -391,7 +395,7 @@ prtGetFontSize(int handle_id)
  *** container.  To do that, use prtSetFGColor().
  ***/
 int
-prtSetColor(int handle_id, int color);
+prtSetColor(int handle_id, int color)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
@@ -445,23 +449,248 @@ prtSetHPos(int handle_id, double x)
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 	if (obj->ObjType->TypeID != PRT_OBJ_T_AREA) return -1;
 
-	/** Check for a child object **/
-	if (obj->ContentTail != NULL)
-	    tgt_obj = obj->ContentTail;
+	/** Add an empty object so we can change the position **/
+	tgt_obj = (pPrtObjStream)prt_internal_AddEmptyObj(obj);
+	if (!tgt_obj) return -1;
+
+	/** Set the position only if it will fit. **/
+	tgt_obj->Flags |= PRT_OBJ_F_XSET;
+	if (x >= tgt_obj->X && x <= (obj->Width - obj->MarginRight - obj->MarginLeft))
+	    {
+	    tgt_obj->X = x;
+	    }
 	else
-	    tgt_obj = obj;
+	    {
+	    return -1;
+	    }
 
     return 0;
     }
 
 
 /*** prtSetVPos() - sets the vertical position in the current textflow type
- *** container.  This does set the HPos to zero -- to do that, also use the
- *** prtSetHPos() call.
+ *** container.  This does set the HPos to zero.
  ***/
 int
 prtSetVPos(int handle_id, double y)
     {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream tgt_obj;
+
+	/** Check the obj and its type (must be an AREA) **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+	if (obj->ObjType->TypeID != PRT_OBJ_T_AREA) return -1;
+
+	/** Add an empty object so we can change the position **/
+	tgt_obj = (pPrtObjStream)prt_internal_AddEmptyObj(obj);
+	if (!tgt_obj) return -1;
+
+	/** Set the position only if it will fit. **/
+	tgt_obj->Flags |= (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET);
+	if (y >= tgt_obj->Y + tgt_obj->Height && (!(obj->Flags & PRT_OBJ_F_FIXEDSIZE) || y <= (obj->Height - obj->MarginTop - obj->MarginBottom)))
+	    {
+	    tgt_obj->X = 0;
+	    tgt_obj->Y = y;
+	    }
+	else
+	    {
+	    return -1;
+	    }
+
+    return 0;
     }
 
+
+/*** prtWriteString - put a string of text into the document.
+ ***/
+int
+prtWriteString(int handle_id, char* str)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream string_obj;
+    int rval;
+    char* special_char_ptr;
+    int len;
+    double x;
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+	if (!str) return -1;
+
+	/** Check for embedded special chars in the string **/
+	while(*str)
+	    {
+	    /** Adding text containing a tab or newline? **/
+	    special_char_ptr = strpbrk(str,"\n\t");
+	    if (special_char_ptr)
+		len = str - special_char_ptr;
+	    else
+		len = strlen(str);
+
+	    /** Create a new textstring object **/
+	    string_obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
+	    if (!string_obj) return -1;
+
+	    /** Format it and add it to the container **/
+	    string_obj->Content = nmSysMalloc(len+1);
+	    strncpy(string_obj->Content, str, len);
+	    string_obj->Content[len] = 0;
+	    string_obj->Width = prt_internal_GetStringWidth(obj->ContentTail, str, -1);
+	    string_obj->Height = prt_internal_GetFontHeight(string_obj);
+	    rval = obj->LayoutMgr->AddObject(string_obj);
+
+	    /** Skipping over a special char? **/
+	    if (special_char_ptr)
+		{
+		str = special_char_ptr+1;
+		if (*special_char_ptr == '\n')
+		    {
+		    prtWriteNL(handle_id);
+		    }
+		else if (*special_char_ptr == '\t')
+		    {
+		    x = floor(floor(obj->ContentTail->X/8.0 + 0.00000001)*8.0 + 8.00000001);
+		    prtSetHPos(handle_id, x);
+		    }
+		}
+	    else
+		{
+		break;
+		}
+	    }
+
+    return rval;
+    }
+
+
+/*** prtWriteNL - add a newline (break) into the document.
+ ***/
+int
+prtWriteNL(int handle_id)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream nl_obj;
+    int rval;
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Create a new textstring object **/
+	nl_obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
+	if (!nl_obj) return -1;
+	nl_obj->Content = nmSysStrdup("");
+	nl_obj->Width = 0.0;
+	nl_obj->Height = prt_internal_GetFontHeight(nl_obj);
+	nl_obj->Flags |= PRT_OBJ_F_NEWLINE;
+	rval = obj->LayoutMgr->AddObject(nl_obj);
+
+    return rval;
+    }
+
+
+/*** prtWriteFF - write a forms feed into the document, usually into a text
+ *** area of some sort.  This basically causes a page break operation to occur.
+ ***/
+int
+prtWriteFF(int handle_id)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream new_obj;
+    int rval;
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Request a break operation on the object. **/
+	rval = obj->LayoutMgr->Break(obj, &new_obj);
+
+    return rval;
+    }
+
+
+/*** prtAddObject() - adds a new printing object within an existing object.  This
+ *** normally isn't used for printing text - use prtWriteString() for that.  Use
+ *** this function for adding areas, tables, multicolumn sections, and so forth.
+ *** The object's geometry and position are specified as a part of this function
+ *** call.
+ ***
+ *** Returns a handle id for the object.
+ ***/
+int
+prtAddObject(int handle_id, int obj_type, double x, double y, double width, double height, int flags)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream new_obj;
+    int new_handle_id; 
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Allocate the new object to be added. **/
+	new_obj = prt_internal_AllocObjByID(obj_type);
+	if (!new_obj) return -1;
+
+	/** Init container... **/
+	prt_internal_CopyAttrs(obj, new_obj);
+	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj);
+
+	/** Set the object's position, flags, etc. **/
+	new_obj->Flags |= (flags & PRT_OBJ_UFLAGMASK);
+	new_obj->Height = height;
+	new_obj->Width = width;
+	if (flags & PRT_OBJ_U_XSET)
+	    new_obj->X = x;
+	else
+	    new_obj->X = 0.0;
+	if (flags & PRT_OBJ_U_YSET)
+	    new_obj->Y = y;
+	else
+	    new_obj->Y = 0.0;
+
+	/** Bolt a handle onto the new object... **/
+	new_handle_id = prtAllocHandle(new_obj);
+
+	/** Add the object to the given parent object. **/
+	obj->LayoutMgr->AddObject(obj, new_obj);
+
+    return new_handle_id;
+    }
+
+
+/*** prtSetObjectCallback() - sets up a callback to be used to fill in the 
+ *** content of a container.  The "is_pre" parameter specifies whether the 
+ *** container is populated *before* (pre) or *after* (post) the page itself
+ *** has been completed.  is_pre callbacks are called when a new page is
+ *** created or when the callback is set up.
+ ***/
+int
+prtSetObjectCallback(int handle_id, void* (*callback_fn)(), int is_pre)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    return 0;
+    }
+
+
+/*** prtEndObject() - closes an object so that content may no longer be
+ *** added to it.  This also releases the handle, after which point the
+ *** handle_id becomes invalid/undefined.
+ ***/
+int
+prtEndObject(int handle_id)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+
+	/** Release the handle **/
+	prtFreeHandle(handle_id);
+
+	/** Reduce the open count on the object. **/
+	obj->nOpens--;
+
+    return 0;
+    }
 

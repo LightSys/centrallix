@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.1 2002/01/27 22:50:05 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.2 2002/04/25 04:30:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.2  2002/04/25 04:30:13  gbeeley
+    More work on the v3 print formatting subsystem.  Subsystem compiles,
+    but report and uxprint have not been converted yet, thus problems.
+
     Revision 1.1  2002/01/27 22:50:05  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -47,13 +51,14 @@
  **END-CVSDATA***********************************************************/
 
 #include "xarray.h"
+#include "xhash.h"
 
 
 /*** Layout Manager Structure ***/
 typedef struct _PLM
     {
     int			Magic;
-    char*		Name[32];
+    char		Name[32];
     int			(*AddObject)();		/* adds a child object to a parent */
     int			(*ChildResizeReq)();	/* can we resize the child object in this container? */
     int			(*ChildResized)();	/* child object in this container *was* resized. */
@@ -164,10 +169,10 @@ typedef struct _PFM
     int			Magic;
     char		Name[32];
     int			Priority;
-    int			(*Probe)();
+    void*		(*Probe)();
     int			(*Generate)();
     int			(*GetNearestFontSize)();
-    int			(*GetCharacterMetric)();
+    double		(*GetCharacterMetric)();
     int			(*Close)();
     }
     PrtFormatter, *pPrtFormatter;
@@ -181,11 +186,11 @@ typedef struct _PD
     char		ContentType[64];
     void*		(*Open)();
     int			(*Close)();
-    int			(*GetResolutions)();
+    pXArray		(*GetResolutions)();
     int			(*SetResolution)();
     int			(*SetTextStyle)();
     int			(*GetNearestFontSize)();
-    int			(*GetCharacterMetric)();
+    double		(*GetCharacterMetric)();
     int			(*SetHPos)();
     int			(*SetVPos)();
     int			(*WriteText)();
@@ -215,7 +220,7 @@ typedef struct _PS
 
 
 /*** Print Object Handle structure ***/
-typedef struct _PH
+typedef struct _PHD
     {
     int			Magic;
     int			HandleID;
@@ -268,6 +273,10 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_U_REPEAT	    PRT_OBJ_F_REPEAT
 #define PRT_OBJ_U_FIXEDSIZE	    PRT_OBJ_F_FIXEDSIZE
 #define PRT_OBJ_U_REQCOMPLETE	    PRT_OBJ_F_REQCOMPLETE
+#define PRT_OBJ_U_XSET		    PRT_OBJ_F_XSET
+#define PRT_OBJ_U_YSET		    PRT_OBJ_F_YSET
+
+#define PRT_OBJ_UFLAGMASK	    (PRT_OBJ_U_FLOWAROUND | PRT_OBJ_U_NOLINESEQ | PRT_OBJ_U_ALLOWBREAK | PRT_OBJ_U_REPEAT | PRT_OBJ_U_FIXEDSIZE | PRT_OBJ_U_REQCOMPLETE | PRT_OBJ_U_XSET | PRT_OBJ_U_YSET)
 
 #define PRT_OBJ_A_BOLD		    1
 #define PRT_OBJ_A_ITALIC	    2
@@ -348,10 +357,10 @@ pPrtOutputDriver prt_strictfm_AllocDriver();
 int prt_strictfm_RegisterDriver(pPrtOutputDriver drv);
 
 /** These macros are used for units conversion **/
-#define prtUnitX(s,x) ((x)*((s)->Units->AdjX));
-#define prtUnitY(s,y) ((y)*((s)->Units->AdjY));
-#define prtUsrUnitX(s,x) ((x)/((s)->Units->AdjX));
-#define prtUsrUnitY(s,y) ((y)/((s)->Units->AdjY));
+#define prtUnitX(s,x) ((x)*((s)->Units->AdjX))
+#define prtUnitY(s,y) ((y)*((s)->Units->AdjY))
+#define prtUsrUnitX(s,x) ((x)/((s)->Units->AdjX))
+#define prtUsrUnitY(s,y) ((y)/((s)->Units->AdjY))
 
 /*** General Printing Functions ***/
 int prtGetPageRef(pPrtSession s);
