@@ -190,8 +190,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"    if (dd_target_img != null)\n"
 	"        {\n"
 	"        if (dd_target_img.kind && dd_target_img.kind.substr(0,2) == 'dd' && (dd_target_img.name == 'u' || dd_target_img.name == 'd'))\n"
-	"            { alert('hi');\n"
-	"            dd_target_img.src = htutil_subst_last(dd_target_img.src,\"b.gif\"); }\n"
+	"            dd_target_img.src = htutil_subst_last(dd_target_img.src,\"b.gif\");\n"
 	"        dd_target_img = null;\n"
 	"        }\n"
 	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
@@ -429,10 +428,14 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.34 2002/08/05 19:36:13 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.35 2002/08/13 19:23:01 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.35  2002/08/13 19:23:01  lkehresman
+    Made the dropdown less user-friendly (it used to print out "hi" when you
+    clicked a button).
+
     Revision 1.34  2002/08/05 19:36:13  lkehresman
     Reworked the check on MOUSEUP for the dropdown so that it won't try and
     rewrite the image.src attribute unless it is the up/down scroll button.
