@@ -59,7 +59,6 @@ checkbox_test "widget/page"
 		<events>
 		</events>
 		<actions>
-			<action name="LoadPage">This action will reload the page with the URL specified in the "Source" parameter.</action>
 		</actions>
 		<sample>
 		<![CDATA[
@@ -636,6 +635,7 @@ osrc1 "widget/osrc"
 		<events>
 		</events>
 		<actions>
+			<action name="LoadPage">This action will reload the page with the URL specified in the "Source" parameter.</action>
 		</actions>
 		<sample>
 		<![CDATA[
