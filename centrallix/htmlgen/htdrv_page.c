@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.16 2002/06/19 18:35:25 pfinley Exp $
+    $Id: htdrv_page.c,v 1.17 2002/06/19 21:21:50 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.17  2002/06/19 21:21:50  lkehresman
+    Bumped up the zIndex values so the hilights wouldn't be hidden.
+
     Revision 1.16  2002/06/19 18:35:25  pfinley
     fixed bug in edit box which didn't remove the focus border when clicking a place other than another edit box.
 
@@ -361,7 +364,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
 		"            {\n"
 		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
-		"            pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);\n"
+		"            pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"            }\n"
 		"        pg_curkbdarea = pg_curarea;\n"
 		"        pg_curkbdlayer = pg_curlayer;\n"
@@ -370,7 +373,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
 		"            if (v & 1)\n"
 		"                {\n"
-		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);\n"
+		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"                }\n"
 		"            if (v & 2)\n"
 		"                {\n"
@@ -393,13 +396,13 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                    //pg_curlayer.pg_dtlft.document.write('<IMG SRC=/sys/images/trans_1.gif height=864 width=1>');\n"
 		"                    //pg_curlayer.pg_dtlft.document.close();\n"
 		"                    }\n"
-		"                pg_mkbox(pg_curlayer,x-1,y-1,w+2,h+2, 1,  pg_curlayer.pg_dttop,pg_curlayer.pg_dtbtm,pg_curlayer.pg_dtrgt,pg_curlayer.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+1);\n"
+		"                pg_mkbox(pg_curlayer,x-1,y-1,w+2,h+2, 1,  pg_curlayer.pg_dttop,pg_curlayer.pg_dtbtm,pg_curlayer.pg_dtrgt,pg_curlayer.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);\n"
 		"                }\n"
 		"            }\n"
 		"        }\n"
 		"    else if (pg_curkbdlayer != null)\n"
 		"        {\n"
-		"        pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);"
+		"        pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);\n"
 		"        if (!pg_curkbdlayer.losefocushandler()) return true;\n"
 		"        pg_curkbdarea = null;\n"
 		"        pg_curkbdlayer = null;\n"
