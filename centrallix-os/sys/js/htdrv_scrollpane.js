@@ -92,6 +92,9 @@ function sp_init(l,aname,tname,p)
 function sp_WatchHeight(property, oldvalue, newvalue)
     {
     this.pane.UpdateThumb(newvalue);
+    this.bottom = this.top + newvalue; /* ns seems to unlink bottom = top + height if you modify clip obj */
+    // make sure region not offscreen now
+    if (this.pane.area.y + newvalue < 0) this.pane.area.y = 0;
     return newvalue;
     }
 
