@@ -53,12 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.1 2001/08/13 18:01:01 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.2 2001/09/25 18:04:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
-    Revision 1.1  2001/08/13 18:01:01  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/25 18:04:22  gbeeley
+    Fixed quote escaping problem in the CSV driver.
+
+    Revision 1.1.1.1  2001/08/13 18:01:01  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -983,6 +986,7 @@ dat_csv_ParseRow(pDatData inf, pDatTableInf td)
 		/** Otherwise, to conversion buffer **/
 		if (cb_len < 63) conv_buf[cb_len++] = *ptr;
 		}
+	    is_escaped = 0;
 	    }
 
     return 0;
