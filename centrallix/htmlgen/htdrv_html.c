@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.15 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_html.c,v 1.16 2003/11/12 22:17:24 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.16  2003/11/12 22:17:24  gbeeley
+    Declaring dependency on strings htutils module
+
     Revision 1.15  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -225,6 +228,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
             htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
     
 	    htrAddScriptInclude(s, "/sys/js/htdrv_html.js", 0);
+	    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	    /** Event handler for click-on-link. **/
 	    htrAddEventHandler(s, "document","CLICK","ht",
