@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.34  2002/05/30 04:10:49  jorupp
+     * this looks better.....
+
     Revision 1.33  2002/05/30 04:10:02  jorupp
      * shows what I get for not actually testing my code.....
 
@@ -754,7 +757,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Enables all children (for modify) **/
 	htrAddScriptFunction(s, "form_enable_modify_all", "\n"
-		"function form_enable_all()\n"
+		"function form_enable_modify_all()\n"
 		"    {\n"
 		"    for(var i in this.elements)\n"
 		"        {\n"
@@ -767,7 +770,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Enables all children (for modify) **/
 	htrAddScriptFunction(s, "form_enable_new_all", "\n"
-		"function form_enable_all()\n"
+		"function form_enable_new_all()\n"
 		"    {\n"
 		"    for(var i in this.elements)\n"
 		"        {\n"
