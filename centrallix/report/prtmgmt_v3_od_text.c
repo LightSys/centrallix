@@ -9,7 +9,7 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.4 2003/03/21 22:41:21 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.5 2003/04/21 21:00:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.5  2003/04/21 21:00:48  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.4  2003/03/21 22:41:21  gbeeley
     Enhancement to text output driver to buffer entire page before writing
     it to the output, thus allowing borders and boxes to look nicer in

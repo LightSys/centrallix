@@ -11,7 +11,8 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3_lm_table.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -53,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.6 2003/03/15 04:46:00 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.7 2003/04/21 21:00:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.7  2003/04/21 21:00:45  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.6  2003/03/15 04:46:00  gbeeley
     Added borders to tables.  Not fully tested yet.  Added a new component
     of the "PrtBorder" object: "Pad", which is the padding 'outside' of
@@ -100,38 +107,6 @@
 
  **END-CVSDATA***********************************************************/
 
-
-#define PRT_TABLM_MAXCOLS		256	/* maximum columns in a table */
-
-#define PRT_TABLM_F_ISHEADER		1	/* row is a header that repeats */
-#define PRT_TABLM_F_ISFOOTER		2	/* row is a repeating footer */
-#define PRT_TABLM_F_INNEROUTER		4	/* user inner/outer bdr instead of l/r/t/b */
-
-#define PRT_TABLM_DEFAULT_FLAGS		(0)
-#define PRT_TABLM_DEFAULT_COLSEP	1.0	/* column separation */
-
-
-/*** table specific data ***/
-typedef struct _PTB
-    {
-    double		ColWidths[PRT_TABLM_MAXCOLS];
-    double		ColX[PRT_TABLM_MAXCOLS];
-    double		ColSep;
-    int			nColumns;	/* number of columns in table */
-    int			CurColID;	/* next cell inserted is this col. */
-    pPrtObjStream	HeaderRow;	/* row that is the table header */
-    pPrtObjStream	FooterRow;	/* table footer row */
-    int			Flags;
-    PrtBorder		TopBorder;
-    PrtBorder		BottomBorder;
-    PrtBorder		LeftBorder;
-    PrtBorder		RightBorder;
-    PrtBorder		InnerBorder;	/* used only by cells in lieu of others */
-    PrtBorder		OuterBorder;	/* used only by cells in lieu of others */
-    PrtBorder		Shadow;		/* only valid on table as a whole */
-    double		ShadowWidth;	/* overall width of the shadow */
-    }
-    PrtTabLMData, *pPrtTabLMData;
 
 
 /*** prt_tablm_Break() - this is called when we actually are going to do

@@ -1,6 +1,5 @@
 #ifndef _PRTMGMT_V3_H
 #define _PRTMGMT_V3_H
-#error "this file is no longer used."
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -36,11 +35,11 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.16 2003/04/21 21:00:40 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
+    $Id: prtmgmt_v3.h,v 1.1 2003/04/21 21:00:51 gbeeley Exp $
+    $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
-    Revision 1.16  2003/04/21 21:00:40  gbeeley
+    Revision 1.1  2003/04/21 21:00:51  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
     subsystem so that LMData (layout manager specific info) can be
@@ -347,6 +346,12 @@ typedef struct _PS
     void*		FormatterData;
     int			FocusHandle;
     pPrtEvent		PendingEvents;
+    char		ImageExtDir[256];
+    char		ImageSysDir[256];
+    void*		ImageContext;
+    void*		(*ImageOpenFn)();
+    void*		(*ImageWriteFn)();
+    void*		(*ImageCloseFn)();
     }
     PrtSession, *pPrtSession;
 
@@ -531,6 +536,7 @@ int prtGetPageGeometry(pPrtSession s, double *width, double *height);
 int prtSetUnits(pPrtSession s, char* units_name);
 char* prtGetUnits(pPrtSession s);
 int prtSetResolution(pPrtSession s, int dpi);
+int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)());
 
 /** Internal management functions **/
 pPrtObjStream prt_internal_AllocObj(char* type);
@@ -596,6 +602,7 @@ int prtSetMargins(int handle_id, double t, double b, double l, double r);
 pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
 pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
+int prtWriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
 int prtImageSize(pPrtImage i);
 

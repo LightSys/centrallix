@@ -9,7 +9,7 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.6 2003/03/18 04:06:25 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.7 2003/04/21 21:00:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.7  2003/04/21 21:00:43  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.6  2003/03/18 04:06:25  gbeeley
     Added basic image (picture/bitmap) support; only PNG images supported
     at present.  Moved image and border (rectangles) functionality into a

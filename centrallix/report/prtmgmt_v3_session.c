@@ -9,7 +9,7 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.7 2003/03/01 07:24:02 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.8 2003/04/21 21:00:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.8  2003/04/21 21:00:48  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.7  2003/03/01 07:24:02  gbeeley
     Ok.  Balanced columns now working pretty well.  Algorithm is currently
     somewhat O(N^2) however, and is thus a bit expensive, but still not
@@ -120,6 +126,10 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this->ResolutionX = 72;		    /* 72 dpi */
 	this->ResolutionY = 72;		    /* 72 dpi */
 	this->PendingEvents = NULL;
+	this->ImageContext = NULL;
+	this->ImageOpenFn = NULL;
+	this->ImageWriteFn = NULL;
+	this->ImageCloseFn = NULL;
 
 	/** Search for a formatter module that will do this content type **/
 	this->Formatter = NULL;
@@ -285,4 +295,41 @@ prtSetResolution(pPrtSession s, int dpi)
     return 0;
     }
 
+
+/*** prtSetImageStore() - set the image store location, which is used by
+ *** output formats which do not allow embedding of images physically in
+ *** the byte stream of the format itself, but rather must link to those
+ *** images (e.g., HTML).
+ ***
+ *** extdir:	directory where images will appear to external user
+ *** sysdir:	directory to be used by the Open function, see below...
+ *** open_ctx:	context for open function, below...
+ *** open_fn:	call to open a new image, open_fn(open_ctx, path, mode, mask, type)
+ *** write_fn:	call to write to image, write_fn(arg, buf, cnt, offs, flg)
+ *** close_fn:  call to close image, close_fn(arg)
+ ***
+ *** The functions above are designed to match the OSML API functions of
+ *** the same purposes.
+ ***
+ *** The prtmgmt subsystem is NOT responsible for managing the lifetime 
+ *** of these (perhaps somewhat temporary) images.
+ ***/
+int
+prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)())
+    {
+
+	ASSERTMAGIC(s, MGK_PRTOBJSSN);
+
+	/** Set up the session structure with the new information. **/
+	memccpy(s->ImageExtDir, extdir, 0, 255);
+	s->ImageExtDir[255] = '\0';
+	memccpy(s->ImageSysDir, extdir, 0, 255);
+	s->ImageSysDir[255] = '\0';
+	s->ImageContext = open_ctx;
+	s->ImageOpenFn = open_fn;
+	s->ImageWriteFn = write_fn;
+	s->ImageCloseFn = close_fn;
+
+    return 0;
+    }
 

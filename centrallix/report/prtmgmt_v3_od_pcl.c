@@ -9,10 +9,10 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "mtsession.h"
-#include "hp_font_metrics.h"
+#include "prtmgmt_v3/hp_font_metrics.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.11 2003/03/19 18:24:40 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.12 2003/04/21 21:00:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.12  2003/04/21 21:00:48  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.11  2003/03/19 18:24:40  gbeeley
     Added simple greyscale support via matrix dithering.
 

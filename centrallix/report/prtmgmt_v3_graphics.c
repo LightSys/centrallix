@@ -19,7 +19,7 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_graphics.c,v 1.2 2003/03/19 18:24:40 gbeeley Exp $
+    $Id: prtmgmt_v3_graphics.c,v 1.3 2003/04/21 21:00:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_graphics.c,v $
 
     $Log: prtmgmt_v3_graphics.c,v $
+    Revision 1.3  2003/04/21 21:00:43  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.2  2003/03/19 18:24:40  gbeeley
     Added simple greyscale support via matrix dithering.
 
@@ -77,10 +83,10 @@
 
 typedef struct
     {
-    int		(*read_fn)();
-    void*	read_arg;
+    int		(*io_fn)();
+    void*	io_arg;
     }
-    PrtPngReadInfo, *pPrtPngReadInfo;
+    PrtPngIOInfo, *pPrtPngIOInfo;
 
 /*** prtAllocBorder - this is a convenience function to allocate a new
  *** border descriptor.
@@ -269,13 +275,33 @@ prt_png_Free(png_structp png_ptr, voidp ptr)
 void
 prt_png_Read(png_structp png_ptr, png_bytep data, png_size_t length)
     {
-    pPrtPngReadInfo read_info = png_get_io_ptr(png_ptr);
+    pPrtPngIOInfo read_info = png_get_io_ptr(png_ptr);
 
-        if (read_info->read_fn(read_info->read_arg, (char*)data, (int)length, 0, FD_U_PACKET) < (int)length)
+        if (read_info->io_fn(read_info->io_arg, (char*)data, (int)length, 0, FD_U_PACKET) < (int)length)
 	    {
-	    png_error(png_ptr, (png_const_charp)"Failed to PNG image data from Object/File");
+	    png_error(png_ptr, (png_const_charp)"Failed to read PNG image data from Object/File");
 	    }
 
+    return;
+    }
+
+void
+prt_png_Write(png_structp png_ptr, png_bytep data, png_size_t length)
+    {
+    pPrtPngIOInfo write_info = png_get_io_ptr(png_ptr);
+
+        if (write_info->io_fn(write_info->io_arg, (char*)data, (int)length, 0, FD_U_PACKET) < (int)length)
+	    {
+	    png_error(png_ptr, (png_const_charp)"Failed to write PNG image data to Object/File");
+	    }
+
+    return;
+    }
+
+void
+prt_png_Flush(png_structp png_ptr)
+    {
+    pPrtPngIOInfo write_info = png_get_io_ptr(png_ptr);
     return;
     }
 
@@ -294,7 +320,7 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
     png_structp libpng_png_ptr;
     png_infop libpng_info_ptr;
     png_infop libpng_end_ptr;
-    PrtPngReadInfo read_info;
+    PrtPngIOInfo read_info;
     png_uint_32 width, height;
     int bit_depth, color_type;
     png_bytep *row_pointers;
@@ -326,8 +352,8 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	    return NULL;
 	    }
 	/*png_set_mem_fn(libpng_png_ptr, NULL, prt_png_Malloc, prt_png_Free);*/
-	read_info.read_fn = read_fn;
-	read_info.read_arg = read_arg;
+	read_info.io_fn = read_fn;
+	read_info.io_arg = read_arg;
 	png_set_read_fn(libpng_png_ptr, (void*)&read_info, prt_png_Read);
 	libpng_info_ptr = png_create_info_struct(libpng_png_ptr);
 	if (!libpng_info_ptr)
@@ -477,6 +503,65 @@ prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width
     }
 
 
+/*** prt_internal_GetPixelAntialias() - returns the color value of a given
+ *** point with antialiasing enabled to improve the quality of scaling using
+ *** this routine.
+ ***/
+int
+prt_internal_GetPixelAntialias(pPrtImage img, double xoffset, double yoffset)
+    {
+    int color,x,y,bit,datawidth;
+    double x1,x2,y1,y2,pw,ph;
+    int color11, color12, color21, color22;
+    int r11, r12, r21, r22;
+    int g11, g12, g21, g22;
+    int b11, b12, b21, b22;
+    int r,g,b;
+
+	/** Find the real X and Y in the image **/
+	x = xoffset*img->Hdr.Width;
+	y = yoffset*img->Hdr.Height;
+
+	/** Find the actual locations of the affected pixels **/
+	x1 = ((double)x)/img->Hdr.Width + 0.000001;
+	y1 = ((double)y)/img->Hdr.Height + 0.000001;
+	pw = 1.0/img->Hdr.Width;
+	ph = 1.0/img->Hdr.Height;
+	x2 = x1 + pw;
+	y2 = y1 + ph;
+
+	/** Get the four color values **/
+	color11 = prt_internal_GetPixel(img,x1,y1); 
+	r11=(color11>>16)&0xFF; g11=(color11>>8)&0xFF; b11=color11&0xFF;
+	color12 = prt_internal_GetPixel(img,x1,y2);
+	r12=(color12>>16)&0xFF; g12=(color12>>8)&0xFF; b12=color12&0xFF;
+	color21 = prt_internal_GetPixel(img,x2,y1);
+	r21=(color21>>16)&0xFF; g21=(color21>>8)&0xFF; b21=color21&0xFF;
+	color22 = prt_internal_GetPixel(img,x2,y2);
+	r22=(color22>>16)&0xFF; g22=(color22>>8)&0xFF; b22=color22&0xFF;
+
+	/** Build the final color values **/
+	r =  r11*(1.0 - ((xoffset-x1)/pw + (yoffset-y1)/ph)/2.0);
+	r += r12*(1.0 - ((xoffset-x1)/pw + (y2-yoffset)/ph)/2.0);
+	r += r21*(1.0 - ((x2-xoffset)/pw + (yoffset-y1)/ph)/2.0);
+	r += r22*(1.0 - ((x2-xoffset)/pw + (y2-yoffset)/ph)/2.0);
+	r /= 2;
+	g =  g11*(1.0 - ((xoffset-x1)/pw + (yoffset-y1)/ph)/2.0);
+	g += g12*(1.0 - ((xoffset-x1)/pw + (y2-yoffset)/ph)/2.0);
+	g += g21*(1.0 - ((x2-xoffset)/pw + (yoffset-y1)/ph)/2.0);
+	g += g22*(1.0 - ((x2-xoffset)/pw + (y2-yoffset)/ph)/2.0);
+	g /= 2;
+	b =  b11*(1.0 - ((xoffset-x1)/pw + (yoffset-y1)/ph)/2.0);
+	b += b12*(1.0 - ((xoffset-x1)/pw + (y2-yoffset)/ph)/2.0);
+	b += b21*(1.0 - ((x2-xoffset)/pw + (yoffset-y1)/ph)/2.0);
+	b += b22*(1.0 - ((x2-xoffset)/pw + (y2-yoffset)/ph)/2.0);
+	b /= 2;
+	color = ((r&0xFF)<<16) + ((g&0xFF)<<8) + (b&0xFF);
+
+    return color;
+    }
+
+
 /*** prt_internal_GetPixel() - returns the color value of a given point
  *** in the image.  It takes relative coordinates in the range of 
  *** 0.0<=xoffset<1.0 and 0.0<=yoffset<1.0, where (0.0,0.0) is the upper
@@ -521,4 +606,131 @@ prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset)
     return color;
     }
 
+
+/*** prt_internal_WriteImageToPNG() - outputs a PrtImage image structure to a
+ *** given location as PNG image data with a given width and height in pixels.
+ ***/
+int
+prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h)
+    {
+#if defined(HAVE_PNG_H) && defined(HAVE_LIBPNG)
+    png_structp libpng_png_ptr;
+    png_infop libpng_info_ptr;
+    PrtPngIOInfo write_info;
+    int bitdepth, colortype;
+    png_byte* row_pointer = NULL;
+    int i,j;
+    int bytes_per_row;
+    int pixel;
+    int color;
+
+	/** width/height not specified? **/
+	if (w == -1) w = img->Hdr.Width;
+	if (h == -1) h = img->Hdr.Height;
+
+	/** Setup libpng **/
+	libpng_png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
+		NULL, NULL, NULL);
+	if (!libpng_png_ptr)
+	    {
+	    mssError(1,"PRT","Bark!  libpng error: could not create_write_struct()");
+	    return -1;
+	    }
+	write_info.io_fn = write_fn;
+	write_info.io_arg = write_arg;
+	png_set_write_fn(libpng_png_ptr, (void*)&write_info, prt_png_Write, prt_png_Flush);
+	libpng_info_ptr = png_create_info_struct(libpng_png_ptr);
+	if (!libpng_info_ptr)
+	    {
+	    mssError(1,"PRT","Bark!  libpng error: could not create_info_struct()");
+	    png_destroy_write_struct(&libpng_png_ptr, NULL);
+	    return -1;
+	    }
+
+	/** Handle error return... (e.g., like a Catch() routine in Catch/Throw) **/
+	if (setjmp(png_jmpbuf(libpng_png_ptr)))
+	    {
+	    mssError(1,"PRT","Error writing PNG image data");
+	    if (row_pointer) nmSysFree(row_pointer);
+	    png_destroy_write_struct(&libpng_png_ptr, &libpng_info_ptr);
+	    return -1;
+	    }
+
+	/** Setup the PNG image header info **/
+	if (img->Hdr.ColorMode == PRT_COLOR_T_MONO)
+	    {
+	    bytes_per_row = (w+7)/8;
+	    bitdepth = 1;
+	    }
+	else
+	    {
+	    bitdepth = 8;
+	    bytes_per_row = w;
+	    }
+	if (img->Hdr.ColorMode == PRT_COLOR_T_FULL)
+	    {
+	    colortype = PNG_COLOR_TYPE_RGB;
+	    bytes_per_row *= 4;
+	    }
+	else
+	    {
+	    colortype = PNG_COLOR_TYPE_GRAY;
+	    }
+	png_set_IHDR(libpng_png_ptr, libpng_info_ptr, w, h, bitdepth, colortype,
+		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+	png_write_info(libpng_png_ptr, libpng_info_ptr);
+	png_set_bgr(libpng_png_ptr);
+	if (img->Hdr.ColorMode == PRT_COLOR_T_FULL) 
+	    png_set_filler(libpng_png_ptr, 0, PNG_FILLER_AFTER);
+
+	/** Allocate and setup row pointer **/
+	row_pointer = (png_byte*)nmSysMalloc(bytes_per_row);
+	
+	/** Write each row **/
+	for(i=0;i<h;i++)
+	    {
+	    memset(row_pointer, 0, bytes_per_row);
+	    /** Setup the row's content **/
+	    for(j=0;j<w;j++)
+		{
+		if (w == img->Hdr.Width && h == img->Hdr.Height)
+		    pixel = prt_internal_GetPixel(img, ((double)j)/w, ((double)i)/h);
+		else
+		    pixel = prt_internal_GetPixelAntialias(img, ((double)j)/w, ((double)i)/h);
+		switch(img->Hdr.ColorMode)
+		    {
+		    case PRT_COLOR_T_MONO:
+			color = ((pixel&0xFF) + ((pixel>>8)&0xFF) + ((pixel>>16)&0xFF))/3;
+			if (color >= 0x80) color=1; else color=0;
+			if (color) row_pointer[j/8] |= 1<<(j&0x7);
+			break;
+
+		    case PRT_COLOR_T_GREY:
+			row_pointer[j] = pixel&0xFF;
+			break;
+
+		    case PRT_COLOR_T_FULL:
+			row_pointer[j*4] = pixel&0xFF;
+			row_pointer[j*4+1] = (pixel>>8)&0xFF;
+			row_pointer[j*4+2] = (pixel>>16)&0xFF;
+			row_pointer[j*4+3] = (pixel>>24)&0xFF;
+			break;
+		    }
+		}
+
+	    /** Write the row **/
+	    png_write_row(libpng_png_ptr, row_pointer);
+	    }
+
+	/** End the write **/
+	png_write_end(libpng_png_ptr, libpng_info_ptr);
+	png_destroy_write_struct(&libpng_png_ptr, &libpng_info_ptr);
+	nmSysFree(row_pointer);
+
+    return 0;
+#else
+    mssError(1,"PRT","PNG image support not available; cannot use prtWriteImageToPNG()");
+    return -1;
+#endif
+    }
 

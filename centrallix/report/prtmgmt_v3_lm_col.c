@@ -11,7 +11,8 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3_lm_col.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -52,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.9 2003/03/12 20:51:36 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.10 2003/04/21 21:00:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.10  2003/04/21 21:00:44  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.9  2003/03/12 20:51:36  gbeeley
     Tables now working, but borders on tables not implemented yet.
     Completed the prt_internal_Duplicate routine and reworked the
@@ -117,28 +124,6 @@
 
  **END-CVSDATA***********************************************************/
 
-
-#define PRT_COLLM_MAXCOLS	16	/* maximum allowed columns */
-#define PRT_COLLM_DEFAULT_COLS	1	/* default is 1 column */
-#define PRT_COLLM_DEFAULT_SEP	1.0	/* default column separation = 1.0 unit or 0.1 inch */
-
-#define PRT_COLLM_F_BALANCED	1	/* content balances between cols */
-#define PRT_COLLM_F_SOFTFLOW	2	/* content can flow from one col to next */
-
-#define PRT_COLLM_DEFAULT_FLAGS	(PRT_COLLM_F_SOFTFLOW)
-
-
-/*** multicolumn area specific data ***/
-typedef struct _PMC
-    {
-    int		Flags;
-    int		nColumns;
-    double	ColSep;
-    double	ColWidths[PRT_COLLM_MAXCOLS];
-    PrtBorder	Separator;		/* line separator between columns */
-    pPrtObjStream CurrentCol;
-    }
-    PrtColLMData, *pPrtColLMData;
 
 int prt_collm_CreateCols(pPrtObjStream this);
 

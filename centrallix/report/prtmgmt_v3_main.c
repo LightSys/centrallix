@@ -9,7 +9,7 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_main.c,v 1.6 2003/03/02 04:17:35 gbeeley Exp $
+    $Id: prtmgmt_v3_main.c,v 1.7 2003/04/21 21:00:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_main.c,v $
 
     $Log: prtmgmt_v3_main.c,v $
+    Revision 1.7  2003/04/21 21:00:47  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.6  2003/03/02 04:17:35  gbeeley
     Adding skeleton tabular layout manager, for table/row/cell formatted
     data.

@@ -9,7 +9,7 @@
 #include "magic.h"
 #include "xarray.h"
 #include "xstring.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "mtsession.h"
 
@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.7 2003/03/12 20:51:36 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.8 2003/04/21 21:00:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.8  2003/04/21 21:00:45  gbeeley
+    HTML formatter additions including image, table, rectangle, multi-col,
+    fonts and sizes, now supported.  Rearranged header files for the
+    subsystem so that LMData (layout manager specific info) can be
+    shared with HTML formatter subcomponents.
+
     Revision 1.7  2003/03/12 20:51:36  gbeeley
     Tables now working, but borders on tables not implemented yet.
     Completed the prt_internal_Duplicate routine and reworked the
