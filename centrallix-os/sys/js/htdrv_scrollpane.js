@@ -25,12 +25,16 @@ function sp_init(l,aname,tname,p)
 	if(img.name=='d' || img.name=='u' || img.name=='b')
 	    {
 	    img.pane=l;
+	    img.layer = img;
 	    img.area=alayer;
 	    img.thum=tlayer;
 	    img.kind='sp';
+	    img.mainlayer=l;
 	    }
 	}
     tlayer.document.images[0].kind='sp';
+    tlayer.document.images[0].layer = tlayer.document.images[0];
+    tlayer.document.images[0].mainlayer=l;
     tlayer.document.images[0].thum=tlayer;
     tlayer.document.images[0].area=alayer;
     tlayer.document.images[0].pane=l;
@@ -39,9 +43,16 @@ function sp_init(l,aname,tname,p)
     alayer.minwidth=alayer.clip.width;
     tlayer.nofocus = true;
     alayer.nofocus = true;
-    alayer.document.Layer = alayer;
-    tlayer.document.Layer = tlayer;
-    l.document.Layer = l;
+    alayer.document.layer = alayer;
+    alayer.mainlayer = l;
+    tlayer.document.layer = tlayer;
+    tlayer.mainlayer = l;
+    alayer.kind = 'sp';
+    tlayer.kind = 'sp';
+    alayer.mainlayer
+    l.document.layer = l;
+    l.mainlayer = l;
+    l.kind = 'sp';
     l.LSParent = p;
     }
 

@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.9 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_scrollpane.c,v 1.10 2002/08/01 14:48:46 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.10  2002/08/01 14:48:46  pfinley
+    Added events to the scrollpane widget:
+       MouseUp,MouseDown,MouseOver,MouseOut,MouseMove
+
     Revision 1.9  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -193,6 +197,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "sp_thum_y","0",0);
 	htrAddScriptGlobal(s, "sp_mv_timeout","null",0);
 	htrAddScriptGlobal(s, "sp_mv_incr","0",0);
+	htrAddScriptGlobal(s, "sp_cur_mainlayer","null",0);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -214,6 +219,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\">",id,id);
 
 	/** Add the event handling scripts **/
+
 	htrAddEventHandler(s, "document","MOUSEDOWN","sp",
 		"    sp_target_img=e.target;\n"
 		"    if (sp_target_img != null && sp_target_img.kind=='sp' && (sp_target_img.name=='u' || sp_target_img.name=='d'))\n"
@@ -236,7 +242,8 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        do_mv();\n"
 		"        sp_mv_timeout = setTimeout(tm_mv,300);\n"
 		"        }\n"
-		"    else sp_target_img = null;\n");
+		"    else sp_target_img = null;\n"
+		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseDown');");
 	htrAddEventHandler(s, "document","MOUSEMOVE","sp",
 		"    ti=sp_target_img;\n"
 		"    if (ti != null && ti.kind=='sp' && ti.name=='t')\n"
@@ -253,6 +260,12 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)\n"
 		"            ti.pane.document.layers[i].y+=yincr;\n"
 		"        return false;\n"
+		"        }\n"
+		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseMove');\n"
+		"    if (sp_cur_mainlayer && ly.kind != 'sp')\n"
+		"        {\n"
+		"        cn_activate(sp_cur_mainlayer, 'MouseOut');\n"
+		"        sp_cur_mainlayer = null;\n"
 		"        }\n");
 	htrAddEventHandler(s, "document","MOUSEUP","sp",
 		"    if (sp_mv_timeout != null)\n"
@@ -266,7 +279,19 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        if (sp_target_img.name != 'b')\n"
 		"            sp_target_img.src = htutil_subst_last(sp_target_img.src,\"b.gif\");\n"
 		"        sp_target_img = null;\n"
+		"        }\n"
+		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseUp');\n");
+	htrAddEventHandler(s, "document", "MOUSEOVER", "sp",
+		"    if (ly.kind == 'sp')\n"
+		"        {\n"
+		"        if (!sp_cur_mainlayer)\n"
+		"            {\n"
+		"            cn_activate(ly.mainlayer, 'MouseOver');\n"
+		"            sp_cur_mainlayer = ly.mainlayer;\n"
+		"            }\n"
 		"        }\n");
+//	htrAddEventHandler(s, "document", "MOUSEOUT", "sp",
+//		"");
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
@@ -305,6 +330,14 @@ htspaneInitialize()
 	drv->Render = htspaneRender;
 	drv->Verify = htspaneVerify;
 	strcpy(drv->Target, "Netscape47x:default");
+
+	/** Events **/ 
+	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
