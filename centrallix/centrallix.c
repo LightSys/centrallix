@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.3 2002/07/09 14:09:03 lkehresman Exp $
+    $Id: centrallix.c,v 1.4 2002/07/12 15:04:20 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.4  2002/07/12 15:04:20  pfinley
+    Multiline textarea widget initial commit (still a some bugs)
+
     Revision 1.3  2002/07/09 14:09:03  lkehresman
     Added first revision of the datetime widget.  No form interatction, and no
     time setting functionality, only date.  This has been on my laptop for a
@@ -336,6 +339,7 @@ cxHtInit()
 	htfsInitialize();			/* form status module */
 	htddInitialize();			/* dropdown htdrv module */
 	htdtInitialize();			/* datetime htdrv module */
+	httxInitialize();			/* textarea htdrv module */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
