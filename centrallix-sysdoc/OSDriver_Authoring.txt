@@ -126,7 +126,7 @@ II  INTERFACE
 	two to four characters, all lowercase.  This initialization function
 	is called when the Centrallix starts up, and at least at the present
 	time, this initial call to the OS driver must be manually added to 
-	the appropriate startup code, currently found in 'lsmain.c'.
+	the appropriate startup code, currently found in 'centrallix.c'.
 
 	Within the initialization function, the driver should initialize all
 	necessary global variables and register itself with the OSML.  Global
