@@ -14,7 +14,7 @@
 #include "stparse.h"
 #include "mtlexer.h"
 #ifndef CENTRALLIX_CONFIG
-#define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
+#define CENTRALLIX_CONFIG "/usr/local/etc/centrallix.conf"
 #endif
 
 /************************************************************************/
@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.17 2002/06/13 15:21:04 mattphillips Exp $
+    $Id: lsmain.c,v 1.18 2002/07/11 20:08:00 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.18  2002/07/11 20:08:00  lkehresman
+    Put quotes around the default path.  Was throwing parse errors otherwise.
+
     Revision 1.17  2002/06/13 15:21:04  mattphillips
     Adding autoconf support to centrallix
 
