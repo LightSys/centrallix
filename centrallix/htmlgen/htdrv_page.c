@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.62 2004/03/11 23:12:53 jasonyip Exp $
+    $Id: htdrv_page.c,v 1.63 2004/06/12 03:57:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.63  2004/06/12 03:57:56  gbeeley
+    - mechanism to receive control messages from the server.  For NS4, it has
+      to use a polled approach.  Not sure if Moz or IE will be better in this
+      area.
+
     Revision 1.62  2004/03/11 23:12:53  jasonyip
 
     Added IE browser check.
@@ -448,11 +453,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
     	/** Check for page load status **/
-	show = 0;
-	if (objGetAttrValue(w_obj,"loadstatus",DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"yes") || !strcmp(ptr,"true")))
-	    {
-	    show = 1;
-	    }
+	show = htrGetBoolean(w_obj, "loadstatus", 0);
 
 	strcpy(bgstr, "");
 	/** Check for bgcolor. **/
@@ -545,6 +546,9 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "pg_debug_log", "null", 0);
 	htrAddScriptGlobal(s, "pg_isloaded", "false", 0);
 	htrAddScriptGlobal(s, "pg_username", "null", 0);
+	htrAddScriptGlobal(s, "pg_msg_handlers", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_msg_layer", "null", 0);
+	htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -590,6 +594,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    htrAddStylesheetItem(s,"\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
 	    htrAddStylesheetItem(s,"\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:20px; Z-INDEX:20; }\n");
 	    htrAddStylesheetItem(s,"\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
+	    htrAddStylesheetItem(s,"\t#pgmsg { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
 	    }
 	else
 	    {
@@ -605,7 +610,8 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    "\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
 		    "\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
 		    "\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
-		    "\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n");
+		    "\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n"
+		    "\t#pgmsg { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n");
 	    }
 
 	if (show == 1)
@@ -628,6 +634,8 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 
 	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0);
+	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 
