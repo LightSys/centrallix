@@ -61,10 +61,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.3 2002/04/25 01:13:44 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.3  2002/04/25 01:13:44  jorupp
+     * increased buffer size for query in form
+     * changed sybase driver to not put strings in two sets of quotes on update
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -298,6 +302,7 @@ sybd_internal_Exec(CS_CONNECTION* s, char* cmdtext)
 	ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED);
 
 	/** Send it to the server. **/
+	if (SYBD_SHOW_SQL) printf("sending command ==> %s\n",cmdtext);
 	if (ct_send(cmd) != CS_SUCCEED)
 	    {
 	    ct_cmd_drop(cmd);
@@ -2922,7 +2927,14 @@ sybdSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 			    sybd_internal_FilenameToKey(inf->Node,
 			    sess,inf->TablePtr,inf->RowColPtr));
 			}
-		    else if (type == DATA_T_STRING || type == DATA_T_MONEY || type == DATA_T_DATETIME)
+		    else if (type == DATA_T_STRING)
+		        {   /** objDataToString quotes strings **/
+	                sprintf(sbuf,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
+	                    attrname,objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED),
+			    sybd_internal_FilenameToKey(inf->Node,
+			    sess,inf->TablePtr,inf->RowColPtr));
+			}
+		    else if (type == DATA_T_MONEY || type == DATA_T_DATETIME)
 		        {
 	                sprintf(sbuf,"UPDATE %s SET %s='%s' WHERE %s",inf->TablePtr,
 	                    attrname,objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED),

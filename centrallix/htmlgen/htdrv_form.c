@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.24  2002/04/25 01:13:43  jorupp
+     * increased buffer size for query in form
+     * changed sybase driver to not put strings in two sets of quotes on update
+
     Revision 1.23  2002/04/10 00:36:20  jorupp
      * fixed 'visible' bug in imagebutton
      * removed some old code in form, and changed the order of some callbacks
@@ -176,11 +180,15 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char *sbuf3;
     int id;
     char* nptr;
-    char basequery[300];
-    char basewhere[300];
+    char* basequery;
+    char* basewhere;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
     char _3bconfirmwindow[30];
     int readonly;
+#define FORM_BUF_SIZE 4096
+    
+    basequery=nmMalloc(FORM_BUF_SIZE);
+    basewhere=nmMalloc(FORM_BUF_SIZE);
     
     	/** Get an id for this. **/
 	id = (HTFORM.idcnt++);
@@ -1063,12 +1071,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s','%s','%s',%s,%i);\n",
+	sbuf3 = nmMalloc(FORM_BUF_SIZE);
+	snprintf(sbuf3,FORM_BUF_SIZE,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s','%s','%s',%s,%i);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
 		basequery,basewhere,_3bconfirmwindow,readonly);
 	htrAddScriptInit(s,sbuf3);
-	nmFree(sbuf3,200);
+	nmFree(sbuf3,FORM_BUF_SIZE);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/
@@ -1079,6 +1087,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Make sure we don't claim orphans **/
 	htrAddScriptInit(s,"    fm_current = null;\n\n");
+
+	nmFree(basequery,FORM_BUF_SIZE);
+	nmFree(basewhere,FORM_BUF_SIZE);
 
     return 0;
     }
