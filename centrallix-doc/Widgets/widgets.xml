@@ -1,6 +1,8 @@
 <?xml version='1.0'?>
 <widgets>
 	<widget name="checkbox" type="widget/checkbox">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>The checkbox widget is used to display a value that can be either true or false (or on/off, yes/no, etc.).It displays as a simple clickable check box.</p>
 		</overview>
@@ -32,6 +34,8 @@ checkbox_test "widget/page"
 		</sample>
 	</widget>
 	<widget name="connector" type="widget/connector">
+		<class>connector</class>
+		<visible>false</visible>
 		<overview>
 			<p>Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.=  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.</p>
 			<p>The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.</p>
@@ -64,6 +68,8 @@ cn1 "widget/connector"
 		</sample>
 	</widget>
 	<widget name="editbox" type="widget/editbox">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.Data which does not fit will cause the text to scroll. When it receives keyboard focus, the editbox displays a flashing I-beam cursor.The cursor color uses the data focus color for the page (default is '#000080', or dark blue).</p>
 		</overview>
@@ -98,6 +104,8 @@ my_editbox "widget/editbox"
 		</sample>
 	</widget>
 	<widget name="dropdown" type="widget/dropdown">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 		  <p>A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.</p>
 		</overview>
@@ -155,6 +163,8 @@ myDropDown2 "widget/dropdown"
 		</sample>
 	</widget>
 	<widget name="execmethod" type="widget/execmethod">
+		<class>component</class>
+		<visible>false</visible>
 		<overview>
 			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
 			<p>These widgets are used via the activation of their "ExecuteMethod" action.</p>
@@ -180,6 +190,8 @@ mySoundPlayer "widget/execmethod"
 		</sample>
 	</widget>
 	<widget name="form" type="widget/form">
+		<class>container</class>
+		<visible>false</visible>
 		<overview>
 			<p>The form widget is used as a high-level container for form elements.=  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
 			<p>Forms have five different "modes"of operation, each of which can be specifically allowed or disallowed for the form.</p>
@@ -231,6 +243,8 @@ form1 "widget/form"
 		</sample>
 	</widget>
 	<widget name="formstatus" type="widget/formstatus">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently "doing" (for instance, is a blank form with a blinking cursor in a "new" state or "enter query" state?).This issue is addressed by the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.=  This widget is a special-case form element.</p>
 			<p>Note: at the time of this writing, the form status widget was in its design phase and had not yet been implemented.</p>
@@ -249,6 +263,8 @@ form1 "widget/form"
 		</sample>
 	</widget>
 	<widget name="frameset" type="widget/frameset">
+		<class>container</class>
+		<visible>true</visible>
 		<overview>
 			<p>The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).=  Framesets can consist of one or more frames, arranged either in rows or columns.</p>
 		</overview>
@@ -295,6 +311,8 @@ BigFrameset "widget/frameset"
 		</sample>
 	</widget>
 	<widget name="html" type="widget/html">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.</p>
 			<p>The HTML area widget also can act as a mini-browser -- clicking on hyper-text links in the visible document will by default cause the link to be followed, and the new document to be displayed in the HTML area (if the HTML area is dynamic).</p>
@@ -327,6 +345,8 @@ HTMLArea "widget/html"
 		</sample>
 	</widget>
 	<widget name="htmlwindow" type="widget/htmlwindow">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>The htmlwindow provides the capability of creating a popup dialog or application window within a web page.The window is not actually a separate browser window, but rather a movable container that can appear "floating" above the rest of the Centrallix application.They can take on one of two styles;"dialog" and "window", which currently relate only to how the window border and titlebar are drawn.=  The windows support windowshading (double-clicking on the titlebar to "rollup" or "rolldown" the window contents).</p>
 			<p>These "windows" currently do not support multiple instantiation.</p>
@@ -365,6 +385,8 @@ MyButton "widget/htmlwindow"
 		</sample>
 	</widget>
 	<widget name="imagebutton" type="widget/imagebutton">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>The ImageButton widget provides a clickable button that is comprised of a set of two or three images.The first image is shown normally when the button is idle, the second when the button is pointed-to, and the third image is shown when the button is actually clicked.=  This provides a "tri-state" appearance much like that provided by buttons in modern user interfaces, although the button can be two-state, with just an "unclicked" and "clicked" version of the image.</p>
 			<p>The images are automatically swapped out when the appropriate mouse events occur on the button.</p>
@@ -398,6 +420,8 @@ MyButton "widget/imagebutton"
 		</sample>
 	</widget>
 	<widget name="label" type="widget/label">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			The label will simply display some text at certain coordinates with certain properties.
 		</overview>
@@ -427,6 +451,8 @@ MyButton "widget/label"
 		</sample>
 	</widget>
 	<widget name="menu" type="widget/menu">
+		<class>container</class>
+		<visible>true</visible>
 		<overview>
 			<p>The menu widget is used to create popup menus, drop-down menus, and menu bars.=  Menu widgets don't actually implement the selection of items on the menu; rather the items on a menu are typically textbuttons with tristate enabled.</p>
 		</overview>
@@ -458,6 +484,8 @@ myMenu "widget/menu"
 		</sample>
 	</widget>
 	<widget name="objectsource" type="widget/objectsource">
+		<class>container</class>
+		<visible>false</visible>
 		<overview>
 			<p>The objectsource widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of "replication" by maintaining a replica of a small segment of data in the user agent.</p>
 			<p>Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.</p>
@@ -493,6 +521,8 @@ osrc1 "widget/osrc"
 		</sample>
 	</widget>
 	<widget name="page" type="widget/page">
+		<class>container</class>
+		<visible>true</visible>
 		<overview>
 			<p>The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.=  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be "widget/page" or "widget/frameset", where the latter is used to create a multi-framed application.</p>
 		</overview>
@@ -525,6 +555,8 @@ MyPage "widget/page"
 		</sample>
 	</widget>
 	<widget name="pane" type="widget/pane">
+		<class>container</class>
+		<visible>true</visible>
 		<overview>
 			<p>The pane is Centrallix's simplest container. It consists only of a background and a border, which can either have a "raised" edge or "lowered" edge style.</p>
 		</overview>
@@ -551,6 +583,8 @@ mypane "widget/pane"
 		</sample>
 	</widget>
 	<widget name="radiobuttonpanel" type="widget/radiobuttonpanel">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>A radio button panel widget is a form element used to create a set of radio buttons on screen.Only one radio button may be selected at a time.</p>
 		</overview>
@@ -590,6 +624,8 @@ testradio "widget/radiobuttonpanel"
 		</sample>
 	</widget>
 	<widget name="remotectl" type="widget/remotectl">
+		<class>component</class>
+		<visible>false</visible>
 		<overview>
 			<p>The remote control nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.</p>
 			<p>Two remote control widgets are required: a master and slave. This widget is the slave widget, which receives remote control events via the Centrallix server. When a master widget (remotemgr) sends an event through the channel, this slave widget is automatically activated and can then trigger the appropriate action on another widget on the page.</p>
@@ -605,6 +641,8 @@ testradio "widget/radiobuttonpanel"
 		</sample>
 	</widget>
 	<widget name="remotemgr" type="widget/remotemgr">
+		<class>component</class>
+		<visible>false</visible>
 		<overview>
 			<p>The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.</p>
 			<p>Two remote control widgets are required: a master and slave. This widget is the master widget, which sends remote control events via the Centrallix server. When a this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.</p>
@@ -620,6 +658,8 @@ testradio "widget/radiobuttonpanel"
 		</sample>
 	</widget>
 	<widget name="scrollpane" type="widget/scrollpane">
+		<class>container</class>
+		<visible>true</visible>
 		<overview>
 			<p>The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.</p>
 			<p>The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.</p>
@@ -657,6 +697,8 @@ MyScrollPane "widget/scrollpane"
 		</sample>
 	</widget>
 	<widget name="tab" type="widget/tab">
+		<class>container</class>
+		<visible>true</visible>
 		<overview>
 			<p>The TabControl widget provides a DHTML tab control within Centrallix. The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.</p>
 			<p>To further distinguish which tab at the top of the tab control is active, this widget slightly modifies the X/Y position of the tab as well as changing a thumbnail image (on the left edge of the tab) to further enhance the distinction between selected and inactive tab pages.</p>
@@ -692,6 +734,8 @@ myTabControl "widget/tab"
 		</sample>
 	</widget>
 	<widget name="table" type="widget/table">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
 		<span class='__TEXT__'>Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.  Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.=  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only s<i>tatic</i> mode was supported.</span>
@@ -756,6 +800,8 @@ tblFileList "widget/table"
 		</sample>
 	</widget>
 	<widget name="textbutton" type="widget/textbutton">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.</p>
 			<p>Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a "raised" border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.</p>
@@ -790,6 +836,8 @@ MyButton "widget/textbutton"
 		</sample>
 	</widget>
 	<widget name="timer" type="widget/timer">
+		<class>component</class>
+		<visible>false</visible>
 		<overview>
 			<p>A timer widget is used to schedule an Event to occur after a specified amount of time.=  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.</p>
 		</overview>
@@ -833,6 +881,8 @@ mytimerTwo "widget/timer"
 		</sample>
 	</widget>
 	<widget name="treeview" type="widget/treeview">
+		<class>component</class>
+		<visible>true</visible>
 		<overview>
 			<p>A treeview provides a way of viewing hierarchically-organized data via a "traditional" GUI point-and-click tree structure. A treeview has "branches" that can expand and collapse entire subtrees of data.</p>
 			<p>Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree.Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a "querytree"(QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.</p>
@@ -869,6 +919,8 @@ mypane "widget/pane"
 		</sample>
 	</widget>
 	<widget name="variable" type="widget/variable">
+		<class>variable</class>
+		<visible>false</visible>
 		<overview>
 			<p>The 'variable' nonvisual widget is used to create a global javascript scalar variable in the application.The variable can be an integer or string.</p>
 		</overview>
