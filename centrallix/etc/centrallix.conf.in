@@ -54,7 +54,7 @@ centrallix "system/config"
 	{
 //	sybd "system/config-module" { path="##LIBDIR##/objdrv_sybase.so"; type="osdriver"; }
 //	http "system/config-module" { path="##LIBDIR##/objdrv_http.so"; type="osdriver"; }
-//	xml "system/config-module" { path="##LIBDIR##/objdrv_http.so"; type="osdriver"; }
+//	xml "system/config-module" { path="##LIBDIR##/objdrv_xml.so"; type="osdriver"; }
 	}
     }
 
