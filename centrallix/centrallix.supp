@@ -1,0 +1,13 @@
+{
+   profile_bug
+   Memcheck:Cond
+   fun:profil_counter
+}
+{
+   mcount
+   Memcheck:Addr4
+   fun:__mcount_internal
+   fun:_mcount
+}
+
+

@@ -46,10 +46,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.10 2004/06/12 04:02:28 gbeeley Exp $
+    $Id: obj_main.c,v 1.11 2004/07/15 22:03:13 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.11  2004/07/15 22:03:13  mmcgill
+    Fixed a bug in the code that loads the types configuration file where
+    some XArrays were used without being initialized (huzzah for Valgrind).
+    Also added a little suppression file to the project that prevents
+    Valgrind from reporting an error on every function call because of a
+    profiling issue.
+
     Revision 1.10  2004/06/12 04:02:28  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -385,6 +392,14 @@ objInitialize()
 
 	    /** Get the is-a type name, or '*' if top-level. **/
 	    xaInit(&(ct->IsA),64);
+
+	    /** MJM - doesn't appear that these are ever initialized anywhere.
+	     ** is this the place to do it?
+	     **/
+	    xaInit(&(ct->RelatedTypes), 64);
+	    xaInit(&(ct->RelationLevels), 64);
+	    /** END MJM **/
+	    
 	    while(1)
 		{
 		t = mlxNextToken(s);
@@ -392,6 +407,10 @@ objInitialize()
 		    {
 		    xaDeInit(&(ct->Extensions));
 		    xaDeInit(&(ct->IsA));
+		    /** MJM - related to the above addition **/
+		    xaDeInit(&(ct->RelatedTypes));
+		    xaDeInit(&(ct->RelationLevels));
+		    /** END MJM **/
 		    nmFree(ct,sizeof(ContentType));
 		    break;
 		    }
@@ -408,6 +427,10 @@ objInitialize()
 		    mssError(1,"OSML","Undefined parent type '%s' of type '%s'",ptr,ct->Name);
 		    xaDeInit(&(ct->Extensions));
 		    xaDeInit(&(ct->IsA));
+		    /** MJM - also related to the above condition **/
+		    xaDeInit(&(ct->RelatedTypes));
+		    xaDeInit(&(ct->RelationLevels));
+		    /** END MJM **/
 		    nmFree(ct,sizeof(ContentType));
 		    break;
 		    }
