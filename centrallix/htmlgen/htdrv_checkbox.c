@@ -41,12 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.1 2001/08/13 18:00:49 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.2 2002/02/23 03:28:51 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
-    Revision 1.1  2001/08/13 18:00:49  gbeeley
-    Initial revision
+    Revision 1.2  2002/02/23 03:28:51  lkehresman
+    Reworked the Checkbox widget to be form-aware.  In theory this works..
+
+    Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -89,39 +92,51 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Ok, write the style header items. **/
    sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#cb%dpane1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
-   htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#cb%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   sprintf(sbuf,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddHeaderItem(s,sbuf);
    sprintf(sbuf,"    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
 
+   /** Get value function **/
+   htrAddScriptFunction(s, "checkbox_getvalue", "\n"
+      "function checkbox_getvalue()\n"
+      "    {\n"
+	  "    return this.is_checked;\n"
+      "    }\n",0);
+
+   /** Set value function **/
+   htrAddScriptFunction(s, "checkbox_setvalue", "\n"
+      "function checkbox_setvalue(v,f)\n"
+      "    {\n"
+      "    }\n",0);
+
    /** Checkbox initializer **/
    htrAddScriptFunction(s, "checkbox_init", "\n"
-      "function checkbox_init(pane1, pane2) {\n"
-      "   pane1.kind = 'checkbox';\n"
-      "   pane2.kind = 'checkbox';\n"
-      "   pane1.document.images[0].kind = 'checkbox';\n"
-      "   pane2.document.images[0].kind = 'checkbox';\n"
-      "   pane1.checkedLayer = pane2;\n"
-      "   pane1.uncheckedLayer = pane1;\n"
-      "   pane2.checkedLayer = pane2;\n"
-      "   pane2.uncheckedLayer = pane1;\n"
-      "   pane1.document.images[0].checkedLayer = pane2;\n"
-      "   pane1.document.images[0].uncheckedLayer = pane1;\n"
-      "   pane2.document.images[0].checkedLayer = pane2;\n"
-      "   pane2.document.images[0].uncheckedLayer = pane1;\n"
+      "function checkbox_init(l) {\n"
+	  "   l.kind = 'checkbox';\n"
+	  "   l.is_checked = 0;\n"
+	  "   l.document.images[0].kind = 'checkbox';\n"
+	  "   l.document.images[0].is_checked = l.is_checked;\n"
+	  "   l.document.images[0].uncheckedImage = new Image();\n"
+	  "   l.document.images[0].uncheckedImage.kind = 'checkbox';\n"
+	  "   l.document.images[0].uncheckedImage.src = \"/sys/images/checkbox_unchecked.gif\";\n"
+	  "   l.document.images[0].uncheckedImage.is_checked = l.is_checked;\n"
+	  "   l.document.images[0].checkedImage = new Image();\n"
+	  "   l.document.images[0].checkedImage.kind = 'checkbox';\n"
+	  "   l.document.images[0].checkedImage.src = \"/sys/images/checkbox_checked.gif\";\n"
+	  "   l.document.images[0].checkedImage.is_checked = l.is_checked;\n"
+	  "   if (fm_current) fm_current.Register(l);\n"
       "}\n", 0);
 
    /** Checkbox toggle mode function **/
    htrAddScriptFunction(s, "checkbox_toggleMode", "\n"
       "function checkbox_toggleMode(layer) {\n"
-      "   if (layer.uncheckedLayer.visibility == 'hide') {\n"
-      "      layer.uncheckedLayer.visibility = 'inherit';\n"
-      "      layer.checkedLayer.visibility = 'hidden';\n"
+      "   if (layer.is_checked) {\n"
+      "       layer.src = layer.uncheckedImage.src;\n"
+      "       layer.is_checked = 0;\n"
       "   } else {\n"
-      "      layer.checkedLayer.visibility = 'inherit';\n"
-      "      layer.uncheckedLayer.visibility = 'hidden';\n"
+      "       layer.src = layer.checkedImage.src;\n"
+      "       layer.is_checked = 1;\n"
       "   }\n"
       "}\n", 0);
 
@@ -137,14 +152,15 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "\n");
 
    /** Script initialization call. **/
-   sprintf(sbuf,"   checkbox_init(%s.layers.cb%dpane1, %s.layers.cb%dpane2);\n",
-      parentname, id, parentname, id);
+   sprintf(sbuf,"   checkbox_init(%s.layers.cb%dmain);\n", parentname, id);
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/
-   sprintf(sbuf,"   <DIV ID=\"cb%dpane1\"><IMG SRC=/sys/images/checkbox_unchecked.gif></DIV>\n",id);
+   sprintf(sbuf,"   <DIV ID=\"cb%dmain\">\n",id);
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"   <DIV ID=\"cb%dpane2\"><IMG SRC=/sys/images/checkbox_checked.gif></DIV>\n",id);
+   sprintf(sbuf,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
+   htrAddBodyItem(s, sbuf);
+   sprintf(sbuf,"   </DIV>\n");
    htrAddBodyItem(s, sbuf);
 
    return 0;
