@@ -1,0 +1,113 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'htmlwindow.html' -->
+<h2 class="widgetname"><a name="htmlwindow">htmlwindow</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/htmlwindow</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The htmlwindow provides the capability of creating a popup dialog or application window within a web page.The window is not actually a separate browser window, but rather a movable container that can appear &quot;floating&quot; above the rest of the Centrallix application.They can take on one of two styles;&quot;dialog&quot; and &quot;window&quot;, which currently relate only to how the window border and titlebar are drawn.=  The windows support windowshading (double-clicking on the titlebar to &quot;rollup&quot; or &quot;rolldown&quot; the window contents).</p>
+			<p>These &quot;windows&quot; currently do not support multiple instantiation.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Htmlwindows are normally coded at the top-level of an application, since if they are placed within containers, the container limits where the window can be moved.These windows can contain other visual and nonvisual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the body of the window.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the window body's background.If neither transparent.</td>
+</tr>
+<tr>
+<td class="name">hdr_background</td>
+<td class="type">string</td>
+<td class="description">A background image for the titlebar of the window.</td>
+</tr>
+<tr>
+<td class="name">hdr_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the titlebar of the window.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the window.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">Either &quot;dialog&quot; or &quot;window&quot;, and determines the style of the window's border.</td>
+</tr>
+<tr>
+<td class="name">textcolor</td>
+<td class="type"> (string</td>
+<td class="description">The color for the titlebar's text (window title).  Default &quot;black&quot;.</td>
+</tr>
+<tr>
+<td class="name">titlebar</td>
+<td class="type">yes/no</td>
+<td class="description">whether the window will have a titlebar. Default &quot;yes&quot;.</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The window's title.</td>
+</tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">true/false</td>
+<td class="description">the window is initially visible on screen. The window has an action which can &quot;true&quot;.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the window.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the window, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the window, relative to its container.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<table class="actions"><tr>
+<td class="name">SetVisibility</td>
+<td class="description">one parameter, &quot;is_visible&quot;, which is set to 0 or 1 to hide or show the window, respectively.</td>
+</tr></table>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+
+$Version=2$
+MyButton &quot;widget/htmlwindow&quot;
+	{
+	x = 10; y = 10;
+	width = 200; height = 200;
+	style = &quot;dialog&quot;;
+	bgcolor = &quot;#c0c0c0&quot;;
+	hdr_background = &quot;/sys/images/grey_gradient2.png&quot;;
+	title = &quot;An HTML Window&quot;;
+	textcolor = &quot;black&quot;;
+	}
+		</pre>
+</body>
+</html>

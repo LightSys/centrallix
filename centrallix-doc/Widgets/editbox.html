@@ -1,0 +1,81 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'editbox.html' -->
+<h2 class="widgetname"><a name="editbox">editbox</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/editbox</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.Data which does not fit will cause the text to scroll. When it receives keyboard focus, the editbox displays a flashing I-beam cursor.The cursor color uses the data focus color for the page (default is '#000080', or dark blue).</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The editbox can be placed within any visual widget (or within a form widget).=  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).=  Editboxes can contain no visual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the contents of the editbox.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the editbox contents. If neither bgcolor nor background transparent.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the editbox.</td>
+</tr>
+<tr>
+<td class="name">maxchars</td>
+<td class="type">integer</td>
+<td class="description">number of characters to accept from the user.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">Either &quot;raised&quot; or &quot;lowered&quot;, and determines the style of the border drawn around the &quot;raised&quot;.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the editbox.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the editbox, default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the editbox, default is 0.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+$Version=2$
+// Here is a single lonely edit box.
+my_editbox &quot;widget/editbox&quot;
+	{
+	style = &quot;lowered&quot;;
+	bgcolor = &quot;white&quot;;
+	x = 10; y = 10; width=100; height=19;
+	}
+
+		</pre>
+</body>
+</html>

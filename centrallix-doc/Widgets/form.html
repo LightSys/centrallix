@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'form.html' -->
+<h2 class="widgetname"><a name="form">form</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/form</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The form widget is used as a high-level container for form elements.=  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
+			<p>Forms have five different &quot;modes&quot;of operation, each of which can be specifically allowed or disallowed for the form.</p>
+		
+		<li> No Data - form inactive/disabled, no data viewed/edited.</li>
+		<li> View - data being viewed readonly.</li>
+		<li> Modify - existing data being modified.</li>
+		<li> Query - query criteria being entered (used for query-by-form applications)</li>
+		<li> New - new object being entered/created.</li>
+		
+			<p>Note: at the time of this writing, the form widget was in its design phase and had not yet been implemented.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.=  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
+		</span><h3 class="properties">Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<td class="name">Clear</td>
+<td class="description">Clears the form to a 'no data'state.</td>
+</tr>
+<tr>
+<td class="name">Delete</td>
+<td class="description">Deletes the current object displayed.</td>
+</tr>
+<tr>
+<td class="name">Discard</td>
+<td class="description">Cancels an edit of form contents.</td>
+</tr>
+<tr>
+<td class="name">Edit</td>
+<td class="description">Allows editing of form's contents.</td>
+</tr>
+<tr>
+<td class="name">First</td>
+<td class="description">Moves the form to the first object in the objectsource.</td>
+</tr>
+<tr>
+<td class="name">Last</td>
+<td class="description">Moves the form to the last object in the objectsource.</td>
+</tr>
+<tr>
+<td class="name">New</td>
+<td class="description">Allows creation of new form contents.</td>
+</tr>
+<tr>
+<td class="name">Next</td>
+<td class="description">Moves the form to the next object in the objectsource.</td>
+</tr>
+<tr>
+<td class="name">Prev</td>
+<td class="description">Moves the form to the previous object in the objectsource.</td>
+</tr>
+<tr>
+<td class="name">Query</td>
+<td class="description">Allows entering of query criteria.</td>
+</tr>
+<tr>
+<td class="name">QueryExec</td>
+<td class="description">the query and returns data.</td>
+</tr>
+<tr>
+<td class="name">Save</td>
+<td class="description">Saves the form's contents.</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		</pre>
+</body>
+</html>

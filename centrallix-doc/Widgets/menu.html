@@ -1,0 +1,83 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'menu.html' -->
+<h2 class="widgetname"><a name="menu">menu</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/menu</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The menu widget is used to create popup menus, drop-down menus, and menu bars.=  Menu widgets don't actually implement the selection of items on the menu; rather the items on a menu are typically textbuttons with tristate enabled.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Menus can be placed inside of any visual container. However, be aware that the menu will be clipped by its container, so placing them at the top-level can be of an advantage. Menu widgets can contain other visual widgets, but typically only textbuttons are used.The widgets in a menu will be repositioned when the menu initializes, so their (x,y) coordinate positions aren't important to specify exactly.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the menu.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the menu's background.  If neither bgcolor nor transparent.</td>
+</tr>
+<tr>
+<td class="name">orientation</td>
+<td class="type">string</td>
+<td class="description">Either &quot;horizontal&quot; or &quot;vertical&quot; (default), and determines whether the menu is a drop- a menubar (horizontal).</td>
+</tr>
+<tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">Either &quot;popup&quot; (default) or &quot;fixed&quot;.Popup menus disappear after an item on them is not.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the menu.The height is dynamically determined based on the contents.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the menu, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the menu, relative to its container.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<table class="actions"><tr>
+<td class="name">Activate</td>
+<td class="description">This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.Two parameters - X and Y, the (integer) positions on the page for the menu to appear.</td>
+</tr></table>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+$Version=2$
+// Here's a sample menu with three buttons.
+myMenu &quot;widget/menu&quot;
+	{
+	x = 10; y = 10; width = 72;
+	orientation = &quot;vertical&quot;; type = &quot;popup&quot;;
+	bgcolor=&quot;#808080&quot;;
+	
+	b1 &quot;widget/textbutton&quot; { x = 0; y = 0; width=70; height=24;text=&quot;One&quot;; }
+	b2 &quot;widget/textbutton&quot; { x = 0; y = 0; width=70; height=24;text=&quot;Two&quot;; }
+	b3 &quot;widget/textbutton&quot; { x = 0; y = 0; width=70; height=24;text=&quot;Three&quot;; }
+	}
+
+		</pre>
+</body>
+</html>

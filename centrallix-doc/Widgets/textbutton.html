@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'textbutton.html' -->
+<h2 class="widgetname"><a name="textbutton">textbutton</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/textbutton</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.</p>
+			<p>Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a &quot;raised&quot; border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The TextButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the button.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the button's background.If neither bgcolor transparent.</td>
+</tr>
+<tr>
+<td class="name">fgcolor1</td>
+<td class="type"> (string</td>
+<td class="description">A color, RGB or named, for the text on the button.  Default &quot;white&quot;.</td>
+</tr>
+<tr>
+<td class="name">fgcolor2</td>
+<td class="type"> (string</td>
+<td class="description">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default &quot;black&quot;.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the text button.</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">The text to appear on the button.</td>
+</tr>
+<tr>
+<td class="name">tristate</td>
+<td class="type">yes/no</td>
+<td class="description">or not the button is tri-state. Default is yes.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the text button.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the button, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the button, relative to its container.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<table class="events"><tr>
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the button. No parameters are available from this event.</td>
+</tr></table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+
+$Version=2$
+MyButton &quot;widget/textbutton&quot;
+	{
+	x = 10; y = 10;
+	width = 50;
+	height = 20;
+
+	tristate = &quot;no&quot;;
+	background = &quot;/sys/images/grey_gradient.png&quot;;
+	text = &quot;OK&quot;;
+	}
+		</pre>
+</body>
+</html>

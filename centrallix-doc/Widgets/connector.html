@@ -1,0 +1,68 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'connector.html' -->
+<h2 class="widgetname"><a name="connector">connector</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/connector</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.=  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.</p>
+			<p>The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.</p>
+			<p>Events and actions can have parameters, which specify more information about the occurrence of an event, or which specify more information about how to perform the action.Such parameters from events can be linked into parameters for actions via the connector widget as well.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The connector object should be a sub-object of the widget which will trigger the event.=  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.</p>
+			<p>An example connector would link the click of a URL in a treeview with the loading of a new page in an HTML area.See the Example source code at the end of this document to see how this is done.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">action</td>
+<td class="type">string</td>
+<td class="description">The name of the action which will be activated on another widget on the page.</td>
+</tr>
+<tr>
+<td class="name">event</td>
+<td class="type">string</td>
+<td class="description">The name of the event that this connector will act on.</td>
+</tr>
+<tr>
+<td class="name">target</td>
+<td class="type">string</td>
+<td class="description">The name of another widget on the page whose action will be called by this connector.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+
+$Version=2$
+// Here's our connector.Imagine that this is embedded within a treeview
+// and references an 'html' control called 'ht1' somewhere else on the page.
+//
+cn1 &quot;widget/connector&quot;
+	{
+	// Triggered by ClickItem from the treeview.
+	event = &quot;ClickItem&quot;;
+
+	// Causes the LoadPage action on html area 'ht1'
+	target = &quot;ht1&quot;;
+	action = &quot;LoadPage&quot;;
+
+	// The Source for LoadPage is the Pathname from ClickItem.
+	Source = &quot;Pathname&quot;;
+	}
+
+		</pre>
+</body>
+</html>

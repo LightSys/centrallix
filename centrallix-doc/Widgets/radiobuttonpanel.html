@@ -1,0 +1,103 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'radiobuttonpanel.html' -->
+<h2 class="widgetname"><a name="radiobuttonpanel">radiobuttonpanel</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/radiobuttonpanel</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>A radio button panel widget is a form element used to create a set of radio buttons on screen.Only one radio button may be selected at a time.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).The &quot;widget/radiobuttonpanel&quot; is the main widget, and can contain any number of &quot;widget/radiobutton&quot; widgets which specify the choices which will be present on the panel.No other visual widgets can be contained within a radio button panel.</p>
+			<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the radio button panel.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the panel background. If neither bgcolor nor background transparent.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the panel.</td>
+</tr>
+<tr>
+<td class="name">outlinecolor</td>
+<td class="type">string</td>
+<td class="description">The color, RGB or named, of the rectangular border drawn around the radio buttons.</td>
+</tr>
+<tr>
+<td class="name">textcolor</td>
+<td class="type"> (string</td>
+<td class="description">The color, RGB or named, of the text within the panel.  Default: &quot;black&quot;.</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The title for the radio button panel, which appears superimposed on the rectangular   border around the radio buttons.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the panel.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the panel, default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the panel, default is 0.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of widget/radiobutton child widgets)</p>
+<table class="childproperties">
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">The text label to appear beside the radio button.</td>
+</tr>
+<tr>
+<td class="name">selected</td>
+<td class="type">true/false</td>
+<td class="description">the radio button is initially selected or not. Should only be set on one radio Default;&quot;false&quot;.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+$Version=2$
+// Here are some radio buttons...
+testradio &quot;widget/radiobuttonpanel&quot; 
+	{
+	x=20; y=20;
+	width=150; height=80;
+	title=&quot;test&quot;;
+	bgcolor=&quot;#ffffff&quot;;
+
+	label1 &quot;widget/radiobutton&quot; { label=&quot;basketball&quot;;selected=&quot;true&quot;; }
+	label2 &quot;widget/radiobutton&quot; { label=&quot;is fun&quot;; }
+	}
+
+		</pre>
+</body>
+</html>
