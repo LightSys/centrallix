@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: ht_render.c,v 1.4 2002/04/25 04:27:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.4  2002/04/25 04:27:21  gbeeley
+    Added new AddInclude() functionality to the html generator, so include
+    javascript files can be added.  Untested.
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -189,6 +193,30 @@ int
 htrAddBodyParam(pHtSession s, char* html_param)
     {
     return htr_internal_AddTextToArray(&(s->Page.HtmlBodyParams), html_param);
+    }
+
+
+/*** htrAddScriptInclude -- adds a script src= type entry between the html
+ *** header and html body.
+ ***/
+int
+htrAddScriptInclude(pHtSession s, char* filename, int flags)
+    {
+    pStrValue sv;
+
+    	/** Alloc the string val. **/
+	if (xhLookup(&(s->Page.NameIncludes), filename)) return 0;
+	sv = (pStrValue)nmMalloc(sizeof(StrValue));
+	if (!sv) return -1;
+	sv->Name = filename;
+	sv->Value = "";
+	sv->Alloc = (flags & HTR_F_NAMEALLOC);
+
+	/** Add to the hash table and array **/
+	xhAdd(&(s->Page.NameIncludes), filename, (char*)sv);
+	xaAddItem(&(s->Page.Includes), (char*)sv);
+
+    return 0;
     }
 
 
@@ -450,13 +478,15 @@ htrRender(pFile output, pObject appstruct)
 	if (!s) return -1;
 
 	/** Setup the page structures **/
-	xhInit(&(s->Page.NameFunctions),31,0);
-	xaInit(&(s->Page.Functions),16);
-	xhInit(&(s->Page.NameGlobals),31,0);
-	xaInit(&(s->Page.Globals),16);
-	xaInit(&(s->Page.Inits),16);
-	xaInit(&(s->Page.HtmlBody),16);
-	xaInit(&(s->Page.HtmlHeader),16);
+	xhInit(&(s->Page.NameFunctions),63,0);
+	xaInit(&(s->Page.Functions),32);
+	xhInit(&(s->Page.NameIncludes),31,0);
+	xaInit(&(s->Page.Includes),32);
+	xhInit(&(s->Page.NameGlobals),127,0);
+	xaInit(&(s->Page.Globals),64);
+	xaInit(&(s->Page.Inits),64);
+	xaInit(&(s->Page.HtmlBody),64);
+	xaInit(&(s->Page.HtmlHeader),64);
 	xaInit(&(s->Page.HtmlBodyParams),16);
 	xaInit(&(s->Page.EventScripts.Array),16);
 	xhInit(&(s->Page.EventScripts.HashTable),31,0);
@@ -490,6 +520,16 @@ htrRender(pFile output, pObject appstruct)
 		snprintf(sbuf,HT_SBUF_SIZE,"var %s;\n", sv->Name);
 	    fdWrite(output, sbuf, strlen(sbuf),0,0);
 	    }
+
+	/** Write the includes **/
+	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,0);
+	for(i=0;i<s->Page.Includes.nItems;i++)
+	    {
+	    sv = (pStrValue)(s->Page.Includes.Items[i]);
+	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=javascript src=\"%s\"></SCRIPT>\n\n",sv->Name);
+	    fdWrite(output, sbuf, strlen(sbuf), 0,0);
+	    }
+	fdWrite(output, "<SCRIPT language=javascript>\n\n", 30,0,0);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
@@ -603,6 +643,15 @@ htrRender(pFile output, pObject appstruct)
 	    }
 	xaDeInit(&(s->Page.Functions));
 	xhDeInit(&(s->Page.NameFunctions));
+	for(i=0;i<s->Page.Includes.nItems;i++)
+	    {
+	    tmp = (pStrValue)(s->Page.Includes.Items[i]);
+	    xhRemove(&(s->Page.NameIncludes),tmp->Name);
+	    if (tmp->Alloc & HTR_F_NAMEALLOC) nmFree(tmp->Name,tmp->NameSize);
+	    nmFree(tmp,sizeof(StrValue));
+	    }
+	xaDeInit(&(s->Page.Includes));
+	xhDeInit(&(s->Page.NameIncludes));
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    tmp = (pStrValue)(s->Page.Globals.Items[i]);

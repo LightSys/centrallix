@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.4 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: ht_render.h,v 1.5 2002/04/25 04:27:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.5  2002/04/25 04:27:21  gbeeley
+    Added new AddInclude() functionality to the html generator, so include
+    javascript files can be added.  Untested.
+
     Revision 1.4  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -167,6 +171,8 @@ typedef struct
     XArray	HtmlHeader;		/* html header page buffers */
     pObject	HtmlHeaderFile;		/* output file if too big */
     XArray	HtmlBodyParams;		/* params for <body> tag */
+    XArray	Includes;		/* script includes */
+    XHashTable	NameIncludes;		/* hash lookup for includes */
     HtNameArray	EventScripts;		/* various event script code */
     }
     HtPage, *pHtPage;
@@ -190,6 +196,7 @@ int htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname
 int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
 int htrAddScriptInit(pHtSession s, char* init_text);
+int htrAddScriptInclude(pHtSession s, char* filename, int flags);
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);
 int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
