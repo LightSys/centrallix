@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.13 2002/03/16 02:54:59 bones120 Exp $
+    $Id: lsmain.c,v 1.14 2002/03/23 06:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.14  2002/03/23 06:26:49  gbeeley
+    Added BDQS network listener.  Be sure to cvs update the centrallix-os
+    module to get a fresh copy of the centrallix.conf with the net_bdqs
+    section in it, and be sure to cvs update the centrallix-lib module, as
+    this module depends on it.
+
     Revision 1.13  2002/03/16 02:54:59  bones120
     This might help...
 
@@ -266,6 +272,8 @@ start(void* v)
 #ifdef CGI_ENABLE
 	cgiInitialize();			/* CGI "listener" */
 #endif
+
+	bnetInitialize();			/* BDQS network listener */
 
     thExit();
     }

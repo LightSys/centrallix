@@ -65,7 +65,7 @@ XQYDRIVERS=multiq_tablegen.o multiq_projection.o multiq_equijoin.o multiquery.o
 QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
 # Network drivers.
-XNETDRIVERS=net_http.o
+XNETDRIVERS=net_http.o net_bdqs.o
 NETDRIVERS=$(patsubst %,netdrivers/%,$(XNETDRIVERS))
 
 # Reporting subsystem, including printer drivers and print management system.
