@@ -1042,7 +1042,7 @@ wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
 	/** make sure it's not already there **/
 	for (i=0;i<xaCount(&(WGTR.Drivers));i++)
 	    {
-	    if (!strcmp(drv->Name, ((pWgtrDriver)xaGetItem(&(WGTR.Drivers), i))->Name))
+	    if (!strcmp(name, ((pWgtrDriver)xaGetItem(&(WGTR.Drivers), i))->Name))
 		{
 		mssError(1, "WGTR", "Tried to register driver '%s' twice", name);
 		return -1;
