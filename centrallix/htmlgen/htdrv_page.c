@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.55 2003/06/21 23:54:41 jorupp Exp $
+    $Id: htdrv_page.c,v 1.56 2003/07/15 01:57:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.56  2003/07/15 01:57:51  gbeeley
+    Adding an independent DHTML scrollbar widget that will be used to
+    control scrolling/etc on other widgets.
+
     Revision 1.55  2003/06/21 23:54:41  jorupp
      * fixex up a few problems I found with the version I committed (like compilation...)
      * removed some code that was commented out
@@ -593,7 +597,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandler(s, "document", "MOUSEMOVE","pg",
-		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
@@ -607,7 +610,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        pg_removemousefocus();\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOUT", "pg",
-		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
@@ -624,7 +626,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        pg_removemousefocus();\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOVER", "pg",
-		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
@@ -643,7 +644,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** CLICK event handler is for making mouse focus the keyboard focus **/
 	htrAddEventHandler(s, "document", "MOUSEDOWN", "pg",
-		"    ly = (e.target.layer != null)?e.target.layer:t=e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
@@ -669,7 +669,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** This resets the keyboard focus. **/
 	htrAddEventHandler(s, "document", "MOUSEUP", "pg",
-		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"

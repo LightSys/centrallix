@@ -136,6 +136,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_clock.o \
 	   htdrv_terminal.o \
 	   htdrv_calendar.o \
+	   htdrv_scrollbar.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 

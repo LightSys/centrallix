@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.21 2003/07/12 04:14:34 gbeeley Exp $
+    $Id: centrallix.c,v 1.22 2003/07/15 01:57:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.22  2003/07/15 01:57:51  gbeeley
+    Adding an independent DHTML scrollbar widget that will be used to
+    control scrolling/etc on other widgets.
+
     Revision 1.21  2003/07/12 04:14:34  gbeeley
     Initial rough beginnings of a calendar widget.
 
@@ -512,6 +516,7 @@ cxHtInit()
 	httxInitialize();			/* textarea htdrv module */
 	htclInitialize();			/* clock htdrv module */
 	htcaInitialize();			/* calendar module */
+	htsbInitialize();			/* scrollbar module */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */

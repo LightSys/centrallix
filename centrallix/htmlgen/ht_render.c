@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.37 2003/06/21 23:54:41 jorupp Exp $
+    $Id: ht_render.c,v 1.38 2003/07/15 01:57:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.38  2003/07/15 01:57:51  gbeeley
+    Adding an independent DHTML scrollbar widget that will be used to
+    control scrolling/etc on other widgets.
+
     Revision 1.37  2003/06/21 23:54:41  jorupp
      * fixex up a few problems I found with the version I committed (like compilation...)
      * removed some code that was commented out
@@ -1472,7 +1476,7 @@ htrRender(pFile output, pObject appstruct)
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
 	        snprintf(sbuf,HT_SBUF_SIZE,"\nfunction e%d_%d(e)\n    {\n",i,j);
 		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
-	        snprintf(sbuf,HT_SBUF_SIZE,"    var e = htr_event(e);\n");
+	        snprintf(sbuf,HT_SBUF_SIZE,"    var e = htr_event(e);\n    var ly = (e.target.layer != null)?e.target.layer:e.target;\n");
 		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
 		for(k=0;k<tmp_a2->Array.nItems;k++)
 		    {
