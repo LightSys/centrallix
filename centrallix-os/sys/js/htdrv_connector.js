@@ -23,6 +23,7 @@ function cn_activate(t,f,eparam)
 
 function cn_add(w,e)
     {
+    if (e == "Click") e = "MouseUp"; // Click events converted to MouseUp events
     if (w['Event' + e] == null)
 	w['Event' + e] = new Array();
     w['Event' + e][w['Event' + e].length] = this.RunEvent;
