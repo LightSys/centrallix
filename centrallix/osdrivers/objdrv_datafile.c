@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.7 2003/03/10 15:41:42 lkehresman Exp $
+    $Id: objdrv_datafile.c,v 1.8 2003/04/25 04:09:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.8  2003/04/25 04:09:29  gbeeley
+    Adding insert and autokeying support to OSML and to CSV datafile
+    driver on a limited basis (in rowidkey mode only, which is the only
+    mode currently supported by the csv driver).
+
     Revision 1.7  2003/03/10 15:41:42  lkehresman
     The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
     hints to the OSML.  To do this I had to:
@@ -141,6 +146,7 @@
 #define DAT_NODE_ROWIDPTRS	128
 #define DAT_NODE_ROWIDFACTOR	64
 #define DAT_ROW_MAXPAGESPAN	2
+#define DAT_MAXROWID		((1<<30) - 1)
 
 
 /*** Structure for storing table-key information ***/
@@ -191,13 +197,13 @@ typedef struct
 /*** Structure for table node file ***/
 typedef struct
     {
-    char		DataPath[256];
-    char		SpecPath[256];
+    char		DataPath[320];
+    char*		EndDataPath;
+    char		SpecPath[320];
+    char*		EndSpecPath;
     pSnNode		Node;
     int			NodeSerial;
     pDatTableInf 	TableInf;
-    pObject		SpecObj;
-    pObject		DataObj;
     int			Type;
     char		Ext[8];
     unsigned char	FieldSep;
@@ -205,9 +211,11 @@ typedef struct
     pSemaphore		FlushSem;
     DatRowIDPtr		RowIDPtrCache[DAT_NODE_ROWIDPTRS];
     int			RowAccessCnt;
-    int			MaxRowID;
-    int			RealMaxRowID;
+    int			MaxRowID;	/* highest row accessible by rowidptr cache */
+    int			RealMaxRowID;	/* highest row accessed */
     DatTableInf		HeaderCols;
+    int			nRows;		/* number of rows in table, or -1 if not yet determined */
+    pSemaphore		InsertSem;	/* controls inserts at end of file */
     }
     DatNode, *pDatNode;
 
@@ -222,6 +230,13 @@ typedef struct
 #define DAT_NODE_F_TWOQUOTEESC	32
 
 
+/*** Session data indicates which sessions the cached page
+ *** is accessible by and how
+ ***/
+#define DAT_MAXSESS		8	/* LRU discard policy */
+#define DAT_SESS_F_READ		1	/* session can read data */
+#define DAT_SESS_F_WRITE	2	/* session can write data */
+
 /*** Structure for a single page of data ***/
 typedef struct _DP
     {
@@ -232,6 +247,9 @@ typedef struct _DP
     int			Flags;
     int			Length;
     unsigned int	AccessOrder;
+    handle_t		Sessions[DAT_MAXSESS];
+    int			SessFlags[DAT_MAXSESS];
+    int			nSess;
     unsigned char	Data[DAT_CACHE_PAGESIZE];
     }
     DatPage, *pDatPage;
@@ -289,11 +307,15 @@ typedef struct
     unsigned char  RowBuf[(DAT_ROW_MAXPAGESPAN-1)*DAT_CACHE_PAGESIZE];
     int		   RowBufSize;
     unsigned char* ColPtrs[256];
+    unsigned char  AutoName[256];
+    pObject	   DataObj;
+    pObject	   SpecObj;
     }
     DatData, *pDatData;
 
 #define DAT_F_ROWPRESENT	1
 #define	DAT_F_ROWPARSED		2
+#define DAT_F_HOLDINSERTSEM	4
 
 #define DAT_T_TABLE		1
 #define DAT_T_ROWSOBJ		2
@@ -393,7 +415,7 @@ dat_internal_InsertPage(pDatPage this)
  *** for such pages up to a certain limit.  The search goes via this->Prev.
  ***/
 int
-dat_internal_FlushPages(pDatPage this)
+dat_internal_FlushPages(pDatData context, pDatPage this)
     {
     pDatPage seq_pages[DAT_CACHE_MAXSEQ*2];
     pDatPage tmp;
@@ -448,7 +470,7 @@ dat_internal_FlushPages(pDatPage this)
 	        {
 		seq_pages[i]->Flags |= DAT_CACHE_F_LOCKED;
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_DIRTY;
-		objWrite(this->Node->DataObj->Prev, seq_pages[i]->Data, seq_pages[i]->Length, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID, FD_U_SEEK);
+		objWrite(context->DataObj, seq_pages[i]->Data, seq_pages[i]->Length, DAT_CACHE_PAGESIZE*seq_pages[i]->PageID, FD_U_SEEK);
 		seq_pages[i]->Flags &= ~DAT_CACHE_F_LOCKED;
 		}
 	    }
@@ -464,7 +486,7 @@ dat_internal_FlushPages(pDatPage this)
  *** or grab a page from the cache list tail.
  ***/
 pDatPage
-dat_internal_GetPage()
+dat_internal_GetPage(pDatData context)
     {
     pDatPage this,tmp;
 
@@ -492,7 +514,7 @@ dat_internal_GetPage()
 	        if (tmp->Flags & DAT_CACHE_F_DIRTY)
 	            {
 		    tmp->Flags |= DAT_CACHE_F_LOCKED;
-		    dat_internal_FlushPages(tmp);
+		    dat_internal_FlushPages(context,tmp);
 		    if ((tmp->Flags & DAT_CACHE_F_DIRTY) || (tmp->Flags & DAT_CACHE_F_LOCKED)) continue;
 		    }
 		this = tmp;
@@ -520,7 +542,7 @@ dat_internal_GetPage()
  *** to the calling function.
  ***/
 pDatPage
-dat_internal_ReadPage(pDatNode node, int page_id)
+dat_internal_ReadPage(pDatData context, pDatNode node, int page_id)
     {
     pDatPage this;
     struct { pDatNode node; int page_id; } key;
@@ -538,12 +560,12 @@ dat_internal_ReadPage(pDatNode node, int page_id)
 	    }
 
 	/** Not in cache.  Get a page and read the data. **/
-	this = dat_internal_GetPage();
+	this = dat_internal_GetPage(context);
 	if (!this) return NULL;
 	this->Node = node;
 	this->PageID = page_id;
 	this->Flags |= DAT_CACHE_F_LOCKED;
-	this->Length = objRead(this->Node->DataObj->Prev, this->Data, DAT_CACHE_PAGESIZE, DAT_CACHE_PAGESIZE*page_id, FD_U_SEEK);
+	this->Length = objRead(context->DataObj, this->Data, DAT_CACHE_PAGESIZE, DAT_CACHE_PAGESIZE*page_id, FD_U_SEEK);
 	if (this->Length <= 0)
 	    {
 	    if (this->Prev) this->Prev->Next = this->Next;
@@ -576,12 +598,12 @@ dat_internal_UnlockPage(pDatPage this)
  *** made.
  ***/
 pDatPage
-dat_internal_NewPage(pDatNode node, int page_id)
+dat_internal_NewPage(pDatData context, pDatNode node, int page_id)
     {
     pDatPage this;
 
     	/** Grab a page **/
-	this = dat_internal_GetPage();
+	this = dat_internal_GetPage(context);
 	if (!this) return NULL;
 
 	/** Zero the data and return the page **/
@@ -689,10 +711,21 @@ dat_internal_UpdateRowIDPtrCache(pDatNode node, pDatRowInfo ri, int rowid)
 /*** dat_internal_GetRow - obtains a DatRowInfo structure containing locked pages
  *** for a given row id within a given node.  Returns NULL if the row does not
  *** exist.
+ ***
+ *** The terminating newline (\n) is NOT included in the RowInfo length returned,
+ *** however, the page containing that terminating newline WILL be included in
+ *** the page list for the row *unless* the row is at the end of the file and
+ *** the file has no newline at the end.
+ ***
+ *** If a row past the end of the file is requested, this routine will still
+ *** catalog the last row in the file so that future searches are more
+ *** efficient and so that the # of rows in the file can be more easily
+ *** determined.
  ***/
 pDatRowInfo
-dat_internal_GetRow(pDatNode node, int rowid)
+dat_internal_GetRow(pDatData context, pDatNode node, int rowid)
     {
+    int scan_rowid;
     pDatRowInfo di;
     int closest = -1;
     unsigned int closest_dist = 0xFFFFFFFF;
@@ -702,10 +735,9 @@ dat_internal_GetRow(pDatNode node, int rowid)
     int closest_offset;
     int i;
     pDatPage pg;
-    int cur_page;
-    int cur_offset;
-    int cur_row;
-    int found;
+    int cur_page, cur_offset, cur_row;
+    int prevrow_page, prevrow_offset, prevrow;
+    int found, found_nl;
     int len;
     unsigned char* nlptr;
 
@@ -718,13 +750,14 @@ dat_internal_GetRow(pDatNode node, int rowid)
 	    mssError(1,"DAT","Bark!  Attempt to retrieve negative RowID!");
 	    return NULL;
 	    }
+	scan_rowid = rowid;
 
     	/** Scan the node's rowid cache to find a close row or even a match **/
 	for(i=0;i<DAT_NODE_ROWIDPTRS;i++)
 	    {
 	    if (!(node->RowIDPtrCache[i].Flags & DAT_RI_F_EMPTY))
 	         {
-		 dist = abs(rowid - node->RowIDPtrCache[i].RowID);
+		 dist = abs(scan_rowid - node->RowIDPtrCache[i].RowID);
 		 if (closest == -1 || dist < closest_dist)
 		     {
 		     closest = i;
@@ -734,7 +767,7 @@ dat_internal_GetRow(pDatNode node, int rowid)
 	    }
 
 	/** Take into account that we can scan from the beginning of the file. **/
-	if (closest == -1 || closest_dist > (rowid - 0))
+	if (closest == -1 || closest_dist > (scan_rowid - 0))
 	    {
 	    closest_rowid = 0;
 	    closest_offset = 0;
@@ -751,17 +784,20 @@ dat_internal_GetRow(pDatNode node, int rowid)
 	cur_page = closest_offset / DAT_CACHE_PAGESIZE;
 	cur_offset = closest_offset % DAT_CACHE_PAGESIZE;
 	cur_row = closest_rowid;
+	prevrow = cur_row;
+	prevrow_page = cur_page;
+	prevrow_offset = cur_offset;
 	pg = NULL;
 
 	/** Scan forwards or backwards?  If back, do it then move forward one char... **/
-	if (cur_row > rowid)
+	if (cur_row > scan_rowid)
 	    {
 	    /** Scan backwards **/
 	    /** This will NEVER happen when row 0 is requested. **/
 	    while(1)
 	        {
 		/** Fetch the page **/
-		if (!pg) pg = dat_internal_ReadPage(node, cur_page);
+		if (!pg) pg = dat_internal_ReadPage(context, node, cur_page);
 		if (!pg) return NULL;
 		ptr = pg->Data + cur_offset;
 		found = 0;
@@ -775,13 +811,13 @@ dat_internal_GetRow(pDatNode node, int rowid)
 		    if (cur_offset < 0) break;
 
 		    /** Found end of a row? **/
-		    if (*ptr == '\n' || *ptr == 1)
+		    if (*ptr == '\n' || *ptr == 0x01)
 		        {
 			cur_row--;
 			}
 
 		    /** Found end of the row before row in question? **/
-		    if (cur_row == rowid-1)
+		    if (cur_row == scan_rowid-1)
 		        {
 			found = 1;
 			break;
@@ -803,11 +839,22 @@ dat_internal_GetRow(pDatNode node, int rowid)
 	    }
 
 	/** Scan forward to find the row **/
+	found_nl = 0;
 	while(1)
 	    {
 	    /** Grab the page. **/
-	    if (!pg) pg = dat_internal_ReadPage(node, cur_page);
-	    if (!pg) return NULL;
+	    if (!pg) pg = dat_internal_ReadPage(context, node, cur_page);
+	    if (!pg) 
+		{
+		/** End of data.  Highest row is end of prev page **/
+		if (cur_page == 0) return NULL;
+		cur_page = prevrow_page;
+		cur_row = prevrow;
+		cur_offset = prevrow_offset;
+		scan_rowid = cur_row;
+		pg = dat_internal_ReadPage(context, node, cur_page);
+		if (!pg) return NULL;
+		}
 	    ptr = pg->Data + cur_offset;
 
 	    /** Scan the page. **/
@@ -815,25 +862,34 @@ dat_internal_GetRow(pDatNode node, int rowid)
 	    while(cur_offset < pg->Length)
 	        {
 		/** Found the row if cur_row set. **/
-	        if (cur_row == rowid) 
+	        if (cur_row == scan_rowid) 
 		    {
 		    found = 1;
 		    break;
 		    }
 
 		/** Advance cur row if we found a line terminator **/
-	        if (*ptr == '\n' || *ptr == 1)
+	        if (*ptr == '\n' || *ptr == 0x01)
 		    {
 		    cur_row++;
+		    found_nl = 1;
 		    }
 		else
 		    {
+		    if (found_nl)
+			{
+			prevrow = cur_row;
+			prevrow_page = cur_page;
+			prevrow_offset = cur_offset;
+			found_nl = 0;
+			}
 		    nlptr = memchr(ptr, '\n', pg->Length - cur_offset);
-		    if (nlptr && !memchr(ptr, 1, nlptr - ptr))
+		    if (nlptr && !memchr(ptr, 0x01, nlptr - ptr))
 		        {
-		        cur_offset += ((nlptr - ptr));
+		        cur_offset += (nlptr - ptr);
 		        ptr = nlptr;
 			cur_row++;
+			found_nl = 1;
 			}
 		    }
 
@@ -877,11 +933,11 @@ dat_internal_GetRow(pDatNode node, int rowid)
 	        {
 		if (di->nPages == DAT_ROW_MAXPAGESPAN)
 		    {
-		    mssError(1,"DAT","File '%s' row #%d exceeds %d pagespan limit",node->DataPath, rowid, DAT_ROW_MAXPAGESPAN);
+		    mssError(1,"DAT","File '%s' row #%d exceeds %d pagespan limit",node->DataPath, scan_rowid, DAT_ROW_MAXPAGESPAN);
 		    dat_internal_ReleaseRow(di);
 		    return NULL;
 		    }
-		di->Pages[di->nPages] = dat_internal_ReadPage(node, di->StartPageID+di->nPages);
+		di->Pages[di->nPages] = dat_internal_ReadPage(context, node, di->StartPageID+di->nPages);
 		if (!di->Pages[di->nPages]) break;
 		cur_offset=0;
 		ptr = di->Pages[di->nPages]->Data;
@@ -901,7 +957,14 @@ dat_internal_GetRow(pDatNode node, int rowid)
 	    }
 
 	/** Possibly update the rowid-ptr cache **/
-	dat_internal_UpdateRowIDPtrCache(node,di,rowid);
+	dat_internal_UpdateRowIDPtrCache(node,di,scan_rowid);
+
+	/** Needed row past end of file? **/
+	if (scan_rowid != rowid)
+	    {
+	    dat_internal_ReleaseRow(di);
+	    return NULL;
+	    }
 
     return di;
     }
@@ -1277,7 +1340,7 @@ dat_bcp_OpenNode(pDatNode dn)
  *** unless already cached.
  ***/
 pDatNode
-dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, int create_mask)
+dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, int is_toplevel, int create_mask)
     {
     pDatNode dn;
     char nodefile[256];
@@ -1313,6 +1376,8 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 	    new_node = 1;
 	    if (!dn) return NULL;
 	    strcpy(dn->SpecPath, nodefile);
+	    dn->EndSpecPath = strchr(dn->SpecPath,'\0');
+	    strcpy(dn->EndSpecPath, "?ls__type=application%2foctet-stream");
 	    dn->FlushSem = syCreateSem(1,0);
 	    dn->Flags = 0;
 	    dn->NodeSerial = -1;
@@ -1322,29 +1387,31 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 	    dn->RowAccessCnt = 0;
 	    dn->HeaderCols.nCols = 0;
 	    dn->HeaderCols.ColBuf = NULL;
+	    dn->nRows = -1;
+	    dn->InsertSem = syCreateSem(1,0);
 	    for(i=0;i<DAT_NODE_ROWIDPTRS;i++) dn->RowIDPtrCache[i].Flags = DAT_RI_F_EMPTY;
 
 	    /** Find the SnNode structure for the structure file data **/
 	    if (is_datafile)
 	        {
 		/** We do 'nodefile+1' to eliminate the pathinfo standard './' **/
-		dn->SpecObj = objOpen(obj->Session, nodefile+1, O_RDWR, 0600, "system/filespec");
-		if (!dn->SpecObj)
+		context->SpecObj = objOpen(obj->Session, dn->SpecPath+1, O_RDWR, 0600, "system/filespec");
+		if (!context->SpecObj)
 		    {
 		    mssError(0,"DAT","Could not access .spec file for datafile");
 		    nmFree(dn,sizeof(DatNode));
 		    return NULL;
 		    }
-		objLinkTo(obj);
-		dn->DataObj = obj;
+		context->DataObj = obj->Prev;
+		objLinkTo(context->DataObj);
 		}
 	    else
 	        {
-		objLinkTo(obj);
-		dn->SpecObj = obj;
-		dn->DataObj = NULL;
+		context->SpecObj = obj->Prev;
+		objLinkTo(context->SpecObj);
+		context->DataObj = NULL;
 		}
-	    dn->Node = snReadNode(dn->SpecObj->Prev);
+	    dn->Node = snReadNode(context->SpecObj);
 	    if (!dn->Node)
 	        {
 		mssError(0,"DAT","Could not process .spec file");
@@ -1397,6 +1464,8 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 		strcpy(dn->DataPath, dn->SpecPath);
 		sprintf(strstr(dn->DataPath,".spec"),".%s",ptr);
 		}
+	    dn->EndDataPath = strchr(dn->DataPath, '\0');
+	    strcpy(dn->EndDataPath, "?ls__type=application%2foctet-stream");
 
 	    /** Attempt to open the datafile **/
 	    if (is_toplevel) use_mode = mode; else use_mode = O_RDWR;
@@ -1411,10 +1480,10 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 	else
 	    {
 	    /** If datafile, but was not opened last time, link to it now. **/
-	    if (is_datafile && !dn->DataObj)
+	    if (is_datafile && !context->DataObj)
 	        {
-		objLinkTo(obj);
-		dn->DataObj = obj;
+		context->DataObj = obj->Prev;
+		objLinkTo(context->DataObj);
 		}
 	    }
 
@@ -1423,27 +1492,27 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 	    {
 	    if (dn->NodeSerial != -1)
 	        {
-		strcpy(nodefile, obj_internal_PathPart(dn->DataObj->Pathname, 0,0));
-		objClose(dn->DataObj);
+		strcpy(nodefile, obj_internal_PathPart(context->DataObj->Pathname, 0,0));
+		/*objClose(dn->DataObj);*/
 	        dn->NodeSerial = snGetSerial(dn->Node);
 		if (is_datafile)
 		    {
-		    objLinkTo(obj);
-		    dn->DataObj = obj;
+		    /*objLinkTo(obj);
+		    dn->DataObj = obj;*/
 		    }
 		else
 		    {
 		    /** We can close the obj right away because the invocation of this routine **/
 		    /** during the open() call will objLinkTo() the datafile object. **/
-		    dn->DataObj = NULL;
+		    /*dn->DataObj = NULL;
 		    dn->DataObj = objOpen(obj->Session, nodefile, O_RDWR, 0600, "system/datafile");
-		    objClose(dn->DataObj);
+		    objClose(dn->DataObj);*/
 		    }
-	        if (!dn->DataObj)
+	        if (!context->DataObj)
 	            {
-		    mssErrorErrno(1,"DAT","Could not re-open modified datafile '%s'",dn->DataPath);
+		    /*mssErrorErrno(1,"DAT","Could not re-open modified datafile '%s'",dn->DataPath);
 		    nmFree(dn,sizeof(DatNode));
-		    return NULL;
+		    return NULL;*/
 		    }
 		}
 	    dn->NodeSerial = snGetSerial(dn->Node);
@@ -1453,6 +1522,7 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 	        {
 		dn->TableInf = (pDatTableInf)nmMalloc(sizeof(DatTableInf));
 		dn->TableInf->ColBuf = NULL;
+		dn->HeaderCols.ColBuf = NULL;
 		}
 	    if (dn->TableInf->ColBuf) nmSysFree(dn->TableInf->ColBuf);
 	    dn->TableInf->ColBuf = (char*)nmSysMalloc(1024);
@@ -1618,6 +1688,7 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 	/** Add node to cache? **/
 	if (new_node)
 	    {
+	    *(dn->EndSpecPath) = '\0';
 	    xhAdd(&DAT_INF.DBNodes, (void*)(dn->SpecPath), (void*)dn);
 	    }
 
@@ -1843,6 +1914,35 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
     }
 
 
+/*** dat_internal_FindLastRow() - locates the last row in the file and determines
+ *** its row ID, setting that value in node->nRows.  Returns -1 on error, 0 on
+ *** success.
+ ***/
+int
+dat_internal_FindLastRow(pDatData context, pDatNode node)
+    {
+    pDatRowInfo ri;
+
+	/** Already known? **/
+	if (node->nRows >= 0) return 0;
+
+	/** Try to do a GetRow on the highest possible row id.  This will
+	 ** force a scan of the entire datafile.
+	 **/
+	ri = dat_internal_GetRow(context,node, DAT_MAXROWID);
+	if (ri)
+	    {
+	    /** this is an unusual case **/
+	    node->nRows = DAT_MAXROWID+1;
+	    dat_internal_ReleaseRow(ri);
+	    return 0;
+	    }
+	node->nRows = node->RealMaxRowID + 1;
+
+    return 0;
+    }
+
+
 /*** datOpen - open a table, row, or column.
  ***/
 void*
@@ -1867,7 +1967,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    }
 
 	/** Access the DB node. **/
-	inf->Node = dat_internal_OpenNode(obj, obj_internal_PathPart(obj->Pathname,0,obj->SubPtr), obj->Mode,inf->Type == DAT_T_FILESPEC,mask);
+	inf->Node = dat_internal_OpenNode(inf, obj, obj_internal_PathPart(obj->Pathname,0,obj->SubPtr), obj->Mode,inf->Type == DAT_T_FILESPEC,mask);
 	obj_internal_PathPart(obj->Pathname,0,0);
 	if (!(inf->Node))
 	    {
@@ -1883,7 +1983,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (inf->Type == DAT_T_TABLE && (inf->Node->Flags & DAT_NODE_F_HDRROW))
 	    {
 	    inf->RowID = -1;
-	    inf->Row = dat_internal_GetRow(inf->Node, inf->RowID);
+	    inf->Row = dat_internal_GetRow(inf,inf->Node, inf->RowID);
 	    if (inf->Row)
 	        {
 		inf->Flags |= DAT_F_ROWPRESENT;
@@ -1900,8 +2000,20 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    if (inf->Node->Flags & DAT_NODE_F_ROWIDKEY)
 	        {
-		inf->RowID = strtol(inf->RowColPtr,NULL,10);
-		inf->Row = dat_internal_GetRow(inf->Node, inf->RowID);
+		/** Auto name/key generation? **/
+		if (inf->Obj->Mode & OBJ_O_AUTONAME)
+		    {
+		    dat_internal_FindLastRow(inf, inf->Node);
+		    syGetSem(inf->Node->InsertSem, 1, 0);
+		    inf->Flags |= DAT_F_HOLDINSERTSEM;
+		    snprintf(inf->AutoName, 256, "%d", inf->Node->nRows);
+		    inf->RowID = inf->Node->nRows;
+		    }
+		else
+		    {
+		    inf->RowID = strtol(inf->RowColPtr,NULL,10);
+		    }
+		inf->Row = dat_internal_GetRow(inf,inf->Node, inf->RowID);
 		if (inf->Row && inf->Row->Flags & DAT_R_F_DELETED)
 		    {
 		    dat_internal_ReleaseRow(inf->Row);
@@ -1917,7 +2029,7 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		    }
 		else if (inf->Row && (obj->Mode & O_CREAT) && (obj->Mode & O_EXCL))
 		    {
-		    mssError(0,"DAT","Create: Row id '%s' already exists", inf->RowColPtr);
+		    mssError(1,"DAT","Create: Row id '%s' already exists", inf->RowColPtr);
 		    dat_internal_ReleaseRow(inf->Row);
 	    	    if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
 	    	    inf->Pathname.OpenCtlBuf = NULL;
@@ -1955,18 +2067,17 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
  *** to remove deleted space the Compact method should be executed.
  ***/
 int
-dat_internal_InsertRow(pDatNode node, unsigned char* rowdata)
+dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
     {
-    int rowid;
     int curpg;
-    int offset;
+    int rowid;
     pDatRowInfo ri;
-    pDatPage pg,tmppg;
+    pDatPage pg;
     unsigned char* ptr;
-    unsigned char* endptr;
     int is_missing_nl = 0;
     int len,i;
     int n_pages;
+    unsigned char ch;
 
     	/** Hmm... is row too big? **/
 	len = strlen(rowdata) + 1;
@@ -1976,86 +2087,53 @@ dat_internal_InsertRow(pDatNode node, unsigned char* rowdata)
 	    return -1;
 	    }
 
-    	/** Ugh - have to find the rowid and pageid of the end of the file.  Sigh. **/
-	rowid = node->RealMaxRowID-1;
-	if (rowid < 0) rowid = 0;
-	ri = dat_internal_GetRow(node,rowid);
-	if (!ri) 
+	/** Get the insert semaphore? **/
+	if (!(context->Flags & DAT_F_HOLDINSERTSEM)) syGetSem(node->InsertSem, 1, 0);
+
+	/** Make sure we have scanned the entire file **/
+	if (dat_internal_FindLastRow(context,node) < 0)
 	    {
-	    if (rowid != 0)
-	        {
-		mssError(0,"DAT","Bark!  Could not insert row -- internal error");
-		return -1;
+	    if (!(context->Flags & DAT_F_HOLDINSERTSEM)) syPostSem(node->InsertSem, 1, 0);
+	    return -1;
+	    }
+	rowid = node->nRows;
+	ri = NULL;
+	if (node->nRows)
+	    {
+	    ri = dat_internal_GetRow(context,node, node->nRows - 1);
+	    curpg = ri->StartPageID + ri->nPages - 1;
+	    pg = ri->Pages[ri->nPages-1];
+	    if (pg->Length == 0)
+		{
+		is_missing_nl = 1;
 		}
-	    pg = dat_internal_NewPage(node, 0);
-	    if (!pg)
-	        {
-		mssError(1,"DAT","Could not create page 0");
-		return -1;
+	    else
+		{
+		ch = pg->Data[pg->Length-1];
+		if (ch != '\n' && ch != 0x01)
+		    is_missing_nl = 1;
+		else
+		    is_missing_nl = 0;
 		}
-	    rowid = -1;
+	    if (pg->Length == DAT_CACHE_PAGESIZE)
+		curpg++;
+	    }
+	if (!ri)
+	    {
+	    is_missing_nl = 0;
 	    curpg = 0;
-	    offset=0;
 	    }
 	else
 	    {
-	    curpg = ri->StartPageID + ri->nPages - 1;
-	    offset = ri->Offset;
-	    while(offset >= DAT_CACHE_PAGESIZE) offset -= DAT_CACHE_PAGESIZE;
 	    dat_internal_ReleaseRow(ri);
-	    pg = dat_internal_ReadPage(node, curpg);
 	    }
-
-	/** Got the nearest-the-end-page-we-could-find.  Scan until end of file. **/
-	ptr = pg->Data + offset + 1;
-	if (rowid != -1) while(1)
+	pg = dat_internal_ReadPage(context, node, curpg);
+	if (!pg) pg = dat_internal_NewPage(context, node, curpg);
+	if (!pg)
 	    {
-	    endptr = ptr;
-	    while(endptr < pg->Data + pg->Length && *endptr != 1 && *endptr != '\n') endptr++;
-	    if (endptr == pg->Data + pg->Length)
-	        {
-		/** End of page -- get next page; if last page we've found the end. **/
-		dat_internal_UnlockPage(pg);
-		curpg++;
-		pg = dat_internal_ReadPage(node, curpg);
-		if (!pg) 
-		    {
-		    curpg--;
-		    pg = dat_internal_ReadPage(node, curpg);
-		    is_missing_nl = 1;
-		    break;
-		    }
-		ptr = pg->Data;
-		}
-	    else
-	        {
-		/** End of row - increment row counter and check for end of file **/
-		if (endptr == pg->Data + pg->Length - 1)
-		    {
-		    /** At end of page?  Careful -- don't incr row if also end-of-file. **/
-		    tmppg = dat_internal_ReadPage(node,curpg + 1);
-		    if (!tmppg)
-		        {
-			/** Ah - end of file too!  Leave things alone.  We're done. **/
-			is_missing_nl = 0;
-			break;
-			}
-		    else
-		        {
-			/** Not end of file.  Prepare for scan of next page. **/
-			dat_internal_UnlockPage(pg);
-			pg = tmppg;
-			curpg++;
-			ptr = pg->Data;
-			}
-		    }
-		else
-		    {
-		    /** Not end of page -- skip the newline/ctrl-a. **/
-		    ptr = endptr + 1;
-		    }
-		rowid++;
-		}
+	    if (!(context->Flags & DAT_F_HOLDINSERTSEM)) syPostSem(node->InsertSem, 1, 0);
+	    mssError(1,"DAT","Bark!  Internal error inserting row");
+	    return -1;
 	    }
 
 	/** Ok, found last record in the file.  How many more pages do we need? **/
@@ -2069,12 +2147,13 @@ dat_internal_InsertRow(pDatNode node, unsigned char* rowdata)
 	ri->Offset = pg->Length + (is_missing_nl?1:0);
 	for(i=1;i<=n_pages;i++) 
 	    {
-	    ri->Pages[i] = dat_internal_NewPage(node, curpg + i);
+	    ri->Pages[i] = dat_internal_NewPage(context, node, curpg + i);
 	    if (!ri->Pages[i])
 	        {
 		mssError(1,"DAT","Internal error - could not allocate pages for new row");
 		ri->nPages = i;
 		dat_internal_ReleaseRow(ri);
+		if (!(context->Flags & DAT_F_HOLDINSERTSEM)) syPostSem(node->InsertSem, 1, 0);
 		return -1;
 		}
 	    }
@@ -2106,11 +2185,15 @@ dat_internal_InsertRow(pDatNode node, unsigned char* rowdata)
 	/** Add trailing newline, and adjust end page length. **/
 	*(ptr++) = '\n';
 	ri->Pages[curpg]->Length = (ptr - ri->Pages[curpg]->Data);
+	ri->Pages[curpg]->Flags |= DAT_CACHE_F_DIRTY;
 
 	/** Write the data back. **/
-	for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-	dat_internal_FlushPages(ri->Pages[0]);
+	for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[i]);
+	dat_internal_FlushPages(context,ri->Pages[0]); /* unlocks it too */
+	dat_internal_UpdateRowIDPtrCache(node,ri,rowid);
 	nmFree(ri,sizeof(DatRowInfo));
+	node->nRows++;
+	if (!(context->Flags & DAT_F_HOLDINSERTSEM)) syPostSem(node->InsertSem, 1, 0);
 
     return 0;
     }
@@ -2145,9 +2228,10 @@ datClose(void* inf_v, pObjTrxTree* oxt)
 	    	        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
 	    	        inf->Pathname.OpenCtlBuf = NULL;
 			nmFree(inf,sizeof(DatData));
+			if (inf->Flags & DAT_F_HOLDINSERTSEM) syPostSem(inf->Node->InsertSem, 1, 0);
 			return -1;
 			}
-		    if (dat_internal_InsertRow(inf->Node, insbuf) < 0)
+		    if (dat_internal_InsertRow(inf, inf->Node, insbuf) < 0)
 		        {
 			/** FAIL the oxt. **/
 			(*oxt)->Status = OXT_S_FAILED;
@@ -2157,6 +2241,7 @@ datClose(void* inf_v, pObjTrxTree* oxt)
 	    	        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
 	    	        inf->Pathname.OpenCtlBuf = NULL;
 			nmFree(inf,sizeof(DatData));
+			if (inf->Flags & DAT_F_HOLDINSERTSEM) syPostSem(inf->Node->InsertSem, 1, 0);
 			return -1;
 			}
 
@@ -2174,9 +2259,14 @@ datClose(void* inf_v, pObjTrxTree* oxt)
 	/** Release the row descriptor, if one **/
 	if (inf->Row) dat_internal_ReleaseRow(inf->Row);
 
+	/** Close out the 'other' object as well... **/
+	if (inf->SpecObj != NULL) objClose(inf->SpecObj);
+	if (inf->DataObj != NULL) objClose(inf->DataObj);
+
 	/** Free the info structure **/
         if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
         inf->Pathname.OpenCtlBuf = NULL;
+	if (inf->Flags & DAT_F_HOLDINSERTSEM) syPostSem(inf->Node->InsertSem, 1, 0);
 	nmFree(inf,sizeof(DatData));
 
     return 0;
@@ -2232,7 +2322,7 @@ datDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Access the DB node. **/
-	inf->Node = dat_internal_OpenNode(obj, obj_internal_PathPart(obj->Pathname,0,obj->SubPtr),obj->Mode,inf->Type == DAT_T_FILESPEC,0600);
+	inf->Node = dat_internal_OpenNode(inf, obj, obj_internal_PathPart(obj->Pathname,0,obj->SubPtr),obj->Mode,inf->Type == DAT_T_FILESPEC,0600);
 	obj_internal_PathPart(obj->Pathname,0,0);
 	if (!(inf->Node))
 	    {
@@ -2245,7 +2335,7 @@ datDelete(pObject obj, pObjTrxTree* oxt)
 
 	/** Get the rowid and fetch the row **/
 	inf->RowID = strtol(inf->RowColPtr,NULL,10);
-	inf->Row = dat_internal_GetRow(inf->Node, inf->RowID);
+	inf->Row = dat_internal_GetRow(inf,inf->Node, inf->RowID);
 	if (inf->Row && inf->Row->Flags & DAT_R_F_DELETED)
 	    {
 	    dat_internal_ReleaseRow(inf->Row);
@@ -2278,7 +2368,7 @@ datDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 	*dstptr = 1;
 	for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-	dat_internal_FlushPages(ri->Pages[0]);
+	dat_internal_FlushPages(inf,ri->Pages[0]);
 	nmFree(ri,sizeof(DatRowInfo));
 
 	/** Free the structure **/
@@ -2396,7 +2486,7 @@ datOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		qy->RowID = 0;
 
 		/** Find some temporary row 0 start information. **/
-		ri = dat_internal_GetRow(inf->Node, 0);
+		ri = dat_internal_GetRow(inf,inf->Node, 0);
 		if (ri)
 		    {
 		    qy->Row.StartPageID = ri->StartPageID;
@@ -2448,6 +2538,16 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->TData = tdata;
 	inf->Node = qy->ObjInf->Node;
 	inf->Pathname.OpenCtlBuf = NULL;
+	if (qy->ObjInf->DataObj)
+	    {
+	    inf->DataObj = qy->ObjInf->DataObj;
+	    objLinkTo(inf->DataObj);
+	    }
+	if (qy->ObjInf->SpecObj)
+	    {
+	    inf->SpecObj = qy->ObjInf->SpecObj;
+	    objLinkTo(inf->SpecObj);
+	    }
 
     	/** Get the next name based on the query type. **/
 	switch(qy->ObjInf->Type)
@@ -2494,7 +2594,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			page++;
 			new_offset -= DAT_CACHE_PAGESIZE;
 			}
-		    qy->Row.Pages[0] = dat_internal_ReadPage(inf->Node, page);
+		    qy->Row.Pages[0] = dat_internal_ReadPage(qy->ObjInf, qy->ObjInf->Node, page);
 		    if (!qy->Row.Pages[0]) 
 		        {
         	        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
@@ -2582,7 +2682,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 				return NULL;
 				}
 			    new_offset = 0;
-			    qy->Row.Pages[page] = dat_internal_ReadPage(inf->Node, qy->Row.StartPageID + page);
+			    qy->Row.Pages[page] = dat_internal_ReadPage(qy->ObjInf, qy->ObjInf->Node, qy->Row.StartPageID + page);
 			    if (!qy->Row.Pages[page]) 
 			        {
 			        len--;
@@ -2610,7 +2710,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		else
 		    {
 		    for(i=0;i<qy->Row.nPages;i++) 
-		        qy->Row.Pages[i] = dat_internal_ReadPage(inf->Node, qy->Row.StartPageID + i);
+		        qy->Row.Pages[i] = dat_internal_ReadPage(inf, inf->Node, qy->Row.StartPageID + i);
 		    }
 
 		/** Parse the row contents and release the pages. **/
@@ -2758,14 +2858,21 @@ datGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"DAT","Type mismatch accessing attribute 'name' (must be a string)");
 		return -1;
 		}
-	    ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
-	    if (ptr[0] == '.' && ptr[1] == '\0')
-	        {
-	        val->String = "/";
+	    if ((inf->Obj->Mode & OBJ_O_AUTONAME) && (inf->Node->Flags & DAT_NODE_F_ROWIDKEY))
+		{
+		val->String = inf->AutoName;
 		}
 	    else
-	        {
-	        val->String = ptr;
+		{
+		ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
+		if (ptr[0] == '.' && ptr[1] == '\0')
+		    {
+		    val->String = "/";
+		    }
+		else
+		    {
+		    val->String = ptr;
+		    }
 		}
 	    return 0;
 	    }
@@ -3023,7 +3130,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    if (!node_inf) node_inf = stAddAttr(inf->Node->Node->Data,"annotation");
 		    stSetAttrValue(node_inf, DATA_T_STRING, val, 0);
 		    inf->Node->Node->Status = SN_NS_DIRTY;
-		    snWriteNode(inf->Node->SpecObj->Prev, inf->Node->Node);
+		    snWriteNode(inf->SpecObj, inf->Node->Node);
 		    return 0;
 
 		case DAT_T_ROWSOBJ:
@@ -3091,7 +3198,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		len = strlen(ptr);
 
 		/** Get the row pages from the page cache. **/
-		ri = dat_internal_GetRow(inf->Node, inf->RowID);
+		ri = dat_internal_GetRow(inf,inf->Node, inf->RowID);
 		if (!ri)
 		    {
 		    nmFree(ptr, DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1));
@@ -3118,7 +3225,7 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 			}
 		    while(*dstptr != '\n') *(dstptr++) = ' ';
 		    for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-		    dat_internal_FlushPages(ri->Pages[0]);
+		    dat_internal_FlushPages(inf,ri->Pages[0]);
 		    nmFree(ri,sizeof(DatRowInfo));
 		    }
 		else
@@ -3140,11 +3247,11 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 			}
 		    *dstptr = 1;
 		    for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-		    dat_internal_FlushPages(ri->Pages[0]);
+		    dat_internal_FlushPages(inf,ri->Pages[0]);
 		    nmFree(ri,sizeof(DatRowInfo));
 
 		    /** Insert new row. **/
-		    inf->RowID = dat_internal_InsertRow(inf->Node, ptr);
+		    inf->RowID = dat_internal_InsertRow(inf, inf->Node, ptr);
 		    }
 
 		/** Release the RAM used by the newly generated row data **/

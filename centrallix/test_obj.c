@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.26 2003/04/04 05:02:44 gbeeley Exp $
+    $Id: test_obj.c,v 1.27 2003/04/25 04:09:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.27  2003/04/25 04:09:29  gbeeley
+    Adding insert and autokeying support to OSML and to CSV datafile
+    driver on a limited basis (in rowidkey mode only, which is the only
+    mode currently supported by the csv driver).
+
     Revision 1.26  2003/04/04 05:02:44  gbeeley
     Added more flags to objInfo dealing with content and seekability.
     Added objInfo capability to objdrv_struct.
@@ -1024,12 +1029,20 @@ start(void* v)
 		    printf("create: must specify object.\n");
 		    continue;
 		    }
-		obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, "system/object");
+		if (!strcmp(ptr,"*"))
+		    obj = objOpen(s, ptr, O_RDWR | O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		else
+		    obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, "system/object");
 		if (!obj)
 		    {
 		    printf("create: could not create object.\n");
 		    mssPrintError(StdOut);
 		    continue;
+		    }
+		if (!strcmp(ptr,"*"))
+		    {
+		    objGetAttrValue(obj, "name", DATA_T_STRING, POD(&stringval));
+		    printf("New object name is '%s'\n", stringval);
 		    }
 		puts("Enter attributes, blank line to end.");
 		rl_bind_key ('\t', rl_insert_text);

@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.9 2003/04/25 02:43:28 gbeeley Exp $
+    $Id: obj_object.c,v 1.10 2003/04/25 04:09:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.10  2003/04/25 04:09:29  gbeeley
+    Adding insert and autokeying support to OSML and to CSV datafile
+    driver on a limited basis (in rowidkey mode only, which is the only
+    mode currently supported by the csv driver).
+
     Revision 1.9  2003/04/25 02:43:28  gbeeley
     Fixed some object open nuances with node object caching where a cached
     object might be open readonly but we would need read/write.  Added a
@@ -347,6 +352,8 @@ obj_internal_AllocObj()
 	this->Data = NULL;
 	this->Type = NULL;
 	memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
+	xaInit(&(this->Attrs),16);
+
 
     return this;
     }
@@ -374,6 +381,7 @@ obj_internal_FreeObj(pObject this)
 	        {
 	        pathinfo = del->Pathname;
 	        if (del->Data) del->Driver->Close(del->Data,&(s->Trx));
+		xaDeInit(&(del->Attrs));
 	        nmFree(del,sizeof(Object));
 	    
 	        /** Release the pathname data.  Do it in the loop because we **/
@@ -683,6 +691,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	        mssError(0,"OSML","Object '%s' access failed - driver open failed", this->Pathname->Pathbuf+1);
 	        obj_internal_FreeObj(this);
 		return NULL;
+		}
+
+	    /** Modify the object mode if not end of path **/
+	    if (this->SubPtr + this->SubCnt < this->Pathname->nElements) 
+		{
+		this->Mode &= ~(OBJ_O_CREAT | OBJ_O_EXCL);
 		}
 	    }
 
@@ -1166,6 +1180,8 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 		mssError(1,"OSML","When creating an object using autokeying, name must be '*'");
 		return NULL;
 		}
+	    /** These are inherent with autoname **/
+	    mode |= (OBJ_O_CREAT | OBJ_O_EXCL);
 	    }
 
 	/** Lookup the path, etc. **/
@@ -1184,9 +1200,6 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	    obj_internal_FreeObj(this);
 	    return NULL;
 	    }*/
-
-	/** Setup the structure **/
-	xaInit(&(this->Attrs),16);
 
 	/** Add to open objects this session. **/
 	xaAddItem(&(session->OpenObjects),(void*)this);
@@ -1228,7 +1241,6 @@ objClose(pObject this)
 	        nmFree(this->ContentPtr, sizeof(XString));
 	        this->ContentPtr = NULL;
 	        }
-	    xaDeInit(&(this->Attrs));
 	    }
 	obj_internal_FreeObj(this);
 

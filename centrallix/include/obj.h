@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.18 2003/04/25 02:43:27 gbeeley Exp $
+    $Id: obj.h,v 1.19 2003/04/25 04:09:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.19  2003/04/25 04:09:28  gbeeley
+    Adding insert and autokeying support to OSML and to CSV datafile
+    driver on a limited basis (in rowidkey mode only, which is the only
+    mode currently supported by the csv driver).
+
     Revision 1.18  2003/04/25 02:43:27  gbeeley
     Fixed some object open nuances with node object caching where a cached
     object might be open readonly but we would need read/write.  Added a
@@ -421,8 +426,8 @@ typedef struct _OF
     pPathname	Pathname;	/* Pathname of this object */
     short 	SubPtr;		/* First component of path handled by this driver */
     short 	SubCnt;		/* Number of path components used by this driver */
-    short	Mode;		/* Mode: O_RDONLY / O_CREAT / etc */
     short	Flags;		/* OBJ_F_xxx, see below */
+    int		Mode;		/* Mode: O_RDONLY / O_CREAT / etc */
     pContentType Type;
     pObjSession	Session;
     int		LinkCnt;	/* Don't _really_ close until --LinkCnt == 0 */
