@@ -1,5 +1,26 @@
 Centrallix Release Notes
 -------------------------------------------------------------------------------
+Version 0.7.2, 20-Jun-2002 
+
+This is an interim development release of Centrallix.  See the release notes
+below for 0.7.1 and 0.7.0; generally they still apply.  A few notes and
+clarifications though.
+
+1.  Be sure to download AT LEAST the centrallix, centrallix-lib, and
+    centrallix-os packages.  The system will be nonfunctional without at least
+    those three packages.
+
+2.  Autoconf detects many of the settings that had to be configured manuallly
+    previously including Sybase support and the different versions of 
+    Readline.
+
+3.  This version should not be considered secure enough to run on a computer
+    that can be accessed by a non-trusted network (i.e. the Internet).  It
+    has not undergone a security audit yet.  Before running Centrallix, please
+    be sure that your computer cannot be accessed by untrusted networks.
+
+
+-------------------------------------------------------------------------------
 Version 0.7.1, 17-Oct-2001
 
 This is an interim development release of Centrallix.  See the release notes 

@@ -26,6 +26,8 @@ Centrallix ChangeLog
 	    form and object source widgets which allow communication with the
 	    Centrallix server from the client.  Many other widgets have been
 	    created and/or updated in this release, too many to name here.
+	7.  Added autoconf support to detect settings and configure the 
+	    Makefile automatically.
 
 
 -------------------------------------------------------------------------------
