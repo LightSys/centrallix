@@ -1,7 +1,8 @@
 This software is made available under the GNU General Public
-License, version 2.  A copy is included in this distribution.
+License, version 2.  A copy is included in this distribution
+in the file "COPYING".
 
-Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+Copyright (C) 1998-2002 LightSys Technology Services, Inc.
 
 You may download the source to this software at:
 
@@ -11,3 +12,17 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
+
+We also must point out that due to the content of the generated
+DHTML output of this program (it contains extensive javascript
+directly from the source of Centrallix itself), that output
+MUST be considered a "work based on the program" in compliance
+with the GNU General Public License, and is thus covered by that
+license.  That output is already in "source" format when emitted
+by Centrallix.  Copying, modification, redistribution, etc., of
+that output (including DHTML, embedded javascript, etc.) is 
+covered under the conditions of the GPL.
+
+Any normal .app file, however, you wholly create yourself is
+obviously under your own copyright, and you may distribute (or
+not distribute) such files in any manner you please.
