@@ -65,10 +65,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.17 2003/04/03 00:42:06 nehresma Exp $
+    $Id: net_nfs.c,v 1.18 2003/04/03 07:41:00 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.18  2003/04/03 07:41:00  jorupp
+     * (usually) mountable and (mostly) readable nfs exports
+       - only a _bare_ minimum of features are implimented
+
     Revision 1.17  2003/04/03 00:42:06  nehresma
     changed the open object cache to work with fhandles instead of ints
 
@@ -501,7 +505,7 @@ nnfs_internal_get_path(dirpath *path, const fhandle fh)
     result = xhLookup(NNFS.fhToPath, (char*)fh);
     if (!result)
 	return -1;
-    path=&result;
+    *path=result;
     return 0;
     }
 
@@ -692,8 +696,78 @@ void* nnfs_internal_nfsproc_root(void* param)
 diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     {
     diropres* retval = NULL;
+    dirpath parentPath;
+    XString path;
+    pObject obj;
+    pObjectInfo info;
+    int isdir=0; /** assume it is a file until told otherwise **/
     retval = (diropres*)nmMalloc(sizeof(diropres));
-    /** do work here **/
+    memset(retval,0,sizeof(diropres));
+
+    xsInit(&path);
+
+    /** get path for parent directory **/
+    if(nnfs_internal_get_path(&parentPath,param->dir)<0)
+	{
+	retval->status = NFSERR_NOENT;
+	return retval;
+	}
+
+    xsCopy(&path,parentPath,-1);
+    if(*(xsStringEnd(&path)-1)!='/')
+	xsConcatenate(&path,"/",-1);
+    xsConcatenate(&path,param->name,-1);
+
+    if(nnfs_internal_get_fhandle(retval->diropres_u.diropok.file,path.String)<0)
+	{
+	retval->status = NFSERR_NOENT;
+	return retval;
+	}
+
+    printf("got fhandle\n");
+
+    obj = nnfs_internal_open_inode(retval->diropres_u.diropok.file);
+    if(!obj)
+	{
+	retval->status = NFSERR_NOENT;
+	return retval;
+	}
+
+    info = objInfo(obj);
+    if(info)
+	{
+	/** it is a directory unless it can't have subobjects **/
+	if(!(info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ))
+	    isdir = 1;
+	//nmFree(info,sizeof(ObjectInfo));
+	}
+
+    retval->status = NFS_OK;
+    if(isdir)
+	{
+	retval->diropres_u.diropok.attributes.type = NFDIR;
+	retval->diropres_u.diropok.attributes.mode = 040777;
+	}
+    else
+	{
+	retval->diropres_u.diropok.attributes.type = NFREG;
+	retval->diropres_u.diropok.attributes.mode = 0100777;
+	}
+    retval->diropres_u.diropok.attributes.nlink = 1;
+    retval->diropres_u.diropok.attributes.uid = 0;
+    retval->diropres_u.diropok.attributes.gid = 0;
+    retval->diropres_u.diropok.attributes.size = 0;
+    retval->diropres_u.diropok.attributes.blocksize = 0;
+    retval->diropres_u.diropok.attributes.rdev = 0;
+    retval->diropres_u.diropok.attributes.blocks = 0;
+    retval->diropres_u.diropok.attributes.fsid = 0;
+    retval->diropres_u.diropok.attributes.fileid = 0;
+    retval->diropres_u.diropok.attributes.atime.seconds = 0;
+    retval->diropres_u.diropok.attributes.atime.useconds = 0;
+    retval->diropres_u.diropok.attributes.ctime.seconds = 0;
+    retval->diropres_u.diropok.attributes.ctime.useconds = 0;
+    retval->diropres_u.diropok.attributes.mtime.seconds = 0;
+    retval->diropres_u.diropok.attributes.mtime.useconds = 0;
     
     return retval;
     }
@@ -799,8 +873,106 @@ nfsstat* nnfs_internal_nfsproc_rmdir(diropargs* param)
 readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     {
     readdirres* retval = NULL;
+    pObject obj;
+    pObjQuery qy;
+    pObject childObj;
+    entry *firstEntry=NULL;
+    entry *lastEntry=NULL;
+    entry *thisEntry=NULL;
+    int cookie;
+    dirpath currentPath=NULL;
+    XString childPath;
     retval = (readdirres*)nmMalloc(sizeof(readdirres));
-    /** do work here **/
+
+    memset(retval,0,sizeof(readdirres));
+
+    /** cookies are much easier to process as ints **/
+    if(COOKIESIZE != sizeof(int))
+	{
+	retval->status = NFSERR_NXIO;
+	return retval;
+	}
+    cookie = *(int*)param->cookie;
+
+    /** get path for passed fhandle **/
+    if(nnfs_internal_get_path(&currentPath,param->dir)<0)
+	{
+	retval->status = NFSERR_NOENT;
+	return retval;
+	}
+
+    printf("got path: %s\n",currentPath);
+
+    /** partial directory listings not implimented **/
+    if(cookie!=0)
+	{
+	mssError(0,"NNFS","partial directory listings not implimented");
+	retval->status = NFSERR_NXIO;
+	return retval;
+	}
+
+    obj = nnfs_internal_open_inode(param->dir);
+    if(!obj)
+	{
+	retval->status = NFSERR_NOENT;
+	return retval;
+	}
+    
+    qy = objOpenQuery(obj, "", NULL, NULL, NULL);
+    if(!qy)
+	{
+	retval->status = NFSERR_NOTDIR;
+	return retval;
+	}
+
+    retval->status = NFS_OK;
+    retval->readdirres_u.readdirok.eof = TRUE;
+
+    xsInit(&childPath);
+    while( (childObj = objQueryFetch(qy,O_RDONLY)) )
+	{
+	char *name;
+	if(objGetAttrValue(childObj,"name",DATA_T_STRING,POD(&name))==0)
+	    {
+	    fhandle newFhandle;
+
+	    xsCopy(&childPath,currentPath,-1);
+	    if(*(xsStringEnd(&childPath)-1)!='/')
+		xsConcatenate(&childPath,"/",-1);
+	    xsConcatenate(&childPath,name,-1);
+
+	    printf("new file: %s\n",childPath.String);
+
+	    if(nnfs_internal_get_fhandle(newFhandle,childPath.String)==0)
+		{
+		thisEntry = (entry*)malloc(sizeof(entry));
+		printf("entry: %p\n",thisEntry);
+		thisEntry->fileid = *(int*)newFhandle;
+		thisEntry->name = strdup(name);
+
+		printf("name: %p: %s\n",thisEntry->name,thisEntry->name);
+
+		*(int*)(thisEntry->cookie) = *(int*)newFhandle;
+
+		if(!firstEntry)
+		    {
+		    firstEntry = thisEntry;
+		    }
+		else
+		    {
+		    lastEntry->nextentry = thisEntry;
+		    }
+
+		lastEntry = thisEntry;
+		}
+	    }
+	objClose(childObj);
+	}
+    retval->readdirres_u.readdirok.entries=firstEntry;
+
+    xsDeInit(&childPath);
+
+
     
     return retval;
     }
@@ -893,6 +1065,31 @@ nnfs_internal_create_inode_map()
     fdClose(inFile,0);
     }
 
+/***
+**** nnfs_internal_debug_inode_map
+***/
+void
+nnfs_internal_debug_inode_map()
+    {
+    int i;
+
+    printf("\n");
+    printf("net_nfs filehandle dump:\n");
+    printf("==============================================\n");
+    printf("nextFileHandle: %i\n",NNFS.nextFileHandle);
+
+    for(i=0;i<NNFS.fhToPath->nRows;i++)
+	{
+	pXHashEntry ptr;
+	ptr = (pXHashEntry)xaGetItem(&(NNFS.fhToPath->Rows),i);
+	while(ptr)
+	    {
+	    printf("%i == %s\n",(int)ptr->Key,(char*)ptr->Data);
+	    ptr=ptr->Next;
+	    }
+	}
+    printf("\n");
+    }
 
 /***
 **** nnfs_internal_dump_inode_map
@@ -1261,13 +1458,13 @@ nnfs_internal_nfs_listener(void* v)
 				    }
 				else
 				    {
-				    mssError(0,"NNFS","Bad mountd procedure requested: %i\n",msg_in.rm_call.cb_proc);
+				    mssError(0,"NNFS","Bad mountd procedure requested: %i",msg_in.rm_call.cb_proc);
 				    msg_out.rm_reply.rp_acpt.ar_stat = PROC_UNAVAIL;
 				    }
 				}
 			    else
 				{
-				mssError(0,"NNFS","Invalid mount version requested: %i\n",msg_in.rm_call.cb_vers);
+				mssError(0,"NNFS","Invalid mount version requested: %i",msg_in.rm_call.cb_vers);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 				msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 				msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -1275,13 +1472,13 @@ nnfs_internal_nfs_listener(void* v)
 			    }
 			else
 			    {
-			    mssError(0,"NNFS","Invalid program requested: %i\n",msg_in.rm_call.cb_prog);
+			    mssError(0,"NNFS","Invalid program requested: %i",msg_in.rm_call.cb_prog);
 			    msg_out.rm_reply.rp_acpt.ar_stat = PROG_UNAVAIL;
 			    }
 			}
 		    else
 			{
-			mssError(0,"Invalid RPC version requested: %i\n",msg_in.rm_call.cb_rpcvers);
+			mssError(0,"Invalid RPC version requested: %i",msg_in.rm_call.cb_rpcvers);
 			msg_out.rm_reply.rp_stat = MSG_DENIED;
 			msg_out.rm_reply.rp_rjct.rj_vers.low = 2;
 			msg_out.rm_reply.rp_rjct.rj_vers.high = 2;
@@ -1450,6 +1647,8 @@ nnfs_internal_mount_listener(void* v)
 	    printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
 	    xdrmem_create(&xdr_in,buf,i,XDR_DECODE);
 	    xdrmem_create(&xdr_out,outbuf,MAX_PACKET_SIZE,XDR_ENCODE);
+	    nnfs_internal_dump_buffer(buf,i);
+	    /** next line crashes quite often -- need to debug this... **/
 	    if(!xdr_callmsg(&xdr_in,&msg_in))
 		{
 		mssError(0,"NNFS","unable to retrieve message");
@@ -1820,6 +2019,6 @@ nnfsInitialize()
 MODULE_INIT(nnfsInitialize);
 MODULE_PREFIX("nnfs");
 MODULE_DESC("NFS Network Driver");
-MODULE_VERSION(0,1,0);
+MODULE_VERSION(0,1,1);
 MODULE_IFACE(CX_CURRENT_IFACE);
 
