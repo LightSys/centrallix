@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.18 2003/04/03 07:41:00 jorupp Exp $
+    $Id: net_nfs.c,v 1.19 2003/04/16 01:58:48 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.19  2003/04/16 01:58:48  jorupp
+     * _basic_ read support, and support for fetching file sizes (VERY slow)
+
     Revision 1.18  2003/04/03 07:41:00  jorupp
      * (usually) mountable and (mostly) readable nfs exports
        - only a _bare_ minimum of features are implimented
@@ -171,43 +174,54 @@
  **END-CVSDATA***********************************************************/
 
 #define MAX_PACKET_SIZE 16384
+#define BLOCK_SIZE 512
 
 typedef unsigned int inode;
 
 typedef struct
     {
+    CXSEC_DS_BEGIN;
     struct sockaddr_in source;
     int xid;
     int procedure;
     int user;
     void *param;
+    CXSEC_DS_END;
     } QueueEntry, *pQueueEntry;
 
 typedef struct
     {
+    CXSEC_DS_BEGIN;
     inode lockedInode;
     XRingQueue waitingRequests;
     pThread thread;
+    CXSEC_DS_END;
     } ThreadInfo, *pThreadInfo;
 
 /** definition for the exports listed in the config file **/
 typedef struct
     {
+    CXSEC_DS_BEGIN;
     char *path;
+    CXSEC_DS_END;
     /** other things such as hosts, flags, etc. go here eventually **/
     } Exports, *pExports;
 
 typedef struct
     {
+    CXSEC_DS_BEGIN;
     char *host;
     char *path;
+    CXSEC_DS_END;
     } Mount, *pMount;
 
 typedef struct
     {
+    CXSEC_DS_BEGIN;
     pObject obj;
     struct timeval lastused;
     int inode;
+    CXSEC_DS_END;
     } ObjectUse, *pObjectUse;
 
 #include "xarray.h"
@@ -216,6 +230,7 @@ typedef struct
 /*** GLOBALS ***/
 struct 
     {
+    CXSEC_DS_BEGIN;
     int numThreads;
     int queueSize;
     XRingQueue queue;
@@ -230,6 +245,7 @@ struct
     pXArray openObjects;
     pObjSession objSess;
     pThreadInfo threads;
+    CXSEC_DS_END;
     }
     NNFS;
 
@@ -274,7 +290,7 @@ void* nnfs_internal_mountproc_umntall(void*);
 exportlist* nnfs_internal_mountproc_export(void*);
 
 /** the program information for mountd **/
-struct rpc_struct mount_program[] = 
+const struct rpc_struct mount_program[] = 
     {
 	{
 	(rpc_func)nnfs_internal_mountproc_null,
@@ -314,7 +330,7 @@ struct rpc_struct mount_program[] =
     };
 
 /** the number of procedures in mount**/
-int num_mount_procs = sizeof(mount_program)/sizeof(struct rpc_struct);
+const int num_mount_procs = sizeof(mount_program)/sizeof(struct rpc_struct);
 
 /** function prototypes for the nfs program **/
 void* nnfs_internal_nfsproc_null(void*);
@@ -338,7 +354,7 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle*);
 
 // :'<,'>s/\(.*\)\* \(.*\)(\(.*\)\*);/^I{^M^I(rpc_func) \2,^M^I(xdrproc_t) xdr_\1, sizeof(\1),^M^I(xdrproc_t) xdr_\3, sizeof(\3),^M^I}^M    ,
 /** the program information for nfs (made with the above vim command from the function prototypes) **/
-struct rpc_struct nfs_program[] = 
+const struct rpc_struct nfs_program[] = 
     {
 	{
 	(rpc_func) nnfs_internal_nfsproc_null,
@@ -450,7 +466,7 @@ struct rpc_struct nfs_program[] =
     };
 
 /** the number of procedures in nfs **/
-int num_nfs_procs = sizeof(nfs_program)/sizeof(struct rpc_struct);
+const int num_nfs_procs = sizeof(nfs_program)/sizeof(struct rpc_struct);
 
 
 
@@ -660,7 +676,7 @@ attrstat* nnfs_internal_nfsproc_getattr(fhandle* param)
 	retval->attrstat_u.attributes.uid = 1;
 	retval->attrstat_u.attributes.gid = 1;
 	retval->attrstat_u.attributes.size = 0;
-	retval->attrstat_u.attributes.blocksize = 0;
+	retval->attrstat_u.attributes.blocksize = BLOCK_SIZE;
 	retval->attrstat_u.attributes.rdev = 0;
 	retval->attrstat_u.attributes.blocks = 0;
 	retval->attrstat_u.attributes.fsid = 0;
@@ -699,6 +715,7 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     dirpath parentPath;
     XString path;
     pObject obj;
+    int size;
     pObjectInfo info;
     int isdir=0; /** assume it is a file until told otherwise **/
     retval = (diropres*)nmMalloc(sizeof(diropres));
@@ -753,11 +770,15 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
 	retval->diropres_u.diropok.attributes.type = NFREG;
 	retval->diropres_u.diropok.attributes.mode = 0100777;
 	}
+
+    if(objGetAttrValue(obj,"size",DATA_T_INTEGER,POD(&size)) < 0)
+	size = 0;
+    
     retval->diropres_u.diropok.attributes.nlink = 1;
     retval->diropres_u.diropok.attributes.uid = 0;
     retval->diropres_u.diropok.attributes.gid = 0;
-    retval->diropres_u.diropok.attributes.size = 0;
-    retval->diropres_u.diropok.attributes.blocksize = 0;
+    retval->diropres_u.diropok.attributes.size = size;
+    retval->diropres_u.diropok.attributes.blocksize = BLOCK_SIZE;
     retval->diropres_u.diropok.attributes.rdev = 0;
     retval->diropres_u.diropok.attributes.blocks = 0;
     retval->diropres_u.diropok.attributes.fsid = 0;
@@ -784,9 +805,56 @@ readlinkres* nnfs_internal_nfsproc_readlink(fhandle* param)
 readres* nnfs_internal_nfsproc_read(readargs* param)
     {
     readres* retval = NULL;
+    pObject obj;
+    int i;
+    int size;
+    char *buffer;
     retval = (readres*)nmMalloc(sizeof(readres));
     /** do work here **/
-    
+    memset(retval,0,sizeof(readres));
+
+    obj = nnfs_internal_open_inode(param->file);
+    if(!obj)
+	{
+	retval->status = NFSERR_NOENT;
+	return retval;
+	}
+    retval->status = NFS_OK;
+
+    /** FIXME -- cap this amount!!! **/
+    buffer = (char*)malloc(param->count);
+    i = objRead(obj,buffer,param->count,param->offset,OBJ_U_SEEK);
+    printf("reading: %i -- %i -- %i\n",param->count,param->offset,i);
+    if(i==-1)
+	{
+	retval->status = NFSERR_IO;
+	return retval;
+	}
+
+    if(objGetAttrValue(obj,"size",DATA_T_INTEGER,POD(&size)) < 0)
+	size = 0;
+
+    retval->readres_u.data.data.nfsdata_len = i;
+    retval->readres_u.data.data.nfsdata_val = buffer;
+
+    retval->readres_u.data.attributes.type = NFREG;
+    retval->readres_u.data.attributes.mode = 0100777;
+    retval->readres_u.data.attributes.nlink = 1;
+    retval->readres_u.data.attributes.uid = 0;
+    retval->readres_u.data.attributes.gid = 0;
+    retval->readres_u.data.attributes.size = size;
+    retval->readres_u.data.attributes.blocksize = BLOCK_SIZE;
+    retval->readres_u.data.attributes.rdev = 0;
+    retval->readres_u.data.attributes.blocks = 0;
+    retval->readres_u.data.attributes.fsid = 0;
+    retval->readres_u.data.attributes.fileid = 0;
+    retval->readres_u.data.attributes.atime.seconds = 0;
+    retval->readres_u.data.attributes.atime.useconds = 0;
+    retval->readres_u.data.attributes.ctime.seconds = 0;
+    retval->readres_u.data.attributes.ctime.useconds = 0;
+    retval->readres_u.data.attributes.mtime.seconds = 0;
+    retval->readres_u.data.attributes.mtime.useconds = 0;
+
     return retval;
     }
 
@@ -1647,7 +1715,7 @@ nnfs_internal_mount_listener(void* v)
 	    printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
 	    xdrmem_create(&xdr_in,buf,i,XDR_DECODE);
 	    xdrmem_create(&xdr_out,outbuf,MAX_PACKET_SIZE,XDR_ENCODE);
-	    nnfs_internal_dump_buffer(buf,i);
+	    //nnfs_internal_dump_buffer(buf,i);
 	    /** next line crashes quite often -- need to debug this... **/
 	    if(!xdr_callmsg(&xdr_in,&msg_in))
 		{
