@@ -275,3 +275,10 @@ function pg_load_page(aparam)
     {
     window.location.href = aparam.Page;
     }
+
+function pg_mvpginpt(ly)
+    {
+    p=((document.width-(window.innerWidth-2))>=0?18:2);
+    ly.moveTo(window.innerWidth-p+window.pageXOffset, 20+window.pageYOffset);
+    setTimeout(pg_mvpginpt, 500, ly);
+    }
