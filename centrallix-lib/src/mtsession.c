@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.2 2002/02/14 00:41:54 gbeeley Exp $
+    $Id: mtsession.c,v 1.3 2002/02/14 00:51:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.3  2002/02/14 00:51:17  gbeeley
+    Fixed a problem where if an error occurs before mssInitialize(), it
+    would default progname to "".  Now it defaults to "error", which causes
+    the error messages to look nicer.
+
     Revision 1.2  2002/02/14 00:41:54  gbeeley
     Added configurable logging and authentication to the mtsession module,
     and made sure mtsession cleared MtSession data structures when it is
@@ -385,7 +390,7 @@ mssError(int clr, char* module, char* message, ...)
 		}
 	    else
 		{
-		printf("%s: %s: %s\n",MSS.AppName,module,xs.String);
+		printf("%s: %s: %s\n",MSS.AppName[0]?MSS.AppName:"error",module,xs.String);
 		}
 	    if (!s) return -1;
 	    }
@@ -481,7 +486,7 @@ mssErrorErrno(int clr, char* module, char* message, ...)
 		}
 	    else
 		{
-		printf("%s: %s: %s (%s)\n",MSS.AppName,module,xs.String,err);
+		printf("%s: %s: %s (%s)\n",MSS.AppName[0]?MSS.AppName:"error",module,xs.String,err);
 		}
 	    if (!s) return -1;
 	    }
