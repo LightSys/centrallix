@@ -1,5 +1,12 @@
 #!/bin/sh
 
-autoheader
-autoconf
+# GRB - test for a newer version of autoconf.  On my RH73
+# installation, it wants to use 2.1x by default (arrrgh)
+if [ -f /usr/bin/autoconf-2.53 -a -x /usr/bin/autoconf-2.53 ]; then
+    autoheader-2.53
+    autoconf-2.53
+else
+    autoheader
+    autoconf
+fi
 cp -f /usr/share/autoconf/install-sh install-sh
