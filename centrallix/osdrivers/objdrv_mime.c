@@ -53,10 +53,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.21 2002/09/06 02:39:12 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.22 2002/09/06 19:01:44 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.22  2002/09/06 19:01:44  lkehresman
+    * Added a function in mime_util.c to convert a string to lower case
+    * Added a function in mime_util.c to get a three-letter extension for
+      a given content type and subtype.
+    * Converted all content types to lower case for consistency
+    * Handled the case of an unnamed attachment (gave it a name)
+    * The attachment content type is properly being returned from mimeGetAttrValue,
+      previously it was always "text/plain"
+
     Revision 1.21  2002/09/06 02:39:12  lkehresman
     Got OSML interaction to work with the MIME libraries thanks to
     jorupp magic.
@@ -522,7 +531,10 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	}
     if (!strcmp(attrname, "outer_type"))
 	{
-	*((char**)val) = "text/plain";
+	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
+	inf->AttrValue = (char*)malloc(128);
+	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
+	*((char**)val) = inf->AttrValue;
 	return 0;
 	}
     if (!strcmp(attrname, "content_type"))

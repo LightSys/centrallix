@@ -151,6 +151,7 @@ int libmime_StringFirstCaseCmp(char *c1, char *c2);
 int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
 int libmime_B64Purify(char *str);
+int libmime_ContentExtension(char *str, int type, char *subtype);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();

@@ -463,6 +463,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	maintype[len] = 0;
 	strncpy(msg->ContentSubType, cptr+1, 79);
 	msg->ContentSubType[79] = 0;
+	libmime_StringToLower(msg->ContentSubType);
 	}
     else
 	{
@@ -619,9 +620,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     {
     XString xsbuf;
     pMimeHeader l_msg;
-    int flag=1, alloc, toktype, p_count=0, count=0, s=0;
+    int flag=1, alloc, toktype, p_count=0, count=0, s=0, num=0;
     int l_pos=0;
-    char bound[80], bound_end[82];
+    char bound[80], bound_end[82], ext[5];
 
     if (!lex)
 	{
@@ -657,6 +658,18 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    l_msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
 		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);
+		    num++;
+		    if (!strlen(l_msg->Filename))
+			{
+			if (libmime_ContentExtension(ext, l_msg->ContentMainType, l_msg->ContentSubType))
+			    {
+			    sprintf(l_msg->Filename, "attachment%d.%s", num, ext);
+			    }
+			else
+			    {
+			    sprintf(l_msg->Filename, "attachment%d", num);
+			    }
+			}
 		    }
 		s=strlen(xsbuf.String);
 		l_pos = count;

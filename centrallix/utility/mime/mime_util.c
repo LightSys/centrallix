@@ -218,3 +218,82 @@ libmime_B64Purify(char *string)
 	}
     return rem;
     }
+
+/*  libmime_ContentExtension
+**
+**  Modifies the first parameter to contain the three leter extension
+**  that is associated with the given content type and subtype.
+*/
+int
+libmime_ContentExtension(char *str, int type, char *subtype)
+    {
+    switch (type)
+	{
+	case MIME_TYPE_TEXT:
+	    if (!strlen(subtype) || !strcasecmp(subtype, "plain"))
+		strcpy(str, "txt");
+	    else if (!strcasecmp(subtype, "html"))
+		strcpy(str, "html");
+	    else if (!strcasecmp(subtype, "richtext"))
+		strcpy(str, "rtf");
+	    else
+		return 0;
+	    break;
+	case MIME_TYPE_MULTIPART:
+	    return 0;
+	    break;
+	case MIME_TYPE_APPLICATION:
+	    return 0;
+	    break;
+	case MIME_TYPE_MESSAGE:
+	    if (!strlen(subtype) || !strcasecmp(subtype, "rfc822"))
+		strcpy(str, "msg");
+	    else
+		return 0;
+	    break;
+	case MIME_TYPE_IMAGE:
+	    if (!strcasecmp(subtype, "jpg") || !strcasecmp(subtype, "jpeg"))
+		strcpy(str, "jpg");
+	    else if (!strcasecmp(subtype, "png"))
+		strcpy(str, "png");
+	    else if (!strcasecmp(subtype, "gif"))
+		strcpy(str, "gif");
+	    else if (!strcasecmp(subtype, "pbm"))
+		strcpy(str, "pbm");
+	    else
+		return 0;
+	    break;
+	case MIME_TYPE_AUDIO:
+	    if (!strcasecmp(subtype, "wav"))
+		strcpy(str, "wav");
+	    else if (!strcasecmp(subtype, "basic"))
+		strcpy(str, "au");
+	    else
+		return 0;
+	    break;
+	case MIME_TYPE_VIDEO:
+	    return 0;
+	    break;
+	}
+    return 1;
+    }
+
+/*
+**  libmime_StringToLower
+**
+**  Converts a string to lower case
+*/
+int
+libmime_StringToLower(char *str)
+    {
+    char *ptr;
+
+    ptr = str;
+    while (*ptr != 0)
+	{
+	//fprintf(stderr, "CH: %c\n", *ptr);
+	*ptr = tolower(*ptr);
+	ptr++;
+	}
+    return 1;
+    }
