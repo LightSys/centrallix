@@ -11,13 +11,13 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.=  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.</p>
-			<p>The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.</p>
-			<p>Events and actions can have parameters, which specify more information about the occurrence of an event, or which specify more information about how to perform the action.Such parameters from events can be linked into parameters for actions via the connector widget as well.</p>
+			Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.=  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.
+			The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.
+			Events and actions can have parameters, which specify more information about the occurrence of an event, or which specify more information about how to perform the action.Such parameters from events can be linked into parameters for actions via the connector widget as well.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>The connector object should be a sub-object of the widget which will trigger the event.=  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.</p>
-			<p>An example connector would link the click of a URL in a treeview with the loading of a new page in an HTML area.See the Example source code at the end of this document to see how this is done.</p>
+			The connector object should be a sub-object of the widget which will trigger the event.=  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.
+			An example connector would link the click of a URL in a treeview with the loading of a new page in an HTML area.See the Example source code at the end of this document to see how this is done.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -53,11 +53,9 @@ cn1 &quot;widget/connector&quot;
 	{
 	// Triggered by ClickItem from the treeview.
 	event = &quot;ClickItem&quot;;
-
 	// Causes the LoadPage action on html area 'ht1'
 	target = &quot;ht1&quot;;
 	action = &quot;LoadPage&quot;;
-
 	// The Source for LoadPage is the Pathname fronm ClickItem.
 	Source = &quot;Pathname&quot;;
 	}

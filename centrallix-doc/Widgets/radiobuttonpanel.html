@@ -11,11 +11,11 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>A radio button panel widget is a form element used to create a set of radio buttons on screen.Only one radio button may be selected at a time.</p>
+			A radio button panel widget is a form element used to create a set of radio buttons on screen.Only one radio button may be selected at a time.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).The &quot;widget/radiobuttonpanel&quot; is the main widget, and can contain any number of &quot;widget/radiobutton&quot; widgets which specify the choices which will be present on the panel.No other visual widgets can be contained within a radio button panel.</p>
-			<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
+			The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).The &quot;widget/radiobuttonpanel&quot; is the main widget, and can contain any number of &quot;widget/radiobutton&quot; widgets which specify the choices which will be present on the panel.No other visual widgets can be contained within a radio button panel.
+			Note: form widget interaction was not yet implemented as of the time of writing of this document.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -45,7 +45,7 @@
 </tr>
 <tr>
 <td class="name">textcolor</td>
-<td class="type"> (string</td>
+<td class="type">string</td>
 <td class="description">The color, RGB or named, of the text within the panel.  Default: &quot;black&quot;.</td>
 </tr>
 <tr>
@@ -79,7 +79,7 @@
 </tr>
 <tr>
 <td class="name">selected</td>
-<td class="type">true/false</td>
+<td class="type">boolean</td>
 <td class="description">the radio button is initially selected or not. Should only be set on one radio Default;&quot;false&quot;.</td>
 </tr>
 <tr>
@@ -103,7 +103,6 @@ testradio &quot;widget/radiobuttonpanel&quot;
 	width=150; height=80;
 	title=&quot;test&quot;;
 	bgcolor=&quot;#ffffff&quot;;
-
 	label1 &quot;widget/radiobutton&quot; { label=&quot;basketball&quot;;selected=&quot;true&quot;; }
 	label2 &quot;widget/radiobutton&quot; { label=&quot;is fun&quot;; }
     }

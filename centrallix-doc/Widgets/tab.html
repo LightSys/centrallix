@@ -11,12 +11,12 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The TabControl widget provides a DHTML tab control within Centrallix. The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.</p>
-			<p>To further distinguish which tab at the top of the tab control is active, this widget slightly modifies the X/Y position of the tab as well as changing a thumbnail image (on the left edge of the tab) to further enhance the distinction between selected and inactive tab pages.</p>
+			The TabControl widget provides a DHTML tab control within Centrallix. The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.
+			To further distinguish which tab at the top of the tab control is active, this widget slightly modifies the X/Y position of the tab as well as changing a thumbnail image (on the left edge of the tab) to further enhance the distinction between selected and inactive tab pages.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.</p>
-			<p>Tab pages are added to a tab control by including widgets of type &quot;widget/tabpage&quot; within the &quot;widget/tab&quot; widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective &quot;widget/tabpage&quot; widgets in the structure file.Only widgets of type &quot;widget/tabpage&quot; should be placed inside a &quot;widget/tab&quot;, with the exception of nonvisuals such as connectors.</p>
+			The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.
+			Tab pages are added to a tab control by including widgets of type &quot;widget/tabpage&quot; within the &quot;widget/tab&quot; widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective &quot;widget/tabpage&quot; widgets in the structure file.Only widgets of type &quot;widget/tabpage&quot; should be placed inside a &quot;widget/tab&quot;, with the exception of nonvisuals such as connectors.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -41,7 +41,7 @@
 </tr>
 <tr>
 <td class="name">textcolor</td>
-<td class="type"> (string</td>
+<td class="type">string</td>
 <td class="description">The color of the text to be used on the tabs to identify them.</td>
 </tr>
 <tr>
@@ -81,7 +81,6 @@ myTabControl &quot;widget/tab&quot;
 	x = 20; y = 100; width=360; height=200;
 	bgcolor=&quot;#c0c0c0&quot;;
 	selected = &quot;FirstPage&quot;;
-
 	FirstPage &quot;widget/tabpage&quot; { title = &quot;TheFirstPage&quot;;}
 	SecondPage &quot;widget/tabpage&quot; { title = &quot;TheSecondTabPage&quot;; }
 	}

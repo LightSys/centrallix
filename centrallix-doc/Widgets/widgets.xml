@@ -8,18 +8,10 @@
 			<p>The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).=  Checkboxes may not contain visual widgets.</p>
 			<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
 		</usage>
-		<properties>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the checkbox, default is 0.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the checkbox, default is 0.</property>
-			<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
-			<property name="checked" type="true/false">Whether or not the initial state is checked.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the checkbox, default is 0.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the checkbox, default is 0.</property>
+		<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
+		<property name="checked" type="boolean">Whether or not the initial state is checked.</property>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -49,17 +41,9 @@ checkbox_test "widget/page"
 			<p>The connector object should be a sub-object of the widget which will trigger the event.=  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.</p>
 			<p>An example connector would link the click of a URL in a treeview with the loading of a new page in an HTML area.See the Example source code at the end of this document to see how this is done.</p>
 		</usage>
-		<properties>
-			<property name="action" type="string">The name of the action which will be activated on another widget on the page.</property>
-			<property name="event" type="string">The name of the event that this connector will act on.</property>
-			<property name="target" type="string">The name of another widget on the page whose action will be called by this connector.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="action" type="string" subtype="widgetaction">The name of the action which will be activated on another widget on the page.</property>
+		<property name="event" type="string" subtype="widgetevent">The name of the event that this connector will act on.</property>
+		<property name="target" type="string" subtype="widget">The name of another widget on the page whose action will be called by this connector.</property>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -70,11 +54,9 @@ cn1 "widget/connector"
 	{
 	// Triggered by ClickItem from the treeview.
 	event = "ClickItem";
-
 	// Causes the LoadPage action on html area 'ht1'
 	target = "ht1";
 	action = "LoadPage";
-
 	// The Source for LoadPage is the Pathname fronm ClickItem.
 	Source = "Pathname";
 	}
@@ -88,24 +70,16 @@ cn1 "widget/connector"
 		<usage>
 			<p>The editbox can be placed within any visual widget (or within a form widget).=  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).=  Editboxes can contain no visual widgets.</p>
 		</usage>
-		<properties>
-			<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
-			<property name="background" type="string">A background image for the contents of the editbox.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, for the editbox contents. If neither bgcolor nor background transparent.</property>
-			<property name="height" type="integer">height, in pixels, of the editbox.</property>
-			<property name="maxchars" type="integer">number of characters to accept from the user.</property>
-			<property name="style" type="string">Either "raised" or "lowered", and determines the style of the border drawn around the "raised".</property>
-			<property name="width" type="integer">width, in pixels, of the editbox.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the editbox, default is 0.</property>
-			<property name="readonly" type="true/false">Whether or not the contents of the editbox can ever be modified.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
+		<property name="background" type="string" subtype="image">A background image for the contents of the editbox.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, for the editbox contents. If neither bgcolor nor background transparent.</property>
+		<property name="height" type="integer">height, in pixels, of the editbox.</property>
+		<property name="maxchars" type="integer">number of characters to accept from the user.</property>
+		<property name="style" type="string" enum="raised,lowered">Either "raised" or "lowered", and determines the style of the border drawn around the "raised".</property>
+		<property name="width" type="integer">width, in pixels, of the editbox.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the editbox, default is 0.</property>
+		<property name="readonly" type="boolean">Whether or not the contents of the editbox can ever be modified.</property>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -130,26 +104,18 @@ my_editbox "widget/editbox"
 		<usage>
 		  <p>This widget can be placed within any visual widget (or within a form widget).</p>
 		</usage>
-		<properties>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the editbox, default is 0.</property>
-			<property name="width" type="integer">width, in pixels, of the editbox.</property>
-			<property name="highlight" type="integer">The color of the highlighted option when the mouse goes over the itme.</property>
-			<property name="bgcolor" type="integer">The background color for the widget.</property>
-			<property name="fieldname" type="string">Fieldname (from the dataset) to bind this element to</property>
-			<property name="numdisplay" type="integer">The number of elements to display before displaying the scroll bars</property>
-			<property name="sql" type="string">The SQL query to be used for obtaining the data to populate the dropdown list.  The first elemnt in the SELECT statement will be the description, and the second will be the value. This query's result sets child widgets.</property>
-		</properties>
-		<children>
-			<child type="widget/dropdownitem">
-				<childproperty name="label" type="string">The text label to appear in the dropdown listing.</childproperty>
-				<childproperty name="value" type="string">The actual data that is stored with this item.</childproperty>
-			</child>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the editbox, default is 0.</property>
+		<property name="width" type="integer">width, in pixels, of the editbox.</property>
+		<property name="highlight" type="integer" subtype="color">The color of the highlighted option when the mouse goes over the itme.</property>
+		<property name="bgcolor" type="integer" subtype="color">The background color for the widget.</property>
+		<property name="fieldname" type="string">Fieldname (from the dataset) to bind this element to</property>
+		<property name="numdisplay" type="integer">The number of elements to display before displaying the scroll bars</property>
+		<property name="sql" type="string">The SQL query to be used for obtaining the data to populate the dropdown list.  The first elemnt in the SELECT statement will be the description, and the second will be the value. This query's result sets child widgets.</property>
+		<child type="widget/dropdownitem">
+			<childproperty name="label" type="string">The text label to appear in the dropdown listing.</childproperty>
+			<childproperty name="value" type="string">The actual data that is stored with this item.</childproperty>
+		</child>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -162,7 +128,6 @@ myDropDown1 "widget/dropdown"
 	bgcolor="#dcdcdc";
 	highlight="#c0c0c0";
 	fieldname="gender";
-
 	myDropDownChild1 "widget/dropdownitem"
 		{
 		label="Male";
@@ -174,7 +139,6 @@ myDropDown1 "widget/dropdown"
 		value="1";
 		}
 	}
-
 $Version=2$
 //  Example getting options from datasource using a query
 myDropDown2 "widget/dropdown"
@@ -187,7 +151,6 @@ myDropDown2 "widget/dropdown"
 	fieldname="gender";
 	sql="SELECT :gender_label, :gender_value FROM /my_DB/infotable/rows";
 	}
-
 		]]>
 		</sample>
 	</widget>
@@ -199,18 +162,10 @@ myDropDown2 "widget/dropdown"
 		<usage>
 			<p>The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.</p>
 		</usage>
-		<properties>
-			<property name="method" type="string">The name of the method to invoke.</property>
-			<property name="object" type="string">The ObjectSystem pathname of the object on which the method is to be run.</property>
-			<property name="parameter" type="string">A string parameter to pass to the method being invoked.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="ExecuteMethod">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: "Objname", the object path, "Method", the method to invoke, and "Parameter", the parameter to pass to the method being invoked.</action>
-		</actions>
+		<property name="method" type="string" subtype="OSMLmethod">The name of the method to invoke.</property>
+		<property name="object" type="string" subtype="OSMLobject">The ObjectSystem pathname of the object on which the method is to be run.</property>
+		<property name="parameter" type="string">A string parameter to pass to the method being invoked.</property>
+		<action name="ExecuteMethod">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: "Objname", the object path, "Method", the method to invoke, and "Parameter", the parameter to pass to the method being invoked.</action>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -228,52 +183,44 @@ mySoundPlayer "widget/execmethod"
 		<overview>
 			<p>The form widget is used as a high-level container for form elements.=  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
 			<p>Forms have five different "modes"of operation, each of which can be specifically allowed or disallowed for the form.</p>
-		<ol>
-		<li> No Data - form inactive/disabled, no data viewed/edited.</li>
-		<li> View - data being viewed readonly.</li>
-		<li> Modify - existing data being modified.</li>
-		<li> Query - query criteria being entered (used for query-by-form applications)</li>
-		<li> New - new object being entered/created.</li>
-		</ol>
+			<ol>
+				<li> No Data - form inactive/disabled, no data viewed/edited.</li>
+				<li> View - data being viewed readonly.</li>
+				<li> Modify - existing data being modified.</li>
+				<li> Query - query criteria being entered (used for query-by-form applications)</li>
+				<li> New - new object being entered/created.</li>
+			</ol>
 			<p>Note: at the time of this writing, the form widget was in its design phase and had not yet been implemented.</p>
 		</overview>
 		<usage>
 			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.=  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
 		</usage>
-		<properties>
-			<property name="AllowQuery" type="integer"><ni/>Allow query by form</property>
-			<property name="AllowNew" type="integer"><ni/>Allow creation of new records</property>
-			<property name="AllowModify" type="integer"><ni/>Allow modification of existing records</property>
-			<property name="AllowView" type="integer"><ni/>Allow viewing of existing data</property>
-			<property name="AllowNoData" type="integer"><ni/>Allow the 'no data' state</property>
-			<property name="MultiEnter" type="integer"><ni/>Enable MultiEnter</property>
-			<property name="TabMode" type="string"><ni/>How to react to a tab in a control</property>
-			<property name="ReadOnly" type="integer"><ni/>Allow changes</property>
-			<property name="_3bconfirmwindow" type="string">The name of the window to use for all 3-way confirm operations (save/discard/cancel)</property>
-		</properties>
-		<children>
-			<child type="formelement">
-				<childproperty name="fieldname" type="string"><ni/>Fieldname (from the dataset) to bind this element to</childproperty>
-			</child>
-			<child type="formstatus">
-			</child>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="Clear"><ni/>Clears the form to a 'no data'state.</action>
-			<action name="Delete"><ni/>Deletes the current object displayed.</action>
-			<action name="Discard">Cancels an edit of form contents.</action>
-			<action name="Edit">Allows editing of form's contents.</action>
-			<action name="First">Moves the form to the first object in the objectsource.</action>
-			<action name="Last">Moves the form to the last object in the objectsource.</action>
-			<action name="New"><ni/>Allows creation of new form contents.</action>
-			<action name="Next">Moves the form to the next object in the objectsource.</action>
-			<action name="Prev">Moves the form to the previous object in the objectsource.</action>
-			<action name="Query">Allows entering of query criteria.</action>
-			<action name="QueryExec">the query and returns data.</action>
-			<action name="Save">Saves the form's contents.</action>
-		</actions>
+		<property name="AllowQuery" type="boolean"><ni/>Allow query by form</property>
+		<property name="AllowNew" type="boolean"><ni/>Allow creation of new records</property>
+		<property name="AllowModify" type="boolean"><ni/>Allow modification of existing records</property>
+		<property name="AllowView" type="boolean"><ni/>Allow viewing of existing data</property>
+		<property name="AllowNoData" type="boolean"><ni/>Allow the 'no data' state</property>
+		<property name="MultiEnter" type="boolean"><ni/>Enable MultiEnter</property>
+		<property name="TabMode" type="boolean"><ni/>How to react to a tab in a control</property>
+		<property name="ReadOnly" type="boolean"><ni/>Allow changes</property>
+		<property name="_3bconfirmwindow" type="string" subtype="widget">The name of the window to use for all 3-way confirm operations (save/discard/cancel)</property>
+		<child type="formelement">
+			<childproperty name="fieldname" type="string"><ni/>Fieldname (from the dataset) to bind this element to</childproperty>
+		</child>
+		<child type="formstatus">
+		</child>
+		<action name="Clear"><ni/>Clears the form to a 'no data' state.</action>
+		<action name="Delete"><ni/>Deletes the current object displayed.</action>
+		<action name="Discard">Cancels an edit of form contents.</action>
+		<action name="Edit">Allows editing of form's contents.</action>
+		<action name="First">Moves the form to the first object in the objectsource.</action>
+		<action name="Last">Moves the form to the last object in the objectsource.</action>
+		<action name="New"><ni/>Allows creation of new form contents.</action>
+		<action name="Next">Moves the form to the next object in the objectsource.</action>
+		<action name="Prev">Moves the form to the previous object in the objectsource.</action>
+		<action name="Query">Allows entering of query criteria.</action>
+		<action name="QueryExec">the query and returns data.</action>
+		<action name="Save">Saves the form's contents.</action>
 		<sample>
 		<![CDATA[
 form1 "widget/form"
@@ -291,15 +238,8 @@ form1 "widget/form"
 		<usage>
 			<p>The form status widget can only be used either directly or indirectly within a form widget.It can contain no visual widgets.</p>
 		</usage>
-		<properties>
-			<property name="x" type="integer">Allows you to set x position in pixels relative to the window.</property>
-			<property name="y" type="integer">Allows you to set y position in pixels relative to the window.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions></actions>
+		<property name="x" type="integer">Allows you to set x position in pixels relative to the window.</property>
+		<property name="y" type="integer">Allows you to set y position in pixels relative to the window.</property>
 		<sample>
 		<![CDATA[
 		  formstatus "widget/formstatus" {
@@ -315,21 +255,13 @@ form1 "widget/form"
 		<usage>
 			<p>The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.</p>
 		</usage>
-		<properties>
-			<property name="title" type="string">Title of the frameset for an html page.</property>
-			<property name="borderwidth" type="integer">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</property>
-			<property name="direction" type="string">Whether the frames are arranged in rows or columns.  Set this attribute to "rows" or "columns"respectively.</property>
-		</properties>
-		<children>
-			<child type="any">
-				<childproperty name="framesize" type="integer/string">large this frame will be.Can either be expressed as an integer, which represents "50%".</childproperty>
-				<childproperty name="marginwidth" type="integer">width, in pixels, of the margins of the frame.</childproperty>
-			</child>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="title" type="string">Title of the frameset for an html page.</property>
+		<property name="borderwidth" type="integer">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</property>
+		<property name="direction" type="string" enum="rows,columns">Whether the frames are arranged in rows or columns.  Set this attribute to "rows" or "columns"respectively.</property>
+		<child type="any">
+			<childproperty name="framesize" type="integer/string">large this frame will be.Can either be expressed as an integer, which represents "50%".</childproperty>
+			<childproperty name="marginwidth" type="integer">width, in pixels, of the margins of the frame.</childproperty>
+		</child>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -371,24 +303,16 @@ BigFrameset "widget/frameset"
 		<usage>
 			<p>The HTML area widget can be placed within any other widget that has a visible container (such as panes, pages, tab pages, etc.).</p>
 		</usage>
-		<properties>
-			<property name="content" type="string">Static contents for the HTML area. Usually used in lieu of "source" (see below).</property>
-			<property name="epilogue" type="string">HTML source to be inserted at the end of the HTML document.</property>
-			<property name="height" type="integer">height, in pixels, of the HTML area as a whole.</property>
-			<property name="mode" type="string">Either "static" or "dynamic", and determines whether the HTML area is in-flow ("static") can be positioned and reloaded at-will.</property>
-			<property name="prologue" type="string">HTML source to be inserted at the beginning of the HTML document.</property>
-			<property name="source" type="string">The objectsystem path or URL containing the document to be loaded into the HTML as  local server.</property>
-			<property name="width" type="integer">width, in pixels, of the HTML area as a whole.</property>
-			<property name="x" type="integer">dynamic HTML areas, the x coordinate on the container of its upper left corner.</property>
-			<property name="y" type="integer">dynamic HTML areas, the y coordinate on the container of its upper left corner.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="LoadPage">loadpage action takes two parameters. "Source" contains the URL for the new page to be loaded into the HTML area.The optional parameter "Transition" indicates the type of fade to be used between one page and the next.Currently supported values are "pixelate", "rlwipe", and "lrwipe".</action>
-		</actions>
+		<property name="content" type="string">Static contents for the HTML area. Usually used in lieu of "source" (see below).</property>
+		<property name="epilogue" type="string">HTML source to be inserted at the end of the HTML document.</property>
+		<property name="height" type="integer">height, in pixels, of the HTML area as a whole.</property>
+		<property name="mode" type="string">Either "static" or "dynamic", and determines whether the HTML area is in-flow ("static") can be positioned and reloaded at-will.</property>
+		<property name="prologue" type="string">HTML source to be inserted at the beginning of the HTML document.</property>
+		<property name="source" type="string">The objectsystem path or URL containing the document to be loaded into the HTML as  local server.</property>
+		<property name="width" type="integer">width, in pixels, of the HTML area as a whole.</property>
+		<property name="x" type="integer">dynamic HTML areas, the x coordinate on the container of its upper left corner.</property>
+		<property name="y" type="integer">dynamic HTML areas, the y coordinate on the container of its upper left corner.</property>
+		<action name="LoadPage">loadpage action takes two parameters. "Source" contains the URL for the new page to be loaded into the HTML area.The optional parameter "Transition" indicates the type of fade to be used between one page and the next.Currently supported values are "pixelate", "rlwipe", and "lrwipe".</action>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -410,28 +334,20 @@ HTMLArea "widget/html"
 		<usage>
 			<p>Htmlwindows are normally coded at the top-level of an application, since if they are placed within containers, the container limits where the window can be moved.These windows can contain other visual and nonvisual widgets.</p>
 		</usage>
-		<properties>
-			<property name="background" type="string">A background image for the body of the window.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, to be used as the window body's background.If neither transparent.</property>
-			<property name="hdr_background" type="string">A background image for the titlebar of the window.</property>
-			<property name="hdr_bgcolor" type="string">A color, RGB or named, for the titlebar of the window.</property>
-			<property name="height" type="integer">height, in pixels, of the window.</property>
-			<property name="style" type="string">Either "dialog" or "window", and determines the style of the window's border.</property>
-			<property name="textcolor" type=" (string">The color for the titlebar's text (window title).  Default "black".</property>
-			<property name="titlebar" type="yes/no">whether the window will have a titlebar. Default "yes".</property>
-			<property name="title" type="string">The window's title.</property>
-			<property name="visible" type="true/false">the window is initially visible on screen. The window has an action which can "true".</property>
-			<property name="width" type="integer">width, in pixels, of the window.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the window, relative to its container.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the window, relative to its container.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="SetVisibility">one parameter, "is_visible", which is set to 0 or 1 to hide or show the window, respectively.</action>
-		</actions>
+		<property name="background" type="string" subtype="image">A background image for the body of the window.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used as the window body's background.If neither transparent.</property>
+		<property name="hdr_background" type="string" subtype="color">A background image for the titlebar of the window.</property>
+		<property name="hdr_bgcolor" type="string" subtype="color">A color, RGB or named, for the titlebar of the window.</property>
+		<property name="height" type="integer">height, in pixels, of the window.</property>
+		<property name="style" type="string">Either "dialog" or "window", and determines the style of the window's border.</property>
+		<property name="textcolor" type="string" subtype="color">The color for the titlebar's text (window title).  Default "black".</property>
+		<property name="titlebar" type="yes/no">whether the window will have a titlebar. Default "yes".</property>
+		<property name="title" type="string">The window's title.</property>
+		<property name="visible" type="boolean">the window is initially visible on screen. The window has an action which can "true".</property>
+		<property name="width" type="integer">width, in pixels, of the window.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the window, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the window, relative to its container.</property>
+		<action name="SetVisibility">one parameter, "is_visible", which is set to 0 or 1 to hide or show the window, respectively.</action>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -456,25 +372,16 @@ MyButton "widget/htmlwindow"
 		<usage>
 			<p>The ImageButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
 		</usage>
-		<properties>
-			<property name="clickimage" type="string">The ObjectSystem pathname of the image to be shown when the user clicks the specified.</property>
-			<property name="image" type="string">The pathname of the image to be shown when the button is "idle".</property>
-			<property name="pointimage" type="string">The pathname of the image to be shown when the button is pointed-to.Defaults to specified.</property>
-			<property name="height" type="integer">height, in pixels, of the image button.</property>
-			<property name="width" type="integer">width, in pixels, of the image button.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
-			<property name="disabledimage" type="integer">Optional parameter that contains the path to the image that should be displayed if the button is disabled (usually a grayscale, lighter version of the original image)</property>
-			<property name="enabled" type="true/false">Whether or not this button is enabled by default</property>
-			
-		</properties>
-		<children>
-		</children>
-		<events>
-			<event name="Click">This event occurs when the user clicks the button. No parameters are available from this event.</event>
-		</events>
-		<actions>
-		</actions>
+		<property name="clickimage" type="string" subtype="image">The ObjectSystem pathname of the image to be shown when the user clicks the specified.</property>
+		<property name="image" type="string" subtype="image">The pathname of the image to be shown when the button is "idle".</property>
+		<property name="pointimage" type="string" subtype="image">The pathname of the image to be shown when the button is pointed-to.Defaults to specified.</property>
+		<property name="height" type="integer">height, in pixels, of the image button.</property>
+		<property name="width" type="integer">width, in pixels, of the image button.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
+		<property name="disabledimage" type="string" subtype="image">Optional parameter that contains the path to the image that should be displayed if the button is disabled (usually a grayscale, lighter version of the original image)</property>
+		<property name="enabled" type="boolean">Whether or not this button is enabled by default</property>
+		<event name="Click">This event occurs when the user clicks the button. No parameters are available from this event.</event>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -483,7 +390,6 @@ MyButton "widget/imagebutton"
 	x = 10; y = 10;
 	width = 50;
 	height = 20;
-
 	// No pointimage for this one, thus not "tristate".
 	image = "/images/default.png"
 	clickimage = "/images/clicked.png"
@@ -498,22 +404,14 @@ MyButton "widget/imagebutton"
 		<usage>
 			<p>The label can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
 		</usage>
-		<properties>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the label relative to its container</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the label relative to its container</property>
-			<property name="width" type="integer">width, in pixels, of the label</property>
-			<property name="height" type="integer">height, in pixels, of the label</property>
-			<property name="text" type="string">message that is displayed in the label</property>
-			<property name="align" type="string">the alignment of the text.  This can be "left", "right", or "center"</property>
-			<property name="background" type="string">A background image for the label.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, to be used as the label's background.  If neither bgcolor nor background are set, the label will be transparent.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the label relative to its container</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the label relative to its container</property>
+		<property name="width" type="integer">width, in pixels, of the label</property>
+		<property name="height" type="integer">height, in pixels, of the label</property>
+		<property name="text" type="string">message that is displayed in the label</property>
+		<property name="align" type="string">the alignment of the text.  This can be "left", "right", or "center"</property>
+		<property name="background" type="string" subtype="image">A background image for the label.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used as the label's background.  If neither bgcolor nor background are set, the label will be transparent.</property>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -535,22 +433,14 @@ MyButton "widget/label"
 		<usage>
 			<p>Menus can be placed inside of any visual container. However, be aware that the menu will be clipped by its container, so placing them at the top-level can be of an advantage. Menu widgets can contain other visual widgets, but typically only textbuttons are used.The widgets in a menu will be repositioned when the menu initializes, so their (x,y) coordinate positions aren't important to specify exactly.</p>
 		</usage>
-		<properties>
-			<property name="background" type="string">A background image for the menu.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, to be used as the menu's background.  If neither bgcolor nor transparent.</property>
-			<property name="orientation" type="string">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop- a menubar (horizontal).</property>
-			<property name="type" type="string">Either "popup" (default) or "fixed".Popup menus disappear after an item on them is not.</property>
-			<property name="width" type="integer">width, in pixels, of the menu.The height is dynamically determined based on the contents.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the menu, relative to its container.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the menu, relative to its container.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="Activate">This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.Two parameters - X and Y, the (integer) positions on the page for the menu to appear.</action>
-		</actions>
+		<property name="background" type="string" subtype="image">A background image for the menu.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used as the menu's background.  If neither bgcolor nor transparent.</property>
+		<property name="orientation" type="string" enum="horizontal,vertical">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop- a menubar (horizontal).</property>
+		<property name="type" type="string" enum="popup,fixed">Either "popup" (default) or "fixed".Popup menus disappear after an item on them is not.</property>
+		<property name="width" type="integer">width, in pixels, of the menu.The height is dynamically determined based on the contents.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the menu, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the menu, relative to its container.</property>
+		<action name="Activate">This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.Two parameters - X and Y, the (integer) positions on the page for the menu to appear.</action>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -560,7 +450,6 @@ myMenu "widget/menu"
 	x = 10; y = 10; width = 72;
 	orientation = "vertical"; type = "popup";
 	bgcolor="#808080";
-	
 	b1 "widget/textbutton" { x = 0; y = 0; width=70; height=24;text="One"; }
 	b2 "widget/textbutton" { x = 0; y = 0; width=70; height=24;text="Two"; }
 	b3 "widget/textbutton" { x = 0; y = 0; width=70; height=24;text="Three"; }
@@ -577,30 +466,22 @@ myMenu "widget/menu"
 		<usage>
 			<p>Objectsource widgets are normally used at the top-level of an application, within a "widget/page" object.A page may have more than one objectsource widget.</p>
 		</usage>
-		<properties>
-			<property name="replicasize" type="integer">Represents the number of records to store in its replica.</property>
-			<property name="readahead" type="integer">Represents the number to read-a-head when replica is over stepped.</property>
-			<property name="scrollahead" type="integer">Represents the number to step forward when viewing records (Currently set to readahead).</property>
-			<property name="sql" type="string"></property>
-			<property name="filter" type="integer"></property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="Clear"><ni/>Clears the replica of data.</action>
-			<action name="Query"><ni/>Query</action>
-			<action name="QueryObject"><ni/>Query Object</action>
-			<action name="OrderObject"><ni/>Order Object</action>
-			<action name="Delete"><ni/>Deletes an object through OSML</action>
-			<action name="Create"><ni/>Creates an object though OSML</action>
-			<action name="Modify"><ni/>Modifies an object through OSML</action>
-			<action name="First"><ni/>Returns first record in the replica</action>
-			<action name="Next"><ni/>Returns next record in the replica</action>
-			<action name="Prev"><ni/>Returns previous record in the replica</action>
-			<action name="Last"><ni/>Returns last record in the replica</action>
-		</actions>
+		<property name="replicasize" type="integer">Represents the number of records to store in its replica.</property>
+		<property name="readahead" type="integer">Represents the number to read-a-head when replica is over stepped.</property>
+		<property name="scrollahead" type="integer">Represents the number to step forward when viewing records (Currently set to readahead).</property>
+		<property name="sql" type="string"></property>
+		<property name="filter" type="integer"></property>
+		<action name="Clear"><ni/>Clears the replica of data.</action>
+		<action name="Query"><ni/>Query</action>
+		<action name="QueryObject"><ni/>Query Object</action>
+		<action name="OrderObject"><ni/>Order Object</action>
+		<action name="Delete"><ni/>Deletes an object through OSML</action>
+		<action name="Create"><ni/>Creates an object though OSML</action>
+		<action name="Modify"><ni/>Modifies an object through OSML</action>
+		<action name="First"><ni/>Returns first record in the replica</action>
+		<action name="Next"><ni/>Returns next record in the replica</action>
+		<action name="Prev"><ni/>Returns previous record in the replica</action>
+		<action name="Last"><ni/>Returns last record in the replica</action>
 		<sample>
 		<![CDATA[
 osrc1 "widget/osrc"
@@ -618,25 +499,17 @@ osrc1 "widget/osrc"
 		<usage>
 			<p>The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.</p>
 		</usage>
-		<properties>
-			<property name="background" type="string">A background image for the page.</property>
-			<property name="bgcolor" type="string">The background color for the page. Can either be a recognized color (such as "red", an RGB color (such as "#C0C0C0").</property>
-			<property name="datafocus1" type="string">A color, RGB or named, for the top and left edges of rectangles drawn to indicate data blue).</property>
-			<property name="datafocus2" type="string">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate blue).</property>
-			<property name="kbdfocus1" type="string">A color, RGB or named, to be used for the top and left edges of rectangles drawn to  "white".</property>
-			<property name="kbdfocus2" type="string">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate grey).</property>
-			<property name="mousefocus1" type="string">A color, RGB or named, to be used for the top and left edges of rectangles drawn to  "black".</property>
-			<property name="mousefocus2" type="string">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate "black".</property>
-			<property name="textcolor" type=" (string">The default color for text which appears on the page.  Can either be a named color or color.</property>
-			<property name="title" type="string">The title which will appear in the browser's window title bar.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="LoadPage">This action will reload the page with the URL specified in the "Source" parameter.</action>
-		</actions>
+		<property name="background" type="string" subtype="image">A background image for the page.</property>
+		<property name="bgcolor" type="string" subtype="color">The background color for the page. Can either be a recognized color (such as "red", an RGB color (such as "#C0C0C0").</property>
+		<property name="datafocus1" type="string" subtype="color">A color, RGB or named, for the top and left edges of rectangles drawn to indicate data blue).</property>
+		<property name="datafocus2" type="string" subtype="color">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate blue).</property>
+		<property name="kbdfocus1" type="string" subtype="color">A color, RGB or named, to be used for the top and left edges of rectangles drawn to  "white".</property>
+		<property name="kbdfocus2" type="string" subtype="color">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate grey).</property>
+		<property name="mousefocus1" type="string" subtype="color">A color, RGB or named, to be used for the top and left edges of rectangles drawn to  "black".</property>
+		<property name="mousefocus2" type="string" subtype="color">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate "black".</property>
+		<property name="textcolor" type="string" subtype="color">The default color for text which appears on the page.  Can either be a named color or color.</property>
+		<property name="title" type="string">The title which will appear in the browser's window title bar.</property>
+		<action name="LoadPage">This action will reload the page with the URL specified in the "Source" parameter.</action>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -658,21 +531,13 @@ MyPage "widget/page"
 		<usage>
 			<p>This container can be placed inside any widget having a visible container.=  Visual or nonvisual widgets may be placed inside a pane.</p>
 		</usage>
-		<properties>
-			<property name="background" type="string">A background image for the pane.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor transparent.</property>
-			<property name="height" type="integer">height, in pixels, of the pane.</property>
-			<property name="style" type="string">Either "raised" or "lowered", and determines the style of the pane's border.</property>
-			<property name="width" type="integer">width, in pixels, of the pane.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the pane, relative to its container.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the pane, relative to its container.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="background" type="string" subtype="image">A background image for the pane.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor transparent.</property>
+		<property name="height" type="integer">height, in pixels, of the pane.</property>
+		<property name="style" type="string" enum="raised,lowered">Either "raised" or "lowered", and determines the style of the pane's border.</property>
+		<property name="width" type="integer">width, in pixels, of the pane.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the pane, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the pane, relative to its container.</property>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -693,29 +558,21 @@ mypane "widget/pane"
 			<p>The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).The "widget/radiobuttonpanel" is the main widget, and can contain any number of "widget/radiobutton" widgets which specify the choices which will be present on the panel.No other visual widgets can be contained within a radio button panel.</p>
 			<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
 		</usage>
-		<properties>
-			<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
-			<property name="background" type="string">A background image for the radio button panel.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, for the panel background. If neither bgcolor nor background transparent.</property>
-			<property name="height" type="integer">height, in pixels, of the panel.</property>
-			<property name="outlinecolor" type="string">The color, RGB or named, of the rectangular border drawn around the radio buttons.</property>
-			<property name="textcolor" type=" (string">The color, RGB or named, of the text within the panel.  Default: "black".</property>
-			<property name="title" type="string">The title for the radio button panel, which appears superimposed on the rectangular   border around the radio buttons.</property>
-			<property name="width" type="integer">width, in pixels, of the panel.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the panel, default is 0.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the panel, default is 0.</property>
-		</properties>
-		<children>
-			<child type="widget/radiobutton">
-				<childproperty name="label" type="string">The text label to appear beside the radio button.</childproperty>
-				<childproperty name="selected" type="true/false">the radio button is initially selected or not. Should only be set on one radio Default;"false".</childproperty>
-				<childproperty name="value" type="string">The value of the selected item</childproperty>
-			</child>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
+		<property name="background" type="string" subtype="image">A background image for the radio button panel.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, for the panel background. If neither bgcolor nor background transparent.</property>
+		<property name="height" type="integer">height, in pixels, of the panel.</property>
+		<property name="outlinecolor" type="string" subtype="color">The color, RGB or named, of the rectangular border drawn around the radio buttons.</property>
+		<property name="textcolor" type="string" subtype="color">The color, RGB or named, of the text within the panel.  Default: "black".</property>
+		<property name="title" type="string">The title for the radio button panel, which appears superimposed on the rectangular   border around the radio buttons.</property>
+		<property name="width" type="integer">width, in pixels, of the panel.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the panel, default is 0.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the panel, default is 0.</property>
+		<child type="widget/radiobutton">
+			<childproperty name="label" type="string">The text label to appear beside the radio button.</childproperty>
+			<childproperty name="selected" type="boolean">the radio button is initially selected or not. Should only be set on one radio Default;"false".</childproperty>
+			<childproperty name="value" type="string">The value of the selected item</childproperty>
+		</child>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -726,7 +583,6 @@ testradio "widget/radiobuttonpanel"
 	width=150; height=80;
 	title="test";
 	bgcolor="#ffffff";
-
 	label1 "widget/radiobutton" { label="basketball";selected="true"; }
 	label2 "widget/radiobutton" { label="is fun"; }
     }
@@ -743,13 +599,6 @@ testradio "widget/radiobuttonpanel"
 		<usage>
 			<p>The remote control widget is a nonvisual widget and thus cannot contain visual widgets.=  It is normally located at the top-level of an application, within a "widget/page" object.</p>
 		</usage>
-		<properties>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions></actions>
 		<sample>
 		<![CDATA[
 		]]>
@@ -765,13 +614,6 @@ testradio "widget/radiobuttonpanel"
 		<usage>
 			<p>The remote control manager widget is a nonvisual widget and thus cannot contain visual widgets.It is normally located at the top-level of an application, within a "widget/page" object.</p>
 		</usage>
-		<properties>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions></actions>
 		<sample>
 		<![CDATA[
 		]]>
@@ -785,21 +627,13 @@ testradio "widget/radiobuttonpanel"
 		<usage>
 			<p>Scrollpane widgets can be placed inside any other container, but are usually placed inside a pane or a tab page.Almost any content can be placed inside a scrollpane, but most commonly tables, treeviews, and html areas appear there.</p>
 		</usage>
-		<properties>
-			<property name="background" type="string">A background image to be placed behind the scrollpane.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, to be used as the scrollpane background.If neither bgcolor transparent.</property>
-			<property name="height" type="integer">height, in pixels, of the scrollpane's visible area. Due to the nature of the  can time.</property>
-			<property name="width" type="integer">width, in pixels, of the scrollpane, including the scrollbar area on the right side.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the scrollpane, relative to its container.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the scrollpane, relative to its container.</property>
-			<property name="visible" type="string">allows user to set scroll pane to visible (true) or not (false).</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="background" type="string" subtype="image">A background image to be placed behind the scrollpane.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used as the scrollpane background.If neither bgcolor transparent.</property>
+		<property name="height" type="integer">height, in pixels, of the scrollpane's visible area. Due to the nature of the  can time.</property>
+		<property name="width" type="integer">width, in pixels, of the scrollpane, including the scrollbar area on the right side.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the scrollpane, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the scrollpane, relative to its container.</property>
+		<property name="visible" type="boolean">allows user to set scroll pane to visible (true) or not (false).</property>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -808,14 +642,12 @@ MyScrollPane "widget/scrollpane"
 	// Visible scrollpane geometries...
 	x = 0; y = 0;
 	width = 600; height = 300;
-
 	// This treeview is inside the scrollpane.
 	MyTreeView "widget/treeview"
 		{
 		x = 1; y = 1;
 		// Leave room for the scrollbar, (600 - 20 = 580)
 		width = 580;
-
 		// The source for the treeview.
 		source = "/";
 		}
@@ -833,25 +665,17 @@ MyScrollPane "widget/scrollpane"
 			<p>The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.</p>
 			<p>Tab pages are added to a tab control by including widgets of type "widget/tabpage" within the "widget/tab" widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective "widget/tabpage" widgets in the structure file.Only widgets of type "widget/tabpage" should be placed inside a "widget/tab", with the exception of nonvisuals such as connectors.</p>
 		</usage>
-		<properties>
-			<property name="background" type="string">An image to be used as the background of the tab control.This is useful for adding control.</property>
-			<property name="bgcolor" type="string">As an alternate to "background", "bgcolor" can specify a color, either named or RGB, control.</property>
-			<property name="height" type="integer">the height, in pixels, of the entire tab control, including the tabs and pages.</property>
-			<property name="selected" type="string">The name of the tab page that should be initially selected.</property>
-			<property name="textcolor" type=" (string">The color of the text to be used on the tabs to identify them.</property>
-			<property name="width" type="integer">width, in pixels, of the entire tab control.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the tab control, relative to the container.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the control, relative to its container.</property>
-		</properties>
-		<children>
-			<child type="any">
-				<childproperty name="title" type="string">The name of the tab page, which appears in the tab at the top of the control.</childproperty>
-			</child>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="background" type="string" subtype="image">An image to be used as the background of the tab control.This is useful for adding control.</property>
+		<property name="bgcolor" type="string" subtype="color">As an alternate to "background", "bgcolor" can specify a color, either named or RGB, control.</property>
+		<property name="height" type="integer">the height, in pixels, of the entire tab control, including the tabs and pages.</property>
+		<property name="selected" type="string">The name of the tab page that should be initially selected.</property>
+		<property name="textcolor" type="string" subtype="color">The color of the text to be used on the tabs to identify them.</property>
+		<property name="width" type="integer">width, in pixels, of the entire tab control.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the tab control, relative to the container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the control, relative to its container.</property>
+		<child type="any">
+			<childproperty name="title" type="string">The name of the tab page, which appears in the tab at the top of the control.</childproperty>
+		</child>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -861,7 +685,6 @@ myTabControl "widget/tab"
 	x = 20; y = 100; width=360; height=200;
 	bgcolor="#c0c0c0";
 	selected = "FirstPage";
-
 	FirstPage "widget/tabpage" { title = "TheFirstPage";}
 	SecondPage "widget/tabpage" { title = "TheSecondTabPage"; }
 	}
@@ -877,47 +700,39 @@ myTabControl "widget/tab"
 		<usage>
 			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 		</usage>
-		<properties>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the table. Default is 0.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the table. Default is 0.</property>
-			<property name="width" type="integer">width, in pixels, of the table.The height is determined dynamically.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, to be used between table cells and rows.If neither transparent.</property>
-			<property name="background" type="string">A background image for the table. This "shows through" between table cells.</property>
-			<property name="hdr_background" type="string">A background image for the header row cells.</property>
-			<property name="hdr_bgcolor" type="string">A color, RGB or named, for the header row cells.</property>
-			<property name="row_background1" type="string">A background image for the table row cells.</property>
-			<property name="row_bgcolor1" type="string">A color, RGB or named, for the table row cells.</property>
-			<property name="row_background2" type="string">A background image for the table row cells.  If this is specified, rows will alternate in "row_background2".</property>
-			<property name="row_bgcolor2" type="string">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate "row_bgcolor2".</property>
-			<property name="row_backgroundhilight" type="integer">the background image of the highlighted row</property>
-			<property name="row_bgcolorhilight" type="integer">the background color of the hilighted row</property>
-			<property name="titlecolor" type=" (string">A color, RGB or named, of the text in the header row.  If unset, defaults to textcolor.</property>
-			<property name="textcolor" type=" (string">A color, RGB or named, of the text in the normal data rows.</property>
-			<property name="textcolorhilight" type="integer">the text color of the hilighted row</property>
-			<property name="inner_border" type="integer">width of the inner spacing between cells in a table. Default0.</property>
-			<property name="inner_padding" type="integer">margins within each cell, in pixels.  Default is 0 pixels.</property>
-			<property name="outer_border" type="integer">width of the outer spacing around the outside of the table, in pixels.  Default0.</property>
-			<property name="rowheight" type="integer">The outside height of a row </property>
-			<property name="cellhspacing" type="integer">The distance each cell is from the outside border of the row </property>
-			<property name="cellvspacing" type="integer">the distance each cell is from the 'border' of the cell (each cell is 2*cellvspacing from it's neighbors) </property>
-			<property name="windowsize" type="integer">maximum number of data rows to display at one time (windowsize of 5 = 1 title row + 5 data rows = 6 total rows)</property>
-			<property name="sql" type="string">The SQL query to be used for obtaining the data for the table.This query's result set child widgets.</property>
-			<property name="dragcols" type="0/1">boolean 0/1 -- indicates whether to enable dragable columns </property>
-			<property name="colsep" type="integer">size of draggable column border/2 (probably should be renamed.</property>
-			<property name="gridinemptyrows" type="0/1">boolean 0/1 -- if there are empty rows at the bottom (ie, windowsize=5, 2 rows in recordset), should the grid be there or not</property>
-			<property name="followcurrent" type="0/1">boolean 0/1 -- should the table ensure that when the current osrc record changes, that it is visible in the dynamic table window? </property>
-			<property name="mode" type="integer">0=static, anything else=dynamic</property>
-		</properties>
-		<children>
-			<child type="any">
-				<childproperty name="title" type="string">The title of the column to be displayed in the header row.</childproperty>
-				<childproperty name="width" type="integer">width of the column.</childproperty>
-			</child>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the table. Default is 0.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the table. Default is 0.</property>
+		<property name="width" type="integer">width, in pixels, of the table.The height is determined dynamically.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used between table cells and rows.If neither transparent.</property>
+		<property name="background" type="string" subtype="image">A background image for the table. This "shows through" between table cells.</property>
+		<property name="hdr_background" type="string" subtype="image">A background image for the header row cells.</property>
+		<property name="hdr_bgcolor" type="string" subtype="color">A color, RGB or named, for the header row cells.</property>
+		<property name="row_background1" type="string" subtype="image">A background image for the table row cells.</property>
+		<property name="row_bgcolor1" type="string" subtype="color">A color, RGB or named, for the table row cells.</property>
+		<property name="row_background2" type="string" subtype="image">A background image for the table row cells.  If this is specified, rows will alternate in "row_background2".</property>
+		<property name="row_bgcolor2" type="string" subtype="color">A color, RGB or named, for the table row cells.  If this is specified, rows will alternate "row_bgcolor2".</property>
+		<property name="row_backgroundhilight" type="integer" subtype="image">the background image of the highlighted row</property>
+		<property name="row_bgcolorhilight" type="integer" subtype="image">the background color of the hilighted row</property>
+		<property name="titlecolor" type="string" subtype="color">A color, RGB or named, of the text in the header row.  If unset, defaults to textcolor.</property>
+		<property name="textcolor" type="string" subtype="color">A color, RGB or named, of the text in the normal data rows.</property>
+		<property name="textcolorhilight" type="string" subtype="color">the text color of the hilighted row</property>
+		<property name="inner_border" type="integer">width of the inner spacing between cells in a table. Default0.</property>
+		<property name="inner_padding" type="integer">margins within each cell, in pixels.  Default is 0 pixels.</property>
+		<property name="outer_border" type="integer">width of the outer spacing around the outside of the table, in pixels.  Default0.</property>
+		<property name="rowheight" type="integer">The outside height of a row </property>
+		<property name="cellhspacing" type="integer">The distance each cell is from the outside border of the row </property>
+		<property name="cellvspacing" type="integer">the distance each cell is from the 'border' of the cell (each cell is 2*cellvspacing from it's neighbors) </property>
+		<property name="windowsize" type="integer">maximum number of data rows to display at one time (windowsize of 5 = 1 title row + 5 data rows = 6 total rows)</property>
+		<property name="sql" type="string">The SQL query to be used for obtaining the data for the table.This query's result set child widgets.</property>
+		<property name="dragcols" type="boolean"> 0/1 -- indicates whether to enable dragable columns </property>
+		<property name="colsep" type="integer">size of draggable column border/2 (probably should be renamed.</property>
+		<property name="gridinemptyrows" type="boolean">0/1 -- if there are empty rows at the bottom (ie, windowsize=5, 2 rows in recordset), should the grid be there or not</property>
+		<property name="followcurrent" type="boolean">0/1 -- should the table ensure that when the current osrc record changes, that it is visible in the dynamic table window? </property>
+		<property name="mode" type="integer">0=static, anything else=dynamic</property>
+		<child type="any">
+			<childproperty name="title" type="string">The title of the column to be displayed in the header row.</childproperty>
+			<childproperty name="width" type="integer">width of the column.</childproperty>
+		</child>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -934,7 +749,6 @@ tblFileList "widget/table"
 	row_bgcolor1="#e0e0e0";
 	hdr_bgcolor="white";
 	textcolor="black";
-
 	name "widget/table-column" { title="Object Name";width=20; }
 	annotation "widget/table-column" { title="Annotation"; width=25; }
 	}
@@ -949,25 +763,17 @@ tblFileList "widget/table"
 		<usage>
 			<p>The TextButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
 		</usage>
-		<properties>
-			<property name="background" type="string">A background image for the button.</property>
-			<property name="bgcolor" type="string">A color, RGB or named, to be used as the button's background.If neither bgcolor transparent.</property>
-			<property name="fgcolor1" type=" (string">A color, RGB or named, for the text on the button.  Default "white".</property>
-			<property name="fgcolor2" type=" (string">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</property>
-			<property name="height" type="integer">height, in pixels, of the text button.</property>
-			<property name="text" type="string">The text to appear on the button.</property>
-			<property name="tristate" type="yes/no">or not the button is tri-state. Default is yes.</property>
-			<property name="width" type="integer">width, in pixels, of the text button.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-			<event name="Click">This event occurs when the user clicks the button. No parameters are available from this event.</event>
-		</events>
-		<actions>
-		</actions>
+		<property name="background" type="string" subtype="image">A background image for the button.</property>
+		<property name="bgcolor" type="string" subtype="color">A color, RGB or named, to be used as the button's background.If neither bgcolor transparent.</property>
+		<property name="fgcolor1" type="string" subtype="color">A color, RGB or named, for the text on the button.  Default "white".</property>
+		<property name="fgcolor2" type="string" subtype="color">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</property>
+		<property name="height" type="integer">height, in pixels, of the text button.</property>
+		<property name="text" type="string">The text to appear on the button.</property>
+		<property name="tristate" type="yes/no">or not the button is tri-state. Default is yes.</property>
+		<property name="width" type="integer">width, in pixels, of the text button.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
+		<event name="Click">This event occurs when the user clicks the button. No parameters are available from this event.</event>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -976,7 +782,6 @@ MyButton "widget/textbutton"
 	x = 10; y = 10;
 	width = 50;
 	height = 20;
-
 	tristate = "no";
 	background = "/sys/images/grey_gradient.png";
 	text = "OK";
@@ -991,19 +796,11 @@ MyButton "widget/textbutton"
 		<usage>
 			<p>Timers are nonvisual widgets which can be placed almost anywhere in an application.=  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.=  Timers can only contain Connector widgets.</p>
 		</usage>
-		<properties>
-			<property name="auto_reset" type="int;0 or 1">the timer starts counting down again immediately after it expires.</property>
-			<property name="auto_start" type="int;0 or 1">the timer starts counting down immediately after the page loads.</property>
-			<property name="msec" type="integer">of milliseconds (1/1000th of a second) before the timer expires.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-			<action name="SetTimer">action takes two parameters: "Time" (integer in milliseconds) and "AutoReset" (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.</action>
-			<action name="CancelTimer">actions causes a timer to stop counting down, and thus no Expire event will occur until another countdown sequence is initiated by a SetTimer action.</action>
-		</actions>
+		<property name="auto_reset" type="boolean">the timer starts counting down again immediately after it expires.</property>
+		<property name="auto_start" type="boolean">the timer starts counting down immediately after the page loads.</property>
+		<property name="msec" type="integer">of milliseconds (1/1000th of a second) before the timer expires.</property>
+		<action name="SetTimer">action takes two parameters: "Time" (integer in milliseconds) and "AutoReset" (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.</action>
+		<action name="CancelTimer">actions causes a timer to stop counting down, and thus no Expire event will occur until another countdown sequence is initiated by a SetTimer action.</action>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -1043,20 +840,12 @@ mytimerTwo "widget/timer"
 		<usage>
 			<p>Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.</p>
 		</usage>
-		<properties>
-			<property name="source" type="string">The ObjectSystem path of the root of the treeview.</property>
-			<property name="width" type="integer">width, in pixels, of the treeview.</property>
-			<property name="x" type="integer">x-coordinate of the upper left corner of the treeview's root object.</property>
-			<property name="y" type="integer">y-coordinate of the upper left corner of the treeview's root object.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-			<event name="ClickItem">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is "Pathname", or the ObjectSystem path to the object which was selected.</event>
-			<event name="RightClickItem">to the above, but when the user right-clicks on an item in the treeview.</event>
-		</events>
-		<actions>
-		</actions>
+		<property name="source" type="string" subtype="OSMLobject">The ObjectSystem path of the root of the treeview.</property>
+		<property name="width" type="integer">width, in pixels, of the treeview.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the treeview's root object.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the treeview's root object.</property>
+		<event name="ClickItem">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is "Pathname", or the ObjectSystem path to the object which was selected.</event>
+		<event name="RightClickItem">to the above, but when the user right-clicks on an item in the treeview.</event>
 		<sample>
 		<![CDATA[
 $Version=2$
@@ -1066,11 +855,9 @@ mypane "widget/pane"
 	x=100; y=100; width=300; height=300;
 	style = "lowered";
 	bgcolor = "#c0c0c0";
-	
 	myscroll "widget/scrollpane"
 		{
 		x=0; y=0; width=198; height=198;
-		
 		mytreeview "widget/treeview"
 			{
 			x=1; y=1; width=175;
@@ -1088,15 +875,7 @@ mypane "widget/pane"
 		<usage>
 			<p>This nonvisual widget is used at the top-level (within a "widget/page").=  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.</p>
 		</usage>
-		<properties>
-			<property name="value" type="integer/string">initial value of the variable.</property>
-		</properties>
-		<children>
-		</children>
-		<events>
-		</events>
-		<actions>
-		</actions>
+		<property name="value" type="integer/string">initial value of the variable.</property>
 		<sample>
 		<![CDATA[
 $Version=2$

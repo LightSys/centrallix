@@ -11,11 +11,11 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.</p>
-			<p>The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.</p>
+			The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.
+			The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>Scrollpane widgets can be placed inside any other container, but are usually placed inside a pane or a tab page.Almost any content can be placed inside a scrollpane, but most commonly tables, treeviews, and html areas appear there.</p>
+			Scrollpane widgets can be placed inside any other container, but are usually placed inside a pane or a tab page.Almost any content can be placed inside a scrollpane, but most commonly tables, treeviews, and html areas appear there.
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -50,7 +50,7 @@
 </tr>
 <tr>
 <td class="name">visible</td>
-<td class="type">string</td>
+<td class="type">boolean</td>
 <td class="description">allows user to set scroll pane to visible (true) or not (false).</td>
 </tr>
 </table>
@@ -69,14 +69,12 @@ MyScrollPane &quot;widget/scrollpane&quot;
 	// Visible scrollpane geometries...
 	x = 0; y = 0;
 	width = 600; height = 300;
-
 	// This treeview is inside the scrollpane.
 	MyTreeView &quot;widget/treeview&quot;
 		{
 		x = 1; y = 1;
 		// Leave room for the scrollbar, (600 - 20 = 580)
 		width = 580;
-
 		// The source for the treeview.
 		source = &quot;/&quot;;
 		}
