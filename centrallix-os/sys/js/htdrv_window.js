@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -248,7 +248,7 @@ function wn_close(l)
 	    var sizeY = 0;
 	    if (l.closetype & 1)
 		{
-		var toX = Math.ceil(getClipWidht(l)/2);
+		var toX = Math.ceil(getClipWidth(l)/2);
 		sizeX = Math.ceil(toX*speed/duration);
 		}
 	    if (l.closetype & 2)
@@ -271,7 +271,7 @@ function wn_graphical_close(l,speed,sizeX,sizeY)
     	{
 	l.clip.right -= sizeX;
 	l.clip.left += sizeX;
-	if (getClipWidht(l) <= 0) var reset = true;
+	if (getClipWidth(l) <= 0) var reset = true;
 	}
     if (sizeY > 0)
     	{
@@ -282,7 +282,7 @@ function wn_graphical_close(l,speed,sizeX,sizeY)
     if (reset)
     	{
 	    l.visibility = 'hidden';
-	    setClipWidht(l, l.orig_width);
+	    setClipWidth(l, l.orig_width);
 	    l.clip.right = l.orig_right;
 	    l.clip.left = l.orig_left;
 	    l.clip.height = l.orig_height;
@@ -473,7 +473,4 @@ function wn_mouseout(e)
     if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
-
-
-
 

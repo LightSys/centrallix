@@ -28,10 +28,6 @@ function tv_new_layer(width,pdoc,l)
 	nl.next = null;*/
 	tv_cache_cnt--;
 	nl = pdoc.tv_layer_cache.pop();
-	if (cx__capabilities.Dom1HTML)
-	    {
-	    pdoc.appendChild(nl);
-	    }
 	}
     else
 	{
@@ -72,12 +68,35 @@ function tv_new_layer(width,pdoc,l)
 
 function tv_cache_layer(l,pdoc)
     {
-    pg_debug('tv_cache_layer: ' + pdoc.layer.name + '\n');
+    if (cx__capabilities.Dom1HTML)
+        {
+		pg_debug('tv_cache_layer: ' + pdoc.id + '\n');
+        }
+    else if (cx__capabilities.Dom0NS)
+        {
+		pg_debug('tv_cache_layer: ' + pdoc.layer.name + '\n');
+		}
     /*l.next = pdoc.tv_layer_cache;
     pdoc.tv_layer_cache = l;*/
     pdoc.tv_layer_cache.push(l);
     pg_set_style_string(l,'visibility','hidden');
     tv_cache_cnt++;
+    }
+
+function tv_action_setfocus(aparam)
+    {
+    }
+
+function tv_action_setroot(aparam)
+    {
+    // Make sure we've collapsed the current tree
+    this.root.collapse();
+
+    // Set the root
+    if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
+    if (!aparam.NewRootObj) aparam.NewRootObj = null;
+    tv_init(this.root,aparam.NewRoot,this.root.ld,this.root.pdoc,getClipWidth(this.root),this.root.LSParent,aparam.NewRootObj);
+    if (aparam.Expand == 'yes') this.root.expand();
     }
 
 function tv_click(e)
@@ -541,18 +560,7 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     l.kind = 'tv';
     l.pdoc = pdoc;
     l.ld = loader;
-    if(cx__capabilities.Dom0NS)
-	{
-	l.document.layer = l;
-	}
-    else if(cx__capabilities.Dom1HTML)
-	{
-	l.layer = l;
-	}
-    else
-	{
-	alert('browser not supported');
-	}
+    htr_init_layer(l,l,'tv');
     l.mainlayer = l;
     //l.ld.parent = l;
     l.root = l;
@@ -582,7 +590,7 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     l.is_initialized = true;
 
     // Auto expand if not showing root, otherwise what's the use?
-    if (htr_getvisibility(l) != 'inherit') l.root.expand();
+    if (htr_getvisibility(l) != 'inherit') l.root.expand();    
     }
 
 function tv_expand()
@@ -640,19 +648,20 @@ function tv_collapse()
 	    pg_debug('tv_collapse: caching ' + sl.fname + '\n');
 	    //alert(sl.fname);
 	    tv_cache_layer(sl,l.pdoc);
+	    //delete lyrs[i];
 	    sl.fname = null;
 	    if(cx__capabilities.Dom0NS)
-	        {
-	        delete lyrs[i];
-	        }
+		{
+		sl.document.onmouseup = null;
+		}
 	    else if(cx__capabilities.Dom1HTML)
-	        {
-	    	lyrs[i].innerHTML ="";
-	    	lyrs[i].outerHTML ="";
-	    	len--;
-	    	}
-
-	    sl.fname = null;
+		{
+		sl.onmouseup = null;
+		}
+	    else
+		{
+		alert('browser not supported');
+		}
 	    cnt++;
 	    }
 	//layers = pg_layers(l.pdoc);
