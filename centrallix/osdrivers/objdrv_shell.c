@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <err.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -51,7 +52,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.6 2002/11/22 22:09:42 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.7 2002/12/23 06:28:19 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -68,15 +69,40 @@ typedef struct
     char	sCurAttr[10];
     pSnNode	Node;
     char	program[80];
-    char**	args;
-    int		nArgs;
+    XArray	argArray;   // pointers back to the structure file for arguments (null pointer terminated) -- don't free
+    XArray	envArray;   // pointers to malloc()ed char*s that represent the environment (null pointer terminated) -- free with free() (except the final entry which is NULL)
+    XArray	envList;    // pointers back to the structure file for environment variable names -- don't free
+    XHashTable	envHash;    // EnvVar structures -- free() value if shouldfree==1, always nmFree() the structure
     pFile	shell_fd;
     int		curRead;
     int		curWrite;
     pid_t	shell_pid;
+    int		done;
     }
     ShlData, *pShlData;
 
+typedef struct
+    {
+    char*	value;
+    char	changeable;
+    char	shouldfree;
+    }
+    EnvVar, *pEnvVar;
+
+
+/*** free wrapper for freeing EnvVars in an XHashTable
+***/
+int
+free_EnvVar(void* p, void* arg)
+    {
+    pEnvVar ptr = (pEnvVar)p;
+    arg = NULL ; /* avoid complaints from picky compilers */
+    if(ptr->shouldfree)
+	free(ptr->value); // value was malloc()ed, not nmMalloc()ed
+    nmFree(ptr,sizeof(EnvVar));
+    return 0   ; /* meaningless, but is needed for type safety */
+    }
+    
 
 #define SHL(x) ((pShlData)(x))
 
@@ -86,6 +112,186 @@ typedef struct
 #define SHELL_DEBUG_EXEC 0x04
 #define SHELL_DEBUG_OPEN 0x08
 #define SHELL_DEBUG_INIT 0x10
+#define SHELL_DEBUG_LAUNCH 0x20
+#define SHELL_DEBUG_IO 0x40
+
+
+/*** shl_internal_UpdateStatus -- checks the status of the shell and updates shell_pid accordingly
+ ***/
+void
+shl_internal_UpdateStatus(pShlData inf)
+    {
+    int waitret;
+    int retval;
+
+    /** ensure there's actually a running shell to check **/
+    if(inf->shell_pid<=0)
+	return;
+
+    waitret=waitpid(inf->shell_pid,&retval,WNOHANG);
+    if(waitret>0)
+	{
+	inf->shell_pid = 0;
+	}
+    else if(waitret==0)
+	{
+	/** child is still running... no problems here **/
+	}
+    else
+	{
+	/** hmm... error... **/
+	mssError(0,"SHL","Error checking for dead child: %s\n",strerror(errno));
+	return;
+	}
+    }
+
+/*** shl_internal_Launch -- launches the subprocess and sets up the communication
+ ***/
+int
+shl_internal_Launch(pShlData inf)
+    {
+    char tty_name[32];
+    int pty;
+    int i;
+
+    for(i=0;i<xaCount(&inf->envList);i++)
+	{
+	pEnvVar pEV;
+	char* name;
+	char* p;
+	name=(char*)xaGetItem(&inf->envList,i);
+	pEV=(pEnvVar)xhLookup(&inf->envHash,name);
+	p = (char*)malloc(strlen(name)+2+pEV->value?strlen(pEV->value):0);
+	sprintf(p,"%s=%s",name,pEV->value?pEV->value:"");
+	xaAddItem(&inf->envArray,p);
+	}
+
+    
+    if(SHELL_DEBUG & SHELL_DEBUG_LAUNCH)
+	{
+	char **ptr;
+	int i=0;
+	printf("%s(%p)\n",__FUNCTION__,inf);
+	
+	printf("program: %s\n",inf->program);
+
+	ptr=(char**)(inf->argArray.Items);
+	while(*ptr)
+	    {
+	    printf("arg: %p: %s\n",ptr,*ptr);
+	    ptr++;
+	    }
+
+	ptr=(char**)(inf->envArray.Items);
+	while(*ptr)
+	    {
+	    printf("env: %p: %s\n",ptr,*ptr);
+	    ptr++;
+	    }
+	
+	}
+
+    pty=getpt();
+    if(pty<0)
+	{
+	mssError(0,"SHL","getpy() failed");
+	inf->shell_pid=0;
+	return -1;
+	}
+    if(grantpt(pty)<0 || unlockpt(pty)<0)
+	{
+	mssError(0,"SHL","granpt() or unlockpt() failed");
+	inf->shell_pid=0;
+	return -1;
+	}
+
+    if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
+	printf("shell got tty: %s\n",(const char*)ptsname(pty));
+
+    strncpy(tty_name,(const char*)ptsname(pty),32);
+    tty_name[31]='\0';
+    
+    inf->shell_pid=fork();
+    if(inf->shell_pid < 0)
+	{
+	mssError(0,"SHL","Unable to fork");
+	inf->shell_pid=0;
+	return -1;
+	}
+    if(inf->shell_pid==0)
+	{
+	int fd;
+	/** we're in the child process -- disable MTask context switches to be safe **/
+	thLock();
+
+	/** child -- shell **/
+	if(SHELL_DEBUG & SHELL_DEBUG_FORK)
+	    printf("in child\n");
+
+	//if(SHELL_DEBUG * SHELL_DEBUG_EXEC)
+	    //printf("exec: %s %p\n",inf->program,inf->args);
+
+	/** security issue: when centrallix runs as root with system
+	 ** authentication, the threads run with ruid=root, euid=user,
+	 ** and we need to get rid of the ruid=root here so that the
+	 ** command's privs are more appropriate.  Same for group id.
+	 **/
+	if (getuid() != geteuid())
+	    {
+	    if (setreuid(geteuid(),-1) < 0)
+		{
+		/** Rats!  we couldn't do it! **/
+		mssError(1,"SHL","Could not drop privileges!");
+		_exit(1);
+		}
+	    }
+	if (getgid() != getegid())
+	    {
+	    if (setregid(getegid(),-1) < 0)
+		{
+		/** Rats!  we couldn't do it! **/
+		mssError(1,"SHL","Could not drop group privileges!");
+		_exit(1);
+		}
+	    }
+
+	/** close all open fds (except for 0-2 -- std{in,out,err}) **/
+	for(fd=3;fd<64;fd++)
+	    close(fd);
+	
+	/** open the terminal **/
+	fd = open(tty_name,O_RDWR);
+	
+	/** switch to terminal as stdout **/
+	dup2(fd,0);
+
+	/** switch to terminal as stdin **/
+	dup2(fd,1);
+
+	/** switch to terminal as stderr **/
+	dup2(fd,2);
+
+	/** close old copy of FD **/
+	close(fd);
+
+	/** make the exec() call **/
+	execve(inf->program,(char**)(inf->argArray.Items),(char**)(inf->envArray.Items));
+
+	/** if exec() is successfull, this is never reached **/
+	warn("execve() failed");
+	_exit(1);
+	}
+    /** parent -- centrallix **/
+    if(SHELL_DEBUG & SHELL_DEBUG_FORK)
+	printf("still in parent :)\n");
+
+    /** open up the terminal that we'll use for comm with the child process **/
+    inf->shell_fd=fdOpenFD(pty,O_RDWR);
+
+    return 0;
+    }
+
+
     
 /*** shlOpen - open an object.
  ***/
@@ -97,10 +303,9 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     char* node_path;
     pSnNode node = NULL;
     char* ptr;
-    char tty_name[32];
-    int pty;
     pStructInf argStruct;
-    char **args;
+    pStructInf changeStruct;
+    int i,j;
 
 	/** Allocate the structure **/
 	inf = (pShlData)nmMalloc(sizeof(ShlData));
@@ -151,8 +356,6 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    return NULL;
 	    }
 
-	    
-
 	/** Set object params. **/
 	inf->Node = node;
 	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
@@ -165,13 +368,16 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if(SHELL_DEBUG & SHELL_DEBUG_PARAM) printf("program: %s\n",inf->program);	
 	
 	argStruct=stLookup(node->Data,"arg");
+
+	/** init structures for holding arguments and environmental variables **/
+	xaInit(&inf->argArray,argStruct?5:1);
+	xaInit(&inf->envArray,3);
+	xaInit(&inf->envList,3);
+	xhInit(&inf->envHash,17,0);
 	
 	if(!argStruct)
 	    {
 	    /** no 'arg' value present -- no parameters **/
-	    inf->nArgs=0;
-	    inf->args=(char**)nmMalloc((inf->nArgs+1)*sizeof(char*));
-	    inf->args[0]=NULL;
 	    }
 	else
 	    {
@@ -179,130 +385,80 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		{
 		/** 'arg' value is present and is a list -- parameters > 1 **/
 		int i;
-		char *ptr;
 		pXArray values;
 		values = &argStruct->Value->Children;
-		inf->nArgs=values->nItems;
-		inf->args=(char**)nmMalloc((inf->nArgs+1)*sizeof(char*));
-		memset(inf->args,0,(inf->nArgs+1)*sizeof(char*));
 		for(i=0;i<values->nItems;i++)
-		    inf->args[i]=((pExpression)values->Items[i])->String;
-		inf->args[values->nItems]=NULL;
+		    xaAddItem(&inf->argArray,((pExpression)(values->Items[i]))->String);
 		}
 	    else
 		{
+		char *ptr;
 		/** 'arg' value is present and is exactly one value -- 1 parameter **/
-		inf->nArgs=1;
-		inf->args=(char**)nmMalloc((inf->nArgs+1)*sizeof(char*));
-		memset(inf->args,0,(inf->nArgs+1)*sizeof(char*));
-		if(stAttrValue(argStruct,NULL,&inf->args[0],0)<0)
-		    inf->args[0]=NULL;
+		if(stAttrValue(argStruct,NULL,&ptr,0)<0)
+		    ptr=NULL;
+		xaAddItem(&inf->argArray,ptr);
 		}
-	    }
-	
-	pty=getpt();
-	if(pty<0)
-	    {
-	    mssError(0,"SHL","getpy() failed");
-	    shlClose(inf);
-	    return NULL;
-	    }
-	if(grantpt(pty)<0 || unlockpt(pty)<0)
-	    {
-	    mssError(0,"SHL","granpt() or unlockpt() failed");
-	    shlClose(inf);
-	    return NULL;
+	    xaAddItem(&inf->argArray,NULL);
 	    }
 
-	if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
-	    printf("shell got tty: %s\n",(const char*)ptsname(pty));
-
-	strncpy(tty_name,(const char*)ptsname(pty),32);
-	tty_name[31]='\0';
-	
-	inf->shell_pid=fork();
-	if(inf->shell_pid < 0)
+	for(i=0;i<node->Data->nSubInf;i++)
 	    {
-	    mssError(0,"SHL","Unable to fork");
-	    inf->shell_pid=0;
-	    shlClose(inf);
-	    return NULL;
-	    }
-	if(inf->shell_pid==0)
-	    {
-	    int fd;
-	    /** we're in the child process -- disable MTask context switches to be safe **/
-	    thLock();
-
-	    /** child -- shell **/
-	    if(SHELL_DEBUG & SHELL_DEBUG_FORK)
-		printf("in child\n");
-
-	    if(SHELL_DEBUG * SHELL_DEBUG_EXEC)
-		printf("exec: %s %p\n",inf->program,inf->args);
-
-	    /** security issue: when centrallix runs as root with system
-	     ** authentication, the threads run with ruid=root, euid=user,
-	     ** and we need to get rid of the ruid=root here so that the
-	     ** command's privs are more appropriate.  Same for group id.
-	     **/
-	    /** Removed mssError() calls to attempt to make this a bit safer,
-	     **   as mssError() modifies the error stack.  _Nothing_ called in the child
-	     **   part of the fork() should call anything else in centrallix or centrallix-lib
-	     **   -- at least that's my opinion.... -- Jonathan Rupp 11/18/2002 **/
-	    /** 
-	     ** Re-added mssError() calls, because after a fork() the process spaces
-	     ** are *completely* isolated.  The error stack in the parent Centrallix
-	     ** will not be modified.  Plus, using mssError() allows for syslog() based
-	     ** error reporting to still work, as well as stderr.
-	     **/
-	    if (getuid() != geteuid())
+	    pStructInf str = node->Data->SubInf[i];
+	    if (strcmp(str->Name, "program") && strcmp(str->Name,"arg") && strcmp(str->Name,"changeable") ) 
 		{
-		if (setreuid(geteuid(),-1) < 0)
-		    {
-		    /** Rats!  we couldn't do it! **/
-		    mssError(1,"SHL","Could not drop privileges!");
-		    _exit(1);
-		    }
+		pEnvVar pEV = (pEnvVar)nmMalloc(sizeof(EnvVar));
+		if(stAttrValue(str,NULL,&pEV->value,0)<0)
+		    pEV->value=NULL;
+		pEV->changeable = 0;
+		pEV->shouldfree = 0;
+		xhAdd(&inf->envHash,str->Name,(char*)pEV); // add it to the hash
+		xaAddItem(&inf->envList,str->Name); // add the name to the list
 		}
-	    if (getgid() != getegid())
-		{
-		if (setregid(getegid(),-1) < 0)
-		    {
-		    /** Rats!  we couldn't do it! **/
-		    mssError(1,"SHL","Could not drop group privileges!");
-		    _exit(1);
-		    }
-		}
-
-	    /** close all open fds (except for 0-2 -- std{in,out,err}) **/
-	    for(fd=3;fd<64;fd++)
-		close(fd);
-	    
-	    /** open the terminal **/
-	    fd = open(tty_name,O_RDWR);
-	    
-	    /** switch to terminal as stdout **/
-	    dup2(fd,0);
-
-	    /** switch to terminal as stdin **/
-	    dup2(fd,1);
-
-	    /** close old copy of FD **/
-	    close(fd);
-
-	    /** make the exec() call **/
-	    execvp(inf->program,inf->args);
-
-	    /** if exec() is successfull, this is never reached **/
-	    _exit(1);
 	    }
-	/** parent -- centrallix **/
-	if(SHELL_DEBUG & SHELL_DEBUG_FORK)
-	    printf("still in parent :)\n");
 
-	/** open up the terminal that we'll use for comm with the child process **/
-	inf->shell_fd=fdOpenFD(pty,O_RDWR);
+	changeStruct=stLookup(node->Data,"changeable");
+
+	if(changeStruct->Value->NodeType == EXPR_N_LIST)
+	    {
+	    /** 'arg' value is present and is a list -- parameters > 1 **/
+	    int i;
+	    pXArray values;
+	    pEnvVar pEV=NULL;
+	    values = &argStruct->Value->Children;
+	    for(i=0;i<values->nItems;i++)
+		{
+		pEV=(pEnvVar)xhLookup(&inf->envHash,((pExpression)(values->Items[i]))->String);
+		if(pEV)
+		    {
+		    pEV->changeable = 1;
+		    }
+		else
+		    mssError(0,"SHL","can't find %s to mark changeable\n",((pExpression)(values->Items[i]))->String);
+		}
+	    }
+	else
+	    {
+	    char *ptr;
+	    pEnvVar pEV=NULL;
+	    /** 'arg' value is present and is exactly one value -- 1 parameter **/
+	    if(stAttrValue(changeStruct,NULL,&ptr,0)<0)
+		ptr=NULL;
+	    if(ptr)
+		pEV=(pEnvVar)xhLookup(&inf->envHash,ptr);
+	    if(pEV)
+		{
+		pEV->changeable = 1;
+		}
+	    else
+		mssError(0,"SHL","can't find %s to mark changeable\n",ptr);
+	    }
+
+
+	/** note that the child process hasn't been started yet **/
+	inf->shell_pid = -1; 
+
+	/** this is set to 1 when a read fails with EIO **/
+	inf->done = 0;
 
 	if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
 	    printf("SHELL: returning object: %p\n",inf);
@@ -318,11 +474,12 @@ shlClose(void* inf_v, pObjTrxTree* oxt)
     pShlData inf = SHL(inf_v);
     int childstat=0;
     int waitret;
+    int i;
 
 	if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
 	    printf("SHELL: closing object: %p\n",inf);
 
-	if(inf->shell_pid)
+	if(inf->shell_pid>0)
 	    {
 	    waitret=waitpid(inf->shell_pid,&childstat,WNOHANG);
 	    if(waitret==0)
@@ -349,12 +506,34 @@ shlClose(void* inf_v, pObjTrxTree* oxt)
 	    if(SHELL_DEBUG & SHELL_DEBUG_FORK)
 		printf("child (%i) returned: %i\n",inf->shell_pid,childstat);
 	    }
-
+#if 0
 	if(inf->args)
 	    {
 	    /** free memory for argument array **/
 	    nmFree(inf->args,(inf->nArgs+1)*sizeof(char*));
 	    }
+
+	if(inf->envs)
+	    {
+	    /** free memory for environment array **/
+	    nmFree(inf->envs,(inf->nEnvs+1)*sizeof(char*));
+	    }
+
+	xhClear(&inf->envHash,free_wrapper,NULL);
+	xhDeInit(&inf->envHash);
+#endif
+	
+
+	xaDeInit(&inf->argArray);
+	for(i=0;i<xaCount(&inf->envArray);i++)
+	    {
+	    free(xaGetItem(&inf->envArray,i));
+	    }
+	xaDeInit(&inf->envList);
+	xhClear(&inf->envHash,free_EnvVar,NULL);
+	xhDeInit(&inf->envHash);
+
+
 
 	if(inf->Node)
 	    {
@@ -455,6 +634,14 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     int i=-1;
     int waitret;
     int retval;
+
+    if(SHELL_DEBUG & SHELL_DEBUG_IO)
+	printf("%s -- %p, %p, %i, %i, %i, %p\n",__FUNCTION__,inf_v,buffer,maxcnt,offset,flags,oxt);
+
+    /** launch the program if it's not running already **/
+    if(inf->shell_pid == -1)
+	if(shl_internal_Launch(inf) < 0)
+	    return -1;
     
     /** can't seek backwards on a stream :) **/
     if(flags & FD_U_SEEK)
@@ -485,31 +672,31 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	i=fdRead(inf->shell_fd,buffer,maxcnt,0,flags & ~FD_U_SEEK);
 	if(i < 0)
 	    {
+	    /** if we get EIO, set the done flag **/
+	    if(errno == EIO)
+		{
+		inf->done = 1;
+		return -1;
+		}
+
 	    /** user doesn't want us to block **/
 	    if(flags & FD_U_NOBLOCK)
 		return -1;
 
 	    /** if there is no more child process, that's probably why we can't read :) **/
-	    if(!inf->shell_pid)
+	    if(inf->shell_pid==0)
 		return -1;
 
-	    /** check and make sure the child process is still alive... **/
-	    waitret=waitpid(inf->shell_pid,&retval,WNOHANG);
-	    if(waitret==0)
+	    shl_internal_UpdateStatus(inf);
+
+	    if(inf->shell_pid>0)
 		{
 		/** child is alive, it just doesn't have any data yet -- wait for some **/
 		thSleep(200);
 		}
-	    else if(waitret>0)
-		{
-		/** child died :( -- mark it as dead and retry the read */
-		inf->shell_pid=0;
-		}
 	    else
 		{
-		/** hmm... error... **/
-		mssError(0,"SHL","Error checking for dead child: %i\n",errno);
-		return -1;
+		/** child just died -- retry the read **/
 		}
 	    }
 	}
@@ -527,6 +714,14 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
     int i=-1;
     int waitret;
     int retval;
+
+    if(SHELL_DEBUG & SHELL_DEBUG_IO)
+	printf("%s -- %p, %p, %i, %i, %i, %p\n",__FUNCTION__,inf_v,buffer,cnt,offset,flags,oxt);
+
+    /** launch the program if it's not running already **/
+    if(inf->shell_pid == -1)
+	if(shl_internal_Launch(inf) < 0)
+	    return -1;
 
     /** seek is _not_ allowed (obviously) **/
     if(flags & FD_U_SEEK && offset!=inf->curWrite)
@@ -546,23 +741,15 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 		return -1;
 
 	    /** check and make sure the child process is still alive... **/
-	    waitret=waitpid(inf->shell_pid,&retval,WNOHANG);
-	    if(waitret==0)
+	    shl_internal_UpdateStatus(inf);
+	    if(inf->shell_pid>0)
 		{
 		/** child is alive, it just isn't ready for data yet -- wait a bit **/
 		thSleep(200);
 		}
-	    else if(waitret>0)
+	    else if(inf->shell_pid==0)
 		{
 		/** child died :( **/
-		inf->shell_pid=0;
-		
-		return -1;
-		}
-	    else
-		{
-		/** hmm... error... **/
-		mssError(0,"SHL","Error checking for dead child: %i\n",errno);
 		return -1;
 		}
 	    }
@@ -607,6 +794,7 @@ shlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pShlData inf = SHL(inf_v);
     int i;
     pStructInf find_inf;
+    pEnvVar pEV;
 
     	/** If name, it's a string **/
 	if (!strcmp(attrname,"name")) return DATA_T_STRING;
@@ -617,7 +805,15 @@ shlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
 
+	if (!strcmp(attrname,"status")) return DATA_T_STRING;
+
 	if (!strncmp(attrname,"arg",3)) return DATA_T_STRING;
+
+	pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
+	if(pEV)
+	    {
+	    return DATA_T_STRING;
+	    }
 
 	mssError(1,"SHL","Could not locate requested attribute: %s",attrname);
 
@@ -635,6 +831,7 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
     pStructInf find_inf;
     char* ptr;
     int i;
+    pEnvVar pEV;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -667,9 +864,48 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    {
 	    if(!sscanf(attrname,"arg%i",&i))
 		return -1;
-	    if(i>=inf->nArgs || i<0)
+	    if(i>=xaCount(&inf->argArray) || i<0)
 		return -1;
-	    *(char**)val = inf->args[i];
+	    *(char**)val = (char*)xaGetItem(&inf->argArray,i);
+	    return 0;
+	    }
+
+	if (!strcmp(attrname,"status"))
+	    {
+	    shl_internal_UpdateStatus(inf);
+	    errno=0;
+
+	    if (inf->shell_pid==-1)
+		{
+		*(char**)val = "not started";
+		return 0;
+		}
+	    /** it is 'running' if any of the following is true:
+	      1. the process is running
+	      2. the file descriptor can be read from
+	      3. the error when reading is EAGAIN
+	    **/
+	    else if(inf->shell_pid>0 || !inf->done )
+		{
+		*(char**)val = "running";
+		return 0;
+		}
+	    else if (inf->shell_pid==0)
+		{
+		*(char**)val = "dead";
+		return 0;
+		}
+	    else
+		{
+		*(char**)val = "unknown";
+		return 0;
+		}
+	    }
+
+	pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
+	if(pEV)
+	    {
+	    *(char**)val = pEV->value;
 	    return 0;
 	    }
 
@@ -686,17 +922,29 @@ shlGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
     pShlData inf = SHL(inf_v);
     int i;
-    
-    if(inf->CurAttr>=inf->nArgs)
+
+    if(inf->CurAttr>=xaCount(&inf->argArray)+xaCount(&inf->envList)+1)
 	return NULL;
 
-    if(inf->CurAttr>999999)
+    if(inf->CurAttr==xaCount(&inf->argArray)+xaCount(&inf->envList))
+	{
+	inf->CurAttr++;
+	return "status";
+	}
+
+    if(inf->CurAttr>999999 && xaCount(&inf->argArray)>=999999)
 	return NULL;
 
-    i=snprintf(inf->sCurAttr,10,"arg%02i",inf->CurAttr++);
-    inf->sCurAttr[10]='\0';
-
-    return inf->sCurAttr;
+    if(inf->CurAttr<xaCount(&inf->argArray))
+	{
+	i=snprintf(inf->sCurAttr,10,"arg%02i",inf->CurAttr++);
+	inf->sCurAttr[10]='\0';
+	return inf->sCurAttr;
+	}
+    else
+	{
+	return (char*)xaGetItem(&inf->envList,(inf->CurAttr++)-xaCount(&inf->argArray));
+	}
     }
 
 
@@ -720,6 +968,7 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
     {
     pShlData inf = SHL(inf_v);
     pStructInf find_inf;
+    pEnvVar pEV;
 
 	/** Choose the attr name **/
 	/** Changing name of node object? **/
@@ -744,13 +993,36 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    }
 		strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
+
+	    /** Set dirty flag **/
+	    inf->Node->Status = SN_NS_DIRTY;
+
 	    return 0;
 	    }
 
-	/** Set dirty flag **/
-	inf->Node->Status = SN_NS_DIRTY;
+	pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
+	if(pEV && pEV->changeable && (datatype==DATA_T_STRING || datatype==DATA_T_INTEGER) )
+	    {
+	    if(pEV->shouldfree)
+		{
+		free(pEV->value);
+		}
+	    if(datatype == DATA_T_STRING)
+		{
+		pEV->value = (char*)malloc(strlen(*(char**)val+1));
+		strcpy(pEV->value,*(char**)val);
+		}
+	    else //datatype == DATA_T_INTEGER
+		{
+		pEV->value = (char*)malloc(20);
+		snprintf(pEV->value,20,"%i",*(int*)val);
+		pEV->value[19]='\0';
+		}
+	    pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
+	    return 0;
+	    }
 
-    return 0;
+    return -1;
     }
 
 
