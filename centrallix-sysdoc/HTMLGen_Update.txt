@@ -91,7 +91,7 @@ C.  DHTML GENERATION PROCESS CHANGE OVERVIEW....
 
 	2.  Starting at the topmost widget and working down through the
 	    tree depth-first, Verify() routines will be called for each 
-	    widget in the tree - for exmaple, the page driver's Verify()
+	    widget in the tree - for example, the page driver's Verify()
 	    routine will be called first to handle the top-level page
 	    widget.  The Verify() routine may choose to do nothing (as
 	    it currently behaves), or it may choose to do the following:
@@ -194,4 +194,165 @@ F.  COMPOSITE WIDGET INTERACTION
 
 G.  DETAILS OF CHANGES....
 
-    
+    1.	Interface between widget driver modules and ht_render module.
+
+	Driver Interface Functions:
+
+	    a.	Verify()	This method will be responsible for verifying
+				the attributes on the widget, set the widget's
+				container offsets, create any needed
+				subwidgets (e.g., for composite widgets and so
+				forth), and set geometries (and/or other
+				properties) on subwidgets if appropriate.
+
+	    b.	Render()	This method retains its traditional function
+				of generating the DHTML page data for the
+				widget.
+
+	    c.	Initialize()	This method is not in the driver structure,
+				but is the standard initialization call that
+				modules must all have.
+
+	HTMLGen Interface Functions, page building:
+
+	    a.
+
+	HTMLGen Interface Functions, app structure access / modification:
+
+	    a.
+
+
+    2.	Structure format for storage of application data in the in-memory
+	data structure for intermediate use.
+
+	Format:
+
+	    a.  int		Magic number
+	    b.  void*		(reserved)
+	    c.  int		Flags
+	    d.  char[64]	Widget type (such as "widget/page")
+	    e.  char[64]	Widget name
+	    f.  int (4 ea)	Requested Geometry: x, y, width, height
+	    g.  char (4 ea)	Specificity: x, y, width, height (range 0-100)
+	    h.	int (4 ea)	Actual Geometry: x, y, width, height
+	    i.	int (4 ea)	Container Offsets: top, bottom, left, right
+	    i.  XArray		List of additional properties
+	    j.  XArray		List of child widgets
+
+	Flags:
+
+	    1<<0 (1)		Verified -- drv->Verify() called
+
+	Additional property structure.  This structure is generic enough that
+	it may be useful for other things as well, as an extension of ObjData
+	perhaps - could be included in obj.h.
+
+	    a.	int		Magic number
+	    b.	void*		(reserved)
+	    c.	char[64]	Property name
+	    d.	int		Data type (DATA_T_xxx)
+	    e.	ObjData		Data value
+	    f.	char[16]	Small string buffer for string data, unioned
+				with storage for money, datetime, stringvec,
+				and intvec type values.
+
+
+    3.	Theme registry.
+
+	Fields.  A theme consists of multiple records in the theme registry,
+	so this field list builds only one record (a small part) of a theme.
+	The implementation should also provide for a way to lookup theme
+	registry values based on integer tags rather than string values, since
+	the string values can consume much time to compare.  A widget driver
+	would lookup the integer ID's during initialization, for instance.
+
+	This means that the fields won't necessarily be implemented in a
+	strictly tabular fashion - some kind of a tree structure will be
+	needed, and it will be important to keep widget and property index
+	numbers consistent across themes to preserve the performance benefit
+	of integer ID lookup.
+
+	    a.	char[8]		Theme name
+	    b.	char[8]		Parent theme name (for inheriting values)
+	    c.	char[64]	Widget type
+	    d.	{struct}	Additional property structure, see above.
+				This can include many aspects of a widget, not
+				just properties.
+
+
+    4.	Size determination.
+
+	The application (or an individual container) will be able,
+	potentially, to adapt to different sizes.  Thus, the sizing
+	information will need to be passed to the main htmlgen render
+	function.
+
+	If the application is being loaded as a whole, a javascript 'startup'
+	code segment will need to be present to link to the application by
+	reading the window width/height from the browser and then launching
+	the main application.  The htmlgen subsystem can do this by detecting
+	if the width and height have been specified, and if not, deploying a
+	small javascript segment to the client to determine the width and
+	height and then re-launch the application.
+
+	If a container is being reloaded, then the container will be
+	responsible for sending the width and height information to the server
+	when the layer in question reloads.  Similarly, if a new widget is
+	being loaded, the routine loading the new widget will need to specify
+	the size information.
+
+	The width and height will be specified as HTTP parameters in the URL,
+	using the following names:
+
+	    cx__width	- width of the container or window
+	    cx__height	- height of the container or window
+
+
+    5.	Reloadable container functionality in HTMLGen.
+
+	Reloadable containers will be implemented for container widgets whose
+	contents are purely contained in exactly one layer which contains no
+	other objects.
+
+	When this is done, the open object passed to htmlgen will be the
+	object of the container widget itself.  However, the container widget
+	will not be re-rendered into the generated document; only its contents
+	will be.  Nevertheless, the container widget will need to be built in
+	the in-memory data structure so that the container widget driver's 
+	Verify() function can (potentially) auto-configure the child widgets'
+	geometry (and other) aspects.
+
+	Before the container is reloaded, its contents will have to be
+	cleared.  Because the contents can include widgets with global
+	variable references, those references will have to be deleted via a
+	recursive search mechanism through the container.  If the child
+	widgets have "DeInit" methods on them, they are called.
+
+	After the container is reloaded, it will have freshly uninitialized
+	widgets within it.  A function "startup()" will be called in the
+	container's document upon load, which will be analogous to the main
+	document's startup() function, and generated in much the same manner.
+	Because the script init lines in that function will be referencing
+	objects in the DOM from an absolute perspective, a method will need to
+	be provided to give the script init some context.  This will be done
+	by passing a the container's global name to the htmlgen subsystem,
+	passed as a URL parameter, as follows:
+
+	    cx__parent	- reference to parent container document.
+
+	That document will be given to the widgets as their parent context.
+	The mechanism is already in place for the widgets to generate the
+	correctly formatted script init lines.
+
+	If the container has a "ContainerReloaded" method on it, that method
+	will be called when the container's contents have been reloaded.
+
+
+    6.	Dynamically loaded widget functionality.
+
+	This is very similar to reloadable containers, with the exception that
+	almost any dynamic widget can be dynamically loaded (static mode
+	widgets are the exception, since they aren't built from layers).
+
+	In this case, the container widget driver's Verify() and Render()
+	functions will both be utilized.
