@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_content.c,v 1.3 2002/04/25 17:59:59 gbeeley Exp $
+    $Id: obj_content.c,v 1.4 2003/07/10 19:21:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_content.c,v $
 
     $Log: obj_content.c,v $
+    Revision 1.4  2003/07/10 19:21:23  gbeeley
+    Making sure offset and cnt/maxcnt values are not negative.  Just a
+    safety check.
+
     Revision 1.3  2002/04/25 17:59:59  gbeeley
     Added better magic number support in the OSML API.  ObjQuery and
     ObjSession structures are now protected with magic numbers, and
@@ -76,6 +80,11 @@ int
 objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
     {
     ASSERTMAGIC(this, MGK_OBJECT);
+    if (maxcnt < 0 || offset < 0)
+	{
+	mssError(1,"OSML","Parameter error calling objRead()");
+	return -1;
+	}
     return this->Driver->Read(this->Data, buffer, maxcnt, offset, flags, &(this->Session->Trx));
     }
 
@@ -87,6 +96,11 @@ int
 objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
     {
     ASSERTMAGIC(this, MGK_OBJECT);
+    if (cnt < 0 || offset < 0)
+	{
+	mssError(1,"OSML","Parameter error calling objWrite()");
+	return -1;
+	}
     return this->Driver->Write(this->Data, buffer, cnt, offset, flags, &(this->Session->Trx));
     }
 
