@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.11 2002/04/29 19:23:13 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.12 2002/05/03 03:42:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.12  2002/05/03 03:42:16  gbeeley
+    Added objClose to close objects returned from fetches in the dropdown
+    list SQL query.
+
     Revision 1.11  2002/04/29 19:23:13  lkehresman
     Fixed scrolling on dropdowns.  It now works properly
 
@@ -442,6 +446,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	     }
 	     snprintf(sbuf,HT_SBUF_SIZE," '%s');\n", str);
 	     htrAddScriptInit(s, sbuf);
+	     objClose(qy_obj);
 	  }
 	  objQueryClose(qy);
        }
