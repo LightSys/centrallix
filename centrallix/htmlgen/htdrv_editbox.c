@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.8 2002/03/05 01:55:09 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.9 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.9  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.8  2002/03/05 01:55:09  lkehresman
     Added "clearvalue" method to form widgets
 
@@ -109,7 +116,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     {
     char* ptr;
     char name[64];
-    char sbuf[250];
+    char sbuf[HT_SBUF_SIZE];
     /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
@@ -151,7 +158,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Style of editbox - raised/lowered **/
 	if (objGetAttrValue(w_obj,"style",POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
@@ -176,15 +184,15 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    } 
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	snprintf(sbuf,HT_SBUF_SIZE,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
+	snprintf(sbuf,HT_SBUF_SIZE,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
+	snprintf(sbuf,HT_SBUF_SIZE,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write named global **/
@@ -420,38 +428,38 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> element for the base layer. **/
-	sprintf(sbuf,"<DIV ID=\"eb%dbase\">\n",id);
+	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"eb%dbase\">\n",id);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	snprintf(sbuf, HT_SBUF_SIZE, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	snprintf(sbuf, HT_SBUF_SIZE, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	snprintf(sbuf, HT_SBUF_SIZE, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD>&nbsp;</TD>\n");
+	snprintf(sbuf, HT_SBUF_SIZE, "            <TD>&nbsp;</TD>\n");
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	snprintf(sbuf, HT_SBUF_SIZE, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "<DIV ID=\"eb%dcon1\"></DIV>\n",id);
+	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"eb%dcon1\"></DIV>\n",id);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "<DIV ID=\"eb%dcon2\"></DIV>\n",id);
+	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"eb%dcon2\"></DIV>\n",id);
 	htrAddBodyItem(s, sbuf);
 
 	/** Check for objects within the editbox. **/
 	/** The editbox can have no subwidgets **/
-	/*sprintf(sbuf,"%s.mainlayer.document",nptr);
-	sprintf(sbuf2,"%s.mainlayer",nptr);
-	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);*/
+	/*sprintf(sbuf,"%s.mainlayer.document",nptr);*/
+	/*sprintf(sbuf2,"%s.mainlayer",nptr);*/
+	/*htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);*/
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</DIV>\n");

@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.7 2002/03/09 07:46:04 lkehresman Exp $
+    $Id: htdrv_radiobutton.c,v 1.8 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.8  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.7  2002/03/09 07:46:04  lkehresman
     Brought radiobutton widget up to date:
       * enable(), disable(), readonly()
@@ -145,23 +152,25 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Text color? **/
    if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
-      sprintf(textcolor,"%.127s",ptr);
+      snprintf(textcolor,32,"%s",ptr);
    else
       strcpy(textcolor,"black");
 
    /** Outline color? **/
    if (objGetAttrValue(w_obj,"outlinecolor",POD(&ptr)) == 0)
-      sprintf(outline_bg,"%.63s",ptr);
+      snprintf(outline_bg,64,"%s",ptr);
    else
       strcpy(outline_bg,"black");
 
    /** Get name **/
    if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-      strcpy(name,ptr);
+   memccpy(name,ptr,0,63);
+   name[63]=0;
 
    /** Get title **/
    if (objGetAttrValue(w_obj,"title",POD(&ptr)) != 0) return -1;
-      strcpy(title,ptr);
+   memccpy(title,ptr,0,63);
+   title[63] = 0;
 
    /** Get fieldname **/
    if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
@@ -176,30 +185,30 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    
 
    /** Ok, write the style header items. **/
-   sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+   snprintf(sbuf,1024,"    <STYLE TYPE=\"text/css\">\n");
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanel%dparentpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanel%dparentpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            id,x,y,w,h,z,w,h);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanel%dborderpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanel%dborderpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            id,3,12,w-(2*3),h-(12+3),z+1,w-(2*3),h-(12+3));
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanel%dcoverpane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanel%dcoverpane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            id,1,1,w-(2*3 +2),h-(12+3 +2),z+2,w-(2*3 +2),h-(12+3 +2));
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanel%dtitlepane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanel%dtitlepane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",
            id,10,1,w/2,17,z+3);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanelbuttonsetpane   { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanelbuttonsetpane   { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            5,5,12,12,z+2,12,12);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanelbuttonunsetpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanelbuttonunsetpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            5,5,12,12,z+2,12,12);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanelvaluepane       { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanelvaluepane       { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            5,5,12,12,z+2,12,12);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#radiobuttonpanellabelpane       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   snprintf(sbuf,1024,"\t#radiobuttonpanellabelpane       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            27,2,w-(2*3 +2+27+1),24,z+2,w-(2*3 +2+27+1),24);
    htrAddHeaderItem(s,sbuf);
    
@@ -217,7 +226,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
          objGetAttrValue(radiobutton_obj,"outer_type",POD(&ptr));
          if (!strcmp(ptr,"widget/radiobutton")) {
-            sprintf(sbuf,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
+            snprintf(sbuf,1024,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
                     id,i,7,10+((i-1)*25)+3,w-(2*3 +2+7),25,z+2,w-(2*3 +2+7),25);
             htrAddHeaderItem(s,sbuf);
             i++;
@@ -227,7 +236,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    }
    objQueryClose(qy);
    
-   sprintf(sbuf,"    </STYLE>\n");
+   snprintf(sbuf, 1024, "    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
 
    htrAddScriptFunction(s, "rb_getvalue", "\n"
@@ -392,21 +401,21 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Script initialization call. **/
    if (strlen(main_bgcolor) > 0) {
-      sprintf(sbuf,"    %s = radiobuttonpanel_init(
+      snprintf(sbuf,1024,"    %s = radiobuttonpanel_init(
             %s.layers.radiobuttonpanel%dparentpane,\"%s\",1,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
 	    \"%s\",\"%s\");", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
    } else if (strlen(main_background) > 0) {
-      sprintf(sbuf,"    %s = radiobuttonpanel_init(
+      snprintf(sbuf,1024,"    %s = radiobuttonpanel_init(
             %s.layers.radiobuttonpanel%dparentpane,\"%s\",2,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
 	    \"%s\",\"%s\");", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
    } else {
-      sprintf(sbuf,"    %s = radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", nptr, parentname, id,fieldname);
+      snprintf(sbuf,1024,"    %s = radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", nptr, parentname, id,fieldname);
    }
    htrAddScriptInit(s, sbuf);
 
@@ -443,10 +452,12 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
          if (!strcmp(ptr,"widget/radiobutton")) {
             if (objGetAttrValue(radiobutton_obj,"selected",POD(&ptr)) != 0)
                strcpy(sbuf2,"false");
-            else
-               strcpy(sbuf2,ptr);
+            else {
+               memccpy(sbuf2,ptr,0,199);
+	       sbuf2[199] = 0;
+	    }
 
-            sprintf(sbuf,"    add_radiobutton(%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.layers.radiobuttonpanel%doption%dpane, %s.layers.radiobuttonpanel%dparentpane, %s);\n",
+            snprintf(sbuf,1024,"    add_radiobutton(%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.layers.radiobuttonpanel%doption%dpane, %s.layers.radiobuttonpanel%dparentpane, %s);\n",
                parentname, id, id, id, id, i, parentname, id, sbuf2);
             htrAddScriptInit(s, sbuf);
             i++;
@@ -459,11 +470,11 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /*
       Do the HTML layers
    */
-   sprintf(sbuf,"   <DIV ID=\"radiobuttonpanel%dparentpane\">\n", id);
+   snprintf(sbuf,1024,"   <DIV ID=\"radiobuttonpanel%dparentpane\">\n", id);
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"      <DIV ID=\"radiobuttonpanel%dborderpane\">\n", id);
+   snprintf(sbuf,1024,"      <DIV ID=\"radiobuttonpanel%dborderpane\">\n", id);
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"         <DIV ID=\"radiobuttonpanel%dcoverpane\">\n", id);
+   snprintf(sbuf,1024,"         <DIV ID=\"radiobuttonpanel%dcoverpane\">\n", id);
    htrAddBodyItem(s, sbuf);
 
    /* Loop through each radio button and do the option pane and sub layers */
@@ -473,29 +484,31 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
          objGetAttrValue(radiobutton_obj,"outer_type",POD(&ptr));
          if (!strcmp(ptr,"widget/radiobutton")) {
-            sprintf(sbuf,"            <DIV ID=\"radiobuttonpanel%doption%dpane\">\n", id, i);
+            snprintf(sbuf,1024,"            <DIV ID=\"radiobuttonpanel%doption%dpane\">\n", id, i);
             htrAddBodyItem(s, sbuf);
-            sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelbuttonsetpane\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n");
+            snprintf(sbuf,1024,"               <DIV ID=\"radiobuttonpanelbuttonsetpane\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n");
             htrAddBodyItem(s, sbuf);
-            sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
+            snprintf(sbuf,1024,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
             htrAddBodyItem(s, sbuf);
 
 	    
             objGetAttrValue(radiobutton_obj,"label",POD(&ptr));
-            strcpy(sbuf2,ptr);
-            sprintf(sbuf,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
+            memccpy(sbuf2,ptr,0,199);
+	    sbuf2[199]=0;
+            snprintf(sbuf,1024,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
 	    htrAddBodyItem(s, sbuf);
 
 	    /* use label (from above) as default value if no value given */
 	    if(objGetAttrValue(radiobutton_obj,"value",POD(&ptr))==0)
 		{
-		strcpy(sbuf2,ptr);
+		memccpy(sbuf2,ptr,0,199);
+		sbuf2[199] = 0;
 		}
 
-            sprintf(sbuf,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);
+            snprintf(sbuf,1024,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);
             htrAddBodyItem(s, sbuf);
             
-            sprintf(sbuf,"            </DIV>\n");
+            snprintf(sbuf,1024,"            </DIV>\n");
             htrAddBodyItem(s, sbuf);
             i++;
          }
@@ -504,13 +517,13 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    }
    objQueryClose(qy);
    
-   sprintf(sbuf,"         </DIV>\n");
+   snprintf(sbuf,1024,"         </DIV>\n");
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"      </DIV>\n");
+   snprintf(sbuf,1024,"      </DIV>\n");
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"      <DIV ID=\"radiobuttonpanel%dtitlepane\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%s\">%s</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
+   snprintf(sbuf,1024,"      <DIV ID=\"radiobuttonpanel%dtitlepane\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%s\">%s</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"   </DIV>\n");
+   snprintf(sbuf,1024,"   </DIV>\n");
    htrAddBodyItem(s, sbuf);
 
    return 0;

@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.8 2002/02/13 19:35:55 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.9 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.9  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.8  2002/02/13 19:35:55  lkehresman
     Fixed another bug I introduced.  ly.document isn't even always there.
 
@@ -109,8 +116,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     {
     char* ptr;
     char name[64];
-    char sbuf[256];
-    char sbuf2[256];
+    char sbuf[HT_SBUF_SIZE];
+    char sbuf2[HT_SBUF_SIZE];
     pObject sub_w_obj;
     pObjQuery qy;
     int x,y,w,h;
@@ -217,15 +224,15 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
+	snprintf(sbuf,HT_SBUF_SIZE,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
 		id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
+	snprintf(sbuf,HT_SBUF_SIZE,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",
 		id, bx, by, bw, bh, bw, bh, z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write globals for internal use **/
@@ -401,117 +408,117 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n");
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
+	snprintf(sbuf,HT_SBUF_SIZE,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
 		name,parentname,id,parentname,id,id,h);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
 	/** This is the top white edge of the window **/
-	sprintf(sbuf,"<DIV ID=\"wn%dbase\"><TABLE %s border=0 cellspacing=0 cellpadding=0>\n",id,bgnd);
+	snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"wn%dbase\"><TABLE %s border=0 cellspacing=0 cellpadding=0>\n",id,bgnd);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	htrAddBodyItem(s, sbuf);
-	if (!is_dialog_style)
-	    {
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
-	    htrAddBodyItem(s, sbuf);
-	    }
-	sprintf(sbuf,"    <TD><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",is_dialog_style?(tbw):(tbw-2));
+	snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	htrAddBodyItem(s, sbuf);
 	if (!is_dialog_style)
 	    {
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	    htrAddBodyItem(s, sbuf);
 	    }
-	sprintf(sbuf,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD></TR>\n");
+	snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",is_dialog_style?(tbw):(tbw-2));
+	htrAddBodyItem(s, sbuf);
+	if (!is_dialog_style)
+	    {
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    htrAddBodyItem(s, sbuf);
+	    }
+	snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD></TR>\n");
 	htrAddBodyItem(s, sbuf);
 	
 	/** Titlebar for window, if specified. **/
 	if (has_titlebar)
 	    {
-	    sprintf(sbuf,"<TR><TD width=1><IMG SRC=/sys/images/white_1x1.png width=1 height=22></TD>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD width=1><IMG SRC=/sys/images/white_1x1.png width=1 height=22></TD>\n");
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD width=%d %s colspan=%d><IMG SRC=/sys/images/01close.gif name=close align=left><FONT COLOR='%s'> %s</FONT></TD>\n",
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=%d %s colspan=%d><IMG SRC=/sys/images/01close.gif name=close align=left><FONT COLOR='%s'> %s</FONT></TD>\n",
 	    	tbw,hdr_bgnd,is_dialog_style?1:3,txtcolor,title);
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD width=1><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=22></TD></TR>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=1><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=22></TD></TR>\n");
 	    htrAddBodyItem(s, sbuf);
 	    }
 
 	/** This is the beveled-down edge below the top of the window **/
 	if (!is_dialog_style)
 	    {
-	    sprintf(sbuf,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD>\n",w-3);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD>\n",w-3);
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
 	    htrAddBodyItem(s, sbuf);
 	    }
 	else
 	    {
 	    if (has_titlebar)
 	        {
-	        sprintf(sbuf,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	        snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	        htrAddBodyItem(s, sbuf);
-	        sprintf(sbuf,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w-1);
+	        snprintf(sbuf,HT_SBUF_SIZE,"    <TD colspan=2><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w-1);
 	        htrAddBodyItem(s, sbuf);
-	        sprintf(sbuf,"<TR><TD colspan=2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-1);
+	        snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD colspan=2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-1);
 	        htrAddBodyItem(s, sbuf);
-	        sprintf(sbuf,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
+	        snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
 	        htrAddBodyItem(s, sbuf);
 		}
 	    }
 
 	/** This is the left side of the window. **/
-	sprintf(sbuf,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
+	snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
 	htrAddBodyItem(s, sbuf);
 	if (!is_dialog_style)
 	    {
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD>\n",bh);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD>\n",bh);
 	    htrAddBodyItem(s, sbuf);
 	    }
 
 	/** Here's where the content goes... **/
-	sprintf(sbuf,"    <TD>\n");
+	snprintf(sbuf,HT_SBUF_SIZE,"    <TD>\n");
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s,"&nbsp;</TD>\n");
 
 	/** Right edge of the window **/
 	if (!is_dialog_style)
 	    {
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/white_1x1.png width=1 height=%d></TD>\n",bh);
 	    htrAddBodyItem(s, sbuf);
 	    }
-	sprintf(sbuf,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD></TR>\n",bh);
+	snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=%d></TD></TR>\n",bh);
 	htrAddBodyItem(s, sbuf);
 
 	/** And... bottom edge of the window. **/
 	if (!is_dialog_style)
 	    {
-	    sprintf(sbuf,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD><IMG SRC=/sys/images/white_1x1.png width=1 height=1></TD>\n");
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD>\n");
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD colspan = 2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-3);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD colspan = 2><IMG SRC=/sys/images/white_1x1.png width=%d height=1></TD>\n",w-3);
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=1></TD></TR>\n");
 	    htrAddBodyItem(s, sbuf);
 	    }
-	sprintf(sbuf,"<TR><TD colspan=5><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w);
+	snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD colspan=5><IMG SRC=/sys/images/dkgrey_1x1.png width=%d height=1></TD></TR>\n",w);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s,"</TABLE>\n");
 
-	sprintf(sbuf,"<DIV ID=\"wn%dmain\">\n",id);
+	snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"wn%dmain\">\n",id);
 	htrAddBodyItem(s, sbuf);
 
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	sprintf(sbuf,"%s.mainLayer.document",name);
-	sprintf(sbuf2,"%s.mainLayer",name);
+	snprintf(sbuf,HT_SBUF_SIZE,"%s.mainLayer.document",name);
+	snprintf(sbuf2,HT_SBUF_SIZE,"%s.mainLayer",name);
 	if (qy)
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))

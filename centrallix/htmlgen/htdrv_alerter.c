@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2002/03/09 06:39:14  jorupp
     * Added ViewDOM action to alerter
         pass object to display as parameter
@@ -90,7 +97,8 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = '\0';
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);

@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -123,7 +130,8 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Get normal, point, and click images **/
 	if (objGetAttrValue(w_obj,"image",POD(&ptr)) != 0) 
@@ -153,11 +161,11 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#ib%dpane { POSITION:absolute; VISIBILITY:visible; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	snprintf(sbuf,160,"\t#ib%dpane { POSITION:absolute; VISIBILITY:visible; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,160,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write named global **/
@@ -188,17 +196,17 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
+	snprintf(sbuf,160,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf,"    ib_init(%s,'%s','%s','%s',%d,%d,%s);\n",
+	snprintf(sbuf,160,"    ib_init(%s,'%s','%s','%s',%d,%d,%s);\n",
 		nptr, n_img, p_img, c_img, w, h, parentobj);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h == -1)
-	    sprintf(sbuf,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,n_img);
+	    snprintf(sbuf,160,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,n_img);
 	else
-	    sprintf(sbuf,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,n_img,w,h);
+	    snprintf(sbuf,160,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,n_img,w,h);
 	htrAddBodyItem(s, sbuf);
 
 	/** Add the event handling scripts **/

@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.4 2002/01/09 15:27:37 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.5 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.5  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.4  2002/01/09 15:27:37  gbeeley
     Fixed a bug where the borders of a textbutton would sometimes show up
     when the button's container was not visible.
@@ -97,7 +104,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
-    char sbuf[256];
+    char sbuf[320];
     char text[64];
     char fgcolor1[64];
     char fgcolor2[64];
@@ -132,7 +139,8 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Threestate button or twostate? **/
 	if (objGetAttrValue(w_obj,"tristate",POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
@@ -163,21 +171,21 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    strcpy(fgcolor2,"black");
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,320,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	snprintf(sbuf,320,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tb%dpane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:-1; TOP:-1; WIDTH:%d; Z-INDEX:%d; }\n",id,w-1,z+1);
+	snprintf(sbuf,320,"\t#tb%dpane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:-1; TOP:-1; WIDTH:%d; Z-INDEX:%d; }\n",id,w-1,z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tb%dtop { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
+	snprintf(sbuf,320,"\t#tb%dtop { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tb%dbtm { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
+	snprintf(sbuf,320,"\t#tb%dbtm { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tb%drgt { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
+	snprintf(sbuf,320,"\t#tb%drgt { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tb%dlft { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
+	snprintf(sbuf,320,"\t#tb%dlft { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,320,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write named global **/
@@ -221,36 +229,36 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
+	snprintf(sbuf,320,"    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf,"    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d);\n",
+	snprintf(sbuf,320,"    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d);\n",
 		nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h != -1)
 	    {
-	    sprintf(sbuf,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,h);
+	    snprintf(sbuf,320,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,h);
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,h);
+	    snprintf(sbuf,320,"<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,h);
 	    htrAddBodyItem(s, sbuf);
 	    }
 	else
 	    {
-	    sprintf(sbuf,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=3 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text);
+	    snprintf(sbuf,320,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=3 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text);
 	    htrAddBodyItem(s, sbuf);
-	    sprintf(sbuf,"<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text);
+	    snprintf(sbuf,320,"<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text);
 	    htrAddBodyItem(s, sbuf);
 	    }
-	sprintf(sbuf,"<DIV ID=\"tb%dtop\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
+	snprintf(sbuf,320,"<DIV ID=\"tb%dtop\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"<DIV ID=\"tb%dbtm\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
+	snprintf(sbuf,320,"<DIV ID=\"tb%dbtm\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"<DIV ID=\"tb%drgt\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h==-1)?1:h);
+	snprintf(sbuf,320,"<DIV ID=\"tb%drgt\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h==-1)?1:h);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"<DIV ID=\"tb%dlft\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h==-1)?1:h);
+	snprintf(sbuf,320,"<DIV ID=\"tb%dlft\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h==-1)?1:h);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"</DIV>\n");
+	snprintf(sbuf,320,"</DIV>\n");
 	htrAddBodyItem(s, sbuf);
 
 	/** Add a function to be used to change the state (mode) of the button **/

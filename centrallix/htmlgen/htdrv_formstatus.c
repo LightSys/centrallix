@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.2 2002/03/07 00:12:58 lkehresman Exp $
+    $Id: htdrv_formstatus.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2002/03/07 00:12:58  lkehresman
     Reworked form status widget to take advantage of the new icons
 
@@ -72,7 +79,7 @@ int htfsVerify() {
    htfsRender - generate the HTML code for the page.
 */
 int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-   char sbuf[200];
+   char sbuf[HT_SBUF_SIZE];
    int x=-1,y=-1;
    int id;
 
@@ -84,11 +91,11 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
 
    /** Ok, write the style header items. **/
-   sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   snprintf(sbuf,HT_SBUF_SIZE,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"    </STYLE>\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
 
    /** Clear function **/
@@ -139,11 +146,11 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"}\n", 0);
 
    /** Script initialization call. **/
-   sprintf(sbuf,"    fs_init(%s.layers.fs%dmain);\n", parentname, id);
+   snprintf(sbuf,HT_SBUF_SIZE,"    fs_init(%s.layers.fs%dmain);\n", parentname, id);
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/
-   sprintf(sbuf,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
+   snprintf(sbuf,HT_SBUF_SIZE,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
    htrAddBodyItem(s, sbuf);
 
    return 0;

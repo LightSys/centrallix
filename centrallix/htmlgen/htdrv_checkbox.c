@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.10 2002/03/08 23:11:11 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.11 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.11  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.10  2002/03/08 23:11:11  lkehresman
     Added all of the specified functions to the checkbox:
       * resetvalue()
@@ -111,7 +118,7 @@ int htcbVerify() {
    htcbRender - generate the HTML code for the page.
 */
 int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-   char sbuf[200];
+   char sbuf[HT_SBUF_SIZE];
    char fieldname[30];
    int x=-1,y=-1,checked=0;
    int id;
@@ -142,11 +149,11 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       } 
 
    /** Ok, write the style header items. **/
-   sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   snprintf(sbuf,HT_SBUF_SIZE,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"    </STYLE>\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
 
    /** Get value function **/
@@ -300,22 +307,22 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "\n");
 
    /** Script initialization call. **/
-   sprintf(sbuf,"    checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", parentname, id,fieldname,checked);
+   snprintf(sbuf,HT_SBUF_SIZE,"    checkbox_init(%s.layers.cb%dmain,\"%s\",%d);\n", parentname, id,fieldname,checked);
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/
-   sprintf(sbuf,"   <DIV ID=\"cb%dmain\">\n",id);
+   snprintf(sbuf,HT_SBUF_SIZE,"   <DIV ID=\"cb%dmain\">\n",id);
    htrAddBodyItem(s, sbuf);
    if (checked)
       {
-      sprintf(sbuf,"     <IMG SRC=/sys/images/checkbox_checked.gif>\n");
+      snprintf(sbuf,HT_SBUF_SIZE,"     <IMG SRC=/sys/images/checkbox_checked.gif>\n");
       }
    else
       {
-      sprintf(sbuf,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
+      snprintf(sbuf,HT_SBUF_SIZE,"     <IMG SRC=/sys/images/checkbox_unchecked.gif>\n");
       }
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"   </DIV>\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"   </DIV>\n");
    htrAddBodyItem(s, sbuf);
 
    return 0;

@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.3 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.4 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.4  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.3  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -128,7 +135,8 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Style of pane - raised/lowered **/
 	if (objGetAttrValue(w_obj,"style",POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
@@ -144,13 +152,13 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	snprintf(sbuf,160,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
+	snprintf(sbuf,160,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,160,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write named global **/
@@ -171,39 +179,39 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
+	snprintf(sbuf,160,"    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
 		nptr, parentname, id, parentname, id, id);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> element for the base layer. **/
-	sprintf(sbuf,"<DIV ID=\"pn%dbase\">\n",id);
+	snprintf(sbuf,160,"<DIV ID=\"pn%dbase\">\n",id);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	snprintf(sbuf,160,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	snprintf(sbuf,160,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	snprintf(sbuf,160, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD>&nbsp;</TD>\n");
+	snprintf(sbuf,160, "            <TD>&nbsp;</TD>\n");
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	snprintf(sbuf,160, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "<DIV ID=\"pn%dmain\">\n",id);
+	snprintf(sbuf,160, "<DIV ID=\"pn%dmain\">\n",id);
 	htrAddBodyItem(s, sbuf);
 
 	/** Check for objects within the pane. **/
-	sprintf(sbuf,"%s.mainlayer.document",nptr);
-	sprintf(sbuf2,"%s.mainlayer",nptr);
+	snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+	snprintf(sbuf2,160,"%s.mainlayer",nptr);
 	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
 	/** End the containing layer. **/

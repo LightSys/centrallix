@@ -42,12 +42,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.1 2001/08/13 18:00:52 gbeeley Exp $
+    $Id: htdrv_variable.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
-    Revision 1.1  2001/08/13 18:00:52  gbeeley
-    Initial revision
+    Revision 1.2  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
+    Revision 1.1.1.1  2001/08/13 18:00:52  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -82,7 +89,7 @@ htvblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     {
     char* ptr;
     char name[64];
-    char sbuf[256];
+    char sbuf[HT_SBUF_SIZE];
     pObject sub_w_obj;
     pObjQuery qy;
     int t;
@@ -96,7 +103,8 @@ htvblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 
@@ -116,7 +124,7 @@ htvblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	else if (t == DATA_T_INTEGER)
 	    {
 	    objGetAttrValue(w_obj,"value",POD(&t));
-	    sprintf(sbuf, "%d", t);
+	    snprintf(sbuf, HT_SBUF_SIZE, "%d", t);
 	    avptr = (char*)nmMalloc(strlen(sbuf)+1);
 	    strcpy(avptr,sbuf);
 	    htrAddScriptGlobal(s, nptr, avptr, HTR_F_NAMEALLOC | HTR_F_VALUEALLOC);

@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -117,7 +124,8 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Get source directory tree **/
 	if (objGetAttrValue(w_obj,"source",POD(&ptr)) != 0)
@@ -125,16 +133,17 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    mssError(1,"HTTREE","TreeView widget must have a 'source' property");
 	    return -1;
 	    }
-	strcpy(src,ptr);
+	memccpy(src,ptr,0,127);
+	src[127]=0;
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	snprintf(sbuf,160,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
+	snprintf(sbuf,160,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,160,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write globals for internal use **/
@@ -359,16 +368,16 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
+	snprintf(sbuf,160,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
+	snprintf(sbuf,160,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
 		nptr, src, parentname, id, parentname, w, parentobj);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
-	sprintf(sbuf,"<DIV ID=\"tv%droot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,src);
+	snprintf(sbuf,160,"<DIV ID=\"tv%droot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,src);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"<DIV ID=\"tv%dload\"></DIV>\n",id);
+	snprintf(sbuf,160,"<DIV ID=\"tv%dload\"></DIV>\n",id);
 	htrAddBodyItem(s, sbuf);
 
 	/** Event handler for click-on-url **/

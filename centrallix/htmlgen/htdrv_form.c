@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.12  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.11  2002/03/09 02:38:48  jheth
     Make OSRC work with Form - Query at least
 
@@ -168,18 +175,19 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***/
 
 	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
-	    sprintf(basequery,"%.300s",ptr);
+	    snprintf(basequery,300,"%.299s",ptr);
 	else
 	    strcpy(basequery,"");
 	
 	if (objGetAttrValue(w_obj,"basewhere",POD(&ptr)) == 0)
-	    sprintf(basewhere,"%.300s",ptr);
+	    snprintf(basewhere,300,"%.299s",ptr);
 	else
 	    strcpy(basewhere,"");
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63]=0;
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);

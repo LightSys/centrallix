@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -93,7 +100,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int vint;
     double vdbl;
     char name[64];
-    char sbuf[256];
+    char sbuf[HT_SBUF_SIZE];
     char* fnbuf;
     char fnname[16];
     char* fnnamebuf;
@@ -115,23 +122,27 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    mssError(1,"HTCONN","Connector must have an 'event' property");
 	    return -1;
 	    }
-	strcpy(event,ptr);
+	memccpy(event,ptr,0,31);
+	event[31]=0;
 	if (objGetAttrValue(w_obj,"target",POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have a 'target' property");
 	    return -1;
 	    }
-	strcpy(target,ptr);
+	memccpy(target,ptr,0,31);
+	target[31]=0;
 	if (objGetAttrValue(w_obj,"action",POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'action' property");
 	    return -1;
 	    }
-	strcpy(action,ptr);
+	memccpy(action,ptr,0,31);
+	action[31]=0;
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -143,9 +154,9 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "eparam", "null", 0);*/
 
 	/** Add a script init to install the connector **/
-	sprintf(sbuf,"    %s = new cn_init(%s,cn_%d);\n", nptr, parentobj, id);
+	snprintf(sbuf,HT_SBUF_SIZE,"    %s = new cn_init(%s,cn_%d);\n", nptr, parentobj, id);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
+	snprintf(sbuf,HT_SBUF_SIZE,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
 	htrAddScriptInit(s, sbuf);
 
 	/** Connector function to activate an action **/
@@ -194,24 +205,24 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	        {
 		case DATA_T_INTEGER:
 	    	    objGetAttrValue(w_obj, ptr, POD(&vint));
-		    sprintf(sbuf, "    aparam.%s = %d;\n",ptr,vint);
+		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %d;\n",ptr,vint);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_DOUBLE:
 		    objGetAttrValue(w_obj, ptr, POD(&vdbl));
-		    sprintf(sbuf, "    aparam.%s = %f;\n",ptr,vdbl);
+		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %f;\n",ptr,vdbl);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_STRING:
 	    	    objGetAttrValue(w_obj, ptr, POD(&vstr));
 		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
 		        {
-			sprintf(sbuf, "    aparam.%s = eparam.%s\n", ptr, vstr);
+			snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = eparam.%s\n", ptr, vstr);
 			xsConcatenate(&xs,sbuf,-1);
 			}
 		    else
 		        {
-			sprintf(sbuf, "    aparam.%s = ", ptr);
+			snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = ", ptr);
 			xsConcatenate(&xs,sbuf,-1);
 			xsConcatenate(&xs,vstr,-1);
 			xsConcatenate(&xs,";\n",2);
@@ -222,7 +233,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	xsConcatPrintf(&xs,"    %s.Action%s(aparam);\n", target, action);
 	xsConcatenate(&xs,"    delete aparam;\n",-1);
 	xsConcatenate(&xs,"    }\n\n",7);
-	sprintf(fnname, "cn_%d",id);
+	snprintf(fnname, HT_SBUF_SIZE, "cn_%d",id);
 	fnbuf = (char*)nmMalloc(strlen(xs.String)+1);
 	strcpy(fnbuf,xs.String);
 	fnnamebuf = (char*)nmMalloc(strlen(fnname)+1);

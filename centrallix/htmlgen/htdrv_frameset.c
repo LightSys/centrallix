@@ -42,12 +42,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.1 2001/08/13 18:00:49 gbeeley Exp $
+    $Id: htdrv_frameset.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
-    Revision 1.1  2001/08/13 18:00:49  gbeeley
-    Initial revision
+    Revision 1.2  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
+    Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -74,7 +81,7 @@ int
 htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
     {
     char* ptr;
-    char sbuf[128];
+    char sbuf[HT_SBUF_SIZE];
     pObject sub_w_obj;
     pObjQuery qy;
     char geom_str[64] = "";
@@ -84,7 +91,7 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     	/** Check for a title. **/
 	if (objGetAttrValue(w_obj,"title",POD(&ptr)) == 0)
 	    {
-	    sprintf(sbuf,"    <TITLE>%s</TITLE>\n",ptr);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TITLE>%s</TITLE>\n",ptr);
 	    htrAddHeaderItem(s, sbuf);
 	    }
 
@@ -98,12 +105,12 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		t = objGetAttrType(sub_w_obj, "framesize");
 		if (t < 0) 
 		    {
-		    sprintf(nbuf,"*");
+		    snprintf(nbuf,16,"*");
 		    }
 		else if (t == DATA_T_INTEGER)
 		    {
 		    objGetAttrValue(sub_w_obj, "framesize", POD(&n));
-		    sprintf(nbuf,"%d",n);
+		    snprintf(nbuf,16,"%d",n);
 		    }
 		else if (t == DATA_T_STRING)
 		    {
@@ -133,7 +140,7 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Build the frameset tag. **/
-	sprintf(sbuf, "<FRAMESET %s=%s border=%d>\n", direc?"rows":"cols", geom_str, bdr);
+	snprintf(sbuf, HT_SBUF_SIZE, "<FRAMESET %s=%s border=%d>\n", direc?"rows":"cols", geom_str, bdr);
 	htrAddBodyItem(s, sbuf);
 
 	/** Check for more sub-widgets within the page. **/
@@ -144,9 +151,9 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	        {
 		objGetAttrValue(sub_w_obj,"name",POD(&ptr));
 		if (objGetAttrValue(sub_w_obj,"marginwidth",POD(&n)) != 0)
-		    sprintf(sbuf,"    <FRAME SRC=./%s>\n",ptr);
+		    snprintf(sbuf,HT_SBUF_SIZE,"    <FRAME SRC=./%s>\n",ptr);
 		else
-		    sprintf(sbuf,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);
+		    snprintf(sbuf,HT_SBUF_SIZE,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);
 		htrAddBodyItem(s,sbuf);
 		objClose(sub_w_obj);
 		}
@@ -154,7 +161,7 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** End the framset. **/
-	sprintf(sbuf, "</FRAMESET>\n");
+	snprintf(sbuf, HT_SBUF_SIZE, "</FRAMESET>\n");
 	htrAddBodyItem(s, sbuf);
 
     return 0;

@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.1 2002/03/07 00:20:00 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.2  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.1  2002/03/07 00:20:00  lkehresman
     Added shell for the drop down list form widget.
 
@@ -69,7 +76,7 @@ int htddVerify() {
    htddRender - generate the HTML code for the page.
 */
 int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
-   char sbuf[256];
+   char sbuf[HT_SBUF_SIZE];
    int x,y,w,h;
    int id;
 
@@ -89,11 +96,11 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    }
 
    /** Ok, write the style header items. **/
-   sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
+   snprintf(sbuf,HT_SBUF_SIZE,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
    htrAddHeaderItem(s,sbuf);
-   sprintf(sbuf,"    </STYLE>\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
 
    /** Get Value function **/
@@ -149,12 +156,12 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"}\n", 0);
 
    /** Script initialization call. **/
-   sprintf(sbuf,"    dd_init(%s.layers.dd%dmain);\n", parentname, id);
+   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain);\n", parentname, id);
    htrAddScriptInit(s, sbuf);
 
    /** HTML body <DIV> element for the layers. **/
-   sprintf(sbuf,"<DIV ID=\"dd%dmain\">\n", id);
-   sprintf(sbuf,"</DIV>\n");
+   snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"dd%dmain\">\n", id);
+   snprintf(sbuf,HT_SBUF_SIZE,"</DIV>\n");
    htrAddBodyItem(s, sbuf);
 
    return 0;

@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -148,15 +155,15 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	    }
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	snprintf(sbuf,160,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,w-18,z+1);
+	snprintf(sbuf,160,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,w-18,z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,w-18,z+1);
+	snprintf(sbuf,160,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,w-18,z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,160,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write globals for internal use **/
@@ -257,19 +264,19 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    }\n",0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    sp_init(%s.layers.sp%dpane,\"sp%darea\",\"sp%dthum\",%s);\n", parentname,id,id,id,parentobj);
+	snprintf(sbuf,160,"    sp_init(%s.layers.sp%dpane,\"sp%darea\",\"sp%dthum\",%s);\n", parentname,id,id,id,parentobj);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf,"    %s=%s.layers.sp%dpane;\n",name,parentname,id);
+	snprintf(sbuf,160,"    %s=%s.layers.sp%dpane;\n",name,parentname,id);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
-	sprintf(sbuf,"<DIV ID=\"sp%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
+	snprintf(sbuf,160,"<DIV ID=\"sp%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "<TR><TD align=right><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR><TR><TD align=right>");
-	sprintf(sbuf,"<IMG SRC=/sys/images/trans_1.gif height=%d width=18 name='b'>",h-36);
+	snprintf(sbuf,160,"<IMG SRC=/sys/images/trans_1.gif height=%d width=18 name='b'>",h-36);
 	htrAddBodyItem(s,sbuf);
 	htrAddBodyItem(s,"</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR></TABLE>\n");
-	sprintf(sbuf,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\">",id,id);
+	snprintf(sbuf,160,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\">",id,id);
 	htrAddBodyItem(s,sbuf);
 
 	/** Add the event handling scripts **/
@@ -329,7 +336,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	sprintf(sbuf,"%s.document.layers.sp%darea.document",name,id);
+	snprintf(sbuf,160,"%s.document.layers.sp%darea.document",name,id);
 	if (qy)
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))

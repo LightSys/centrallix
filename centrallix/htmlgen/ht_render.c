@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.2 2001/10/22 17:19:42 gbeeley Exp $
+    $Id: ht_render.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2001/10/22 17:19:42  gbeeley
     Added a few utility functions in ht_render to simplify the structure and
     authoring of widget drivers a bit.
@@ -262,7 +269,8 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 	    {
 	    obj = (pHtNameArray)nmMalloc(sizeof(HtNameArray));
 	    if (!obj) return -1;
-	    strcpy(obj->Name, event_src);
+	    memccpy(obj->Name, event_src, 0, 127);
+	    obj->Name[127] = '\0';
 	    xhInit(&(obj->HashTable),31,0);
 	    xaInit(&(obj->Array),16);
 	    xhAdd(&(s->Page.EventScripts.HashTable), obj->Name, (void*)(obj));
@@ -277,7 +285,8 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 	    {
 	    evt = (pHtNameArray)nmMalloc(sizeof(HtNameArray));
 	    if (!evt) return -1;
-	    strcpy(evt->Name, event);
+	    memccpy(evt->Name, event,0,127);
+	    evt->Name[127] = '\0';
 	    xhInit(&(evt->HashTable),31,0);
 	    xaInit(&(evt->Array),16);
 	    xhAdd(&(obj->HashTable), evt->Name, (void*)evt);
@@ -292,7 +301,8 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 	    {
 	    drv = (pHtNameArray)nmMalloc(sizeof(HtNameArray));
 	    if (!drv) return -1;
-	    strcpy(drv->Name, drvname);
+	    memccpy(drv->Name, drvname, 0, 127);
+	    drv->Name[127] = '\0';
 	    xaInit(&(drv->Array),16);
 	    xhAdd(&(evt->HashTable), drv->Name, (void*)drv);
 	    xaAddItem(&(evt->Array), (void*)drv);
@@ -326,7 +336,8 @@ htrAddEvent(pHtDriver drv, char* event_name)
 	/** Create the action **/
 	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
 	if (!event) return -1;
-	strcpy(event->Name, event_name);
+	memccpy(event->Name, event_name, 0, 31);
+	event->Name[31] = '\0';
 	xaAddItem(&drv->Events, (void*)event);
 
     return 0;
@@ -343,7 +354,8 @@ htrAddAction(pHtDriver drv, char* action_name)
 	/** Create the action **/
 	action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
 	if (!action) return -1;
-	strcpy(action->Name, action_name);
+	memccpy(action->Name, action_name, 0, 31);
+	action->Name[31] = '\0';
 	xaAddItem(&drv->Actions, (void*)action);
 
     return 0;
@@ -381,7 +393,8 @@ htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
 	/** Add the parameter **/
 	p = nmSysMalloc(sizeof(HtParam));
 	if (!p) return -1;
-	strcpy(p->ParamName, param_name);
+	memccpy(p->ParamName, param_name, 0, 31);
+	p->ParamName[31] = '\0';
 	p->DataType = datatype;
 	xaAddItem(&(ea->Parameters), (void*)p);
 
@@ -428,7 +441,7 @@ htrRender(pFile output, pObject appstruct)
     pStrValue tmp;
     char* ptr;
     pStrValue sv;
-    char sbuf[256];
+    char sbuf[HT_SBUF_SIZE];
     char ename[40];
     pHtNameArray tmp_a, tmp_a2, tmp_a3;
 
@@ -472,9 +485,9 @@ htrRender(pFile output, pObject appstruct)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
 	    if (sv->Value[0])
-		sprintf(sbuf,"var %s = %s;\n", sv->Name, sv->Value);
+		snprintf(sbuf,HT_SBUF_SIZE,"var %s = %s;\n", sv->Name, sv->Value);
 	    else
-		sprintf(sbuf,"var %s;\n", sv->Name);
+		snprintf(sbuf,HT_SBUF_SIZE,"var %s;\n", sv->Name);
 	    fdWrite(output, sbuf, strlen(sbuf),0,0);
 	    }
 
@@ -492,7 +505,7 @@ htrRender(pFile output, pObject appstruct)
 	    for(j=0;j<tmp_a->Array.nItems;j++)
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-	        sprintf(sbuf,"\nfunction e%d_%d(e)\n    {\n",i,j);
+	        snprintf(sbuf,HT_SBUF_SIZE,"\nfunction e%d_%d(e)\n    {\n",i,j);
 		fdWrite(output,sbuf,strlen(sbuf),0,0);
 		for(k=0;k<tmp_a2->Array.nItems;k++)
 		    {
@@ -512,7 +525,7 @@ htrRender(pFile output, pObject appstruct)
 	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
 	    {
 	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
-	    sprintf(sbuf,"    %s.captureEvents(",tmp_a->Name);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    %.64s.captureEvents(",tmp_a->Name);
 	    for(j=0;j<tmp_a->Array.nItems;j++)
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
@@ -527,7 +540,7 @@ htrRender(pFile output, pObject appstruct)
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
 		n = strlen(tmp_a2->Name);
 		for(k=0;k<=n;k++) ename[k] = tolower(tmp_a2->Name[k]);
-		sprintf(sbuf,"    %s.on%s=e%d_%d;\n",tmp_a->Name,ename,i,j);
+		snprintf(sbuf,HT_SBUF_SIZE,"    %.64s.on%s=e%d_%d;\n",tmp_a->Name,ename,i,j);
 		fdWrite(output,sbuf,strlen(sbuf),0,0);
 		}
 	    }

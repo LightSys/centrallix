@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.3 2002/03/09 02:38:48 jheth Exp $
+    $Id: htdrv_osrc.c,v 1.4 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.4  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.3  2002/03/09 02:38:48  jheth
     Make OSRC work with Form - Query at least
 
@@ -92,7 +99,8 @@ int htosrcVerify() {
 
    /** Get name **/
    if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-   strcpy(name,ptr);
+   memccpy(name,ptr,0,39);
+   name[39] = 0;
 
    /** Write named global **/
    nptr = (char*)nmMalloc(strlen(name)+1);

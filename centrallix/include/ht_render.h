@@ -34,10 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.3 2001/11/03 02:09:55 gbeeley Exp $
+    $Id: ht_render.h,v 1.4 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.4  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.3  2001/11/03 02:09:55  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -60,6 +67,8 @@
 #include "mtask.h"
 #include "obj.h"
 #include "xarray.h"
+
+#define HT_SBUF_SIZE	(256)
 
 
 /** Widget parameter structure, also used for positioning params **/

@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.2 2002/02/07 03:48:53 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2002/02/07 03:48:53  gbeeley
     I think I fixed a bug where the param wasn't defaulting to the widget's
     supplied Parameter property during an ExecuteMethod action.
@@ -90,7 +97,7 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     {
     char* ptr;
     char name[64];
-    char sbuf[200];
+    char sbuf[HT_SBUF_SIZE];
     char sbuf2[160];
     int id;
     char* nptr;
@@ -108,7 +115,8 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -141,12 +149,12 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = ex_init('%s', '%s', '%s');\n", nptr, objname, methodname, methodparam);
+	snprintf(sbuf, HT_SBUF_SIZE, "    %s = ex_init('%s', '%s', '%s');\n", nptr, objname, methodname, methodparam);
 	htrAddScriptInit(s, sbuf);
 
 	/** Check for objects within the timer. **/
-	sprintf(sbuf,"%s.document",nptr);
-	sprintf(sbuf2,"%s",nptr);
+	snprintf(sbuf, HT_SBUF_SIZE, "%s.document",nptr);
+	snprintf(sbuf2,160,"%s",nptr);
 	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
     return 0;

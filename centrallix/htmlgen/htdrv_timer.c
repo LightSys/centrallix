@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.2 2001/11/03 05:55:17 gbeeley Exp $
+    $Id: htdrv_timer.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2001/11/03 05:55:17  gbeeley
     Fixed html problem in the timer.  Doesn't need a closing DIV when
     it never had an opening DIV tag.  Will only mess things up, it will.
@@ -109,7 +116,8 @@ httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63]=0;
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -168,12 +176,12 @@ httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = tm_init(%d, %d, %d);\n", nptr, msec, auto_reset, auto_start);
+	snprintf(sbuf,200,"    %s = tm_init(%d, %d, %d);\n", nptr, msec, auto_reset, auto_start);
 	htrAddScriptInit(s, sbuf);
 
 	/** Check for objects within the timer. **/
-	sprintf(sbuf,"%s.document",nptr);
-	sprintf(sbuf2,"%s",nptr);
+	snprintf(sbuf,200,"%s.document",nptr);
+	snprintf(sbuf2,160,"%s",nptr);
 	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
     return 0;

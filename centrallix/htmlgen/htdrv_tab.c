@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.3 2001/10/23 02:21:09 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.4 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.4  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.3  2001/10/23 02:21:09  gbeeley
     Fixed incorrect auto-setting of tabpage clip height.
 
@@ -123,7 +130,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** Which tab is selected? **/
 	if (objGetAttrValue(w_obj,"selected",POD(&ptr)) == 0)
 	    {
-	    sprintf(sel,"%.127s",ptr);
+	    snprintf(sel,128,"%s",ptr);
 	    }
 	else
 	    {
@@ -154,14 +161,15 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63]=0;
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#tc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y+24,w,z+1);
+	snprintf(sbuf,160,"\t#tc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y+24,w,z+1);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,160,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write named global **/
@@ -274,7 +282,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n");*/
 
 	/** Script initialization call. **/
-	sprintf(sbuf,"    %s = tc_init(%s.layers.tc%dbase);\n",
+	snprintf(sbuf,160,"    %s = tc_init(%s.layers.tc%dbase);\n",
 		nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
 
@@ -290,24 +298,24 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    {
 		    objGetAttrValue(tabpage_obj,"name",POD(&ptr));
 		    tabcnt++;
-		    sprintf(sbuf,"<DIV ID=\"tc%dtab%d\">\n",id,tabcnt);
+		    snprintf(sbuf,160,"<DIV ID=\"tc%dtab%d\">\n",id,tabcnt);
 		    htrAddBodyItem(s,sbuf);
-		    sprintf(sbuf,"    <TABLE cellspacing=0 cellpadding=0 border=0 %s>\n", main_bg);
+		    snprintf(sbuf,160,"    <TABLE cellspacing=0 cellpadding=0 border=0 %s>\n", main_bg);
 		    htrAddBodyItem(s,sbuf);
 		    htrAddBodyItem(s,"        <TR><TD colspan=3 background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
 		    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
-		        sprintf(sbuf,"        <TR><TD><IMG SRC=/sys/images/tab_lft2.gif name=tb></TD>\n");
+		        snprintf(sbuf,160,"        <TR><TD><IMG SRC=/sys/images/tab_lft2.gif name=tb></TD>\n");
 		    else
-		        sprintf(sbuf,"        <TR><TD><IMG SRC=/sys/images/tab_lft3.gif name=tb></TD>\n");
+		        snprintf(sbuf,160,"        <TR><TD><IMG SRC=/sys/images/tab_lft3.gif name=tb></TD>\n");
 		    htrAddBodyItem(s,sbuf);
 		    if (objGetAttrType(tabpage_obj,"title") == DATA_T_STRING && objGetAttrValue(tabpage_obj,"title",POD(&ptr)) == 0)
 		        {
-		        sprintf(sbuf,"            <TD valign=middle><FONT COLOR=%s>%s</FONT></TD>\n", tab_txt, ptr);
+		        snprintf(sbuf,160,"            <TD valign=middle><FONT COLOR=%s>%s</FONT></TD>\n", tab_txt, ptr);
 			}
 		    else
 		        {
 			objGetAttrValue(tabpage_obj,"name",POD(&ptr));
-		        sprintf(sbuf,"            <TD valign=middle><FONT COLOR=%s><B>&nbsp;%s&nbsp;</B></FONT></TD>\n", tab_txt, ptr);
+		        snprintf(sbuf,160,"            <TD valign=middle><FONT COLOR=%s><B>&nbsp;%s&nbsp;</B></FONT></TD>\n", tab_txt, ptr);
 			}
 		    htrAddBodyItem(s,sbuf);
 		    htrAddBodyItem(s,"            <TD><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD></TR>\n    </TABLE>\n");
@@ -319,21 +327,21 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	sprintf(sbuf,"<DIV ID=\"tc%dbase\">\n",id);
+	snprintf(sbuf,160,"<DIV ID=\"tc%dbase\">\n",id);
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	snprintf(sbuf,160,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "        <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "            <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-	sprintf(sbuf, "        <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
+	snprintf(sbuf,160, "        <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "            <TD>&nbsp;</TD>\n");
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "        <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
-	sprintf(sbuf, "            <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
+	snprintf(sbuf,160, "            <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s, "            <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n    </TABLE>\n\n");
 
@@ -352,31 +360,31 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    tabcnt++;
 
 		    /** Add stylesheet headers for the layers (tab and tabpage) **/
-		    sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+		    snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 		    htrAddHeaderItem(s,sbuf);
 		    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
 		        {
-		        sprintf(sbuf,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
+		        snprintf(sbuf,160,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,x,y,1,z+2);
 		        htrAddHeaderItem(s,sbuf);
-		        sprintf(sbuf,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
+		        snprintf(sbuf,160,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,w-2,z+2);
 		        htrAddHeaderItem(s,sbuf);
 			}
 		    else
 		        {
-		        sprintf(sbuf,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
+		        snprintf(sbuf,160,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,x,y,1,z);
 		        htrAddHeaderItem(s,sbuf);
-		        sprintf(sbuf,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
+		        snprintf(sbuf,160,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; Z-INDEX:%d; }\n",
 			    id,tabcnt,w-2,z+2);
 		        htrAddHeaderItem(s,sbuf);
 			}
-		    sprintf(sbuf,"    </STYLE>\n");
+		    snprintf(sbuf,160,"    </STYLE>\n");
 		    htrAddHeaderItem(s,sbuf);
 
 		    /** Add script initialization to add a new tabpage **/
-		    sprintf(sbuf,"    %s = %s.addTab(%s.layers.tc%dtab%d,%s.document.layers.tc%dpane%d);\n",
+		    snprintf(sbuf,160,"    %s = %s.addTab(%s.layers.tc%dtab%d,%s.document.layers.tc%dpane%d);\n",
 			ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt);
 		    htrAddScriptInit(s, sbuf);
 
@@ -386,12 +394,12 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    htrAddScriptGlobal(s, subnptr, "null", HTR_F_NAMEALLOC);
 
 		    /** Add DIV section for the tabpage. **/
-		    sprintf(sbuf,"<DIV ID=\"tc%dpane%d\">\n",id,tabcnt);
+		    snprintf(sbuf,160,"<DIV ID=\"tc%dpane%d\">\n",id,tabcnt);
 		    htrAddBodyItem(s, sbuf);
 
 		    /** Now look for sub-items within the tabpage. **/
-		    sprintf(sbuf,"%s.tabpage.document",subnptr);
-		    sprintf(name,"%.50s.tabpage",subnptr);
+		    snprintf(sbuf,160,"%s.tabpage.document",subnptr);
+		    snprintf(name,64,"%s.tabpage",subnptr);
 		    subqy = objOpenQuery(tabpage_obj,"",NULL,NULL,NULL);
 		    if (subqy)
 		        {

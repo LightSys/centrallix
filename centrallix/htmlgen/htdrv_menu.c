@@ -44,12 +44,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_menu.c,v 1.1 2001/08/13 18:00:49 gbeeley Exp $
+    $Id: htdrv_menu.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_menu.c,v $
 
     $Log: htdrv_menu.c,v $
-    Revision 1.1  2001/08/13 18:00:49  gbeeley
-    Initial revision
+    Revision 1.2  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
+    Revision 1.1.1.1  2001/08/13 18:00:49  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -105,7 +112,8 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63]=0;
 
 	/** Get background image / color **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
@@ -137,11 +145,11 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Ok, write the style header items. **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#mn%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; %s%s%s }\n",id,(x==-1)?0:x,(y==-1)?0:y,w,z, (*bgcolor)?"LAYER-BACKGROUND-COLOR:":"",bgcolor,(*bgcolor)?";":"");
+	snprintf(sbuf,160,"\t#mn%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; %s%s%s }\n",id,(x==-1)?0:x,(y==-1)?0:y,w,z, (*bgcolor)?"LAYER-BACKGROUND-COLOR:":"",bgcolor,(*bgcolor)?";":"");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,160,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
 	/** Write named global **/
@@ -215,11 +223,11 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 
 	/** Script initialization call.   Do this part before the child objs init. **/
-	sprintf(sbuf,"    %s = %s.layers.mn%dpane;\n",nptr, parentname, id);
+	snprintf(sbuf,160,"    %s = %s.layers.mn%dpane;\n",nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the menu layer. **/
-	sprintf(sbuf,"<DIV ID=\"mn%dpane\">\n",id);
+	snprintf(sbuf,160,"<DIV ID=\"mn%dpane\">\n",id);
 	htrAddBodyItem(s, sbuf);
 
 	/** Add the event handling scripts **/
@@ -266,7 +274,7 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n");
 
 	/** Check for more sub-widgets within the imagebutton. **/
-	sprintf(sbuf,"%s.document",nptr);
+	snprintf(sbuf,160,"%s.document",nptr);
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
 	if (qy)
 	    {
@@ -282,7 +290,7 @@ htmenuRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddBodyItem(s,"</DIV>\n");
 
 	/** Script initialization call.   Do the main mn_init _AFTER_ the child objs init. **/
-	sprintf(sbuf,"    mn_init(%s,%d,%d,%s);\n", nptr, is_permanent, is_horizontal, parentobj);
+	snprintf(sbuf,160,"    mn_init(%s,%d,%d,%s);\n", nptr, is_permanent, is_horizontal, parentobj);
 	htrAddScriptInit(s, sbuf);
 
     return 0;

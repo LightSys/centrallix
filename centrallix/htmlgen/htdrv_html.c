@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.2 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.3  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.2  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -114,7 +121,8 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Get source html objectsystem entry. **/
 	if (objGetAttrValue(w_obj,"source",POD(&ptr)) == 0)
 	    {
-	    strcpy(src,ptr);
+	    memccpy(src,ptr,0,127);
+	    src[127] = 0;
 	    }
 
 	/** Check for a 'mode' - dynamic or static.  Default is static. **/
@@ -122,34 +130,35 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63]=0;
 
 	/** Ok, write the style header items. **/
 	if (mode == 1)
 	    {
-	    sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	    snprintf(sbuf,320,"    <STYLE TYPE=\"text/css\">\n");
 	    htrAddHeaderItem(s,sbuf);
 	
 	    /** Only give x and y if supplied. **/
 	    if (x==-1 || y==-1)
 	        {
-	        sprintf(sbuf,"\t#ht%dpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
+	        snprintf(sbuf,320,"\t#ht%dpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
 	        htrAddHeaderItem(s,sbuf);
-	        sprintf(sbuf,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
+	        snprintf(sbuf,320,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
 	        htrAddHeaderItem(s,sbuf);
-	        sprintf(sbuf,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z+1);
+	        snprintf(sbuf,320,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z+1);
 	        htrAddHeaderItem(s,sbuf);
 	        }
 	    else
 	        {
-	        sprintf(sbuf,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	        snprintf(sbuf,320,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	        htrAddHeaderItem(s,sbuf);
-	        sprintf(sbuf,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	        snprintf(sbuf,320,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	        htrAddHeaderItem(s,sbuf);
-	        sprintf(sbuf,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z+1);
+	        snprintf(sbuf,320,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z+1);
 	        htrAddHeaderItem(s,sbuf);
 	        }
-	    sprintf(sbuf,"    </STYLE>\n");
+	    snprintf(sbuf,320,"    </STYLE>\n");
 	    htrAddHeaderItem(s,sbuf);
 
             /** Write named global **/
@@ -308,14 +317,14 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    "        }\n");
     
             /** Script initialization call. **/
-            sprintf(sbuf,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,%s.layers.ht%dfader,\"%s\",%s,%d,%d,%s);\n",
+            snprintf(sbuf,320,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,%s.layers.ht%dfader,\"%s\",%s,%d,%d,%s);\n",
                     parentname, id, parentname, id, parentname, id, src, parentname, w,h, parentobj);
             htrAddScriptInit(s, sbuf);
-            sprintf(sbuf,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
+            snprintf(sbuf,320,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
             htrAddScriptInit(s, sbuf);
     
             /** HTML body <DIV> element for the layer. **/
-            sprintf(sbuf,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV><DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id,id);
+            snprintf(sbuf,320,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV><DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id,id);
             htrAddBodyItem(s, sbuf);
 	    }
 
@@ -356,11 +365,12 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (mode == 1)
 	    {
             /*sprintf(sbuf,"%s.document",nptr,id);*/
-            sprintf(sbuf,"%s.document",nptr);
+            snprintf(sbuf,320,"%s.document",nptr);
 	    }
 	else
 	    {
-	    strcpy(sbuf,parentname);
+	    memccpy(sbuf,parentname,0,319);
+	    sbuf[319] = '\0';
 	    nptr = parentobj;
 	    }
         qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);

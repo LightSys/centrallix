@@ -46,12 +46,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_remotectl.c,v 1.1 2001/08/13 18:00:50 gbeeley Exp $
+    $Id: htdrv_remotectl.c,v 1.2 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_remotectl.c,v $
 
     $Log: htdrv_remotectl.c,v $
-    Revision 1.1  2001/08/13 18:00:50  gbeeley
-    Initial revision
+    Revision 1.2  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
+    Revision 1.1.1.1  2001/08/13 18:00:50  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -107,19 +114,19 @@ htrmtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** Get source html objectsystem entry. **/
 	if (objGetAttrValue(w_obj,"server",POD(&ptr)) == 0)
 	    {
-	    sprintf(svr,"%.127s",ptr);
+	    snprintf(svr,128,"%s",ptr);
 	    }
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	sprintf(name,"%.63s",ptr);
+	snprintf(name,64,"%s",ptr);
 
 	/** Invisible loader layer to get cmds from the channel on centrallix **/
-	sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	snprintf(sbuf,320,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"\t#rc%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; WIDTH:1; Z-INDEX:0; }\n",id);
+	snprintf(sbuf,320,"\t#rc%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; WIDTH:1; Z-INDEX:0; }\n",id);
 	htrAddHeaderItem(s,sbuf);
-	sprintf(sbuf,"    </STYLE>\n");
+	snprintf(sbuf,320,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);
 
         /** Write named global **/
@@ -237,14 +244,14 @@ htrmtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    "        }\n");
     
             /** Script initialization call. **/
-            sprintf(sbuf,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,\"%s\",%s,%d,%d,%s);\n",
+            snprintf(sbuf,320,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,\"%s\",%s,%d,%d,%s);\n",
                     parentname, id, parentname, id, src, parentname, w,h, parentobj);
             htrAddScriptInit(s, sbuf);
-            sprintf(sbuf,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
+            snprintf(sbuf,320,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
             htrAddScriptInit(s, sbuf);
     
             /** HTML body <DIV> element for the layer. **/
-            sprintf(sbuf,"<DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id);
+            snprintf(sbuf,320,"<DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id);
             htrAddBodyItem(s, sbuf);
 	    }
 
@@ -284,11 +291,12 @@ htrmtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
         /** Check for more sub-widgets within the html entity. **/
 	if (mode == 1)
 	    {
-            sprintf(sbuf,"%s.document",nptr,id);
+            snprintf(sbuf,320,"%s.document",nptr,id);
 	    }
 	else
 	    {
-	    strcpy(sbuf,parentname);
+	    memccpy(sbuf,parentname,0,319);
+	    sbuf[319]=0;
 	    nptr = parentobj;
 	    }
         qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);

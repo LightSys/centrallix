@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.5 2002/02/27 01:38:51 jheth Exp $
+    $Id: htdrv_page.c,v 1.6 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.6  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.5  2002/02/27 01:38:51  jheth
     Initial commit of object source
 
@@ -92,7 +99,7 @@ int
 htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
     {
     char* ptr;
-    char sbuf[256];
+    char sbuf[HT_SBUF_SIZE];
     char kbfocus1[64] = "#ffffff";	/* kb focus = 3d raised */
     char kbfocus2[64] = "#7a7a7a";
     char msfocus1[64] = "#000000";	/* ms focus = black rectangle */
@@ -109,26 +116,26 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     	/** Check for a title. **/
 	if (objGetAttrValue(w_obj,"title",POD(&ptr)) == 0)
 	    {
-	    sprintf(sbuf,"    <TITLE>%s</TITLE>\n",ptr);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TITLE>%s</TITLE>\n",ptr);
 	    htrAddHeaderItem(s, sbuf);
 	    }
 
 	/** Check for bgcolor. **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
 	    {
-	    sprintf(sbuf," BGCOLOR=%s",ptr);
+	    snprintf(sbuf,HT_SBUF_SIZE," BGCOLOR=%s",ptr);
 	    htrAddBodyParam(s, sbuf);
 	    }
 	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
 	    {
-	    sprintf(sbuf," BACKGROUND=%s",ptr);
+	    snprintf(sbuf,HT_SBUF_SIZE," BACKGROUND=%s",ptr);
 	    htrAddBodyParam(s, sbuf);
 	    }
 
 	/** Check for text color **/
 	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
 	    {
-	    sprintf(sbuf," TEXT=%s",ptr);
+	    snprintf(sbuf,HT_SBUF_SIZE," TEXT=%s",ptr);
 	    htrAddBodyParam(s, sbuf);
 	    }
 
@@ -141,31 +148,31 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (objGetAttrValue(w_obj,"kbdfocus2",POD(&ptr)) == 0)
 	    {
 	    memccpy(kbfocus2,ptr,0,63);
-	    kbfocus1[63]=0;
+	    kbfocus2[63]=0;
 	    }
 
 	/** Mouse Focus Indicator colors 1 and 2 **/
 	if (objGetAttrValue(w_obj,"mousefocus1",POD(&ptr)) == 0)
 	    {
 	    memccpy(msfocus1,ptr,0,63);
-	    kbfocus1[63]=0;
+	    msfocus1[63]=0;
 	    }
 	if (objGetAttrValue(w_obj,"mousefocus2",POD(&ptr)) == 0)
 	    {
 	    memccpy(msfocus2,ptr,0,63);
-	    kbfocus1[63]=0;
+	    msfocus2[63]=0;
 	    }
 
 	/** Data Focus Indicator colors 1 and 2 **/
 	if (objGetAttrValue(w_obj,"datafocus1",POD(&ptr)) == 0)
 	    {
 	    memccpy(dtfocus1,ptr,0,63);
-	    kbfocus1[63]=0;
+	    dtfocus1[63]=0;
 	    }
 	if (objGetAttrValue(w_obj,"datafocus2",POD(&ptr)) == 0)
 	    {
 	    memccpy(dtfocus2,ptr,0,63);
-	    kbfocus1[63]=0;
+	    dtfocus2[63]=0;
 	    }
 
 	/** Add global for page metadata **/
@@ -196,15 +203,15 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        #pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
 		"        #pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
 		"    </STYLE>\n" );
-	sprintf(sbuf, "<DIV ID=\"pgtop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
+	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pgtop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "<DIV ID=\"pgbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
+	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pgbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "<DIV ID=\"pgrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
+	snprintf(sbuf, HT_SBUF_SIZE,"<DIV ID=\"pgrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "<DIV ID=\"pglft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
+	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pglft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
 	htrAddBodyItem(s, sbuf);
-	sprintf(sbuf, "<DIV ID=\"pgtvl\"></DIV>\n");
+	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pgtvl\"></DIV>\n");
 	htrAddBodyItem(s, sbuf);
 	htrAddBodyItem(s,
 		"<DIV ID=\"pgktop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n"
@@ -296,11 +303,11 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);\n");
 
 	/** Set colors for the focus layers **/
-	sprintf(sbuf, "    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",kbfocus1,kbfocus2);
+	snprintf(sbuf, HT_SBUF_SIZE,"    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",kbfocus1,kbfocus2);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",msfocus1,msfocus2);
+	snprintf(sbuf, HT_SBUF_SIZE,"    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",msfocus1,msfocus2);
 	htrAddScriptInit(s, sbuf);
-	sprintf(sbuf, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
+	snprintf(sbuf, HT_SBUF_SIZE,"    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
 	htrAddScriptInit(s, sbuf);
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
 

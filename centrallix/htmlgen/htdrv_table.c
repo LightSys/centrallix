@@ -59,10 +59,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.4 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.5 2002/03/09 19:21:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.5  2002/03/09 19:21:20  gbeeley
+    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
+    own bad sprintf habits that somehow worked their way into some other
+    folks' code as well ;)  Textbutton widget had an inadequate buffer for
+    the tb_init() call, causing various problems, including incorrect labels,
+    and more recently, javascript errors.
+
     Revision 1.4  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -165,7 +172,8 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	strcpy(name,ptr);
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -255,7 +263,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    }\n", 0);
 
 	/** Call init function **/
-	sprintf(sbuf,"    tl_init(%s.Layer,'%s',%d,%d,%d);\n",parentname,nptr,w,inner_padding,inner_border);
+	snprintf(sbuf,160,"    tl_init(%s.Layer,'%s',%d,%d,%d);\n",parentname,nptr,w,inner_padding,inner_border);
 	htrAddScriptInit(s,sbuf);
 
 	/** Get column data **/
@@ -293,29 +301,29 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** If mode 1 or 2 (dynamic), add a query-loader layer **/
 	if (mode == 1 || mode == 2)
 	    {
-	    sprintf(sbuf,"    <STYLE TYPE=\"text/css\">\n");
+	    snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	    htrAddHeaderItem(s,sbuf);
-	    sprintf(sbuf,"\t#tl%dloader { POSITION:absolute; VISIBILITY:hidden; TOP:0; LEFT:0; }\n",id);
+	    snprintf(sbuf,160,"\t#tl%dloader { POSITION:absolute; VISIBILITY:hidden; TOP:0; LEFT:0; }\n",id);
 	    htrAddHeaderItem(s,sbuf);
-	    sprintf(sbuf,"    </STYLE>\n");
+	    snprintf(sbuf,160,"    </STYLE>\n");
 	    htrAddHeaderItem(s,sbuf);
 	    }
 
 	/** HTML body <DIV> element for the layer. **/
 	if (mode == 1 || mode == 2)
 	    {
-	    sprintf(sbuf,"<DIV ID=\"ht%dpane\">\n",id);
+	    snprintf(sbuf,160,"<DIV ID=\"ht%dpane\">\n",id);
 	    htrAddBodyItem(s, sbuf);
 	    }
 
 	/** Build the table from a query, if mode 0 **/
 	if (mode == 0)
 	    {
-	    if (w != -1) sprintf(tmpbuf,"width=%d",w - (outer_border + (outer_border?1:0))*2); else tmpbuf[0] = 0;
-	    sprintf(sbuf,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, outer_border, tbl_bgnd);
+	    if (w != -1) snprintf(tmpbuf,64,"width=%d",w - (outer_border + (outer_border?1:0))*2); else tmpbuf[0] = 0;
+	    snprintf(sbuf,160,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, outer_border, tbl_bgnd);
 	    htrAddBodyItem(s,sbuf);
-	    if (w != -1) sprintf(tmpbuf,"width=%d",w - (outer_border + (outer_border?1:0))*2); else tmpbuf[0] = 0;
-	    sprintf(sbuf,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%d cellpadding=%d %s>\n", inner_border, inner_padding, tmpbuf);
+	    if (w != -1) snprintf(tmpbuf,64,"width=%d",w - (outer_border + (outer_border?1:0))*2); else tmpbuf[0] = 0;
+	    snprintf(sbuf,160,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%d cellpadding=%d %s>\n", inner_border, inner_padding, tmpbuf);
 	    htrAddBodyItem(s,sbuf);
 	    if (objGetAttrValue(w_obj,"sql",POD(&sql)) != 0)
 	        {
@@ -334,7 +342,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		if (rowid == 0)
 		    {
 		    /** Do table header if header data provided. **/
-		    sprintf(sbuf,"    <TR %s>", hdr_bgnd);
+		    snprintf(sbuf,160,"    <TR %s>", hdr_bgnd);
 		    htrAddBodyItem(s,sbuf);
 		    if (n_cols == 0)
 		        {
@@ -342,14 +350,14 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			    {
 			    if (colid==0)
 			        {
-				sprintf(sbuf,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", nptr, "");
+				snprintf(sbuf,160,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", nptr, "");
 			        htrAddBodyItem(s,sbuf);
 				}
 			    else
 			        htrAddBodyItem(s,"<TH align=left>");
 			    if (*titlecolor)
 			        {
-				sprintf(sbuf,"<FONT color='%s'>",titlecolor);
+				snprintf(sbuf,160,"<FONT color='%s'>",titlecolor);
 				htrAddBodyItem(s,sbuf);
 				}
 			    htrAddBodyItem(s,attr);
@@ -364,7 +372,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			    attr = col_infs[colid]->Name;
 			    if (colid==0)
 			        {
-				sprintf(sbuf,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", nptr, "");
+				snprintf(sbuf,160,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", nptr, "");
 			        htrAddBodyItem(s,sbuf);
 				}
 			    else
@@ -373,7 +381,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 				}
 			    if (*titlecolor)
 			        {
-				sprintf(sbuf,"<FONT color='%s'>",titlecolor);
+				snprintf(sbuf,160,"<FONT color='%s'>",titlecolor);
 				htrAddBodyItem(s,sbuf);
 				}
 			    if (stAttrValue(stLookup(col_infs[colid],"title"), NULL, &ptr, 0) == 0)
@@ -386,7 +394,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			}
 		    htrAddBodyItem(s,"</TR>\n");
 		    }
-		sprintf(sbuf,"    <TR %s>", (rowid&1)?((*row_bgnd2)?row_bgnd2:row_bgnd1):row_bgnd1);
+		snprintf(sbuf,160,"    <TR %s>", (rowid&1)?((*row_bgnd2)?row_bgnd2:row_bgnd1):row_bgnd1);
 	        htrAddBodyItem(s,sbuf);
 
 		/** Build the row contents -- loop through attrs and convert to strings **/
@@ -399,7 +407,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    {
 		    if (n_cols && stAttrValue(stLookup(col_infs[colid],"width"),&n,NULL,0) == 0 && n >= 0)
 		        {
-			sprintf(sbuf,"<TD width=%d nowrap>",n*7);
+			snprintf(sbuf,160,"<TD width=%d nowrap>",n*7);
 			htrAddBodyItem(s,sbuf);
 			}
 		    else
@@ -425,12 +433,12 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			}
 		    if (colid==0)
 		        {
-			sprintf(sbuf,"<IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", nptr, str?str:"");
+			snprintf(sbuf,160,"<IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", nptr, str?str:"");
 		        htrAddBodyItem(s,sbuf);
 			}
 		    if (*textcolor)
 		        {
-			sprintf(sbuf,"<FONT COLOR=%s>",textcolor);
+			snprintf(sbuf,160,"<FONT COLOR=%s>",textcolor);
 			htrAddBodyItem(s,sbuf);
 			}
 		    if (str) htrAddBodyItem(s,str);
@@ -455,7 +463,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Check for more sub-widgets within the table. **/
-	sprintf(sbuf,"%s.document",nptr);
+	snprintf(sbuf,160,"%s.document",nptr);
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
 	if (qy)
 	    {
