@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.18 2003/08/04 01:01:45 jorupp Exp $
+    $Id: htdrv_scrollpane.c,v 1.19 2003/11/14 19:45:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.19  2003/11/14 19:45:50  gbeeley
+    - make sure only one sp_mv_timeout is active at a time
+    - trying direct styles for positioning on W3C browsers
+
     Revision 1.18  2003/08/04 01:01:45  jorupp
      * scrollpane and treeview now work in Mozilla
      * restructured some of the scrollpane code to keep my debugging sanity
@@ -242,9 +246,12 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%dpx; }\n",id,w-18,z+1);
-	htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	    htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%dpx; }\n",id,w-18,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
+	    }
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sp_target_img", "null", 0);
@@ -290,17 +297,17 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	else if(s->Capabilities.Dom1HTML)
 	    {
 	    //htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	    htrAddStylesheetItem_va(s,"\t#sp%darea { HEIGHT: %dpx; WIDTH:%dpx; }\n",id, h, w-18);
+	    //htrAddStylesheetItem_va(s,"\t#sp%darea { HEIGHT: %dpx; WIDTH:%dpx; }\n",id, h, w-18);
 	    //htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\">\n",id);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d;\">\n",id,visible?"inherit":"hidden",x,y,w,h,w,h,z);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%dup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%dbar\" SRC='/sys/images/trans_1.gif' NAME='b'/>", id);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%ddown\" SRC='/sys/images/ico12b.gif' NAME='d'/>", id);
 	    htrAddStylesheetItem_va(s,"\t#sp%dup { POSITION: absolute; LEFT: %dpx; TOP: 0px; }\n",id, w-18);
 	    htrAddStylesheetItem_va(s,"\t#sp%dbar { POSITION: absolute; LEFT: %dpx; TOP: 18px; WIDTH: 18px; HEIGHT: %dpx;}\n",id, w-18, h-36);
 	    htrAddStylesheetItem_va(s,"\t#sp%ddown { POSITION: absolute; LEFT: %dpx; TOP: %dpx; }\n",id, w-18, h-18);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%darea\">",id);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%darea\" style=\"HEIGHT: %dpx; POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%dpx;\">",id,h,w-18,z+1);
 	    }
 	else
 	    {
@@ -317,7 +324,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        if (sp_target_img.name=='u') sp_mv_incr=-10; else sp_mv_incr=+10;\n"
 		"        pg_set(sp_target_img,'src',htutil_subst_last(sp_target_img.src,\"c.gif\"));\n"
 		"        do_mv();\n"
-		"        sp_mv_timeout = setTimeout(tm_mv,300);\n"
+		"        if (!sp_mv_timeout) sp_mv_timeout = setTimeout(tm_mv,300);\n"
 		"        return false;\n"
 		"        }\n"
 		"    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='t')\n"
@@ -332,7 +339,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        sp_mv_incr=sp_target_img.height+36;\n"
 		"        if (e.pageY < sp_target_img.thum.pageY+9) sp_mv_incr = -sp_mv_incr;\n"
 		"        do_mv();\n"
-		"        sp_mv_timeout = setTimeout(tm_mv,300);\n"
+		"        if (!sp_mv_timeout) sp_mv_timeout = setTimeout(tm_mv,300);\n"
 		"        return false;\n"
 		"        }\n"
 		"    else sp_target_img = null;\n"
