@@ -42,6 +42,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.5  2002/04/26 15:00:53  jorupp
+     * fixing yet another mistake I made yesterday merging my changes with Greg's
+     * the align attribute of a label now works
+
     Revision 1.4  2002/04/25 23:05:09  jorupp
      * fixed bug I introduced when I didn't fix a collision with Greg's code right...
 
@@ -188,7 +192,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    return l;\n"
 		"    }\n", 0);
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = lbl_init(%s.layers.lbl%d,\"%s\");\n", nptr, parentname, id,text);
+	htrAddScriptInit_va(s, "    %s = lbl_init(%s.layers.lbl%d,\"%s\",\"%s\",%i);\n", nptr, parentname, id,text,align,w);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"lbl%d\">\n",id);
