@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.8 2002/03/05 01:55:09 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.9 2002/03/05 01:59:32 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.9  2002/03/05 01:59:32  lkehresman
+    fixed my error
+
     Revision 1.8  2002/03/05 01:55:09  lkehresman
     Added "clearvalue" method to form widgets
 
@@ -158,7 +161,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Clear function **/
    htrAddScriptFunction(s, "checkbox_clearvalue", "\n"
 	  "function checkbox_clearvalue() {\n"
-	  "   this.checkbox_setvalue(false);\n"
+	  "   this.setvalue(false);\n"
 	  "}\n", 0);
 
    /** Checkbox initializer **/
