@@ -146,8 +146,8 @@ function tx_insertRow(l, index, txt)
         {
         if (l.rows[i] != null)
             {
-            moveTo(l.rows[i].contentLayer, 1, i*text_metric.charHeight+1);
-            moveTo(l.rows[i].hiddenLayer, 1, i*text_metric.charHeight+1);
+            moveTo(l.rows[i].contentLayer, 2, i*text_metric.charHeight+1);
+            moveTo(l.rows[i].hiddenLayer, 2, i*text_metric.charHeight+1);
             }
         }
     }
