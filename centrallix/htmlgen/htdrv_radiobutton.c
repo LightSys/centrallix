@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.4 2002/03/05 00:31:40 lkehresman Exp $
+    $Id: htdrv_radiobutton.c,v 1.5 2002/03/05 00:46:34 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.5  2002/03/05 00:46:34  jorupp
+    * Fix a problem in Luke's radiobutton fix
+    * Add the corresponding checks in the form
+
     Revision 1.4  2002/03/05 00:31:40  lkehresman
     Implemented DataNotify form method in the radiobutton and checkbox widgets
 
@@ -325,7 +329,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    htrAddScriptFunction(s, "radiobutton_toggle", "\n"
       "   function radiobutton_toggle(layer) {\n"
-      "      layer.optionPane.parentPane.form.DataNotify(layer);\n"
+      "      layer.optionPane.parentPane.form.DataNotify(layer.optionPane.parentPane);\n"
       "      if (layer.optionPane.parentPane.selectedOption) {\n"
       "          layer.optionPane.parentPane.selectedOption.unsetPane.visibility = 'inherit';\n"
       "          layer.optionPane.parentPane.selectedOption.setPane.visibility = 'hidden';\n"

@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.8  2002/03/05 00:46:34  jorupp
+    * Fix a problem in Luke's radiobutton fix
+    * Add the corresponding checks in the form
+
     Revision 1.7  2002/03/02 21:57:00  jorupp
     * Editbox supports as many</>/=/<=/>=/<=> clauses you can fit to query for data
         (<=> is the LIKE operator)
@@ -255,17 +259,26 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n", 0);
 	
 	/** Moves form to "No Data" mode **/
+	/**   If unsaved data exists (New or Modify mode), prompt for Save/Discard **/
+	/** Clears any rows in osrc replica (not delete) **/
 	htrAddScriptFunction(s, "form_action_clear", "\n"
 		"function form_action_clear(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
-	/**  **/
+	/** in New - clear, remain in New **/
+	/** in View - delete the record, move to View mode on the next record, or No Data **/
+	/** in Query - clear, remain in Query **/
 	htrAddScriptFunction(s, "form_action_delete", "\n"
 		"function form_action_delete(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/** in  **/
+	/** in  **/
+	/** in  **/
+	/** in  **/
+	/** in  **/
 	htrAddScriptFunction(s, "form_action_discard", "\n"
 		"function form_action_discard(aparam)\n"
 		"    {\n"
@@ -341,7 +354,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    for(var i in form.elements)\n"
 		"        {\n"
 		"        //confirm(form.elements[i].kind+\": \"+form.elements[i].getvalue());\n"
-		"        if(form.elements[i].getvalue()!='')\n"
+		/*"        if(form.elements[i].getvalue()!='')\n"*/
+		"        if(form.elements[i].IsChanged)\n"
 		"            {\n"
 		"            if(firstone)\n"
 		"                {\n"
@@ -368,7 +382,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		/* Editbox supports as many</>/=/<=/>=/<=> clauses you can fit to query for data */
 		/*   <=> is the LIKE operator...... */
 		"                    var val=ele.getvalue();\n"
-		"                    var res=String(val).match(/(<=>|<=|>=|=<|=>|<|>|=) ?([^<>=]*)/g);\n"
+		"                    var res=String(val).match(/(<=>|<=|>=|=<|=>|<|>|=) ?([^<>=]*? ?)/g);\n"
 		"                    if(res)\n"
 		"                        {\n"
 		"                        var fone=true;\n"
@@ -382,19 +396,29 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                                {\n"
 		"                                where+=\" AND \";\n"
 		"                                }\n"
-		"                            var res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*)/).exec(res[i]);\n"
+		"                            var res2;\n"
+		"                            if ((/ $/).test(res[i]))\n" /* Horrible hack - FIXME*/
+		"                                {\n"
+		"                                res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*?) /).exec(res[i]);\n"
+		"                                }\n"
+		"                            else\n"
+		"                                {\n"
+		"                                res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*?)/).exec(res[i]);\n"
+		"                                };\n"
 		"                            if(res2[1]==\"<=>\")\n"
 		"                                {\n"
 		"                                where+=ele.fieldname+\" LIKE \\\"\"+res2[2]+\"\\\"\";\n"
 		"                                }\n"
 		"                            else\n"
 		"                                {\n"
-		"                                where+=ele.fieldname+\"\"+res2[1]+\"\\\"\"+res2[2]+\"\\\"\";\n"
+		"                                where+=ele.fieldname+res2[1]+\"\\\"\"+res2[2]+\"\\\"\";\n"
 		"                                }\n"
 		"                            }\n"
-		"                        break;\n"
 		"                        }\n"
-		"                    where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
+		"                    else\n"
+		"                        {\n"
+		"                        where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
+		"                        }\n"
 		"                    break;\n"
 		"                case \"radiobutton\":\n"
 		"                    where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
