@@ -24,6 +24,7 @@ V   FREQUENTLY-USED OSML METHODS
 VI  OTHER FREQUENTLY-USED UTILITY METHODS
     A.	Memory manager methods
     B.	Session and error reporting methods
+VII DEVELOPMENT BY PROTOTYPING
 
 
 -------------------------------------------------------------------------------
@@ -705,3 +706,140 @@ VI  OTHER FREQUENTLY-USED UTILITY METHODS
 	    variable argument list.
 
 
+VII DEVELOPMENT BY PROTOTYPING
+
+    Probably one of the easiest ways of developing a new widget for Centrallix
+    is via prototyping the widget in a simple DHTML page, first outside of the
+    Centrallix server.  The following section details a recommended approach to
+    developing a new widget for Centrallix.
+
+    A.	Designing your Widget
+
+	The first step is normally to, either formally or informally, decide on
+	a basic design for the widget.  One should consider some of the below
+	issues when considering a design:
+
+	    1.	What and how many layers should be used?  Enough layers should
+		be used to make the widget function smoothly, but layer must be
+		kept to a minimum, as they do use browser resources.  A widget
+		that is absolutely positioned (via X and Y) MUST have at least
+		one layer.  Nonvisual widgets typically do not have any layers.
+
+	    2.	How will the widget look?  How will it interact with the user?
+
+	    3.	What events (mouseup, mousedown, etc.) will need to be trapped?
+
+	    4.	Will the widget receive mouse, keyboard, and/or data focus?  If
+		keyboard focus, it should receive keyboard input.  Also, 
+		whether the widget receives keyboard focus or not, will it use
+		hotkeys?
+
+	    5.	Can the widget contain other visual subwidgets?  Can it contain
+		nonvisual subwidgets? (the latter is necessary if the widget is
+		to have Events).
+
+	    6.	Will the size of the widget's contents change over time?  If so
+		and if the widget can contain visual subwidgets, then it may
+		need to set some values to interact with the pg_resize()
+		mechanism.
+
+	Sometimes it can be helpful to draft the widget's design by simply
+	creating a DHTML page outside of Centrallix that does some of what you
+	need.  However, some widgets need the services of other Centrallix
+	widgets in order to be functional.  In this case, the following process
+	can be helpful.
+
+    B.	Generating the First "Rough Draft"
+
+	To get started, copy a simple widget to a new file.  Go to the htmlgen
+	directory, and either make a copy of htdrv_pane for a visual widget, or
+	perhaps htdrv_execmethod for a nonvisual widget.  These widgets can
+	provide simple starting points.
+
+	Edit the new file and do a file-wide search & replace on the module's
+	prefix.  For the pane widget, for instance, replace all instances of
+	"htpn" with your driver's prefix and "HTPN" with the upcase version of
+	your driver's prefix.  Then, modify the Name and WidgetName strcpy()'s
+	in the Initialize function to reflect your driver (see the section on
+	Initialization for more information).
+
+	It is usually best to remove all functions, event handlers, and global
+	script variables from the driver to get started.  It is usually also
+	best to remove all but one CSS layer and to remove all of the HTML
+	BODY code as well.  To get started with a visual widget, create one
+	starting layer (the base layer) with one layer, say named "xy0base"
+	(the 0 comes from the idcnt, as each widget must be uniquely numbered).
+
+	Change the pn_init() function call and definition appropriately to
+	one to be used by your widget.  In this case, xy_init() would be
+	appropriate.  Since pn_init() passes two layers in initialization,
+	you may need to remove the reference to one of them since you are
+	starting with just one layer  (in the pane widget, one layer is used
+	as the container, and one outer layer to draw the 3-D border around 
+	the container, by using an HTML table).
+
+	Add the following code to the HTML body
+
+	    "<DIV id=xy0base><!--Code It Here--></DIV>"
+
+	so you can find the place to prototype your HTML code to design the 
+	visual aspect of the widget.  Of course, the 0 should come from the 
+	idcnt here as well, so that it matches that in the HTML header's CSS
+	declarations.  And 'xy' should match the last part of the module's 
+	prefix (minus the 'ht' part; in this case the module's Initialize
+	function would be called 'htxyInitialize()').
+
+	You will probably want to remove most of the objGetAttrValue() params 
+	from the Render() function in the widget, except those needed to 
+	position a visual layer on screen.
+
+	Finally, delete all log entries from the CVS header in the file except
+	the $Log: HTDriver_Authoring.txt,v $
+	the Revision 1.2  2001/11/12 22:02:04  gbeeley
+	the Added a section to the HTDriver authoring guide on how to prototype
+	the a new widget.
+	the line, of course, and change the author/date/etc. information
+	in the file header.
+
+	To get the widget added to the system, edit Makefile and add the new
+	widget's .o file to the XHTDRIVERS= line.  Don't include the path to
+	the driver; the makefile does that automatically.  Then, edit lsmain.c
+	and add the widget's Initialize function to the startup code there 
+	alongside the other calls to widget Initialize() functions.  Be sure to
+	add it somewhere *after* the main htrInitialize() call.
+
+	Rebuild the Centrallix binary, and build a testbed .app file in the OS
+	directory which creates a new widget of the appropriate type, embedded
+	in appropriate other widgets to ensure proper testing and such.  Be 
+	sure to create only ONE new widget instance; otherwise the prototyping
+	process can become more difficult.
+
+	Run Centrallix and load the test application, and save it to a file
+	in the objectsystem.  Be sure NOT to save it as a '.app' file, rather
+	use a '.html' extension!!!  Then, copy the html file to a second
+	working copy in the same directory.  Don't modify the original, rather
+	only modify the working copy.  You'll see why....
+
+    C.	Prototyping the widget
+
+	Once you've generated the widget, edit the source to the working copy
+	of the page.  Find the spot where the "Code It Here" HTML comment is,
+	and use that to enter the basic HTML to code the widget.  Also, find
+	the init function and where the layer is declared and add layers as
+	needed.
+
+	You can view the page at any time by pointing Netscape to the working
+	copy of the .html file via the running Centrallix server.
+
+	Once the widget is working well enough to be cemented into the system
+	as a widget, do a "diff" between the working copy and the original
+	rough draft copy of the .html pages.  This will tell you what you had
+	to add to make the widget work.  Using those rough additions as a 
+	starting point, make changes to the widget driver to handle those
+	needed additions and changes.  Then, recompile Centrallix.
+
+	Note that eventually it will be easier to simply make a minor change
+	and recompile the server than to go through the prototyping process
+	again.  But, during the initial development of a complex widget, this
+	prototyping process can help a great deal.
+-------------------------------------------------------------------------------
