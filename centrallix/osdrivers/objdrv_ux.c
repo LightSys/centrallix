@@ -48,10 +48,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.3  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -449,7 +465,7 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    /** Lookup 'path' in the open params so we know where in the unix fs to point the node. **/
 	    ptr = NULL;
 	    stAttrValue(stLookup(snnode->Data, "path"), NULL, &ptr, 0);
-	    if (!ptr) stAttrValue(stLookup(obj->Pathname->OpenCtl[obj->SubPtr - 1],"path"),NULL,&ptr,0);
+	    if (!ptr) stAttrValue_ne(stLookup_ne(obj->Pathname->OpenCtl[obj->SubPtr - 1],"path"),&ptr);
 	    if (!ptr)
 	        {
 		nmFree(inf, sizeof(UxdData));
@@ -462,7 +478,6 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		ptrcpy = nmSysStrdup(ptr);
 	        paramdata = stAddAttr(snnode->Data, "path");
 	        stAddValue(paramdata, ptrcpy, 0);
-	        paramdata->StrAlloc[0] = 1;
 		}
 	    memccpy(node->UXPath, ptr, 0, OBJSYS_MAX_PATH - 1);
 	    node->UXPath[OBJSYS_MAX_PATH - 1] = 0;

@@ -18,7 +18,7 @@ VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:repor
 #BASIC=$(patsubst %,utility/%,$(XBASIC))
 
 # Support modules -- basic and advanced utilities.
-XSUPPORT=st_node.o htmlparse.o
+XSUPPORT=stparse.o st_node.o htmlparse.o 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 
 # OSML modules that implement the OSML API for internal C use

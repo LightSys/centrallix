@@ -36,12 +36,28 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htmlparse.h,v 1.1 2001/08/13 18:00:52 gbeeley Exp $
+    $Id: htmlparse.h,v 1.2 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/htmlparse.h,v $
 
     $Log: htmlparse.h,v $
-    Revision 1.1  2001/08/13 18:00:52  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
+    Revision 1.1.1.1  2001/08/13 18:00:52  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
     Centrallix Core Initial Import
@@ -51,7 +67,7 @@
 
 #include "mtask.h"
 #include "obj.h"
-#include "stparse.h"
+#include "stparse_ne.h"
 
 
 #define HTS_READ_SIZE	1024
@@ -108,7 +124,7 @@ int htsNextToken(pHtmlSession this);
 int htsStringVal(pHtmlSession this, char** string_ptr, int* string_len);
 char* htsTagPart(pHtmlSession this, int part_num);
 char* htsTagValue(pHtmlSession this, int part_num);
-pStructInf htsParseURL(char* url);
+pStruct htsParseURL(char* url);
 char htsConvertChar(char** ptr);
 
 #endif /* not defined _HTMLPARSE_H */

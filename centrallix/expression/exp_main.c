@@ -45,10 +45,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.2 2001/09/28 20:03:13 gbeeley Exp $
+    $Id: exp_main.c,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.3  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/28 20:03:13  gbeeley
     Updated magic number system syntax to remove the semicolons from within
     the macro expansions.  Semicolons now are (more naturally) placed after
@@ -69,6 +85,8 @@
 
 /*** EXP system globals ***/
 EXP_Globals EXP;
+
+pParamObjects expNullObjlist = NULL;
 
 
 /*** expAllocExpression - allocate an expression structure.
@@ -473,6 +491,94 @@ expDataTypeToNodeType(int data_type)
     }
 
 
+/*** expPodToExpression - takes a Pointer to Object Data (pod) and
+ *** builds an expression node from it.
+ ***/
+pExpression
+expPodToExpression(pObjData pod, int type)
+    {
+    pExpression exp;
+    int n;
+
+	/** Create expression node. **/
+	exp = expAllocExpression();
+
+	/** Based on type. **/
+	switch(type)
+	    {
+	    case DATA_T_INTEGER:
+		exp->Integer = pod->Integer;
+		break;
+	    case DATA_T_STRING:
+		n = strlen(pod->String);
+		if (n <= 63)
+		    {
+		    exp->String = exp->Types.StringBuf;
+		    }
+		else
+		    {
+		    exp->String = nmSysMalloc(n+1);
+		    exp->Alloc = 1;
+		    }
+		strcpy(exp->String, pod->String);
+		break;
+	    case DATA_T_DOUBLE:
+		exp->Types.Double = pod->Double;
+		break;
+	    case DATA_T_MONEY:
+		memcpy(&(exp->Types.Money), pod->Money, sizeof(MoneyType));
+		break;
+	    case DATA_T_DATETIME:
+		memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
+		break;
+	    default:
+		expFreeExpression(exp);
+		return NULL;
+	    }
+	exp->NodeType = expDataTypeToNodeType(type);
+	exp->DataType = type;
+	/*expEvalTree(exp,expNullObjlist);*/
+
+    return exp;
+    }
+
+
+/*** expExpressionToPod - takes an expression node and returns a
+ *** pointer to object data (pod).
+ ***/
+int
+expExpressionToPod(pExpression this, pObjData pod)
+    {
+
+	/** Null? **/
+	if (this->Flags & EXPR_F_NULL) return 1;
+
+	/** Based on data type. **/
+	switch(this->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		pod->Integer = this->Integer;
+		break;
+	    case DATA_T_STRING:
+		pod->String = this->String;
+		break;
+	    case DATA_T_MONEY:
+		pod->Money = &(this->Types.Money);
+		break;
+	    case DATA_T_DATETIME:
+		pod->DateTime = &(this->Types.Date);
+		break;
+	    case DATA_T_DOUBLE:
+		pod->Double = this->Types.Double;
+		break;
+	    default:
+		return -1;
+	    }
+    
+    return 0;
+    }
+
+
 /*** expInitialize - initialize the expression evaluator subsystem.
  ***/
 int
@@ -489,6 +595,9 @@ expInitialize()
 	/** Function list for EXPR_N_FUNCTION nodes **/
 	xhInit(&EXP.Functions, 255, 0);
 	exp_internal_DefineFunctions();
+
+	/** Define the null objectlist **/
+	expNullObjlist = expCreateParamList();
 
     return 0;
     }

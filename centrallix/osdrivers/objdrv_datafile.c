@@ -53,10 +53,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.3 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.4 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.4  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.3  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -1455,7 +1471,7 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
 	    for(i=0;i<dn->Node->Data->nSubInf;i++)
 	        {
 		col_inf = dn->Node->Data->SubInf[i];
-		if (col_inf->Type == ST_T_SUBGROUP)
+		if (stStructType(col_inf) == ST_T_SUBGROUP)
 		    {
 		    /** Column or header column? **/
 		    if (!strcmp(col_inf->UsrType, "filespec/column")) tdata = dn->TableInf;
@@ -2916,17 +2932,8 @@ datSetAttrValue(void* inf_v, char* attrname, pObjData val, pObjTrxTree* oxt)
 		case DAT_T_TABLE:
 		    ptr = nmSysStrdup(val->String);
 		    node_inf = stLookup(inf->Node->Node->Data,"annotation");
-		    if (node_inf)
-		        {
-			if (node_inf->StrVal[0] && node_inf->StrAlloc[0]) nmSysFree(node_inf->StrVal[0]);
-			node_inf->StrAlloc[0] = 1;
-			node_inf->StrVal[0] = ptr;
-			}
-		    else
-		        {
-			node_inf = stAddAttr(inf->Node->Node->Data,"annotation");
-			stAddValue(node_inf, ptr, 0);
-			}
+		    if (!node_inf) node_inf = stAddAttr(inf->Node->Node->Data,"annotation");
+		    stSetAttrValue(node_inf, DATA_T_STRING, val, 0);
 		    inf->Node->Node->Status = SN_NS_DIRTY;
 		    snWriteNode(inf->Node->SpecObj->Prev, inf->Node->Node);
 		    return 0;

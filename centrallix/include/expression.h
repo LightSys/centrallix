@@ -34,10 +34,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.2 2001/10/02 16:23:50 gbeeley Exp $
+    $Id: expression.h,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.3  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/10/02 16:23:50  gbeeley
     Added expGenerateText().
 
@@ -165,6 +181,7 @@ typedef struct _PO
 
 #define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
 
+extern pParamObjects expNullObjlist;
 
 /*** Types of expression nodes ***/
 #define EXPR_N_FUNCTION		1
@@ -209,6 +226,7 @@ typedef struct _PO
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */
 #define EXPR_CMP_OUTERJOIN	2	/* allow =* and *= for == */
 #define EXPR_CMP_WATCHLIST	4	/* watch for a list within () */
+#define EXPR_CMP_LATEBIND	8	/* allow late object name binding */
 
 
 /*** Functions ***/
@@ -217,6 +235,8 @@ int expFreeExpression(pExpression this);
 pExpression expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflags);
 pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags);
 pExpression expLinkExpression(pExpression this);
+pExpression expPodToExpression(pObjData pod, int type);
+int expExpressionToPod(pExpression this, pObjData pod);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char);

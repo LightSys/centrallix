@@ -13,6 +13,7 @@
 #include "xarray.h"
 #include "xhash.h"
 #include "stparse.h"
+#include "stparse_ne.h"
 #include "st_node.h"
 #include "mtsession.h"
 
@@ -49,10 +50,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.3  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -83,6 +100,7 @@ typedef struct
     pSnNode	Node;
     IntVec	IVvalue;
     StringVec	SVvalue;
+    void*	VecData;
     }
     StxData, *pStxData;
 
@@ -116,7 +134,8 @@ stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     char* node_path;
     char* endptr;
     pSnNode node = NULL;
-    pStructInf search_inf, find_inf, attr_inf;
+    pStruct open_inf;
+    pStructInf find_inf, attr_inf, search_inf;
     int i,j,n;
     char* ptr;
 
@@ -147,16 +166,16 @@ stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	        {
 		for(i=0;i<obj->Pathname->OpenCtl[obj->SubPtr]->nSubInf;i++)
 		    {
-		    search_inf = obj->Pathname->OpenCtl[obj->SubPtr]->SubInf[i];
-		    if (strncmp(search_inf->Name,"ls__",4) && search_inf->StrVal[0])
+		    open_inf = obj->Pathname->OpenCtl[obj->SubPtr]->SubInf[i];
+		    if (strncmp(open_inf->Name,"ls__",4) && open_inf->StrVal)
 		        {
-			attr_inf = stAddAttr(node->Data, search_inf->Name);
+			attr_inf = stAddAttr(node->Data, open_inf->Name);
 			endptr = NULL;
-			n = strtol(search_inf->StrVal[0],&endptr,0);
+			n = strtol(open_inf->StrVal,&endptr,0);
 			if (endptr && *endptr == '\0')
-			    stAddValue(attr_inf, NULL, n);
+			    stSetAttrValue(attr_inf, DATA_T_INTEGER, POD(&n), 0);
 			else 
-			    stAddValue(attr_inf, nmSysStrdup(search_inf->StrVal[0]), 0);
+			    stSetAttrValue(attr_inf, DATA_T_STRING, POD(&(open_inf->StrVal)), 0);
 			}
 		    }
 		}
@@ -189,7 +208,7 @@ stxOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    ptr = obj_internal_PathPart(obj->Pathname,i,1);
 	    find_inf = NULL;
-	    for(j=0;j<search_inf->nSubInf;j++) if (!strcmp(ptr,search_inf->SubInf[j]->Name) && search_inf->SubInf[j]->Type == ST_T_SUBGROUP)
+	    for(j=0;j<search_inf->nSubInf;j++) if (!strcmp(ptr,search_inf->SubInf[j]->Name) && stStructType(search_inf->SubInf[j]) == ST_T_SUBGROUP)
 	        {
 		if (i == obj->Pathname->nElements-1 && (obj->Mode & O_CREAT) && (obj->Mode & O_EXCL))
 		    {
@@ -286,7 +305,7 @@ stxDelete(pObject obj, pObjTrxTree* oxt)
 	    {
 	    for(i=0;i<inf->Data->nSubInf;i++)
 	        {
-		if (inf->Data->SubInf[i]->Type == ST_T_SUBGROUP)
+		if (stStructType(inf->Data->SubInf[i]) == ST_T_SUBGROUP)
 		    {
 		    is_empty = 0;
 		    break;
@@ -314,7 +333,7 @@ stxDelete(pObject obj, pObjTrxTree* oxt)
 		}
 	    for(i=0;i<inf->Data->nSubInf;i++)
 	        {
-		if (inf->Data->SubInf[i]->Type == ST_T_SUBGROUP)
+		if (stStructType(inf->Data->SubInf[i]) == ST_T_SUBGROUP)
 		    {
 		    is_empty = 0;
 		    break;
@@ -390,7 +409,7 @@ stxQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Find a subgroup item **/
 	while(qy->ItemCnt < qy->Data->Data->nSubInf && 
-	      qy->Data->Data->SubInf[qy->ItemCnt]->Type != ST_T_SUBGROUP) qy->ItemCnt++;
+	      stStructType(qy->Data->Data->SubInf[qy->ItemCnt]) != ST_T_SUBGROUP) qy->ItemCnt++;
 
 	/** No more left? **/
 	if (qy->ItemCnt >= qy->Data->Data->nSubInf) return NULL;
@@ -412,6 +431,7 @@ stxQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->Data = qy->CurInf;
 	inf->Node->OpenCnt++;
 	inf->Obj = obj;
+	inf->VecData = NULL;
 	qy->ItemCnt++;
 
     return (void*)inf;
@@ -438,6 +458,7 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
+    int t;
 
     	/** If name, it's a string **/
 	if (!strcmp(attrname,"name")) return DATA_T_STRING;
@@ -449,19 +470,23 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
     	/** Lookup the subgroup inf **/
 	find_inf = stLookup(inf->Data, attrname);
-	if (!find_inf || find_inf->Type != ST_T_ATTRIB) 
+	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) 
 	    {
 	    /*mssError(1,"STX","Could not locate requested structure file attribute");*/
 	    return -1;
 	    }
 
-	/** If StrVal[0] valid, string else integer **/
-	if (find_inf->nVal == 1 && find_inf->StrVal[0] != NULL) return DATA_T_STRING;
-	else if (find_inf->nVal == 1) return DATA_T_INTEGER;
-
-	/** If more than one value, return string or int vec **/
-	if (find_inf->nVal > 1 && find_inf->StrVal[0] != NULL) return DATA_T_STRINGVEC;
-	else if (find_inf->nVal > 1) return DATA_T_INTVEC;
+	/** Examine the expr to determine the type **/
+	t = stGetAttrType(find_inf, 0);
+	if (find_inf->Value && find_inf->Value->NodeType == EXPR_N_LIST)
+	    {
+	    if (t == DATA_T_INTEGER) return DATA_T_INTVEC;
+	    else return DATA_T_STRINGVEC;
+	    }
+	else if (find_inf->Value)
+	    {
+	    return t;
+	    }
 
     return -1;
     }
@@ -475,7 +500,6 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
-    int i;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -500,34 +524,39 @@ stxGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    }
 
 	/** Look through the attribs in the subinf **/
-	for(i=0;i<inf->Data->nSubInf;i++) 
-	    {
-	    find_inf = inf->Data->SubInf[i];
-	    if (!strcmp(attrname,find_inf->Name) && find_inf->Type == ST_T_ATTRIB)
-	        {
-		if (find_inf->StrVal[0] != NULL && find_inf->nVal > 1)
-		    {
-		    inf->SVvalue.Strings = find_inf->StrVal;
-		    inf->SVvalue.nStrings = find_inf->nVal;
-		    *(pStringVec*)val = &(inf->SVvalue);
-		    }
-		else if (find_inf->nVal > 1)
-		    {
-		    inf->IVvalue.Integers = find_inf->IntVal;
-		    inf->IVvalue.nIntegers = find_inf->nVal;
-		    *(pIntVec*)val = &(inf->IVvalue);
-		    }
-		else if (find_inf->StrVal[0] != NULL) *(char**)val = find_inf->StrVal[0];
-		else *(int*)val = find_inf->IntVal[0];
-		return 0;
-		}
-	    }
+	find_inf = stLookup(inf->Data, attrname);
 
 	/** If annotation, and not found, return "" **/
-	if (!strcmp(attrname,"annotation"))
+	if (!find_inf && !strcmp(attrname,"annotation"))
 	    {
 	    *(char**)val = "";
 	    return 0;
+	    }
+
+	/** Not found? **/
+	if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) return -1;
+
+	/** Vector or scalar? **/
+	if (find_inf->Value->NodeType == EXPR_N_LIST)
+	    {
+	    if (inf->VecData) nmSysFree(inf->VecData);
+	    if (stGetAttrType(find_inf, 0) == DATA_T_INTEGER)
+		{
+		inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
+		POD(val)->IntVec = &(inf->IVvalue);
+		POD(val)->IntVec->Integers = (int*)(inf->VecData);
+		}
+	    else
+		{
+		inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
+		POD(val)->StringVec = &(inf->SVvalue);
+		POD(val)->StringVec->Strings = (char**)(inf->VecData);
+		}
+	    return 0;
+	    }
+	else
+	    {
+	    return stGetAttrValue(find_inf, DATA_T_ANY, val, 0);
 	    }
 
 	/*mssError(1,"STX","Could not locate requested structure file attribute");*/
@@ -545,7 +574,7 @@ stxGetNextAttr(void* inf_v, pObjTrxTree oxt)
 
 	/** Get the next attr from the list unless last one already **/
 	while(inf->CurAttr < inf->Data->nSubInf && 
-	      (inf->Data->SubInf[inf->CurAttr]->Type != ST_T_ATTRIB || 
+	      (stStructType(inf->Data->SubInf[inf->CurAttr]) != ST_T_ATTRIB || 
 	       !strcmp(inf->Data->SubInf[inf->CurAttr]->Name,"annotation"))) inf->CurAttr++;
 	if (inf->CurAttr >= inf->Data->nSubInf) return NULL;
 
@@ -579,6 +608,7 @@ stxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
+    int t;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -620,21 +650,13 @@ stxSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree oxt)
 	    mssError(1,"STX","Requested structure file attribute not found");
 	    return -1;
 	    }
-	if (find_inf->Type != ST_T_ATTRIB) return -1;
+	if (stStructType(find_inf) != ST_T_ATTRIB) return -1;
 
-	/** If int, set int else set string (determine by: is string null) **/
-	if (find_inf->StrVal[0] == NULL)
-	    {
-	    find_inf->IntVal[0] = *(int*)val;
-	    }
-	else
-	    {
-	    if (find_inf->StrAlloc[0]) nmSysFree(find_inf->StrVal[0]);
-	    find_inf->StrAlloc[0]=1;
-	    find_inf->StrVal[0] = (char*)nmSysMalloc(strlen(*(char**)val));
-	    strcpy(find_inf->StrVal[0], *(char**)val);
-	    }
-	
+	/** Set value of attribute **/
+	t = stGetAttrType(find_inf, 0);
+	if (t <= 0) return -1;
+	stSetAttrValue(find_inf, t, val, 0);
+
 	/** Set dirty flag **/
 	inf->Node->Status = SN_NS_DIRTY;
 
@@ -659,7 +681,6 @@ stxAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    ptr = (char*)nmSysMalloc(strlen(*(char**)val));
 	    strcpy(ptr, *(char**)val);
 	    stAddValue(new_inf, ptr, 0);
-	    new_inf->StrAlloc[0] = 1;
 	    }
 	else if (type == DATA_T_INTEGER)
 	    {

@@ -45,12 +45,28 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_cgi.c,v 1.1 2001/08/13 18:00:56 gbeeley Exp $
+    $Id: net_cgi.c,v 1.2 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_cgi.c,v $
 
     $Log: net_cgi.c,v $
-    Revision 1.1  2001/08/13 18:00:56  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
+    Revision 1.1.1.1  2001/08/13 18:00:56  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:21  gbeeley
     Centrallix Core Initial Import
@@ -275,11 +291,11 @@ nht_internal_ConvertChar(char** ptr)
 /*** nht_internal_ParseURL - parses the url passed to the http server into
  *** the pathname and the named parameters.
  ***/
-pStructInf
+pStruct
 nht_internal_ParseURL(char* url)
     {
-    pStructInf main_inf;
-    pStructInf attr_inf;
+    pStruct main_inf;
+    pStruct attr_inf;
     char* ptr;
     char* dst;
     int len;
@@ -300,7 +316,7 @@ nht_internal_ParseURL(char* url)
 	while(*url && *url != '?') *(dst++) = nht_internal_ConvertChar(&url);
 	*dst=0;
 	main_inf->StrAlloc[0] = 1;
-	main_inf->StrVal[0] = ptr;
+	main_inf->StrVal = ptr;
 
 	/** Step through any parameters, and alloc inf structures for them. **/
 	if (*url == '?') url++;
@@ -351,7 +367,7 @@ nht_internal_ParseURL(char* url)
 		}
 	    *dst=0;
 	    attr_inf->StrAlloc[0] = 1;
-	    attr_inf->StrVal[0] = ptr;
+	    attr_inf->StrVal = ptr;
 	    attr_inf->Type = ST_T_ATTRIB;
 	    attr_inf->nVal = 1;
 	    if (*url == '&') url++;
@@ -366,9 +382,9 @@ nht_internal_ParseURL(char* url)
  *** read access.
  ***/
 int
-nht_internal_CkParams(pStructInf url_inf, pObject obj)
+nht_internal_CkParams(pStruct url_inf, pObject obj)
     {
-    pStructInf find_inf, search_inf;
+    pStruct find_inf, search_inf;
     int i,t,n;
     char* ptr = NULL;
     DateTime dt;
@@ -378,7 +394,7 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
     double dbl;
 
 	/** Check for the ls__params=yes tag **/
-	stAttrValue(find_inf = stLookup(url_inf,"ls__params"), NULL, &ptr, 0);
+	stAttrValue_ne(find_inf = stLookup_ne(url_inf,"ls__params"), &ptr);
 	if (!ptr || strcmp(ptr,"yes")) return 0;
 
 	/** Ok, look for any params not beginning with ls__ **/
@@ -392,39 +408,39 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
 		switch(t)
 		    {
 		    case DATA_T_INTEGER:
-		        if (search_inf->StrVal[0] == NULL)
+		        /*if (search_inf->StrVal == NULL)
 		            n = search_inf->IntVal[0];
-		        else
-		            n = strtol(search_inf->StrVal[0], NULL, 10);
+		        else*/
+		            n = strtol(search_inf->StrVal, NULL, 10);
 		        objSetAttrValue(obj, search_inf->Name, &n);
 			break;
 
 		    case DATA_T_STRING:
-		        if (search_inf->StrVal[0] != NULL)
+		        if (search_inf->StrVal != NULL)
 		    	    {
-		    	    ptr = search_inf->StrVal[0];
+		    	    ptr = search_inf->StrVal;
 		    	    objSetAttrValue(obj, search_inf->Name, &ptr);
 			    }
 			break;
 		    
 		    case DATA_T_DOUBLE:
-		        if (search_inf->StrVal[0] == NULL)
+		        /*if (search_inf->StrVal == NULL)
 		            dbl = search_inf->IntVal[0];
-		        else
-		            dbl = strtod(search_inf->StrVal[0], NULL);
+		        else*/
+		            dbl = strtod(search_inf->StrVal, NULL);
 			objSetAttrValue(obj, search_inf->Name, &dbl);
 			break;
 
 		    case DATA_T_MONEY:
-		        if (search_inf->StrVal[0] == NULL)
+		        /*if (search_inf->StrVal == NULL)
 			    {
 			    m.WholePart = search_inf->IntVal[0];
 			    m.FractionPart = 0;
 			    }
 			else
-			    {
-			    objDataToMoney(DATA_T_STRING, search_inf->StrVal[0], &m);
-			    }
+			    {*/
+			    objDataToMoney(DATA_T_STRING, search_inf->StrVal, &m);
+			    /*}*/
 			mptr = &m;
 			objSetAttrValue(obj, search_inf->Name, &mptr);
 			break;
@@ -432,7 +448,7 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
 		    case DATA_T_DATETIME:
 		        if (search_inf->StrVal != NULL)
 			    {
-			    objDataToDateTime(DATA_T_STRING, search_inf->StrVal[0], &dt);
+			    objDataToDateTime(DATA_T_STRING, search_inf->StrVal, &dt);
 			    dtptr = &dt;
 			    objSetAttrValue(obj, search_inf->Name, &dtptr);
 			    }
@@ -449,11 +465,11 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
  *** attribute list, etc.
  ***/
 int
-nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
+nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     {
     char sbuf[256];
     int cnt;
-    pStructInf find_inf;
+    pStruct find_inf;
     pObjQuery query;
     char* dptr;
     char* ptr;
@@ -463,13 +479,13 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
         /** If we're opening the "errorstream", pass of processing to err handler **/
-	if (!strncmp(url_inf->StrVal[0],"/errorstream",12))
+	if (!strncmp(url_inf->StrVal,"/errorstream",12))
 	    {
 	    return nht_internal_ErrorHandler(nsess, conn);
 	    }
 
 	/** Ok, open the object here. **/
-	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_RDONLY, 0600, "text/html");
+	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
 	if (!target_obj)
 	    {
 	    nht_internal_GenerateError(nsess);
@@ -504,10 +520,10 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);
 
 	/** Check GET mode. **/
-	find_inf = stLookup(url_inf,"ls__mode");
+	find_inf = stLookup_ne(url_inf,"ls__mode");
 
 	/** GET CONTENT mode. **/
-	if (!find_inf || !strcmp(find_inf->StrVal[0], "content"))
+	if (!find_inf || !strcmp(find_inf->StrVal, "content"))
 	    {
 	    /** Check the object type. **/
 	    objGetAttrValue(target_obj, "content_type", &ptr);
@@ -533,14 +549,14 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	    }
 
 	/** GET DIRECTORY LISTING mode. **/
-	else if (!strcmp(find_inf->StrVal[0],"list"))
+	else if (!strcmp(find_inf->StrVal,"list"))
 	    {
 	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
-		sprintf(sbuf,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal[0]);
+		sprintf(sbuf,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
-		dptr = url_inf->StrVal[0];
+		dptr = url_inf->StrVal;
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while(sub_obj = objQueryFetch(query,O_RDONLY))
 		    {
@@ -560,12 +576,12 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	    }
 
 	/** GET METHOD LIST mode. **/
-	else if (!strcmp(find_inf->StrVal[0],"methods"))
+	else if (!strcmp(find_inf->StrVal,"methods"))
 	    {
 	    }
 
 	/** GET ATTRIBUTE-VALUE LIST mode. **/
-	else if (!strcmp(find_inf->StrVal[0],"attr"))
+	else if (!strcmp(find_inf->StrVal,"attr"))
 	    {
 	    }
 
@@ -581,17 +597,17 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
  *** is NULL.
  ***/
 int
-nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size, char* content_buf)
+nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, char* content_buf)
     {
     pObject target_obj;
     char sbuf[160];
     int rcnt,wcnt;
     int type,i,v;
-    pStructInf sub_inf;
+    pStruct sub_inf;
     int already_exist=0;
 
     	/** See if the object already exists. **/
-	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_RDONLY, 0600, "text/html");
+	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
 	if (target_obj)
 	    {
 	    objClose(target_obj);
@@ -599,7 +615,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 	    }
 
 	/** Ok, open the object here. **/
-	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
+	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
 	if (!target_obj)
 	    {
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
@@ -628,12 +644,12 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 	    type = objGetAttrType(target_obj, sub_inf->Name);
 	    if (type == DATA_T_INTEGER)
 	        {
-		v = strtol(sub_inf->StrVal[0],NULL,10);
+		v = strtol(sub_inf->StrVal,NULL,10);
 		objSetAttrValue(target_obj, sub_inf->Name, &v);
 		}
 	    else if (type == DATA_T_STRING)
 	        {
-		objSetAttrValue(target_obj, sub_inf->Name, &(sub_inf->StrVal[0]));
+		objSetAttrValue(target_obj, sub_inf->Name, &(sub_inf->StrVal));
 		}
 	    }
 
@@ -678,7 +694,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 		     "Server: Centrallix/1.0\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", nsess->Cookie, url_inf->StrVal[0]);
+		     "%s\r\n", nsess->Cookie, url_inf->StrVal);
 		}
 	    else
 	        {
@@ -686,7 +702,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 		     "Server: Centrallix/1.0\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", nsess->Cookie, url_inf->StrVal[0]);
+		     "%s\r\n", nsess->Cookie, url_inf->StrVal);
 		}
 	    nsess->IsNewCookie = 0;
 	    }
@@ -697,14 +713,14 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
 		     "Server: Centrallix/1.0\r\n"
 		     "\r\n"
-		     "%s\r\n", url_inf->StrVal[0]);
+		     "%s\r\n", url_inf->StrVal);
 		}
 	    else
 	        {
 	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
 		     "Server: Centrallix/1.0\r\n"
 		     "\r\n"
-		     "%s\r\n", url_inf->StrVal[0]);
+		     "%s\r\n", url_inf->StrVal);
 		}
 	    }
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -716,7 +732,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 /*** nht_internal_COPY - implements the COPY centrallix-http method.
  ***/
 int
-nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStructInf url_inf, char* dest)
+nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest)
     {
     pObject source_obj,target_obj;
     int size;
@@ -725,7 +741,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStructInf url_inf, char* d
     int cnt,rcnt,wcnt;
 
 	/** Ok, open the source object here. **/
-	source_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_RDONLY, 0600, "text/html");
+	source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
 	if (!source_obj)
 	    {
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
@@ -851,7 +867,7 @@ nht_internal_ConnHandler(void* conn_v)
     pNhtSessionData nsess = NULL;
     void* mts;
     int cnt;
-    pStructInf url_inf,find_inf;
+    pStruct url_inf,find_inf;
     int size=-1;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
@@ -1038,16 +1054,16 @@ nht_internal_ConnHandler(void* conn_v)
 	    }
 
 	/** If the method was GET and an ls__method was specified, use that method **/
-	if (!strcmp(method,"get") && (find_inf=stLookup(url_inf,"ls__method")))
+	if (!strcmp(method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
-	    if (!strcasecmp(find_inf->StrVal[0],"get"))
+	    if (!strcasecmp(find_inf->StrVal,"get"))
 	        {
 	        nht_internal_GET(nsess,conn,url_inf);
 		}
-	    else if (!strcasecmp(find_inf->StrVal[0],"copy"))
+	    else if (!strcasecmp(find_inf->StrVal,"copy"))
 	        {
-		find_inf = stLookup(url_inf,"ls__destination");
-		if (!find_inf || !(find_inf->StrVal[0]))
+		find_inf = stLookup_ne(url_inf,"ls__destination");
+		if (!find_inf || !(find_inf->StrVal))
 		    {
 	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: Centrallix/1.0\r\n"
@@ -1057,14 +1073,14 @@ nht_internal_ConnHandler(void* conn_v)
 		    }
 		else
 		    {
-		    ptr = find_inf->StrVal[0];
+		    ptr = find_inf->StrVal;
 		    nht_internal_COPY(nsess,conn,url_inf, ptr);
 		    }
 		}
-	    else if (!strcasecmp(find_inf->StrVal[0],"put"))
+	    else if (!strcasecmp(find_inf->StrVal,"put"))
 	        {
-		find_inf = stLookup(url_inf,"ls__content");
-		if (!find_inf || !(find_inf->StrVal[0]))
+		find_inf = stLookup_ne(url_inf,"ls__content");
+		if (!find_inf || !(find_inf->StrVal))
 		    {
 	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: Centrallix/1.0\r\n"
@@ -1074,7 +1090,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    }
 		else
 		    {
-		    ptr = find_inf->StrVal[0];
+		    ptr = find_inf->StrVal;
 		    size = strlen(ptr);
 	            nht_internal_PUT(nsess,conn,url_inf,size,ptr);
 		    }

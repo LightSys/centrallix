@@ -12,7 +12,7 @@
 #include "mtlexer.h"
 #include "exception.h"
 #include "obj.h"
-#include "stparse.h"
+#include "stparse_ne.h"
 #include "htmlparse.h"
 
 /************************************************************************/
@@ -48,10 +48,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: net_http.c,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.3  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -118,9 +134,9 @@ extern int htrRender(pFile, pObject);
  *** and putting it back in the path.
  ***/
 int
-nht_internal_ConstructPathname(pStructInf url_inf)
+nht_internal_ConstructPathname(pStruct url_inf)
     {
-    pStructInf lstype_inf;
+    pStruct lstype_inf;
     char* oldpath;
     char* newpath;
     char* old_lstype;
@@ -129,10 +145,10 @@ nht_internal_ConstructPathname(pStructInf url_inf)
     int len;
 
     	/** Does it have ls__type? **/
-	if ((lstype_inf = stLookup(url_inf,"ls__type")) != NULL)
+	if ((lstype_inf = stLookup_ne(url_inf,"ls__type")) != NULL)
 	    {
-	    oldpath = url_inf->StrVal[0];
-	    stAttrValue(lstype_inf,NULL,&old_lstype,0);
+	    oldpath = url_inf->StrVal;
+	    stAttrValue_ne(lstype_inf,&old_lstype);
 
 	    /** Get an encoded lstype **/
 	    len = strlen(old_lstype)*3+1;
@@ -146,9 +162,9 @@ nht_internal_ConstructPathname(pStructInf url_inf)
 	    sprintf(newpath,"%s?ls__type=%s",oldpath,new_lstype);
 
 	    /** set the new path and remove the old one **/
-	    if (url_inf->StrAlloc[0]) nmSysFree(url_inf->StrVal[0]);
-	    url_inf->StrVal[0] = newpath;
-	    url_inf->StrAlloc[0] = 1;
+	    if (url_inf->StrAlloc) nmSysFree(url_inf->StrVal);
+	    url_inf->StrVal = newpath;
+	    url_inf->StrAlloc = 1;
 	    }
 
     return 0;
@@ -564,7 +580,7 @@ nht_internal_WriteAttrs(pObject obj, pFile conn, int tgt)
  *** DHTML document.
  ***/
 int
-nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_inf)
+nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf)
     {
     char* ptr;
     pObjSession objsess;
@@ -576,7 +592,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
     int mode,mask;
     char* usrtype;
     int i,t,n,o,cnt;
-    pStructInf subinf;
+    pStruct subinf;
     MoneyType m;
     DateTime dt;
     double dbl;
@@ -586,7 +602,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
     	/** Choose the request to perform **/
 	if (!strcmp(request,"opensession"))
 	    {
-	    ptr = (char*)objOpenSession(req_inf->StrVal[0]);
+	    ptr = (char*)objOpenSession(req_inf->StrVal);
 	    sprintf(sbuf,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
@@ -596,7 +612,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 	else 
 	    {
 	    /** Get the session data **/
-	    stAttrValue(stLookup(req_inf,"ls__sid"),NULL,&sid,0);
+	    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
 	    if (!sid) return -1;
 	    objsess = (pObjSession)strtol(sid+1,NULL,16);
 
@@ -613,12 +629,12 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 	    else if (!strcmp(request,"open"))
 	        {
 		/** Get the info and open the object **/
-		if (stAttrValue(stLookup(req_inf,"ls__usrtype"),NULL,&usrtype,0) < 0) return -1;
-		if (stAttrValue(stLookup(req_inf,"ls__objmode"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__usrtype"),&usrtype) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
 		mode = strtol(ptr,NULL,0);
-		if (stAttrValue(stLookup(req_inf,"ls__objmask"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmask"),&ptr) < 0) return -1;
 		mask = strtol(ptr,NULL,0);
-		obj = objOpen(objsess, req_inf->StrVal[0], mode, mask, usrtype);
+		obj = objOpen(objsess, req_inf->StrVal, mode, mask, usrtype);
 	        sprintf(sbuf,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
@@ -630,7 +646,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 	        }
 	    else if (!strcmp(request,"close"))
 	        {
-		if (stAttrValue(stLookup(req_inf,"ls__oid"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
 		objClose(obj);
 	        sprintf(sbuf,"Content-Type: text/html\r\n"
@@ -641,7 +657,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 	        }
 	    else if (!strcmp(request,"multiquery"))
 	        {
-		if (stAttrValue(stLookup(req_inf,"ls__sql"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
 		qy = objMultiQuery(objsess, ptr);
 	        sprintf(sbuf,"Content-Type: text/html\r\n"
 	    		 "\r\n"
@@ -651,12 +667,12 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 		}
 	    else if (!strcmp(request,"objquery"))
 	        {
-		if (stAttrValue(stLookup(req_inf,"ls__oid"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
 		where=NULL;
 		orderby=NULL;
-		stAttrValue(stLookup(req_inf,"ls__where"),NULL,&where,0);
-		stAttrValue(stLookup(req_inf,"ls__orderby"),NULL,&orderby,0);
+		stAttrValue_ne(stLookup_ne(req_inf,"ls__where"),&where);
+		stAttrValue_ne(stLookup_ne(req_inf,"ls__orderby"),&orderby);
 		qy = objOpenQuery(obj,where,orderby,NULL,NULL);
 	        sprintf(sbuf,"Content-Type: text/html\r\n"
 	    		 "\r\n"
@@ -666,11 +682,11 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 		}
 	    else if (!strcmp(request,"queryfetch"))
 	        {
-		if (stAttrValue(stLookup(req_inf,"ls__qid"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__qid"),&ptr) < 0) return -1;
 		qy = (pObjQuery)strtol(ptr+1,NULL,16);
-		if (stAttrValue(stLookup(req_inf,"ls__objmode"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
 		mode = strtol(ptr,NULL,0);
-		if (stAttrValue(stLookup(req_inf,"ls__rowcount"),NULL,&ptr,0) < 0)
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__rowcount"),&ptr) < 0)
 		    n = 0x7FFFFFFF;
 		else
 		    n = strtol(ptr,NULL,0);
@@ -687,7 +703,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 		}
 	    else if (!strcmp(request,"queryclose"))
 	        {
-		if (stAttrValue(stLookup(req_inf,"ls__qid"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__qid"),&ptr) < 0) return -1;
 		qy = (pObjQuery)strtol(ptr+1,NULL,16);
 		objQueryClose(qy);
 	        sprintf(sbuf,"Content-Type: text/html\r\n"
@@ -698,13 +714,13 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 		}
 	    else if (!strcmp(request,"read"))
 	        {
-		if (stAttrValue(stLookup(req_inf,"ls__oid"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
-		if (stAttrValue(stLookup(req_inf,"ls__bytecount"),NULL,&ptr,0) < 0)
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__bytecount"),&ptr) < 0)
 		    n = 0x7FFFFFFF;
 		else
 		    n = strtol(ptr,NULL,0);
-		if (stAttrValue(stLookup(req_inf,"ls__offset"),NULL,&ptr,0) < 0)
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__offset"),&ptr) < 0)
 		    o = -1;
 		else
 		    o = strtol(ptr,NULL,0);
@@ -730,7 +746,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 		}
 	    else if (!strcmp(request,"attrs"))
 	        {
-		if (stAttrValue(stLookup(req_inf,"ls__oid"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
 	        sprintf(sbuf,"Content-Type: text/html\r\n"
 	    		 "\r\n"
@@ -742,7 +758,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 	    else if (!strcmp(request,"setattrs"))
 	        {
 		/** Get obj ptr **/
-		if (stAttrValue(stLookup(req_inf,"ls__oid"),NULL,&ptr,0) < 0) return -1;
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr) < 0) return -1;
 		obj = (pObject)strtol(ptr+1,NULL,16);
 
 		/** Find all GET params that are NOT like ls__thingy **/
@@ -756,26 +772,26 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
 			switch(t)
 			    {
 			    case DATA_T_INTEGER:
-			        n = objDataToInteger(DATA_T_STRING, subinf->StrVal[0], NULL);
+			        n = objDataToInteger(DATA_T_STRING, subinf->StrVal, NULL);
 				objSetAttrValue(obj,subinf->Name,POD(&n));
 				break;
 
 			    case DATA_T_DOUBLE:
-			        dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal[0]);
+			        dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal);
 				objSetAttrValue(obj,subinf->Name,POD(&dbl));
 				break;
 
 			    case DATA_T_STRING:
-			        objSetAttrValue(obj,subinf->Name,POD(&(subinf->StrVal[0])));
+			        objSetAttrValue(obj,subinf->Name,POD(&(subinf->StrVal)));
 				break;
 
 			    case DATA_T_DATETIME:
-			        objDataToDateTime(DATA_T_STRING, subinf->StrVal[0], &dt, NULL);
+			        objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
 				objSetAttrValue(obj,subinf->Name,POD(&dt));
 				break;
 
 			    case DATA_T_MONEY:
-			        objDataToMoney(DATA_T_STRING, subinf->StrVal[0], &m);
+			        objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
 				objSetAttrValue(obj,subinf->Name,POD(&m));
 				break;
 
@@ -799,9 +815,9 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStructInf req_
  *** read access.
  ***/
 int
-nht_internal_CkParams(pStructInf url_inf, pObject obj)
+nht_internal_CkParams(pStruct url_inf, pObject obj)
     {
-    pStructInf find_inf, search_inf;
+    pStruct find_inf, search_inf;
     int i,t,n;
     char* ptr = NULL;
     DateTime dt;
@@ -811,7 +827,7 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
     double dbl;
 
 	/** Check for the ls__params=yes tag **/
-	stAttrValue(find_inf = stLookup(url_inf,"ls__params"), NULL, &ptr, 0);
+	stAttrValue_ne(find_inf = stLookup_ne(url_inf,"ls__params"), &ptr);
 	if (!ptr || strcmp(ptr,"yes")) return 0;
 
 	/** Ok, look for any params not beginning with ls__ **/
@@ -825,39 +841,39 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
 		switch(t)
 		    {
 		    case DATA_T_INTEGER:
-		        if (search_inf->StrVal[0] == NULL)
+		        /*if (search_inf->StrVal == NULL)
 		            n = search_inf->IntVal[0];
-		        else
-		            n = strtol(search_inf->StrVal[0], NULL, 10);
+		        else*/
+		            n = strtol(search_inf->StrVal, NULL, 10);
 		        objSetAttrValue(obj, search_inf->Name, POD(&n));
 			break;
 
 		    case DATA_T_STRING:
-		        if (search_inf->StrVal[0] != NULL)
+		        if (search_inf->StrVal != NULL)
 		    	    {
-		    	    ptr = search_inf->StrVal[0];
+		    	    ptr = search_inf->StrVal;
 		    	    objSetAttrValue(obj, search_inf->Name, POD(&ptr));
 			    }
 			break;
 		    
 		    case DATA_T_DOUBLE:
-		        if (search_inf->StrVal[0] == NULL)
+		        /*if (search_inf->StrVal == NULL)
 		            dbl = search_inf->IntVal[0];
-		        else
-		            dbl = strtod(search_inf->StrVal[0], NULL);
+		        else*/
+		            dbl = strtod(search_inf->StrVal, NULL);
 			objSetAttrValue(obj, search_inf->Name, POD(&dbl));
 			break;
 
 		    case DATA_T_MONEY:
-		        if (search_inf->StrVal[0] == NULL)
+		        /*if (search_inf->StrVal == NULL)
 			    {
 			    m.WholePart = search_inf->IntVal[0];
 			    m.FractionPart = 0;
 			    }
 			else
-			    {
-			    objDataToMoney(DATA_T_STRING, search_inf->StrVal[0], &m);
-			    }
+			    {*/
+			    objDataToMoney(DATA_T_STRING, search_inf->StrVal, &m);
+			    /*}*/
 			mptr = &m;
 			objSetAttrValue(obj, search_inf->Name, POD(&mptr));
 			break;
@@ -865,7 +881,7 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
 		    case DATA_T_DATETIME:
 		        if (search_inf->StrVal != NULL)
 			    {
-			    objDataToDateTime(DATA_T_STRING, search_inf->StrVal[0], &dt,NULL);
+			    objDataToDateTime(DATA_T_STRING, search_inf->StrVal, &dt,NULL);
 			    dtptr = &dt;
 			    objSetAttrValue(obj, search_inf->Name, POD(&dtptr));
 			    }
@@ -882,11 +898,11 @@ nht_internal_CkParams(pStructInf url_inf, pObject obj)
  *** attribute list, etc.
  ***/
 int
-nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
+nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     {
     char sbuf[256];
     int cnt;
-    pStructInf find_inf;
+    pStruct find_inf;
     pObjQuery query;
     char* dptr;
     char* ptr;
@@ -900,13 +916,13 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
         /** If we're opening the "errorstream", pass of processing to err handler **/
-	if (!strncmp(url_inf->StrVal[0],"/errorstream",12))
+	if (!strncmp(url_inf->StrVal,"/errorstream",12))
 	    {
 	    return nht_internal_ErrorHandler(nsess, conn);
 	    }
 
 	/** Ok, open the object here. **/
-	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_RDONLY, 0600, "text/html");
+	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
 	if (!target_obj)
 	    {
 	    nht_internal_GenerateError(nsess);
@@ -924,15 +940,15 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	nht_internal_CkParams(url_inf, target_obj);
 
 	/** Check GET mode. **/
-	find_inf = stLookup(url_inf,"ls__mode");
+	find_inf = stLookup_ne(url_inf,"ls__mode");
 
 	/** WAIT TRIGGER mode. **/
-	if (find_inf && !strcmp(find_inf->StrVal[0],"triggerwait"))
+	if (find_inf && !strcmp(find_inf->StrVal,"triggerwait"))
 	    {
-	    find_inf = stLookup(url_inf,"ls__waitid");
+	    find_inf = stLookup_ne(url_inf,"ls__waitid");
 	    if (find_inf)
 	        {
-		tid = strtol(find_inf->StrVal[0],NULL,0);
+		tid = strtol(find_inf->StrVal,NULL,0);
 		nht_internal_WaitTrigger(nsess,tid);
 		}
 	    }
@@ -962,7 +978,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	    }
 
 	/** GET CONTENT mode. **/
-	if (!find_inf || !strcmp(find_inf->StrVal[0], "content"))
+	if (!find_inf || !strcmp(find_inf->StrVal, "content"))
 	    {
 	    /** Check the object type. **/
 	    objGetAttrValue(target_obj, "outer_type", POD(&ptr));
@@ -1000,16 +1016,16 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	    }
 
 	/** GET DIRECTORY LISTING mode. **/
-	else if (!strcmp(find_inf->StrVal[0],"list"))
+	else if (!strcmp(find_inf->StrVal,"list"))
 	    {
 	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
 		sprintf(sbuf,"Content-Type: text/html\r\n\r\n");
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
-		sprintf(sbuf,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal[0]);
+		sprintf(sbuf,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
-		dptr = url_inf->StrVal[0];
+		dptr = url_inf->StrVal;
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		    {
@@ -1029,7 +1045,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	    }
 
 	/** SQL QUERY mode **/
-	else if (!strcmp(find_inf->StrVal[0],"query"))
+	else if (!strcmp(find_inf->StrVal,"query"))
 	    {
 	    /** Change directory to appropriate query root **/
 	    sprintf(sbuf,"Content-Type: text/html\r\n\r\n");
@@ -1038,7 +1054,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	    objSetWD(nsess->ObjSess, target_obj);
 
 	    /** Get the SQL **/
-	    if (stAttrValue(stLookup(url_inf,"ls__sql"),NULL,&ptr,0) >= 0)
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
 	        {
 		query = objMultiQuery(nsess->ObjSess, ptr);
 		if (query)
@@ -1061,20 +1077,20 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
 	    }
 
 	/** GET METHOD LIST mode. **/
-	else if (!strcmp(find_inf->StrVal[0],"methods"))
+	else if (!strcmp(find_inf->StrVal,"methods"))
 	    {
 	    }
 
 	/** GET ATTRIBUTE-VALUE LIST mode. **/
-	else if (!strcmp(find_inf->StrVal[0],"attr"))
+	else if (!strcmp(find_inf->StrVal,"attr"))
 	    {
 	    }
 
 	/** Direct OSML Access mode... **/
-	else if (!strcmp(find_inf->StrVal[0],"osml"))
+	else if (!strcmp(find_inf->StrVal,"osml"))
 	    {
-	    find_inf = stLookup(url_inf,"ls__req");
-	    nht_internal_OSML(conn,target_obj, find_inf->StrVal[0], url_inf);
+	    find_inf = stLookup_ne(url_inf,"ls__req");
+	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
 	    }
 
 	/** Close the objectsystem entry. **/
@@ -1089,17 +1105,17 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStructInf url_inf)
  *** is NULL.
  ***/
 int
-nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size, char* content_buf)
+nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, char* content_buf)
     {
     pObject target_obj;
     char sbuf[160];
     int rcnt;
     int type,i,v;
-    pStructInf sub_inf;
+    pStruct sub_inf;
     int already_exist=0;
 
     	/** See if the object already exists. **/
-	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_RDONLY, 0600, "text/html");
+	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
 	if (target_obj)
 	    {
 	    objClose(target_obj);
@@ -1107,7 +1123,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 	    }
 
 	/** Ok, open the object here. **/
-	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
+	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
 	if (!target_obj)
 	    {
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
@@ -1136,12 +1152,12 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 	    type = objGetAttrType(target_obj, sub_inf->Name);
 	    if (type == DATA_T_INTEGER)
 	        {
-		v = strtol(sub_inf->StrVal[0],NULL,10);
+		v = strtol(sub_inf->StrVal,NULL,10);
 		objSetAttrValue(target_obj, sub_inf->Name, POD(&v));
 		}
 	    else if (type == DATA_T_STRING)
 	        {
-		objSetAttrValue(target_obj, sub_inf->Name, POD(&(sub_inf->StrVal[0])));
+		objSetAttrValue(target_obj, sub_inf->Name, POD(&(sub_inf->StrVal)));
 		}
 	    }
 
@@ -1186,7 +1202,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, url_inf->StrVal[0]);
+		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, url_inf->StrVal);
 		}
 	    else
 	        {
@@ -1194,7 +1210,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, url_inf->StrVal[0]);
+		     "%s\r\n", NHT_SERVER_STRING,nsess->Cookie, url_inf->StrVal);
 		}
 	    nsess->IsNewCookie = 0;
 	    }
@@ -1205,14 +1221,14 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 	        sprintf(sbuf,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,url_inf->StrVal[0]);
+		     "%s\r\n", NHT_SERVER_STRING,url_inf->StrVal);
 		}
 	    else
 	        {
 	        sprintf(sbuf,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "%s\r\n", NHT_SERVER_STRING,url_inf->StrVal[0]);
+		     "%s\r\n", NHT_SERVER_STRING,url_inf->StrVal);
 		}
 	    }
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -1224,7 +1240,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStructInf url_inf, int size
 /*** nht_internal_COPY - implements the COPY centrallix-http method.
  ***/
 int
-nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStructInf url_inf, char* dest)
+nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest)
     {
     pObject source_obj,target_obj;
     int size;
@@ -1233,7 +1249,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStructInf url_inf, char* d
     int rcnt,wcnt;
 
 	/** Ok, open the source object here. **/
-	source_obj = objOpen(nsess->ObjSess, url_inf->StrVal[0], O_RDONLY, 0600, "text/html");
+	source_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
 	if (!source_obj)
 	    {
 	    sprintf(sbuf,"HTTP/1.0 404 Not Found\r\n"
@@ -1357,7 +1373,7 @@ nht_internal_ConnHandler(void* conn_v)
     char* usrname;
     char* passwd;
     pNhtSessionData nsess = NULL;
-    pStructInf url_inf,find_inf;
+    pStruct url_inf,find_inf;
     int size=-1;
     int did_alloc = 1;
     int tid = -1;
@@ -1551,23 +1567,23 @@ nht_internal_ConnHandler(void* conn_v)
 	nht_internal_ConstructPathname(url_inf);
 
 	/** Need to start an available connection completion trigger on this? **/
-	if ((find_inf=stLookup(url_inf,"ls__triggerid")))
+	if ((find_inf=stLookup_ne(url_inf,"ls__triggerid")))
 	    {
-	    tid = strtol(find_inf->StrVal[0],NULL,0);
+	    tid = strtol(find_inf->StrVal,NULL,0);
 	    nht_internal_StartTrigger(nsess, tid);
 	    }
 
 	/** If the method was GET and an ls__method was specified, use that method **/
-	if (!strcmp(method,"get") && (find_inf=stLookup(url_inf,"ls__method")))
+	if (!strcmp(method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
-	    if (!strcasecmp(find_inf->StrVal[0],"get"))
+	    if (!strcasecmp(find_inf->StrVal,"get"))
 	        {
 	        nht_internal_GET(nsess,conn,url_inf);
 		}
-	    else if (!strcasecmp(find_inf->StrVal[0],"copy"))
+	    else if (!strcasecmp(find_inf->StrVal,"copy"))
 	        {
-		find_inf = stLookup(url_inf,"ls__destination");
-		if (!find_inf || !(find_inf->StrVal[0]))
+		find_inf = stLookup_ne(url_inf,"ls__destination");
+		if (!find_inf || !(find_inf->StrVal))
 		    {
 	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
@@ -1577,14 +1593,14 @@ nht_internal_ConnHandler(void* conn_v)
 		    }
 		else
 		    {
-		    ptr = find_inf->StrVal[0];
+		    ptr = find_inf->StrVal;
 		    nht_internal_COPY(nsess,conn,url_inf, ptr);
 		    }
 		}
-	    else if (!strcasecmp(find_inf->StrVal[0],"put"))
+	    else if (!strcasecmp(find_inf->StrVal,"put"))
 	        {
-		find_inf = stLookup(url_inf,"ls__content");
-		if (!find_inf || !(find_inf->StrVal[0]))
+		find_inf = stLookup_ne(url_inf,"ls__content");
+		if (!find_inf || !(find_inf->StrVal))
 		    {
 	            sprintf(sbuf,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
@@ -1594,7 +1610,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    }
 		else
 		    {
-		    ptr = find_inf->StrVal[0];
+		    ptr = find_inf->StrVal;
 		    size = strlen(ptr);
 	            nht_internal_PUT(nsess,conn,url_inf,size,ptr);
 		    }
@@ -1627,7 +1643,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    }
 
 	/** Close and exit. **/
-	if (url_inf) stFreeInf(url_inf);
+	if (url_inf) stFreeInf_ne(url_inf);
 	if (did_alloc) nmSysFree(urlptr);
 	netCloseTCP(conn,1000,0);
 

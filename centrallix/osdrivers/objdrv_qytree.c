@@ -53,10 +53,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.3  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -368,6 +384,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     pStructInf lookup_inf, find_inf, next_inf;
     char* strval;
     char* exprval;
+    char* ptr;
     int i,v;
     pExpression expr;
     pParamObjects objlist;
@@ -402,7 +419,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	    for(i=0;i<dptr->nSubInf;i++) 
 	        {
 		find_inf = dptr->SubInf[i];
-		if (find_inf->Type == ST_T_SUBGROUP)
+		if (stStructType(find_inf) == ST_T_SUBGROUP)
                     {
 	    PROCESS_SUBGROUP:
                     inf->Pathname[0] = '\0';
@@ -492,7 +509,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                     }
 		else if (!strcmp(find_inf->Name,"recurse"))
 		    {
-		    find_inf = (pStructInf)xhLookup(&struct_table, find_inf->StrVal[0]);
+		    stGetAttrValue(find_inf, DATA_T_STRING, POD(&ptr), 0);
+		    find_inf = (pStructInf)xhLookup(&struct_table, ptr);
 		    if (find_inf) goto PROCESS_SUBGROUP;
 		    }
 		}
@@ -726,6 +744,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
     pStructInf main_inf;
     pStructInf find_inf;
     char* val;
+    char* ptr;
 
     	/** Already hit end of query? **/
 	if (qy->NextSubInfID == -1) return -1;
@@ -736,7 +755,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	    find_inf = qy->ObjInf->NodeData;
 	    while(find_inf)
 	        {
-		if (find_inf->Type == ST_T_SUBGROUP) 
+		if (stStructType(find_inf) == ST_T_SUBGROUP) 
 		    xhAdd(&qy->StructTable, find_inf->Name, (void*)find_inf);
 		find_inf = find_inf->Parent;
 		}
@@ -747,12 +766,13 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	while(qy->NextSubInfID < main_inf->nSubInf)
 	    {
 	    find_inf = main_inf->SubInf[qy->NextSubInfID++];
-	    if (find_inf->Type == ST_T_ATTRIB && !strcmp(find_inf->Name, "recurse"))
+	    if (stStructType(find_inf) == ST_T_ATTRIB && !strcmp(find_inf->Name, "recurse"))
 	        {
-		find_inf = (pStructInf)xhLookup(&qy->StructTable, find_inf->StrVal[0]);
+		stGetAttrValue(find_inf, DATA_T_STRING, POD(&ptr), 0);
+		find_inf = (pStructInf)xhLookup(&qy->StructTable, ptr);
 		if (!find_inf) continue;
 		}
-	    if (find_inf->Type == ST_T_SUBGROUP)
+	    if (stStructType(find_inf) == ST_T_SUBGROUP)
 	        {
 		xhAdd(&qy->StructTable, find_inf->Name, (void*)find_inf);
 		val = NULL;

@@ -53,10 +53,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_uxprint.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_uxprint.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_uxprint.c,v $
 
     $Log: objdrv_uxprint.c,v $
+    Revision 1.3  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -694,10 +710,7 @@ uxpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	search_inf = stLookup(inf->Node->Data, attrname);
 	if (search_inf)
 	    {
-	    if (search_inf->StrVal[0])
-	        return DATA_T_STRING;
-	    else
-	        return DATA_T_INTEGER;
+	    return stGetAttrType(search_inf, 0);
 	    }
 
 	mssError(1,"UXP","Invalid attribute for printer object");
@@ -760,10 +773,7 @@ uxpGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		}
 
 	    /** Found it - return the value **/
-	    if (find_inf->StrVal[0])
-		*((char**)val) = find_inf->StrVal[0];
-	    else
-	        *((int*)val) = find_inf->IntVal[0];
+	    return stGetAttrValue(find_inf, DATA_T_ANY, val, 0);
 	    }
 
     return 0;
@@ -779,7 +789,7 @@ uxpGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 
     	/** Look for an attr entry **/
 	while(inf->CurAttr < inf->Node->Data->nSubInf && 
-	      (inf->Node->Data->SubInf[inf->CurAttr]->Type != ST_T_ATTRIB ||
+	      (stStructType(inf->Node->Data->SubInf[inf->CurAttr]) != ST_T_ATTRIB ||
 	       !strcmp(inf->Node->Data->SubInf[inf->CurAttr]->Name,"annotation")))
 	    {
 	    inf->CurAttr++;
@@ -840,8 +850,7 @@ uxpSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    if (!attr_inf && !strcmp(attrname,"annotation"))
 	        {
 		attr_inf = stAddAttr(inf->Node->Data, attrname);
-		attr_inf->StrAlloc[0] = 1;
-		attr_inf->StrVal[0] = nmSysStrdup(*((char**)val));
+		stSetAttrValue(attr_inf, DATA_T_STRING, val, 0);
 		}
 	    else if (!attr_inf)
 	        {
@@ -850,16 +859,7 @@ uxpSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		}
 	    else
 	        {
-		if (attr_inf->StrVal[0])
-		    {
-		    if (attr_inf->StrAlloc[0]) nmSysFree(attr_inf->StrVal[0]);
-		    attr_inf->StrAlloc[0] = 1;
-		    attr_inf->StrVal[0] = nmSysStrdup(*((char**)val));
-		    }
-		else
-		    {
-		    attr_inf->IntVal[0] = *(int*)val;
-		    }
+		stSetAttrValue(attr_inf, DATA_T_ANY, val, 0);
 		}
 	    }
 

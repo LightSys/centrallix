@@ -11,6 +11,7 @@
 #include "magic.h"
 #include "htmlparse.h"
 #include "mtsession.h"
+#include "stparse_ne.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -48,12 +49,28 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.1 2001/08/13 18:00:59 gbeeley Exp $
+    $Id: obj_object.c,v 1.2 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
-    Revision 1.1  2001/08/13 18:00:59  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
+    Revision 1.1.1.1  2001/08/13 18:00:59  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -119,7 +136,7 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
     char* paramnameptr;
     char* endptr;
     char* startptr;
-    pStructInf inf;
+    pStruct inf;
     int element_cnt = 0;
 
     	/** Scan through, breaking at '/' characters **/
@@ -170,7 +187,7 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 	    if (*ptr == '?')
 	        {
 		/** Allocate the structinf to hold the param information **/
-		pathinfo->OpenCtl[pathinfo->nElements] = stCreateStruct(NULL,NULL);
+		pathinfo->OpenCtl[pathinfo->nElements] = stCreateStruct_ne(NULL);
 
 		/** Loop: copy each parameter and value **/
 		ptr++;
@@ -178,8 +195,10 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 		    {
 		    /** Find the end of the paramname (the '=', '&', or zero) and copy paramname. **/
 		    if (*ptr == '\0') break;
+		    if (*ptr == '&') ptr++;
 		    for(endptr=ptr;*endptr != '\0' && *endptr != '=' && *endptr != '&';endptr++);
-		    inf = stAddAttr(pathinfo->OpenCtl[pathinfo->nElements],"");
+		    if (ptr == endptr) continue;
+		    inf = stAddAttr_ne(pathinfo->OpenCtl[pathinfo->nElements],"");
 		    paramnameptr = inf->Name;
 		    while(ptr < endptr && paramnameptr - inf->Name < 63) *(paramnameptr++) = htsConvertChar(&ptr);
 		    *paramnameptr = '\0';
@@ -192,9 +211,8 @@ obj_internal_DoPathSegment(pPathname pathinfo, char* path_segment)
 			/** the pointers.  We convert the offsets to pointers later.  The +1 below is **/
 			/** because otherwise the first pointer is at offset 0, which will be interpreted **/
 			/** incorrectly. **/
-			inf->StrVal[0] = (void*)(pathinfo->OpenCtlCnt+1);
-			inf->StrAlloc[0] = 0;
-			inf->nVal = 1;
+			inf->StrVal = (void*)(pathinfo->OpenCtlCnt+1);
+			inf->StrAlloc = 0;
 			ptr++;
 			for(endptr=ptr;*endptr != '\0' && *endptr != '&';endptr++);
 			while(ptr < endptr)
@@ -243,7 +261,7 @@ obj_internal_FreePath(pPathname this)
 	if (this->OpenCtlBuf) nmSysFree(this->OpenCtlBuf);
 
 	/** Release the subinf structures, if needed. **/
-	for(i=0;i<this->nElements;i++) if (this->OpenCtl[i]) stFreeInf(this->OpenCtl[i]);
+	for(i=0;i<this->nElements;i++) if (this->OpenCtl[i]) stFreeInf_ne(this->OpenCtl[i]);
 
 	/** Now release the pathname structure itself **/
 	nmFree(this, sizeof(Pathname));
@@ -385,7 +403,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pPathname pathinfo;
     int element_id;
     int i,j,v;
-    pStructInf inf;
+    pStruct inf;
     char* name;
     char* type;
     pContentType apparent_type,ck_type = NULL,orig_ck_type;
@@ -432,7 +450,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    for(i=0;i<pathinfo->OpenCtl[j]->nSubInf;i++)
 	        {
 	        inf = pathinfo->OpenCtl[j]->SubInf[i];
-	        if (inf->StrVal[0]) inf->StrVal[0] = pathinfo->OpenCtlBuf + (((int)(inf->StrVal[0])) - 1);
+	        if (inf->StrVal) inf->StrVal = pathinfo->OpenCtlBuf + (((int)(inf->StrVal)) - 1);
 		}
 	    }
 
@@ -529,7 +547,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    used_openas = 0;
 	    if ((inf = pathinfo->OpenCtl[this->SubPtr + this->SubCnt - 2]) != NULL && (this->SubCnt != 1 || strcmp(name,prevname)))
 	        {
-		if (stAttrValue(stLookup(inf,"ls__type"),NULL,&type,0) >= 0 && type)
+		if (stAttrValue_ne(stLookup_ne(inf,"ls__type"),&type) >= 0 && type)
 		    {
 		    if (obj_internal_IsA(type, ck_type->Name) != OBJSYS_NOT_ISA)
 		        {
@@ -902,7 +920,7 @@ int
 obj_internal_CopyPath(pPathname dest, pPathname src)
     {
     int i,j;
-    pStructInf new_inf;
+    pStruct new_inf;
 
     	/** Copy the raw data. **/
 	if (dest->OpenCtlBuf) nmSysFree(dest->OpenCtlBuf);
@@ -921,13 +939,13 @@ obj_internal_CopyPath(pPathname dest, pPathname src)
 	    {
 	    if (dest->OpenCtl[i])
 	        {
-		dest->OpenCtl[i] = stAllocInf();
+		dest->OpenCtl[i] = stAllocInf_ne();
 		strcpy(dest->OpenCtl[i]->Name, src->OpenCtl[i]->Name);
 		for(j=0;j<src->OpenCtl[i]->nSubInf;j++)
 		    {
-		    new_inf = stAddAttr(dest->OpenCtl[i], src->OpenCtl[i]->SubInf[j]->Name);
-		    new_inf->StrAlloc[0] = 0;
-		    new_inf->StrVal[0] = src->OpenCtl[i]->SubInf[j]->StrVal[0] + (dest->OpenCtlBuf - src->OpenCtlBuf);
+		    new_inf = stAddAttr_ne(dest->OpenCtl[i], src->OpenCtl[i]->SubInf[j]->Name);
+		    new_inf->StrAlloc = 0;
+		    new_inf->StrVal = src->OpenCtl[i]->SubInf[j]->StrVal + (dest->OpenCtlBuf - src->OpenCtlBuf);
 		    }
 		}
 	    }

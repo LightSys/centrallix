@@ -57,10 +57,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.3 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.3  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -107,6 +123,7 @@ typedef struct
     pStructInf	AttrOverride;
     StringVec	SVvalue;
     IntVec	IVvalue;
+    void*	VecData;
     pParamObjects ObjList;
     pRptSession	RSess;
     int		Version;
@@ -258,9 +275,10 @@ rpt_internal_SubstParam(pRptData inf, char* src)
     char* ptr;
     char* ptr2;
     char paramname[64];
-    char nbuf[16];
     int n;
     pStructInf param_inf;
+    char* sptr;
+    int t;
 
     	/** Allocate our string. **/
 	dest = (pXString)nmMalloc(sizeof(XString));
@@ -302,14 +320,16 @@ rpt_internal_SubstParam(pRptData inf, char* src)
 		}
 
 	    /** If string, copy it.  If number, sprintf it then copy it. **/
-	    if (param_inf->StrVal[0] != NULL)
-	        {
-		xsConcatenate(dest, param_inf->StrVal[0], -1);
+	    t = stGetAttrType(param_inf, 0);
+	    if (t == DATA_T_STRING)
+		{
+		stGetAttrValue(param_inf, DATA_T_STRING, POD(&sptr), 0);
+		xsConcatenate(dest, sptr, -1);
 		}
-	    else
-	        {
-		sprintf(nbuf, "%d", param_inf->IntVal[0]);
-		xsConcatenate(dest, nbuf, -1);
+	    else if (t == DATA_T_INTEGER)
+		{
+		stGetAttrValue(param_inf, DATA_T_INTEGER, POD(&n), 0);
+		xsConcatPrintf(dest, "%d", n);
 		}
 	
 	    /** Ok, skip over the paramname so we don't copy it... **/
@@ -339,7 +359,9 @@ rpt_internal_GetStyle(pStructInf element)
 	if (!st) return -1;
 
 	/** Plain style? **/
-	if (st->nVal == 1 && st->StrVal[0] && !strcmp(st->StrVal[0],"plain"))
+	ptr = NULL;
+	stGetAttrValue(st, DATA_T_STRING, POD(&ptr), 0);
+	if (ptr && !strcmp(ptr,"plain"))
 	    {
 	    return 0;
 	    }
@@ -540,7 +562,7 @@ rpt_internal_QyGetAttrType(void* qyobj, char* attrname)
 	for(i=0;i<qy->UserInf->nSubInf;i++)
 	    {
 	    subitem = qy->UserInf->SubInf[i];
-	    if (!strcmp(subitem->UsrType,"report/aggregate"))
+	    if (stStructType(subitem) == ST_T_SUBGROUP && !strcmp(subitem->UsrType,"report/aggregate"))
 	        {
 	    	if (!strcmp(subitem->Name, attrname))
 	            {
@@ -586,7 +608,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, void* data_ptr)
 	for(i=0;i<qy->UserInf->nSubInf;i++)
 	    {
 	    subitem = qy->UserInf->SubInf[i];
-	    if (!strcmp(subitem->UsrType,"report/aggregate"))
+	    if (stStructType(subitem) == ST_T_SUBGROUP && !strcmp(subitem->UsrType,"report/aggregate"))
 	        {
 	    	if (!strcmp(subitem->Name, attrname))
 	            {
@@ -955,7 +977,7 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, pQueryC
 	    }
 
 	/** Now do sub-components. **/
-        for(i=0;i<section->nSubInf;i++) if (section->SubInf[i]->Type == ST_T_SUBGROUP)
+        for(i=0;i<section->nSubInf;i++) if (stStructType(section->SubInf[i]) == ST_T_SUBGROUP)
             {
             if (!strcmp("report/column",section->SubInf[i]->UsrType))
                 {
@@ -1678,11 +1700,11 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 		}
 
 	    /** Do sub-elements within the table. **/
-	    for(v=i=0;i<table->nSubInf && !v;i++) if (table->SubInf[i]->Type == ST_T_SUBGROUP) v = 1;
+	    for(v=i=0;i<table->nSubInf && !v;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP) v = 1;
 	    if (v > 0)
 	        {
 		prtDisengageTable(rs->PSession);
-	        for(i=0;i<table->nSubInf;i++) if (table->SubInf[i]->Type == ST_T_SUBGROUP)
+	        for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
 		    {
 		    if (!strcmp("report/column",table->SubInf[i]->UsrType))
 		        {
@@ -2008,7 +2030,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 	    for(i=0;i<qy->UserInf->nSubInf;i++)
 	        {
 		subitem = qy->UserInf->SubInf[i];
-		if (!strcmp(subitem->UsrType,"report/aggregate"))
+		if (stStructType(subitem) == ST_T_SUBGROUP && !strcmp(subitem->UsrType,"report/aggregate"))
 		    {
 		    if (!strcmp(subitem->Name, src))
 		        {
@@ -2250,7 +2272,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
 		    break;
 		    }
 		}*/
-	    for(i=0;i<form->nSubInf;i++) if (form->SubInf[i]->Type == ST_T_SUBGROUP)
+	    for(i=0;i<form->nSubInf;i++) if (stStructType(form->SubInf[i]) == ST_T_SUBGROUP)
 		{
 		if (!strcmp("report/column",form->SubInf[i]->UsrType))
 		    {
@@ -2501,7 +2523,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	/** If no errors, proceed... **/
 	if (!err)
 	    {
-	    for(i=0;i<object->nSubInf;i++) if (object->SubInf[i]->Type == ST_T_SUBGROUP)
+	    for(i=0;i<object->nSubInf;i++) if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
 	        {
 		if (rpt_internal_PreProcess(inf, object->SubInf[i], rs, use_objlist) < 0)
 		    {
@@ -2552,7 +2574,7 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
     pXArray xa;
 
 	/** Visit all sub-inf structures that are groups **/
-	for(i=0;i<object->nSubInf;i++) if (object->SubInf[i]->Type == ST_T_SUBGROUP)
+	for(i=0;i<object->nSubInf;i++) if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
 	    {
 	    rpt_internal_UnPreProcess(inf, object->SubInf[i], rs);
 	    }
@@ -2689,7 +2711,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	inf->RSess = rs;
 
 	/** Build the object list. **/
-	for(i=0;i<req->nSubInf;i++) if (!strcmp(req->SubInf[i]->UsrType,"report/query"))
+	for(i=0;i<req->nSubInf;i++) if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP && !strcmp(req->SubInf[i]->UsrType,"report/query"))
 	    {
 	    expAddParamToList(inf->ObjList, req->SubInf[i]->Name, NULL, 0);
 	    expSetParamFunctions(inf->ObjList, req->SubInf[i]->Name, rpt_internal_QyGetAttrType, 
@@ -2702,7 +2724,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	/** First, check for report/header and report/footer stuff **/
 	for(i=0;i<req->nSubInf;i++)
 	    {
-	    if (req->SubInf[i]->Type == ST_T_SUBGROUP)
+	    if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP)
 		{
 		subreq = req->SubInf[i];
 		if (!strcmp(subreq->UsrType,"report/header"))
@@ -2749,7 +2771,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	/** Now do the 'normal' report stuff **/
 	for(i=0;i<req->nSubInf;i++)
 	    {
-	    if (req->SubInf[i]->Type == ST_T_SUBGROUP)
+	    if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP)
 		{
 		subreq = req->SubInf[i];
 		if (!strcmp(subreq->UsrType,"report/query"))
@@ -2775,7 +2797,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		    /** Now, check for any aggregate/summary elements **/
 		    for(j=0;j<subreq->nSubInf;j++)
 		        {
-			if (subreq->SubInf[j]->Type == ST_T_SUBGROUP && !strcmp(subreq->SubInf[j]->UsrType,"report/aggregate"))
+			if (stStructType(subreq->SubInf[j]) == ST_T_SUBGROUP && !strcmp(subreq->SubInf[j]->UsrType,"report/aggregate"))
 			    {
 			    stAttrValue(stLookup(subreq->SubInf[j], "compute"), NULL, &ptr, 0);
 			    if (!ptr)
@@ -3039,8 +3061,7 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (!inf) return NULL;
 	inf->Obj = obj;
 	inf->Mask = mask;
-	inf->AttrOverride = stAllocInf();
-	inf->AttrOverride->Type = ST_T_STRUCT;
+	inf->AttrOverride = stCreateStruct(NULL,NULL);
 	memccpy(inf->ContentType, usrtype, 0, 63);
 	inf->ContentType[63] = 0;
 
@@ -3239,6 +3260,7 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pRptData inf = RPT(inf_v);
     char* ptr;
     pStructInf find_inf,value_inf,tmp_inf;
+    int t;
 
     	/** If name, it's a string **/
 	if (!strcmp(attrname,"name")) return DATA_T_STRING;
@@ -3254,7 +3276,7 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	find_inf = stLookup(inf->Node->Data, attrname);
 	if (inf->Version == 1)
 	    {
-	    if (!find_inf || find_inf->Type != ST_T_ATTRIB) 
+	    if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) 
 	        {
 	        mssError(1,"RPT","Could not find requested report attribute '%s'", attrname);
 	        return -1;
@@ -3264,17 +3286,20 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    tmp_inf = stLookup(inf->AttrOverride,attrname);
 	    if (tmp_inf) find_inf = tmp_inf;
 
-	    /** If StrVal[0] valid, string else integer **/
-            if (find_inf->nVal == 1 && find_inf->StrVal[0] != NULL) return DATA_T_STRING;
-            else if (find_inf->nVal == 1) return DATA_T_INTEGER;
-
-	    /** If more than one value, return string or int vec **/
-            if (find_inf->nVal > 1 && find_inf->StrVal[0] != NULL) return DATA_T_STRINGVEC;
-            else if (find_inf->nVal > 1) return DATA_T_INTVEC;
+	    t = stGetAttrType(find_inf, 0);
+	    if (stAttrIsList(find_inf))
+		{
+		if (t == DATA_T_INTEGER) return DATA_T_INTVEC;
+		else return DATA_T_STRINGVEC;
+		}
+	    else
+		{
+		return t;
+		}
 	    }
 	else
 	    {
-	    if (!find_inf || find_inf->Type != ST_T_SUBGROUP)
+	    if (!find_inf || stStructType(find_inf) != ST_T_SUBGROUP)
 	        {
 	        mssError(1,"RPT","Could not find requested report attribute '%s'", attrname);
 	        return -1;
@@ -3292,13 +3317,16 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		value_inf = stLookup(find_inf,"default");
 		if (!value_inf) return DATA_T_UNAVAILABLE;
 
-	        /** If StrVal[0] valid, string else integer **/
-                if (value_inf->nVal == 1 && value_inf->StrVal[0] != NULL) return DATA_T_STRING;
-                else if (value_inf->nVal == 1) return DATA_T_INTEGER;
-
-	        /** If more than one value, return string or int vec **/
-                if (value_inf->nVal > 1 && value_inf->StrVal[0] != NULL) return DATA_T_STRINGVEC;
-                else if (value_inf->nVal > 1) return DATA_T_INTVEC;
+		t = stGetAttrType(value_inf, 0);
+		if (stAttrIsList(value_inf))
+		    {
+		    if (t == DATA_T_INTEGER) return DATA_T_INTVEC;
+		    else return DATA_T_STRINGVEC;
+		    }
+		else
+		    {
+		    return t;
+		    }
 		}
 	    }
 
@@ -3363,27 +3391,29 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	for(i=0;i<inf->Node->Data->nSubInf;i++)
 	    {
 	    find_inf = inf->Node->Data->SubInf[i];
-	    if (!strcmp(attrname,find_inf->Name) && find_inf->Type == ST_T_ATTRIB && inf->Version == 1)
+	    if (!strcmp(attrname,find_inf->Name) && stStructType(find_inf) == ST_T_ATTRIB && inf->Version == 1)
                 {
 		tmp_inf = stLookup(inf->AttrOverride,attrname);
 		if (tmp_inf) find_inf = tmp_inf;
-                if (find_inf->StrVal[0] != NULL && find_inf->nVal > 1)
-                    {
-                    inf->SVvalue.Strings = find_inf->StrVal;
-                    inf->SVvalue.nStrings = find_inf->nVal;
+		if (stGetAttrType(find_inf,0) == DATA_T_STRING && stAttrIsList(find_inf))
+		    {
+		    inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
+		    inf->SVvalue.Strings = (char**)(inf->VecData);
                     *(pStringVec*)val = &(inf->SVvalue);
-                    }
-                else if (find_inf->nVal > 1)
+		    }
+                else if (stGetAttrType(find_inf,0) == DATA_T_INTEGER && stAttrIsList(find_inf))
                     {
-                    inf->IVvalue.Integers = find_inf->IntVal;
-                    inf->IVvalue.nIntegers = find_inf->nVal;
+		    inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
+		    inf->IVvalue.Integers = (int*)(inf->VecData);
                     *(pIntVec*)val = &(inf->IVvalue);
                     }
-                else if (find_inf->StrVal[0] != NULL) *(char**)val = find_inf->StrVal[0];
-                else *(int*)val = find_inf->IntVal[0];
+		else
+		    {
+		    stGetAttrValue(find_inf, DATA_T_ANY, POD(val), 0);
+		    }
                 return 0;
                 }
-	    else if (!strcmp(attrname,find_inf->Name) && find_inf->Type == ST_T_SUBGROUP && inf->Version >= 2)
+	    else if (!strcmp(attrname,find_inf->Name) && stStructType(find_inf) == ST_T_SUBGROUP && inf->Version >= 2)
 	        {
 		/** Check default= attr as well as override structure. **/
 		value_inf = stLookup(find_inf,"default");
@@ -3392,7 +3422,6 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 
 		/** No default, and nothing set in override?  Null if so. **/
 		if (!value_inf) return 1;
-		if (value_inf->nVal == 0) return 1;
 
 		/** Return result based on type. **/
 	        tmp_inf = stLookup(find_inf,"type");
@@ -3415,22 +3444,22 @@ rptGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    }
 	        else
 	            {
-	            /** If StrVal[0] valid, string else integer **/
-                    if (value_inf->nVal == 1 && value_inf->StrVal[0] != NULL) *(char**)val = value_inf->StrVal[0];
-                    else if (value_inf->nVal == 1) *(int*)val = value_inf->IntVal[0];
-
-	            /** If more than one value, return string or int vec **/
-                    if (value_inf->nVal > 1 && value_inf->StrVal[0] != NULL)
-		        {
-                        inf->SVvalue.Strings = value_inf->StrVal;
-                        inf->SVvalue.nStrings = value_inf->nVal;
-                        *(pStringVec*)val = &(inf->SVvalue);
+		    /** Return the data of the appropriate type. **/
+		    if (stGetAttrType(value_inf,0) == DATA_T_STRING && stAttrIsList(value_inf))
+			{
+			inf->VecData = stGetValueList(value_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
+			inf->SVvalue.Strings = (char**)(inf->VecData);
+			*(pStringVec*)val = &(inf->SVvalue);
 			}
-                    else if (value_inf->nVal > 1)
-		        {
-			inf->IVvalue.Integers = value_inf->IntVal;
-			inf->IVvalue.nIntegers = value_inf->nVal;
+		    else if (stGetAttrType(value_inf,0) == DATA_T_INTEGER && stAttrIsList(value_inf))
+			{
+			inf->VecData = stGetValueList(value_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
+			inf->IVvalue.Integers = (int*)(inf->VecData);
 			*(pIntVec*)val = &(inf->IVvalue);
+			}
+		    else
+			{
+			stGetAttrValue(value_inf, DATA_T_ANY, POD(val), 0);
 			}
 		    }
 		}
@@ -3466,7 +3495,7 @@ rptGetNextAttr(void* inf_v, pObjTrxTree *oxt)
 	    /** Version 1: top-level attribute inf **/
 	    if (inf->Version == 1)
 	        {
-	        if (subinf->Type == ST_T_ATTRIB)
+	        if (stStructType(subinf) == ST_T_ATTRIB)
 	            {
 		    inf->AttrID = i+1;
 		    return subinf->Name;
@@ -3475,7 +3504,7 @@ rptGetNextAttr(void* inf_v, pObjTrxTree *oxt)
 	    else
 	        {
 		/** Version 2: top-level subgroup with default attr **/
-		if (subinf->Type == ST_T_SUBGROUP && !strcmp(subinf->UsrType,"system/attribute"))
+		if (stStructType(subinf) == ST_T_SUBGROUP && !strcmp(subinf->UsrType,"system/attribute"))
 		    {
 		    inf->AttrID = i+1;
 		    return subinf->Name;
@@ -3513,6 +3542,7 @@ rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
     pRptData inf = RPT(inf_v);
     pStructInf find_inf;
     int type;
+    int n;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -3559,35 +3589,13 @@ rptSetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree *oxt)
 	if (!find_inf)
 	    {
 	    find_inf = stAddAttr(inf->AttrOverride, attrname);
-	    find_inf->Type = ST_T_ATTRIB;
-	    find_inf->StrVal[0] = NULL;
-	    find_inf->StrAlloc[0] = 0;
-	    find_inf->IntVal[0] = 0;
-	    find_inf->nVal = 1;
+	    n = 0;
 	    }
 
 	/** Set the value. **/
 	if (find_inf)
 	    {
-	    switch(type)
-	        {
-		case DATA_T_INTEGER:
-		    find_inf->IntVal[0] = *(int*)val;
-		    break;
-
-		case DATA_T_STRING:
-		    if (find_inf->StrAlloc[0]) nmSysFree(find_inf->StrVal[0]);
-		    find_inf->StrAlloc[0]=1;
-		    find_inf->StrVal[0] = (char*)nmSysMalloc(strlen(*(char**)val));
-		    strcpy(find_inf->StrVal[0], *(char**)val);
-		    break;
-
-		case DATA_T_INTVEC:
-		    break;
-
-		case DATA_T_STRINGVEC:
-		    break;
-		}
+	    stSetAttrValue(find_inf, type, POD(val), 0);
 	    return 0;
 	    }
 

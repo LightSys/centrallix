@@ -1,11 +1,11 @@
-#ifndef _STP_PARAM_H
-#define _STP_PARAM_H
+#ifndef _STPARSE_NE_H
+#define _STPARSE_NE_H
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2000-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -25,20 +25,20 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	st_param.h          					*/
-/* Author:	Tim Young (TCY)  					*/
-/* Creation:	February 18, 2000 					*/
-/* Description:								*/
-/*									*/
+/* Module: 	stparse_new.c, stparse_new.h 				*/
+/* Author:	Greg Beeley (GRB)					*/
+/* Creation:	September 29, 1998					*/
+/* Description:	Parser to handle the request data stream from the end-	*/
+/*		user.  Uses the MTLEXER module.				*/
 /************************************************************************/
 
 /**CVSDATA***************************************************************
 
-    $Id: st_param.h,v 1.2 2001/10/16 23:53:01 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/st_param.h,v $
+    $Id: stparse_ne.h,v 1.1 2001/10/16 23:53:01 gbeeley Exp $
+    $Source: /srv/bld/centrallix-repo/centrallix/include/stparse_ne.h,v $
 
-    $Log: st_param.h,v $
-    Revision 1.2  2001/10/16 23:53:01  gbeeley
+    $Log: stparse_ne.h,v $
+    Revision 1.1  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
     on the expression subsystem.  Almost all osdrivers had to be modified
@@ -54,45 +54,49 @@
     details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
     STRUCTURE WILL NEED TO BE MODIFIED.
 
-    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
-    Centrallix Core initial import
+    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
+    Centrallix Library initial import
 
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
+    Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
+    Initial checkin of centrallix-lib
 
 
  **END-CVSDATA***********************************************************/
 
-#include "st_node.h"
-#include "stparse.h"
 
-/** Structure for storing protocol data. **/
-typedef struct
+#include "mtask.h"
+#include "mtlexer.h"
+
+/** Non-expression structured data storage **/
+typedef struct _SO
     {
-    pSnNode	Node;	      /* node file used when not in Override          */
-    pObject	Obj;	      /* Pointer to parent Object		      */
-    pStructInf	OverrideInf;  /* inf structure for Override                   */
-    char*	AttrList[64]; /* list all attributes in both Node and Override*/
-    int		CurrAttr;     /* index of Current attribute we are looking at */
-    int		nSubInf;      /* Number of Infs, without duplication in both  */
-    int		Version; 
-    int		OpenCnt; /* track number of open connections                  */
-    int		Status;  /* tag as dirty if you want to update original node  */
+    char	    Name[64];
+    char*	    StrVal;
+    int		    StrAlloc;
+    struct _SO*	    SubInf[64];
+    struct _SO*	    Parent;
+    int		    nSubInf;
+    int		    Type;
     }
-    StpInf, *pStpInf;
+    Struct, *pStruct;
 
-pStpInf stpAllocInf(pSnNode node, pStruct openctl, pObject obj, int DefaultVersion);
-char* stpGetNextAttr(pStpInf inf);
-char* stpGetFirstAttr(pStpInf inf);
-pStructInf stpLookup(pStpInf inf, char* paramname);
-pStructInf stpAddAttr(pStpInf inf, char* name);
-int stpAttrValue(pStructInf attr,pObject obj,int* intval, char** strval, int nval);
-int stpAttrType(pStpInf inf, char* name);
-int stpSetAttrValue(pStpInf inf, char* attrname, void* val);
-int stpUpdateNode(pStpInf inf);
-int stpParsePathOverrides();
-int stpMakeWhereTree();
-int stpFreeInf(pStpInf);
-pXString stpSubstParam(pStpInf inf, char* src);
+#ifndef ST_T_STRUCT
+#define ST_T_STRUCT 	0
+#define ST_T_ATTRIB	1
+#define ST_T_SUBGROUP	2
+#define ST_T_SCRIPT	3
+#endif
 
-#endif /* _STP_PARAM_H */
+/*** functions added for non-expression structured data ***/
+pStruct stCreateStruct_ne(char* name);
+pStruct stAddAttr_ne(pStruct inf, char* name);
+pStruct stAddGroup_ne(pStruct inf, char* name);
+int stAddValue_ne(pStruct inf, char* strval);
+pStruct stLookup_ne(pStruct inf, char* name);
+int stAttrValue_ne(pStruct inf, char** strval);
+pStruct stAllocInf_ne();
+int stFreeInf_ne(pStruct inf);
+int stAddInf_ne(pStruct main_inf, pStruct sub_inf);
+
+#endif /* _STPARSE_NE_H */
+

@@ -47,12 +47,28 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.c,v 1.1 2001/08/13 18:01:17 gbeeley Exp $
+    $Id: st_node.c,v 1.2 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/st_node.c,v $
 
     $Log: st_node.c,v $
-    Revision 1.1  2001/08/13 18:01:17  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
+    Revision 1.1.1.1  2001/08/13 18:01:17  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -156,6 +172,7 @@ snWriteNode(pObject obj, pSnNode node)
     ObjData pod;
     pObject new_obj;
     char* path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr + obj->SubCnt - 1);
+    char* openas_path;
 
     	/** Make sure that the date/time hasn't changed. **/
 	if (objGetAttrValue(obj,"last_modification",&pod) == 0)
@@ -179,8 +196,12 @@ snWriteNode(pObject obj, pSnNode node)
 	    return 0;
 	    }
 
+	/** Add the open-as key to the path so it is opened raw. **/
+	openas_path = nmSysMalloc(strlen(path) + 37);
+	sprintf(openas_path,"%s?ls__type=application%%2foctet-stream",path);
+
 	/** Open and truncate the file **/
-	new_obj = objOpen(obj->Session, path, O_WRONLY | O_TRUNC | O_CREAT, 0600, node->OpenType);
+	new_obj = objOpen(obj->Session, openas_path, O_WRONLY | O_TRUNC | O_CREAT, 0600, node->OpenType);
 	if (!new_obj)
 	    {
 	    mssErrorErrno(1,"SN","Could not (re)write the node object");
@@ -195,6 +216,7 @@ snWriteNode(pObject obj, pSnNode node)
 
 	/** Close up and read the timestamp. **/
 	objClose(new_obj);
+	nmSysFree(openas_path);
 	if (objGetAttrValue(obj,"last_modification",&pod) == 0)
 	    {
 	    memcpy(&(node->LastModification), pod.DateTime, sizeof(DateTime));
@@ -269,32 +291,19 @@ int
 snSetParamString(pSnNode node, pObject obj, char* paramname, char* default_val)
     {
     char* ptr;
-    char* ptrcpy;
     pStructInf attr_inf;
-    int i;
 
     	/** Look it up in the open ctl. **/
-	if (stAttrValue(stLookup(obj->Pathname->OpenCtl[obj->SubPtr],paramname),NULL,&ptr,0) < 0) ptr = default_val;
+	if (stAttrValue_ne(stLookup_ne(obj->Pathname->OpenCtl[obj->SubPtr],paramname),&ptr) < 0) ptr = default_val;
 
 	/** Didn't find a suitable value? **/
 	if (!ptr) return -1;
 
 	/** Make a copy and add to the node. **/
-	ptrcpy = nmSysStrdup(ptr);
+	/*ptrcpy = nmSysStrdup(ptr);*/
 	attr_inf = stLookup(node->Data, paramname);
 	if (!attr_inf) attr_inf = stAddAttr(node->Data,paramname);
-	if (attr_inf->nVal > 0)
-	    {
-	    for(i=0;i<attr_inf->nVal;i++) if (attr_inf->StrVal[i] && attr_inf->StrAlloc[i])
-	        {
-		nmSysFree(attr_inf->StrVal[i]);
-		attr_inf->StrVal[i] = NULL;
-		attr_inf->StrAlloc[i] = 0;
-		}
-	    attr_inf->nVal = 0;
-	    }
-	stAddValue(attr_inf, ptrcpy, 0);
-	attr_inf->StrAlloc[0] = 1;
+	stSetAttrValue(attr_inf, DATA_T_STRING, POD(&ptr), 0);
 
     return (ptr == default_val)?1:0;
     }
@@ -309,29 +318,23 @@ snSetParamInteger(pSnNode node, pObject obj, char* paramname, int default_val)
     int val;
     int used_default = 0;
     pStructInf attr_inf;
-    int i;
+    char* intptr;
 
     	/** Look it up in the open ctl. **/
-	if (stAttrValue(stLookup(obj->Pathname->OpenCtl[obj->SubPtr],paramname),&val,NULL,0) < 0) 
+	if (stAttrValue_ne(stLookup_ne(obj->Pathname->OpenCtl[obj->SubPtr],paramname),&intptr) < 0) 
 	    {
 	    val = default_val;
 	    used_default = 1;
+	    }
+	else
+	    {
+	    val = strtol(intptr,NULL,10);
 	    }
 
 	/** Make a copy and add to the node. **/
 	attr_inf = stLookup(node->Data, paramname);
 	if (!attr_inf) attr_inf = stAddAttr(node->Data,paramname);
-	if (attr_inf->nVal > 0)
-	    {
-	    for(i=0;i<attr_inf->nVal;i++) if (attr_inf->StrVal[i] && attr_inf->StrAlloc[i])
-	        {
-		nmSysFree(attr_inf->StrVal[i]);
-		attr_inf->StrVal[i] = NULL;
-		attr_inf->StrAlloc[i] = 0;
-		}
-	    attr_inf->nVal = 0;
-	    }
-	stAddValue(attr_inf, NULL, val);
+	stSetAttrValue(attr_inf, DATA_T_INTEGER, POD(&val), 0);
 
     return used_default?1:0;
     }

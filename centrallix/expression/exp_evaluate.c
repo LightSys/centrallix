@@ -66,10 +66,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.3 2001/10/02 16:23:09 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.4 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.4  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.3  2001/10/02 16:23:09  gbeeley
     Added exp_generator expressiontree-to-text generation module.  Also fixed
     a precedence problem with EXPR_N_FUNCTION nodes; not sure why that wasn't
@@ -951,13 +967,24 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
     	/** Which object are we getting at? **/
 	if (tree->ObjID == -1)
 	    {
-	    obj = objOpen(objlist->Session, tree->Parent->Name, O_RDONLY, 0600, "system/object");
-	    if (!obj) 
-	        {
-		mssError(0,"EXP","Could not open object within expression");
-		return -1;
+	    /** If unset, but direct objsys reference using pathname, look it up **/
+	    if (tree->Parent->Name[0] == '.' || tree->Parent->Name[0] == '/')
+		{
+		obj = objOpen(objlist->Session, tree->Parent->Name, O_RDONLY, 0600, "system/object");
+		if (!obj) 
+		    {
+		    mssError(0,"EXP","Could not open object within expression");
+		    return -1;
+		    }
+		getfn = objGetAttrValue;
 		}
-	    getfn = objGetAttrValue;
+	    else
+		{
+		/** if unset because unbound to a real object, evaluate to NULL **/
+		tree->Flags |= EXPR_F_NULL;
+		tree->DataType = DATA_T_INTEGER;
+		return 0;
+		}
 	    }
 	else
 	    {
@@ -1345,26 +1372,30 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    }
 
     	/** Determine modified-object coverage mask **/
-	objlist->CurControl = tree->Control;
-	objlist->ModCoverageMask = 0;
-	if (tree->PSeqID != objlist->PSeqID) 
+	if (objlist)
 	    {
-	    objlist->ModCoverageMask = 0xFFFFFFFF;
-	    }
-	else
-	    {
-	    for(i=0;i<objlist->nObjects;i++) if (objlist->SeqIDs[i] > tree->SeqID)
+	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
+	    objlist->CurControl = tree->Control;
+	    objlist->ModCoverageMask = 0;
+	    if (tree->PSeqID != objlist->PSeqID) 
 		{
-		if (tree->Control)
+		objlist->ModCoverageMask = 0xFFFFFFFF;
+		}
+	    else
+		{
+		for(i=0;i<objlist->nObjects;i++) if (objlist->SeqIDs[i] > tree->SeqID)
 		    {
-		    for(c=0;c<EXPR_MAX_PARAMS;c++) if (tree->Control->ObjMap[c] == i)
-		        {
-	                objlist->ModCoverageMask |= (1<<c);
+		    if (tree->Control)
+			{
+			for(c=0;c<EXPR_MAX_PARAMS;c++) if (tree->Control->ObjMap[c] == i)
+			    {
+			    objlist->ModCoverageMask |= (1<<c);
+			    }
 			}
-		    }
-		else
-		    {
-	            objlist->ModCoverageMask |= (1<<i);
+		    else
+			{
+			objlist->ModCoverageMask |= (1<<i);
+			}
 		    }
 		}
 	    }
@@ -1373,9 +1404,12 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	v = exp_internal_EvalTree(tree,objlist);
 
 	/** Update sequence ids on the expression. **/
-	tree->PSeqID = objlist->PSeqID;
-	tree->SeqID = objlist->SeqID;
-	objlist->MainFlags &= ~EXPR_MO_RECALC;
+	if (objlist)
+	    {
+	    tree->PSeqID = objlist->PSeqID;
+	    tree->SeqID = objlist->SeqID;
+	    objlist->MainFlags &= ~EXPR_MO_RECALC;
+	    }
 
     return v;
     }

@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "obj.h"
 #include "htmlparse.h"
+#include "stparse_ne.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,12 +44,28 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htmlparse.c,v 1.1 2001/08/13 18:01:17 gbeeley Exp $
+    $Id: htmlparse.c,v 1.2 2001/10/16 23:53:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/htmlparse.c,v $
 
     $Log: htmlparse.c,v $
-    Revision 1.1  2001/08/13 18:01:17  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/16 23:53:02  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
+    Revision 1.1.1.1  2001/08/13 18:01:17  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -427,11 +444,11 @@ htsTagValue(pHtmlSession this, int part_num)
 /*** nht_internal_ParseURL - parses the url passed to the http server into
  *** the pathname and the named parameters.
  ***/
-pStructInf
+pStruct
 htsParseURL(char* url)
     {
-    pStructInf main_inf;
-    pStructInf attr_inf;
+    pStruct main_inf;
+    pStruct attr_inf;
     char* ptr;
     char* dst;
     char* last_slash;
@@ -439,7 +456,7 @@ htsParseURL(char* url)
     int in_params = 0;
 
         /** Allocate the main inf for the filename. **/
-        main_inf = stAllocInf();
+        main_inf = stAllocInf_ne();
         if (!main_inf) return NULL;
 
         /** Find the length of the undecoded pathname **/
@@ -461,21 +478,21 @@ htsParseURL(char* url)
 	        *(dst++) = htsConvertChar(&url);
 	    }
         *dst=0;
-        main_inf->StrAlloc[0] = 1;
-        main_inf->StrVal[0] = ptr;
+        main_inf->StrAlloc = 1;
+        main_inf->StrVal = ptr;
 
         /** Step through any parameters, and alloc inf structures for them. **/
         if (*url == '?') url++;
         while(*url)
             {
             /** Alloc a structure for this param. **/
-            attr_inf = stAllocInf();
+            attr_inf = stAllocInf_ne();
             if (!attr_inf)
                 {
-                stFreeInf(main_inf);
+                stFreeInf_ne(main_inf);
                 return NULL;
                 }
-            stAddInf(main_inf, attr_inf);
+            stAddInf_ne(main_inf, attr_inf);
 
             /** Copy the param name. **/
             dst = attr_inf->Name;
@@ -498,7 +515,7 @@ htsParseURL(char* url)
             ptr = (char*)nmSysMalloc(len*3+1);
             if (!ptr)
                 {
-                stFreeInf(main_inf);
+                stFreeInf_ne(main_inf);
                 return NULL;
                 }
             dst=ptr;
@@ -512,10 +529,9 @@ htsParseURL(char* url)
                 *(dst++) = htsConvertChar(&url);
                 }
             *dst=0;
-            attr_inf->StrAlloc[0] = 1;
-            attr_inf->StrVal[0] = ptr;
+            attr_inf->StrAlloc = 1;
+            attr_inf->StrVal = ptr;
             attr_inf->Type = ST_T_ATTRIB;
-            attr_inf->nVal = 1;
             if (*url == '&') url++;
             }
 

@@ -59,12 +59,28 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.1 2001/08/13 18:00:51 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.2 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
-    Revision 1.1  2001/08/13 18:00:51  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
+    Revision 1.1.1.1  2001/08/13 18:00:51  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -250,7 +266,6 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		        {
 			str = nmSysStrdup(ptr);
 		        stAddValue(attr_inf, str, 0);
-			attr_inf->StrAlloc[0] = 1;
 			}
 		    else
 		        stAddValue(attr_inf, col_infs[n_cols]->Name, 0);

@@ -47,10 +47,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.2 2001/09/28 20:04:50 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.3  2001/10/16 23:53:01  gbeeley
+    Added expressions-in-structure-files support, aka version 2 structure
+    files.  Moved the stparse module into the core because it now depends
+    on the expression subsystem.  Almost all osdrivers had to be modified
+    because the structure file api changed a little bit.  Also fixed some
+    bugs in the structure file generator when such an object is modified.
+    The stparse module now includes two separate tree-structured data
+    structures: StructInf and Struct.  The former is the new expression-
+    enabled one, and the latter is a much simplified version.  The latter
+    is used in the url_inf in net_http and in the OpenCtl for objects.
+    The former is used for all structure files and attribute "override"
+    entries.  The methods for the latter have an "_ne" addition on the
+    function name.  See the stparse.h and stparse_ne.h files for more
+    details.  ALMOST ALL MODULES THAT DIRECTLY ACCESSED THE STRUCTINF
+    STRUCTURE WILL NEED TO BE MODIFIED.
+
     Revision 1.2  2001/09/28 20:04:50  gbeeley
     Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
     are now self-contained and require no redundant OBJECT nodes as parent
@@ -303,26 +319,40 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			if (t == MLX_TOK_COLON)
 			    {
 			    t = mlxNextToken(lxs);
-			    for(i=0;i<objlist->nObjects;i++) 
-			      if (!strcmp(etmp->Name,objlist->Names[i]))
-			        {
-				if (etmp->NameAlloc)
+			    if (objlist)
+				{
+				for(i=0;i<objlist->nObjects;i++) 
 				    {
-				    nmSysFree(etmp->Name);
-				    etmp->NameAlloc = 0;
+				    if (!strcmp(etmp->Name,objlist->Names[i]))
+					{
+					if (etmp->NameAlloc)
+					    {
+					    nmSysFree(etmp->Name);
+					    etmp->NameAlloc = 0;
+					    }
+					etmp->Name = NULL;
+					etmp->ObjID = i;
+					break;
+					}
 				    }
-				etmp->Name = NULL;
-				etmp->ObjID = i;
-				break;
 				}
 			    if (etmp->Name != NULL) /* didn't find?? */
 			        {
-				mssError(1,"EXP","Could not locate :objectname '%s' in object list", etmp->Name);
-				expFreeExpression(etmp);
-				if (expr) expFreeExpression(expr);
-				expr = NULL;
-				err=1;
-				break;
+				/** Late binding allowed? **/
+				if (cmpflags & EXPR_CMP_LATEBIND)
+				    {
+				    etmp->ObjID = -1;
+				    }
+				else
+				    {
+				    /** No late binding... cause an error. **/
+				    mssError(1,"EXP","Could not locate :objectname '%s' in object list", etmp->Name);
+				    expFreeExpression(etmp);
+				    if (expr) expFreeExpression(expr);
+				    expr = NULL;
+				    err=1;
+				    break;
+				    }
 				}
 			    etmp->NameAlloc = 1;
 			    etmp->Name = mlxStringVal(lxs,&(etmp->NameAlloc));
@@ -332,8 +362,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			    mlxHoldToken(lxs);
 			    }
 
-			i=0;
-			i = expObjID(etmp,objlist);
+			i = -1;
+			if (objlist) i = expObjID(etmp,objlist);
 			if (i>=0)
 			    {
 			    objlist->Flags[i] |= EXPR_O_REFERENCED;
