@@ -200,6 +200,12 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"            }\n"
 		"        }\n"
 		"    while (txt)\n"
+		"    for(var i in this.rows)\n"
+		"        {\n"
+		"        this.rows[i].hiddenLayer.visibility = 'hidden';\n"
+		"        this.rows[i].contentLayer.visibility = 'inherit';\n"
+		"        this.rows[i].changed = 0;\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** Clear function **/
@@ -616,12 +622,6 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.cursorPos = 0;\n"
 		"    l.rows = new Array();\n"
 		"    tx_insertRow(l,0,'');\n"
-		"    for(var i in l.rows)\n"
-		"        {\n"
-		"        l.rows[i].hiddenLayer.visibility = 'hidden';\n"
-		"        l.rows[i].contentLayer.visibility = 'inherit';\n"
-		"        l.rows[i].changed = 0;\n"
-		"        }\n"
 		"    l.keyhandler = tx_keyhandler;\n"
 		"    l.getfocushandler = tx_select;\n"
 		"    l.losefocushandler = tx_deselect;\n"
