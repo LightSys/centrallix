@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.2 2002/07/09 18:58:49 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.3 2002/07/10 20:18:01 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.3  2002/07/10 20:18:01  lkehresman
+    Added time controls
+
     Revision 1.2  2002/07/09 18:58:49  lkehresman
     Added double buffering to the datetime widget to reduse flickering
 
@@ -216,6 +219,14 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.hl = l.ld.hiddenLayer;\n" // hidden layer
 		"    l.vl.clip.height=500; l.vl.clip.width=500;\n"
 		"    l.hl.clip.height=500; l.hl.clip.width=500;\n"
+		"    l.ld.tl_hr = new Layer(1024, l.ld);\n" // hour display layer
+		"    l.ld.tl_hr.x = 3; l.ld.tl_hr.y = 168;\n"
+		"    l.ld.tl_hr.clip.width = 70; l.ld.tl_hr.clip.height=20;\n"
+		"    l.ld.tl_hr.visibility = 'inherit';\n"
+		"    l.ld.tl_mn = new Layer(1024, l.ld);\n" // minute display layer
+		"    l.ld.tl_mn.x = 76; l.ld.tl_mn.y = 168;\n"
+		"    l.ld.tl_mn.clip.width = 70; l.ld.tl_mn.clip.height=20;\n"
+		"    l.ld.tl_mn.visibility = 'inherit';\n"
 		"    for (var i=0; i < 31; i++)\n"
 		"        {\n"
 		"        l.ld.contentLayer.dayLayersArray[i] = new Layer(128, l.ld.contentLayer);\n"
@@ -241,6 +252,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.ld.hdr4 = new Layer(1024, l.ld);\n"
 		"    dt_drawmonth(l.ld, l.tmpdate);\n"
 		"    dt_drawdate(l.lbdy, l.tmpdate);\n"
+		"    dt_drawtime(l, l.tmpdate);\n"
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
@@ -435,7 +447,6 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    {\n"
 		"    return true;\n"
 		"    }\n", 0);
-   
 
 	htrAddScriptFunction(s, "dt_drawdate", "\n"
 		"function dt_drawdate(l, d)\n"
@@ -445,6 +456,45 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.document.write(dt_formatdate(l.document.layer, d, 0));\n"
 		"    l.document.write('</b></FONT></TD></TR></TABLE>');\n"
 		"    l.document.close();\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "dt_drawtime", "\n"
+		"function dt_drawtime(l, d)\n"
+		"    {\n"
+		"    lhr = l.ld.tl_hr;\n"
+		"    lmn = l.ld.tl_mn;\n"
+
+		"    lhr.document.write('<table width=70 height=20 cellpadding=0 cellspacing=0 border=0><tr><td align=right width=58>');\n"
+		"    lmn.document.write(l.wdate.getHours());\n"
+		"    lhr.document.write('&nbsp;</td><td width=12>');\n"
+		"    lhr.document.write('<table cellpadding=0 cellspacing=0 border=0 width=12><tr><td valign=middle>');\n"
+		"    lhr.document.write('<img src=/sys/images/spnr_up.gif></td></tr><tr><td>');\n"
+		"    lhr.document.write('<img src=/sys/images/spnr_down.gif>');\n"
+		"    lhr.document.write('</td></tr></table>');\n"
+		"    lhr.document.write('</td></tr></table>');\n"
+		"    lhr.document.images[0].kind = 'dt';\n"
+		"    lhr.document.images[0].subkind = 'dt_hour_up';\n"
+		"    lhr.document.images[0].mainlayer = l;\n"
+		"    lhr.document.images[1].kind = 'dt';\n"
+		"    lhr.document.images[1].subkind = 'dt_hour_down';\n"
+		"    lhr.document.images[1].mainlayer = l;\n"
+		"    lhr.document.close();\n"
+
+		"    lmn.document.write('<table width=70 height=20 cellpadding=0 cellspacing=0 border=0><tr><td align=right width=58>');\n"
+		"    lmn.document.write(l.wdate.getMinutes());\n"
+		"    lmn.document.write('&nbsp;</td><td width=12>');\n"
+		"    lmn.document.write('<table cellpadding=0 cellspacing=0 border=0 width=12><tr><td valign=middle>');\n"
+		"    lmn.document.write('<img src=/sys/images/spnr_up.gif></td></tr><tr><td>');\n"
+		"    lmn.document.write('<img src=/sys/images/spnr_down.gif>');\n"
+		"    lmn.document.write('</td></tr></table>');\n"
+		"    lmn.document.write('</td></tr></table>');\n"
+		"    lmn.document.images[0].kind = 'dt';\n"
+		"    lmn.document.images[0].subkind = 'dt_min_up';\n"
+		"    lmn.document.images[0].mainlayer = l;\n"
+		"    lmn.document.images[1].kind = 'dt';\n"
+		"    lmn.document.images[1].subkind = 'dt_min_down';\n"
+		"    lmn.document.images[1].mainlayer = l;\n"
+		"    lmn.document.close();\n"
 		"    }\n", 0);
 
 	/* ***** *\
@@ -505,7 +555,10 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        if (targetLayer.subkind == 'dt_day')\n"
 		"            {\n"
 		"            var ml = targetLayer.document.mainlayer;\n"
-		"            ml.wdate = new Date(targetLayer.dateVal);\n"
+		"            var td = new Date(targetLayer.dateVal);\n"
+		"            td.setHours(ml.wdate.getHours());\n"
+		"            td.setMinutes(ml.wdate.getMinutes());\n"
+		"            ml.wdate = new Date(td);\n"
 		"            dt_drawdate(ml.lbdy, ml.wdate);\n"
 		"            dt_current.document.layer.ld.visibility = 'hide';\n"
 		"            dt_current = null;\n"
@@ -533,6 +586,50 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"            var ml = targetLayer.mainlayer;\n"
 		"            ml.tmpdate.setMonth(ml.tmpdate.getMonth()-1);\n"
 		"            dt_drawmonth(ml.ld, ml.tmpdate);\n"
+		"            }\n"
+		"        else if (targetLayer.subkind == 'dt_hour_up')\n"
+		"            {\n"
+		"            var d = targetLayer.mainlayer.wdate;\n"
+		"            if (d.getHours() < 23)\n"
+		"                {\n"
+		"                targetLayer.mainlayer.tmpdate = new Date(d);\n"
+		"                d.setHours(d.getHours()+1);\n"
+		"                dt_drawtime(targetLayer.mainlayer, d);\n"
+		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
+		"                }\n"
+		"            }\n"
+		"        else if (targetLayer.subkind == 'dt_hour_down')\n"
+		"            {\n"
+		"            var d = targetLayer.mainlayer.wdate;\n"
+		"            if (d.getHours() > 0)\n"
+		"                {\n"
+		"                targetLayer.mainlayer.tmpdate = new Date(d);\n"
+		"                d.setHours(d.getHours()-1);\n"
+		"                dt_drawtime(targetLayer.mainlayer, d);\n"
+		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
+		"                }\n"
+		"            }\n"
+		"        else if (targetLayer.subkind == 'dt_min_up')\n"
+		"            {\n"
+		"            var d = targetLayer.mainlayer.wdate;\n"
+		"            if (d.getMinutes() < 59)\n"
+		"                {\n"
+		"                targetLayer.mainlayer.tmpdate = new Date(d);\n"
+		"                d.setMinutes(d.getMinutes()+1);\n"
+		"                dt_drawtime(targetLayer.mainlayer, d);\n"
+		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
+		"                }\n"
+		"            }\n"
+		"        else if (targetLayer.subkind == 'dt_min_down')\n"
+		"            {\n"
+		"            var d = targetLayer.mainlayer.wdate;\n"
+		"            if (d.getMinutes() > 0)\n"
+		"                {\n"
+		"                targetLayer.mainlayer.tmpdate = new Date(d);\n"
+		"                d.setMinutes(d.getMinutes()-1);\n"
+		"                dt_drawtime(targetLayer.mainlayer, d);\n"
+		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
+		"                }\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
