@@ -1,0 +1,623 @@
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "mtask.h"
+#include "mtlexer.h"
+#include "mtsession.h"
+#include "obj.h"
+#include "expression.h"
+
+/************************************************************************/
+/* Centrallix Application Server System 				*/
+/* Centrallix Core       						*/
+/* 									*/
+/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* 									*/
+/* This program is free software; you can redistribute it and/or modify	*/
+/* it under the terms of the GNU General Public License as published by	*/
+/* the Free Software Foundation; either version 2 of the License, or	*/
+/* (at your option) any later version.					*/
+/* 									*/
+/* This program is distributed in the hope that it will be useful,	*/
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
+/* GNU General Public License for more details.				*/
+/* 									*/
+/* You should have received a copy of the GNU General Public License	*/
+/* along with this program; if not, write to the Free Software		*/
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  		*/
+/* 02111-1307  USA							*/
+/*									*/
+/* A copy of the GNU General Public License has been included in this	*/
+/* distribution in the file "COPYING".					*/
+/* 									*/
+/* Module: 	obj.h, obj_*.c    					*/
+/* Author:	Greg Beeley (GRB)					*/
+/* Creation:	October 26, 1998					*/
+/* Description:	Implements the ObjectSystem part of the Centrallix.    */
+/*		The various obj_*.c files implement the various parts of*/
+/*		the ObjectSystem interface.				*/
+/*		--> obj_main.c: contains the general functionality and	*/
+/*		admin components of the objectsystem.			*/
+/************************************************************************/
+
+/**CVSDATA***************************************************************
+
+    $Id: obj_main.c,v 1.1 2001/08/13 18:00:58 gbeeley Exp $
+    $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
+
+    $Log: obj_main.c,v $
+    Revision 1.1  2001/08/13 18:00:58  gbeeley
+    Initial revision
+
+    Revision 1.2  2001/08/07 19:31:53  gbeeley
+    Turned on warnings, did some code cleanup...
+
+    Revision 1.1.1.1  2001/08/07 02:31:00  gbeeley
+    Centrallix Core Initial Import
+
+
+ **END-CVSDATA***********************************************************/
+
+/*** Globals ***/
+OSYS_t OSYS;
+
+
+/*** obj_internal_BuildIsA - scan the content type registry (from types.cfg)
+ *** and determine what types are related to what other types.  This is an
+ *** optimization that allows object open()s to run faster.  When the system
+ *** runs as a .CGI, it might be beneficial to disable this routine and use
+ *** a more intelligent IsA routine instead (because responsiveness depends
+ *** on startup time + multi object-open timing, instead of just on object-
+ *** open timing).
+ ***/
+int
+obj_internal_BuildIsA()
+    {
+    int i,j,k,level,num_added,rel_level, ind_rel_level;
+    pContentType type,related_type,indirect_rel_type;
+
+        /** Add direct relationships for each type. **/
+	for(i=0;i<OSYS.TypeList.nItems;i++)
+	    {
+	    type = (pContentType)(OSYS.TypeList.Items[i]);
+	    for(j=0;j<type->IsA.nItems;j++)
+	        {
+		related_type = (pContentType)(type->IsA.Items[j]);
+		xaAddItem(&type->RelatedTypes, (void*)related_type);
+		xaAddItem(&type->RelationLevels, (void*)1);
+		xaAddItem(&related_type->RelatedTypes, (void*)type);
+		xaAddItem(&related_type->RelationLevels, (void*)-1);
+		}
+	    }
+
+    	/** Loop through the types, adding relationships until we can't add any more **/
+	level = 1;
+	do  {
+	    num_added = 0;
+	    for(i=0;i<OSYS.TypeList.nItems;i++)
+	        {
+	        type = (pContentType)(OSYS.TypeList.Items[i]);
+
+		/** For each relationship of level <n>, scan through for level 1 ties, or **/
+		/** for each relationship of level <-n>, scan through for level -1 ties **/
+		for(j=0;j<type->RelatedTypes.nItems;j++)
+		    {
+		    rel_level = (int)(type->RelationLevels.Items[j]);
+		    related_type = (pContentType)(type->RelatedTypes.Items[j]);
+		    if (rel_level == level || rel_level == -level)
+		        {
+			for(k=0;k<related_type->RelatedTypes.nItems;k++)
+			    {
+		    	    ind_rel_level = (int)(related_type->RelationLevels.Items[k]);
+		    	    indirect_rel_type = (pContentType)(related_type->RelatedTypes.Items[k]);
+			    if ((ind_rel_level == 1 && rel_level == level) || (ind_rel_level == -1 && rel_level == -level))
+			        {
+				num_added++;
+				xaAddItem(&type->RelatedTypes, (void*)indirect_rel_type);
+				xaAddItem(&type->RelationLevels, (void*)(ind_rel_level + rel_level));
+				}
+			    }
+			}
+		    }
+		}
+	    level++;
+	    }
+	    while (num_added);
+
+    return 0;
+    }
+
+
+/*** The following three functions are used for the evaluation of the 
+ *** expressions in the types.cfg file.  The "param object" in this case
+ *** is simply a character string, and these functions act accordingly.
+ ***/
+
+int obj_internal_TypeFnName(void* obj, char* name)
+    {
+    if (!strcmp(name,"name")) return DATA_T_STRING;
+    else return -1;
+    }
+int obj_internal_GetFnName(void* obj, char* name, pObjData val)
+    {
+    if (!strcmp(name,"name") && obj) 
+        {
+	if (obj)
+	    {
+	    val->String = (char*)obj;
+	    return 0;
+	    }
+	else
+	    { 
+	    return 1;
+	    }
+	}
+    else 
+        return -1;
+    }
+int obj_internal_SetFnName(void* obj, char* name, pObjData val) { return -1; }
+
+
+
+/*** objInitialize -- start up the objectsystem and initialize the various
+ *** components thereof.
+ ***/
+int
+objInitialize()
+    {
+    pFile fd;
+    int t,i,a;
+    pLxSession s;
+    pContentType ct,parent_ct;
+    char* ptr;
+    char sbuf[128];
+
+	/** Zero the globals **/
+	memset(&OSYS, 0, sizeof(OSYS));
+
+	/** Initialize the arrays and hash tables **/
+	xaInit(&(OSYS.OpenSessions), 256);
+	xhInit(&(OSYS.TypeExtensions), 255, 0);
+	xhInit(&(OSYS.DriverTypes), 255, 0);
+	xhqInit(&(OSYS.DirectoryCache), 256, 0, 511, obj_internal_DiscardDC, 0);
+	/*xaInit(&(OSYS.DirectoryQueue), 256);*/
+	xaInit(&(OSYS.Drivers), 256);
+	xhInit(&(OSYS.Types), 255, 0);
+	xaInit(&(OSYS.TypeList), 256);
+
+	chdir("/");
+
+	/** Load the types.cfg file **/
+	fd = fdOpen(OBJSYS_DEFAULT_TYPES_CFG, O_RDONLY, 0600);
+	if (!fd)
+	    {
+	    perror(OBJSYS_DEFAULT_TYPES_CFG);
+	    exit(1);
+	    }
+	s = mlxOpenSession(fd, MLX_F_EOF | MLX_F_EOL | MLX_F_POUNDCOMM);
+	if (!s)
+	    {
+	    puts("could not open lexer session on types.cfg");
+	    exit(1);
+	    }
+	while((t = mlxNextToken(s)) != MLX_TOK_EOF)
+	    {
+	    if (t==MLX_TOK_ERROR) 
+		{
+		puts("error while loading types.cfg");
+		break;
+		}
+	    if (t==MLX_TOK_EOL) continue;
+
+	    /** Get the content-type **/
+	    if (t!=MLX_TOK_STRING) break;
+	    ct = (pContentType)nmMalloc(sizeof(ContentType));
+	    if (!ct) break;
+	    strncpy(ct->Name,mlxStringVal(s,NULL),63);
+	    ct->Name[63]=0;
+
+	    /** Get the description of the type **/
+	    t = mlxNextToken(s);
+	    if (t != MLX_TOK_STRING)
+		{
+		nmFree(ct,sizeof(ContentType));
+		break;
+		}
+	    strncpy(ct->Description,mlxStringVal(s,NULL),255);
+	    ct->Description[255]=0;
+
+	    /** Get the filename extension listing **/
+	    xaInit(&(ct->Extensions),16);
+	    while(1)
+		{
+	        t = mlxNextToken(s);
+	        if (t != MLX_TOK_STRING && t != MLX_TOK_KEYWORD) 
+		    {
+		    xaDeInit(&(ct->Extensions));
+		    nmFree(ct,sizeof(ContentType));
+		    break;
+		    }
+	        a=1;
+	        xaAddItem(&(ct->Extensions),mlxStringVal(s,&a));
+	        t = mlxNextToken(s);
+		if (t != MLX_TOK_COMMA) 
+		    {
+		    mlxHoldToken(s);
+		    break;
+		    }
+		}
+
+	    /** Get the optional type name expression. **/
+	    t = mlxNextToken(s);
+	    if (t != MLX_TOK_STRING)
+	        {
+		xaDeInit(&(ct->Extensions));
+		nmFree(ct,sizeof(ContentType));
+		break;
+		}
+	    ct->TypeNameObjList = (void*)expCreateParamList();
+	    expAddParamToList((pParamObjects)(ct->TypeNameObjList), "this", NULL, 0);
+	    expSetParamFunctions((pParamObjects)(ct->TypeNameObjList), "this", obj_internal_TypeFnName, 
+	    	obj_internal_GetFnName, obj_internal_SetFnName);
+	    ptr = mlxStringVal(s,NULL);
+	    if (ptr && *ptr)
+	        {
+	        ct->TypeNameExpression = (void*)expCompileExpression(ptr, (pParamObjects)(ct->TypeNameObjList),
+	    	    MLX_F_ICASE | MLX_F_FILENAMES, 0);
+	        if (!ct->TypeNameExpression)
+	            {
+		    mssError(0,"OSML","Could not compile expression for type '%s'",ct->Name);
+		    break;
+		    }
+		}
+	    else
+	        {
+		ct->TypeNameExpression = NULL;
+		}
+
+	    /** Get the is-a type name, or '*' if top-level. **/
+	    xaInit(&(ct->IsA),64);
+	    while(1)
+		{
+		t = mlxNextToken(s);
+		if (t != MLX_TOK_STRING)
+		    {
+		    xaDeInit(&(ct->Extensions));
+		    xaDeInit(&(ct->IsA));
+		    nmFree(ct,sizeof(ContentType));
+		    break;
+		    }
+		ptr = mlxStringVal(s,NULL);
+		if (!strcmp(ptr,"*"))
+		    {
+		    ct->Flags |= CT_F_TOPLEVEL;
+		    t = mlxNextToken(s);
+		    break;
+		    }
+		parent_ct = (pContentType)xhLookup(&(OSYS.Types),ptr);
+		if (!parent_ct)
+		    {
+		    mssError(1,"OSML","Undefined parent type '%s' of type '%s'",ptr,ct->Name);
+		    xaDeInit(&(ct->Extensions));
+		    xaDeInit(&(ct->IsA));
+		    nmFree(ct,sizeof(ContentType));
+		    break;
+		    }
+		xaAddItem(&ct->IsA, (void*)parent_ct);
+		t = mlxNextToken(s);
+		if (t != MLX_TOK_COMMA) break;
+		}
+	    if (t != MLX_TOK_EOL && t != MLX_TOK_EOF)
+		{
+		break;
+		}
+	    xhAdd(&(OSYS.Types),ct->Name,(char*)ct);
+	    xaAddItem(&(OSYS.TypeList), (void*)ct);
+	    for(i=0;i<ct->Extensions.nItems;i++)
+		{
+		xhAdd(&(OSYS.TypeExtensions),(char*)(ct->Extensions.Items[i]),(char*)ct);
+		}
+	    if (t == MLX_TOK_EOF) break;
+	    }
+
+	/** Close lexer session and file descriptor **/
+	mlxCloseSession(s);
+	fdClose(fd, 0);
+
+	/** Read the rootnode's path and type. **/
+	fd = fdOpen(OBJSYS_DEFAULT_ROOTTYPE, O_RDONLY, 0600);
+	if (!fd)
+	    {
+	    mssErrorErrno(1,"OSML","Could not open rootnode.type!");
+	    }
+	else
+	    {
+	    OSYS.RootType = NULL;
+	    i = fdRead(fd, sbuf, 127, 0, 0);
+	    if (strchr(sbuf,'\n')) *(strchr(sbuf,'\n')) = '\0';
+	    if (i>0)
+	        {
+	        sbuf[i] = 0;
+	        ct = (pContentType)xhLookup(&OSYS.Types, sbuf);
+	        if (!ct)
+	            {
+		    mssError(1,"OSML","Unknown type '%s' for rootnode",sbuf);
+		    }
+	        OSYS.RootType = ct;
+	        }
+	    fdClose(fd,0);
+	    memccpy(OSYS.RootPath, OBJSYS_DEFAULT_ROOTNODE, 0, 255);
+	    OSYS.RootPath[255] = 0;
+	    }
+
+	/** Build the Is-A database **/
+	obj_internal_BuildIsA();
+
+	/** Load the root driver **/
+	rootInitialize();
+
+	/** Load the OXT driver. **/
+	oxtInitialize();
+
+	nmRegister(sizeof(Object),"Object");
+	nmRegister(sizeof(ObjQuery),"ObjQuery");
+	nmRegister(sizeof(ObjDriver),"ObjDriver");
+	nmRegister(sizeof(Pathname),"Pathname");
+	nmRegister(sizeof(DateTime),"DateTime");
+	nmRegister(sizeof(ObjTrxTree),"ObjTrxTree");
+	nmRegister(sizeof(ObjSession),"ObjSession");
+	nmRegister(sizeof(DirectoryCache),"DirectoryCache");
+	nmRegister(sizeof(ObjParam),"ObjParam");
+
+    return 0;
+    }
+
+
+/*** objRegisterDriver -- register a new objectsystem driver.  This is 
+ *** normally called from the Initialize routine of the driver in question.
+ ***/
+int
+objRegisterDriver(pObjDriver drv)
+    {
+    int i;
+
+	/** Add to drivers listing **/
+	xaAddItem(&(OSYS.Drivers),(char*)drv);
+
+	/** Make linkages to each base content type **/
+	for(i=0;i<drv->RootContentTypes.nItems;i++)
+	    {
+	    xhAdd(&(OSYS.DriverTypes), (char*)(drv->RootContentTypes.Items[i]), (char*)drv);
+	    }
+
+	/** Transaction layer? **/
+	if (drv->Capabilities & OBJDRV_C_ISTRANS) OSYS.TransLayer = drv;
+
+	/** MultiQuery module? **/
+	if (drv->Capabilities & OBJDRV_C_ISMULTIQUERY) OSYS.MultiQueryLayer = drv;
+
+    return 0;
+    }
+
+
+/*** objRegisterEventHandler - regsiter a new event handler routine.  This
+ *** associates the non-changeable EventClassCode with the changeable event
+ *** handler function pointer.  Event handlers must register each time the
+ *** system re-starts.
+ ***/
+int
+objRegisterEventHandler(char* class_code, int (*handler_function)())
+    {
+    pObjEventHandler eh;
+    int i;
+    pObjEvent e;
+
+    	/** Allocate a new event handler structure **/
+	eh = (pObjEventHandler)nmMalloc(sizeof(ObjEventHandler));
+	if (!eh) return -1;
+
+	/** Fill it in and add it to event handler hash table **/
+	memccpy(eh->ClassCode, class_code, 0, 15);
+	eh->ClassCode[15] = 0;
+	eh->HandlerFunction = handler_function;
+	xhAdd(&OSYS.EventHandlers, eh->ClassCode, (void*)eh);
+
+	/** Step through the events and link with any w/ matching codes **/
+	for(i=0;i<OSYS.Events.nItems;i++)
+	    {
+	    e = (pObjEvent)(OSYS.Events.Items[i]);
+	    if (!strcmp(e->ClassCode, class_code)) e->Handler = eh;
+	    }
+
+    return 0;
+    }
+
+
+/*** obj_internal_WriteEventFile - rewrite the events file from the list of
+ *** registered events.
+ ***/
+int
+obj_internal_WriteEventFile()
+    {
+    pFile fd;
+    int i;
+    int uid;
+    pObjEvent e;
+
+	/** Re-write the events file. **/
+	uid = geteuid();
+	seteuid(0);
+	fd = fdOpen("/omjnet/lightsys/events.cfg", O_WRONLY | O_TRUNC, 0600);
+	seteuid(uid);
+	if (!fd) return -1;
+	for(i=0;i<OSYS.Events.nItems;i++)
+	    {
+	    e = (pObjEvent)(OSYS.Events.Items[i]);
+	    fdWrite(fd, "\"", 1, 0,0);
+	    fdWrite(fd, e->ClassCode, strlen(e->ClassCode), 0,0);
+	    fdWrite(fd, "\" \"", 3, 0,0);
+	    if (e->XData) fdWrite(fd, e->XData, strlen(e->XData), 0,0);
+	    fdWrite(fd, "\" \"", 3, 0,0);
+	    if (e->WhereClause) fdWrite(fd, e->WhereClause, strlen(e->WhereClause), 0,0);
+	    fdWrite(fd, "\" \"", 3, 0,0);
+	    fdWrite(fd, e->DirectoryPath, strlen(e->DirectoryPath), 0,0);
+	    fdWrite(fd, "\"\n", 2, 0,0);
+	    }
+	fdClose(fd, 0);
+
+    return 0;
+    }
+
+
+/*** obj_internal_ReadEventFile - read the current contents of the events
+ *** file into the event registry via calling objRegisterEvent with the
+ *** no-write-file option.
+ ***/
+int
+obj_internal_ReadEventFile()
+    {
+    pFile fd;
+    int uid;
+    pLxSession lxs;
+    int t;
+    XString code, path, where, xdata;
+    char* ptr;
+
+    	/** Open the file **/
+	uid = geteuid();
+	seteuid(0);
+	fd = fdOpen("/omjnet/lightsys/events.cfg", O_RDONLY, 0600);
+	seteuid(uid);
+	if (!fd) return -1;
+
+	/** Open a lexer/tokenizer session on the file **/
+	lxs = mlxOpenSession(fd, MLX_F_EOF | MLX_F_EOL);
+	if (!lxs) return -1;
+
+	/** Initialize the string buffers **/
+	xsInit(&code);
+	xsInit(&path);
+	xsInit(&where);
+	xsInit(&xdata);
+
+	/** Read the lines, building an event for each one. **/
+	while(1)
+	    {
+	    t = mlxNextToken(lxs);
+	    if (t == MLX_TOK_EOF)
+	        {
+		mlxCloseSession(lxs);
+		fdClose(fd, 0);
+		fd = NULL;
+		break;
+		}
+
+	    /** Read code, xdata, where, and path **/
+	    if (t != MLX_TOK_STRING) break;
+	    ptr = mlxStringVal(lxs,NULL);
+	    xsCopy(&code, ptr, -1);
+	    if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
+	    xsCopy(&xdata, mlxStringVal(lxs,NULL), -1);
+	    if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
+	    xsCopy(&where, mlxStringVal(lxs,NULL), -1);
+	    if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
+	    xsCopy(&path, mlxStringVal(lxs,NULL), -1);
+
+	    /** Register the event **/
+	    objRegisterEvent(code.String, path.String, (where.String[0])?where.String:NULL, OBJ_EV_F_NOSAVE, xdata.String);
+	    }
+
+	/** An error occurred? (fd is still open) **/
+	if (fd)
+	    {
+	    puts("Centrallix: could not read events.cfg file!");
+	    mlxCloseSession(lxs);
+	    fdClose(fd, 0);
+	    fd = NULL;
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** objRegisterEvent - register a new event.  This only has to be done 
+ *** once, and is retained across system re-starts.  After a restart, the
+ *** event will not be active until its handler is registered via the above
+ *** objRegisterEventHandler function.
+ ***/
+int
+objRegisterEvent(char* class_code, char* pathname, char* where_condition, int flags, char* xdata)
+    {
+    pObjEvent e;
+    pObjEventHandler eh;
+
+    	/** Allocate a new event structure **/
+	e = (pObjEvent)nmMalloc(sizeof(ObjEvent));
+	if (!e) return -1;
+
+	/** Fill it in **/
+	memccpy(e->ClassCode, class_code, 0, 15);
+	e->ClassCode[15] = 0;
+	if (where_condition)
+	    {
+	    e->WhereClause = nmSysStrdup(where_condition);
+	    }
+	else
+	    {
+	    e->WhereClause = NULL;
+	    }
+	e->XData = nmSysStrdup(xdata);
+	e->Flags = flags;
+	memccpy(e->DirectoryPath, pathname, 0, 255);
+	e->DirectoryPath[255] = 0;
+
+	/** Strip any trailing '/' off of the path, unless path is solely '/' **/
+	if (e->DirectoryPath[1] && e->DirectoryPath[strlen(e->DirectoryPath)-1] == '/')
+	    {
+	    e->DirectoryPath[strlen(e->DirectoryPath)-1] = '\0';
+	    }
+
+	/** Lookup the handler, if it has one. **/
+	eh = (pObjEventHandler)xhLookup(&OSYS.EventHandlers, class_code);
+	e->Handler = eh;
+
+	/** Add the event to the registry in various places. **/
+	xhAdd(&OSYS.EventsByXData, e->XData, (void*)e);
+	xhAdd(&OSYS.EventsByPath, e->DirectoryPath, (void*)e);
+	xaAddItem(&OSYS.Events, (void*)e);
+
+	/** Update the event file **/
+	if (!(flags & OBJ_EV_F_NOSAVE))
+	    {
+	    obj_internal_WriteEventFile();
+	    }
+
+    return 0;
+    }
+
+
+/*** objUnRegisterEvent - remove an existing event from the event registry
+ ***/
+int
+objUnRegisterEvent(char* class_code, char* xdata)
+    {
+    pObjEvent e;
+
+    	/** Locate the event. **/
+	e = (pObjEvent)xhLookup(&OSYS.EventsByXData, xdata);
+	if (!e) return -1;
+
+	/** Remove from global catalog listings of events **/
+	xhRemove(&OSYS.EventsByXData, e->XData);
+	xhRemove(&OSYS.EventsByPath, e->DirectoryPath);
+	xaRemoveItem(&OSYS.Events, xaFindItem(&OSYS.Events, (void*)e));
+
+	/** Update the event file **/
+	obj_internal_WriteEventFile();
+
+    return 0;
+    }
+
