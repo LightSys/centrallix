@@ -23,10 +23,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.4 2002/07/23 02:30:54 jorupp Exp $
+    $Id: mtask.h,v 1.5 2002/07/31 18:36:05 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.5  2002/07/31 18:36:05  mattphillips
+    Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
+    to test for libz, but we didn't do anything with the results of its test.
+    This wraps all the gzip stuff in #ifdef's so we will not use it if the system
+    we built on doesn't have it.
+
     Revision 1.4  2002/07/23 02:30:54  jorupp
      (commiting for ctaylor)
      * removed unnecessary field from pFile and associated enum values
@@ -53,12 +59,20 @@
 
  **END-CVSDATA***********************************************************/
 
-
 #include <setjmp.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#else
+#define HAVE_LIBZ 1
+#endif
+
+#ifdef HAVE_LIBZ
 #include <zlib.h>
+#endif
 
 #ifdef MTASK_USEPTHREADS
 #include <pthread.h>
@@ -147,7 +161,9 @@ typedef struct _FD
     char*	RdCacheBuf;
     int		RdCacheLen;
     char*	RdCachePtr;
+#ifdef HAVE_LIBZ
     gzFile	GzFile;
+#endif
     }
     File, *pFile;
 

@@ -7,6 +7,13 @@
 #include <time.h>
 #include <sys/types.h> //for regex functions
 #include <regex.h>
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#else
+#define HAVE_LIBZ 1
+#endif
+
 #include "centrallix.h"
 #include "mtask.h"
 #include "mtsession.h"
@@ -54,10 +61,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.26 2002/07/21 05:05:57 jorupp Exp $
+    $Id: net_http.c,v 1.27 2002/07/31 18:36:20 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.27  2002/07/31 18:36:20  mattphillips
+    Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
+    to test for libz, but we didn't do anything with the results of its test.
+    This wraps all the gzip stuff in #ifdef's so we will not use it if the system
+    we built on doesn't have it.
+
     Revision 1.26  2002/07/21 05:05:57  jorupp
      * updated net_http.c to take advantage of gziped output (except for non-html docs for Netscape 4.7)
      * modified config file with new parameter, enable_gzip (0/1)
@@ -1693,8 +1706,10 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset"))
 	        {
 		int gzip=0;
+#ifdef HAVE_LIBZ
 		if(NHT.EnableGzip && acceptencoding && strstr(acceptencoding,"gzip"))
 		    gzip=1; /* enable gzip for this request */
+#endif
 		/*fdSetOptions(conn, FD_UF_WRCACHE);*/
 		if(gzip==1)
 		{
@@ -1721,6 +1736,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    convert_text = 1;
 		    }
 
+#ifdef HAVE_LIBZ
 		if(	NHT.EnableGzip && /* global enable flag */
 			obj_internal_IsA(ptr,"text/plain")>0 /* a subtype of text/plain */
 			&& acceptencoding && strstr(acceptencoding,"gzip") /* browser wants it gzipped */
@@ -1730,6 +1746,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    {
 		    gzip=1; /* enable gzip for this request */
 		    }
+#endif
 		if(gzip==1)
 		{
 		    snprintf(sbuf,256,"Content-Encoding: gzip\r\n");
@@ -2614,7 +2631,9 @@ nht_internal_Handler(void* v)
 
 
 	    /** Should we enable gzip? **/
+#ifdef HAVE_LIBZ
 	    stAttrValue(stLookup(my_config, "enable_gzip"), &(NHT.EnableGzip), NULL, 0);
+#endif
 
 	    /** Get the timer settings **/
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);

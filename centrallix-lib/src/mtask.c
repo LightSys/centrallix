@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.6 2002/07/23 02:30:55 jorupp Exp $
+    $Id: mtask.c,v 1.7 2002/07/31 18:36:05 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.7  2002/07/31 18:36:05  mattphillips
+    Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
+    to test for libz, but we didn't do anything with the results of its test.
+    This wraps all the gzip stuff in #ifdef's so we will not use it if the system
+    we built on doesn't have it.
+
     Revision 1.6  2002/07/23 02:30:55  jorupp
      (commiting for ctaylor)
      * removed unnecessary field from pFile and associated enum values
@@ -1516,10 +1522,12 @@ fdSetOptions(pFile filedesc, int options)
     int old_options;
     old_options = filedesc->Flags;
     filedesc->Flags |= (options & (FD_UF_RDCACHE | FD_UF_WRCACHE | FD_UF_GZIP));
+#ifdef HAVE_LIBZ
     if ( (options & FD_UF_GZIP) && !(old_options & FD_UF_GZIP) )
 	{
 	filedesc->GzFile = gzdopen(dup(filedesc->FD), (filedesc->Flags & FD_F_WR ? "wb" : "rb"));
 	}
+#endif
     return 0;
     }
 
@@ -1544,6 +1552,7 @@ fdUnSetOptions(pFile filedesc, int options)
 		}
 	    }
 
+#ifdef HAVE_LIBZ
         /** Make sure and close the gzip part if the flag was set but is not currently. **/
         if ((old_options & FD_UF_GZIP) && !(options & FD_UF_GZIP))
             {
@@ -1551,6 +1560,7 @@ fdUnSetOptions(pFile filedesc, int options)
                 filedesc->GzFile = NULL;
             }
 
+#endif
     return 0;
     }
 
@@ -1583,7 +1593,9 @@ fdOpen(char* filename, int mode, int create_mode)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
 	new_fd->GzFile = NULL;
+#endif
 
 	/** Set nonblocking mode **/
 	arg=1;
@@ -1684,10 +1696,31 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
     	    {
     	    if (flags & FD_U_SEEK)
 		{
-		if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
-		else lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+		if (filedesc->Flags & FD_UF_GZIP) 
+		    {
+		    gzseek(filedesc->GzFile, offset, SEEK_SET);
+		    }
+		else 
+		    {
+#endif
+		    lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+		    }
+#endif
 		}
-	    rval = (filedesc->Flags & FD_UF_GZIP ? gzread(filedesc->GzFile, buffer, maxlen) : read(filedesc->FD,buffer,maxlen));
+#ifdef HAVE_LIBZ
+	    if (filedesc->Flags & FD_UF_GZIP)
+		{
+		rval = gzread(filedesc->GzFile, buffer, maxlen);
+		}
+	    else 
+		{
+#endif
+		rval = read(filedesc->FD,buffer,maxlen);
+#ifdef HAVE_LIBZ
+		}
+#endif
     	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN) return -1;
     	    }
 
@@ -1728,10 +1761,31 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
                 {
     	        if (flags & FD_U_SEEK)
 		    {
-		    if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
-		    else lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+		    if (filedesc->Flags & FD_UF_GZIP) 
+			{
+			gzseek(filedesc->GzFile, offset, SEEK_SET);
+			}
+		    else 
+			{
+#endif
+			lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+			}
+#endif
 		    }
-    	        rval = (filedesc->Flags & FD_UF_GZIP ? gzread(filedesc->GzFile, buffer, maxlen) : read(filedesc->FD,buffer,maxlen));
+#ifdef HAVE_LIBZ
+		if (filedesc->Flags & FD_UF_GZIP)
+		    {
+		    rval = gzread(filedesc->GzFile, buffer, maxlen); 
+		    }
+		else
+		    {
+#endif
+		    rval = read(filedesc->FD,buffer,maxlen);
+#ifdef HAVE_LIBZ
+		    }
+#endif
 		eno = errno;
 
     	        /** I sincerely hope this doesn't happen... **/
@@ -1875,10 +1929,31 @@ fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
     	    {
     	    if (flags & FD_U_SEEK)
 		{
-		if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
-		else lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+		if (filedesc->Flags & FD_UF_GZIP) 
+		    {
+		    gzseek(filedesc->GzFile, offset, SEEK_SET);
+		    }
+		else 
+		    {
+#endif
+		    lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+		    }
+#endif
 		}
-    	    rval = (filedesc->Flags & FD_UF_GZIP ? gzwrite(filedesc->GzFile, buffer, length) : write(filedesc->FD,buffer,length));
+#ifdef HAVE_LIBZ
+	    if (filedesc->Flags & FD_UF_GZIP)
+		{
+		rval = gzwrite(filedesc->GzFile, buffer, length); 
+		}
+	    else
+		{
+#endif
+		rval = write(filedesc->FD,buffer,length);
+#ifdef HAVE_LIBZ
+		}
+#endif
     	    if (rval == -1 && errno != EWOULDBLOCK) return -1;
     	    }
 
@@ -1917,12 +1992,33 @@ fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
             event = NULL;
             if (code == EV_S_COMPLETE) 
                 {
-    	        if (flags & FD_U_SEEK) lseek(filedesc->FD, offset, SEEK_SET);
+    	        if (flags & FD_U_SEEK)
 		    {
-		    if (filedesc->Flags & FD_UF_GZIP) gzseek(filedesc->GzFile, offset, SEEK_SET);
-		    else lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+		    if (filedesc->Flags & FD_UF_GZIP)
+			{
+			gzseek(filedesc->GzFile, offset, SEEK_SET);
+			}
+		    else 
+			{
+#endif
+			lseek(filedesc->FD, offset, SEEK_SET);
+#ifdef HAVE_LIBZ
+			}
+#endif
 		    }
-    		    rval = (filedesc->Flags & FD_UF_GZIP ? gzwrite(filedesc->GzFile, buffer, length) : write(filedesc->FD,buffer,length));
+#ifdef HAVE_LIBZ
+		if (filedesc->Flags & FD_UF_GZIP)
+		    {
+    		    rval = gzwrite(filedesc->GzFile, buffer, length); 
+		    }
+		else
+		    {
+#endif
+		    rval = write(filedesc->FD,buffer,length);
+#ifdef HAVE_LIBZ
+		    }
+#endif
 
     	        /** I sincerely hope this doesn't happen... **/
     	        if (rval == -1 && errno == EWOULDBLOCK) 
@@ -2001,20 +2097,24 @@ fdClose(pFile filedesc, int flags)
         /** Close the FD **/
 	if (!(flags & FD_XU_NODST))
 	    {
+#ifdef HAVE_LIBZ
 	    if (filedesc->Flags & FD_UF_GZIP)
 		{
 		gzclose(filedesc->GzFile);
 		}
+#endif
 	    close(filedesc->FD);
 	    if (filedesc->WrCacheBuf) nmFree(filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	    if (filedesc->RdCacheBuf) nmFree(filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
             nmFree(filedesc,sizeof(File));
 	    }
 	else
+#ifdef HAVE_LIBZ
 	    if (filedesc->Flags & FD_UF_GZIP)
 		{
 		gzclose(filedesc->GzFile);
 		}
+#endif
 
     return 0;
     }
@@ -2089,7 +2189,9 @@ netListenTCP(char* service_name, int queue_length, int flags)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
 	new_fd->GzFile = NULL;
+#endif
 	memcpy(&(new_fd->LocalAddr),&localaddr,sizeof(struct sockaddr_in));
 
     return new_fd;
@@ -2174,7 +2276,9 @@ netAcceptTCP(pFile net_filedesc, int flags)
 	connected_fd->UnReadLen = 0;
 	connected_fd->WrCacheBuf = NULL;
 	connected_fd->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
 	connected_fd->GzFile = NULL;
+#endif
 	memcpy(&(connected_fd->RemoteAddr),&remoteaddr,sizeof(struct sockaddr_in));
 	memcpy(&(connected_fd->LocalAddr),&(net_filedesc->LocalAddr),sizeof(struct sockaddr_in));
 	if (flags & NET_U_KEEPALIVE)
@@ -2279,7 +2383,9 @@ netConnectTCP(char* host_name, char* service_name, int flags)
 	connected_fd->UnReadLen = 0;
 	connected_fd->WrCacheBuf = NULL;
 	connected_fd->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
 	connected_fd->GzFile = NULL;
+#endif
 
 	/** Try to connect **/
 	memset(&remoteaddr,0,sizeof(struct sockaddr_in));
