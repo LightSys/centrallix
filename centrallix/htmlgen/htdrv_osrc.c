@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.21 2002/04/28 21:36:59 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.22 2002/04/30 18:08:43 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.22  2002/04/30 18:08:43  jorupp
+     * more additions to the table -- now it can scroll~
+     * made the osrc and form play nice with the table
+     * minor changes to form sample
+
     Revision 1.21  2002/04/28 21:36:59  jorupp
      * only one session at a time open
      * only one query at a time open
@@ -170,6 +175,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    char *sbuf3;
    char *nptr;
    int readahead;
+   int scrollahead;
    int replicasize;
    char *sql;
    char *filter;
@@ -188,13 +194,18 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       replicasize=6;
    if (objGetAttrValue(w_obj,"readahead",POD(&readahead)) != 0)
       readahead=replicasize/2;
+   if (objGetAttrValue(w_obj,"scrollahead",POD(&readahead)) != 0)
+      scrollahead=readahead;
 
    /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
    if(replicasize==1 && readahead==0) readahead=1;
+   if(replicasize==1 && scrollahead==0) scrollahead=1;
    if(readahead>replicasize) replicasize=readahead;
+   if(scrollahead>replicasize) replicasize=scrollahead;
+   if(scrollahead<1) scrollahead=1;
    if(replicasize<1 || readahead<1)
       {
-      mssError(1,"HTOSRC","You must give positive values for replicasize and readahead");
+      mssError(1,"HTOSRC","You must give positive integer for replicasize and readahead");
       return -1;
       }
 
@@ -419,20 +430,20 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_action_modify", "\n"
-      "function osrc_action_modify(aparam,formobj)\n"
+      "function osrc_action_modify(up,formobj)\n"
       "    {\n"
       "    //Modify an object through OSML\n"
       "    //aparam[adsf][value];\n"
       "    \n"
       "    //this.src='/?ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.oid + '&attrname=valuename&attrname=valuename'\n"
       "    //full_name=MonthThirteen&num_days=1400\n"
-      "    var src='/?ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + this.replica[this.CurrentRecord].oid;\n"
-      "    for(var i in aparam)\n"
+      "    var src='/?ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + up.oid;\n"
+      "    for(var i in up) if(i!='oid')\n"
       "        {\n"
-      "        src+='&'+escape(i)+'='+escape(aparam[i]);\n"
+      "        src+='&'+escape(up[i]['oid'])+'='+escape(up[i]['value']);\n"
       "        }\n"
       "    this.formobj=formobj;\n"
-      "    this.modifieddata=aparam;\n"
+      "    this.modifieddata=up;\n"
       "    this.onload=osrc_action_modify_cb;\n"
       "    this.src=src;\n"
       "    }\n",0);
@@ -445,10 +456,11 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        {\n"
       "        var recnum=this.CurrentRecord;\n"
       "        var cr=this.replica[this.CurrentRecord];\n"
-      "        for(var i in this.modifieddata) // update replica\n"
-      "            for(var j in cr)\n"
-      "                if(cr[j].oid==i)\n"
-      "                    cr[j].value=this.modifieddata[i];\n"
+      "        if(cr)\n"
+      "            for(var i in this.modifieddata) // update replica\n"
+      "                for(var j in cr)\n"
+      "                    if(cr[j].oid==this.modifieddata[i].oid)\n"
+      "                        cr[j].value=this.modifieddata[i].value;\n"
       "        \n"
       "        this.formobj.OperationComplete(true);\n"
       "        for(var i in this.children)\n"
@@ -492,6 +504,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "             this.children[i]._osrc_ready=false;\n"
       "             }\n"
 
+      "        this.TargetRecord=0;\n" /* the record we're aiming for -- go until we get it*/
       "        this.CurrentRecord=0;\n" /* the current record */
       "        this.OSMLRecord=0;\n" /* the last record we got from the OSML */
 
@@ -599,15 +612,24 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    if(lc < 2)\n"
       "        {\n"	// query over
       "        //this.formobj.OperationComplete();\n" /* don't need this...I think....*/
-      "        this.CurrentRecord=this.LastRecord;\n" /* return the last record as the current one */
-      "        this.GiveAllCurrentRecord();\n"
+      "        var qid=this.qid\n"
+      "        this.qid=null;\n"
+      /* return the last record as the current one if it was our target otherwise, don't */
+      "        if(this.CurrentRecord==this.TargetRecord)\n"
+      "            {\n"
+      "            this.CurrentRecord=this.LastRecord;\n"
+      "            this.GiveAllCurrentRecord();\n"
+      "            }\n"
+      "        else\n"
+      "            {\n"
+      "            this.TellAllReplicaMoved();\n"
+      "            }\n" 
       "        this.pending=false;\n"
-      "        if(this.qid)\n"
+      "        if(qid)\n"
       "            {\n"
       "            this.onload=osrc_close_query;\n"
-      "            this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "            this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+qid;\n"
       "            }\n"
-      "        this.pending=false;\n"
       "        return 0;\n"
       "        }\n"
       "    var row='';\n"
@@ -650,7 +672,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       /** make sure we bring this.LastRecord back down to the top of our replica...**/
       "    while(!this.replica[this.LastRecord])\n"
       "        this.LastRecord--;\n"
-      "    if(this.LastRecord<this.CurrentRecord)\n"
+      "    if(this.LastRecord<this.TargetRecord)\n"
       "        {\n" /* We're going farther down this... */
       "        this.onload = osrc_fetch_next;\n"
       "        this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
@@ -664,7 +686,10 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "            }\n"
       "        else\n"
       "            {\n"
-      "            this.GiveAllCurrentRecord();\n"
+      "            if(this.CurrentRecord==this.TargetRecord)\n"
+      "                this.GiveAllCurrentRecord();\n"
+      "            else\n"
+      "                this.TellAllReplicaMoved();\n"
       "            this.pending=false;\n"
       "            }\n"
       "        }\n"
@@ -712,10 +737,18 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        this.children[i].ObjectAvailable(this.replica[this.CurrentRecord]);\n"
       "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc", "\n"
+      "function osrc_tell_all_replica_moved()\n"
+      "    {\n"
+      "    for(var i in this.children)\n"
+      "        if(this.children[i].ReplicaMoved)\n"
+      "            this.children[i].ReplicaMoved();\n"
+      "    }\n",0);
+
+
    htrAddScriptFunction(s, "osrc_move_to_record", "\n"
       "function osrc_move_to_record(recnum)\n"
       "    {\n"
-      "    //confirm(recnum);\n"
       "    if(recnum<1)\n"
       "        {\n"
       "        alert(\"Can't move past beginning.\");\n"
@@ -768,8 +801,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "             }\n"
       "         }\n"
 /* If we're here, we're ready to go */
-      "    this.CurrentRecord=recnum;\n"
-      "    //alert(this.CurrentRecord);\n"
+      "    this.TargetRecord=this.CurrentRecord=recnum;\n"
       "    if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)\n"
       "        {\n"
       "        this.GiveAllCurrentRecord();\n"
@@ -814,6 +846,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                {\n"
       "                this.pending=false;\n"
       "                this.CurrentRecord=this.LastRecord;\n"
+      "                this.GiveAllCurrentRecord();\n"
       "                }\n"
       "            return 0;\n"
       "            }\n"
@@ -833,9 +866,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    this.qid=this.document.links[0].target;\n"
       "    this.OSMLRecord=this.startat-1;\n"
       "    this.onload=osrc_fetch_next;\n"
-      "    if(this.FirstRecord-this.CurrentRecord<this.replicasize)\n"
+      "    if(this.FirstRecord-this.TargetRecord<this.replicasize)\n"
       "        {\n"
-      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.FirstRecord-this.CurrentRecord)+'&ls__startat='+this.startat;\n"
+      "        this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+(this.FirstRecord-this.TargetRecord)+'&ls__startat='+this.startat;\n"
       "        }\n"
       "    else\n"
       "        {\n"
@@ -864,17 +897,88 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    //alert(\"do YOU know where the end is? I sure don't.\");\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc_move_next_page", "\n"
-      "function osrc_move_next_page(formobj)\n"
+
+   htrAddScriptFunction(s, "osrc_scroll_prev", "\n"
+      "function osrc_scroll_prev()\n"
       "    {\n"
-      "    this.MoveToRecord(this.CurrentRecord+replicasize);\n"
+      "    if(this.FirstRecord!=1) this.ScrollTo(this.FirstRecord-1);\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc_move_prev_page", "\n"
-      "function osrc_move_prev_page(formobj)\n"
+   htrAddScriptFunction(s, "osrc_scroll_next", "\n"
+      "function osrc_scroll_next()\n"
       "    {\n"
-      "    this.MoveToRecord(this.CurrentRecord-replicasize);\n"
+      "    this.ScrollTo(this.LastRecord+1);\n"
       "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_scroll_prev_page", "\n"
+      "function osrc_scroll_prev_page()\n"
+      "    {\n"
+      "    this.ScrollTo(this.FirstRecord>this.replicasize?this.FirstRecord-this.replicasize:1);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_scroll_next_page", "\n"
+      "function osrc_scroll_next_page()\n"
+      "    {\n"
+      "    this.ScrollTo(this.LastRecord+this.replicasize);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_scroll_to", "\n"
+      "function osrc_scroll_to(recnum)\n"
+      "    {\n"
+      "    //var readahead=this.readahead;\n"
+      "    var readahead=1;\n"
+      "    this.TargetRecord=recnum;\n"
+      "    if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)\n"
+      "        {\n"
+      "        this.TellAllReplicaMoved();\n"
+      "        this.pending=false;\n"
+      "        return 1;\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        if(this.TargetRecord < this.FirstRecord)\n"
+      "            {\n" /* data is further back, need new query */
+      "            if(this.FirstRecord-this.TargetRecord<readahead)\n"
+      "                {\n"
+      "                this.startat=(this.FirstRecord-readahead)>0?(this.FirstRecord-readahead):1;\n"
+      "                }\n"
+      "            else\n"
+      "                {\n"
+      "                this.startat=this.TargetRecord;\n"
+      "                }\n"
+      "            if(this.qid)\n"
+      "                {\n"
+      "                this.onload=osrc_open_query_startat;\n"
+      "                this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "                }\n"
+      "            else\n"
+      "                {\n"
+      "                this.onload=osrc_open_query_startat;\n"
+      "                this.onload();\n"
+      "                }\n"
+      "            return 0;\n"
+      "            }\n"
+      "        else\n"
+      "            {\n" /* data is farther on, act normal */
+      "            if(this.qid)\n"
+      "                {\n"
+      "                this.onload=osrc_fetch_next;\n"
+      "                if(this.TargetRecord == Number.MAX_VALUE)\n"
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0\";\n" /* rowcount defaults to a really high number if not set */
+      "                else\n"
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+readahead;\n"
+      "                }\n"
+      "            else\n"
+      "                {\n"
+      "                this.pending=false;\n"
+      "                this.TargetRecord=this.LastRecord;\n"
+      "                this.TellAllReplicaMoved();\n"
+      "                }\n"
+      "            return 0;\n"
+      "            }\n"
+      "        }\n"
+      "    }\n",0);
+
 
    htrAddScriptFunction(s, "osrc_cleanup", "\n"
       "function osrc_cleanup()\n"
@@ -893,9 +997,10 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
-      "function osrc_init(loader,ra,rs,sql,filter)\n"
+      "function osrc_init(loader,ra,sa,rs,sql,filter)\n"
       "    {\n"
       "    loader.readahead=ra;\n"
+      "    loader.scrollahead=sa;\n"
       "    loader.replicasize=rs;\n"
       "    loader.sql=sql;\n"
       "    loader.filter=filter;\n"
@@ -927,8 +1032,14 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    loader.ActionNext = osrc_move_next;\n"
       "    loader.ActionPrev = osrc_move_prev;\n"
       "    loader.ActionLast = osrc_move_last;\n"
-      "    loader.ActionPrevPage = osrc_move_prev_page;\n"
-      "    loader.ActionNextPage = osrc_move_next_page;\n"
+
+      "    loader.ScrollTo = osrc_scroll_to;\n"
+      "    loader.ScrollPrev = osrc_scroll_prev;\n"
+      "    loader.ScrollNext = osrc_scroll_next;\n"
+      "    loader.ScrollPrevPage = osrc_scroll_prev_page;\n"
+      "    loader.ScrollNextPage = osrc_scroll_next_page;\n"
+
+      "    loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;\n"
 
       "    loader.InitQuery = osrc_init_query;\n"
       "    loader.cleanup = osrc_cleanup;\n"
@@ -938,7 +1049,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_current=osrc_init(%s.layers.osrc%dloader,%i,%i,'%s','%s');\n", parentname, id,readahead,replicasize,sql,filter);
+   htrAddScriptInit_va(s,"    osrc_current=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,'%s','%s');\n",
+	 parentname, id,readahead,scrollahead,replicasize,sql,filter);
    htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    /** HTML body <DIV> element for the layers. **/

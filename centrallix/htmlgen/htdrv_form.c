@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.30  2002/04/30 18:08:43  jorupp
+     * more additions to the table -- now it can scroll~
+     * made the osrc and form play nice with the table
+     * minor changes to form sample
+
     Revision 1.29  2002/04/28 06:28:29  jorupp
      * add a hair of speed to the form repopulation by caching column ids
 
@@ -915,13 +920,19 @@ old query code
 		"           new Function(\"this.Pending=false;this.EnableAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();\"),null,-100);\n"
 	    
 		/** build the object to pass to objectsource **/
-		"    var dataobj=new Object();\n"
+		"    var dataobj=new Array();\n"
 		"    for(var i in form.elements)\n"
 		"        {\n"
-		"        var j=form.elements[i];\n"
-		"        if(j._form_IsChanged)\n"
-		"            dataobj[j.fieldname]=j.getvalue();\n"
+		"        if(form.elements[i]._form_IsChanged)\n"
+		"            {\n"
+		"            var t=new Object();\n"
+		"            t.oid=form.elements[i].fieldname;\n"
+		"            t.value=form.elements[i].getvalue();\n"
+		"            t.type=form.elements[i]._form_type;\n"
+		"            dataobj.push(t);\n"
+		"            }\n"
 		"        }\n"
+		"    dataobj.oid=this.data.oid;\n"
 		"    this.DisableAll();\n"
 		"    this.Pending=true;\n"
 		"    this.osrc.ActionModify(dataobj,this);\n"

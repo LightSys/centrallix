@@ -486,7 +486,7 @@ wholePage "widget/page"
 	}
     debugwin "widget/htmlwindow"
 	{
-	x=100;y=100;width=800;height=500;
+	x=100;y=100;width=800;height=530;
 	visible=false;
 	Treeview_pane "widget/pane"
 	    {

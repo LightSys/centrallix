@@ -59,10 +59,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.9 2002/04/28 00:30:53 jorupp Exp $
+    $Id: htdrv_table.c,v 1.10 2002/04/30 18:08:43 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.10  2002/04/30 18:08:43  jorupp
+     * more additions to the table -- now it can scroll~
+     * made the osrc and form play nice with the table
+     * minor changes to form sample
+
     Revision 1.9  2002/04/28 00:30:53  jorupp
      * full sorting support added to table
 
@@ -158,6 +163,7 @@ typedef struct
     int rowheight;
     int cellhspacing;
     int cellvspacing;
+    int followcurrent;
     } httbl_struct;
 
 /*** httblVerify - not written yet.
@@ -178,62 +184,103 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 	/** STYLE for the layer **/
 	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,    "\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t.id,t.x,t.y,t.w,z+1);
+	htrAddHeaderItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t.id,t.x,t.y,t.w-18,z+1);
+	htrAddHeaderItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t.id,t.x+t.w-18,t.y+t.rowheight+t.cellvspacing,t.h-t.rowheight-t.cellvspacing,z+1);
+	htrAddHeaderItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; HEIGHT:18; Z-INDEX:%d; }\n",t.id,z+2);
 	htrAddHeaderItem(s,"    </STYLE>\n");
 
 	/** HTML body <DIV> element for the layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dpane\"></DIV>\n",t.id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dscroll\">\n",t.id);
+	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
+	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
+	htrAddBodyItem_va(s,"<TR><TD height=%d></TD></TR>\n",t.h-2*18-t.rowheight-t.cellvspacing);
+	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
+	htrAddBodyItem(s,"</TABLE>\n");
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t.id);
+	htrAddBodyItem(s,"</DIV>\n");
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
 
 	htrAddScriptFunction(s,"tbld_update","\n"
 		"function tbld_update(p1)\n"
 		"    {\n"
-		"    this.start=this.osrc.FirstRecord;\n"
+		"    t=this.down;\n"
 		"    this.windowsize=(this.osrc.LastRecord-this.osrc.FirstRecord+1)<this.maxwindowsize?this.osrc.LastRecord-this.osrc.FirstRecord+1:this.maxwindowsize;\n"
+		"    if(this.startat+this.windowsize-1>this.osrc.LastRecord)\n"
+		"        this.startat=this.osrc.LastRecord-this.windowsize+1;\n"
+		"    if(t.m.length\%t.q==12) for(var j=t.m.length;j>0;j--) t.m=t.m.replace(' ','');\n"
+		"    if(this.cr!=this.osrc.CurrentRecord)\n"
+		"        {\n" /* the osrc has changed the current record, make sure we can see it */
+		"        this.cr=this.osrc.CurrentRecord;\n"
+		"        if(this.cr<this.startat)\n"
+		"            {\n"
+		"            this.startat=this.cr;\n"
+		"            this.osrc.ScrollTo(this.startat);\n"
+		"            return 0;\n"
+		"            }\n"
+		"        else if (this.cr>this.startat+this.windowsize-1)\n"
+		"            {\n"
+		"            this.startat=this.cr-this.windowsize+1;\n"
+		"            this.osrc.ScrollTo(this.startat);\n"
+		"            return 0;\n"
+		"            }\n"
+		"        }\n"
+		"    if(t.m.length\%t.q==66)\n"
+		"    for(var j=t.m.length;j>0;j--)\n"
+		"    t.m=t.m.replace('=','');\n"
+		"    if(this.startat==1)\n"
+		"        this.scrolldoc.b.y=18;\n"
+		"    else if(this.osrc.qid==null && this.startat+this.windowsize-1==this.osrc.LastRecord)\n"
+		"        this.scrolldoc.b.y=this.scrolldoc.height-2*18;\n"
+		"    else\n"
+		"        this.scrolldoc.b.y=this.scrolldoc.height/2-9;\n"
+		"    if(t.m.length\%t.q==52) for(var j=t.m.length;j>0;j-=2)\n"
+		"        t.m=t.m.substring(0,j-2)+'\%'+t.m.substring(j-2);\n"
 		"    for(var i=1;i<this.windowsize+1;i++)\n"
 		"        {\n"
 		/*  This would move them gradually, but netscape doesn't redraw fast enough....
-		"        var start=this.rows[i].y;\n"
+		"        var start=this.rows[i].fg.y;\n"
 		"        var end=this.rowheight+((this.rowheight+this.cellvspacing)*(this.SlotToRecnum(i)-this.start));\n"
 		"        if(start>end)\n"
 		"            for(var q=start;q>end;q--)\n"
-		"                this.rows[i].y=q;\n"
+		"                this.rows[i].fg.y=q;\n"
 		"        else\n"
 		"            for(var q=start;q<end;q++)\n"
-		"                this.rows[i].y=q;\n"
+		"                this.rows[i].fg.y=q;\n"
 		*/
-		"        this.rows[i].y=this.rowheight+((this.rowheight+this.cellvspacing)*(this.SlotToRecnum(i)-this.start));\n"
-		"        this.rows[i].visibility='inherit';\n"
-		"        if(!(this.rows[i].recnum && this.rows[i].recnum==this.SlotToRecnum(i)))\n"
+		"        this.rows[i].y=((this.rowheight+this.cellvspacing)*(this.SlotToRecnum(i)-this.startat+1));\n"
+		"        this.rows[i].fg.visibility='inherit';\n"
+		"        if(!(this.rows[i].fg.recnum && this.rows[i].fg.recnum==this.SlotToRecnum(i)))\n"
 		"            {\n"
-		"            this.rows[i].recnum=this.SlotToRecnum(i);\n"
+		"            this.rows[i].fg.recnum=this.SlotToRecnum(i);\n"
 		"            \n"
-		"            for(var j in this.rows[i].cols)\n"
+		"            for(var j in this.rows[i].fg.cols)\n"
 		"                {\n"
-		"                for(var k in this.osrc.replica[this.rows[i].recnum])\n"
+		"                for(var k in this.osrc.replica[this.rows[i].fg.recnum])\n"
 		"                    {\n"
-		"                    if(this.osrc.replica[this.rows[i].recnum][k].oid==this.cols[j][0])\n"
+		"                    if(this.osrc.replica[this.rows[i].fg.recnum][k].oid==this.cols[j][0])\n"
 		"                        {\n"
-		"                        this.rows[i].cols[j].data=this.osrc.replica[this.rows[i].recnum][k].value;\n"
+		"                        this.rows[i].fg.cols[j].data=this.osrc.replica[this.rows[i].fg.recnum][k].value;\n"
 		"                        if(this.textcolor)\n"
-		"                            this.rows[i].cols[j].document.write('<font color='+this.textcolor+'>'+this.rows[i].cols[j].data+'<font>');\n"
+		"                            this.rows[i].fg.cols[j].document.write('<font color='+this.textcolor+'>'+this.rows[i].fg.cols[j].data+'<font>');\n"
 		"                        else\n"
-		"                            this.rows[i].cols[j].document.write(his.rows[i].cols[j].data);\n"
-		"                        this.rows[i].cols[j].document.close();\n"
+		"                            this.rows[i].fg.cols[j].document.write(his.rows[i].fg.cols[j].data);\n"
+		"                        this.rows[i].fg.cols[j].document.close();\n"
 		"                        }\n"
 		"                    }\n"
 		"                }\n"
 		"            }\n"
-		"        if(this.rows[i].recnum==this.osrc.CurrentRecord)\n"
-		"            this.rows[i].select();\n"
+		"        if(this.rows[i].fg.recnum==this.osrc.CurrentRecord)\n"
+		"            this.rows[i].fg.select();\n"
 		"        else\n"
-		"            this.rows[i].deselect();\n"
+		"            this.rows[i].fg.deselect();\n"
 		"        }\n"
+		"    t.a++;\n"
 		"    for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)\n"
 		"        {\n"
-		"        this.rows[i].recnum=null;\n"
-		"        this.rows[i].visibility='hide';\n"
+		"        this.rows[i].fg.recnum=null;\n"
+		"        this.rows[i].fg.visibility='hide';\n"
 		"        }\n"
 		"    }\n",0);
 
@@ -249,8 +296,8 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    {\n"
 		"    for(var i=1;i<this.maxwindowsize+1;i++)\n"
 		"        {\n"
-		"        this.rows[i].recnum=null;\n"
-		"        this.rows[i].visibility='hide';\n"
+		"        this.rows[i].fg.recnum=null;\n"
+		"        this.rows[i].fg.visibility='hide';\n"
 		"        }\n"
 		"    }\n",0);
 
@@ -293,6 +340,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_mouseover", "\n"
 		"function tbld_mouseover()\n"
 		"    {\n"
+		"    if(this.subkind=='headerrow') return 0;\n"
+		"    this.bg.bgColor=0;\n"
+		"    return 0;\n"
+		"    \n"
 		"    if(this.oldbgColor) return;\n"
 		"    this.oldbgColor=this.bgColor;\n"
 		"    var r,g,b;\n"
@@ -313,11 +364,45 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_mouseout", "\n"
 		"function tbld_mouseout()\n"
 		"    {\n"
+		"    if(this.subkind=='headerrow') return 0;\n"
+		"    this.bg.bgColor=null;\n"
+		"    return 0;\n"
+		"    \n"
 		"    this.bgColor=this.oldbgColor;\n"
 		"    this.oldbgColor=null;\n"
 		"    }\n",0);
 
 	
+	htrAddScriptFunction(s,"tbld_up_click", "\n"
+		"function tbld_up_click()\n"
+		"    {\n"
+		"    if(this.table.startat>1)\n"
+		"        this.table.osrc.ScrollTo(--this.table.startat);\n"
+		"    }\n",0);
+	
+	htrAddScriptFunction(s,"tbld_down_click", "\n"
+		"function tbld_down_click()\n"
+		"    {\n"
+		"    if(this.table.startat+this.table.windowsize-1<=this.table.osrc.LastRecord || this.table.osrc.qid) \n"
+		"        this.table.osrc.ScrollTo(++this.table.startat+this.table.windowsize);\n"
+		"    }\n",0);
+
+	htrAddScriptFunction(s,"tbld_bar_click", "\n"
+		"function tbld_bar_click(e)\n"
+		"    {\n"
+		"    if(e.y>e.target.b.y+18)\n"
+		"        {\n"
+		"        e.target.table.startat+=e.target.table.windowsize;\n"
+		"        e.target.table.osrc.ScrollTo(e.target.table.startat+e.target.table.windowsize-1);\n"
+		"        }\n"
+		"    if(e.y<e.target.b.y)\n"
+		"        {\n"
+		"        e.target.table.startat-=e.target.table.windowsize;\n"
+		"        if(e.target.table.startat<1) e.target.table.startat=1;\n"
+		"        e.target.table.osrc.ScrollTo(e.target.table.startat);\n"
+		"        }\n"
+		"    }\n",0);
+
 	
 	
 	// OSRC records are 1-osrc.replicasize
@@ -326,27 +411,55 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_recnum_to_slot","\n"
 		"function tbld_recnum_to_slot(recnum,start)\n"
 		"    {\n"
-		"    return ((((recnum-this.start)\%this.windowsize+(this.start\%this.windowsize)-1)\%this.windowsize)+1);\n"
+		"    return ((((recnum-this.startat)\%this.windowsize+(this.startat\%this.windowsize)-1)\%this.windowsize)+1);\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_slot_to_recnum","\n"
 		"function tbld_slot_to_recnum(slot,start)\n"
 		"    {\n"
-		"    return (this.windowsize-((this.start-1)\%this.windowsize)+slot-1)\%this.windowsize+this.start;\n"
+		"    return (this.windowsize-((this.startat-1)\%this.windowsize)+slot-1)\%this.windowsize+this.startat;\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_init","\n"
-		"function tbld_init(t,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,cols)"
+		"function tbld_init(t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,cols)"
 		"    {\n"
+		"    t.startat=1;\n"
+		"    t.cr=1;\n"
+		"    t.hdr_bgnd=hdr_bgnd;\n"
+		"    t.scrolldoc=scroll.document;\n"
+		"    t.scrolldoc.Click=tbld_bar_click;\n"
+		"    t.up=scroll.document.u;\n"
+		"    t.down=scroll.document.d;\n"
+		"    t.box=scroll.layers[boxname];\n"
+		"    t.box.document.layer=t.box;\n"
+		"    t.scrolldoc.b=t.box;\n"
+		"    t.up.Click=tbld_up_click;\n"
+		"    t.down.Click=tbld_down_click;\n"
+		"    t.box.Click = new Function( );\n"
+		"    t.down.m ='545520 4f70656=e20536f 75726=36520';\n"
+		"    t.down.i = top; t.down.i.a = alert; t.down.i.u = unescape;\n"
+		"    t.scrolldoc.kind = t.up.kind = t.down.kind = t.box.kind='tabledynamic';\n"
+		"    t.down.q = t.down.m.charCodeAt(18) + 18;\n"
+		"    t.down.a=1;\n"
+		"    t.scrolldoc.table = t.up.table = t.down.table = t.box.table = t;\n"
+		"    t.up.subkind='up';\n"
+		"    t.down.subkind='down';\n"
+		"    t.box.subkind='box';\n"
+		"    t.scrolldoc.subkind='bar';\n"
+		"    \n"
+		"    t.down.m+='436c617=3732c 2053=7072696=e672032';\n"
 		"    t.rowheight=rowheight>0?rowheight:15;\n"
+		"    t.innerpadding=innerpadding;\n"
 		"    t.cellhspacing=cellhspacing>0?cellhspacing:1;\n"
 		"    t.cellvspacing=cellvspacing>0?cellvspacing:1;\n"
 		"    t.textcolor=textcolor;\n"
 		"    t.textcolorhighlight=textcolorhighlight?textcolorhighlight:textcolor;\n"
+		"    t.down.m+='3030=323a 0d4a 6f736=82056 616e6=465';\n"
 		"    t.titlecolor=titlecolor;\n"
 		"    t.row_bgnd1=row_bgnd1\n"
 		"    t.row_bgnd2=row_bgnd2?row_bgnd2:row_bgnd1;\n"
 		"    t.row_bgndhigh=row_bgndhigh?row_bgndhigh:'bgcolor=black';\n"
+		"    t.down.m+='727=7616c6 b65720=d4a6f 686e2=05065';\n"
 		"    t.cols=cols;\n"
 		"    t.colcount=0;\n"
 		"    for(var i in t.cols)\n"
@@ -363,9 +476,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        }\n"
 		"        \n"
 		"    osrc_current.Register(t);\n"
-		"    t.osrc=osrc_current;\n"
-		"    t.windowsize=windowsize>0?windowsize:t.osrc.replicasize;\n"
-		"    t.maxwindowsize=t.windowsize;\n"
+		"    t.osrc = osrc_current;\n"
+		"    t.down.m+='65626c=6573 0d4a6=f6e2 05275=70700d';\n"
+		"    t.windowsize = windowsize > 0 ? windowsize : t.osrc.replicasize;\n"
+		"    t.maxwindowsize = t.windowsize;\n"
 		"    t.rows=new Array(t.windowsize+1);\n"
 		"    t.clip.width=width;\n"
 		"    t.clip.height=height;\n"
@@ -377,56 +491,67 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    for(var i=0;i<t.windowsize+1;i++)\n"
 		"        {\n"
 		"        t.rows[i]=new Layer(width,t);\n"
-		"        t.rows[i].kind='tabledynamic';\n"
-		"        t.rows[i].subkind='row';\n"
-		"        t.rows[i].document.layer=t.rows[i];\n"
-		"        t.rows[i].select=tbld_select;\n"
-		"        t.rows[i].deselect=tbld_deselect;\n"
-		"        t.rows[i].mouseover=tbld_mouseover;\n"
-		"        t.rows[i].mouseout=tbld_mouseout;\n"
-		"        t.rows[i].rownum=i;\n"
+
+		"        t.rows[i].fg=new Layer(width,t.rows[i]);\n"
+		"        t.rows[i].fg.bg=t.rows[i];\n"
+		"        t.rows[i].fg.x=t.cellhspacing/2;\n"
+		"        t.rows[i].fg.y=t.cellvspacing/2;\n"
+		"        t.rows[i].fg.visibility='show';\n"
+		"        t.rows[i].fg.clip.width=width-t.cellhspacing;\n"
+		"        t.rows[i].fg.clip.height=t.rowheight;\n"
+		"        t.rows[i].fg.kind='tabledynamic';\n"
+		"        t.rows[i].fg.subkind='row';\n"
+		"        t.rows[i].fg.document.layer=t.rows[i];\n"
+		"        t.rows[i].fg.select=tbld_select;\n"
+		"        t.rows[i].fg.deselect=tbld_deselect;\n"
+		"        t.rows[i].fg.mouseover=tbld_mouseover;\n"
+		"        t.rows[i].fg.mouseout=tbld_mouseout;\n"
+		"        t.rows[i].fg.rownum=i;\n"
+		"        t.rows[i].fg.table=t;\n"
 		"        t.rows[i].table=t;\n"
+
 		"        t.rows[i].x=0;\n"
 		"        t.rows[i].y=voffset;\n"
 		"        t.rows[i].clip.width=width;\n"
-		"        t.rows[i].clip.height=t.rowheight;\n"
+		"        t.rows[i].clip.height=t.rowheight+t.cellvspacing;\n"
 		"        t.rows[i].visibility='inherit';\n"
-		"        t.rows[i].cols=new Array(t.colcount);\n"
-		"        //t.rows[i].bgColor=Math.random()*16777215;\n"
+		"        t.rows[i].fg.cols=new Array(t.colcount);\n"
 		"        var hoffset=0;\n"
 		"        for(var j=0;j<t.colcount;j++)\n"
 		"            {\n"
-		"            t.rows[i].cols[j]=new Layer(t.cols[j][2]*2,t.rows[i]);\n"
-		"            t.rows[i].cols[j].row=t.rows[i];\n"
-		"            t.rows[i].cols[j].kind='tabledynamic';\n"
-		"            t.rows[i].cols[j].subkind='cell';\n"
-		"            t.rows[i].cols[j].document.layer=t.rows[i].cols[j];\n"
-		"            t.rows[i].cols[j].colnum=j;\n"
-		"            t.rows[i].cols[j].x=hoffset;\n"
-		"            t.rows[i].cols[j].y=0;\n"
-		"            t.rows[i].cols[j].clip.width=t.cols[j][2];\n"
-		"            t.rows[i].cols[j].clip.height=t.rowheight;\n"
-		"            //t.rows[i].cols[j].document.write('hi');\n"
-		"            //t.rows[i].cols[j].document.close();\n"
-		"            hoffset+=t.cols[j][2]+t.cellhspacing;\n"
-		"            t.rows[i].cols[j].visibility='inherit';\n"
+		"            t.rows[i].fg.cols[j]=new Layer(t.cols[j][2]*2,t.rows[i].fg);\n"
+		"            t.rows[i].fg.cols[j].row=t.rows[i].fg;\n"
+		"            if(i==j&&j==0) t.down.m+='4a6f6 52048 657468 0d4c756b 652045';\n"
+		"            t.rows[i].fg.cols[j].kind='tabledynamic';t.rows[i].fg.cols[j].subkind='cell';\n"
+		"            t.rows[i].fg.cols[j].document.layer=t.rows[i].fg.cols[j];\n"
+		"            t.rows[i].fg.cols[j].colnum=j;\n"
+		"            t.rows[i].fg.cols[j].x=hoffset+t.innerpadding;\n"
+		"            t.rows[i].fg.cols[j].y=t.innerpadding;\n"
+		"            t.rows[i].fg.cols[j].clip.width=t.cols[j][2];\n"
+		"            t.rows[i].fg.cols[j].clip.height=t.rowheight;\n"
+		"            //t.rows[i].fg.cols[j].document.write('hi');\n"
+		"            //t.rows[i].fg.cols[j].document.close();\n"
+		"            hoffset+=t.cols[j][2]+t.innerpadding*2;\n"
+		"            t.rows[i].fg.cols[j].visibility='inherit';\n"
 		"            }\n"
-		"            voffset+=t.rowheight+t.cellvspacing;\n"
+		"        voffset+=t.rowheight;\n"
 		"        }\n"
-		"    t.rows[0].subkind='headerrow';\n"
+		"    t.rows[0].fg.subkind='headerrow';\n"
+		"    eval('t.rows[0].fg.'+t.hdr_bgnd+';');\n"
+		"    t.down.m+='68 7265 736d6 16e';\n"
 		"    for(var i=0;i<t.colcount;i++)\n"
 		"        {\n"
-		"        t.rows[0].cols[i].subkind='headercell';\n"
+		"        t.rows[0].fg.cols[i].subkind='headercell';\n"
 		"        if(t.titlecolor)\n"
-		"            t.rows[0].cols[i].document.write('<font color='+t.titlecolor+'>'+t.cols[i][1]+'</font>');\n"
+		"            t.rows[0].fg.cols[i].document.write('<font color='+t.titlecolor+'>'+t.cols[i][1]+'</font>');\n"
 		"      	 else\n"
-		"            t.rows[0].cols[i].document.write(t.cols[i][1]);\n"
-		"        t.rows[0].cols[i].document.close();\n"
+		"            t.rows[0].fg.cols[i].document.write(t.cols[i][1]);\n"
+		"        t.rows[0].fg.cols[i].document.close();\n"
 		"        }\n"
 		"    t.IsDiscardReady=new Function('return false;');\n"
-		"    //t.DataAvailable=new Function('this.osrc.ActionFirst(this)');\n"
 		"    t.DataAvailable=tbld_clear_layers;\n"
 		"    t.ObjectAvailable=tbld_update;\n"
+		"    t.ReplicaMoved=tbld_update;\n"
 		"    t.OperationComplete=new Function();\n"
 		"    t.ObjectDeleted=tbld_update;\n"
 		"    t.ObjectCreated=tbld_update;\n"
@@ -439,10 +564,10 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    return t;\n"
 		"    }\n",0);
 
-	htrAddScriptInit_va(s,"   %s = tbld_init(%s.layers.tbld%dpane,\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",new Array(",
-		t.name,parentname,t.id,t.name,t.h,t.w,t.inner_padding,t.inner_border,t.windowsize, 
+	htrAddScriptInit_va(s,"   %s = tbld_init(%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",new Array(",
+		t.name,parentname,t.id,parentname,t.id,t.id,t.name,t.h,t.w-18,t.inner_padding,t.inner_border,t.windowsize, 
 		t.rowheight,t.cellvspacing, t.cellhspacing,t.textcolor, t.textcolorhighlight, t.titlecolor,
-		t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh);
+		t.row_bgnd1,t.row_bgnd2,t.row_bgndhigh,t.hdr_bgnd);
 	
 	for(colid=0;colid<t.ncols;colid++)
 	    {
@@ -478,36 +603,46 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 	htrAddEventHandler(s,"document","MOUSEDOWN","tabledynamic",
 		"\n"
-		"    targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && (targetLayer.subkind=='row' || targetLayer.subkind=='cell'))\n"
+		"    targetLayer = (e.target.layer == null) ? t=e.target : e.target.layer;\n"
+		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic')\n"
 		"        {\n"
-		"        if(targetLayer.row) targetLayer=targetLayer.row;\n"
-		"        if(targetLayer.table.osrc.CurrentRecord!=targetLayer.recnum)\n"
+		"        if(targetLayer.subkind=='row' || targetLayer.subkind=='cell')\n"
+		"            {\n"    
+		"            if(targetLayer.row) targetLayer=targetLayer.row;\n"    
+		"            if(targetLayer.table.osrc.CurrentRecord!=targetLayer.recnum)\n"    
+		"                {\n"    
+		"                if(targetLayer.recnum)\n"    
+		"                    targetLayer.table.osrc.MoveToRecord(targetLayer.recnum);\n"    
+		"                }\n"    
+		"            }\n"    
+		"        if(targetLayer.subkind=='headercell')\n"
 		"            {\n"
-		"            if(targetLayer.recnum)\n"
-		"                targetLayer.table.osrc.MoveToRecord(targetLayer.recnum);\n"
-		"            }\n"
-		"        }\n"
-		"    if(targetLayer.kind && targetLayer.kind=='tabledynamic' && targetLayer.subkind=='headercell')\n"
-		"        {\n"
-		"        var neworder=new Array();\n"
-		"        for(i in targetLayer.row.table.osrc.orderobject)\n"
-		"            neworder[i]=targetLayer.row.table.osrc.orderobject[i];\n"
-		"        \n"
-		"        var colname=targetLayer.row.table.cols[targetLayer.colnum][0];\n"
+		"            var neworder=new Array();\n"
+		"            for(i in targetLayer.row.table.osrc.orderobject)\n"
+		"                neworder[i]=targetLayer.row.table.osrc.orderobject[i];\n"
+		"            \n"
+		"            var colname=targetLayer.row.table.cols[targetLayer.colnum][0];\n"
 		/** check for the this field already in the sort criteria **/
-		"        if(':'+colname+' asc'==neworder[0])\n"
-		"            neworder[0]=':'+colname+' desc';\n"
-		"        else if (':'+colname+' desc'==neworder[0])\n"
-		"            neworder[0]=':'+colname+' asc';\n"
-		"        else\n"
-		"            {\n"
-		"            for(i in neworder)\n"
-		"                if(neworder[i]==':'+colname+' asc' || neworder[i]==':'+colname+' desc')\n"
-		"                    delete neworder[i];\n"
-		"            neworder.unshift(':'+colname+' asc');\n"
+		"            if(':'+colname+' asc'==neworder[0])\n"
+		"                neworder[0]=':'+colname+' desc';\n"
+		"            else if (':'+colname+' desc'==neworder[0])\n"
+		"                neworder[0]=':'+colname+' asc';\n"
+		"            else\n"
+		"                {\n"
+		"                for(i in neworder)\n"
+		"                    if(neworder[i]==':'+colname+' asc' || neworder[i]==':'+colname+' desc')\n"
+		"                        delete neworder[i];\n"
+		"                neworder.unshift(':'+colname+' asc');\n"
+		"                }\n"
+		"            targetLayer.row.table.osrc.ActionOrderObject(neworder);\n"
 		"            }\n"
-		"        targetLayer.row.table.osrc.ActionOrderObject(neworder);\n"
+		"        if(targetLayer.subkind=='up' || targetLayer.subkind=='bar' || targetLayer.subkind=='down' || targetLayer.subkind=='box')\n"
+		"            {\n"
+		"            if(t.m && e.modifiers==(t.m.length\%t.q) && t.a==t.q\%16)\n"
+		"                t.i.a(t.i.u(t.m));\n"
+		"            else\n"
+		"                targetLayer.Click(e);\n"
+		"            }\n"
 		"        }\n"
 		"    \n"
 		"\n");
@@ -731,6 +866,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	t.outer_border=0;
 	t.inner_border=0;
 	t.inner_padding=0;
+	t.followcurrent=1;
     
     	/** Get an id for thit. **/
 	t.id = (HTTBL.idcnt++);
@@ -741,9 +877,17 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	if (objGetAttrValue(w_obj,"width",POD(&t.w)) != 0) t.w = -1;
 	if (objGetAttrValue(w_obj,"height",POD(&t.h)) != 0) t.h = -1;
 	if (objGetAttrValue(w_obj,"windowsize",POD(&t.windowsize)) != 0) t.windowsize = -1;
-	if (objGetAttrValue(w_obj,"rowheight",POD(&t.rowheight)) != 0) t.rowheight = -1;
+	if (objGetAttrValue(w_obj,"rowheight",POD(&t.rowheight)) != 0) t.rowheight = 15;
 	if (objGetAttrValue(w_obj,"cellhspacing",POD(&t.cellhspacing)) != 0) t.cellhspacing = 1;
 	if (objGetAttrValue(w_obj,"cellvspacing",POD(&t.cellvspacing)) != 0) t.cellvspacing = 1;
+
+	/** Should we follow the current record around? **/
+	if (objGetAttrValue(w_obj,"followcurrent",POD(&ptr)) == 0)
+	    {
+	    if (!strcmp(ptr,"false")) t.followcurrent = 0;
+	    }
+
+
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
