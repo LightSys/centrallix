@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.12 2002/03/23 00:32:13 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.13 2002/03/26 06:38:05 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.13  2002/03/26 06:38:05  jorupp
+    osrc has two new parameters: readahead and replicasize
+    osrc replica now operates on a sliding window principle (holds a range of records, instead of all between the beginning and the current one)
+
     Revision 1.12  2002/03/23 00:32:13  jorupp
      * osrc now can move to previous and next records
      * form now loads it's basequery automatically, and will not load if you don't have one
@@ -124,6 +128,8 @@ int htosrcVerify() {
    char *ptr;
    char *sbuf3;
    char *nptr;
+   int readahead;
+   int replicasize;
 
    sbuf3 = nmMalloc(200);
    
@@ -134,6 +140,21 @@ int htosrcVerify() {
    if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
    memccpy(name,ptr,0,39);
    name[39] = 0;
+
+   if (objGetAttrValue(w_obj,"replicasize",POD(&replicasize)) != 0)
+      replicasize=6;
+   if (objGetAttrValue(w_obj,"readahead",POD(&readahead)) != 0)
+      readahead=replicasize/2;
+
+	/** try to catch mistakes that would probably make Netscape REALLY buggy... **/
+	if(replicasize==1 && readahead==0) readahead=1;
+	if(readahead>replicasize) replicasize=readahead;
+	if(replicasize<1 || readahead<1)
+		{
+		mssError(1,"HTOSRC","You must give positive values for replicasize and readahead");
+		return -1;
+		}
+
 
    /** Write named global **/
    nptr = (char*)nmMalloc(strlen(name)+1);
@@ -175,7 +196,8 @@ int htosrcVerify() {
       "    this.query = escape(q);\n"
       "    this.query=String(this.query).replace(\"/\",\"%2F\",\"g\");\n"
       "    if(this.replica) delete this.replica;\n"
-      "    this.CurrentRecord=this.LastRecord=0;\n"
+      "    this.CurrentRecord=this.LastRecord=this.FirstRecord=0;\n"
+      "    this.OSMLRecord=0;\n"
       "    this.replica=new Array();\n"
       "    this.OpenSession();\n"
       "    }\n",0);
@@ -306,8 +328,6 @@ int htosrcVerify() {
       "    {\n"
       "    //alert('qid ' + this.document.links[0].target);\n"
       "    this.qid=this.document.links[0].target;\n"
-      "    this.CurrentRecord=0;\n"
-      "    this.LastRecord=0;\n"
       "    for(var i in this.children)\n"
       "        this.children[i].DataAvailable();\n"
       /** Don't actually load the data...just let children know that the data is available **/
@@ -318,6 +338,7 @@ int htosrcVerify() {
    htrAddScriptFunction(s, "osrc_fetch_next", "\n"
       "function osrc_fetch_next()\n"
       "    {\n"
+      "    //alert('fetching....');\n"
       "    var lnk=this.document.links;\n"
       "    var lc=lnk.length;\n"
       "    if(lc < 2)\n"
@@ -338,22 +359,35 @@ int htosrcVerify() {
       "        if(row!=lnk[i].target)\n"
       "            {\n"	/** This is a different (or 1st) row of the result set **/
       "            row=lnk[i].target;\n"
-      "            this.LastRecord++;\n"
-      "            this.replica[this.LastRecord]=new Array();\n"
-      "            this.replica[this.LastRecord].oid=row;\n"
-      "            if(this.LastRecord-this.FirstRecord>=this.replicasize)\n"
+      "            this.OSMLRecord++;\n"
+      "            this.replica[this.OSMLRecord]=new Array();\n"
+      "            this.replica[this.OSMLRecord].oid=row;\n"
+      "            if(this.LastRecord<this.OSMLRecord)\n"
       "                {\n"
-      "                delete this.replica[this.FirstRecord];\n"
-      "                this.FirstRecord++;\n"
+      "                this.LastRecord=this.OSMLRecord;\n"
+      "                while(this.LastRecord-this.FirstRecord>=this.replicasize)\n"
+      "                    {\n" /* clean up replica */
+      "                    delete this.replica[this.FirstRecord];\n"
+      "                    this.FirstRecord++;\n"
+      "                    }\n"
+      "                }\n"
+      "            if(this.FirstRecord>this.OSMLRecord)\n"
+      "                {\n"
+      "                this.FirstRecord=this.OSMLRecord;\n"
+      "                while(this.LastRecord-this.FirstRecord>=this.replicasize)\n"
+      "                    {\n" /* clean up replica */
+      "                    delete this.replica[this.LastRecord];\n"
+      "                    this.LastRecord--;\n"
+      "                    }\n"
       "                }\n"
       "            colnum=0;\n"
-      "            //alert('New row: '+row+'('+this.LastRecord+')');\n"
+      "            //alert('New row: '+row+'('+this.OSMLRecord+')');\n"
       "            }\n"
       "        colnum++;\n"
-      "        this.replica[this.LastRecord][colnum] = new Array();\n"
-      "        this.replica[this.LastRecord][colnum]['value'] = lnk[i].text\n"
-      "        this.replica[this.LastRecord][colnum]['type'] = lnk[i].hash.substr(1);\n"
-      "        this.replica[this.LastRecord][colnum]['oid'] = lnk[i].host;\n"
+      "        this.replica[this.OSMLRecord][colnum] = new Array();\n"
+      "        this.replica[this.OSMLRecord][colnum]['value'] = lnk[i].text\n"
+      "        this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);\n"
+      "        this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;\n"
       "        }\n"
       "    if(this.LastRecord<this.CurrentRecord)\n"
       "        {\n"
@@ -370,8 +404,8 @@ int htosrcVerify() {
       "function osrc_close_query()\n"
       "    {\n"
       "    //Close Query\n"
-      "    alert('Query closed');\n"
-      "    this.onLoad = osrc_close_object;\n"
+      "    //alert('Query closed');\n"
+      "    this.onLoad = osrc_close_session;\n"
       "    this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid;\n"
       "    }\n",0);
  
@@ -379,6 +413,10 @@ int htosrcVerify() {
       "function osrc_close_object()\n"
       "    {\n"
       "    //Close Object\n"
+      "    if(this.startat)\n"
+      "        {\n" /* if this is defined, we need to issue another query... */
+      "        \n"
+      "        }\n"
       "    this.onLoad = osrc_close_session;\n"
       "    this.src = '/?ls__mode=osml&ls__req=close&ls__oid=' + this.oid;\n"
       "    }\n",0);
@@ -415,22 +453,57 @@ int htosrcVerify() {
       "    {\n"
       "    if(recnum<1)\n"
       "        {\n"
-      "        alert(\"Already at the beginning.\");\n"
+      "        alert(\"Can't move past beginning.\");\n"
       "        return 0;\n"
       "        }\n"
       "    this.CurrentRecord=recnum;\n"
-      "    if(this.CurrentRecord <= this.LastRecord)\n"
+      "    if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)\n"
       "        {\n"
       "        this.GiveAllCurrentRecord();\n"
       "        return 1;\n"
       "        }\n"
       "    else\n"
       "        {\n"
-      "        this.onload=osrc_fetch_next;\n"
-      "        this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
-      "        return 0;\n"
+      "        if(this.CurrentRecord < this.FirstRecord)\n"
+      "            {\n" /* data is further back, need new query */
+      "            if(this.FirstRecord-this.CurrentRecord<this.readahead)\n"
+      "                {\n"
+      "                this.startat=this.FirstRecord-this.readahead;\n"
+      "                }\n"
+      "            else\n"
+      "                {\n"
+      "                this.startat=this.CurrentRecord;\n"
+      "                }\n"
+      "            this.onload=osrc_open_query_startat;\n"
+      "            this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "            return 0;\n"
+      "            }\n"
+      "        else\n"
+      "            {\n" /* data is farther on, act normal */
+      "            this.onload=osrc_fetch_next;\n"
+      "            this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
+      "            return 0;\n"
+      "            }\n"
       "        }\n"
       "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_open_query_startat", "\n"
+      "function osrc_open_query_startat()\n"
+      "    {\n"
+      "    this.onload = osrc_get_qid_startat;\n"
+      "    this.src=\"/?ls__mode=osml&ls__req=multiquery&ls__sid=\"+this.sid+\"&ls__sql=\" + this.query;\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_get_qid_startat", "\n"
+      "function osrc_get_qid_startat()\n"
+      "    {\n"
+      "    this.qid=this.document.links[0].target;\n"
+      "    this.OSMLRecord=this.startat-1;\n"
+      "    this.onload=osrc_fetch_next;\n"
+      "    this.src='/?ls__mode=osml&ls__req=queryfetch&ls__sid='+this.sid+'&ls__qid='+this.qid+'&ls__objmode=0&ls__rowcount='+this.readahead+'&ls__startat='+this.startat;\n"
+      "    this.startat=null;\n"
+      "    }\n",0);
+
 
    htrAddScriptFunction(s, "osrc_move_next", "\n"
       "function osrc_move_next(formobj)\n"
@@ -453,10 +526,10 @@ int htosrcVerify() {
 
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
-      "function osrc_init(loader)\n"
+      "function osrc_init(loader,ra,rs)\n"
       "    {\n"
-      "    loader.readahead=1;\n"
-      "    loader.replicasize=6;\n"
+      "    loader.readahead=ra;\n"
+      "    loader.replicasize=rs;\n"
       "    loader.GiveAllCurrentRecord=osrc_give_all_current_record;\n"
       "    loader.MoveToRecord=osrc_move_to_record;\n"
       "    loader.children = new Array();\n"
@@ -488,7 +561,7 @@ int htosrcVerify() {
 
 
    /** Script initialization call. **/
-   snprintf(sbuf3, 200, "osrc_current=osrc_init(%s.layers.osrc%dloader);\n", parentname, id);
+   snprintf(sbuf3, 200, "osrc_current=osrc_init(%s.layers.osrc%dloader,%i,%i);\n", parentname, id,readahead,replicasize);
    htrAddScriptInit(s, sbuf3);
 
    /** HTML body <DIV> element for the layers. **/
