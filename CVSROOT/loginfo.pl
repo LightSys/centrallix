@@ -233,7 +233,7 @@ $email =~ s/\n/\r\n/g;
 
 # send our email
 
-print "Mailing the commit email to $mailto\n";
+print "Mailing the commit email to $mailto ...";
 
 #print $email;
 
@@ -258,6 +258,8 @@ print "Mailing the commit email to $mailto\n";
 open(FH, "| /usr/sbin/sendmail $envaddr") or die "could not open sendmail process: $!";
 print FH "$email";
 close FH;
+
+print " done.\n";
 
 exit 0;
 
