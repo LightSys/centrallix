@@ -27,11 +27,11 @@ OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 
 # Objectsystem drivers.
 #XOBJDRIVERS=objdrv_ux.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_report.o objdrv_uxprint.o objdrv_datafile.o objdrv_unixuser.o
-XOBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_report.o objdrv_uxprint.o objdrv_qytree.o objdrv_datafile.o
+XOBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_report.o objdrv_uxprint.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
 
 # DHTML generation subsystem, including drivers and the ht_render main system.
-XHTDRIVERS=htdrv_page.o htdrv_scrollpane.o htdrv_treeview.o htdrv_html.o htdrv_connector.o htdrv_imagebutton.o htdrv_textbutton.o htdrv_menu.o htdrv_frameset.o ht_render.o htdrv_variable.o htdrv_tab.o htdrv_pane.o htdrv_table.o htdrv_window.o htdrv_checkbox.o htdrv_radiobutton.o htdrv_editbox.o htdrv_timer.o
+XHTDRIVERS=htdrv_page.o htdrv_scrollpane.o htdrv_treeview.o htdrv_html.o htdrv_connector.o htdrv_imagebutton.o htdrv_textbutton.o htdrv_menu.o htdrv_frameset.o ht_render.o htdrv_variable.o htdrv_tab.o htdrv_pane.o htdrv_table.o htdrv_window.o htdrv_checkbox.o htdrv_radiobutton.o htdrv_editbox.o htdrv_timer.o htdrv_execmethod.o
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 
 # Multiquery subsystem, SQL parser, and query drivers.

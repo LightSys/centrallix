@@ -48,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: net_http.c,v 1.4 2001/11/12 20:43:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.4  2001/11/12 20:43:44  gbeeley
+    Added execmethod nonvisual widget and the audio /dev/dsp device obj
+    driver.  Added "execmethod" ls__mode in the HTTP network driver.
+
     Revision 1.3  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -902,7 +906,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     {
     char sbuf[256];
     int cnt;
-    pStruct find_inf;
+    pStruct find_inf,find_inf2;
     pObjQuery query;
     char* dptr;
     char* ptr;
@@ -1091,6 +1095,24 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__req");
 	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
+	    }
+
+	/** Exec method mode **/
+	else if (!strcmp(find_inf->StrVal,"execmethod"))
+	    {
+	    find_inf = stLookup_ne(url_inf,"ls__methodname");
+	    find_inf2 = stLookup_ne(url_inf,"ls__methodparam");
+	    if (!find_inf || !find_inf2)
+	        {
+		mssError(1,"NHT","Invalid call to execmethod - requires name and param");
+		nht_internal_GenerateError(nsess);
+		}
+	    else
+	        {
+	    	ptr = find_inf2->StrVal;
+	    	objExecuteMethod(target_obj, find_inf->StrVal, POD(&ptr));
+		fdWrite(conn,"OK",2,0,0);
+		}
 	    }
 
 	/** Close the objectsystem entry. **/

@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.4 2001/11/03 02:09:54 gbeeley Exp $
+    $Id: lsmain.c,v 1.5 2001/11/12 20:43:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.5  2001/11/12 20:43:43  gbeeley
+    Added execmethod nonvisual widget and the audio /dev/dsp device obj
+    driver.  Added "execmethod" ls__mode in the HTTP network driver.
+
     Revision 1.4  2001/11/03 02:09:54  gbeeley
     Added timer nonvisual widget.  Added support for multiple connectors on
     one event.  Added fades to the html-area widget.  Corrected some
@@ -128,6 +132,7 @@ start(void* v)
 	uxpInitialize();			/* UNIX printer access driver */
 	datInitialize();			/* flat ascii datafile (CSV, etc) */
 	uxuInitialize();			/* UNIX users list driver */
+	audInitialize();			/* Audio file player driver */
 
 	/** Init the html-generation subsystem **/
 	htrInitialize();			/* HTML generator */
@@ -149,6 +154,7 @@ start(void* v)
 	htrbInitialize();			/* radiobutton module */
 	htebInitialize();			/* editbox module */
 	httmInitialize();			/* timer nonvisual module */
+	htexInitialize();			/* method exec module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */
@@ -183,6 +189,6 @@ start(void* v)
 int 
 main()
     {
-    mtInitialize(MT_F_NOYIELD, start);
+    mtInitialize(0, start);
     return 0; /* never reached */
     }

@@ -48,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.4 2001/10/02 16:24:24 gbeeley Exp $
+    $Id: test_obj.c,v 1.5 2001/11/12 20:43:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.5  2001/11/12 20:43:43  gbeeley
+    Added execmethod nonvisual widget and the audio /dev/dsp device obj
+    driver.  Added "execmethod" ls__mode in the HTTP network driver.
+
     Revision 1.4  2001/10/02 16:24:24  gbeeley
     Changed %f printf conversion to more intuitive %g.
 
@@ -117,6 +121,9 @@ start(void* v)
     void* aptr;
     pObjData pod;
     int use_srctype;
+    char mname[64];
+    char mparam[256];
+    char* mptr;
 
 	/** Initialize the various parts **/
 	nmInitialize();
@@ -131,6 +138,7 @@ start(void* v)
 	datInitialize();
 	uxpInitialize();
 	uxuInitialize();
+	audInitialize();
 	mqInitialize();
 	mqtInitialize();
 	mqpInitialize();
@@ -219,7 +227,7 @@ start(void* v)
 		    printf("query: could not open query!\n");
 		    continue;
 		    }
-		while(obj=objQueryFetch(qy, O_RDONLY))
+		while((obj=objQueryFetch(qy, O_RDONLY)))
 		    {
 		    for(attrname=objGetFirstAttr(obj);attrname;attrname=objGetNextAttr(obj))
 		        {
@@ -228,13 +236,13 @@ start(void* v)
 			    {
 			    case DATA_T_INTEGER:
 			        if (objGetAttrValue(obj,attrname,POD(&intval)) == 1)
-			            printf("Attribute: [%s]  INTEGER  NULL\n", attrname,intval);
+			            printf("Attribute: [%s]  INTEGER  NULL\n", attrname);
 				else
 			            printf("Attribute: [%s]  INTEGER  %d\n", attrname,intval);
 				break;
 			    case DATA_T_STRING:
 			        if (objGetAttrValue(obj,attrname,POD(&stringval)) == 1)
-			            printf("Attribute: [%s]  STRING  NULL\n", attrname,stringval);
+			            printf("Attribute: [%s]  STRING  NULL\n", attrname);
 				else
 			            printf("Attribute: [%s]  STRING  \"%s\"\n", attrname,stringval);
 			        break;
@@ -242,7 +250,7 @@ start(void* v)
 			        if (objGetAttrValue(obj,attrname,POD(&dblval)) == 1)
 				    printf("Attribute: [%s]  DOUBLE  NULL\n", attrname);
 				else
-				    printf("Attribute: [%s]  DOUBLE  %lf\n", attrname, dblval);
+				    printf("Attribute: [%s]  DOUBLE  %g\n", attrname, dblval);
 				break;
 			    case DATA_T_DATETIME:
 			        if (objGetAttrValue(obj,attrname,POD(&dt)) == 1)
@@ -598,13 +606,38 @@ start(void* v)
 		{
 		break;
 		}
+	    else if (!strcmp(cmdname,"exec"))
+	        {
+		if (!ptr) ptr = "";
+		obj = objOpen(s, ptr, O_RDONLY, 0600, "application/octet-stream");
+		if (!obj)
+		    {
+		    printf("exec: could not open object '%s'\n",ptr);
+		    continue;
+		    }
+		if (mlxNextToken(ls) != MLX_TOK_STRING)
+		    {
+		    printf("Usage: exec <obj> <method> <parameter>\n");
+		    continue;
+		    }
+		mlxCopyToken(ls, mname, 63);
+		if (mlxNextToken(ls) != MLX_TOK_STRING)
+		    {
+		    printf("Usage: exec <obj> <method> <parameter>\n");
+		    continue;
+		    }
+		mlxCopyToken(ls, mparam, 255);
+		mptr = mparam;
+		objExecuteMethod(obj, mname, POD(&mptr));
+		objClose(obj);
+		}
 	    else
 		{
 		printf("Unknown command '%s'\n",cmdname);
 		}
 	    }
 
-	objCloseSession(s);
+	/*objCloseSession(s);*/
 
     thExit();
     }
