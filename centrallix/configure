@@ -825,6 +825,7 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-http          disable HTTP support
   --disable-sybase        disable Sybase support
+  --disable-xml           disable xml support
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -842,6 +843,9 @@ Optional Packages:
                           /opt/sybase/include)
   --with-sybase-lib=PATH  library path for Sybase libraries (default is
                           /opt/sybase/lib)
+  --with-libxml=PATH      library path for xml library (default is /usr/lib)
+  --with-libxml-inc=PATH  include path for Sybase headers (default is
+                          /usr/include)
 
 Some influential environment variables:
   CC          C compiler command
@@ -4025,9 +4029,6 @@ echo "${ECHO_T}no" >&6
 
 
 
-
-
-
 	echo "$as_me:$LINENO: checking if Sybase support is desired" >&5
 echo $ECHO_N "checking if Sybase support is desired... $ECHO_C" >&6
 
@@ -4578,6 +4579,257 @@ echo "${ECHO_T}yes" >&6
 		echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6
 	    fi
+	fi
+
+
+
+
+
+
+
+
+
+	echo "$as_me:$LINENO: checking if xml support is desired" >&5
+echo $ECHO_N "checking if xml support is desired... $ECHO_C" >&6
+
+	# Check whether --enable-xml or --disable-xml was given.
+if test "${enable_xml+set}" = set; then
+  enableval="$enable_xml"
+  WITH_XML="$enableval"
+else
+  WITH_XML="yes"
+
+fi;
+
+
+# Check whether --with-libxml or --without-libxml was given.
+if test "${with_libxml+set}" = set; then
+  withval="$with_libxml"
+  libxml_libdir="$withval"
+else
+  libxml_libdir="`xml2-config --libs | cut -f1 | cut -b 3-`"
+
+fi;
+
+
+# Check whether --with-libxml-inc or --without-libxml-inc was given.
+if test "${with_libxml_inc+set}" = set; then
+  withval="$with_libxml_inc"
+  libxml_incdir="$withval"
+else
+  libxml_incdir="`xml2-config --cflags | cut -f1 | cut -b 3-`"
+
+fi;
+
+	if test "$WITH_XML" = "no"; then
+	    echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+	else
+	    echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+	    temp=$CPPFLAGS
+	    CPPFLAGS="$CPPFLAGS -I$libxml_incdir"
+	    tempC=$CFLAGS
+	    CFLAGS="$CFLAGS -I$libxml_incdir"
+	    if test "${ac_cv_header_libxml_parser_h+set}" = set; then
+  echo "$as_me:$LINENO: checking for libxml/parser.h" >&5
+echo $ECHO_N "checking for libxml/parser.h... $ECHO_C" >&6
+if test "${ac_cv_header_libxml_parser_h+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+fi
+echo "$as_me:$LINENO: result: $ac_cv_header_libxml_parser_h" >&5
+echo "${ECHO_T}$ac_cv_header_libxml_parser_h" >&6
+else
+  # Is the header compilable?
+echo "$as_me:$LINENO: checking libxml/parser.h usability" >&5
+echo $ECHO_N "checking libxml/parser.h usability... $ECHO_C" >&6
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+#include "confdefs.h"
+$ac_includes_default
+#include <libxml/parser.h>
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_header_compiler=yes
+else
+  echo "$as_me: failed program was:" >&5
+cat conftest.$ac_ext >&5
+ac_header_compiler=no
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
+echo "${ECHO_T}$ac_header_compiler" >&6
+
+# Is the header present?
+echo "$as_me:$LINENO: checking libxml/parser.h presence" >&5
+echo $ECHO_N "checking libxml/parser.h presence... $ECHO_C" >&6
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+#include "confdefs.h"
+#include <libxml/parser.h>
+_ACEOF
+if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
+  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
+  ac_status=$?
+  egrep -v '^ *\+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  ac_header_preproc=yes
+else
+  echo "$as_me: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  ac_header_preproc=no
+fi
+rm -f conftest.err conftest.$ac_ext
+echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
+echo "${ECHO_T}$ac_header_preproc" >&6
+
+# So?  What about this header?
+case $ac_header_compiler:$ac_header_preproc in
+  yes:no )
+    { echo "$as_me:$LINENO: WARNING: libxml/parser.h: accepted by the compiler, rejected by the preprocessor!" >&5
+echo "$as_me: WARNING: libxml/parser.h: accepted by the compiler, rejected by the preprocessor!" >&2;}
+    { echo "$as_me:$LINENO: WARNING: libxml/parser.h: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: libxml/parser.h: proceeding with the preprocessor's result" >&2;};;
+  no:yes )
+    { echo "$as_me:$LINENO: WARNING: libxml/parser.h: present but cannot be compiled" >&5
+echo "$as_me: WARNING: libxml/parser.h: present but cannot be compiled" >&2;}
+    { echo "$as_me:$LINENO: WARNING: libxml/parser.h: check for missing prerequisite headers?" >&5
+echo "$as_me: WARNING: libxml/parser.h: check for missing prerequisite headers?" >&2;}
+    { echo "$as_me:$LINENO: WARNING: libxml/parser.h: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: libxml/parser.h: proceeding with the preprocessor's result" >&2;};;
+esac
+echo "$as_me:$LINENO: checking for libxml/parser.h" >&5
+echo $ECHO_N "checking for libxml/parser.h... $ECHO_C" >&6
+if test "${ac_cv_header_libxml_parser_h+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_cv_header_libxml_parser_h=$ac_header_preproc
+fi
+echo "$as_me:$LINENO: result: $ac_cv_header_libxml_parser_h" >&5
+echo "${ECHO_T}$ac_cv_header_libxml_parser_h" >&6
+
+fi
+if test $ac_cv_header_libxml_parser_h = yes; then
+  WITH_XML="yes"
+else
+  WITH_XML="no"
+
+fi
+
+
+	    CPPFLAGS="$temp"
+	    CFLAGS="$tempC"
+
+	    if test "$WITH_XML" = "yes"; then
+		XML_CFLAGS="-I$libxml_incdir"
+		temp=$LIBS
+		LIBS="$LIBS -L$libxml_libdir"
+		echo "$as_me:$LINENO: checking for xmlParseFile in -lxml2" >&5
+echo $ECHO_N "checking for xmlParseFile in -lxml2... $ECHO_C" >&6
+if test "${ac_cv_lib_xml2_xmlParseFile+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lxml2 -lxml2 $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+#include "confdefs.h"
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char xmlParseFile ();
+#ifdef F77_DUMMY_MAIN
+#  ifdef __cplusplus
+     extern "C"
+#  endif
+   int F77_DUMMY_MAIN() { return 1; }
+#endif
+int
+main ()
+{
+xmlParseFile ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_lib_xml2_xmlParseFile=yes
+else
+  echo "$as_me: failed program was:" >&5
+cat conftest.$ac_ext >&5
+ac_cv_lib_xml2_xmlParseFile=no
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_lib_xml2_xmlParseFile" >&5
+echo "${ECHO_T}$ac_cv_lib_xml2_xmlParseFile" >&6
+if test $ac_cv_lib_xml2_xmlParseFile = yes; then
+  WITH_XML_XML="yes"
+else
+  WITH_XML_XML="no"
+fi
+
+		if test "$WITH_XML_XML" = "no"; then
+		    WITH_XML="no"
+		else
+		    XML_LIBS="-L$libxml_libdir -lxml2"
+		fi
+		LIBS="$temp"
+	    fi
+	fi
+
+	echo "$as_me:$LINENO: checking if XML support can be enabled" >&5
+echo $ECHO_N "checking if XML support can be enabled... $ECHO_C" >&6
+	if test "$WITH_XML" = "yes"; then
+	    cat >>confdefs.h <<\_ACEOF
+#define USE_XML 1
+_ACEOF
+
+	    OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_xml.so"
+	    echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+	else
+	    echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
 	fi
 
 
@@ -5167,6 +5419,8 @@ s,@CXLIBDIR@,$CXLIBDIR,;t t
 s,@CXOSDIR@,$CXOSDIR,;t t
 s,@SYBASE_LIBS@,$SYBASE_LIBS,;t t
 s,@SYBASE_CFLAGS@,$SYBASE_CFLAGS,;t t
+s,@XML_CFLAGS@,$XML_CFLAGS,;t t
+s,@XML_LIBS@,$XML_LIBS,;t t
 s,@OBJDRIVERMODULES@,$OBJDRIVERMODULES,;t t
 CEOF
 
