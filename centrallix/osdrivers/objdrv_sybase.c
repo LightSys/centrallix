@@ -63,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.10 2002/09/06 02:39:12 lkehresman Exp $
+    $Id: objdrv_sybase.c,v 1.11 2003/04/03 07:39:58 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.11  2003/04/03 07:39:58  jorupp
+     * make sure that the is a username and password before using them...
+
     Revision 1.10  2002/09/06 02:39:12  lkehresman
     Got OSML interaction to work with the MIME libraries thanks to
     jorupp magic.
@@ -397,6 +400,9 @@ sybd_internal_GetConn(pSybdNode db_node, char* user, char* pwd)
     pSybdConn conn;
     CS_COMMAND* cmd;
     char sbuf[64];
+
+	if(!user || !pwd)
+	    return NULL;
 
 	/** User/pass out of range? **/
 	if (strlen(user) > 31 || strlen(pwd) > 31)
