@@ -23,12 +23,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xarray.h,v 1.1 2001/08/13 18:04:20 gbeeley Exp $
+    $Id: xarray.h,v 1.2 2002/11/14 03:44:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xarray.h,v $
 
     $Log: xarray.h,v $
-    Revision 1.1  2001/08/13 18:04:20  gbeeley
-    Initial revision
+    Revision 1.2  2002/11/14 03:44:27  gbeeley
+    Added a new function to the XArray module to do sorted array adds
+    based on an integer field, which is portable between LSB and MSB
+    platforms.  Fixed the normal sorted add routine which was not
+    operating correctly anyhow.
+
+    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
     Initial checkin of centrallix-lib
@@ -51,6 +57,7 @@ int xaInit(pXArray this, int init_size);
 int xaDeInit(pXArray this);
 int xaAddItem(pXArray this, void* item);
 int xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen);
+int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset);
 void* xaGetItem(pXArray this, int index);
 int xaFindItem(pXArray this, void* item);
 int xaRemoveItem(pXArray this, int index);

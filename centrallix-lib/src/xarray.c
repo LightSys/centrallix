@@ -26,12 +26,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xarray.c,v 1.1 2001/08/13 18:04:22 gbeeley Exp $
+    $Id: xarray.c,v 1.2 2002/11/14 03:44:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xarray.c,v $
 
     $Log: xarray.c,v $
-    Revision 1.1  2001/08/13 18:04:22  gbeeley
-    Initial revision
+    Revision 1.2  2002/11/14 03:44:27  gbeeley
+    Added a new function to the XArray module to do sorted array adds
+    based on an integer field, which is portable between LSB and MSB
+    platforms.  Fixed the normal sorted add routine which was not
+    operating correctly anyhow.
+
+    Revision 1.1.1.1  2001/08/13 18:04:22  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:02:57  gbeeley
     Initial checkin of centrallix-lib
@@ -120,7 +126,44 @@ xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen)
 	for(i=0;i<=this->nItems;i++)
 	    {
 	    if (i == this->nItems || 
-	        memcmp(((char*)item)+keyoffset, ((char*)this->Items[i])+keyoffset, keylen) > 0)
+	        memcmp(((char*)item)+keyoffset, ((char*)this->Items[i])+keyoffset, keylen) < 0)
+		{
+		if (i < this->nItems) 
+		    memmove(this->Items+i+1, this->Items+i, (this->nItems-i)*sizeof(void*));
+		this->Items[i] = item;
+		this->nItems++;
+		break;
+		}
+	    }
+
+    return this->nItems-1;
+    }
+
+
+/*** xaAddItemSortedInt32 - inserts an item into the appropriate place in the
+ *** xarray in order to maintain a sorted array, based on an offset and
+ *** a 32-bit host-byte-order integer value.
+ ***/
+int
+xaAddItemSortedInt32(pXArray this, void* item, int keyoffset)
+    {
+    void** ptr;
+    int i;
+
+	/** Need more memory? **/
+	if (this->nItems >= this->nAlloc)
+	    {
+	    ptr = (void**)nmSysRealloc(this->Items, (this->nAlloc+BLK_INCR)*sizeof(void*));
+	    if (!ptr) return -1;
+	    this->nAlloc += BLK_INCR;
+	    this->Items = ptr;
+	    }
+
+	/** Find an appropriate location **/
+	for(i=0;i<=this->nItems;i++)
+	    {
+	    if (i == this->nItems || 
+	        *(int*)(((char*)item)+keyoffset) < *(int*)(((char*)this->Items[i])+keyoffset))
 		{
 		if (i < this->nItems) 
 		    memmove(this->Items+i+1, this->Items+i, (this->nItems-i)*sizeof(void*));
