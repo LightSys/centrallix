@@ -240,6 +240,11 @@ function tbld_slot_to_recnum(slot,start)
     return (this.maxwindowsize-((this.startat-1)%this.maxwindowsize)+slot-1)%this.maxwindowsize+this.startat;
     }
 
+function tbld_unsetclick(l,n)
+    {
+    l.clicked[n] = 0;
+    }
+
 function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,followcurrent,dragcols,colsep,gridinemptyrows,cols)
     {
     t.startat=1;

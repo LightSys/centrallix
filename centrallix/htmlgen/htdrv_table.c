@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.31 2002/08/18 18:46:27 jorupp Exp $
+    $Id: htdrv_table.c,v 1.32 2002/08/26 20:49:33 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.32  2002/08/26 20:49:33  lkehresman
+    Added DblClick event to the table rows taht does essentially thte same
+    thing that the Click event does.
+
     Revision 1.31  2002/08/18 18:46:27  jorupp
      * made the entire current record available on the event object (accessable as .data)
 
@@ -399,6 +403,36 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"		 ly.table.dta=event.data;\n"
 		"                cn_activate(ly.table,'Click', event);\n"
 		"                delete event;\n"
+		"                }\n"
+		"            if(ly.table.EventDblClick != null)\n"
+		"                {\n"
+		"                if (!ly.table.clicked || !ly.table.clicked[ly.recnum])\n"
+		"                    {\n"
+		"                    if (!ly.table.clicked) ly.table.clicked = new Array();\n"
+		"                    if (!ly.table.tid) ly.table.tid = new Array();\n"
+		"                    ly.table.clicked[ly.recnum] = 1;\n"
+		"                    ly.table.tid[ly.recnum] = setTimeout(tbld_unsetclick, 500, ly.table, ly.recnum);\n"
+		"                    }\n"
+		"                else\n"
+		"                    {\n"
+		"                    ly.table.clicked[ly.recnum] = 0;\n"
+		"                    clearTimeout(ly.table.tid[ly.recnum]);\n"
+		"                    var event = new Object();\n"
+		"                    event.Caller = ly.table;\n"
+		"                    event.recnum = ly.recnum;\n"
+		"                    event.data = new Object();\n"
+		"                    var rec=ly.table.osrc.replica[ly.recnum];\n"
+		"                    if(rec)\n"
+		"                        {\n"
+		"                        for(var i in rec)\n"
+		"                            {\n"
+		"                            event.data[rec[i].oid]=rec[i].value;\n"
+		"                            }\n"
+		"                        }\n"
+		"		     ly.table.dta=event.data;\n"
+		"                    cn_activate(ly.table,'DblClick', event);\n"
+		"                    delete event;\n"
+		"                    }\n"
 		"                }\n"
 		"            }\n"    
 		"        if(ly.subkind=='headercell')\n"
@@ -863,6 +897,7 @@ httblInitialize()
 	strcpy(drv->Target, "Netscape47x:default");
 
 	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"DblClick");
 
 #if 00
 	/** Add the 'load page' action **/
