@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.5 2002/03/05 00:46:34 jorupp Exp $
+    $Id: htdrv_radiobutton.c,v 1.6 2002/03/05 01:55:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.6  2002/03/05 01:55:09  lkehresman
+    Added "clearvalue" method to form widgets
+
     Revision 1.5  2002/03/05 00:46:34  jorupp
     * Fix a problem in Luke's radiobutton fix
     * Add the corresponding checks in the form
@@ -227,30 +230,35 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "           }\n"
       "   }\n",0);
 
-   /*
-    *  Luke (02/22/02) -
-    *  We made a design decision.  If "" is passed into setvalue for the radio buttons,
-    *  then all buttons are deselected.  Otherwise if the passed-in value is in the list
-    *  of available options, that gets set.  If a non-'' value is passed that isn't in 
-    *  the list, a warning is displayed and no values are changed.
-    */
+   /***
+    ***  Luke (03/04/02) -
+    ***  The behavior of this is in direct combination with the clearvalue function.
+    ***  if set_value() gets called with a value that _is_ in the list of values, then
+    ***  obviously that button gets marked.  However, if the called parameter is not
+    ***  in the list, an alert message pops up.  SEE ALSO:  Note on clearvalue()
+    ***/
    htrAddScriptFunction(s, "rb_setvalue", "\n"
       "   function rb_setvalue(v) {\n"
       "       optsLayerArray = this.layers[0].document.layers[0].document.layers;\n"
-      "       if (v != '') {\n"
-      "           for (var i=0; i < optsLayerArray.length; i++) {\n"
-      "               if (optsLayerArray[i].layers.radiobuttonpanelvaluepane.document.anchors[0].name == v) {\n"
-      "                   radiobutton_toggle(optsLayerArray[i]);\n"
-      "                   return;\n"
-      "               }\n"
+      "       for (var i=0; i < optsLayerArray.length; i++) {\n"
+      "           if (optsLayerArray[i].layers.radiobuttonpanelvaluepane.document.anchors[0].name == v) {\n"
+      "               radiobutton_toggle(optsLayerArray[i]);\n"
+      "               return;\n"
       "           }\n"
-      "           alert('Warning: \"'+v+'\" is not in the radio button list.');\n"
-      "       } else if (this.selectedOption) {\n"
-      "           this.selectedOption.unsetPane.visibility = 'inherit';\n"
-      "           this.selectedOption.setPane.visibility = 'hidden';\n"
-      "           this.selectedOption = null;\n"
       "       }\n"
+      "       alert('Warning: \"'+v+'\" is not in the radio button list.');\n"
       "   }\n",0);
+
+   /** Clear function **/
+   /*  Luke (03/04/02)  This unchecks ALL radio buttons.  As such, nothing is selected. */
+   htrAddScriptFunction(s, "rb_clearvalue", "\n"
+      "   function rb_clearvalue() {\n"
+      "      if (this.selectedOption) {\n"
+      "         this.selectedOption.unsetPane.visibility = 'inherit';\n"
+      "         this.selectedOption.setPane.visibility = 'hidden';\n"
+      "         this.selectedOption = null;\n"
+      "      }\n"
+      "   }\n", 0);
 
    htrAddScriptFunction(s, "add_radiobutton", "\n"
       "   function add_radiobutton(optionPane, parentPane, selected) {\n"
@@ -301,6 +309,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
          "          }\n"
 	 "      parentPane.setvalue = rb_setvalue;\n"
 	 "      parentPane.getvalue = rb_getvalue;\n"
+	 "      parentPane.clearvalue = rb_clearvalue;\n"
 	 "      parentPane.kind = 'radiobutton';\n"
 	 "      parentPane.fieldname = fieldname;\n"
 	 "      parentPane.form = fm_current;\n"

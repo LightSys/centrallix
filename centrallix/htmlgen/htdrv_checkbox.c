@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.7 2002/03/05 00:31:40 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.8 2002/03/05 01:55:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.8  2002/03/05 01:55:09  lkehresman
+    Added "clearvalue" method to form widgets
+
     Revision 1.7  2002/03/05 00:31:40  lkehresman
     Implemented DataNotify form method in the radiobutton and checkbox widgets
 
@@ -152,6 +155,12 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "        }\n"
       "    }\n",0);
 
+   /** Clear function **/
+   htrAddScriptFunction(s, "checkbox_clearvalue", "\n"
+	  "function checkbox_clearvalue() {\n"
+	  "   this.checkbox_setvalue(false);\n"
+	  "}\n", 0);
+
    /** Checkbox initializer **/
    htrAddScriptFunction(s, "checkbox_init", "\n"
       "function checkbox_init(l,fieldname) {\n"
@@ -171,6 +180,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	  "   l.document.images[0].checkedImage.kind = 'checkbox';\n"
 	  "   l.document.images[0].checkedImage.src = \"/sys/images/checkbox_checked.gif\";\n"
 	  "   l.document.images[0].checkedImage.is_checked = l.is_checked;\n"
+	  "   l.clearvalue = checkbox_clearvalue;\n"
 	  "   l.setvalue = checkbox_setvalue;\n"
 	  "   l.getvalue = checkbox_getvalue;\n"
 	  "   if (fm_current) fm_current.Register(l);\n"

@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.7 2002/03/05 01:22:26 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.8 2002/03/05 01:55:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.8  2002/03/05 01:55:09  lkehresman
+    Added "clearvalue" method to form widgets
+
     Revision 1.7  2002/03/05 01:22:26  lkehresman
     Changed where the DataNotify form method is getting called.  Previously it
     would only get called when the edit box lost focus.  This was bad because
@@ -240,8 +243,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 	
 	/** Clear function **/
-	htrAddScriptFunction(s, "eb_clear", "\n"
-		"function eb_clear()\n"
+	htrAddScriptFunction(s, "eb_clearvalue", "\n"
+		"function eb_clearvalue()\n"
 		"    {\n"
 		"    eb_settext(this,new String(''));\n"
 		"    eb_update_cursor(this,String(''));\n"
@@ -393,7 +396,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.losefocushandler = eb_deselect;\n"
 		"    l.getvalue = eb_getvalue;\n"
 		"    l.setvalue = eb_setvalue;\n"
-		"    l.clear = eb_clear;\n"
+		"    l.clearvalue = eb_clearvalue;\n"
 		"    l.setoptions = null;\n"
 		"    l.enable = eb_enable;\n"
 		"    l.disable = eb_disable;\n"
