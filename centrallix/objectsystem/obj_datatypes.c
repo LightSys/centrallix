@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.2 2001/10/02 15:43:12 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.3 2001/10/02 15:45:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.3  2001/10/02 15:45:26  gbeeley
+    Oops - fixed the adding of ".0" to whole integer double values so that
+    the routine does NOT overwrite the trailing digit ;)
+
     Revision 1.2  2001/10/02 15:43:12  gbeeley
     Updated data type conversion functions.  Converting to string now can
     properly escape quotes in the string.  Converting double to string now
@@ -727,7 +731,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		else
 		    {
 		    /** Otherwise, add decimal point for 'proper form' **/
-		    strcpy(ptr,".0");
+		    strcpy(ptr+1,".0");
 		    }
 		ptr = sbuf;
 		break;
