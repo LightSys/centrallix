@@ -11,6 +11,8 @@
 		<properties>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the checkbox, default is 0.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the checkbox, default is 0.</property>
+			<property name="fieldname" type="string"></property>
+			<property name="checked" type="integer"></property>
 		</properties>
 		<children>
 		</children>
@@ -73,7 +75,7 @@ cn1 "widget/connector"
 	target = "ht1";
 	action = "LoadPage";
 
-	// The Source for LoadPage is the Pathname from ClickItem.
+	// The Source for LoadPage is the Pathname fronm ClickItem.
 	Source = "Pathname";
 	}
 		]]>
@@ -96,6 +98,7 @@ cn1 "widget/connector"
 			<property name="width" type="integer">width, in pixels, of the editbox.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the editbox, default is 0.</property>
+			<property name="readonly" type="integer"></property>
 		</properties>
 		<children>
 		</children>
@@ -134,6 +137,8 @@ my_editbox "widget/editbox"
 			<property name="highlight" type="integer">The color of the highlighted option when the mouse goes over the itme.</property>
 			<property name="bgcolor" type="integer">The background color for the widget.</property>
 			<property name="fieldname" type="string">Fieldname (from the dataset) to bind this element to</property>
+			<property name="numdisplay" type="integer"></property>
+			<property name="sql" type="string"></property>
 		</properties>
 		<children>
 			<child type="widget/dropdownitem">
@@ -459,6 +464,9 @@ MyButton "widget/htmlwindow"
 			<property name="width" type="integer">width, in pixels, of the image button.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
+			<property name="disabledimage" type="integer"></property>
+			<property name="enabled" type="integer"></property>
+			
 		</properties>
 		<children>
 		</children>
@@ -536,6 +544,9 @@ myMenu "widget/menu"
 			<property name="replicasize" type="integer">Represents the number of records to store in its replica.</property>
 			<property name="readahead" type="integer">Represents the number to read-a-head when replica is over stepped.</property>
 			<property name="scrollahead" type="integer">Represents the number to step forward when viewing records (Currently set to readahead).</property>
+			<property name="sql" type="string"></property>
+			<property name="filter" type="integer"></property>
+			
 		</properties>
 		<children>
 		</children>
@@ -661,6 +672,7 @@ mypane "widget/pane"
 			<child type="widget/radiobutton">
 				<childproperty name="label" type="string">The text label to appear beside the radio button.</childproperty>
 				<childproperty name="selected" type="true/false">the radio button is initially selected or not. Should only be set on one radio Default;"false".</childproperty>
+				<childproperty name="value" type="string"></childproperty>
 			</child>
 		</children>
 		<events>
