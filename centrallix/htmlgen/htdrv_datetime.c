@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.12 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.13 2002/07/17 20:20:43 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.13  2002/07/17 20:20:43  lkehresman
+    Overhaul of the datetime widget (c file)
+
     Revision 1.12  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -129,7 +132,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char bgcolor[128];
     char fieldname[30];
     int type, rval;
-    int x,y,w,h;
+    int x,y,w,h,w2=184,h2=190;
     int id;
     DateTime dt;
     ObjData od;
@@ -229,89 +232,114 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%dpane1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	htrAddStylesheetItem_va(s,"\t#dt%dbg1   { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w,h,z+1);
-	htrAddStylesheetItem_va(s,"\t#dt%dbg2   { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-1,h-1,z+2);
-	htrAddStylesheetItem_va(s,"\t#dt%dbody  { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+3);
-	htrAddStylesheetItem_va(s,"\t#dt%dimg   { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:1; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+4);
-	htrAddStylesheetItem_va(s,"\t#dt%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:182; HEIGHT:190; Z-INDEX:%d; }\n",id,x,y+h,w,z+5);
+	htrAddStylesheetItem_va(s,"\t#dt%dbtn  { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#dt%dpane { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y+h,w2,h2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon3 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:44; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w2-2,100,z+2);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon4 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:44; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w2-2,100,z+2);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon5 { POSITION:absolute; VISIBILITY:inherit; LEFT:36; TOP:2; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w2-72,20,z+3);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon6 { POSITION:absolute; VISIBILITY:hidden; LEFT:36; TOP:2; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w2-72,20,z+3);
 
 	/** Write named global **/
-	sprintf(name, "%s.layers.dt%dpane", parentname, id);
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
+
+	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    dt_init("
-	                       "%s.layers.dt%dpane1, "
-	                       "%s.layers.dt%dpane1.document.layers.dt%dbg1, "
-	                       "%s.layers.dt%dpane1.document.layers.dt%dbg2, "
-	                       "%s.layers.dt%dpane1.document.layers.dt%dbody, "
-	                       "%s.layers.dt%dpane1.document.layers.dt%dimg, "
-	                       "%s.layers.dt%dpane2, "
-	                       "%d,%d,\"%s\",\"%s\",\"%s\",\"%s\")\n",
+	                       "%s.layers.dt%dbtn, "
+	                       "%s.layers.dt%dpane, "
+	                       "%s.layers.dt%dbtn.document.layers.dt%dcon1, "
+	                       "%s.layers.dt%dbtn.document.layers.dt%dcon2, "
+	                       "%s.layers.dt%dpane.document.layers.dt%dcon3, "
+	                       "%s.layers.dt%dpane.document.layers.dt%dcon4, "
+	                       "%s.layers.dt%dpane.document.layers.dt%dcon5, "
+	                       "%s.layers.dt%dpane.document.layers.dt%dcon6, "
+	                       "\"%s\",\"%s\",\"%s\",\"%s\", %d)\n",
+			parentname,id, 
 			parentname,id, 
 			parentname,id,id, 
 			parentname,id,id, 
 			parentname,id,id, 
 			parentname,id,id, 
-			parentname,id, 
-			w,h, initialdate, bgcolor, fgcolor, fieldname);
+			parentname,id,id, 
+			parentname,id,id, 
+			initialdate, bgcolor, fgcolor, fieldname, w-20);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s, /* Date Display Button */ 
-		"<DIV ID=\"dt%dpane1\">\n"
-		"<DIV ID=\"dt%dbg1\">\n"
-		"  <BODY bgcolor=\"#ffffff\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d height=%d>\n"
-		"  <TR><TD><IMG src=/sys/images/trans_1.gif height=1 width=1></TD></TR>\n"
-		"  </TABLE></BODY>\n"
-		"</DIV><DIV ID=\"dt%dbg2\">\n"
-		"  <BODY bgcolor=\"#7a7a7a\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d height=%d>\n"
-		"  <TR><TD><IMG src=/sys/images/trans_1.gif height=1 width=1></TD></TR>\n"
-		"  </TABLE></BODY>\n"
-		"</DIV><DIV ID=\"dt%dbg3\">\n"
-		"  <BODY bgcolor=\"#7a7a7a\"></BODY>\n"
-		"</DIV><DIV ID=\"dt%dbody\"><BODY %s>\n"
-		"  <TABLE border=0 cellspacing=0 cellpadding=0 width=%d height=%d>\n"
-		"  <TR><TD align=center valign=middle nowrap></TD>\n"
-		"  </TABLE></BODY>\n"
-		"</DIV><DIV ID=\"dt%dimg\">\n"
-		"  <TABLE border=0 cellspacing=0 cellpadding=0 %s width=18 height=%d>\n"
-		"  <TD valign=middle align=right><img src=/sys/images/ico17.gif></TD></TR>\n"
-		"  </TABLE>\n"
-		"</DIV>\n"
-		"</DIV>\n", 
-		id, id, w, h, id, w-1, h-1, id, id, bgcolor, w-2, h-2, id, bgcolor, h-2); 
-	htrAddBodyItem_va(s, 
-		"<DIV ID=\"dt%dpane2\">\n"
-		"<TABLE border=0 cellpadding=0 cellspacing=0 width=182 height=142>\n"
-		"<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>\n"
-		"    <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=182></TD>\n"
-		"    <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>\n"
-		"<TR><TD><IMG SRC=/sys/images/white_1x1.png height=190 width=1></TD>\n"
-		"    <TD %s>&nbsp;</TD>\n"
-		"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=190 width=1></TD></TR>\n"
-		"<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>\n"
-		"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=182></TD>\n"
-		"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>\n"
-		"</TABLE>\n"
-		"</DIV>\n", 
-		id, bgcolor);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\"><BODY %s>\n", id,bgcolor);
+	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n");
+	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
+	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
+	htrAddBodyItem_va(s,"       <TD align=right valign=middle><IMG SRC=/sys/images/ico17.gif></TD>\n");
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
+	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
+	htrAddBodyItem_va(s,"</TABLE>\n");
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%dcon1\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%dcon2\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"</BODY></DIV>\n");
+		
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%dpane\"><BODY %s>\n",id,bgcolor);
+	htrAddBodyItem_va(s,"<TABLE border=0 cellpadding=0 cellspacing=0 width=%d height=%d>\n",w2,h2);
+	htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>\n");
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w2-2);
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>\n");
+	htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h2-2);
+	htrAddBodyItem_va(s,"    <TD valign=top>\n");
+	htrAddBodyItem_va(s,"    <TABLE height=25 cellpadding=0 cellspacing=0 border=0>\n");
+	htrAddBodyItem_va(s,"    <TR><TD width=18><IMG SRC=/sys/images/ico16aa.gif></TD>\n");
+	htrAddBodyItem_va(s,"        <TD width=18><IMG SRC=/sys/images/ico16ba.gif></TD>\n");
+	htrAddBodyItem_va(s,"        <TD width=%d></TD>\n",w2-72);
+	htrAddBodyItem_va(s,"        <TD width=18><IMG SRC=/sys/images/ico16ca.gif></TD>\n");
+	htrAddBodyItem_va(s,"        <TD width=18><IMG SRC=/sys/images/ico16da.gif></TD></TR>\n");
+	htrAddBodyItem_va(s,"    </TABLE>\n");
+	htrAddBodyItem_va(s,"    <TABLE width=%d cellpadding=0 cellspacing=0 border=0>\n",w2);
+	htrAddBodyItem_va(s,"    <TR><TD align=center><B>S</B></TD>\n");
+	htrAddBodyItem_va(s,"        <TD align=center><B>M</B></TD>\n");
+	htrAddBodyItem_va(s,"        <TD align=center><B>T</B></TD>\n");
+	htrAddBodyItem_va(s,"        <TD align=center><B>W</B></TD>\n");
+	htrAddBodyItem_va(s,"        <TD align=center><B>T</B></TD>\n");
+	htrAddBodyItem_va(s,"        <TD align=center><B>F</B></TD>\n");
+	htrAddBodyItem_va(s,"        <TD align=center><B>S</B></TD></TR>\n");
+	htrAddBodyItem_va(s,"    </TABLE>\n");
+	htrAddBodyItem_va(s,"    <DIV ID=\"dt%dcon3\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"    <DIV ID=\"dt%dcon4\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"    <DIV ID=\"dt%dcon5\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"    <DIV ID=\"dt%dcon6\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"    </TD>\n");
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h2-2);
+	htrAddBodyItem_va(s,"<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>\n");
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w2-2);
+	htrAddBodyItem_va(s,"    <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>\n");
+	htrAddBodyItem_va(s,"</TABLE>\n");
+	htrAddBodyItem_va(s,"</BODY></DIV>\n");
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","dt",
-		"    var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-		"    if (dt_current != null && targetLayer.layer != dt_current && targetLayer.subkind != 'dt_dropdown')\n"
-		"        dt_event_mousedown1(targetLayer);\n"
-		"    else if (targetLayer != null && targetLayer.kind == 'dt')\n"
-		"        dt_event_mousedown2(targetLayer);\n\n");
-
+		"    if (e.target.kind && e.target.kind.substr(0, 5) == 'dtimg') {\n"
+		"        eval('dt_'+e.target.kind.substr(6, 4)+'()');\n"
+		"    } else {\n"
+		"        var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+		"        if (targetLayer.kind && targetLayer.kind.substr(0, 2) == 'dt') {\n"
+		"            dt_mousedown(targetLayer);\n"
+		"        } else if (dt_current && dt_current != targetLayer) {\n"
+		"            dt_current.PaneLayer.visibility = 'hide';\n"
+		"            dt_current = null;\n"
+		"        }\n"
+		"    }\n");
 	htrAddEventHandler(s, "document","MOUSEUP","dt",
 		"    var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-		"    if (dt_current != null && targetLayer.kind == 'dt' && (targetLayer.subkind == null || targetLayer.subkind == 'dt_button'))\n"
-		"        dt_setmode(targetLayer,1);\n\n");
+		"    if (targetLayer.kind && targetLayer.kind.substr(0, 2) == 'dt') {\n"
+		"        dt_mouseup(targetLayer);\n"
+		"    }\n");
 
 
 
