@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.42 2004/02/24 20:21:56 gbeeley Exp $
+    $Id: ht_render.c,v 1.43 2004/03/10 10:39:04 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.43  2004/03/10 10:39:04  jasonyip
+
+    I have added a JS15 CAP for javascript 1.5 Capability.
+
     Revision 1.42  2004/02/24 20:21:56  gbeeley
     - hints .js file inclusion on form, osrc, and editbox
     - htrParamValue and htrGetBoolean utility functions
@@ -329,9 +333,9 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
 	return NULL;
 	}
 
-    /** 
+    /**
      * process all the listed agentCapabilities
-     * seriously... who wants to write this code for each attribute.... 
+     * seriously... who wants to write this code for each attribute....
      **/
 #define PROCESS_CAP_INIT(attr) \
     if((entry = stLookup(node, # attr ))) \
@@ -376,6 +380,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
     PROCESS_CAP_INIT(CSS1);
     PROCESS_CAP_INIT(CSS2);
     PROCESS_CAP_INIT(HTML40);
+    PROCESS_CAP_INIT(JS15);
 
     /** now process children, passing a reference to our capabilities along **/
     xaInit(&(agentCap->Children), 4);
@@ -431,8 +436,9 @@ htr_internal_writeCxCapabilities(pHtSession s, pFile out)
     PROCESS_CAP_OUT(CSS1);
     PROCESS_CAP_OUT(CSS2);
     PROCESS_CAP_OUT(HTML40);
+    PROCESS_CAP_OUT(JS15);
     }
-    
+
 /**
  * Registers the tree of classes and user agents by reading the file specified in the config file
 **/
@@ -457,7 +463,7 @@ htrRegisterUserAgents()
 	mssError(0,"HTR","Unable to read useragent_config's value.  Unable to register useragents.");
 	return -1;
 	}
-    
+
     /** open and parse it **/
     uaConfigFile = fdOpen(uaConfigFilename, O_RDONLY, 0600);
     if(!uaConfigFile)
@@ -491,7 +497,7 @@ htrRegisterUserAgents()
 
 	    xaInit(&(class->Agents),4);
 	    xhInit(&(class->WidgetDrivers), 257, 0);
-	    
+
 	    for(j=0;j<stClass->nSubInf;j++)
 		{
 		pStructInf entry = stClass->SubInf[j];
@@ -552,15 +558,15 @@ htr_internal_GetBrowserCapabilities(char *browser, pHtClass class)
 		}
 	    }
 	}
-    
+
     /** if we found a match while walking the tree (at a non-terminal node), but
-	nothing under it matched, cap will not be null, otherwise it will be 
+	nothing under it matched, cap will not be null, otherwise it will be
 	(we don't get here if we matched a terminal node) **/
     return cap;
     }
 
 
-/*** htr_internal_AddTextToArray - adds a string of text to an array of 
+/*** htr_internal_AddTextToArray - adds a string of text to an array of
  *** buffer blocks, allocating new blocks in the XArray if necessary.
  ***/
 int
@@ -619,7 +625,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
     pHtDriver drv;
     pXHashTable widget_drivers = NULL;
 
-	/** Find the hashtable keyed with widget names for this combination of 
+	/** Find the hashtable keyed with widget names for this combination of
 	 ** user-agent:style that contains pointers to the drivers to use.
 	 **/
 	if(!session->Class)
@@ -637,7 +643,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 
 	/** Get the name of the widget.. **/
 	objGetAttrValue(widget_obj, "outer_type", DATA_T_STRING, POD(&w_name));
-	if (strncmp(w_name,"widget/",7)) 
+	if (strncmp(w_name,"widget/",7))
 	    {
 	    mssError(1,"HTR","Invalid content type for widget - must be widget/xxx");
 	    return -1;
@@ -645,7 +651,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 
 	/** Lookup the driver **/
 	drv = (pHtDriver)xhLookup(widget_drivers,w_name+7);
-	if (!drv) 
+	if (!drv)
 	    {
 	    mssError(1,"HTR","Unknown widget object type '%s'", w_name);
 	    return -1;
@@ -658,37 +664,37 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 /*** htrAddStylesheetItem -- copies stylesheet definitions into the
  *** buffers that will eventually be output as HTML.
  ***/
-int 
+int
 htrAddStylesheetItem(pHtSession s, char* html_text)
     {
     return htr_internal_AddTextToArray(&(s->Page.HtmlStylesheet), html_text);
     }
 
 
-/*** htrAddHeaderItem -- copies html text into the buffers that will 
+/*** htrAddHeaderItem -- copies html text into the buffers that will
  *** eventually be output as the HTML header.
  ***/
-int 
+int
 htrAddHeaderItem(pHtSession s, char* html_text)
     {
     return htr_internal_AddTextToArray(&(s->Page.HtmlHeader), html_text);
     }
 
 
-/*** htrAddBodyItem -- copies html text into the buffers that will 
+/*** htrAddBodyItem -- copies html text into the buffers that will
  *** eventually be output as the HTML body.
  ***/
-int 
+int
 htrAddBodyItem(pHtSession s, char* html_text)
     {
     return htr_internal_AddTextToArray(&(s->Page.HtmlBody), html_text);
     }
 
 
-/*** htrAddExpressionItem -- copies html text into the buffers that will 
+/*** htrAddExpressionItem -- copies html text into the buffers that will
  *** eventually be output as the HTML body.
  ***/
-int 
+int
 htrAddExpressionItem(pHtSession s, char* html_text)
     {
     return htr_internal_AddTextToArray(&(s->Page.HtmlExpressionInit), html_text);
@@ -699,7 +705,7 @@ htrAddExpressionItem(pHtSession s, char* html_text)
  *** eventually be output as the HTML body.  These are simple html tag
  *** parameters (i.e., "BGCOLOR=white")
  ***/
-int 
+int
 htrAddBodyParam(pHtSession s, char* html_param)
     {
     return htr_internal_AddTextToArray(&(s->Page.HtmlBodyParams), html_param);
@@ -768,7 +774,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
     }
 
 
-/*** htrAddBodyItem_va() - use a vararg list (like sprintf, etc) to add a 
+/*** htrAddBodyItem_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to the body of the document.
  ***/
 int
@@ -784,7 +790,7 @@ htrAddBodyItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddExpressionItem_va() - use a vararg list (like sprintf, etc) to add a 
+/*** htrAddExpressionItem_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to the body of the document.
  ***/
 int
@@ -800,7 +806,7 @@ htrAddExpressionItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddStylesheetItem_va() - use a vararg list (like sprintf, etc) to add a 
+/*** htrAddStylesheetItem_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to the stylesheet definition of the document.
  ***/
 int
@@ -816,7 +822,7 @@ htrAddStylesheetItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddHeaderItem_va() - use a vararg list (like sprintf, etc) to add a 
+/*** htrAddHeaderItem_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to the header of the document.
  ***/
 int
@@ -832,7 +838,7 @@ htrAddHeaderItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddBodyParam_va() - use a vararg list (like sprintf, etc) to add a 
+/*** htrAddBodyParam_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to the body tag of the document.
  ***/
 int
@@ -848,7 +854,7 @@ htrAddBodyParam_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddScriptInit_va() - use a vararg list (like sprintf, etc) to add a 
+/*** htrAddScriptInit_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to startup function of the document.
  ***/
 int
@@ -863,7 +869,7 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     return 0;
     }
 
-/*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a 
+/*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to cleanup function of the document.
  ***/
 int
@@ -909,7 +915,7 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
  *** that will be output.  Note that duplicate functions won't be added, so
  *** the widget drivers need not keep track of this.
  ***/
-int 
+int
 htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
     {
     pStrValue sv;
@@ -935,7 +941,7 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 /*** htrAddScriptGlobal -- adds a global variable to the list of variables
  *** to be output in the HTML JavaScript section.  Duplicates are suppressed.
  ***/
-int 
+int
 htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags)
     {
     pStrValue sv;
@@ -961,7 +967,7 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 /*** htrAddScriptInit -- adds some initialization text that runs outside of a
  *** function context in the HTML JavaScript.
  ***/
-int 
+int
 htrAddScriptInit(pHtSession s, char* init_text)
     {
     return htr_internal_AddTextToArray(&(s->Page.Inits), init_text);
@@ -970,7 +976,7 @@ htrAddScriptInit(pHtSession s, char* init_text)
 /*** htrAddScriptCleanup -- adds some initialization text that runs outside of a
  *** function context in the HTML JavaScript.
  ***/
-int 
+int
 htrAddScriptCleanup(pHtSession s, char* init_text)
     {
     return htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text);
@@ -1002,7 +1008,7 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 
 	/** Is this event name already listed? **/
 	evt = (pHtNameArray)xhLookup(&(obj->HashTable), event);
-	
+
 	/** If not already, create new. **/
 	if (!evt)
 	    {
@@ -1029,7 +1035,7 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 	    xaInit(&(drv->Array),16);
 	    xhAdd(&(evt->HashTable), drv->Name, (void*)drv);
 	    xaAddItem(&(evt->Array), (void*)drv);
-	   
+
 	    /** Ok, got event and object.  Now, add script text. **/
             htr_internal_AddTextToArray(&(drv->Array), handler_code);
 	    }
@@ -1044,7 +1050,7 @@ int
 htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function)
     {
     char buf[HT_SBUF_SIZE];
-    snprintf(buf, HT_SBUF_SIZE, 
+    snprintf(buf, HT_SBUF_SIZE,
 	"    handler_return = %s(e);\n"
 	"    if(handler_return & EVENT_PREVENT_DEFAULT_ACTION)\n"
 	"        prevent_default = true;\n"
@@ -1052,7 +1058,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	"        return !prevent_default;\n",
 	function);
     buf[HT_SBUF_SIZE-1] = '\0';
-	
+
     return htrAddEventHandler(s, event_src, event, drvname, buf);
     }
 
@@ -1169,7 +1175,7 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* f
     }
 
 
-/*** htrAddBodyItemLayerStart - adds just the opening tag sequence 
+/*** htrAddBodyItemLayerStart - adds just the opening tag sequence
  *** but not some content for a layer.  Does not add the closing tag sequence
  *** for the layer.
  ***
@@ -1282,8 +1288,8 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 
 
 /*** htrRenderSubwidgets - generates the code for all subwidgets within
- *** the current widget.  This is  a generic function that does not 
- *** necessarily apply to all widgets that contain other widgets, but 
+ *** the current widget.  This is  a generic function that does not
+ *** necessarily apply to all widgets that contain other widgets, but
  *** is useful for your basic ordinary "container" type widget, such
  *** as panes and tab pages.
  ***/
@@ -1349,7 +1355,7 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	    if(!s->Class)
 		mssError(1,"HTR","Warning: class %s is not defined... acting like it wasn't specified",classname);
 	    }
-	else	
+	else
 	    s->Class = NULL;
 
 	/** find the right capabilities for the class we're using **/
@@ -1370,9 +1376,9 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	    {
 	    /** somehow decide on a widget priority, and go down the list
 		till you find a workable one **/
-	    /** for now, I'm going to get them in the order they are in the hash, 
+	    /** for now, I'm going to get them in the order they are in the hash,
 		which is no order at all :) **/
-	    /** also, this sets the class when it finds capabilities.... 
+	    /** also, this sets the class when it finds capabilities....
 		is that a good thing? -- not sure **/
 	    int i;
 	    pHtCapabilities pCap = NULL;
@@ -1403,7 +1409,7 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	/** Setup the page structures **/
 	s->Tmpbuf = nmSysMalloc(512);
 	s->TmpbufSize = 512;
-	if (!s->Tmpbuf) 
+	if (!s->Tmpbuf)
 	    {
 	    nmFree(s, sizeof(HtSession));
 	    return -1;
@@ -1439,12 +1445,12 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
 	/** FIXME: should probably specify the DTD.... **/
-	if(s->Capabilities.HTML40)
-	    fdWrite(output, "<!DOCTYPE HTML>\n",16,0,FD_U_PACKET);
-	
+	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
+	    fdWrite(output, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n",91,0,FD_U_PACKET);
+
 	/** Write the HTML out... **/
 	snprintf(sbuf, HT_SBUF_SIZE, "<!--\nGenerated by Centrallix v%s (http://www.centrallix.org)\n"
-				     "(c) 1998-2002 by LightSys Technology Services, Inc.\n\n", PACKAGE_VERSION);
+				     "(c) 1998-2004 by LightSys Technology Services, Inc.\n\n", PACKAGE_VERSION);
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
 	snprintf(sbuf, HT_SBUF_SIZE, "This DHTML document contains Javascript and other DHTML\n"
 				     "generated from Centrallix which is licensed under the\n"
@@ -1494,6 +1500,18 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	/** include ht_render.js **/
 	snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"/sys/js/ht_render.js\" DEFER></SCRIPT>\n\n");
 	fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
+
+	/** include browser-specific geometry js **/
+	if(s->Capabilities.Dom0IE)
+	    {
+	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"/sys/js/ht_geom_dom0ie.js\" DEFER></SCRIPT>\n\n");
+	    }
+	else
+	    {
+	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"/sys/js/ht_geom_dom0ns.js\" DEFER></SCRIPT>\n\n");
+	    }
+	fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
+
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
@@ -1538,7 +1556,7 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
 	    {
 	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    %.64s.captureEvents(",tmp_a->Name);
+	    snprintf(sbuf,HT_SBUF_SIZE,"    if(window.Event)\n    %.64s.captureEvents(",tmp_a->Name);
 	    for(j=0;j<tmp_a->Array.nItems;j++)
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
@@ -1688,7 +1706,7 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	    for(j=0;j<tmp_a->Array.nItems;j++)
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-		for(k=0;k<tmp_a2->Array.nItems;k++) 
+		for(k=0;k<tmp_a2->Array.nItems;k++)
 		    {
 		    tmp_a3 = (pHtNameArray)(tmp_a2->Array.Items[k]);
 		    for(l=0;l<tmp_a3->Array.nItems;l++)
@@ -1761,7 +1779,7 @@ htrAddSupport(pHtDriver drv, char* className)
 /*** htrRegisterDriver - register a new driver with the rendering system
  *** and map the widget name to the driver's structure for later access.
  ***/
-int 
+int
 htrRegisterDriver(pHtDriver drv)
     {
     	/** Add to the drivers listing and the widget name map. **/
@@ -1903,7 +1921,7 @@ char*
 htrParamValue(pHtSession s, char* paramname)
     {
     pStruct attr;
-    
+
 	/** Make sure this isn't a reserved param **/
 	if (!strncmp(paramname,"ls__",4)) return NULL;
 
