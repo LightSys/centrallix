@@ -275,4 +275,130 @@ HOW PRESENTATION HINTS WORK....
 	provided by the OSML itself.
 	
 
+DELIVERY OF PRESENTATION HINTS VIA HTTP....
+
+    Next we'll consider what it will take to deliver presentation hints to the
+    browser via the current HTTP data-access interface.
+
+    A.	Application-specified hints.
+
+	App-specified hints are tied to particular form fields rather than 
+	logically to objects retrieved via a query.  Thus, they are sent to the
+	user interface as a part of the DHTML page generation process.
+
+	1.  The page widget will offer a "pg_sethints()" function that can be
+	    called at script init time to specify hints on a given form element
+	    widget.  It will also offer "pg_getdefault", "pg_checkconstraints",
+	    and other utility functions for widgets to use.
+
+	    pg_sethints() will take parameters specifying the various hint
+	    values, including javascript versions of the expressions.
+
+	    The ht_render subsystem should provide a convenience function for
+	    properly building the pg_sethints() initialization call, and will
+	    include the functionality to properly reverse expressions and/or
+	    itemize referenced fields in the expression.
+
+	2.  A form element widget, whether inside a form or outside of a form,
+	    can call "pg_getdefault()" to retrieve the appropriate default 
+	    value for the form element widget, during initialization or at any
+	    other needed time.  This call results in the setvalue() callback
+	    being activated if needed - the form element need do nothing but
+	    call the pg_getdefault() function.
+
+	3.  A form element widget must call "pg_checkconstraints()" whenever it
+	    is about to modify its value (other than being modified by data
+	    loaded from the form widget / objectsource widget).  The function
+	    will return false to indicate that the change is not permitted.  A
+	    parameter to pg_checkconstraints will indicate whether the change 
+	    is occurring while the widget has focus or not.  If it is while the
+	    widget has focus, some constraints are ignored.
+
+	4.  A form element must call pg_checkconstraints() whenever it loses
+	    keyboard focus (typically, the losefocushandler() callback).
+
+	5.  A form element's setvalue() call is used by the hints mechanism to
+	    update values based on constraints firing.  During these calls, the
+	    hints mechanism will indicate that the Modified event should not
+	    fire, but Changed should.  Changed should NOT result in a 
+	    pg_checkconstraints() occurring - only on user modification (which
+	    triggers the Modified event).
+
+    B.	Query-specified hints.
+
+	These types of hints are delivered to the browser along with the query
+	result set.  They are delivered with each and every object in the 
+	result set, since result sets can be asymmetric (different objects
+	having different attributes).  The hints data will be specified as a
+	part of the "query" part of a DHTML "Link" object.  Currently the Link
+	object is used as follows: Target = object id, Host = attribute name,
+	Hash = column data type, and Text = column value.  The format of the
+	link in general will be:
+
+	    <A TARGET=oid HREF='http://attrname/?hintsdata#datatype>	\
+		column value						\
+	    </A>
+
+	The hints data will take on the following format:
+
+	    hintname=hintvalue&hintname=hintvalue&hintname=hintvalue ...
+
+	where 'hintname' is the name of the hint being specified, and the
+	'hintvalue' is its setting.  For expressions, the expression will
+	be a valid JavaScript expression that should be evaluated in the
+	context of a JavaScript object having top-level 'properties' which
+	enumerate the various objects that are accessible (usually a list of
+	forms) and each top-level property having sub-properties that can be
+	read and written to, and when written to, trigger (via watches)
+	real-world modifications.
+
+	Reversed forms of the constraint expression (designed to yield a value
+	for the field, not do a truth test) are supplied as "constraint_rev"
+	(the normal constraint expression is "constraint").  If the reverse
+	expression is indeterminate, then the reverse is not supplied.
+
+	As an intermediate step, provisionally the reverse expressions may
+	not be supplied at all, in which case the user interface will always
+	force the user to re-edit the field when its constraint fails due to
+	the edit of another field.
+
+	The language an expression is supplied in may be changed by adding
+	the query parameter "ls__explanguage=" to the OSML-over-HTTP query
+	request.  Suppression of presentation hints altogether may be requested
+	by specifying "ls__hints=no" in the query request.
+
+	Expressions may reference other values.  To make it easy for the page
+	to determine when an expression references something, an additional
+	hintname will be included for each expression called "hintname_ref",
+	i.e., "constraint_ref", which contains a comma-separated list of fields
+	which are referenced by the expression.
+
+	1.  When the hints arrive at the client.
+
+	    The form widget should retrieve the hints from the objectsource and
+	    apply those hints to the various controls in the form.  These 
+	    should ADD TO, not REPLACE existing hints on a form element.  In
+	    this manner, the form element may need two sets of hints to avoid
+	    having to combine expressions.  Defaults specified by the app will
+	    override those specified by the query.  Min, max, and constraints
+	    will not override - both query and app expressions will be honored
+	    for these.
+
+	2.  Page-level processing of hint additions.
+
+	    The page object, when implementing the hints via the utility 
+	    function pg_sethints(), will need to determine and keep a record of
+	    what expressions are referencing other form elements.  This should
+	    be done as follows:
+
+		a.  The pg_sethints operation will build a correlation list of
+		    form element names when it receives each expression, based
+		    on the expressionname_ref list received from the server.
+		    The correlation list should include both the name of the
+		    form element and the name of the objectsource.
+
+		b.  When the page-level utility functions need to check for 
+		    references to a (newly) modified widget, it will scan the
+		    correlation list.
+
 -------------------------------------------------------------------------------
