@@ -9,6 +9,8 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "mtsession.h"
+/** module definintions **/
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -52,10 +54,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: OBJDRV_PROTOTYPE.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: OBJDRV_PROTOTYPE.c,v 1.3 2002/07/29 01:18:07 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/OBJDRV_PROTOTYPE.c,v $
 
     $Log: OBJDRV_PROTOTYPE.c,v $
+    Revision 1.3  2002/07/29 01:18:07  jorupp
+     * added the include and calls to build as a module
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -613,4 +618,10 @@ xxxInitialize()
 
     return 0;
     }
+
+MODULE_INIT(xxxInitialize);
+MODULE_PREFIX("xxx");
+MODULE_DESC("XXX ObjectSystem Driver");
+MODULE_VERSION(0,0,0);
+MODULE_IFACE(CX_CURRENT_IFACE);
 
