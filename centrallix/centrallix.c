@@ -15,6 +15,18 @@
 #include "stparse.h"
 #include "mtlexer.h"
 
+/* GRB - if someone can think of a better way to handle this (such as
+ * maybe forbidding the #including of config.h files in public headers),
+ * let me know....
+ *
+ * We have to re-include this as a remedial step because cxlibconfig.h
+ * overrides PACKAGE_VERSION amongst other things.
+ */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -48,10 +60,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.10 2002/08/16 03:48:29 jorupp Exp $
+    $Id: centrallix.c,v 1.11 2002/08/24 04:38:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.11  2002/08/24 04:38:31  gbeeley
+    We are still having trouble with conflicts between cxlibconfig.h and
+    config.h - they both end up being included because mtask.h is including
+    cxlibconfig.h.  The only really clean way to handle this seems to be
+    to have both private and public .h files in centrallix-lib.  This however
+    is a remedial step solving the version-printing problem.
+
     Revision 1.10  2002/08/16 03:48:29  jorupp
      * removed a debugging statement I added a little while ago
 
