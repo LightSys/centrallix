@@ -1,93 +1,69 @@
-#ifndef _MIME_H
-#define _MIME_H
-
-/************************************************************************/
-/* Centrallix Application Server System 				*/
-/* Centrallix Core       						*/
-/* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
-/* 									*/
-/* This program is free software; you can redistribute it and/or modify	*/
-/* it under the terms of the GNU General Public License as published by	*/
-/* the Free Software Foundation; either version 2 of the License, or	*/
-/* (at your option) any later version.					*/
-/* 									*/
-/* This program is distributed in the hope that it will be useful,	*/
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
-/* GNU General Public License for more details.				*/
-/* 									*/
-/* You should have received a copy of the GNU General Public License	*/
-/* along with this program; if not, write to the Free Software		*/
-/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  		*/
-/* 02111-1307  USA							*/
-/*									*/
-/* A copy of the GNU General Public License has been included in this	*/
-/* distribution in the file "COPYING".					*/
-/* 									*/
-/* Module:	mime.c,mime.h                                           */
-/* Author:	Greg Beeley (GRB)                                       */
-/* Date:	Way back in time                                        */
-/*									*/
-/* Description:	This module parses MIME-based messages into the msg	*/
-/*		subparts.						*/
-/************************************************************************/
-
-/**CVSDATA***************************************************************
-
-    $Id: mime.h,v 1.1 2001/08/13 18:00:53 gbeeley Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/include/mime.h,v $
-
-    $Log: mime.h,v $
-    Revision 1.1  2001/08/13 18:00:53  gbeeley
-    Initial revision
-
-    Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
-    Centrallix Core Initial Import
-
-
- **END-CVSDATA***********************************************************/
-
-#include "xstring.h"
-#include "xarray.h"
-
-#define	MIME_TEXT		1
-#define MIME_MULTIPART		2
-#define MIME_APPLICATION	3
-#define MIME_MESSAGE		4
-#define MIME_IMAGE		5
-#define MIME_AUDIO		6
-#define MIME_VIDEO		7
-
-
-/** information about a Received/to/cc/etc hdr **/
-typedef struct _HD
+/** Structure used to represent an email address **/
+typedef struct
     {
-    XString	Buffer;
-    XArray	NameOffsets;
-    XArray	ValueOffsets;
+    char	Host[128];
+    char	Mailbox[128];
+    char	Display[128];
+    char	AddressLine[256];
+    pXArray	Group;
     }
-    MimeHdrData, *pMimeHdrData;
-
+    EmailAddr, *pEmailAddr;
 
 /** information structure for MIME msg **/
 typedef struct _MM
     {
-    XString	Buffer;
     int		ContentMainType;
-    XArray	NameOffsets;
-    XArray	ValueOffsets;
-    XArray	SubParts;
-    XArray	ReceivedHdrs;
-    XArray	ToHdrs;
-    XArray	CcHdrs;
-    XArray	NewsgroupsHdrs;
-    int		Flags;
-    int		Status;
-    int		MsgSeekStart;
-    int		HdrSeekEnd;
-    int		MsgSeekEnd;
+    char	ContentSubType[80];
+    char	ContentDisp[80];
+    char	ContentDispFilename[80];
+    char	Boundary[80];
+    char	PartName[80];
+    char	Subject[80];
+    char	Charset[32];
+    char	TransferEncoding[32];
+    char	MIMEVersion[16];
+    DateTime	Date;
+    long	HdrSeekStart;
+    long	MsgSeekStart;
+    long	MsgSeekEnd;
+    pXArray	ToList;
+    pXArray	FromList;
+    pXArray	CcList;
+    pEmailAddr	Sender;
+    XArray	Parts;
     }
     MimeMsg, *pMimeMsg;
 
-#endif
+/*** Possible Main Content Types ***/
+extern char* TypeStrings[];
+
+#define MIME_DEBUG 0
+
+/** mime_parse.c **/
+int libmime_ParseMessage(pObject obj, pMimeMsg msg, int start, int end);
+int libmime_ParseHeaderElement(char *buf, char *element);
+int libmime_LoadExtendedHeader(pMimeMsg msg, pXString xsbuf, pLxSession lex);
+int libmime_SetMIMEVersion(pMimeMsg msg, char *buf);
+int libmime_SetDate(pMimeMsg msg, char *buf);
+int libmime_SetSubject(pMimeMsg msg, char *buf);
+int libmime_SetFrom(pMimeMsg msg, char *buf);
+int libmime_SetCc(pMimeMsg msg, char *buf);
+int libmime_SetTo(pMimeMsg msg, char *buf);
+int libmime_SetTransferEncoding(pMimeMsg msg, char *buf);
+int libmime_SetContentDisp(pMimeMsg msg, char *buf);
+int libmime_SetContentType(pMimeMsg msg, char *buf);
+
+/** mime_address.c **/
+int libmime_ParseAddressList(char *buf, pXArray xary);
+int libmime_ParseAddressGroup(char *buf, pEmailAddr addr);
+int libmime_ParseAddress(char *buf, pEmailAddr addr);
+int libmime_ParseAddressElements(char *buf, pEmailAddr addr);
+
+/** mime_util.c **/
+void libmime_Cleanup(pMimeMsg msg);
+int libmime_StringLTrim(char *str);
+int libmime_StringRTrim(char *str);
+int libmime_StringTrim(char *str);
+int libmime_StringFirstCaseCmp(char *c1, char *c2);
+int libmime_PrintAddressList(pXArray ary, int level);
+char* libmime_StringUnquote(char *str);
