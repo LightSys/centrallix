@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_rootnode.c,v 1.3 2002/02/21 06:32:53 jorupp Exp $
+    $Id: obj_rootnode.c,v 1.4 2002/07/12 21:50:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_rootnode.c,v $
 
     $Log: obj_rootnode.c,v $
+    Revision 1.4  2002/07/12 21:50:46  gbeeley
+    Rootnode driver was stat()ing the default rootnode, not the configured
+    one in OSYS.RootPath.  Caused "driver rootnode does not support last
+    modification" type errors when rootnode was not in the default
+    location.
+
     Revision 1.3  2002/02/21 06:32:53  jorupp
     updated obj_rootnode.c to use supplied rootnode
     removed warning in obj.h
@@ -240,7 +246,7 @@ rootGetAttrValue(void* inf_v, char* attr, pObjData val, pObjTrxTree* oxt)
 	    {
 	    if (inf->MTime.Value == 0)
 		{
-	        if (stat(OBJSYS_DEFAULT_ROOTNODE,&fileinfo) < 0) return -1;
+	        if (stat(OSYS.RootPath,&fileinfo) < 0) return -1;
 		t = localtime(&(fileinfo.st_mtime));
 		inf->MTime.Part.Second = t->tm_sec;
 		inf->MTime.Part.Minute = t->tm_min;
