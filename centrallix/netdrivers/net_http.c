@@ -61,10 +61,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.29 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: net_http.c,v 1.30 2002/11/22 20:57:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.30  2002/11/22 20:57:32  gbeeley
+    Converted part of net_http to use fdPrintf() as a test of the new
+    functionality.
+
     Revision 1.29  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -743,16 +747,14 @@ int
 nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
     {
     pXString errmsg;
-    char sbuf[256];
 
     	/** Wait on the errors semaphore **/
 	if (syGetSem(nsess->Errors, 1, 0) < 0)
 	    {
-	    snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
+	    fdPrintf(net_conn,"HTTP/1.0 200 OK\r\n"
 			 "Server: %s\r\n"
 			 "\r\n"
 			 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
-	    fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
 	    return -1;
 	    }
 
@@ -761,14 +763,12 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	xaRemoveItem(&nsess->ErrorList, 0);
 
 	/** Format the error and print it as HTML. **/
-	snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
+	fdPrintf(net_conn,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
 		     "<HTML><BODY><PRE><A NAME=\"Message\">",NHT.ServerString);
-	fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
 	fdWrite(net_conn,errmsg->String,strlen(errmsg->String),0,0);
-	snprintf(sbuf,256,"</A></PRE></BODY></HTML>\r\n");
-	fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
+	fdPrintf(net_conn,"</A></PRE></BODY></HTML>\r\n");
 
 	/** Discard the string **/
 	xsDeInit(errmsg);
@@ -1627,7 +1627,6 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 int
 nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     {
-    char sbuf[256];
     int cnt;
     pStruct find_inf,find_inf2;
     pObjQuery query;
@@ -1657,11 +1656,10 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	if (!target_obj)
 	    {
 	    nht_internal_GenerateError(nsess);
-	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
+	    fdPrintf(conn,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
 			 "\r\n"
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
-	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn);
 	    netCloseTCP(conn,1000,0);
 	    nht_internal_UnlinkSess(nsess);
@@ -1688,7 +1686,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	/** Ok, issue the HTTP header for this one. **/
 	if (nsess->IsNewCookie)
 	    {
-	    snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
+	    fdPrintf(conn,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s; path=/\r\n", 
 		     NHT.ServerString,nsess->Cookie);
@@ -1696,10 +1694,9 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    }
 	else
 	    {
-	    snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
+	    fdPrintf(conn,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n",NHT.ServerString);
 	    }
-	fdWrite(conn,sbuf,strlen(sbuf),0,0);
 
 	/** Exit now if wait trigger. **/
 	if (tid != -1)
@@ -1724,11 +1721,9 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		/*fdSetOptions(conn, FD_UF_WRCACHE);*/
 		if(gzip==1)
 		{
-		    snprintf(sbuf,256,"Content-Encoding: gzip\r\n");
-		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		    fdPrintf(conn,"Content-Encoding: gzip\r\n");
 		}
-		snprintf(sbuf,256,"Content-Type: text/html\r\n\r\n");
-		fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		fdPrintf(conn,"Content-Type: text/html\r\n\r\n");
 		if(gzip==1)
 		    fdSetOptions(conn, FD_UF_GZIP);
 	        htrRender(conn, target_obj);
@@ -1760,11 +1755,9 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 #endif
 		if(gzip==1)
 		{
-		    snprintf(sbuf,256,"Content-Encoding: gzip\r\n");
-		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		    fdPrintf(conn,"Content-Encoding: gzip\r\n");
 		}
-		snprintf(sbuf,256,"Content-Type: %s\r\n\r\n", ptr);
-		fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		fdPrintf(conn,"Content-Type: %s\r\n\r\n", ptr);
 		if(gzip==1)
 		    {
 		    fdSetOptions(conn, FD_UF_GZIP);
@@ -1791,19 +1784,16 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
 	    if (query)
 	        {
-		snprintf(sbuf,256,"Content-Type: text/html\r\n\r\n");
-		fdWrite(conn,sbuf,strlen(sbuf),0,0);
-		snprintf(sbuf,256,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
-		fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		fdPrintf(conn,"Content-Type: text/html\r\n\r\n");
+		fdPrintf(conn,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
 		dptr = url_inf->StrVal;
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		    {
 		    objGetAttrValue(sub_obj, "name", DATA_T_STRING,POD(&ptr));
 		    objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
-		    snprintf(sbuf,256,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
+		    fdPrintf(conn,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
 		    	(dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
-		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		    objClose(sub_obj);
 		    }
 		objQueryClose(query);
@@ -1818,8 +1808,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	else if (!strcmp(find_inf->StrVal,"query"))
 	    {
 	    /** Change directory to appropriate query root **/
-	    snprintf(sbuf,256,"Content-Type: text/html\r\n\r\n");
-	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
+	    fdPrintf(conn,"Content-Type: text/html\r\n\r\n");
 	    strcpy(cur_wd, objGetWD(nsess->ObjSess));
 	    objSetWD(nsess->ObjSess, target_obj);
 
