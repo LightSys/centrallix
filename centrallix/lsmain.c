@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #ifdef HAVE_CONFIG_H
-//#include "config.h"
+#include "config.h"
 #endif
 #include "centrallix.h"
 #include "mtask.h"
@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.25 2003/03/10 15:41:38 lkehresman Exp $
+    $Id: lsmain.c,v 1.26 2003/03/31 22:54:11 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.26  2003/03/31 22:54:11  jorupp
+     * I really ought to make clean before I commit....
+
     Revision 1.25  2003/03/10 15:41:38  lkehresman
     The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
     hints to the OSML.  To do this I had to:
