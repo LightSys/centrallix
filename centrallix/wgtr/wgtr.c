@@ -1019,7 +1019,6 @@ wgtrInitialize()
 	wgtosmlInitialize();
 	wgttabInitialize();
 	wgttblInitialize();
-	wgtxxxInitialize();
 	wgttermInitialize();
 	wgttxInitialize();
 	wgttbtnInitialize();
@@ -1090,7 +1089,7 @@ wgtrAddType(char* name, char* type_name)
 /*** wgtrAddDeploymentMethod - associates a render function with a deployment method
  ***/
 int
-wgtrAddDeploymentMethod(char* method, int (*Render)())
+wgtrAddDeploymentMethod(char* method, int (*Render)(pFile, pObjSession, pWgtrNode, pStruct))
     {
 	xhAdd(&(WGTR.Methods), nmSysStrdup(method), (void*)Render);
 	return 0;
@@ -1103,9 +1102,9 @@ wgtrAddDeploymentMethod(char* method, int (*Render)())
 int
 wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, char* method)
     {
-    int	    (*Render)();
+    int	    (*Render)(pFile, pObjSession, pWgtrNode, pStruct);
 
-	if ( (Render = xhLookup(&(WGTR.Methods), method)) == NULL)
+	if ( ((void*)Render = xhLookup(&(WGTR.Methods), method)) == NULL)
 	    {
 	    mssError(1, "WGTR", "Couldn't render widget tree '%s': no render function for '%s'", tree->Name, method);
 	    return -1;
