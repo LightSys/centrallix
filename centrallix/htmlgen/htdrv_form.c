@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.26  2002/04/25 23:02:52  jorupp
+     * added alternate alignment for labels (right or center should work)
+     * fixed osrc/form bug
+
     Revision 1.25  2002/04/25 03:13:50  jorupp
      * added label widget
      * bug fixes in form and osrc
@@ -193,6 +197,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     
     basequery=nmMalloc(FORM_BUF_SIZE);
     basewhere=nmMalloc(FORM_BUF_SIZE);
+
+
     
     	/** Get an id for this. **/
 	id = (HTFORM.idcnt++);
@@ -402,7 +408,14 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            {\n"
 		"            if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)\n"
 		"                {\n"
-		"                this.elements[i].setvalue(this.data[j].value);\n"
+		"                if(this.data[j].value)\n"
+		"                    {\n"
+		"                    this.elements[i].setvalue(this.data[j].value);\n"
+		"                    }\n"
+		"                else\n"
+		"                    {\n"
+		"                    this.elements[i].setvalue('');\n"
+		"                    }\n"
 		"                }\n"
 		"            }\n"
 		"        }\n"

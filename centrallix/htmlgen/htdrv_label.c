@@ -42,6 +42,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.3  2002/04/25 23:02:52  jorupp
+     * added alternate alignment for labels (right or center should work)
+     * fixed osrc/form bug
+
     Revision 1.2  2002/04/25 22:51:29  gbeeley
     Added vararg versions of some key htrAddThingyItem() type of routines
     so that all of this sbuf stuff doesn't have to be done, as we have
@@ -117,6 +121,16 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    text[0]='\0';
 	    }
 	printf("text -> %s\n",text);
+
+	align[0]='\0';
+	if(objGetAttrValue(w_obj,"align",POD(&ptr)) == 0)
+	    {
+	    strcpy(align,ptr);
+	    }
+	else
+	    {
+	    strcpy(align,"left");
+	    }
 	
 	/** Background color/image? **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
@@ -126,6 +140,9 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	else
 	    strcpy(main_bg,"");
 
+	
+	
+	
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
@@ -157,10 +174,12 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    }\n", 0);
 	/** Label initializer **/
 	htrAddScriptFunction(s, "lbl_init", "\n"
-		"function lbl_init(l,text)\n"
+		"function lbl_init(l,text,align,width)\n"
 		"    {\n"
 		"    l.kind = 'label'\n"
+		"    l.document.write(\"<table border=0 width=\"+width+\"><tr><td align='\"+align+\"'>\");\n"
 		"    l.document.write(lbl_encode(new String(text)));\n"
+		"    l.document.write(\"</td></tr></table>\");\n"
 		"    l.document.close();\n"
 		"    return l;\n"
 		"    }\n", 0);

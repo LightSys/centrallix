@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.16 2002/04/25 03:13:50 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.17 2002/04/25 23:02:52 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.17  2002/04/25 23:02:52  jorupp
+     * added alternate alignment for labels (right or center should work)
+     * fixed osrc/form bug
+
     Revision 1.16  2002/04/25 03:13:50  jorupp
      * added label widget
      * bug fixes in form and osrc
@@ -558,7 +562,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        }\n"
       "    if(this.pending)\n"
       "        {\n"
-      "        //alert('you got ahead');\n"
+      "        alert('you got ahead');\n"
       "        return 0;\n"
       "        }\n"
       "    this.pending=true;\n"
@@ -638,7 +642,10 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
       "                }\n"
       "            else\n"
+      "                {\n"
+      "                this.pending=false;\n"
       "                this.CurrentRecord=this.LastRecord;\n"
+      "                }\n"
       "            return 0;\n"
       "            }\n"
       "        }\n"
