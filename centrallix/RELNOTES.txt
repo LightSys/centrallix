@@ -1,0 +1,66 @@
+Centrallix version 0.7.0 Release Notes
+Date:	August 13th, 2001
+Author:	Greg Beeley (GRB)
+-------------------------------------------------------------------------------
+
+This is the initial public development release of the Centrallix Application
+Server System.  You should be aware of a few things before trying to use this
+version.
+
+1.  This version should NOT be considered secure enough to run on a computer 
+    that is accessible from the Internet.  It has not undergone a security 
+    review yet.  Before running the Centrallix server on your system, please
+    make sure that port 800 (Centrallix's default port) is not accessible
+    on your machine from the Internet at large.  Furthermore, it does not yet
+    employ SSL technology or other MD5 authentication for passwords; instead
+    it uses standard HTTP basic authentication at present.  Don't risk sending
+    your passwords in plain text over the Internet even via HTTP basic auth.
+
+    On Linux, to block port 800, if eth0 is your network interface, do this:
+
+        ipchains -I input -i eth0 -p tcp --dport 800 -j DENY
+
+    Note, if you are behind a firewall, this additional step may or may not be
+    necessary, depending on your trust level of your local LAN.  Furthermore,
+    if you have run lokkit on RH7.1 and have secured your system so that port
+    800 is not already accessible, you also may skip this step.
+
+2.  This is a DEVELOPMENT release.  In fact it is the FIRST development
+    release.  It may eat your hard drive.  It may eat every hard drive within
+    a 100 mile radius.  Take care.
+
+3.  This package has been successfully built and run on RedHat 6.2 on i386.
+    I make no guarantees about other platforms and architectures....
+
+4.  The default Makefile requires Sybase OpenClient to be installed on your
+    machine.  Read the notes in the "centrallix" core package to see how to
+    make it not dependent on Sybase OpenClient (you simply remove the Sybase
+    CT-Lib ObjectSystem driver from the compile and omit the Sybase libraries
+    in the $LIBS variable).  Or, you can download OpenClient for free from
+    Sybase's website (the sybase-ocsd-10.0.4-6 RPM).
+
+5.  To install the .TGZ files, most users should do the following (as root).
+    Change the location of the .tgz files as appropriate for wherever you
+    download them on your machine.
+
+    # cd /usr/local
+    # tar -xzvf /usr/local/archive/centrallix-0.7.0.tgz
+    # tar -xzvf /usr/local/archive/centrallix-lib-0.7.0.tgz
+    # tar -xzvf /usr/local/archive/centrallix-os-0.7.0.tgz
+    # tar -xzvf /usr/local/archive/centrallix-doc-0.7.0.tgz
+    # tar -xzvf /usr/local/archive/centrallix-sysdoc-0.7.0.tgz
+    # less centrallix-os/INSTALL.txt
+    # cp centrallix-os/doc/install/rootnode* /usr/local/etc
+    # cp centrallix-os/doc/install/types.cfg /usr/local/etc
+    # vi /usr/local/etc/rootnode
+
+    Edit the rootnode file and change "/home/centrallix/os" to the location
+    where you un-tarred the centrallix-os package.  In the above example,
+    that would be "/usr/local/centrallix-os".  Now, make and run the 
+    program itself.
+
+    # cd centrallix-lib
+    # make
+    # cd ../centrallix
+    # make
+    # ./centrallix
