@@ -64,14 +64,13 @@
 int
 libmime_ParseAddressList(char *buf, pXArray xary)
     {
-    int count=0, state=MIME_ST_NORM, flag=0, cnest=0, err=0, gnest=0;
+    int count=0, state=MIME_ST_NORM, prev_state=MIME_ST_NORM, flag=0, cnest=0, tmp;
     char *s_ptr, *e_ptr, *t_str;
     char ch;
     pEmailAddr p_addr;
 
     libmime_StringTrim(buf);
     s_ptr = buf;
-    if (MIME_DEBUG) printf("PARSING (%s)\n", buf);
     while (flag == 0)
 	{
 	ch = buf[count];
@@ -79,23 +78,23 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 	    {
 	    /** If no special states are set, then check for comma delimiters and such **/
 	    case MIME_ST_NORM:
-	    case MIME_ST_GROUP:
 		if (ch == '"')
 		    {
+		    prev_state = state;
 		    state = MIME_ST_QUOTE;
 		    }
 		else if (ch == '(')
 		    {
 		    cnest++;
+		    prev_state = state;
 		    state = MIME_ST_COMMENT;
 		    }
 		else if (ch == ':' && buf[count-1] != '\\')
 		    {
-		    gnest++;
+		    prev_state = state;
 		    state = MIME_ST_GROUP;
 		    }
-		else if ((state == MIME_ST_NORM && (ch == ',' || count == strlen(buf))) ||
-		         (state == MIME_ST_GROUP && (ch == ';' || count == strlen(buf))))
+		else if (ch == ',' || count == strlen(buf))
 		    {
 		    e_ptr = &buf[count];
 		    t_str = (char*)nmMalloc(e_ptr - s_ptr + 1);
@@ -105,31 +104,54 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 		    if (strlen(t_str))
 			{
 			p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
-			/**  Decide if we should hand this to the group parser or the address parser **/
-			if (state == MIME_ST_GROUP && gnest == 1)
-			    {
-			    err = libmime_HdrParseGroup(t_str, p_addr);
-			    gnest--;
-			    }
-			else
-			    {
-			    err = libmime_ParseAddress(t_str, p_addr);
-			    }
-			if (!err)
+			if (!libmime_ParseAddress(t_str, p_addr))
 			    xaAddItem(xary, p_addr);
 			else
 			    nmFree(p_addr, sizeof(EmailAddr));
 			}
 		    nmFree(t_str, e_ptr - s_ptr + 1);
 		    s_ptr = e_ptr+1;
-		    state = MIME_ST_NORM;
 		    }
 		break;
+	    case MIME_ST_GROUP:
+		if (ch == '"')
+		    {
+		    prev_state = state;
+		    state = MIME_ST_QUOTE;
+		    }
+		else if (ch == '(')
+		    {
+		    cnest++;
+		    prev_state = state;
+		    state = MIME_ST_COMMENT;
+		    }
+		else if (ch == ';' || count == strlen(buf))
+		    {
+		    e_ptr = &buf[count];
+		    t_str = (char*)nmMalloc(e_ptr - s_ptr + 1);
+		    strncpy(t_str, s_ptr, e_ptr-s_ptr);
+		    t_str[e_ptr-s_ptr] = 0;
+		    /**  If we have a valid group, parse it and add it to the list **/
+		    if (strlen(t_str))
+			{
+			p_addr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
+			if (!libmime_HdrParseGroup(t_str, p_addr))
+			    xaAddItem(xary, p_addr);
+			else
+			    nmFree(p_addr, sizeof(EmailAddr));
+			}
+		    nmFree(t_str, e_ptr - s_ptr + 1);
+		    s_ptr = e_ptr+1;
+		    prev_state = state;
+		    state = MIME_ST_NORM;
+		    }
 	    /** If we are in a quote, ignore everything until the end quote is found **/
 	    case MIME_ST_QUOTE:
 		if (ch == '"' && buf[count-1] != '\\')
 		    {
-		    state = MIME_ST_NORM;
+		    tmp = prev_state;
+		    prev_state = state;
+		    state = tmp;
 		    }
 		break;
 	    /** If we are in a comment, ignore everything until the end of the comment is found **/
@@ -139,7 +161,9 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 		    cnest--;
 		    if (!cnest)
 			{
-			state = MIME_ST_NORM;
+			tmp = prev_state;
+			prev_state = state;
+			state = tmp;
 			}
 		    }
 		break;
@@ -179,7 +203,6 @@ libmime_HdrParseGroup(char *buf, pEmailAddr addr)
     pXArray p_xary;
 
     libmime_StringTrim(buf);
-    if (MIME_DEBUG) printf("PARSEGROUP (%s)\n", buf);
     p_xary = (pXArray)nmMalloc(sizeof(XArray));
     xaInit(p_xary, sizeof(EmailAddr));
 
