@@ -203,6 +203,22 @@ function tx_wordWrapUp(l,index,txt,c)
         var add = avail;
         var sub = l.rows[index+1].content.substr(open);
         }
+    else if (txt.length == l.rowCharLimit-1)
+    	{
+	for(var i=0;i<txt.length;i++) if(txt[i] == ' ') break;
+	if(i==txt.length)
+	    {
+	    var add = avail.substr(0,open);
+	    var sub = l.rows[index+1].content.substr(open);
+	    }
+	else
+	    {
+	    for (var i=open; avail[i]!=' ' && i>=0; i--) {}
+	    if (i < 0) return c;
+	    var add = avail.substr(0,i+1);
+	    var sub = l.rows[index+1].content.substr(i+1);
+	    }
+	}
     else
         {
         for (var i=open; avail[i]!=' ' && i>=0; i--) {}
@@ -231,9 +247,27 @@ function tx_wordWrapDown(l,index,txt,c)
         }
     else
         {
-        for (var i=l.rowCharLimit-1; txt[i]!=' ' && i>=0; i--){}
-        var sub = txt.substr(0,i+1);
-        var add = txt.substr(i+1); 
+	if(txt.length > l.rowCharLimit)
+	    {
+	    for(var i=0;i<txt.length;i++) if(txt[i] == ' ') break;
+	    if(i > l.rowCharLimit)
+	    	{
+		var sub = txt.substr(0,l.rowCharLimit);
+		var add = txt.substr(l.rowCharLimit);
+		}
+	    else
+	    	{
+		for (var i=l.rowCharLimit-1; txt[i]!=' ' && i>=0; i--){}
+		var sub = txt.substr(0,i+1);
+		var add = txt.substr(i+1);
+		}
+	    }
+	else
+	    {
+	    for (var i=l.rowCharLimit-1; txt[i]!=' ' && i>=0; i--){}
+	    var sub = txt.substr(0,i+1);
+	    var add = txt.substr(i+1);
+	    }
         }
     tx_updateRow(l,index,sub);
     if (!l.rows[index+1] || l.rows[index+1].newLine) tx_insertRow(l,index+1,'');
@@ -249,11 +283,6 @@ function tx_keyhandler(l,e,k)
     if (k >= 32 && k < 127)
         {
         txt = l.rows[l.cursorRow].content;
-        if(txt.length == l.rowCharLimit && k!=32)			// This is a work-around for a bug:
-            {								// if you try inserting a character other
-            for(var i=0;i<txt.length;i++) if(txt[i] == ' ') break;	// than a space when a row is full and
-            if(i==txt.length) return false;				// contains no spaces, it will go into an infinite
-            }								// loop and crash netscape... needs fixing.
         if (l.rows[l.cursorRow+1] && l.cursorCol == l.rows[l.cursorRow].content.length && l.rows[l.cursorRow+1].content[0] != ' ' && k!=32 && !l.rows[l.cursorRow+1].newLine)
             {
             tx_wordWrapDown(l,l.cursorRow+1,String.fromCharCode(k)+l.rows[l.cursorRow+1].content,0);
@@ -347,7 +376,7 @@ function tx_keyhandler(l,e,k)
                 tx_getCursorPos(l,0,1);
                 }
             }
-        else if (l.cursorCol == txt.length-1 && txt[txt.length-1] == ' ' && l.rows[l.cursorRow+1] && l.rows[l.cursorRow+1].content[0] != ' ' && !l.rows[l.cursorRow+1].newLine)
+        else if (l.cursorCol == txt.length-1 && txt.length>1 && txt[txt.length-1] == ' ' && txt[txt.length-2] != ' ' && l.rows[l.cursorRow+1] && l.rows[l.cursorRow+1].content[0] != ' ' && !l.rows[l.cursorRow+1].newLine)
             {
             var nextRow = l.rows[l.cursorRow+1].content;
             tx_deleteRow(l,l.cursorRow+1);
@@ -366,7 +395,7 @@ function tx_keyhandler(l,e,k)
             tx_updateRow(l,l.cursorRow,newtxt);
             if (l.cursorRow > 0) { var f = tx_wordWrapUp(l,l.cursorRow-1,l.rows[l.cursorRow-1].content,0); }
             if (!f) tx_wordWrapUp(l,l.cursorRow,l.rows[l.cursorRow].content,0);
-            tx_getCursorPos(l,0,0);
+            tx_getCursorPos(l,0,1);
             }
         }
     else return true;
