@@ -61,9 +61,9 @@ char* TypeStrings[] =
 int
 libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex)
     {
-    int flag, toktype, alloc, err, size;
+    int flag, toktype, alloc, err, size, len;
     XString xsbuf;
-    char *hdrnme, *hdrbdy, *buf;
+    char *hdrnme, *hdrbdy;
 
     /** Initialize the message structure **/
     msg->ContentLength = 0;
@@ -102,6 +102,7 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 	alloc = 0;
 	xsInit(&xsbuf);
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
+	len = strlen(xsbuf.String);
 	xsRTrim(&xsbuf);
 	//if (MIME_DEBUG) fprintf(stderr, "MIME: Got Token (%s)\n", xsbuf.String);
 	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
@@ -148,7 +149,7 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 	}
 
     /** Set the start and end offsets for the message **/
-    msg->MsgSeekStart = mlxGetOffset(lex) + 1;
+    msg->MsgSeekStart = mlxGetOffset(lex) + len;
     /** If an end offset was passed in, use it!  If not (end==0), then find the end **/
     if (end)
 	{
@@ -653,5 +654,42 @@ libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLx
 	    }
 	}
 
+    return 0;
+    }
+
+int
+libmime_PrintEntity(pMimeHeader msg, pLxSession lex)
+    {
+    int count=0, flag=1, toktype, alloc;
+    XString xsbuf;
+
+    count = msg->MsgSeekStart;
+    mlxSetOffset(lex, msg->MsgSeekStart);
+    while (flag)
+	{
+	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	toktype = mlxNextToken(lex);
+	if (toktype == MLX_TOK_ERROR)
+	    {
+	    return -1;
+	    }
+	else
+	    {
+	    alloc = 0;
+	    xsInit(&xsbuf);
+	    xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
+	    count += strlen(xsbuf.String);
+	    if (count <= msg->MsgSeekEnd)
+		{
+		xsRTrim(&xsbuf);
+		printf("(%s)\n", xsbuf.String);
+		}
+	    else
+		{
+		flag = 0;
+		}
+	    xsDeInit(&xsbuf);
+	    }
+	}
     return 0;
     }

@@ -53,13 +53,130 @@ libmime_DecodeQP()
 
 
 int
-libmime_EncodeBase64()
+libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst)
     {
+    static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    /** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
+    while(*src)
+	{
+	/** First 6 bits of source[0] --> first byte dst. **/
+	if (maxdst < 5) return -1;
+	dst[0] = b64[src[0]>>2];
+
+	/** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
+	if (src[1] == '\0')
+	    {
+	    dst[1] = b64[(src[0]&0x03)<<4];
+	    dst[2] = '=';
+	    dst[3] = '=';
+	    dst += 4;
+	    break;
+	    }
+	dst[1] = b64[((src[0]&0x03)<<4) | (src[1]>>4)];
+
+	/** Third dst byte from second 4 bits of src[1] and first 2 of src[2] **/
+	if (src[2] == '\0')
+	    {
+	    dst[2] = b64[(src[1]&0x0F)<<2];
+	    dst[3] = '=';
+	    dst += 4;
+	    break;
+	    }
+	dst[2] = b64[((src[1]&0x0F)<<2) | (src[2]>>6)];
+
+	/** Last dst byte from last 6 bits of src[2] **/
+	dst[3] = b64[(src[2]&0x3F)];
+
+	/** Increment ctrs **/
+	maxdst -= 4;
+	dst += 4;
+	src += 3;
+	}
+
+    /** Null-terminate the thing **/
+    *dst = '\0';
+
     return 0;
     }
 
 int
-libmime_DecodeBase64()
+libmime_DecodeBase64(char* dst, char* src, int maxdst)
     {
+    static char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char* ptr;
+    int ix;
+
+    /** Step through src 4 bytes at a time. **/
+    while(*src)
+	{
+	/** First 6 bits. **/
+	if (maxdst < 4) 
+	    {
+	    mssError(1,"NHT","Could not decode HTTP data field - internal resources exceeded");
+	    return -1;
+	    }
+	ptr = strchr(b64,src[0]);
+	if (!ptr) 
+	    {
+	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    return -1;
+	    }
+	ix = ptr-b64;
+	dst[0] = ix<<2;
+
+	/** Second six bits are split between dst[0] and dst[1] **/
+	ptr = strchr(b64,src[1]);
+	if (!ptr)
+	    {
+	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    return -1;
+	    }
+	ix = ptr-b64;
+	dst[0] |= ix>>4;
+	dst[1] = (ix<<4)&0xF0;
+
+	/** Third six bits are nonmandatory and split between dst[1] and [2] **/
+	if (src[2] == '=' && src[3] == '=')
+	    {
+	    maxdst -= 1;
+	    dst += 1;
+	    src += 4;
+	    break;
+	    }
+	ptr = strchr(b64,src[2]);
+	if (!ptr)
+	    {
+	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    return -1;
+	    }
+	ix = ptr-b64;
+	dst[1] |= ix>>2;
+	dst[2] = (ix<<6)&0xC0;
+
+	/** Fourth six bits are nonmandatory and a part of dst[2]. **/
+	if (src[3] == '=')
+	    {
+	    maxdst -= 2;
+	    dst += 2;
+	    src += 4;
+	    break;
+	    }
+	ptr = strchr(b64,src[3]);
+	if (!ptr)
+	    {
+	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
+	    return -1;
+	    }
+	ix = ptr-b64;
+	dst[2] |= ix;
+	maxdst -= 3;
+	src += 4;
+	dst += 3;
+	}
+
+    /** Null terminate the destination **/
+    dst[0] = 0;
+
     return 0;
     }

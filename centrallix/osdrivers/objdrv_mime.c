@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.13 2002/08/26 17:36:52 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.14 2002/08/26 18:53:45 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.14  2002/08/26 18:53:45  lkehresman
+    * copied base64 encode/decode from net_http (soon will be modified)
+    * fixed a bug that was adding a newline at the beginning of each entity
+    * added a function that prints the content of a given entity (unencoded)
+
     Revision 1.13  2002/08/26 17:36:52  lkehresman
     * Added some documentation to the functions in libmime
     * Cleaned up some quite a bit of the code in the MIME parser
@@ -215,7 +220,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     for (i=0; i < xaCount(&msg->Parts); i++)
 	{
 	tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
-	fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
+	if (MIME_DEBUG) fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
+	//libmime_PrintEntity(tmp, lex);
 	}
     if (MIME_DEBUG) fprintf(stderr, "-----------------------------------------------------------------\n\n");
     mlxCloseSession(lex);
