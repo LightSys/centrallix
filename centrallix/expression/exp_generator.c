@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.5 2004/02/24 20:02:26 gbeeley Exp $
+    $Id: exp_generator.c,v 1.6 2004/08/30 03:22:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.6  2004/08/30 03:22:52  gbeeley
+    - use cxjs_xxxyyy() for all javascript funcs in runclient() expressions now.
+
     Revision 1.5  2004/02/24 20:02:26  gbeeley
     - adding proper support for external references in an expression, so
       that they get re-evaluated each time.  Example - getdate().
@@ -420,7 +423,7 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 	        /** Function node - write function call, param list, end paren. **/
 		if ((!strcmp(exp->Name,"runclient") || !strcmp(exp->Name,"runserver") || !strcmp(exp->Name,"runstatic")) && exp->Children.nItems == 1)
 		    return exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg);
-	        sprintf(eg->TmpBuf,"%.250s(",exp->Name);
+	        snprintf(eg->TmpBuf,sizeof(eg->TmpBuf),"cxjs_%.250s(",exp->Name);
 		exp_internal_WriteText(eg, eg->TmpBuf);
 		for(i=0;i<exp->Children.nItems;i++)
 		    {
