@@ -10,6 +10,7 @@ AC_PROG_MAKE_SET
 AC_PROG_AWK
 AC_PATH_PROG([STRIP], [strip], [])
 AC_PATH_PROG([AR], [ar], [])
+AC_PATH_PROG([RANLIB], [ranlib], [])
 AC_PROG_INSTALL
 
 dnl Checks for libraries.

@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.7 2002/09/23 22:35:30 jorupp Exp $
+## $Id: Makefile.in,v 1.8 2002/09/23 22:52:08 jorupp Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -37,6 +37,7 @@ AWK = @AWK@
 CC = @CC@
 STRIP = @STRIP@
 AR = @AR@
+RANLIB = @RANLIB@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -81,6 +82,7 @@ libCentrallix.so:	$(DYNAMICFILES)
 libCentrallix.a:	$(STATICFILES)
 	$(AR) -r libCentrallix.a $(STATICFILES)
 	$(AR) -s libCentrallix.a
+	${RANLIB} libCentrallix.a
 
 install: all
 	mkdir -p $(includedir)
