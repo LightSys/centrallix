@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.2 2001/10/08 03:59:54 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.3 2001/10/08 04:17:14 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.3  2001/10/08 04:17:14  lkehresman
+     * Cleaned up the generated code for windowshading (Beely-standard Complient)
+     * Testing out emailing CVS commits
+
     Revision 1.2  2001/10/08 03:59:54  lkehresman
     Added window shading support
 
@@ -216,7 +220,6 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptGlobal(s, "wn_msy","null",0);
 	htrAddScriptGlobal(s, "wn_moved","0",0);
 	htrAddScriptGlobal(s, "wn_clicked","0",0);
-	htrAddScriptGlobal(s, "wn_heights", "Array()", 0);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -244,24 +247,28 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Action handler for WindowShade**/
 	htrAddScriptFunction(s, "wn_unset_windowshade", "\n"
-		"function wn_unset_windowshade() {\n"
+		"function wn_unset_windowshade()\n"
+		"    {\n"
 		"    wn_clicked = 0;\n"
-		"}\n", 0);
+		"    }\n", 0);
 
 	htrAddScriptFunction(s, "wn_windowshade", "\n"
-		"function wn_windowshade(layer) {\n"
-		"    if (wn_clicked == 1) {\n"
+		"function wn_windowshade(layer)\n"
+		"    {\n"
+		"    if (wn_clicked == 1)\n"
+		"        {\n"
 		"        wn_clicked = 0;\n"
-		"        if (layer.clip.height != 23) {\n"
+		"        if (layer.clip.height != 23)\n"
 		"            layer.clip.height = 23;\n"
-		"        } else {\n"
+		"        else\n"
 		"            layer.clip.height = layer.orig_height;\n"
 		"        }\n"
-		"    } else {\n"
+		"    else\n"
+		"        {\n"
 		"        wn_clicked = 1;\n"
 		"        setTimeout(\"wn_unset_windowshade()\", 1200);\n"
-		"    }\n"
-		"}\n", 0);
+		"        }\n"
+		"    }\n", 0);
 
 	/** Action handler for SetVisibility **/
 	htrAddScriptFunction(s, "wn_setvisibility", "\n"
