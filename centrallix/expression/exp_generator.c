@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.2 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: exp_generator.c,v 1.3 2003/04/24 02:13:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.3  2003/04/24 02:13:22  gbeeley
+    Added functionality to handle "domain of execution" to the expression
+    module, allowing the developer to specify the nature of an expression
+    (run on client, server, or static on server).
+
     Revision 1.2  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -125,6 +130,17 @@ int
 exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
     {
     int i;
+
+	/** Do we have a domain declaration?  Add the pseudo-function for it if so **/
+	if (exp->Flags & EXPR_F_DOMAINMASK)
+	    {
+	    if (exp->Flags & EXPR_F_RUNSTATIC)
+		exp_internal_WriteText(eg, "runstatic(");
+	    else if (exp->Flags & EXPR_F_RUNSERVER)
+		exp_internal_WriteText(eg, "runserver(");
+	    else
+		exp_internal_WriteText(eg, "runclient(");
+	    }
 
 	/** Select an expression type **/
 	switch(exp->NodeType)
@@ -344,6 +360,10 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 	        mssError(1,"EXP","Bark!  Generator - Unknown expression node type %d", exp->NodeType);
 		return -1;
 	    }
+
+	/** If a domain declaration, add the closing parenthesis **/
+	if (exp->Flags & EXPR_F_DOMAINMASK)
+	    exp_internal_WriteText(eg,")");
 
     return 0;
     }

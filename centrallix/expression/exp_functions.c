@@ -56,10 +56,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.2 2001/09/25 18:02:34 gbeeley Exp $
+    $Id: exp_functions.c,v 1.3 2003/04/24 02:13:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.3  2003/04/24 02:13:22  gbeeley
+    Added functionality to handle "domain of execution" to the expression
+    module, allowing the developer to specify the nature of an expression
+    (run on client, server, or static on server).
+
     Revision 1.2  2001/09/25 18:02:34  gbeeley
     Added replicate() SQL function.
 
@@ -817,6 +822,67 @@ int exp_fn_ralign(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     }
 
 
+/** escape(string, escchars, badchars) **/
+int exp_fn_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* ptr;
+    char* dst;
+    int esccnt,len;
+    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
+        {
+	mssError(1,"EXP","escape() requires two or three string parameters");
+	return -1;
+	}
+    if (i2 && i2->DataType != DATA_T_STRING)
+	{
+	mssError(1,"EXP","the optional third escape() parameter must be a string");
+	return -1;
+	}
+    if (i2 && (ptr=strpbrk(i0->String, i2->String)) != NULL)
+	{
+	mssError(1,"EXP","WARNING!! String contains invalid character asc=%d", (int)(*ptr));
+	return -1;
+	}
+    ptr = strpbrk(i0->String, i1->String);
+    if (!ptr) ptr = strchr(i0->String, '\\');
+    if (!ptr)
+	{
+	/** shortcut if no need to escape anything **/
+	tree->Alloc = 0;
+	tree->String = i0->String;
+	return 0;
+	}
+    esccnt = 1;
+    ptr++;
+    while(*ptr)
+	{
+	if (strchr(i1->String, *ptr) || *ptr == '\\') esccnt++;
+	ptr++;
+	}
+    len = strlen(i0->String);
+    if (len+esccnt < 64)
+	{
+	tree->Alloc = 0;
+	tree->String = tree->Types.StringBuf;
+	}
+    else
+	{
+	tree->Alloc = 1;
+	tree->String = nmSysMalloc(len+esccnt+1);
+	}
+    ptr = i0->String;
+    dst = tree->String;
+    while(*ptr)
+	{
+	if (strchr(i1->String, *ptr) || *ptr == '\\')
+	    *(dst++) = '\\';
+	*(dst++) = *(ptr++);
+	}
+    *dst = '\0';
+    return 0;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -1156,6 +1222,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
 	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
+	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);

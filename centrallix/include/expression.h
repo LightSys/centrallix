@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.4 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: expression.h,v 1.5 2003/04/24 02:13:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.5  2003/04/24 02:13:21  gbeeley
+    Added functionality to handle "domain of execution" to the expression
+    module, allowing the developer to specify the nature of an expression
+    (run on client, server, or static on server).
+
     Revision 1.4  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -226,6 +231,12 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_ROUTERJOIN	512	/* right member is the outer member */
 #define EXPR_F_AGGLOCKED	1024	/* Aggregate function already counted */
 #define EXPR_F_DORESET		2048	/* Reset agg's on next Eval() */
+#define EXPR_F_RUNCLIENT	4096	/* Run expression on client */
+#define EXPR_F_RUNSERVER	8192	/* Run expression on server */
+#define EXPR_F_RUNSTATIC	16384	/* Run expression as static on server */
+
+#define EXPR_F_DOMAINMASK	(EXPR_F_RUNSTATIC | EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)
+#define EXPR_F_RUNDEFAULT	(EXPR_F_RUNSTATIC)
 
 /*** Compiler flags ***/
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */

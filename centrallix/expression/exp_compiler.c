@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.4 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.5 2003/04/24 02:13:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.5  2003/04/24 02:13:22  gbeeley
+    Added functionality to handle "domain of execution" to the expression
+    module, allowing the developer to specify the nature of an expression
+    (run on client, server, or static on server).
+
     Revision 1.4  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -233,6 +238,14 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    /*etmp->AggExp = expAllocExpression();*/
 				    }
 
+				/** Pseudo-functions declaring domain of exec of the expression **/
+				if (!strcasecmp(etmp->Name,"runserver"))
+				    etmp->Flags |= EXPR_F_RUNSERVER;
+				else if (!strcasecmp(etmp->Name,"runclient"))
+				    etmp->Flags |= EXPR_F_RUNCLIENT;
+				else if (!strcasecmp(etmp->Name,"runstatic"))
+				    etmp->Flags |= EXPR_F_RUNSTATIC;
+
 				/** Ok, parse the elements in the param list until we get a close-paren **/
 				while(lxs->TokType != MLX_TOK_CLOSEPAREN)
 				    {
@@ -242,7 +255,10 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    mlxHoldToken(lxs);
 
 				    /** Compile the param and add it as a child item **/
-				    etmp2 = exp_internal_CompileExpression_r(lxs,level+1,objlist,cmpflags & ~EXPR_CMP_WATCHLIST);
+				    if (etmp->Flags & (EXPR_F_RUNSERVER | EXPR_F_RUNCLIENT))
+					etmp2 = exp_internal_CompileExpression_r(lxs,level+1,objlist,(cmpflags & ~EXPR_CMP_WATCHLIST) | EXPR_CMP_LATEBIND);
+				    else
+					etmp2 = exp_internal_CompileExpression_r(lxs,level+1,objlist,(cmpflags & ~EXPR_CMP_WATCHLIST));
 				    if (!etmp2)
 				        {
 					if (expr) expFreeExpression(expr);
@@ -256,6 +272,26 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    
 				    /** If comma, un-hold the token **/
 				    if (lxs->TokType == MLX_TOK_COMMA) mlxNextToken(lxs);
+				    }
+
+				/** If this was a domain declaration, remove the function entirely
+				 ** from the expression tree since it doesn't really exist
+				 **/
+				if (etmp->Flags & EXPR_F_DOMAINMASK)
+				    {
+				    if (etmp->Children.nItems != 1)
+					{
+					mssError(1,"EXP","%s() takes exactly one argument, %d supplied", etmp->Name, etmp->Children.nItems);
+					err = 1;
+					}
+				    else
+					{
+					etmp2 = (pExpression)(etmp->Children.Items[0]);
+					etmp2->Parent = etmp->Parent;
+					xaRemoveItem(&(etmp->Children), 0);
+					expFreeExpression(etmp);
+					etmp = etmp2;
+					}
 				    }
 				}
 			    else
@@ -782,12 +818,14 @@ expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags)
 
 	/** Parse it. **/
 	e = exp_internal_CompileExpression_r(s, 0, objlist, cmpflags);
-	if (e) exp_internal_SetAggLevel(e);
-	if (e) exp_internal_SetCoverageMask(e);
+	if (!e) return NULL;
+	/*if (!(e->Flags & EXPR_F_DOMAINMASK)) e->Flags |= EXPR_F_RUNDEFAULT;*/
+	exp_internal_SetAggLevel(e);
+	exp_internal_SetCoverageMask(e);
 
 	/** Set SEQ ids. **/
-	if (e) e->SeqID = 0;
-	if (e) e->PSeqID = 0;
+	e->SeqID = 0;
+	e->PSeqID = 0;
 
     return e;
     }
