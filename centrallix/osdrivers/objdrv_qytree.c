@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.6 2003/06/04 19:17:44 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.7 2004/02/24 20:11:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.7  2004/02/24 20:11:53  gbeeley
+    - better annotation support
+    - fixed query-related pathname bug
+
     Revision 1.6  2003/06/04 19:17:44  gbeeley
     Fixed bug in querytree relating to the use of string query criteria.
 
@@ -133,8 +137,7 @@ typedef struct
     }
     QytData, *pQytData;
 
-#define QYT_F_ISDIR	1
-#define QYT_F_ISOPEN	2
+#define QYT_F_ISTEXT	1
 
 #define QYT(x) ((pQytData)(x))
 
@@ -1106,7 +1109,8 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, qy->ObjInf->BaseNode, 
 		obj->Pathname->nElements-1, qy->ObjInf->BaseNode->Data, 0, 1);
 	if (!inf) return NULL;
-	strcpy(inf->Pathname, llobj->Pathname->Pathbuf);
+	/*strcpy(inf->Pathname, llobj->Pathname->Pathbuf);*/
+	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname, 0, 0));
 	if (inf->LLObj) objClose(inf->LLObj);
 	inf->LLObj = llobj;
 	inf->BaseNode = qy->ObjInf->BaseNode;
@@ -1183,6 +1187,30 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    *((char**)val) = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
 	    obj_internal_PathPart(inf->Obj->Pathname,0,0);
 	    return 0;
+	    }
+
+	/** annotation? **/
+	if (!strcmp(attrname,"annotation"))
+	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
+
+	    /** If object associated, get annot from it **/
+	    if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, POD(val));
+
+	    /** Otherwise, get annot from node if it has it **/
+	    if (stGetAttrValue(stLookup(inf->NodeData,attrname), DATA_T_STRING, POD(val), 0) == 0)
+		{
+		return 0;
+		}
+	    else
+		{
+		*((char**)val) = "";
+		return 0;
+		}
 	    }
 
 	/** If content-type, return as appropriate **/
