@@ -133,6 +133,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
     htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
     htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js", 0);
 
     htrAddEventHandler(s, "document","MOUSEMOVE", "dd", 
@@ -188,8 +189,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        }\n"
 	"    if (dd_target_img != null)\n"
 	"        {\n"
-	"        if (ly.name == 'u') ly.src = '/sys/images/ico13b.gif';\n"
-	"        else if (ly.name == 'd') ly.src = '/sys/images/ico12b.gif';\n"
+	"        if (dd_target_img.name != 'b' && dd_target_img.src)\n"
+	"            dd_target_img.src = htutil_subst_last(dd_target_img.src,\"b.gif\");\n"
 	"        dd_target_img = null;\n"
 	"        }\n"
 	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
@@ -420,10 +421,15 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.30 2002/07/31 21:26:57 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.31 2002/07/31 22:03:43 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.31  2002/07/31 22:03:43  lkehresman
+    Fixed mouseup issues when mouseup occurred outside the image for:
+      * dropdown scroll images
+      * imagebutton images
+
     Revision 1.30  2002/07/31 21:26:57  lkehresman
     Added support to click the area above and below the thumb image to scroll
     a page up and a page down in the dropdown widget

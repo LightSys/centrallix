@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.19 2002/07/25 18:45:40 lkehresman Exp $
+    $Id: htdrv_imagebutton.c,v 1.20 2002/07/31 22:03:44 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.20  2002/07/31 22:03:44  lkehresman
+    Fixed mouseup issues when mouseup occurred outside the image for:
+      * dropdown scroll images
+      * imagebutton images
+
     Revision 1.19  2002/07/25 18:45:40  lkehresman
     Standardized event connectors for imagebutton and textbutton, and took
     advantage of the checking done in the cn_activate function so it isn't
@@ -262,6 +267,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	htrAddScriptGlobal(s, "ib_cur_img", "null", 0);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
 
@@ -288,25 +294,27 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		"        e.target.src = e.target.layer.cImage.src;\n"
 		"        cn_activate(e.target.layer, 'MouseDown');\n"
+		"        ib_cur_img = e.target;\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","ib",
-		"    if (e.target != null && e.target.kind == 'ib' && e.target.layer.enabled == true)\n"
+		"    if (ib_cur_img)\n"
 		"        {\n"
-		"        if (e.pageX >= e.target.layer.pageX &&\n"
-		"            e.pageX < e.target.layer.pageX + e.target.layer.clip.width &&\n"
-		"            e.pageY >= e.target.layer.pageY &&\n"
-		"            e.pageY < e.target.layer.pageY + e.target.layer.clip.height)\n"
+		"        if (e.pageX >= ib_cur_img.layer.pageX &&\n"
+		"            e.pageX < ib_cur_img.layer.pageX + ib_cur_img.layer.clip.width &&\n"
+		"            e.pageY >= ib_cur_img.layer.pageY &&\n"
+		"            e.pageY < ib_cur_img.layer.pageY + ib_cur_img.layer.clip.height)\n"
 		"            {\n"
-		"            e.target.src = e.target.layer.pImage.src;\n"
 		"            cn_activate(e.target.layer, 'Click');\n"
 		"            cn_activate(e.target.layer, 'MouseUp');\n"
+		"            ib_cur_img.src = ib_cur_img.layer.pImage.src;\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
-		"            e.target.src = e.target.layer.nImage.src;\n"
+		"            ib_cur_img.src = ib_cur_img.layer.nImage.src;\n"
 		"            }\n"
-		"        }\n" );
+		"        ib_cur_img = null;\n"
+		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOVER","ib",
 		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
