@@ -256,13 +256,14 @@ config: etc/rootnode etc/centrallix.conf etc/centrallix.init
 
 config_install: config
 	mkdir -p ${sysconfdir}
+	if ! [ -d "$(sysconfdir)" ] ; then mkdir -p "$(sysconfdir)" ; fi
 	for CFILE in $(CONFFILES) ; do \
 		if ! [ -a "$(sysconfdir)/$${CFILE}" ] ; then \
-			echo "NOTE: Installed default version of $${CFILE}" ; \
-			$(INSTALL) -m 644 "etc/$${CFILE}" $(sysconfdir) ; \
+			echo "Installing default version of $${CFILE}" ; \
+			$(INSTALL) -m 644 "etc/$${CFILE}" "$(sysconfdir)/$${CFILE}" ; \
 		fi \
 	done
-	$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
+	#$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
 
 .c.so:	$<
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
