@@ -42,6 +42,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.2  2002/04/25 22:51:29  gbeeley
+    Added vararg versions of some key htrAddThingyItem() type of routines
+    so that all of this sbuf stuff doesn't have to be done, as we have
+    been bumping up against the limits on the local sbuf's due to very
+    long object names.  Modified label, editbox, and treeview to test
+    out (and make kardia.app work).
+
     Revision 1.1  2002/04/25 03:13:50  jorupp
      * added label widget
      * bug fixes in form and osrc
@@ -73,7 +80,6 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     {
     char* ptr;
     char name[64];
-    char sbuf[HT_SBUF_SIZE];
     /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
@@ -126,12 +132,9 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	name[63] = 0;
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"\t#lbl%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#lbl%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddHeaderItem(s,"    </STYLE>\n");
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -162,13 +165,10 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    return l;\n"
 		"    }\n", 0);
 	/** Script initialization call. **/
-	snprintf(sbuf,250,"    %s = lbl_init(%s.layers.lbl%d,\"%s\");\n",
-		nptr, parentname, id,text);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s, "    %s = lbl_init(%s.layers.lbl%d,\"%s\");\n", nptr, parentname, id,text);
 
 	/** HTML body <DIV> element for the base layer. **/
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"lbl%d\">\n",id);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s, "<DIV ID=\"lbl%d\">\n",id);
 	htrAddBodyItem(s, "</DIV>\n");
 
 	nmFree(text,strlen(text)+1);

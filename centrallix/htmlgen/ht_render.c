@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include "ht_render.h"
 #include "obj.h"
 #include "mtask.h"
@@ -43,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.4 2002/04/25 04:27:21 gbeeley Exp $
+    $Id: ht_render.c,v 1.5 2002/04/25 22:51:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.5  2002/04/25 22:51:29  gbeeley
+    Added vararg versions of some key htrAddThingyItem() type of routines
+    so that all of this sbuf stuff doesn't have to be done, as we have
+    been bumping up against the limits on the local sbuf's due to very
+    long object names.  Modified label, editbox, and treeview to test
+    out (and make kardia.app work).
+
     Revision 1.4  2002/04/25 04:27:21  gbeeley
     Added new AddInclude() functionality to the html generator, so include
     javascript files can be added.  Untested.
@@ -193,6 +201,118 @@ int
 htrAddBodyParam(pHtSession s, char* html_param)
     {
     return htr_internal_AddTextToArray(&(s->Page.HtmlBodyParams), html_param);
+    }
+
+
+/*** htr_internal_AddText() - use vararg mechanism to add text using one of
+ *** the standard add routines.
+ ***/
+int
+htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
+    {
+    va_list orig_va;
+    int rval;
+    char* new_buf;
+    int new_buf_size;
+
+	/** Save the current va_list state so we can retry it. **/
+	orig_va = va;
+
+	/** Attempt to print the thing to the tmpbuf. **/
+	while(1)
+	    {
+	    rval = vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va);
+
+	    /** Sigh.  Some libc's return -1 and some return # bytes that would be written. **/
+	    if (rval == -1 || rval > (s->TmpbufSize - 1))
+		{
+		/** I think I need a bigger box.  Fix it and try again. **/
+		new_buf_size = s->TmpbufSize * 2;
+		while(new_buf_size < rval) new_buf_size *= 2;
+		new_buf = nmSysMalloc(new_buf_size);
+		if (!new_buf)
+		    {
+		    return -1;
+		    }
+		nmSysFree(s->Tmpbuf);
+		s->Tmpbuf = new_buf;
+		s->TmpbufSize = new_buf_size;
+		va = orig_va;
+		}
+	    else
+		{
+		break;
+		}
+	    }
+
+	/** Ok, now add the tmpbuf normally. **/
+	fn(s, s->Tmpbuf);
+
+    return 0;
+    }
+
+
+/*** htrAddBodyItem_va() - use a vararg list (like sprintf, etc) to add a 
+ *** formatted string to the body of the document.
+ ***/
+int
+htrAddBodyItem_va(pHtSession s, char* fmt, ... )
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddBodyItem, fmt, va);
+	va_end(va);
+
+    return 0;
+    }
+
+
+/*** htrAddHeaderItem_va() - use a vararg list (like sprintf, etc) to add a 
+ *** formatted string to the header of the document.
+ ***/
+int
+htrAddHeaderItem_va(pHtSession s, char* fmt, ... )
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddHeaderItem, fmt, va);
+	va_end(va);
+
+    return 0;
+    }
+
+
+/*** htrAddBodyParam_va() - use a vararg list (like sprintf, etc) to add a 
+ *** formatted string to the body tag of the document.
+ ***/
+int
+htrAddBodyParam_va(pHtSession s, char* fmt, ... )
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddBodyParam, fmt, va);
+	va_end(va);
+
+    return 0;
+    }
+
+
+/*** htrAddScriptInit_va() - use a vararg list (like sprintf, etc) to add a 
+ *** formatted string to startup function of the document.
+ ***/
+int
+htrAddScriptInit_va(pHtSession s, char* fmt, ... )
+    {
+    va_list va;
+
+	va_start(va, fmt);
+	htr_internal_AddText(s, htrAddScriptInit, fmt, va);
+	va_end(va);
+
+    return 0;
     }
 
 
@@ -478,6 +598,13 @@ htrRender(pFile output, pObject appstruct)
 	if (!s) return -1;
 
 	/** Setup the page structures **/
+	s->Tmpbuf = nmSysMalloc(8);
+	s->TmpbufSize = 8;
+	if (!s->Tmpbuf) 
+	    {
+	    nmFree(s, sizeof(HtSession));
+	    return -1;
+	    }
 	xhInit(&(s->Page.NameFunctions),63,0);
 	xaInit(&(s->Page.Functions),32);
 	xhInit(&(s->Page.NameIncludes),31,0);
@@ -701,6 +828,8 @@ htrRender(pFile output, pObject appstruct)
 	    }
 	xhDeInit(&(s->Page.EventScripts.HashTable));
 	xaDeInit(&(s->Page.EventScripts.Array));
+
+	nmSysFree(s->Tmpbuf);
 
 	nmFree(s,sizeof(HtSession));
 

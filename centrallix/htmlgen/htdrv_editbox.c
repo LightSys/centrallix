@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.11 2002/03/23 01:18:09 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.12 2002/04/25 22:51:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.12  2002/04/25 22:51:29  gbeeley
+    Added vararg versions of some key htrAddThingyItem() type of routines
+    so that all of this sbuf stuff doesn't have to be done, as we have
+    been bumping up against the limits on the local sbuf's due to very
+    long object names.  Modified label, editbox, and treeview to test
+    out (and make kardia.app work).
+
     Revision 1.11  2002/03/23 01:18:09  lkehresman
     Fixed focus detection and form notification on editbox and anything that
     uses keyboard input.
@@ -126,7 +133,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     {
     char* ptr;
     char name[64];
-    char sbuf[HT_SBUF_SIZE];
+    /*char sbuf[HT_SBUF_SIZE];*/
     /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
@@ -194,16 +201,11 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    } 
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddHeaderItem_va(s,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
+	htrAddHeaderItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
+	htrAddHeaderItem(s,"    </STYLE>\n");
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -439,40 +441,26 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    }\n", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,250,"    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\");\n",
+	htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\");\n",
 		nptr, parentname, id, 
 		parentname, id, id, 
 		parentname, id, id,
 		fieldname);
-	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> element for the base layer. **/
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"eb%dbase\">\n",id);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "            <TD>&nbsp;</TD>\n");
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"eb%dcon1\"></DIV>\n",id);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"eb%dcon2\"></DIV>\n",id);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);
+	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon1\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon2\"></DIV>\n",id);
 
 	/** Check for objects within the editbox. **/
 	/** The editbox can have no subwidgets **/

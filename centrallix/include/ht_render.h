@@ -34,10 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.5 2002/04/25 04:27:21 gbeeley Exp $
+    $Id: ht_render.h,v 1.6 2002/04/25 22:51:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.6  2002/04/25 22:51:30  gbeeley
+    Added vararg versions of some key htrAddThingyItem() type of routines
+    so that all of this sbuf stuff doesn't have to be done, as we have
+    been bumping up against the limits on the local sbuf's due to very
+    long object names.  Modified label, editbox, and treeview to test
+    out (and make kardia.app work).
+
     Revision 1.5  2002/04/25 04:27:21  gbeeley
     Added new AddInclude() functionality to the html generator, so include
     javascript files can be added.  Untested.
@@ -184,18 +191,24 @@ typedef struct
     HtPage	Page;			/* the generated page... */
     pHtTree	Tree;			/* tree page metainfo structure */
     int		DisableBody;
+    char*	Tmpbuf;			/* temp buffer used in _va() functions */
+    int		TmpbufSize;
     }
     HtSession, *pHtSession;
 
 
 /** Rendering engine functions **/
 int htrAddHeaderItem(pHtSession s, char* html_text);
+int htrAddHeaderItem_va(pHtSession s, char* fmt, ... );
 int htrAddBodyItem(pHtSession s, char* html_text);
+int htrAddBodyItem_va(pHtSession s, char* fmt, ... );
 int htrAddBodyParam(pHtSession s, char* html_param);
+int htrAddBodyParam_va(pHtSession s, char* fmt, ... );
 int htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code);
 int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
 int htrAddScriptInit(pHtSession s, char* init_text);
+int htrAddScriptInit_va(pHtSession s, char* fmt, ... );
 int htrAddScriptInclude(pHtSession s, char* filename, int flags);
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);

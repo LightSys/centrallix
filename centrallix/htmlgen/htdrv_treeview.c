@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.10 2002/03/17 03:51:03 jorupp Exp $
+    $Id: htdrv_treeview.c,v 1.11 2002/04/25 22:51:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.11  2002/04/25 22:51:29  gbeeley
+    Added vararg versions of some key htrAddThingyItem() type of routines
+    so that all of this sbuf stuff doesn't have to be done, as we have
+    been bumping up against the limits on the local sbuf's due to very
+    long object names.  Modified label, editbox, and treeview to test
+    out (and make kardia.app work).
+
     Revision 1.10  2002/03/17 03:51:03  jorupp
     * treeview now returns value on function call (in alert window)
     * implimented basics of 3-button confirm window on the form side
@@ -122,7 +129,6 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
-    char sbuf[200];
     char src[128];
     pObject sub_w_obj;
     pObjQuery qy;
@@ -165,14 +171,10 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	src[127]=0;
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem_va(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddHeaderItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
+	htrAddHeaderItem_va(s,"    </STYLE>\n");
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
@@ -590,17 +592,13 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,160,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
-	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf,200,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
+	htrAddScriptInit_va(s,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
+	htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
 		nptr, src, parentname, id, parentname, w, parentobj);
-	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
-	snprintf(sbuf,160,"<DIV ID=\"tv%droot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,src);
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf,160,"<DIV ID=\"tv%dload\"></DIV>\n",id);
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,src);
+	htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\"></DIV>\n",id);
 
 	/** Event handler for click-on-url **/
 	htrAddEventHandler(s, "document","CLICK","tv",
