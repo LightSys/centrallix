@@ -57,10 +57,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.1 2002/04/25 04:30:13 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.2 2002/05/03 03:48:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.2  2002/05/03 03:48:16  gbeeley
+    Update due to modification in the xhClear() api.
+
     Revision 1.1  2002/04/25 04:30:13  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -2899,7 +2902,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		}
 	    if (err) break;
 	    }
-	xhClear(&queries,rpt_internal_FreeQC);
+	xhClear(&queries,rpt_internal_FreeQC, NULL);
 	xhDeInit(&queries);
 	inf->RSess = NULL;
 	nmFree(rs,sizeof(RptSession));
