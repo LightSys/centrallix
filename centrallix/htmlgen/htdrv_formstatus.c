@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.9 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_formstatus.c,v 1.10 2002/07/29 19:13:38 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.10  2002/07/29 19:13:38  lkehresman
+    * Added standard events to formstatus widget (why would you ever want them?!)
+    * Made formstatus a named widget
+
     Revision 1.9  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -108,6 +112,11 @@ int htfsVerify() {
 int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
    int x=-1,y=-1;
    int id;
+   char sbuf[160];
+   char sbuf2[160];
+   char name[64];
+   char* nptr;
+   char* ptr;
 
    /** Get an id for this. **/
    id = (HTFS.idcnt++);
@@ -116,15 +125,33 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
    if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
 
+   /** Write named global **/
+   if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+   memccpy(name,ptr,0,63);
+   name[63] = 0;
+   nptr = (char*)nmMalloc(strlen(name)+1);
+   strcpy(nptr,name);
+   htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:13; Z-INDEX:%d; }\n",id,x,y,z);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    fs_init(%s.layers.fs%dmain);\n", parentname, id);
+   htrAddScriptInit_va(s,"    %s = fs_init(%s.layers.fs%dmain);\n", nptr, parentname, id);
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
+
+   htrAddEventHandler(s,"document","MOUSEDOWN","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseDown');\n\n"); 
+   htrAddEventHandler(s,"document","MOUSEUP",  "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseUp');\n\n"); 
+   htrAddEventHandler(s,"document","MOUSEOVER","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOver');\n\n"); 
+   htrAddEventHandler(s,"document","MOUSEOUT", "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOut');\n\n"); 
+   htrAddEventHandler(s,"document","MOUSEMOVE","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseMove');\n\n"); 
+   
+   snprintf(sbuf,160,"%s.document",nptr);
+   snprintf(sbuf2,160,"%s",nptr);
+   htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
    return 0;
 }
 
@@ -147,6 +174,13 @@ int htfsInitialize() {
    drv->Render = htfsRender;
    drv->Verify = htfsVerify;
    strcpy(drv->Target, "Netscape47x:default");
+
+   htrAddEvent(drv,"Click");
+   htrAddEvent(drv,"MouseUp");
+   htrAddEvent(drv,"MouseDown");
+   htrAddEvent(drv,"MouseOver");
+   htrAddEvent(drv,"MouseOut");
+   htrAddEvent(drv,"MouseMove");
 
 #if 00
    /** Add the 'load page' action **/

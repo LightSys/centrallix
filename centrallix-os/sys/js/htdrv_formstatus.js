@@ -26,8 +26,14 @@ function fs_setvalue(m) {
 
 function fs_init(l) {
 	l.kind = 'formstatus';
+	l.mainlayer = l;
+	l.document.layer = l;
+	l.document.images[0].layer = l;
+	l.document.images[0].mainlayer = l;
+	l.document.images[0].kind = 'formstatus';
 	l.currentMode = 'NoData';
 	l.isFormStatusWidget = true;
 	l.setvalue = fs_setvalue;
 	if (fm_current) fm_current.Register(l);
+	return l;
 }
