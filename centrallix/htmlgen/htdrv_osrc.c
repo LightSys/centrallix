@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.22 2002/04/30 18:08:43 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.23 2002/05/06 22:29:36 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.23  2002/05/06 22:29:36  jorupp
+     * minor bug fixes that I found while documenting the OSRC
+
     Revision 1.22  2002/04/30 18:08:43  jorupp
      * more additions to the table -- now it can scroll~
      * made the osrc and form play nice with the table
@@ -247,7 +250,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
   snprintf(sbuf3, 200, "    </STYLE>\n");
   htrAddHeaderItem(s,sbuf3);
 	 
-   
+#if 0   
    htrAddScriptFunction(s, "osrc_action_clear", "\n"
       "function osrc_action_clear()\n"
       "    {\n"
@@ -260,7 +263,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    //Clear replica of data\n"
       "    delete data;\n"
       "    }\n",0);
-
+#endif
 
    htrAddScriptFunction(s, "osrc_init_query", "\n"
       "function osrc_init_query()\n"
@@ -615,7 +618,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        var qid=this.qid\n"
       "        this.qid=null;\n"
       /* return the last record as the current one if it was our target otherwise, don't */
-      "        if(this.CurrentRecord==this.TargetRecord)\n"
+      "        if(this.moveop)\n"
       "            {\n"
       "            this.CurrentRecord=this.LastRecord;\n"
       "            this.GiveAllCurrentRecord();\n"
@@ -686,7 +689,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "            }\n"
       "        else\n"
       "            {\n"
-      "            if(this.CurrentRecord==this.TargetRecord)\n"
+      "            if(this.moveop)\n"
       "                this.GiveAllCurrentRecord();\n"
       "            else\n"
       "                this.TellAllReplicaMoved();\n"
@@ -737,7 +740,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        this.children[i].ObjectAvailable(this.replica[this.CurrentRecord]);\n"
       "    }\n",0);
 
-   htrAddScriptFunction(s, "osrc", "\n"
+   htrAddScriptFunction(s, "osrc_tell_all_replica_moved", "\n"
       "function osrc_tell_all_replica_moved()\n"
       "    {\n"
       "    for(var i in this.children)\n"
@@ -786,6 +789,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "function osrc_move_to_record_cb(recnum)\n"
       "    {\n"
       "    //confirm(recnum);\n"
+      "    this.moveop=true;\n"
       "    if(recnum<1)\n"
       "        {\n"
       "        alert(\"Can't move past beginning.\");\n"
@@ -925,8 +929,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddScriptFunction(s, "osrc_scroll_to", "\n"
       "function osrc_scroll_to(recnum)\n"
       "    {\n"
-      "    //var readahead=this.readahead;\n"
-      "    var readahead=1;\n"
+      "    this.moveop=false;\n"
       "    this.TargetRecord=recnum;\n"
       "    if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)\n"
       "        {\n"
@@ -938,22 +941,21 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        {\n"
       "        if(this.TargetRecord < this.FirstRecord)\n"
       "            {\n" /* data is further back, need new query */
-      "            if(this.FirstRecord-this.TargetRecord<readahead)\n"
+      "            if(this.FirstRecord-this.TargetRecord<this.scrollahead)\n"
       "                {\n"
-      "                this.startat=(this.FirstRecord-readahead)>0?(this.FirstRecord-readahead):1;\n"
+      "                this.startat=(this.FirstRecord-this.scrollahead)>0?(this.FirstRecord-this.scrollahead):1;\n"
       "                }\n"
       "            else\n"
       "                {\n"
       "                this.startat=this.TargetRecord;\n"
       "                }\n"
+      "            this.onload=osrc_open_query_startat;\n"
       "            if(this.qid)\n"
       "                {\n"
-      "                this.onload=osrc_open_query_startat;\n"
       "                this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
       "                }\n"
       "            else\n"
       "                {\n"
-      "                this.onload=osrc_open_query_startat;\n"
       "                this.onload();\n"
       "                }\n"
       "            return 0;\n"
@@ -966,7 +968,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                if(this.TargetRecord == Number.MAX_VALUE)\n"
       "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0\";\n" /* rowcount defaults to a really high number if not set */
       "                else\n"
-      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+readahead;\n"
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.scrollahead;\n"
       "                }\n"
       "            else\n"
       "                {\n"
@@ -1009,7 +1011,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    loader.MoveToRecord=osrc_move_to_record;\n"
       "    loader.MoveToRecordCB=osrc_move_to_record_cb;\n"
       "    loader.children = new Array();\n"
-      "    loader.ActionClear=osrc_action_clear;\n"
+      "    //loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
       "    loader.ActionQueryObject=osrc_action_query_object;\n"
       "    loader.ActionOrderObject=osrc_action_order_object;\n"
