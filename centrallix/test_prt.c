@@ -58,10 +58,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.4 2002/10/18 22:01:37 gbeeley Exp $
+    $Id: test_prt.c,v 1.5 2002/10/21 20:22:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.5  2002/10/21 20:22:11  gbeeley
+    Text foreground color attribute now basically operational.  Range of
+    colors is limited however.  Tested on PCL output driver, on hp870c
+    and hp4550 printers.  Also tested on an hp3si (black&white) to make
+    sure the color pcl commands didn't garble things up there.  Use the
+    "colors" test_prt command to test color output (and "output" to
+    "/dev/lp0" if desired).
+
     Revision 1.4  2002/10/18 22:01:37  gbeeley
     Printing of text into an area embedded within a page now works.  Two
     testing options added to test_prt: text and printfile.  Use the "output"
@@ -150,6 +158,7 @@ start(void* v)
     void* outputfn;
     void* outputarg;
     int t;
+    int r,g,b;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -304,7 +313,7 @@ start(void* v)
 		    }
 		pagehandle = prtGetPageRef(prtsession);
 		printf("printfile: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, PRT_OBJ_U_REPEAT);
 		printf("printfile: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		while((rcnt = fdRead(fd, sbuf, 255, 0, 0)) > 0)
@@ -377,6 +386,49 @@ start(void* v)
 		    continue;
 		    }
 		outputfn = fdWrite;
+		}
+	    else if (!strcmp(cmdname,"colors"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: colors <mime type>\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		printf("colors: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (!prtsession)
+		    {
+		    continue;
+		    }
+		pagehandle = prtGetPageRef(prtsession);
+		printf("colors: prtGetPageRef returned page handle %d\n", pagehandle);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		printf("colors: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+
+		/** Print 6 shades of each of r,g, and b.  total lines = 42 **/
+		for(r=0;r<=255;r+=51)
+		    {
+		    for(g=0;g<=255;g+=51)
+			{
+			for(b=0;b<=255;b+=51)
+			    {
+			    rval = prtSetColor(areahandle,(r<<16) | (g<<8) | b);
+			    printf("colors: prtSetColor returned %d\n", rval);
+			    snprintf(sbuf,256,"%2.2X%2.2X%2.2X  ",r,g,b);
+			    rval = prtWriteString(areahandle, sbuf);
+			    printf("colors: prtWriteString returned %d\n", rval);
+			    }
+			prtWriteNL(areahandle);
+			}
+		    prtWriteNL(areahandle);
+		    }
+
+		rval = prtEndObject(areahandle);
+		printf("colors: prtEndObject(area) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("colors: prtCloseSession returned %d\n", rval);
 		}
 	    else
 		{

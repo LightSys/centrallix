@@ -49,10 +49,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.3 2002/10/18 22:01:38 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.4 2002/10/21 20:22:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.4  2002/10/21 20:22:12  gbeeley
+    Text foreground color attribute now basically operational.  Range of
+    colors is limited however.  Tested on PCL output driver, on hp870c
+    and hp4550 printers.  Also tested on an hp3si (black&white) to make
+    sure the color pcl commands didn't garble things up there.  Use the
+    "colors" test_prt command to test color output (and "output" to
+    "/dev/lp0" if desired).
+
     Revision 1.3  2002/10/18 22:01:38  gbeeley
     Printing of text into an area embedded within a page now works.  Two
     testing options added to test_prt: text and printfile.  Use the "output"
@@ -282,13 +290,6 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 	cur_obj = page_obj;
 	while((cur_obj = cur_obj->YNext))
 	    {
-	    /** Style change? **/
-	    if (memcmp(&cur_style, &(page_obj->TextStyle), sizeof(PrtTextStyle)))
-		{
-		memcpy(&cur_style, &(page_obj->TextStyle), sizeof(PrtTextStyle));
-		drv->SetTextStyle(drvdata, &cur_style);
-		}
-
 	    /** Set position. **/
 	    if (cur_obj->PageY != cur_y)
 		{
@@ -296,6 +297,13 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		drv->SetVPos(drvdata, cur_y);
 		}
 	    drv->SetHPos(drvdata, cur_obj->PageX);
+
+	    /** Style change? **/
+	    if (memcmp(&cur_style, &(cur_obj->TextStyle), sizeof(PrtTextStyle)))
+		{
+		memcpy(&cur_style, &(cur_obj->TextStyle), sizeof(PrtTextStyle));
+		drv->SetTextStyle(drvdata, &cur_style);
+		}
 
 	    /** Do the specific object. **/
 	    switch(cur_obj->ObjType->TypeID)

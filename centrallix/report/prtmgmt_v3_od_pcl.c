@@ -50,10 +50,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.4 2002/10/18 22:01:39 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.5 2002/10/21 20:22:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.5  2002/10/21 20:22:12  gbeeley
+    Text foreground color attribute now basically operational.  Range of
+    colors is limited however.  Tested on PCL output driver, on hp870c
+    and hp4550 printers.  Also tested on an hp3si (black&white) to make
+    sure the color pcl commands didn't garble things up there.  Use the
+    "colors" test_prt command to test color output (and "output" to
+    "/dev/lp0" if desired).
+
     Revision 1.4  2002/10/18 22:01:39  gbeeley
     Printing of text into an area embedded within a page now works.  Two
     testing options added to test_prt: text and printfile.  Use the "output"
@@ -97,6 +105,39 @@ typedef struct _PPCL
     PrtTextStyle	SelectedStyle;
     }
     PrtPclodInf, *pPrtPclodInf;
+
+
+/*** prt_pclod_RGBtoCMYK() - take an RGB color, in the form 0x00RRGGBB,
+ *** and convert it to CMYK ink values, in the form 0xCCMMYYKK.
+ ***/
+unsigned int
+prt_pclod_RGBtoCMYK(int rgb_color)
+    {
+    unsigned int c,m,y,k;
+    int r,g,b;
+
+	/** Separate the rgb components **/
+	r = (rgb_color>>16)&0xFF;
+	g = (rgb_color>>8)&0xFF;
+	b = (rgb_color)&0xFF;
+
+	/** black (k) level based on common lightness **/
+	k = (r>g)?r:g;
+	k = (k>b)?k:b;
+	k = 255 - k;
+
+	/** Remove the black component from the r,g, and b. **/
+	r += k;
+	g += k;
+	b += k;
+
+	/** compute the c,m, and y components as inverses of r,g, and b. **/
+	c = 255 - r;
+	m = 255 - g;
+	y = 255 - b;
+
+    return (c<<24 | m<<16 | y<<8 | k);
+    }
 
 
 /*** prt_pclod_Output() - outputs the given snippet of text or PCL code
@@ -145,7 +186,7 @@ prt_pclod_Open(pPrtSession s)
 	context->SelectedStyle.Color = 0x00FFFFFF; /* black */
 
 	/** Send the document init string to the output channel **/
-	prt_pclod_Output(context, "\33E", -1);
+	prt_pclod_Output(context, "\33E\33*r-3U", -1);
 
     return (void*)context;
     }
@@ -340,10 +381,11 @@ prt_pclod_SetTextStyle(void* context_v, pPrtTextStyle style)
 	if (style->Color != context->SelectedStyle.Color)
 	    {
 	    /** Only limited color support right now **/
+	    color = 0;
 	    if ((style->Color & 0x000000FF) >= 0x0080) color += 4;
 	    if ((style->Color & 0x0000FF00) >= 0x008000) color += 2;
 	    if ((style->Color & 0x00FF0000) >= 0x00800000) color += 1;
-	    snprintf(pclbuf, 64, "\33*r-3U\33*v%dS", color);
+	    snprintf(pclbuf, 64, "\33*v%dS", 7-color);
 	    prt_pclod_Output(context, pclbuf, -1);
 	    }
 
