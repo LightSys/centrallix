@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.23 2002/07/18 20:12:40 lkehresman Exp $
+    $Id: ht_render.c,v 1.24 2002/08/02 19:44:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.24  2002/08/02 19:44:20  gbeeley
+    Have ht_render report the widget type when it complains about not knowing
+    a widget type when generating a page.
+
     Revision 1.23  2002/07/18 20:12:40  lkehresman
     Added support for a loadstatus icon to be displayed, hiding the drawing
     of the visible windows.  This looks MUCH nicer when loading Kardia or
@@ -385,7 +389,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 	drv = (pHtDriver)xhLookup(widget_drivers,w_name+7);
 	if (!drv) 
 	    {
-	    mssError(1,"HTR","Unknown widget content type");
+	    mssError(1,"HTR","Unknown widget object type '%s'", w_name);
 	    return -1;
 	    }
 
