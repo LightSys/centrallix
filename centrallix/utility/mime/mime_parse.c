@@ -50,6 +50,15 @@ char* TypeStrings[] =
     "video"
     };
 
+char* EncodingStrings[] =
+    {
+    "7bit",
+    "8bit",
+    "base64",
+    "quoted-printable",
+    "binary"
+    };
+
 /*  libmime_ParseHeader
 **
 **  Parses a message (located at obj->Prev) starting at the "start" byte, and ending
@@ -74,7 +83,7 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
     msg->Boundary[0] = 0;
     msg->Subject[0] = 0;
     msg->Charset[0] = 0;
-    msg->TransferEncoding[0] = 0;
+    msg->TransferEncoding = MIME_ENC_7BIT;
     msg->MIMEVersion[0] = 0;
     msg->Mailer[0] = 0;
     msg->MsgSeekStart = 0;
@@ -375,12 +384,22 @@ libmime_SetContentLength(pMimeHeader msg, char *buf)
 int
 libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     {
-    strncpy(msg->TransferEncoding, buf, 31);
-    msg->TransferEncoding[31] = 0;
+    if (!strlen(buf) || !strcasecmp(buf, "7bit"))
+	msg->TransferEncoding = MIME_ENC_7BIT;
+    else if (!strcasecmp(buf, "8bit"))
+	msg->TransferEncoding = MIME_ENC_8BIT;
+    else if (!strcasecmp(buf, "base64"))
+	msg->TransferEncoding = MIME_ENC_BASE64;
+    else if (!strcasecmp(buf, "quoted-printable"))
+	msg->TransferEncoding = MIME_ENC_QP;
+    else if (!strcasecmp(buf, "binary"))
+	msg->TransferEncoding = MIME_ENC_BINARY;
+    else
+	msg->TransferEncoding = MIME_ENC_7BIT;
 
     if (MIME_DEBUG)
 	{
-	printf("  TRANS-ENC   : \"%s\"\n", msg->TransferEncoding);
+	printf("  TRANS-ENC   : %d\n", msg->TransferEncoding);
 	}
     return 0;
     }
@@ -656,39 +675,111 @@ libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLx
     return 0;
     }
 
+/*
+**  int
+**  libmime_PartRead(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset)
+**
+**  Using nearly the same interface as objRead (except for the first
+**  parameter), this function will read an arbitrary number of bytes from a
+**  MIME part, doing all the decoding of that part behind the scenes (as
+**  specified by the Content-Transfer-Encoding header element).
+*/
 int
-libmime_PrintEntity(pMimeHeader msg, pLxSession lex)
+libmime_PartRead(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset)
     {
-    int count=0, flag=1, toktype, alloc;
-    XString xsbuf;
+    static char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    int size;
+    char *a_buf, *b_buf, a_ch, *ptr;
+    int a_count=0, a_bufcnt=0, a_pos=0;
+    int b_count=0, i, buf_cnt=0;
 
-    count = msg->MsgSeekStart;
-    mlxSetOffset(lex, msg->MsgSeekStart);
-    while (flag)
+    a_pos = msg->MsgSeekStart;
+    switch (msg->TransferEncoding)
 	{
-	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
-	toktype = mlxNextToken(lex);
-	if (toktype == MLX_TOK_ERROR)
-	    {
-	    return -1;
-	    }
-	else
-	    {
-	    alloc = 0;
-	    xsInit(&xsbuf);
-	    xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
-	    count += strlen(xsbuf.String);
-	    if (count <= msg->MsgSeekEnd)
+	/** 7BIT AND 8BIT ENCODING **/
+	/** QUOTED-PRINTABLE ENCODING **/
+	case MIME_ENC_7BIT:
+	case MIME_ENC_8BIT:
+	case MIME_ENC_QP:  /**  Not currently supported, just print the text **/
+	    if (msg->MsgSeekStart+offset > msg->MsgSeekEnd)
+		return 0;
+	    if (msg->MsgSeekStart+offset+maxcnt > msg->MsgSeekEnd)
+		maxcnt = msg->MsgSeekEnd - (msg->MsgSeekStart + offset);
+	    buf_cnt = objRead(obj->Prev, buffer, maxcnt, msg->MsgSeekStart+offset, FD_U_SEEK);
+	    break;
+	/** BASE64 ENCODING **/
+	case MIME_ENC_BASE64:
+	    /**
+	     **  NOTE:  This is not optomized.  It should be possible to 
+	     **  not have to read every character in, but to seek to the
+	     **  specific point in the stream using the fact that 4-b64
+	     **  characters decodes to 3 bytes.  Do this at some point.
+	     */
+	    a_buf = (char*)nmMalloc(5);
+	    b_buf = (char*)nmMalloc(4);
+	    size = objRead(obj->Prev, &a_ch, 1, msg->MsgSeekStart, FD_U_SEEK);
+	    a_pos += size;
+	    a_count += size;
+	    while (size && a_pos <= msg->MsgSeekEnd+2)
 		{
-		xsRTrim(&xsbuf);
-		printf("(%s)\n", xsbuf.String);
+		/** If the character isn't in the b64 alphabet, ignore it **/
+		ptr = strchr(b64, a_ch);
+		if (ptr)
+		    {
+		    a_buf[a_bufcnt++] = a_ch;
+		    /** Collect 4 characters before sending it through the decoder **/
+		    if (a_bufcnt >= 4)
+			{
+			a_bufcnt = 0;
+			a_buf[4] = 0;
+			b_count += 3;
+			/** If we are somewhere within the read range (offset by max 3 on each side) **/
+			if (b_count >= offset && b_count <= offset+maxcnt+2)
+			    {
+			    libmime_DecodeBase64(b_buf, a_buf, 4);
+			    b_buf[3] = 0;
+			    /** within three on the left side of the string **/
+			    if ((b_count-offset) < 3)
+				{
+				for (i=3-(b_count-offset); i < 3; i++)
+				    {
+				    buffer[buf_cnt++] = b_buf[i];
+				    }
+				}
+			    /** within three on the right side of the string **/
+			    else if (b_count >= (offset+maxcnt))
+				{
+				for (i=0; i <= 2-(b_count-(offset+maxcnt)); i++)
+				    {
+				    buffer[buf_cnt++] = b_buf[i];
+				    }
+				}
+			    /** the full three characters **/
+			    else
+				{
+				buffer[buf_cnt++] = b_buf[0];
+				buffer[buf_cnt++] = b_buf[1];
+				buffer[buf_cnt++] = b_buf[2];
+				}
+			    }
+			}
+		    }
+		size = objRead(obj->Prev, &a_ch, 1, msg->MsgSeekStart+a_count, FD_U_SEEK);
+		a_pos += size;
+		a_count += size;
 		}
-	    else
-		{
-		flag = 0;
-		}
-	    xsDeInit(&xsbuf);
-	    }
+	    nmFree(a_buf, 5);
+	    nmFree(b_buf, 4);
+	    break;
+	/** BINARY ENCODING **/
+	case MIME_ENC_BINARY:
+	    if (msg->MsgSeekStart+offset > msg->MsgSeekEnd)
+		return 0;
+	    if (msg->MsgSeekStart+offset+maxcnt > msg->MsgSeekEnd)
+		maxcnt = msg->MsgSeekEnd - (msg->MsgSeekStart + offset);
+	    buf_cnt = objRead(obj->Prev, buffer, maxcnt, msg->MsgSeekStart+offset, FD_U_SEEK);
+	    break;
 	}
-    return 0;
+
+    return buf_cnt;
     }

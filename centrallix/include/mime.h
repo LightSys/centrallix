@@ -53,9 +53,9 @@ typedef struct _MM
     char	Boundary[80];
     char	Subject[80];
     char	Charset[32];
-    char	TransferEncoding[32];
     char	MIMEVersion[16];
     char	Mailer[80];
+    int		TransferEncoding;
     DateTime	Date;
     long	MsgSeekStart;
     long	MsgSeekEnd;
@@ -69,6 +69,7 @@ typedef struct _MM
 
 /*** Possible Main Content Types ***/
 extern char* TypeStrings[];
+extern char* EncodingStrings[];
 
 #define MIME_DEBUG            1
 #define MIME_DEBUG_ADDR       0
@@ -92,6 +93,11 @@ extern char* TypeStrings[];
 #define MIME_TYPE_AUDIO       6
 #define MIME_TYPE_VIDEO       7
 
+#define MIME_ENC_7BIT         1
+#define MIME_ENC_8BIT         2
+#define MIME_ENC_BASE64       3
+#define MIME_ENC_QP           4
+#define MIME_ENC_BINARY       5
 
 /** mime_parse.c **/
 int libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex);
@@ -109,6 +115,7 @@ int libmime_SetContentDisp(pMimeHeader msg, char *buf);
 int libmime_SetContentType(pMimeHeader msg, char *buf);
 void libmime_PrintEntityContent(pMimeHeader msg, pLxSession lex);
 int libmime_GetEntityContent(long start, long end, pLxSession lex);
+int libmime_ReadPart(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset);
 
 /** mime_address.c **/
 int libmime_ParseAddressList(char *buf, pXArray xary);

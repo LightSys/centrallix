@@ -53,14 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.14 2002/08/26 18:53:45 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.15 2002/08/27 20:14:15 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
-    Revision 1.14  2002/08/26 18:53:45  lkehresman
-    * copied base64 encode/decode from net_http (soon will be modified)
-    * fixed a bug that was adding a newline at the beginning of each entity
-    * added a function that prints the content of a given entity (unencoded)
+    Revision 1.15  2002/08/27 20:14:15  lkehresman
+    Added (unoptimized) support for multipart message reading including
+    decoding of encoded parts.  No quoted-printable support yet, that will
+    come later.  This also includes seeking to arbitrary parts inside the
+    encoded parts.
 
     Revision 1.13  2002/08/26 17:36:52  lkehresman
     * Added some documentation to the functions in libmime
@@ -182,7 +183,9 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pMimeData inf;
     pMimeHeader msg;
     pMimeHeader tmp;
-    int i;
+    char *node_path;
+    char *buffer;
+    int i,size;
 
     printf("MIMEOPEN()\n");
     if (MIME_DEBUG) fprintf(stderr, "\n");
@@ -197,6 +200,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     memset(inf,0,sizeof(MimeData));
     memset(msg,0,sizeof(MimeHeader));
     /** Set object parameters **/
+    node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
     strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
     inf->Header = msg;
     inf->Obj = obj;
@@ -221,7 +225,13 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	{
 	tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
 	if (MIME_DEBUG) fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
-	//libmime_PrintEntity(tmp, lex);
+	/*
+	buffer = (char*)nmMalloc(64);
+	size = libmime_PartRead(obj, tmp, buffer, 63, 10);
+	buffer[size] = 0;
+	printf("--%d--%s--\n", size,buffer);
+	nmFree(buffer, 64);
+	*/
 	}
     if (MIME_DEBUG) fprintf(stderr, "-----------------------------------------------------------------\n\n");
     mlxCloseSession(lex);
@@ -417,7 +427,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	}
     if (!strcmp(attrname, "transfer_encoding"))
 	{
-	*((char**)val) = inf->Header->TransferEncoding;
+	*((char**)val) = EncodingStrings[inf->Header->TransferEncoding-1];
 	return 0;
 	}
     if (!strcmp(attrname, "mime_version"))
