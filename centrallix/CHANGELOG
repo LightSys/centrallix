@@ -13,6 +13,9 @@ Centrallix ChangeLog
 	4.  GZip content encoding now supported to reduce bandwidth needed to
 	    load the generated pages, depending on browser support.
 	5.  Several new widgets added: Calendar (date/time), Text Area
+	6.  MIME/rfc822 objectsystem driver added to parse rfc822 messages
+	    with MIME encoding and to allow SQL queries on that data..  The 
+	    MIME driver can also be used apart from rfc822 messages.
 
 
 -------------------------------------------------------------------------------
