@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.7 2002/03/14 17:58:52 jorupp Exp $
+    $Id: htdrv_treeview.c,v 1.8 2002/03/14 22:02:58 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.8  2002/03/14 22:02:58  jorupp
+     * bugfixes, dropdown doesn't throw errors when being cleared/reset
+
     Revision 1.7  2002/03/14 17:58:52  jorupp
      * added: change root object/array or run function by clicking hyperlink
 
@@ -384,24 +387,25 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                        case \"boolean\":\n"
 		"                            if(ret==\"true\" || ret==1 || ret==-1)\n"
 		"                                {\n"
-		"                                o=l.parent.obj[l.objn]=true;\n"
+		"                                l.parent.obj[l.objn]=true;\n"
 		"                                }\n"
 		"                            else\n"
 		"                                {\n"
-		"                                o=l.parent.obj[l.objn]=false;\n"
+		"                                l.parent.obj[l.objn]=false;\n"
 		"                                }\n"
 		"                            break;\n"
 		"                        default:\n"
-		"                            o=l.parent.obj[l.objn]=ret;\n"
+		"                            l.parent.obj[l.objn]=ret;\n"
 		"                        }\n"
-		"                    }\n"
-		"                link_txt=l.objn+\" (\"+typeof(o)+\"): \"+o;\n"
-		"                tvtext = \"<IMG SRC=/sys/images/ico01b.gif align=left>&nbsp;<A HREF=''>\" + link_txt + \"</A>\";\n"
-		"                if (l.tvtext != tvtext)\n"
-		"                    {\n"
-		"                    l.tvtext = tvtext;\n"
-		"                    l.document.writeln(l.tvtext);\n"
-		"                    l.document.close();\n"
+		"                        o=l.parent.obj[l.objn];\n"
+		"                    link_txt=l.objn+\" (\"+typeof(o)+\"): \"+o;\n"
+		"                    tvtext = \"<IMG SRC=/sys/images/ico01b.gif align=left>&nbsp;<A HREF=''>\" + link_txt + \"</A>\";\n"
+		"                    if (l.tvtext != tvtext)\n"
+		"                        {\n"
+		"                        l.tvtext = tvtext;\n"
+		"                        l.document.writeln(l.tvtext);\n"
+		"                        l.document.close();\n"
+		"                        }\n"
 		"                    }\n"
 		"                }\n"
 		"            }\n"
@@ -459,6 +463,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                    {\n"
 		"                    im = '02';\n"
 		"                    link_txt=\"<b>\"+link_txt+\"</b>\";\n"
+		"                    if(o.name) link_txt+=\" \"+o.name;\n"
 		"                    }\n"
 		"                }\n"
 		"            else\n"

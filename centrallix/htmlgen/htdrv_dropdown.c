@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.7 2002/03/14 15:48:43 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.8 2002/03/14 22:02:58 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.8  2002/03/14 22:02:58  jorupp
+     * bugfixes, dropdown doesn't throw errors when being cleared/reset
+
     Revision 1.7  2002/03/14 15:48:43  lkehresman
     * Added enable, disable, readonly functions
     * Improved GUI quite a bit.. looks purdy
@@ -161,13 +164,13 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Clear Value function **/
    htrAddScriptFunction(s, "dd_clearvalue", "\n"
 	"function dd_clearvalue() {\n"
-	"   dd_setvalue('');\n"
+	"   this.setvalue('');\n"  /* FIXME -- this doesn't do anything */
 	"}\n", 0);
    
    /** Reset Value function **/
    htrAddScriptFunction(s, "dd_resetvalue", "\n"
 	"function dd_resetvalue() {\n"
-	"   dd_clearvalue();\n"
+	"   this.clearvalue();\n"
 	"}\n", 0);
    
    /** Set Options function 
@@ -295,6 +298,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.enable = dd_enable;\n"
 	"   l.readonly = dd_readonly;\n"
 	"   l.disable = dd_disable;\n"
+	"   l.clearvalue=dd_clearvalue;\n"
+	"   l.resetvalue=dd_resetvalue;\n"
 	"   if (fm_current) fm_current.Register(l);\n"
 	"}\n", 0);
 
