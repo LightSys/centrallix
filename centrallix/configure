@@ -830,10 +830,10 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-centrallix-inc=DIR
                           Location of centrallix-libs include directory
-                          (default is ../centrallix-lib/include)
+                          (default is PREFIX/include)
   --with-centrallix-lib=DIR
                           Location of centrallix-libs lib directory (default
-                          is ../centrallix-lib)
+                          is PREFIX/lib)
   --with-centrallix-config=FILE
                           Full path of centrallix config file (default is
                           PREFIX/etc/centrallix.conf)
@@ -3655,7 +3655,7 @@ if test "${with_centrallix_inc+set}" = set; then
   withval="$with_centrallix_inc"
   centrallix_incdir="$withval"
 else
-  centrallix_incdir="../centrallix-lib/include"
+  centrallix_incdir="$prefix/include"
 
 fi;
 
@@ -3779,7 +3779,7 @@ if test "${with_centrallix_lib+set}" = set; then
   withval="$with_centrallix_lib"
   centrallix_libdir="$withval"
 else
-  centrallix_libdir="../centrallix-lib"
+  centrallix_libdir="$prefix/lib"
 
 fi;
 

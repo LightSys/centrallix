@@ -32,10 +32,10 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
     [
 	AC_ARG_WITH(centrallix-inc,
 	    AC_HELP_STRING([--with-centrallix-inc=DIR],
-		[Location of centrallix-libs include directory (default is ../centrallix-lib/include)]
+		[Location of centrallix-libs include directory (default is PREFIX/include)]
 	    ),
 	    centrallix_incdir="$withval",
-	    centrallix_incdir="../centrallix-lib/include"
+	    centrallix_incdir="$prefix/include"
 	)
 
  	CFLAGS="$CFLAGS -I$centrallix_incdir"
@@ -47,10 +47,10 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 
 	AC_ARG_WITH(centrallix-lib,
 	    AC_HELP_STRING([--with-centrallix-lib=DIR],
-		[Location of centrallix-libs lib directory (default is ../centrallix-lib)]
+		[Location of centrallix-libs lib directory (default is PREFIX/lib)]
 	    ),
 	    centrallix_libdir="$withval",
-	    centrallix_libdir="../centrallix-lib"
+	    centrallix_libdir="$prefix/lib"
 	)
 
 	temp=$LIBS
