@@ -55,6 +55,7 @@ function form_cb_focus_notify(control)
 function form_cb_tab_notify(control)
     {
     var ctrlnum;
+    var origctrl;
     for(var i=0;i<this.elements.length;i++)
 	{
 	if(this.elements[i].name==control.name)
@@ -63,13 +64,18 @@ function form_cb_tab_notify(control)
 	    break;
 	    }
 	}
-    nextctrl = (ctrlnum+1)%this.elements.length;
-    if (this.elements[nextctrl])
+    origctrl = ctrlnum;
+    while(1)
 	{
-	if (pg_removekbdfocus())
+	ctrlnum = (ctrlnum+1)%this.elements.length;
+	if (this.elements[ctrlnum])
 	    {
-	    pg_setkbdfocus(this.elements[nextctrl], null, 0, 0);
+	    if (pg_removekbdfocus())
+		{
+		if (pg_setkbdfocus(this.elements[ctrlnum], null, 0, 0)) break;
+		}
 	    }
+	if (ctrlnum == origctrl) break;
 	}
     //if(this.elements[ctrlnum+1])
 //	{
@@ -665,7 +671,7 @@ function form_action_queryexec()
 	if(this.elements[i]._form_IsChanged)
 	    {
 	    var v = this.elements[i].getvalue();
-	    if (v)
+	    if (v != null)
 		{
 		var t=new Object();
 		t.oid=this.elements[i].fieldname;
@@ -812,6 +818,12 @@ function form_cbobj_compare(a,b)
     if(a[0]<b[0]) return -1;
     }
 
+/** Determines if form is in QBF (query) mode **/
+function form_cb_is_query_mode()
+    {
+    return (this.mode == 'Query');
+    }
+
 /** Called when a form element is 'revealed' or 'obscured' **/
 function form_cb_reveal(element,event)
     {
@@ -937,6 +949,7 @@ function form_init(aq,an,am,av,and,me,name,_3b,ro)
     form.TabNotify = form_cb_tab_notify;
     form.EscNotify = form_cb_esc_notify;
     form.RetNotify = form_cb_ret_notify;
+    form.IsQueryMode = form_cb_is_query_mode;
 /** noone else should call these.... **/
     form.ClearAll = form_clear_all;
     form.DisableAll = form_disable_all;
