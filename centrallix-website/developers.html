@@ -7,7 +7,7 @@
 
     <table border=0 cellspacing=0 cellpadding=12><tr><td>
 
-	<small><a href="#roadmap">[Roadmap]</a> <a href="#start">[Getting Started]</a> <br><br><br></small>
+	<small><a href="#roadmap">[Roadmap]</a> <a href="#start">[Getting Started]</a> <a href="#conv">[Conventions/Standards]</a><br><br><br></small>
 	<a name="roadmap"></a>
 	<font size="+2">Development Roadmap....</font>
 	<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
@@ -112,6 +112,40 @@
 	<p>While developing, make sure you compile Centrallix and its libraries with debugging
 	enabled (-g in CFLAGS).  Also, you may find the test_obj program useful for interactive
 	testing of the OSML at the command line.</p>
+
+	<br>
+
+	<a name="conv"></a>
+	<font size="+2">Centrallix Conventions / Standards....</font>
+	<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
+
+	<p>The following is a list of a few conventions and standards that have been put in place,
+	mostly to address logistical development issues ;)</p>
+
+	<ul><li><b>Coding Style and Standards.</b>  The Centrallix core has an established standard
+	        coding style, although you don't <i>have</i> to follow that style if you're creating a new
+		file, whether in the core or not.  It's only important to follow the established
+		style when working on an existing module written in that style.</li><br>
+	    <li><b>CVS Access.</b>  Our CVS repository is hosted at SourceForge.  Anyone may retrieve 
+	        copies of the Centrallix system via anonymous CVS.  Only project developers may
+		gain read/write access to CVS.</li><br>
+	    <li><b>Releases.</b>  The project uses a fairly standard release/version numbering
+	        system.  Release numbers are of the form AA.BB.CC, where AA is the major release
+		number, BB the minor release number, and CC the patchlevel.  The BB number is
+		important to pay attention to, since if it is <i>odd</i>, the release is 
+		a <i>development</i> version and should not be considered stable.  If the BB
+		number is <i>even</i>, the version is considered <i>stable</i>.  For instance,
+		the current (as of 13-Aug-2001) 0.7.0 version is <i>unstable</i>.</li><br>
+	    <li><b>CVS Branches.</b>  When we're ready to release a stable version of Centrallix,
+	        we will create a CVS branch for that stable version, and the development
+		versions will continue on the trunk.  CVS tags will either be of the form
+		DEVELOPMENT-AA-BB-CC or STABLE-AA-BB-CC, using the version numbering approach
+		outlined above.</li><br>
+	    <li><b>RPM Versions.</b>  We will probably only make RPM versions available of 
+	        stable releases, although perhaps that might change.  Development releases may
+		be obtained either via CVS or via .tgz downloads.  Beta releases may be made
+		available in RPM format.</li><br>
+	</ul>
 
 	<br>
 
