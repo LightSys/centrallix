@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.17 2002/09/27 22:26:03 gbeeley Exp $
+    $Id: test_obj.c,v 1.18 2002/09/28 01:05:30 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.18  2002/09/28 01:05:30  jorupp
+     * added tab completion
+     * fixed bug where list/ls was relying on the pointers returned by getAttrValue being valid after another getAttrValue
+
     Revision 1.17  2002/09/27 22:26:03  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -152,6 +156,8 @@
  **END-CVSDATA***********************************************************/
 
 void* my_ptr;
+unsigned long ticks_last_tab=0;
+pObjSession s;
 
 #define BUFF_SIZE 1024
 
@@ -249,11 +255,200 @@ testobj_show_attr(pObject obj, char* attrname)
     return 0;
     }
 
+int handle_tab()
+    {
+    pXString xstrInput;
+    pXString xstrLastInputParam;
+    pXString xstrPath;
+    pXString xstrPartialName;
+    pXString xstrQueryString;
+    pXString xstrMatched;
+    int i;
+    pObject obj,qobj;
+    pObjQuery qry;
+    int count=0;
+    short secondtab=0;
+
+#define DOUBLE_TAB_DELAY 50
+    
+    /** init all the XStrings **/
+    xstrInput=nmMalloc(sizeof(XString));
+    xstrLastInputParam=nmMalloc(sizeof(XString));
+    xstrPath=nmMalloc(sizeof(XString));
+    xstrPartialName=nmMalloc(sizeof(XString));
+    xstrQueryString=nmMalloc(sizeof(XString));
+    xstrMatched=nmMalloc(sizeof(XString));
+    xsInit(xstrInput);
+    xsInit(xstrLastInputParam);
+    xsInit(xstrPath);
+    xsInit(xstrPartialName);
+    xsInit(xstrQueryString);
+    xsInit(xstrMatched);
+
+    /** figure out if this is a 'double' tab (should list the possibilities) **/
+    if(ticks_last_tab+DOUBLE_TAB_DELAY>mtRealTicks())
+	{
+	secondtab=1;
+	/* don't want this branch to be taken next time, even if it's within DOUBLE_TAB_DELAY */
+	ticks_last_tab=0;
+	}
+    else
+	ticks_last_tab=mtRealTicks();
+
+    /** beep **/
+    printf("%c",0x07);
+
+    /** get the current line into an XString **/
+    xsCopy(xstrInput,rl_copy_text (0,256),-1);
+    
+    /** get a new line if we're going to print a list **/
+    if(secondtab) printf("\n");
+    
+    /** find the space, grab everything after it (or the whole thing if there is no space) **/
+    i=xsFindRev(xstrInput," ",-1,0);
+    if(i==-1)
+	xsCopy(xstrLastInputParam,xstrInput->String,xstrInput->Length);
+    else
+	xsCopy(xstrLastInputParam,xstrInput->String+i+1,xstrInput->Length-i+1);
+
+
+    /** is this a relative or absolute path **/
+    if(xstrLastInputParam->String[0]!='/')
+	{
+	/* objGetWD has the trailing slash aready at the root */
+	if(strlen(objGetWD(s))>1)
+	    xsInsertAfter(xstrLastInputParam,"/",-1,0);
+	xsInsertAfter(xstrLastInputParam,objGetWD(s),-1,0);
+	}
+
+    /** split on the last slash **/
+    i=xsFindRev(xstrLastInputParam,"/",-1,0);
+    xsCopy(xstrPath,xstrLastInputParam->String,i+1);
+    xsCopy(xstrPartialName,xstrLastInputParam->String+i+1,-1);
+
+    /** open the directory **/
+    obj=objOpen(s,xstrPath->String,O_RDONLY,0400,NULL);
+
+    /** build the query **/
+    xsPrintf(xstrQueryString,"substring(:name,0,%d)=\"%s\"",xstrPartialName->Length,xstrPartialName->String);
+
+    /** open the query **/
+    qry=objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL);
+
+    /** fetch and compare **/
+    while(qry && (qobj=objQueryFetch(qry,O_RDONLY)))
+	{
+	char *ptr;
+	int i;
+	/* this is our second one -- output the first one (if second tab...)*/
+	if(count==1)
+	    if(secondtab) 
+		printf("%s\n",xstrMatched->String);
+
+	/* get this entry's name */
+	objGetAttrValue(qobj,"name",DATA_T_STRING,POD(&ptr));
+	/* compare with xstrMatched and shorten xstrMatched so that it contains the longest string
+	 *   that starts both of them */
+	for(i=0;i<=strlen(ptr) && i<=strlen(xstrMatched->String);i++)
+	    {
+	    if(ptr[i]!=xstrMatched->String[i])
+		{
+		xstrMatched->String[i]='\0';
+		xstrMatched->Length=strlen(xstrMatched->String);
+		}
+	    }
+	/** if this isn't the first returned object, output it unless second tab.. **/
+	if(count>0)
+	    {
+	    if(secondtab) 
+		printf("%s\n",ptr);
+	    }
+	else
+	    /* otherwise, put the entire thing in xstrMatched */
+	    xsCopy(xstrMatched,ptr,-1);
+
+	count++;
+	objClose(qobj);
+	}
+
+    if(qry)
+	objQueryClose(qry);
+
+    /** there were objects found -- add the longest common string to the input line **/
+    if(count)
+	{
+	rl_insert_text(xstrMatched->String+xstrPartialName->Length);
+	}
+
+    if(count==1)
+	{
+	/** decide if this is a 'directory' that we should put a '/' on the end of **/
+	pXString xstrTemp;
+	pObject obj2;
+
+	/* next tab should always be a 'first' after a successful match */
+	ticks_last_tab=0;
+
+	/** setup XString **/
+	xstrTemp=nmMalloc(sizeof(XString));
+	xsInit(xstrTemp);
+
+	/** build path for open **/
+	xsPrintf(xstrTemp,"%s/%s",xstrPath->String,xstrMatched->String);
+
+	obj2=objOpen(s,xstrTemp->String,O_RDONLY,0400,NULL);
+	if(obj2)
+	    {
+	    /** see if there are any subobjects -- only need to fetch 1 to check **/
+	    qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL);
+	    if(qry && (qobj=objQueryFetch(qry,O_RDONLY)))
+		{
+		rl_insert_text("/");
+		objClose(qobj);
+		}
+	    
+	    /** close the object and query we opened **/
+	    if(qry) objQueryClose(qry);
+	    objClose(obj2);
+	    }
+
+	/** cleanup **/
+	xsDeInit(xstrTemp);
+	nmFree(xstrTemp,sizeof(XString));
+	}
+
+    if(obj)
+	objClose(obj);
+
+    
+    /** get rid of all the XStrings **/
+    xsDeInit(xstrInput);
+    xsDeInit(xstrLastInputParam);
+    xsDeInit(xstrPath);
+    xsDeInit(xstrPartialName);
+    xsDeInit(xstrQueryString);
+    xsDeInit(xstrMatched);
+    nmFree(xstrInput,sizeof(XString));
+    nmFree(xstrLastInputParam,sizeof(XString));
+    nmFree(xstrPath,sizeof(XString));
+    nmFree(xstrPartialName,sizeof(XString));
+    nmFree(xstrQueryString,sizeof(XString));
+    nmFree(xstrMatched,sizeof(XString));
+
+    /** if we output lines, go to an new one and inform readline **/
+    if(secondtab)
+	{
+	printf("\n");
+	rl_on_new_line();
+	}
+
+    return 0;
+    }
+
 
 void
 start(void* v)
     {
-    pObjSession s;
     char sbuf[BUFF_SIZE];
     static char* inbuf = (char *)NULL;
     char prompt[1024];
@@ -292,8 +487,8 @@ start(void* v)
 	/** Initialize. **/
 	cxInitialize();
 
-	/** Disable tab complete until we have a function to do something useful with it. **/
-	rl_bind_key ('\t', rl_insert);
+	/** enable tab completion **/
+	rl_bind_key ('\t', handle_tab);
 
 	/** Authenticate **/
 	user = readline("Username: ");
@@ -509,9 +704,20 @@ start(void* v)
 		    {
 		    if (objGetAttrValue(child_obj,"name",DATA_T_STRING,POD(&filename)) >= 0)
 			{
+			char *name,*type,*annot;
+#define MALLOC_AND_COPY(dest,src) \
+			dest=(char*)malloc(strlen(src)+1);\
+			if(!dest) break;\
+			strcpy(dest,src);
+			MALLOC_AND_COPY(name,filename);
 			objGetAttrValue(child_obj,"outer_type",DATA_T_STRING,POD(&filetype));
+			MALLOC_AND_COPY(type,filetype);
 			objGetAttrValue(child_obj,"annotation",DATA_T_STRING,POD(&fileannot));
-			printf("%-32.32s  %-32.32s    %s\n",filename,fileannot,filetype);
+			MALLOC_AND_COPY(annot,fileannot);
+			printf("%-32.32s  %-32.32s    %s\n",name,annot,type);
+			free(name);
+			free(type);
+			free(annot);
 			}
 		    objClose(child_obj);
 		    }
