@@ -1,5 +1,21 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
+0.7.2 --> 0.7.3	    Not Yet Released
+
+    Changes:
+
+	1.  XML objectsystem driver added to parse XML data and allow SQL
+	    queries on that data.
+	2.  Fleshed out events and actions on many of the widgets and cleaned
+	    up the DHTML widget modules a bit.
+	3.  Separated the javascript functions out into include files which
+	    are referenced in the generated pages as needed.
+	4.  GZip content encoding now supported to reduce bandwidth needed to
+	    load the generated pages, depending on browser support.
+	5.  Calendar (date/time) widget added.
+
+
+-------------------------------------------------------------------------------
 0.7.1 --> 0.7.2	    20-Jun-2002	    MAJOR DEVELOPMENT RELEASE
 
     This is a major development release.  We've added a lot of features and
