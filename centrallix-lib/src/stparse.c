@@ -30,12 +30,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.1 2001/08/13 18:04:22 gbeeley Exp $
+    $Id: stparse.c,v 1.2 2002/04/25 17:54:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/stparse.c,v $
 
     $Log: stparse.c,v $
-    Revision 1.1  2001/08/13 18:04:22  gbeeley
-    Initial revision
+    Revision 1.2  2002/04/25 17:54:39  gbeeley
+    Small update to stparse to fix some string length issues.
+
+    Revision 1.1.1.1  2001/08/13 18:04:22  gbeeley
+    Centrallix Library initial import
 
     Revision 1.2  2001/07/04 02:57:58  gbeeley
     Fixed a few error checking and array-overflow problems.
@@ -202,8 +205,16 @@ stCreateStruct(char* name, char* type)
 	newinf = stAllocInf();
 	if (!newinf) return NULL;
 	newinf->Type = ST_T_STRUCT;
-	if (name) strcpy(newinf->Name, name);
-	if (type) strcpy(newinf->UsrType, type);
+	if (name) 
+	    {
+	    memccpy(newinf->Name, name, 0, 63);
+	    newinf->Name[63] = 0;
+	    }
+	if (type) 
+	    {
+	    memccpy(newinf->UsrType, type, 0, 63);
+	    newinf->UsrType[63] = 0;
+	    }
 
     return newinf;
     }
