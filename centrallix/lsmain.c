@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.7 2002/02/22 23:48:39 jorupp Exp $
+    $Id: lsmain.c,v 1.8 2002/03/06 23:30:35 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.8  2002/03/06 23:30:35  lkehresman
+    Added form status widget.
+
     Revision 1.7  2002/02/22 23:48:39  jorupp
     allow editbox to work without form, form compiles, doesn't do much
 
@@ -214,6 +217,7 @@ start(void* v)
 	htebInitialize();			/* editbox module */
 	httmInitialize();			/* timer nonvisual module */
 	htexInitialize();			/* method exec module */
+	htfsInitialize();			/* form status module */
 
 	htformInitialize();			/* forms module */
 
