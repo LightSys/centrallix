@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.24 2002/07/11 21:03:28 gbeeley Exp $
+    $Id: net_http.c,v 1.25 2002/07/12 19:57:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.25  2002/07/12 19:57:00  gbeeley
+    Added support for encoding of object attributes, such as those returned
+    in a query result set.  Use &ls__encode=1 on the URL line.  Use the
+    javascript function unescape() to get the original data back.
+
     Revision 1.24  2002/07/11 21:03:28  gbeeley
     Fixed problem with doing "setattrs" OSML operation on money and
     datetime data types.
@@ -909,6 +914,44 @@ nht_internal_CreateCookie(char* ck)
     }
 
 
+/*** nht_internal_Escape - convert a string to a format that is suitable for
+ *** sending to the client and decoding then with javascript's unescape()
+ *** function.  Basically, we convert to %xx anything except [A-Za-z0-9].
+ ***/
+int
+nht_internal_Escape(pXString dst, char* src)
+    {
+    char* ok_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    char* hex_code = "0123456789abcdef";
+    int len;
+    char buf[4] = "%20";
+	
+	/** go through and encode the chars. **/
+	while(*src)
+	    {
+	    /** Find a "span" of ok chars **/
+	    len = strspn(src, ok_chars);
+	    if (len < 0) len = 0;
+	    if (len)
+		{
+		/** Concat the span onto the xstring **/
+		xsConcatenate(dst, src, len);
+		src += len;
+		}
+	    else
+		{
+		/** Convert one char **/
+		buf[1] = hex_code[(((unsigned char)(*src))>>4)&0x0F];
+		buf[2] = hex_code[((unsigned char)(*src))&0x0F];
+		xsConcatenate(dst, buf, 3);
+		src++;
+		}
+	    }
+
+    return 0;
+    }
+
+
 
 /*** nht_internal_UnConvertChar - convert a character back to its escaped
  *** notation such as %xx or +.
@@ -987,7 +1030,7 @@ nht_internal_EncodeHTML(int ch, char** bufptr, int maxlen)
  *** outbound data connection stream.
  ***/
 int
-nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_t tgt, char* attrname)
+nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_t tgt, char* attrname, int encode)
     {
     ObjData od;
     char* dptr;
@@ -1012,7 +1055,10 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	/** Write the HTML output. **/
 	snprintf(sbuf,100,"<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/#%s'>",tgt,attrname,coltypenames[type]);
 	xsCopy(&xs,sbuf,-1);
-	xsConcatenate(&xs,dptr,-1);
+	if (encode)
+	    nht_internal_Escape(&xs, dptr);
+	else
+	    xsConcatenate(&xs,dptr,-1);
 	xsConcatenate(&xs,"</A>\n",5);
 	fdWrite(conn,xs.String,strlen(xs.String),0,0);
 	//printf("%s",xs.String);
@@ -1026,21 +1072,21 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
  *** object to the connection, given an object and a connection.
  ***/
 int
-nht_internal_WriteAttrs(pNhtSessionData sess, pObject obj, pFile conn, handle_t tgt, int put_meta)
+nht_internal_WriteAttrs(pNhtSessionData sess, pObject obj, pFile conn, handle_t tgt, int put_meta, int encode)
     {
     char* attr;
 
 	/** Loop throught the attributes. **/
 	if (put_meta)
 	    {
-	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "name");
-	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "inner_type");
-	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "outer_type");
-	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "annotation");
+	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "name", encode);
+	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "inner_type", encode);
+	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "outer_type", encode);
+	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, "annotation", encode);
 	    }
 	for(attr = objGetFirstAttr(obj); attr; attr = objGetNextAttr(obj))
 	    {
-	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, attr);
+	    nht_internal_WriteOneAttr(sess, obj, conn, tgt, attr, encode);
 	    }
 
     return 0;
@@ -1080,6 +1126,7 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
     handle_t session_handle;
     handle_t query_handle;
     handle_t obj_handle;
+    int encode_attrs = 0;
 
     	/** Choose the request to perform **/
 	if (!strcmp(request,"opensession"))
@@ -1098,6 +1145,10 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 	    }
 	else 
 	    {
+	    /** Need to encode result set? **/
+	    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__encode"),&ptr) >= 0 && !strcmp(ptr,"1"))
+		encode_attrs = 1;
+
 	    /** Get the session data **/
 	    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
 	    if (!sid) 
@@ -1247,7 +1298,7 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 
 		/** Include an attribute listing **/
-		nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1);
+		nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1,encode_attrs);
 	        }
 	    else if (!strcmp(request,"close"))
 	        {
@@ -1337,7 +1388,7 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 		while(n > 0 && (obj = objQueryFetch(qy,mode)))
 		    {
 		    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
-		    nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1);
+		    nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1,encode_attrs);
 		    n--;
 		    }
 		}
@@ -1391,7 +1442,7 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
-		nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1);
+		nht_internal_WriteAttrs(sess,obj,conn,obj_handle,1,encode_attrs);
 		}
 	    else if (!strcmp(request,"setattrs"))
 	        {
@@ -1556,6 +1607,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     int rowid;
     int tid = -1;
     int convert_text = 0;
+    int encode_attrs = 0;
 
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
@@ -1698,6 +1750,10 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    strcpy(cur_wd, objGetWD(nsess->ObjSess));
 	    objSetWD(nsess->ObjSess, target_obj);
 
+	    /** Need to encode result set? **/
+	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__encode"),&ptr) >= 0 && !strcmp(ptr,"1"))
+		encode_attrs = 1;
+
 	    /** Get the SQL **/
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__sql"),&ptr) >= 0)
 	        {
@@ -1707,7 +1763,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    rowid = 0;
 		    while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		        {
-			nht_internal_WriteAttrs(nsess,sub_obj,conn,(handle_t)rowid,1);
+			nht_internal_WriteAttrs(nsess,sub_obj,conn,(handle_t)rowid,1,encode_attrs);
 			objClose(sub_obj);
 			rowid++;
 			}
