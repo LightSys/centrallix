@@ -4,10 +4,10 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
-#include "mtask.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.32 2004/09/02 05:05:01 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.33 2005/02/26 06:34:24 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.33  2005/02/26 06:34:24  gbeeley
+    - fix for Mozilla re. Click events.
+
     Revision 1.32  2004/09/02 05:05:01  gbeeley
     - fixed artifacting problem in Moz related to the treeview, due to poor
       handling of the 'hidden' property on iframe's.
@@ -441,7 +444,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	else
 	    {
 	    htrAddEventHandler(s, "document","CLICK","tv",
-		"    if (e.target != null && e.target.kind == 'tv' && e.target.nodeName == 'A')\n"
+		"    if (e.target != null && e.target.kind == 'tv' && (e.target.nodeName == 'A' || e.target.nodeName == 'DIV'))\n"
 		"        {\n"
 		"        cn_activate(ly, 'Click');\n"
 		"        return tv_click(e);\n"
@@ -470,7 +473,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    {
 	    htrAddEventHandler(s, "document","MOUSEDOWN","tv",
 		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseDown');\n"
-		"    if (e.target != null && e.target.kind=='tv' && e.target.nodeName != 'A')\n"
+		"    if (e.target != null && e.target.kind=='tv' && e.target.nodeName != 'A' && e.target.nodeName != 'DIV')\n"
 		"        {\n"
 		"        if (e.which == 3)\n"
 		"            {\n"
