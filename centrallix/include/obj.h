@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.16 2003/04/24 03:10:00 gbeeley Exp $
+    $Id: obj.h,v 1.17 2003/04/24 19:28:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.17  2003/04/24 19:28:10  gbeeley
+    Moved the OSML open node object cache to the session level rather than
+    global.  Otherwise, the open node objects could be accessed by the
+    wrong user in the wrong session context, which is, er, "bad".
+
     Revision 1.16  2003/04/24 03:10:00  gbeeley
     Adding AllowChars and BadChars to presentation hints base
     implementation.
@@ -173,6 +178,7 @@
 #include "stparse_ne.h"
 #include "newmalloc.h"
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #define OBJSYS_DEFAULT_ROOTNODE		"/usr/local/etc/rootnode"
 #define OBJSYS_DEFAULT_ROOTTYPE		"/usr/local/etc/rootnode.type"
@@ -328,6 +334,7 @@ typedef struct _OT
     ObjTrxTree, *pObjTrxTree;
 
 
+
 /** objectsystem session **/
 typedef struct _OSS
     {
@@ -336,6 +343,7 @@ typedef struct _OSS
     XArray		OpenObjects;
     XArray		OpenQueries;
     pObjTrxTree		Trx;
+    XHashQueue		DirectoryCache;		/* directory entry cache */
     }
     ObjSession, *pObjSession;
 
@@ -458,19 +466,6 @@ typedef struct _OQ
 #define OBJ_QY_F_FROMSORT	8
 
 
-extern int obj_internal_DiscardDC(pXHashQueue hq, pXHQElement xe, int locked);
-
-/** directory entry caching data **/
-typedef struct _DC
-    {
-    char		Pathname[OBJSYS_MAX_PATH];
-    pObject		NodeObj;
-    }
-    DirectoryCache, *pDirectoryCache;
-
-#define DC_F_ISDIR	1
-
-
 /*** Event and EventHandler structures ***/
 typedef struct _OEH
     {
@@ -493,13 +488,25 @@ typedef struct _OE
 #define OBJ_EV_F_NOSAVE		1	/* internal - don't rewrite events file */
 
 
+extern int obj_internal_DiscardDC(pXHashQueue hq, pXHQElement xe, int locked);
+
+/** directory entry caching data **/
+typedef struct _DC
+    {
+    char		Pathname[OBJSYS_MAX_PATH];
+    pObject		NodeObj;
+    }
+    DirectoryCache, *pDirectoryCache;
+
+#define DC_F_ISDIR	1
+
+
 /*** ObjectSystem Globals ***/
 typedef struct
     {
     XArray	OpenSessions;		/* open ObjectSystem sessions */
     XHashTable	TypeExtensions;		/* extension -> type mapping */
     XHashTable	DriverTypes;		/* type -> driver mapping */
-    XHashQueue	DirectoryCache;		/* directory entry cache */
     XArray	Drivers;		/* Registered driver list */
     XHashTable	Types;			/* Just a registered type list */
     XArray	TypeList;		/* Iterable registered type list */
@@ -528,6 +535,23 @@ typedef struct
     char	StringParam[80];
     }
     ObjParam, *pObjParam;
+
+
+/*** Flags to be passed to objOpen() in the 'mode' ***/
+#define OBJ_O_CREAT	(O_CREAT)
+#define OBJ_O_TRUNC	(O_TRUNC)
+#define OBJ_O_RDWR	(O_RDWR)
+#define OBJ_O_RDONLY	(O_RDONLY)
+#define OBJ_O_WRONLY	(O_WRONLY)
+#define OBJ_O_EXCL	(O_EXCL)
+
+#define OBJ_O_AUTONAME	(1<<30)
+
+#define OBJ_O_CXOPTS	(OBJ_O_AUTONAME)
+
+#if (OBJ_O_CXOPTS & (O_CREAT | O_TRUNC | O_ACCMODE | O_EXCL))
+#error "Conflict in objectsystem OBJ_O_xxx options, sorry!!!"
+#endif
 
 
 /** objectsystem main functions **/

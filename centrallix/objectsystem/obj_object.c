@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.7 2003/04/03 21:41:08 gbeeley Exp $
+    $Id: obj_object.c,v 1.8 2003/04/24 19:28:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.8  2003/04/24 19:28:12  gbeeley
+    Moved the OSML open node object cache to the session level rather than
+    global.  Otherwise, the open node objects could be accessed by the
+    wrong user in the wrong session context, which is, er, "bad".
+
     Revision 1.7  2003/04/03 21:41:08  gbeeley
     Fixed xstring modification problem in test_obj as well as const path
     modification problem in the objOpen process.  Both were causing the
@@ -351,6 +356,7 @@ int
 obj_internal_FreeObj(pObject this)
     {
     pObject del;
+    pObjSession s = this->Session;
     pPathname pathinfo;
 
     	/** Release the chain of objects **/
@@ -362,7 +368,7 @@ obj_internal_FreeObj(pObject this)
 	    if ((--del->LinkCnt) <= 0)
 	        {
 	        pathinfo = del->Pathname;
-	        if (del->Data) del->Driver->Close(del->Data,NULL);
+	        if (del->Data) del->Driver->Close(del->Data,&(s->Trx));
 	        nmFree(del,sizeof(Object));
 	    
 	        /** Release the pathname data.  Do it in the loop because we **/
@@ -507,11 +513,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	for(j=pathinfo->nElements-1;j>=2;j--)
 	    {
 	    /** Try a prefix of the pathname. **/
-	    xe = xhqLookup(&OSYS.DirectoryCache, obj_internal_PathPart(pathinfo, 0, j));
+	    xe = xhqLookup(&(s->DirectoryCache), obj_internal_PathPart(pathinfo, 0, j));
 	    if (xe)
 	        {
 		/** Lookup was successful - get the data for it **/
-		dc = (pDirectoryCache)xhqGetData(&OSYS.DirectoryCache, xe, 0);
+		dc = (pDirectoryCache)xhqGetData(&(s->DirectoryCache), xe, 0);
 		this = dc->NodeObj;
 
 		/** Link to the intermediate object to lock it open. **/
@@ -519,7 +525,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		first_obj = this;
 
 		/** Unlink from the directory cache entry in the hashqueue **/
-		xhqUnlink(&OSYS.DirectoryCache, xe, 0);
+		xhqUnlink(&(s->DirectoryCache), xe, 0);
 		break;
 		}
 	    }
@@ -678,7 +684,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		dc->NodeObj = this->Prev;
 		objLinkTo(this->Prev);
 		strcpy(dc->Pathname, obj_internal_PathPart(this->Prev->Pathname, 0, this->SubPtr));
-		xe = xhqAdd(&OSYS.DirectoryCache, dc->Pathname, dc);
+		xe = xhqAdd(&(s->DirectoryCache), dc->Pathname, dc);
 		if (!xe)
 		    {
 		    /** Already cached -- oops!  Probably bug! **/
@@ -687,7 +693,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    }
 		else
 		    {
-		    xhqUnlink(&OSYS.DirectoryCache, xe, 0);
+		    xhqUnlink(&(s->DirectoryCache), xe, 0);
 		    }
 		}
 	    }
@@ -1132,8 +1138,20 @@ pObject
 objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type)
     {
     pObject this;
+    int len;
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
+
+	/** Make sure supplied name is "*" if using autokeying **/
+	if (mode & OBJ_O_AUTONAME)
+	    {
+	    len = strlen(path);
+	    if (len < 1 || path[len-1] != '*' || (len >= 2 && path[len-2] != '/'))
+		{
+		mssError(1,"OSML","When creating an object using autokeying, name must be '*'");
+		return NULL;
+		}
+	    }
 
 	/** Lookup the path, etc. **/
 	/*this = obj_internal_ProcessPath(session, path, mode, type);*/

@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: obj_main.c,v 1.6 2003/04/24 19:28:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.6  2003/04/24 19:28:11  gbeeley
+    Moved the OSML open node object cache to the session level rather than
+    global.  Otherwise, the open node objects could be accessed by the
+    wrong user in the wrong session context, which is, er, "bad".
+
     Revision 1.5  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -222,7 +227,7 @@ objInitialize()
 	xaInit(&(OSYS.OpenSessions), 256);
 	xhInit(&(OSYS.TypeExtensions), 257, 0);
 	xhInit(&(OSYS.DriverTypes), 257, 0);
-	xhqInit(&(OSYS.DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);
+	/*xhqInit(&(OSYS.DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);*/
 	/*xaInit(&(OSYS.DirectoryQueue), 256);*/
 	xaInit(&(OSYS.Drivers), 256);
 	xhInit(&(OSYS.Types), 257, 0);

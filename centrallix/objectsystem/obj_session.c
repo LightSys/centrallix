@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_session.c,v 1.3 2002/05/03 03:51:21 gbeeley Exp $
+    $Id: obj_session.c,v 1.4 2003/04/24 19:28:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_session.c,v $
 
     $Log: obj_session.c,v $
+    Revision 1.4  2003/04/24 19:28:12  gbeeley
+    Moved the OSML open node object cache to the session level rather than
+    global.  Otherwise, the open node objects could be accessed by the
+    wrong user in the wrong session context, which is, er, "bad".
+
     Revision 1.3  2002/05/03 03:51:21  gbeeley
     Added objUnmanageObject() and objUnmanageQuery() which cause an object
     or query to not be closed automatically on session close.  This should
@@ -96,6 +101,7 @@ objOpenSession(char* current_dir)
 	this->CurrentDirectory[255]=0;
 	this->Trx = NULL;
 	this->Magic = MGK_OBJSESSION;
+	xhqInit(&(this->DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);
 
 	/** Add to the sessions list **/
 	xaAddItem(&(OSYS.OpenSessions),(void*)this);
@@ -112,6 +118,9 @@ objCloseSession(pObjSession this)
     {
 
 	ASSERTMAGIC(this, MGK_OBJSESSION);
+
+	/** Uncache any cached node objects **/
+	xhqDeInit(&(this->DirectoryCache));
 
 	/** Close any open queries **/
 	while(this->OpenQueries.nItems)
