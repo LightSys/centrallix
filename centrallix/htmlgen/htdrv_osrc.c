@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.28 2002/06/01 19:46:15 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.29 2002/06/02 22:13:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.29  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.28  2002/06/01 19:46:15  jorupp
      * mixed annoying problem where sometimes, OSRC would make the last record the active one instead of the first one
 
@@ -204,6 +208,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    int replicasize;
    char *sql;
    char *filter;
+   pObject sub_w_obj;
+   pObjQuery qy;
 
    sbuf3 = nmMalloc(200);
    
@@ -287,6 +293,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddScriptFunction(s, "osrc_init_query", "\n"
       "function osrc_init_query()\n"
       "    {\n"
+      "    //alert();\n"
       "    this.init=true;\n"
       "    this.ActionQueryObject(null,null);\n"
       "    }\n",0);
@@ -351,7 +358,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    {\n"
       "    var firstone=true;\n"
       "    var statement='';\n"
-      "    for(i in q)\n"
+      "    for(var i in q)\n"
       "        {\n"
       "        if(i!='oid' && i!='joinstring')\n"
       "            {\n"
@@ -637,6 +644,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddScriptFunction(s, "osrc_get_qid", "\n"
       "function osrc_get_qid()\n"
       "    {\n"
+      "    //return;\n"
       "    //alert('qid ' + this.document.links[0].target);\n"
       "    this.qid=this.document.links[0].target;\n"
       "    for(var i in this.children)\n"
@@ -1230,7 +1238,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    /** Script initialization call. **/
    htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,'%s','%s');\n",
 	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter);
-   htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
+   //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInit_va(s,"    %s.oldosrc=osrc_current;\n",name);
    htrAddScriptInit_va(s,"    osrc_current=%s;\n",name);
@@ -1238,7 +1246,20 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItem_va(s,"    <DIV ID=\"osrc%dloader\"></DIV>\n",id);
    
-   htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
+   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+   if (qy)
+   {
+   while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
+       {
+       objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+       if (strcmp(ptr,"widget/connector") == 0)
+	   htrRenderWidget(s, sub_w_obj, z, "", name);
+       else
+	   htrRenderWidget(s, sub_w_obj, z, parentname, parentobj);
+       objClose(sub_w_obj);
+       }
+   objQueryClose(qy);
+   }
    
    /** We set osrc_current=null so that orphans can't find us  **/
    htrAddScriptInit(s, "    osrc_current.InitQuery();\n");

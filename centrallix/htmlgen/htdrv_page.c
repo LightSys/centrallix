@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.12 2002/05/31 19:22:03 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.13 2002/06/02 22:13:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.13  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.12  2002/05/31 19:22:03  lkehresman
     * Added option to dropdown to allow specification of number of elements
       to display at one time (default 3).
@@ -415,8 +419,10 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "pg_isinlayer", "\n"
 		"function pg_isinlayer(outer,inner)\n"
 		"    {\n"
-		"    var i = 0;\n"
 		"    if (inner == outer) return true;\n"
+		"    if(!outer) return true;\n"
+		"    if(!inner) return false;\n"
+		"    var i = 0;\n"
 		"    for(i=0;i<outer.layers.length;i++)\n"
 		"        {\n"
 		"        if (outer.layers[i] == inner) return true;\n"
@@ -645,10 +651,6 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    return false;\n"
 		"    }\n", 0);
 
-	htrAddScriptInit(s,
-		"    document.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
-		"    document.layers.pginpt.visibility = 'inherit';\n"
-		"    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',100);\n");
 
 	htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
 
@@ -671,6 +673,11 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		}
 	    objQueryClose(qy);
 	    }
+
+	htrAddScriptInit(s,
+		"    document.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
+		"    document.layers.pginpt.visibility = 'inherit';\n");
+	htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");
 
     return 0;
     }

@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.8 2002/05/31 01:26:41 lkehresman Exp $
+    $Id: htdrv_imagebutton.c,v 1.9 2002/06/02 22:13:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.9  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.8  2002/05/31 01:26:41  lkehresman
     * modified the window header HTML to make it look nicer
     * fixed a truncation problem with the image button
@@ -128,6 +132,8 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char n_img[128];
     char p_img[128];
     char c_img[128];
+    char d_img[128];
+    char enabled[10];
     pObject sub_w_obj;
     pObjQuery qy;
     int x,y,w,h;
@@ -186,23 +192,55 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    strcpy(c_img, p_img);
 	    }
+	if (objGetAttrValue(w_obj,"disabledimage",POD(&ptr)) == 0)
+	    {
+	    memccpy(d_img,ptr,'\0',127);
+	    d_img[127]=0;
+	    }
+	else
+	    {
+	    strcpy(d_img, n_img);
+	    }
+
+	if (objGetAttrValue(w_obj,"enabled",POD(&ptr)) == 0)
+	    {
+	    memccpy(enabled,ptr,'\0',10);
+	    enabled[10]=0;
+	    }
+	else
+	    {
+	    strcpy(enabled, "true");
+	    }
 
 	/** Ok, write the style header items. **/
-	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#ib%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"    </STYLE>\n");
-	htrAddHeaderItem(s,sbuf);
+	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
+	htrAddHeaderItem_va(s,"\t#ib%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddHeaderItem(s,"    </STYLE>\n");
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
+	htrAddScriptFunction(s,"ib_enable","\n"
+		"function ib_enable()\n"
+		"    {\n"
+		"    //alert('enable');\n"
+		"    this.enabled=true;\n"
+		"    this.img.src=this.nImage.src;\n"
+		"    }\n",0);
+	
+	htrAddScriptFunction(s,"ib_disable","\n"
+		"function ib_disable()\n"
+		"    {\n"
+		"    //alert('disable');\n"
+		"    this.enabled=false;\n"
+		"    this.img.src=this.dImage.src;\n"
+		"    }\n",0);
+	
 	/** Our initialization processor function. **/
 	htrAddScriptFunction(s, "ib_init", "\n"
-		"function ib_init(l,n,p,c,w,h,po,nm)\n"
+		"function ib_init(l,n,p,c,d,w,h,po,nm)\n"
 		"    {\n"
 		"    l.LSParent = po;\n"
 	     	"    l.nofocus = true;\n" 
@@ -221,29 +259,39 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (h == -1) l.cImage = new Image();\n"
 		"    else l.cImage = new Image(w,h);\n"
 		"    l.cImage.src = c;\n"
+		"    if (h == -1) l.dImage = new Image();\n"
+		"    else l.dImage = new Image(w,h);\n"
+		"    l.dImage.src = d;\n"
+		"    l.ActionEnable = ib_enable;\n"
+		"    l.ActionDisable = ib_disable;\n"
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
-	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s',%d,%d,%s,'%s');\n",
-	        nptr, n_img, p_img, c_img, w, h, parentobj,nptr);
+	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s','%s',%d,%d,%s,'%s');\n",
+	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h == -1)
-	    snprintf(sbuf,160,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,n_img);
+	    if(strcmp(enabled,"false"))
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,n_img);
+	    else
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,d_img);
 	else
-	    snprintf(sbuf,160,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,n_img,w,h);
-	htrAddBodyItem(s, sbuf);
+	    if(strcmp(enabled,"false"))
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,n_img,w,h);
+	    else
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,d_img,w,h);
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","ib",
-		"    if (e.target != null && e.target.kind=='ib')\n"
+		"    if (e.target != null && e.target.kind=='ib' && e.target.layer.enabled==true)\n"
 		"        {\n"
 		"        e.target.src = e.target.layer.cImage.src;\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","ib",
-		"    if (e.target != null && e.target.kind == 'ib')\n"
+		"    if (e.target != null && e.target.kind == 'ib' && e.target.layer.enabled == true)\n"
 		"        {\n"
 		"        if (e.pageX >= e.target.layer.pageX &&\n"
 		"            e.pageX < e.target.layer.pageX + e.target.layer.clip.width &&\n"
@@ -253,7 +301,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.target.src = e.target.layer.pImage.src;\n"
 		"            if (e.target.layer.EventClick != null)\n"
 		"                {\n"
-		"                eparam = new Object();\n"
+		"                var eparam = new Object();\n"
 		"                eparam.Caller = e.target.layer;\n"
 		"                cn_activate(e.target.layer, 'Click', eparam);\n"
 		"                delete eparam;\n"
@@ -266,13 +314,13 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n" );
 
 	htrAddEventHandler(s, "document","MOUSEOVER","ib",
-		"    if (e.target != null && e.target.kind == 'ib')\n"
+		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
 		"        {\n"
 		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.pImage.src;\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","ib",
-		"    if (e.target != null && e.target.kind == 'ib')\n"
+		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
 		"        {\n"
 		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.nImage.src;\n"
 		"        }\n");
@@ -314,6 +362,9 @@ htibtnInitialize()
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
 
+	htrAddAction(drv,"Enable");
+	htrAddAction(drv,"Disable");
+	
 	/** Add the 'click' event **/
 	htrAddEvent(drv,"Click");
 

@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.4 2002/06/02 22:13:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.4  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -121,7 +125,7 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptFunction(s, "fs_init", "\n"
 	"function fs_init(l) {\n"
 	"   l.kind = 'formstatus';\n"
-	"   l.currentMode = 'No Data';\n"
+	"   l.currentMode = 'NoData';\n"
 	"   l.isFormStatusWidget = true;\n"
 	"   l.setvalue = fs_setvalue;\n"
 	"   if (fm_current) fm_current.Register(l);\n"
@@ -137,7 +141,7 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"      } else if (cnt == 3) {\n"
 	"         l.setvalue('Query');\n"
 	"      } else {\n"
-	"         l.setvalue('No Data');\n"
+	"         l.setvalue('NoData');\n"
 	"         cnt = -1;\n"
 	"      }\n"
 	"      cnt++\n"

@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.13 2002/05/31 19:22:03 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.14 2002/06/02 22:13:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.14  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.13  2002/05/31 19:22:03  lkehresman
     * Added option to dropdown to allow specification of number of elements
       to display at one time (default 3).
@@ -301,10 +305,10 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.document.layer = l;\n"
 	"   l.kind = 'dropdown';\n"
 	"   l.subkind = 'dropdown_top';\n"
-	"   l.itemLayers = Array();\n"
+	"   l.itemLayers = new Array();\n"
 	"   l.labels = new Array();\n"
 	"   l.values = new Array();\n"
-	"   for (i=0; i < l.document.images.length; i++) {\n"
+	"   for (var i=0; i < l.document.images.length; i++) {\n"
 	"      l.document.images[i].kind = 'dropdown';\n"
 	"      l.document.images[i].topLayer = l;\n"
 	"      l.document.images[i].layer = l;\n"

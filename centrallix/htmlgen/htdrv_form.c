@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.40  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.39  2002/06/01 19:35:49  jorupp
      * some more of the same problem....found where the global variable was made at -- removed it
 
@@ -235,6 +239,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
     char _3bconfirmwindow[30];
     int readonly;
+    pObject sub_w_obj;
+    pObjQuery qy;
 
     
     	/** Get an id for this. **/
@@ -347,7 +353,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		"        this.ChangeMode('Modify');\n"
 		"        }\n"
-		"    if(this.mode=='No Data')\n"
+		"    if(this.mode=='NoData')\n"
 		"        {\n"
 		"        this.ChangeMode('New');\n"
 		"        }\n"
@@ -486,14 +492,14 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.cb['ObjectModified'].run();\n"
 		"    }\n", 0);
 	
-	/** Moves form to "No Data" mode **/
+	/** Moves form to "NoData" mode **/
 	/**   If unsaved data exists (New or Modify mode), prompt for Save/Discard **/
 	/** Clears any rows in osrc replica (doesn't delete from DB) **/
 	htrAddScriptFunction(s, "form_action_clear", "\n"
 		"function form_action_clear(aparam)\n"
 		"    {\n"
-		"    if(this.mode==\"No Data\")\n"
-		"        return;\n"	/* Already in No Data Mode */
+		"    if(this.mode==\"NoData\")\n"
+		"        return;\n"	/* Already in NoData Mode */
 		"    if(this.IsUnsaved && (this.mode==\"New\" || this.mode==\"Modify\"))\n"
 		"        {\n"
 		"        if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
@@ -518,7 +524,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n", 0);
 
 	/** in New - clear, remain in New **/
-	/** in View - delete the record, move to View mode on the next record, or No Data **/
+	/** in View - delete the record, move to View mode on the next record, or NoData **/
 	/** in Query - clear, remain in Query **/
 	htrAddScriptFunction(s, "form_action_delete", "\n"
 		"function form_action_delete(aparam)\n"
@@ -539,7 +545,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n", 0);
 
 	/** in Modify, cancel changes, switch to 'View' **/
-	/** in New, cancel changes, switch to 'No Data' **/
+	/** in New, cancel changes, switch to 'NoData' **/
 	/** in Query, clear, remain in query mode **/
 	htrAddScriptFunction(s, "form_action_discard", "\n"
 		"function form_action_discard(aparam)\n"
@@ -552,7 +558,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            break;\n"
 		"        case \"New\":\n"
 		"            this.ClearAll();\n"
-		"            this.ChangeMode(\"No Data\");\n"
+		"            this.ChangeMode(\"NoData\");\n"
 		"            break;\n"
 		"        case \"Query\":\n"
 		"            this.ClearAll();\n"
@@ -560,14 +566,14 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    }\n", 0);
 
-	/** in No Data, move to New **/
+	/** in NoData, move to New **/
 	/** in View, move to Modify (note this can be implicit on click -- can be disabled) **/
 	htrAddScriptFunction(s, "form_action_edit", "\n"
 		"function form_action_edit(aparam)\n"
 		"    {\n"
 		"    switch(this.mode)\n"
 		"        {\n"
-		"        case \"No Data\":\n"
+		"        case \"NoData\":\n"
 		"            this.ChangeMode(\"New\");\n"
 		"            break;\n"
 		"        case \"View\":\n"
@@ -662,29 +668,20 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.show3bconfirm();\n"
 		"    }\n", 0);
 
-	/** in View, Query, or No Data, clear, move to New **/
+	/** in View, Query, or NoData, clear, move to New **/
 	/** in Modify, give save/discard/cancel prompt **/
-	/** (if from No Data or View mode after query, auto-fill criteria) **/
+	/** (if from NoData or View mode after query, auto-fill criteria) **/
 	htrAddScriptFunction(s, "form_action_new", "\n"
 		"function form_action_new(aparam)\n"
 		"    {\n"
 		"    switch(this.mode)\n"
 		"        {\n"
 		"        case \"Query\":\n"
-		"        case \"No Data\":\n"
+		"        case \"NoData\":\n"
 		"        case \"View\":\n"
+		"        case \"Modify\":\n"
 		"            this.ChangeMode(\"New\");\n"
 		"            \n" /* if there was a query run, fill in it's values... */
-		"            break;\n"
-		"        case \"Modify\":\n"
-		"            if(this.Unsaved)\n"
-		"                {\n"
-		"                var savefunc=new Function(\"this.cb['OperationCompleteSuccess'].add(this,new Function('this.ActionNew();'));this.ActionSave();\")\n"
-		"                var discardfunc=new Function(\"this.Unsaved=false;this.ChangeMode('New');\")\n"
-		"                this.cb['_3bConfirmDiscard'].add(this,discardfunc);\n"
-		"                this.cb['_3bConfirmSave'].add(this,savefunc);\n"
-		"                this.show3bconfirm();\n"
-		"                }\n"
 		"            break;\n"
 		"        }\n"
 		"    }\n", 0);
@@ -725,17 +722,24 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_change_mode", "\n"
 		"function form_change_mode(newmode)\n"
 		"    {\n"
-		"    //alert('Form is going from '+this.mode+' to '+newmode+' mode.');\n"
+		"    //confirm('Form is going from '+this.mode+' to '+newmode+' mode.');\n"
+		"    if(this.mode=='Modify' && this.IsUnsaved)\n"
+		"        {\n"
+		"        var savefunc=new Function(\"this.cb['OperationCompleteSuccess'].add(this,new Function('this.Action\"+newmode+\"();'));this.ActionSave();\");\n"
+		"        var discardfunc=new Function(\"this.IsUnsaved=false;this.ChangeMode('\"+newmode+\"');\");\n"
+		"        this.cb['_3bConfirmDiscard'].add(this,discardfunc);\n"
+		"        this.cb['_3bConfirmSave'].add(this,savefunc);\n"
+		"        this.show3bconfirm();\n"
+		"        return;\n"
+		"        }\n"
 		"    this.oldmode = this.mode;\n"
 		"    this.mode = newmode;\n"
 		"    this.IsUnsaved = false;\n"
-		/*
-		"    var event = new Object();\n"
-		"    event.Caller = this;\n"
-		"    //cn_activate(this, 'StatusChange', event);\n" doesn't work -- FIXME
-		"    delete event;\n"
-		*/
-		"    if(this.mode=='No Data' || this.mode=='View')\n"
+		"    \n"
+		"    if(this.mode=='Query')\n"
+		"        this.ClearAll();\n"
+		"    \n"
+		"    if(this.mode=='NoData' || this.mode=='View')\n"
 		"        {\n"
 		"        this.EnableModifyAll();\n"
 		"        }\n"
@@ -747,8 +751,22 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		"        this.statuswidgets[i].setvalue(this.mode);\n"
 		"        }\n"
+		"    this.SendEvent('StatusChange');\n"
+		"    this.SendEvent(this.mode);\n"
 		"    return 1;\n"
 		"    }\n", 0);
+
+	htrAddScriptFunction(s, "form_send_event","\n"
+		"function form_send_event(event)\n"
+		"    {\n"
+		"    //confirm(eval('this.Event'+event));\n"
+		"    if(!eval('this.Event'+event)) return 1;\n"
+		"    var evobj = new Object();\n"
+		"    evobj.Caller = this;\n"
+		"    evobj.Status = this.mode;\n"
+		"    cn_activate(this, event, evobj);\n"
+		"    delete evobj;\n"
+		"    }\n",0);
 	
 	/** Clears all children, also resets IsChanged/IsUnsaved flag to false **/
 	htrAddScriptFunction(s, "form_clear_all", "\n"
@@ -815,7 +833,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_action_query()\n"
 		"    {\n"
 		"    if(!this.allowquery) {alert('Query mode not allowed');return 0;}\n"
-		"    this.ClearAll();\n"
 		"    return this.ChangeMode('Query');\n"
 		"    }\n", 0);
 
@@ -960,7 +977,6 @@ old query code
 		"    {\n"
 		"    if(!this.IsUnsaved)\n"
 		"    	 {\n"
-		"    	 alert('There isn\\'t any reason to save.');\n"
 		"    	 return 0;\n"
 		"        }\n"
 		"    this.cb['OperationCompleteSuccess'].add(this,\n"
@@ -1098,7 +1114,7 @@ old query code
 		"    form.readonly=ro;\n" 
 		"    form.elements = new Array();\n"
 		"    form.statuswidgets = new Array();\n"
-		"    form.mode = 'No Data';\n"
+		"    form.mode = 'NoData';\n"
 		"    form.cobj = null;\n" /* current 'object' (record) */
 		"    form.oldmode = null;\n"
 		"    if(osrc_current)\n"
@@ -1165,6 +1181,7 @@ old query code
 		"    form.EnableNewAll = form_enable_new_all;\n"
 		"    form.ReadOnlyAll = form_readonly_all;\n"
 		"    form.ChangeMode = form_change_mode;\n"
+		"    form.SendEvent = form_send_event;\n"
 		"    //form.InitQuery = form_init_query;\n"
 		"    return form;\n"
 		"    }\n",0);
@@ -1181,7 +1198,21 @@ old query code
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/
-	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
+
+	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+	if (qy)
+	    {
+	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
+	        {
+		objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+		if (strcmp(ptr,"widget/connector") == 0)
+		    htrRenderWidget(s, sub_w_obj, z, "", name);
+		else
+		    htrRenderWidget(s, sub_w_obj, z, parentname, parentobj);
+		objClose(sub_w_obj);
+		}
+	    objQueryClose(qy);
+	    }
 	
 	htrAddScriptInit_va(s,"    fm_current=%s.oldform;\n",name);
 
@@ -1220,7 +1251,13 @@ htformInitialize()
 	htrAddAction(drv,"QueryExec");
 	htrAddAction(drv,"Save");
 
-	htrAddEvent(drv,"StatusChange"); /* Not documented */
+	/* these don't really do much, since the form doesn't have a layer, so nothing can find it... */
+	htrAddEvent(drv,"StatusChange");
+	htrAddEvent(drv,"NoData");
+	htrAddEvent(drv,"View");
+	htrAddEvent(drv,"Modify");
+	htrAddEvent(drv,"Query");
+	htrAddEvent(drv,"QueryExec");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

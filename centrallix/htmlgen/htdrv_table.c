@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.14 2002/05/31 02:40:38 lkehresman Exp $
+    $Id: htdrv_table.c,v 1.15 2002/06/02 22:13:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.15  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.14  2002/05/31 02:40:38  lkehresman
     Added a horrible hack to fix the hang problem.  The previous hack involved
     alert windows.  This one is at least transparent (as it uses a while loop
@@ -227,7 +231,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_update","\n"
 		"function tbld_update(p1)\n"
 		"    {\n"
-		"    t=this.down;\n"
+		"    var t=this.down;\n"
 		"    this.windowsize=(this.osrc.LastRecord-this.osrc.FirstRecord+1)<this.maxwindowsize?this.osrc.LastRecord-this.osrc.FirstRecord+1:this.maxwindowsize;\n"
 		"    if(this.startat+this.windowsize-1>this.osrc.LastRecord)\n"
 		"        this.startat=this.osrc.LastRecord-this.windowsize+1;\n"
@@ -332,7 +336,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"function tbld_select()\n"
 		"    {\n"
 		"    eval('this.'+this.table.row_bgndhigh+';');\n"
-		"    for(i in this.cols)\n"
+		"    for(var i in this.cols)\n"
 		"        {\n"
 		"        if(this.table.textcolorhighlight)\n"
 		"            {\n"
@@ -351,7 +355,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"function tbld_deselect()\n"
 		"    {\n"
 		"    eval('this.'+(this.recnum\%2?this.table.row_bgnd1:this.table.row_bgnd2)+';');\n"
-		"    for(i in this.cols)\n"
+		"    for(var i in this.cols)\n"
 		"        {\n"
 		"        if(this.table.textcolorhighlight)\n"
 		"            {\n"
@@ -516,7 +520,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    t.subkind='table';\n"
 		"    t.document.layer=t;\n"
 		"    var voffset=0;\n"
-		"    var q=0; while (q<10000) { q++; }\n" // HORRIBLE HACK!! I HATE NETSCAPE FOR MAKING ME DO THIS! 
+		"    //var q=0; while (q<10000) { q++; }\n" // HORRIBLE HACK!! I HATE NETSCAPE FOR MAKING ME DO THIS! 
 		/** build layers **/
 		"    for(var i=0;i<t.windowsize+1;i++)\n"
 		"        {\n"

@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.4 2002/06/02 22:13:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.4  2002/06/02 22:13:21  jorupp
+     * added disable functionality to image button (two new Actions)
+     * bugfixes
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -154,10 +158,8 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "eparam", "null", 0);*/
 
 	/** Add a script init to install the connector **/
-	snprintf(sbuf,HT_SBUF_SIZE,"    %s = new cn_init(%s,cn_%d);\n", nptr, parentobj, id);
-	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf,HT_SBUF_SIZE,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s,"    %s = new cn_init(%s,cn_%d);\n", nptr, parentobj, id);
+	htrAddScriptInit_va(s,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
 
 	/** Connector function to activate an action **/
 	htrAddScriptFunction(s, "cn_activate", "\n"
