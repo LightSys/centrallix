@@ -74,7 +74,7 @@ CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include
 #CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include -DBUILD=$(BUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -Wall
 #LIBS=-lnsl -lsocket
 #LIBS=-lsybtcl -lct -linsck -lcomn -lintl -lcs -lm
-LIBS=-lct -lcomn -lintl -lsybtcl -lcs -linsck -lm -lcrypt ../centrallix-lib/libCentrallix.a
+LIBS=-lct -lcomn -lintl -lsybtcl -lcs -linsck -lm -lcrypt -lreadline ../centrallix-lib/libCentrallix.a
 #LIBS=-lm
 STATICLIBS=/usr/local/syblinux/elf/lib/libct.a /usr/local/syblinux/elf/lib/libcomn.a /usr/local/syblinux/elf/lib/libintl.a /usr/local/syblinux/elf/lib/libsybtcl.a /usr/local/syblinux/elf/lib/libcs.a /usr/local/syblinux/elf/lib/libinsck.a
 LIBDIRS=-L$(SYBASE)/lib
