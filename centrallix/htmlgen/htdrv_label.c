@@ -42,6 +42,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.18  2003/11/12 22:15:27  gbeeley
+    Added font size to label
+
     Revision 1.17  2003/07/20 03:41:17  jorupp
      * got window mostly working in Mozilla
 
@@ -161,6 +164,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id;
+    int fontsize;
     char* nptr;
     char *text;
     pObject sub_w_obj;
@@ -199,6 +203,10 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    text=nmMalloc(1);
 	    text[0]='\0';
 	    }
+
+	/** font size in points **/
+	if (objGetAttrValue(w_obj,"fontsize",DATA_T_INTEGER,POD(&fontsize)) != 0)
+	    fontsize = 3;
 
 	align[0]='\0';
 	if(objGetAttrValue(w_obj,"align",DATA_T_STRING,POD(&ptr)) == 0)
@@ -273,7 +281,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "lbl%d", id, 
-	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\">%s</td></tr></table>\n",w,align,text);
+	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d>%s</font></td></tr></table>\n",w,align,fontsize,text);
 
 	/** Check for more sub-widgets **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
