@@ -25,4 +25,4 @@
 # or
 #DEFAULT (echo ""; id; echo %{sVv}; date; cat) >> $CVSROOT/CVSROOT/commitlog
 #DEFAULT $CVSROOT/CVSROOT/syncmail %{sVv} centrallix-devel@lists.sourceforge.net 
-DEFAULT	$CVSROOT/CVSROOT/loginfo.pl centrallix-devel@lists.sourceforge.net $USER %{sVv}
+DEFAULT	$CVSROOT/CVSROOT/loginfo.pl centrallix-cvsinfo@lists.sourceforge.net $USER %{sVv}
