@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+//#include "config.h"
 #endif
 #include "centrallix.h"
 #include "mtask.h"
@@ -53,10 +53,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.24 2002/11/22 19:29:36 gbeeley Exp $
+    $Id: lsmain.c,v 1.25 2003/03/10 15:41:38 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.25  2003/03/10 15:41:38  lkehresman
+    The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
+    hints to the OSML.  To do this I had to:
+      * Move obj_internal_InfToHints() to a global function objInfToHints.  This
+        is now located in utility/hints.c and the include is in include/hints.h.
+      * Added the presentation hints function to the CSV driver and called it
+        datPresentationHints() which returns a valid objPresentationHints object.
+      * Modified test_obj.c to fix a crash bug and reformatted the output to be
+        a little bit easier to read.
+      * Added utility/hints.c to Makefile.in (somebody please check and make sure
+        that I did this correctly).  Note that you will have to reconfigure
+        centrallix for this change to take effect.
+
     Revision 1.24  2002/11/22 19:29:36  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This

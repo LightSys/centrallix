@@ -54,6 +54,7 @@ VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:repor
 XSUPPORT=stparse.o \
 	 st_node.o \
 	 htmlparse.o \
+	 hints.o \
 	 mime/mime_parse.o \
 	 mime/mime_address.o \
 	 mime/mime_encode.o \

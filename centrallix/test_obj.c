@@ -64,10 +64,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.21 2003/03/03 21:33:31 lkehresman Exp $
+    $Id: test_obj.c,v 1.22 2003/03/10 15:41:39 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.22  2003/03/10 15:41:39  lkehresman
+    The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
+    hints to the OSML.  To do this I had to:
+      * Move obj_internal_InfToHints() to a global function objInfToHints.  This
+        is now located in utility/hints.c and the include is in include/hints.h.
+      * Added the presentation hints function to the CSV driver and called it
+        datPresentationHints() which returns a valid objPresentationHints object.
+      * Modified test_obj.c to fix a crash bug and reformatted the output to be
+        a little bit easier to read.
+      * Added utility/hints.c to Makefile.in (somebody please check and make sure
+        that I did this correctly).  Note that you will have to reconfigure
+        centrallix for this change to take effect.
+
     Revision 1.21  2003/03/03 21:33:31  lkehresman
     Fixed a bug in test_obj that would segfault if no attributes were returned
     from an object.
@@ -226,34 +239,34 @@ testobj_show_hints(pObject obj, char* attrname)
 	return -1;
 	}
 
-    printf("Presentation Hints for %s:\n",attrname);
-    printf("  constraint:\n");
+    printf("Presentation Hints for \"%s\":\n",attrname);
+    printf("  Constraint   :\n");
     printExpression(hints->Constraint);
-    printf("  default:\n");
+    printf("  DefaultExpr  :\n");
     printExpression(hints->DefaultExpr);
-    printf("  min:\n");
+    printf("  MinValue     :\n");
     printExpression(hints->MinValue);
-    printf("  max:\n");
+    printf("  MaxValue     :\n");
     printExpression(hints->MaxValue);
-    printf("  enumerated values:\n");
+    printf("  EnumList     :\n");
     for(i=0;i<hints->EnumList.nItems;i++)
 	{
 	printf("    %s\n",(char*)xaGetItem(&hints->EnumList,i));
 	}
-    printf("  enumerated query: %s\n",hints->EnumQuery);
-    printf("  format: %s\n",hints->Format);
-    printf("  visual length: %i\n",hints->VisualLength);
-    printf("  visual length2: %i\n",hints->VisualLength2);
-    printf("  readonly bits: ");
+    printf("  EnumQuery    : %s\n",hints->EnumQuery);
+    printf("  Format       : %s\n",hints->Format);
+    printf("  VisualLength : %i\n",hints->VisualLength);
+    printf("  VisualLength2: %i\n",hints->VisualLength2);
+    printf("  BitmaskRO    : ");
     for(i=0;i<32;i++)
 	{
 	printf("%i",hints->BitmaskRO>>(31-i) & 0x01);
 	}
     printf("\n");
-    printf("  style: %i\n",hints->Style);
-    printf("  groupid: %i\n",hints->GroupID);
-    printf("  groupname: %s\n",hints->GroupName);
-    printf("  description: %s\n",hints->FriendlyName);
+    printf("  Style        : %i\n",hints->Style);
+    printf("  GroupID      : %i\n",hints->GroupID);
+    printf("  GroupName    : %s\n",hints->GroupName);
+    printf("  FriendlyName : %s\n",hints->FriendlyName);
 
     objFreeHints(hints);
     return 0;
@@ -1054,7 +1067,7 @@ start(void* v)
 		    mlxCopyToken(ls, attrname, 63);
 		    attrname[63]='\0';
 		    }
-		if(attrname)
+		if (attrname)
 		    {
 		    testobj_show_hints(obj, attrname);
 		    nmFree(attrname,64);

@@ -19,6 +19,7 @@
 #include "xstring.h"
 #include "st_node.h"
 #include "stparse.h"
+#include "hints.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -53,10 +54,23 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.6 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.7 2003/03/10 15:41:42 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.7  2003/03/10 15:41:42  lkehresman
+    The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
+    hints to the OSML.  To do this I had to:
+      * Move obj_internal_InfToHints() to a global function objInfToHints.  This
+        is now located in utility/hints.c and the include is in include/hints.h.
+      * Added the presentation hints function to the CSV driver and called it
+        datPresentationHints() which returns a valid objPresentationHints object.
+      * Modified test_obj.c to fix a crash bug and reformatted the output to be
+        a little bit easier to read.
+      * Added utility/hints.c to Makefile.in (somebody please check and make sure
+        that I did this correctly).  Note that you will have to reconfigure
+        centrallix for this change to take effect.
+
     Revision 1.6  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -132,23 +146,23 @@
 /*** Structure for storing table-key information ***/
 typedef struct
     {
-    char	Table[256];
-    char*	ColBuf;
-    int		ColBufSize;
-    int		ColBufLen;
-    char*	Cols[256];
-    unsigned char ColIDs[256];
-    unsigned char ColFlags[256];
-    unsigned char ColTypes[256];
-    unsigned char ColKeys[256];
-    char*	ColFmt[256];
-    int		nCols;
-    char*	Keys[8];
-    int		KeyCols[8];
-    int		nKeys;
-    pParamObjects ObjList;
-    pExpression	RowAnnotExpr;
-    char	Annotation[256];
+    char		    Table[256];
+    char*		    ColBuf;
+    int			    ColBufSize;
+    int			    ColBufLen;
+    char*		    Cols[256];
+    unsigned char	    ColIDs[256];
+    unsigned char	    ColFlags[256];
+    unsigned char	    ColTypes[256];
+    unsigned char	    ColKeys[256];
+    char*		    ColFmt[256];
+    int			    nCols;
+    char*		    Keys[8];
+    int			    KeyCols[8];
+    int			    nKeys;
+    pParamObjects	    ObjList;
+    pExpression		    RowAnnotExpr;
+    char		    Annotation[256];
     }
     DatTableInf, *pDatTableInf;
 
@@ -1248,7 +1262,7 @@ dat_bcp_OpenNode(pDatNode dn)
     {
     char* ptr = NULL;
 
-    	/** Determine field separator **/
+	/** Determine field separator **/
 	stAttrValue(stLookup(dn->Node->Data, "fieldsep"),NULL, &ptr, 0);
 	if (ptr)
 	    dn->FieldSep = *ptr;
@@ -1277,7 +1291,7 @@ dat_internal_OpenNode(pObject obj, char* filename, int mode, int is_toplevel, in
     int new_node = 0;
     pDatTableInf tdata = NULL;
 
-    	/** Determine the datafile and specfile names **/
+	/** Determine the datafile and specfile names **/
 	strcpy(nodefile,filename);
 	if (strlen(filename) <= 5 || strcmp(".spec",filename+strlen(filename)-5))
 	    {
@@ -3195,6 +3209,42 @@ datExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree* oxt)
     return -1;
     }
 
+/*** datPresentationHints - return a presentation-hints structure
+ *** dcontaining information about a particular attribute.
+ ***
+ *** LME-NOTE:  There must be a better way to do this than two
+ ***            nested loops, but this was the only way I could
+ ***            find to make it work.
+ ***/
+pObjPresentationHints
+datPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
+    {
+    pDatData inf = DAT(inf_v);
+    pStructInf stInf = NULL;
+    pDatTableInf tdata = NULL;
+    int i, j;
+
+    tdata = inf->Node->TableInf;
+    for (i=0; i < tdata->nCols; i++)
+	{
+	if (!strcmp(tdata->Cols[i], attrname))
+	    {
+	    stInf = stLookup(inf->Node->Node->Data, attrname);
+	    for (j=0; j < stInf->nSubInf; j++)
+		{
+		if (stStructType(stInf->SubInf[j]) == ST_T_SUBGROUP)
+		    {
+		    if (!strcmp(stInf->SubInf[j]->UsrType, "column/hints"))
+			{
+			return objInfToHints(stInf->SubInf[j], tdata->ColTypes[i]);
+			}
+		    }
+		}
+	    }
+	}
+
+    return NULL;
+    }
 
 /*** datInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
@@ -3249,6 +3299,7 @@ datInitialize()
 	drv->GetFirstMethod = datGetFirstMethod;
 	drv->GetNextMethod = datGetNextMethod;
 	drv->ExecuteMethod = datExecuteMethod;
+	drv->PresentationHints = datPresentationHints;
 
 	nmRegister(sizeof(DatTableInf),"DatTableInf");
 	nmRegister(sizeof(DatData),"DatData");
