@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.16 2003/04/21 21:00:44 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.17 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.17  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.16  2003/04/21 21:00:44  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -312,6 +318,10 @@ prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst)
 	dst->MarginRight = src->MarginRight;
 	dst->MarginTop = src->MarginTop;
 	dst->MarginBottom = src->MarginBottom;
+	dst->BorderLeft = src->BorderLeft;
+	dst->BorderRight = src->BorderRight;
+	dst->BorderTop = src->BorderTop;
+	dst->BorderBottom = src->BorderBottom;
 
     return 0;
     }
@@ -409,8 +419,8 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
 		}
 	    else
 		{
-		obj->PageX = obj->Parent->PageX + obj->Parent->MarginLeft + obj->X;
-		obj->PageY = obj->Parent->PageY + obj->Parent->MarginTop + obj->Y;
+		obj->PageX = obj->Parent->PageX + obj->Parent->MarginLeft + obj->Parent->BorderLeft + obj->X;
+		obj->PageY = obj->Parent->PageY + obj->Parent->MarginTop + obj->Parent->BorderTop + obj->Y;
 		}
 	    }
 
@@ -742,6 +752,7 @@ prt_internal_Dump_r(pPrtObjStream obj, int level)
 	    case PRT_OBJ_T_TABLEROW: printf("TROW: "); break;
 	    case PRT_OBJ_T_TABLECELL: printf("TCEL: "); break;
 	    case PRT_OBJ_T_RECT: printf("RECT: "); break;
+	    case PRT_OBJ_T_IMAGE: printf("IMG:  "); break;
 	    }
 	printf("x=%.3g y=%.3g w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g flg=%d id=%d\n",
 		obj->X, obj->Y, obj->Width, obj->Height,
@@ -778,6 +789,7 @@ prt_internal_Duplicate(pPrtObjStream obj, int with_content)
 	if (!new_obj) return NULL;
 	prt_internal_CopyAttrs(obj, new_obj);
 	prt_internal_CopyGeom(obj, new_obj);
+	new_obj->Justification = obj->Justification;
 	if (!with_content)
 	    {
 	    /** If we are copying with the content, we want the actual height,
@@ -992,4 +1004,23 @@ prt_internal_DispatchEvents(pPrtSession s)
     return 0;
     }
 
+
+/*** prtInnerWidth() - determine the inner width of an object, inside
+ *** of its borders and margins.
+ ***/
+double
+prtInnerWidth(pPrtObjStream obj)
+    {
+    return obj->Width - obj->MarginLeft - obj->MarginRight - obj->BorderLeft - obj->BorderRight;
+    }
+
+
+/*** prtInnerHeight() - determine the inner height of an object, inside of
+ *** its borders and margins.
+ ***/
+double
+prtInnerHeight(pPrtObjStream obj)
+    {
+    return obj->Height - obj->MarginTop - obj->MarginBottom - obj->BorderTop - obj->BorderBottom;
+    }
 

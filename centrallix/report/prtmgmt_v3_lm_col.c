@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.10 2003/04/21 21:00:44 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.11 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.11  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.10  2003/04/21 21:00:44  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -255,7 +261,7 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	 **/
 	if (req_width != child->Width && req_height == child->Height)
 	    {
-	    if (child->X + req_width <= this->Width - this->MarginLeft - this->MarginRight) 
+	    if (child->X + req_width - PRT_FP_FUDGE <= prtInnerWidth(this)) 
 		return 0;
 	    else
 		return -1;
@@ -272,10 +278,10 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	     ** do soft column/page breaks, so we try to make it fit anyhow.
 	     ** First check to see if it fits without needing any resizing.  
 	     **/
-	    if (child->Y + req_height <= this->Height - this->MarginTop - this->MarginBottom) return 0;
+	    if (child->Y + req_height - PRT_FP_FUDGE <= prtInnerHeight(this)) return 0;
 	    
 	    /** Next, try resizing the container. **/
-	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom;
+	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom;
 	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && 
 		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
 		return 0;
@@ -286,14 +292,14 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	     ** app to construct a section that only starts balancing when it needs
 	     ** to expand vertically.
 	     **/
-	    if (child->Y + req_height <= this->Height - this->MarginTop - this->MarginBottom) return 0;
+	    if (child->Y + req_height - PRT_FP_FUDGE <= prtInnerHeight(this)) return 0;
 
 	    /** If not in last column and can resize, and resize would not be more than
 	     ** one LineHeight larger than last column, then go ahead.
 	     **/
-	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom;
+	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom;
 	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && this != parent->ContentTail &&
-		    new_h <= parent->ContentTail->Height &&
+		    new_h - PRT_FP_FUDGE <= parent->ContentTail->Height &&
 		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
 		return 0;
 
@@ -430,7 +436,7 @@ prt_collm_CreateCols(pPrtObjStream this)
 	    col_obj->Y = 0.0;
 	    col_obj->Width = lm_inf->ColWidths[i];
 	    col_obj->Session = this->Session;
-	    col_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
+	    col_obj->Height = prtInnerHeight(this);
 	    col_obj->LMData = NULL;
 	    col_obj->ObjID = i;
 	    col_obj->Flags |= PRT_OBJ_F_PERMANENT;
@@ -472,9 +478,9 @@ prt_collm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	/** Need to adjust the height/width if unspecified? **/
 	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = lm_inf->CurrentCol->Width - lm_inf->CurrentCol->MarginLeft - lm_inf->CurrentCol->MarginRight;
+	    new_child_obj->Width = prtInnerWidth(lm_inf->CurrentCol);
 	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = lm_inf->CurrentCol->Height - lm_inf->CurrentCol->MarginTop - lm_inf->CurrentCol->MarginBottom;
+	    new_child_obj->Height = prtInnerHeight(lm_inf->CurrentCol);
 
 	/** Just add it to the currently active column object **/
 	prt_internal_Add(lm_inf->CurrentCol, new_child_obj);
@@ -497,8 +503,8 @@ prt_collm_InitContainer(pPrtObjStream this, pPrtColLMData old_lm_inf, va_list va
     pPrtBorder b;
 
 	/** section objects have a minimum height of one LineHeight. **/
-	if (this->Height < this->LineHeight + this->MarginTop + this->MarginBottom) 
-	    this->Height = this->LineHeight + this->MarginTop + this->MarginBottom;
+	if (this->Height < this->LineHeight + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) 
+	    this->Height = this->LineHeight + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom;
 	this->ConfigHeight = this->Height;
 
 	/** Allocate our layout manager specific info **/
@@ -592,7 +598,7 @@ prt_collm_InitContainer(pPrtObjStream this, pPrtColLMData old_lm_inf, va_list va
 	    {
 	    for(i=0;i<lm_inf->nColumns;i++)
 		{
-		lm_inf->ColWidths[i] = (this->Width - this->MarginLeft - this->MarginRight - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
+		lm_inf->ColWidths[i] = (prtInnerWidth(this) - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
 		}
 	    }
 
@@ -608,7 +614,7 @@ prt_collm_InitContainer(pPrtObjStream this, pPrtColLMData old_lm_inf, va_list va
 	for(i=0;i<lm_inf->nColumns;i++)
 	    {
 	    /** Check column width constraints **/
-	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (prtInnerWidth(this) + PRT_FP_FUDGE))
 		{
 		mssError(1,"COLLM","Invalid width for column #%d",i+1);
 		nmFree(lm_inf, sizeof(PrtColLMData));
@@ -618,7 +624,7 @@ prt_collm_InitContainer(pPrtObjStream this, pPrtColLMData old_lm_inf, va_list va
 	    totalwidth += lm_inf->ColWidths[i];
 	    }
 	/** Check total of column widths. **/
-	if (totalwidth > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE))
 	    {
 	    mssError(1,"COLLM","Total of column widths and separations exceeds available section width");
 	    nmFree(lm_inf, sizeof(PrtColLMData));
@@ -684,7 +690,7 @@ prt_collm_Finalize(pPrtObjStream this)
 		{
 		/** Allocate the rectangle and set it up **/
 		prt_internal_MakeBorder(this, col_obj->X + col_obj->Width + lm_inf->ColSep*0.5, 0.0,
-			this->Height - this->MarginTop - this->MarginBottom, PRT_MKBDR_F_LEFT | PRT_MKBDR_F_RIGHT,
+			prtInnerHeight(this), PRT_MKBDR_F_LEFT | PRT_MKBDR_F_RIGHT,
 			&(lm_inf->Separator), NULL, NULL);
 		col_obj = col_obj->Next;
 		}

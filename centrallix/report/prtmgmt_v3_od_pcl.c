@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.12 2003/04/21 21:00:48 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.13 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.13  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.12  2003/04/21 21:00:48  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -703,6 +709,12 @@ prt_pclod_WriteRect(void* context_v, double width, double height, double next_y)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[80];
+
+	/** Make sure width and height meet the minimum required by the
+	 ** currently selected resolution
+	 **/
+	if (width < 10.0/context->SelectedResolution->Xres) width = 10.0/context->SelectedResolution->Xres;
+	if (height < 6.0/context->SelectedResolution->Yres) height = 6.0/context->SelectedResolution->Yres;
 
 	/** For now, just draw the whole rectangle; PCL printer memory
 	 ** might end up being an issue though

@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.8 2003/06/27 21:19:48 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.9 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.9  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.8  2003/06/27 21:19:48  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -216,7 +222,7 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	/** Allow width resizes on a limited basis **/
 	if ((child->ObjType->TypeID == PRT_OBJ_T_TABLE || child->ObjType->TypeID == PRT_OBJ_T_TABLEROW ||
 		 child->ObjType->TypeID == PRT_OBJ_T_TABLECELL || 
-		 child->X + req_width > this->Width - this->MarginLeft - this->MarginRight) &&
+		 child->X + req_width - PRT_FP_FUDGE > prtInnerWidth(this)) &&
 		req_width != child->Width)
 	    {
 	    /** Wouldn't fit, or is a table/row/cell object and can't resize its width. **/
@@ -227,7 +233,7 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	if (req_height != child->Height)
 	    {
 	    /** Fits? **/
-	    new_height = child->Y + req_height + this->MarginTop + this->MarginBottom;
+	    new_height = child->Y + req_height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom;
 	    if (new_height <= this->Height)
 		return 0;
 
@@ -381,7 +387,7 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	    {
 	    for(i=0;i<lm_inf->nColumns;i++)
 		{
-		lm_inf->ColWidths[i] = (this->Width - this->MarginLeft - this->MarginRight - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
+		lm_inf->ColWidths[i] = (prtInnerWidth(this) - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
 		}
 	    }
 
@@ -389,7 +395,7 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	totalwidth = lm_inf->ColSep*(lm_inf->nColumns-1);
 	for(i=0;i<lm_inf->nColumns;i++)
 	    {
-	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (prtInnerWidth(this) + PRT_FP_FUDGE))
 		{
 		mssError(1,"TABLM","Invalid width for column #%d",i+1);
 		return -EINVAL;
@@ -398,7 +404,7 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	    }
 
 	/** Check total of column widths. **/
-	if (totalwidth > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE))
 	    {
 	    mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
 	    return -EINVAL;
@@ -461,7 +467,7 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** parent is a table; child is a row object. **/
 	    new_child_obj->X = 0.0;
 	    new_child_obj->Y = (this->ContentTail)?(this->ContentTail->Y + this->ContentTail->Height):0.0;
-	    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight;
+	    new_child_obj->Width = prtInnerWidth(this);
 	    if (new_child_obj->Height < 0) new_child_obj->Height = 0.0;
 	    if (lm_inf->ColWidths[0] < 0.0)
 		{
@@ -503,7 +509,7 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		new_child_obj->X = parent_lm_inf->ColX[parent_lm_inf->CurColID];
 		new_child_obj->Width = parent_lm_inf->ColWidths[parent_lm_inf->CurColID];
 		if (new_child_obj->Height < 0)
-		    new_child_obj->Height = this->Height - this->MarginTop -  this->MarginBottom;
+		    new_child_obj->Height = prtInnerHeight(this);
 		new_child_obj->Y = 0.0;
 		new_child_obj->ObjID = parent_lm_inf->CurColID;
 		parent_lm_inf->CurColID++;
@@ -517,32 +523,32 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    return -1;
 		    }
 		if (new_child_obj->Width < 0) 
-		    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight - new_child_obj->X;
+		    new_child_obj->Width = prtInnerWidth(this) - new_child_obj->X;
 		if (new_child_obj->Height < 0) 
-		    new_child_obj->Height = this->Height - this->MarginTop -  this->MarginBottom - new_child_obj->Y;
+		    new_child_obj->Height = prtInnerHeight(this) - new_child_obj->Y;
 		}
 	    }
 	else if (this->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 	    {
 	    /** Parent is table cell object.  Pretty much anything goes here. **/
 	    if (new_child_obj->Width < 0) 
-		new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight - new_child_obj->X;
+		new_child_obj->Width = prtInnerWidth(this) - new_child_obj->X;
 	    if (new_child_obj->Height < 0) 
-		new_child_obj->Height = this->Height - this->MarginTop -  this->MarginBottom - new_child_obj->Y;
+		new_child_obj->Height = prtInnerHeight(this) - new_child_obj->Y;
 	    }
 
 	/** Ok, geometry now set.  Now see if the thing will actually fit. **/
-	if (new_child_obj->Width + new_child_obj->X > this->Width - this->MarginLeft - this->MarginRight)
+	if ((new_child_obj->Width + new_child_obj->X - PRT_FP_FUDGE) > prtInnerWidth(this))
 	    {
 	    /** Too wide.  Not much we can do about this in a table. **/
 	    mssError(1,"TABLM","Object too wide; extends off of right edge of table/row/cell.");
 	    return -1;
 	    }
-	if (new_child_obj->Height + new_child_obj->Y > this->Height - this->MarginTop - this->MarginBottom)
+	if ((new_child_obj->Height + new_child_obj->Y - PRT_FP_FUDGE) > prtInnerHeight(this))
 	    {
 	    /** Too tall.  Attempt to resize to meet the occasion. **/
 	    new_parent = NULL;
-	    if (this->LayoutMgr->Resize(this, this->Width, new_child_obj->Y + new_child_obj->Height + this->MarginTop + this->MarginBottom) < 0)
+	    if (this->LayoutMgr->Resize(this, this->Width, new_child_obj->Y + new_child_obj->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 		{
 		/** Resize denied.  Try a break if we can. **/
 		if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent))
@@ -559,9 +565,9 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		this = new_parent;
 
 		/** Re-check height sizing; new parent may need to be resized. **/
-		if (new_child_obj->Height + new_child_obj->Y > this->Height - this->MarginTop - this->MarginBottom)
+		if (new_child_obj->Height + new_child_obj->Y - PRT_FP_FUDGE > prtInnerHeight(this))
 		    {
-		    if (this->LayoutMgr->Resize(this, this->Width, new_child_obj->Y + new_child_obj->Height + this->MarginTop + this->MarginBottom) < 0)
+		    if (this->LayoutMgr->Resize(this, this->Width, new_child_obj->Y + new_child_obj->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 			{
 			/** Could not fit even in new container? **/
 			return -1;
@@ -707,6 +713,12 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		}
 	    }
 
+	/** Compute border widths for object **/
+	this->BorderTop = lm_inf->TopBorder.TotalWidth;
+	this->BorderLeft = lm_inf->LeftBorder.TotalWidth;
+	this->BorderBottom = lm_inf->BottomBorder.TotalWidth + lm_inf->Shadow.TotalWidth;
+	this->BorderRight = lm_inf->RightBorder.TotalWidth + lm_inf->Shadow.TotalWidth;
+
     return 0;
     }
 
@@ -838,6 +850,12 @@ prt_tablm_InitRow(pPrtObjStream row, pPrtTabLMData old_lm_data, va_list va)
 		}
 	    }
 
+	/** Compute border widths for object **/
+	row->BorderTop = lm_inf->TopBorder.TotalWidth;
+	row->BorderLeft = lm_inf->LeftBorder.TotalWidth;
+	row->BorderBottom = lm_inf->BottomBorder.TotalWidth;
+	row->BorderRight = lm_inf->RightBorder.TotalWidth;
+
     return 0;
     }
 
@@ -916,6 +934,12 @@ prt_tablm_InitCell(pPrtObjStream cell, pPrtTabLMData old_lm_data, va_list va)
 		else memset(&(lm_inf->OuterBorder), 0, sizeof(PrtBorder));
 		}
 	    }
+
+	/** Compute border widths for object **/
+	cell->BorderTop = lm_inf->TopBorder.TotalWidth;
+	cell->BorderLeft = lm_inf->LeftBorder.TotalWidth;
+	cell->BorderBottom = lm_inf->BottomBorder.TotalWidth;
+	cell->BorderRight = lm_inf->RightBorder.TotalWidth;
 
     return 0;
     }
@@ -1044,7 +1068,7 @@ prt_tablm_Finalize(pPrtObjStream this)
 	    {
 	    for(i=0;i<lm_inf->nColumns-1;i++)
 		{
-		prt_internal_MakeBorder(this, this->MarginLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep, 0.0,
+		prt_internal_MakeBorder(this, this->MarginLeft + this->BorderLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep, 0.0,
 			this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
 			PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
 			&(lm_inf->InnerBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
@@ -1160,7 +1184,7 @@ prt_tablm_Finalize(pPrtObjStream this)
 		    {
 		    for(i=0;i<row_inf->nColumns-1;i++)
 			{
-			prt_internal_MakeBorder(row, row->MarginLeft + row_inf->ColX[i+1] - 0.5*row_inf->ColSep, 0.0,
+			prt_internal_MakeBorder(row, row->BorderLeft + row->MarginLeft + row_inf->ColX[i+1] - 0.5*row_inf->ColSep, 0.0,
 				row->Height,
 				PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
 				&(row_inf->InnerBorder), rowtop?rowtop:&(row_inf->TopBorder), 

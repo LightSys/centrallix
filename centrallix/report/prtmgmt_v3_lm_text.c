@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.19 2003/04/21 21:00:46 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.20 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.20  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.19  2003/04/21 21:00:46  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -419,7 +425,7 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 	 **/
 	slack_space=0.0;
 	n_items=0;
-	total_width = end->Parent->Width - end->Parent->MarginLeft - end->Parent->MarginRight;
+	total_width = prtInnerWidth(end->Parent);
 	for(scan=start; scan && scan->Next && scan != end; scan=scan->Next)
 	    {
 	    slack_space += (scan->Next->X - (scan->X + scan->Width));
@@ -646,7 +652,7 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
 	while(1)
 	    {
 	    /** Can we wrap in the selected object? **/
-	    maxw = area->Width - area->MarginLeft - area->MarginRight - search->X;
+	    maxw = prtInnerWidth(area) - search->X;
 	    rval = prt_textlm_FindWrapPoint(search, maxw, &sep, &sepw);
 
 	    /** Could wrap? **/
@@ -893,9 +899,9 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	/** Need to adjust the height/width if unspecified? **/
 	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight;
+	    new_child_obj->Width = prtInnerWidth(this);
 	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
+	    new_child_obj->Height = prtInnerHeight(this);
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
@@ -940,7 +946,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    }
 
 		/** Set X position **/
-		if (!(objptr->Flags & PRT_OBJ_F_XSET) || (objptr->X < x) || (objptr->X >= this->Width - this->MarginLeft - this->MarginRight))
+		if (!(objptr->Flags & PRT_OBJ_F_XSET) || (objptr->X < x) || (objptr->X >= prtInnerWidth(this)))
 		    {
 		    objptr->X = x;
 		    }
@@ -953,7 +959,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		}
 
 	    /** Need to break this into two parts to wrap it? **/
-	    if (objptr->X + objptr->Width > this->Width - this->MarginLeft - this->MarginRight)
+	    if (objptr->X + objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
 		if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING)
 		    {
@@ -988,7 +994,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Special case of unsplit string here **/
 	    if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && !split_obj && 
-	        objptr->X == 0.0 && objptr->Width > this->Width - this->MarginLeft - this->MarginRight)
+	        objptr->X == 0.0 && objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
 		/** It's on its own line now, so we can try splitting it again. **/
 		continue;
@@ -998,10 +1004,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** Add the objptr, and then see about adding split_obj if needed. **/
 	    /** First, do we need to request more room in the 'area'? **/
 	    new_parent = NULL;
-	    if (objptr->Y + objptr->Height > this->Height - this->MarginTop - this->MarginBottom)
+	    if (objptr->Y + objptr->Height - PRT_FP_FUDGE > prtInnerHeight(this))
 	        {
 		/** Request the additional space, if allowed **/
-		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom) < 0)
+		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 		    {
 		    /** Resize denied.  If container is empty, we can't continue on, so error out here. **/
 		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
@@ -1076,7 +1082,14 @@ prt_textlm_InitContainer(pPrtObjStream this, pPrtTextLMData old_lm_inf, va_list 
 		if (!strcmp(attrname,"border"))
 		    {
 		    b = va_arg(va, pPrtBorder);
-		    if (b) memcpy(&(lm_inf->AreaBorder), b, sizeof(PrtBorder));
+		    if (b) 
+			{
+			memcpy(&(lm_inf->AreaBorder), b, sizeof(PrtBorder));
+			this->BorderTop = b->TotalWidth;
+			this->BorderBottom = b->TotalWidth;
+			this->BorderLeft = b->TotalWidth;
+			this->BorderRight = b->TotalWidth;
+			}
 		    }
 		}
 	    }
@@ -1118,6 +1131,9 @@ int
 prt_textlm_Finalize(pPrtObjStream this)
     {
     pPrtTextLMData lm_inf = (pPrtTextLMData)(this->LMData);
+
+	/** Finish off justification? **/
+	if (this->ContentTail) prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
 
 	/** Border? **/
 	if (lm_inf->AreaBorder.nLines > 0)

@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.16 2003/04/21 21:00:42 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.17 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.17  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.16  2003/04/21 21:00:42  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -608,7 +614,7 @@ prtSetHPos(int handle_id, double x)
 
 	/** Set the position only if it will fit. **/
 	tgt_obj->Flags |= PRT_OBJ_F_XSET;
-	if (x >= tgt_obj->X && x <= (obj->Width - obj->MarginRight - obj->MarginLeft))
+	if ((x + PRT_FP_FUDGE) >= tgt_obj->X && (x - PRT_FP_FUDGE) <= prtInnerWidth(obj))
 	    {
 	    tgt_obj->X = x;
 	    tgt_obj->Flags |= PRT_OBJ_F_XSET;
@@ -645,7 +651,7 @@ prtSetVPos(int handle_id, double y)
 
 	/** Set the position only if it will fit. **/
 	tgt_obj->Flags |= (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET);
-	if (y >= tgt_obj->Y + tgt_obj->Height && (!(obj->Flags & PRT_OBJ_F_FIXEDSIZE) || y <= (obj->Height - obj->MarginTop - obj->MarginBottom)))
+	if ((y + PRT_FP_FUDGE) >= tgt_obj->Y + tgt_obj->Height && (!(obj->Flags & PRT_OBJ_F_FIXEDSIZE) || (y - PRT_FP_FUDGE) <= prtInnerHeight(obj)))
 	    {
 	    tgt_obj->X = 0;
 	    tgt_obj->Y = y;

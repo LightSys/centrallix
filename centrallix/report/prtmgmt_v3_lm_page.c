@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.8 2003/04/21 21:00:45 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.9 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.9  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.8  2003/04/21 21:00:45  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -197,7 +203,7 @@ prt_pagelm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wi
     {
 
 	/** Is the resize still within the bounds of the page?  Allow if so. **/
-	if (req_height <= this->Height - this->MarginTop - this->MarginBottom) return 0;
+	if (req_height - PRT_FP_FUDGE <= prtInnerHeight(this)) return 0;
 
     return -1;
     }
@@ -241,9 +247,9 @@ prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	/** Need to adjust the height/width if unspecified? **/
 	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight;
+	    new_child_obj->Width = prtInnerWidth(this);
 	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
+	    new_child_obj->Height = prtInnerHeight(this);
 
 	/** Just add it... **/
 	prt_internal_Add(this, new_child_obj);

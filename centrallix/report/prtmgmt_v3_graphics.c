@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_graphics.c,v 1.3 2003/04/21 21:00:43 gbeeley Exp $
+    $Id: prtmgmt_v3_graphics.c,v 1.4 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_graphics.c,v $
 
     $Log: prtmgmt_v3_graphics.c,v $
+    Revision 1.4  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.3  2003/04/21 21:00:43  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -202,6 +208,7 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 	    /** Get a new rectangle **/
 	    rect_obj = prt_internal_AllocObjByID(PRT_OBJ_T_RECT);
 	    if (!rect_obj) return -ENOMEM;
+	    prt_internal_CopyAttrs(parent,rect_obj);
 	    rect_obj->TextStyle.Color = rect_obj->FGColor = b->Color[i];
 	    if (flags & PRT_MKBDR_F_MARGINRELEASE) rect_obj->Flags |= PRT_OBJ_F_MARGINRELEASE;
 

@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.1 2003/04/21 21:00:51 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.2 2003/07/09 18:10:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.2  2003/07/09 18:10:02  gbeeley
+    Further fixes and enhancements to prtmgmt layer, particularly regarding
+    visual layout of graphical borders around objects; border/shadow
+    thickness is now automatically computed into the total margin between
+    exterior edges and interior edges of an object.
+
     Revision 1.1  2003/04/21 21:00:51  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -155,6 +161,7 @@
 
 
 #define PRT_XY_CORRECTION_FACTOR	(72.0/120.0)
+#define PRT_FP_FUDGE			(0.000001)
 
 
 /*** Layout Manager Structure ***/
@@ -237,10 +244,14 @@ typedef struct _POS
     double		Height;			/* Height of object */
     double		ConfigWidth;		/* initially configured width of object */
     double		ConfigHeight;		/* initially configured height of object */
-    double		MarginLeft;
+    double		MarginLeft;		/* user-configured margins starting at inner border edge */
     double		MarginRight;
     double		MarginTop;
     double		MarginBottom;
+    double		BorderLeft;		/* not a spec for borders, just the width */
+    double		BorderRight;
+    double		BorderTop;
+    double		BorderBottom;
     double		LineHeight;		/* Height of lines... */
     unsigned char*	Content;		/* Text content or image bitmap */
     int			ContentSize;		/* total memory allocated for the content */
@@ -563,6 +574,8 @@ int prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, vo
 int prt_internal_DispatchEvents(pPrtSession s);
 int prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, int flags, pPrtBorder b, pPrtBorder sb, pPrtBorder eb);
 int prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset);
+double prtInnerWidth(pPrtObjStream obj);
+double prtInnerHeight(pPrtObjStream obj);
 
 /** Strict-formatter to output-driver interfacing **/
 pPrtOutputDriver prt_strictfm_AllocDriver();
