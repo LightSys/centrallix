@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.2 2002/06/18 16:26:23 gbeeley Exp $
+## $Id: Makefile.in,v 1.3 2002/08/01 08:20:06 mattphillips Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -115,5 +115,24 @@ depend: .depend
 
 .depend:
 	makedepend -I include -f - src/*.c >.depend 2>/dev/null
+
+configure: configure.ac aclocal.m4
+	autoconf
+      
+# autoheader might not change config.h.in, so touch a stamp file.
+config.h.in: stamp-h.in
+stamp-h.in: configure.ac aclocal.m4
+	autoheader
+	echo timestamp > stamp-h.in
+ 
+config.h: stamp-h
+stamp-h: config.h.in config.status
+	./config.status
+
+Makefile: Makefile.in config.status
+	./config.status
+
+config.status: configure
+	./config.status --recheck
 
 include .depend
