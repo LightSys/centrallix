@@ -49,7 +49,7 @@ function wn_init(l,ml,gs,ct,titlebar)
     l.shaded = false;
 
     /** make sure the images are set up **/
-    for(i=0;i<pg_images(titlebar).length;i++)
+    for(var i=0;i<pg_images(titlebar).length;i++)
 	{
 	pg_images(titlebar)[i].layer = l;
 	pg_images(titlebar)[i].kind = 'wn';
