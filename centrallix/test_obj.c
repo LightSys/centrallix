@@ -64,10 +64,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.11 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: test_obj.c,v 1.12 2002/08/10 02:43:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.12  2002/08/10 02:43:19  gbeeley
+    Test-obj now automatically displays 'system' attributes on a show
+    command.  This includes inner_type, outer_type, name, and annotation,
+    all of which are not supposed to be returned by the attribute enum
+    functions.  FYI inner_type and content_type are synonyms (neither
+    should be returned by GetFirst/Next Attr).
+
     Revision 1.11  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -121,6 +128,101 @@
 void* my_ptr;
 
 #define BUFF_SIZE 1024
+
+int
+testobj_show_attr(pObject obj, char* attrname)
+    {
+    int type;
+    int intval;
+    char* stringval;
+    pDateTime dt;
+    double dblval;
+    pMoneyType m;
+    int i;
+    pStringVec sv;
+    pIntVec iv;
+
+	type = objGetAttrType(obj,attrname);
+	if (type < 0) 
+	    {
+	    printf("  %20.20s: (no such attribute)\n");
+	    return -1;
+	    }
+	switch(type)
+	    {
+	    case DATA_T_INTEGER:
+		if (objGetAttrValue(obj,attrname,POD(&intval)) == 1)
+		    printf("  %20.20s: NULL\n",attrname);
+		else
+		    printf("  %20.20s: %d\n",attrname, intval);
+		break;
+
+	    case DATA_T_STRING:
+		if (objGetAttrValue(obj,attrname,POD(&stringval)) == 1)
+		    printf("  %20.20s: NULL\n",attrname);
+		else
+		    printf("  %20.20s: \"%s\"\n",attrname, stringval);
+		break;
+
+	    case DATA_T_DATETIME:
+		if (objGetAttrValue(obj,attrname,POD(&dt)) == 1 || dt==NULL)
+		    printf("  %20.20s: NULL\n",attrname);
+		else
+		    printf("  %20.20s: %2.2d-%2.2d-%4.4d %2.2d:%2.2d:%2.2d\n", 
+			attrname,dt->Part.Month+1, dt->Part.Day+1, dt->Part.Year+1900,
+			dt->Part.Hour, dt->Part.Minute, dt->Part.Second);
+		break;
+	    
+	    case DATA_T_DOUBLE:
+		if (objGetAttrValue(obj,attrname,POD(&dblval)) == 1)
+		    printf("  %20.20s: NULL\n",attrname);
+		else
+		    printf("  %20.20s: %g\n", attrname, dblval);
+		break;
+
+	    case DATA_T_MONEY:
+		if (objGetAttrValue(obj,attrname,POD(&m)) == 1 || m == NULL)
+		    printf("  %20.20s: NULL\n", attrname);
+		else
+		    printf("  %20.20s: %s\n", attrname, objDataToStringTmp(DATA_T_MONEY, m, 0));
+		break;
+
+	    case DATA_T_INTVEC:
+		if (objGetAttrValue(obj,attrname,POD(&iv)) == 1 || iv == NULL)
+		    {
+		    printf("  %20.20s: NULL\n",attrname);
+		    }
+		else
+		    {
+		    printf("  %20.20s: ", attrname);
+		    for(i=0;i<iv->nIntegers;i++) 
+			printf("%d%s",iv->Integers[i],(i==iv->nIntegers-1)?"":",");
+		    printf("\n");
+		    }
+		break;
+
+	    case DATA_T_STRINGVEC:
+		if (objGetAttrValue(obj,attrname,POD(&sv)) == 1 || sv == NULL)
+		    {
+		    printf("  %20.20s: NULL\n",attrname);
+		    }
+		else
+		    {
+		    printf("  %20.20s: ",attrname);
+		    for(i=0;i<sv->nStrings;i++) 
+			printf("\"%s\"%s",sv->Strings[i],(i==sv->nStrings-1)?"":",");
+		    printf("\n");
+		    }
+		break;
+
+	    default:
+		printf("  %20.20s: <unknown type>\n",attrname);
+		break;
+	    }
+
+    return 0;
+    }
+
 
 void
 start(void* v)
@@ -394,81 +496,15 @@ start(void* v)
 		    continue;
 		    }
 		puts("Attributes:");
+		testobj_show_attr(obj,"outer_type");
+		testobj_show_attr(obj,"inner_type");
+		testobj_show_attr(obj,"name");
+		testobj_show_attr(obj,"annotation");
+		/*testobj_show_attr(obj,"last_modification");*/
 		attrname = objGetFirstAttr(obj);
 		while(attrname)
 		    {
-		    type = objGetAttrType(obj,attrname);
-		    switch(type)
-			{
-			case DATA_T_INTEGER:
-			    if (objGetAttrValue(obj,attrname,POD(&intval)) == 1)
-			        printf("  %20.20s: NULL\n",attrname);
-			    else
-			        printf("  %20.20s: %d\n",attrname, intval);
-			    break;
-
-			case DATA_T_STRING:
-			    if (objGetAttrValue(obj,attrname,POD(&stringval)) == 1)
-			        printf("  %20.20s: NULL\n",attrname);
-			    else
-			        printf("  %20.20s: \"%s\"\n",attrname, stringval);
-			    break;
-
-			case DATA_T_DATETIME:
-			    if (objGetAttrValue(obj,attrname,POD(&dt)) == 1 || dt==NULL)
-			        printf("  %20.20s: NULL\n",attrname);
-			    else
-			        printf("  %20.20s: %2.2d-%2.2d-%4.4d %2.2d:%2.2d:%2.2d\n", 
-				    attrname,dt->Part.Month+1, dt->Part.Day+1, dt->Part.Year+1900,
-				    dt->Part.Hour, dt->Part.Minute, dt->Part.Second);
-			    break;
-			
-			case DATA_T_DOUBLE:
-			    if (objGetAttrValue(obj,attrname,POD(&dblval)) == 1)
-			        printf("  %20.20s: NULL\n",attrname);
-			    else
-			        printf("  %20.20s: %g\n", attrname, dblval);
-			    break;
-
-			case DATA_T_MONEY:
-			    if (objGetAttrValue(obj,attrname,POD(&m)) == 1 || m == NULL)
-			        printf("  %20.20s: NULL\n", attrname);
-			    else
-			        printf("  %20.20s: %s\n", attrname, objDataToStringTmp(DATA_T_MONEY, m, 0));
-			    break;
-
-			case DATA_T_INTVEC:
-			    if (objGetAttrValue(obj,attrname,POD(&iv)) == 1 || iv == NULL)
-			        {
-			        printf("  %20.20s: NULL\n",attrname);
-				}
-			    else
-			        {
-			        printf("  %20.20s: ", attrname);
-				for(i=0;i<iv->nIntegers;i++) 
-				    printf("%d%s",iv->Integers[i],(i==iv->nIntegers-1)?"":",");
-				printf("\n");
-				}
-			    break;
-
-			case DATA_T_STRINGVEC:
-			    if (objGetAttrValue(obj,attrname,POD(&sv)) == 1 || sv == NULL)
-			        {
-			        printf("  %20.20s: NULL\n",attrname);
-				}
-			    else
-			        {
-			        printf("  %20.20s: ",attrname);
-				for(i=0;i<sv->nStrings;i++) 
-				    printf("\"%s\"%s",sv->Strings[i],(i==sv->nStrings-1)?"":",");
-				printf("\n");
-				}
-			    break;
-
-			default:
-			    printf("  %20.20s: <unknown type>\n",attrname);
-			    break;
-			}
+		    testobj_show_attr(obj,attrname);
 		    attrname = objGetNextAttr(obj);
 		    }
 		puts("\nMethods:");
