@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.31 2002/12/24 09:41:07 jorupp Exp $
+    $Id: ht_render.c,v 1.32 2003/01/05 04:18:08 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.32  2003/01/05 04:18:08  lkehresman
+    Added detection for Mozilla 1.2.x
+
     Revision 1.31  2002/12/24 09:41:07  jorupp
      * move output of cn_browser to ht_render, also moving up above the first place where it is needed
 
@@ -247,6 +250,9 @@ htrRegisterUserAgents()
 	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
 	reg = (regex_t *)nmMalloc(sizeof(regex_t));
 	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.1\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.2\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    xaAddItem(&(HTR.UAreg[HTR_UA_MOZILLA]), (void *)reg);
 	reg = (regex_t *)nmMalloc(sizeof(regex_t));
 	if (!regcomp(reg, "Galeon\\/1.[0-9].[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
