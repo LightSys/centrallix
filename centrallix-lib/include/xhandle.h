@@ -21,10 +21,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhandle.h,v 1.1 2002/04/25 17:56:54 gbeeley Exp $
+    $Id: xhandle.h,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xhandle.h,v $
 
     $Log: xhandle.h,v $
+    Revision 1.2  2002/05/03 03:46:29  gbeeley
+    Modifications to xhandle to support clearing the handle list.  Added
+    a param to xhClear to provide support for xhnClearHandles.  Added a
+    function in mtask.c to allow the retrieval of ticks-since-boot without
+    making a syscall.  Fixed an MTASK bug in the scheduler relating to
+    waiting on timers and some modulus arithmetic.
+
     Revision 1.1  2002/04/25 17:56:54  gbeeley
     Added Handle support (xhandle module, XHN).  This is used to provide a
     more flexible abstraction between API return values (handles vs. ptrs)
@@ -78,6 +85,7 @@ void* xhnHandlePtr(pHandleContext ctx, handle_t handle_id);
 int xhnUpdateHandle(pHandleContext ctx, handle_t handle_id, void* ptr);
 int xhnUpdateHandleByPtr(pHandleContext ctx, void* old_ptr, void* ptr);
 int xhnFreeHandle(pHandleContext ctx, handle_t handle_id);
+int xhnClearHandles(pHandleContext ctx, int (*iter_fn)());
 
 handle_t xhnStringToHandle(char* str, char** endptr, int base);
 

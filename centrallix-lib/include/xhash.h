@@ -22,12 +22,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhash.h,v 1.1 2001/08/13 18:04:20 gbeeley Exp $
+    $Id: xhash.h,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xhash.h,v $
 
     $Log: xhash.h,v $
-    Revision 1.1  2001/08/13 18:04:20  gbeeley
-    Initial revision
+    Revision 1.2  2002/05/03 03:46:29  gbeeley
+    Modifications to xhandle to support clearing the handle list.  Added
+    a param to xhClear to provide support for xhnClearHandles.  Added a
+    function in mtask.c to allow the retrieval of ticks-since-boot without
+    making a syscall.  Fixed an MTASK bug in the scheduler relating to
+    waiting on timers and some modulus arithmetic.
+
+    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:02  gbeeley
     Initial checkin of centrallix-lib
@@ -65,7 +72,7 @@ int xhDeInit(pXHashTable this);
 int xhAdd(pXHashTable this, char* key, char* data);
 int xhRemove(pXHashTable this, char* key);
 char* xhLookup(pXHashTable this, char* key);
-int xhClear(pXHashTable this, int (*free_fn)());
+int xhClear(pXHashTable this, int (*free_fn)(), void* free_arg);
 
 #endif /* _XHASH_H */
 

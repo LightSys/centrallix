@@ -30,10 +30,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhandle.c,v 1.1 2002/04/25 17:56:54 gbeeley Exp $
+    $Id: xhandle.c,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xhandle.c,v $
 
     $Log: xhandle.c,v $
+    Revision 1.2  2002/05/03 03:46:29  gbeeley
+    Modifications to xhandle to support clearing the handle list.  Added
+    a param to xhClear to provide support for xhnClearHandles.  Added a
+    function in mtask.c to allow the retrieval of ticks-since-boot without
+    making a syscall.  Fixed an MTASK bug in the scheduler relating to
+    waiting on timers and some modulus arithmetic.
+
     Revision 1.1  2002/04/25 17:56:54  gbeeley
     Added Handle support (xhandle module, XHN).  This is used to provide a
     more flexible abstraction between API return values (handles vs. ptrs)
@@ -238,4 +245,36 @@ xhnStringToHandle(char* str, char** endptr, int base)
 
     return this;
     }
+
+
+/*** xhn_internal_FreeHandle() - this routine is used as a callback from
+ *** ClearHandles, below, to free the handle and possibly call another
+ *** free function.
+ ***/
+int
+xhn_internal_FreeHandle(void* v1, void* v2)
+    {
+    pHandleData h = (pHandleData)v1;
+    int (*free_fn)() = (int (*)())v2;
+
+	free_fn(h->Ptr);
+	nmFree(h, sizeof(HandleData));
+
+    return 0;
+    }
+
+
+/*** xhnIterateHandles() - goes through all of the handles in a context
+ *** and calls the given function on them.
+ ***/
+int
+xhnClearHandles(pHandleContext ctx, int (*iter_fn)())
+    {
+
+	xhClear(&(ctx->HandleTable), xhn_internal_FreeHandle, iter_fn);
+	xhClear(&(ctx->HandleTableByPtr), NULL, NULL);
+
+    return 0;
+    }
+
 

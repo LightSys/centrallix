@@ -34,10 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtsession.c,v 1.4 2002/03/23 06:25:10 gbeeley Exp $
+    $Id: mtsession.c,v 1.5 2002/05/03 03:46:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtsession.c,v $
 
     $Log: mtsession.c,v $
+    Revision 1.5  2002/05/03 03:46:29  gbeeley
+    Modifications to xhandle to support clearing the handle list.  Added
+    a param to xhClear to provide support for xhnClearHandles.  Added a
+    function in mtask.c to allow the retrieval of ticks-since-boot without
+    making a syscall.  Fixed an MTASK bug in the scheduler relating to
+    waiting on timers and some modulus arithmetic.
+
     Revision 1.4  2002/03/23 06:25:10  gbeeley
     Updated MSS to have a larger error string buffer, as a lot of errors
     were getting chopped off.  Added BDQS protocol files with some very
@@ -318,7 +325,7 @@ mssEndSession()
 	thSetParam(NULL,"mss",NULL);
 	thSetUserID(NULL,0);
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
-	xhClear(&s->Params, NULL);
+	xhClear(&s->Params, NULL, NULL);
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
 	xaRemoveItem(&(MSS.Sessions),xaFindItem(&(MSS.Sessions),(void*)s));

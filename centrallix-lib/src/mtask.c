@@ -45,10 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.2 2001/12/28 21:52:56 gbeeley Exp $
+    $Id: mtask.c,v 1.3 2002/05/03 03:46:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.3  2002/05/03 03:46:29  gbeeley
+    Modifications to xhandle to support clearing the handle list.  Added
+    a param to xhClear to provide support for xhnClearHandles.  Added a
+    function in mtask.c to allow the retrieval of ticks-since-boot without
+    making a syscall.  Fixed an MTASK bug in the scheduler relating to
+    waiting on timers and some modulus arithmetic.
+
     Revision 1.2  2001/12/28 21:52:56  gbeeley
     netCloseTCP(fd,0,0), which causes a hard close, was leaving the socket
     fd still open after deallocating the structure.  Fixed.
@@ -92,6 +99,7 @@ typedef struct _MTS
     int		TicksPerSec;
     int		StartUserID;
     int		CurUserID;
+    unsigned long LastTick;
     }
     MTSystem, *pMTSystem;
 
@@ -328,6 +336,17 @@ mtRealTicks()
     {
     static struct tms t;
     return times(&t);
+    }
+
+
+/*** MTLASTTICK is the most recent realticks value as of the last run of the
+ *** scheduler.  Will be always valid following the return of a command which
+ *** had to wait on other processes.
+ ***/
+unsigned long
+mtLastTick()
+    {
+    return MTASK.LastTick;
     }
 
 
@@ -646,6 +665,7 @@ mtSched()
 
 	/** Did the select() delay?  If so, add to sleeping threads. **/
 	tx2 = mtRealTicks();
+	MTASK.LastTick = tx2;
 	if (n_runnable+n_timerblock == 0 && highest_cntdn > 0) t = mtTicks();
 	if (tx2 - tx > 0)
 	    {
@@ -717,7 +737,7 @@ mtSched()
 		    }
 		else if (event->EventType == EV_T_MT_TIMER)
 		    {
-		    if ((event->TargetTickCnt - tx2) >= 0)
+		    if (((unsigned int)tx2 - event->TargetTickCnt) < (unsigned int)0x80000000)
 		        {
 			event->Thr->Status = THR_S_RUNNABLE;
 			event->Status = EV_S_COMPLETE;

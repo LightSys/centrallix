@@ -23,12 +23,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.1 2001/08/13 18:04:19 gbeeley Exp $
+    $Id: mtask.h,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
-    Revision 1.1  2001/08/13 18:04:19  gbeeley
-    Initial revision
+    Revision 1.2  2002/05/03 03:46:29  gbeeley
+    Modifications to xhandle to support clearing the handle list.  Added
+    a param to xhClear to provide support for xhnClearHandles.  Added a
+    function in mtask.c to allow the retrieval of ticks-since-boot without
+    making a syscall.  Fixed an MTASK bug in the scheduler relating to
+    waiting on timers and some modulus arithmetic.
+
+    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:00  gbeeley
     Initial checkin of centrallix-lib
@@ -260,6 +267,9 @@ typedef struct _OBJ
 
 /** MTASK General Functions. **/
 pThread mtInitialize(int flags, void (*start_fn)());
+unsigned long mtRealTicks();
+unsigned long mtTicks();
+unsigned long mtLastTick();
 
 
 /** MTASK Threading functions. **/
