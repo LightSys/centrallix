@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.7 2003/03/09 06:10:13 nehresma Exp $
+    $Id: net_nfs.c,v 1.8 2003/03/09 06:27:00 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.8  2003/03/09 06:27:00  nehresma
+    fixed one more place where nmMalloc should be malloc because of the xdr_*
+    functions doing the freeing
+
     Revision 1.7  2003/03/09 06:10:13  nehresma
     - changed dump and export implementations to use malloc instead of nmMalloc
       and then let the xdr_* functions handle the freeing of the lists, rather
@@ -449,7 +453,7 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     fhstatus* retval = NULL;
     pExports exp;
 
-    retval = (fhstatus*)nmMalloc(sizeof(fhstatus));
+    retval = (fhstatus*)malloc(sizeof(fhstatus));
     if(!retval)
 	return NULL;
     memset(retval,0,sizeof(fhstatus));
@@ -1179,6 +1183,7 @@ nnfs_internal_mount_listener(void* v)
 				    switch (procnum)
 					{
 					case MOUNTPROC_MNT:
+					    /** only add to the mountList on success **/
 					    if (!(*(fhstatus*)ret).status)
 						{
 						/** add to the list of mounts **/
