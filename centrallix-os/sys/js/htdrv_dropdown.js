@@ -323,7 +323,7 @@ function dd_create_pane(l)
 	l.imgdn = pd.images[2];
 
 	p.TmbLayer = new Layer(1024, p);
-	pd.images[0].thum = pd.images[2].thum = p.TmbLayer;
+	pd.images[0].thum = pd.images[1].thum = pd.images[2].thum = p.TmbLayer;
 	p.TmbLayer.x = l.w-20; p.TmbLayer.y = 20;
 	p.TmbLayer.visibility = 'inherit';
 	var pd = p.TmbLayer.document;

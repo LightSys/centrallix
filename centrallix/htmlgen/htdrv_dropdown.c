@@ -138,7 +138,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     htrAddEventHandler(s, "document","MOUSEMOVE", "dd", 
 	"\n"
 	"    ti=dd_target_img;\n"
-	"    if (ly.kind == 'dd_sc' && ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')\n"
+	"    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')\n"
 	"        {\n"
 	"        var pl=ti.mainlayer.PaneLayer;\n"
 	"        v=pl.clip.height-(3*18)-4;\n"
@@ -147,7 +147,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        if (new_y < pl.pageY+20) new_y=pl.pageY+20;\n"
 	"        ti.thum.pageY=new_y;\n"
 	"        h=dd_current.PaneLayer.h;\n"
-	"        d=h-pl.clip.height-4;\n"
+	"        d=h-pl.clip.height+4;\n"
 	"        if (d<0) d=0;\n"
 	"        dd_incr = (((ti.thum.y-22)/(v-4))*-d)-dd_current.PaneLayer.ScrLayer.y;\n"
 	"        dd_scroll(0);\n"
@@ -229,16 +229,22 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        switch(ly.name)\n"
 	"            {\n"
 	"            case 'u':\n"
-	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
 	"                ly.src = '/sys/images/ico13c.gif';\n"
 	"                dd_incr = 8;\n"
 	"                dd_scroll();\n"
+	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
 	"                break;\n"
 	"            case 'd':\n"
-	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
 	"                ly.src = '/sys/images/ico12c.gif';\n"
 	"                dd_incr = -8;\n"
 	"                dd_scroll();\n"
+	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
+	"                break;\n"
+	"            case 'b':\n"
+	"                dd_incr = dd_target_img.height+36;\n"
+	"                if (e.pageY > dd_target_img.thum.pageY+9) dd_incr = -dd_incr;\n"
+	"                dd_scroll();\n"
+	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
 	"                break;\n"
 	"            case 't':\n"
 	"                dd_click_x = e.pageX;\n"
@@ -414,10 +420,14 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.29 2002/07/31 15:03:11 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.30 2002/07/31 21:26:57 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.30  2002/07/31 21:26:57  lkehresman
+    Added support to click the area above and below the thumb image to scroll
+    a page up and a page down in the dropdown widget
+
     Revision 1.29  2002/07/31 15:03:11  lkehresman
     Changed the default dropdown population mode to be static rather than
     dynamic_client to retain backwards compatibility with the previous
