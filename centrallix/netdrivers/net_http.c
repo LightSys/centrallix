@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.9 2002/03/23 03:41:02 gbeeley Exp $
+    $Id: net_http.c,v 1.10 2002/03/23 03:52:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.10  2002/03/23 03:52:54  gbeeley
+    Fixed a potential security blooper when the cookie was copied to a tmp
+    buffer.
+
     Revision 1.9  2002/03/23 03:41:02  gbeeley
     Fixed the ages-old problem in net_http.c where cookies weren't anchored
     at the / directory, so zillions of sessions might be created...
@@ -307,10 +311,10 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "\r\n"
-		     "<HTML><BODY><PRE>",NHT.ServerString);
+		     "<HTML><BODY><PRE><A NAME=\"Message\">",NHT.ServerString);
 	fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
 	fdWrite(net_conn,errmsg->String,strlen(errmsg->String),0,0);
-	snprintf(sbuf,256,"</PRE></BODY></HTML>\r\n");
+	snprintf(sbuf,256,"</A></PRE></BODY></HTML>\r\n");
 	fdWrite(net_conn,sbuf,strlen(sbuf),0,0);
 
 	/** Discard the string **/
@@ -1530,7 +1534,7 @@ nht_internal_ConnHandler(void* conn_v)
 		/** Copy whole thing. **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
 		if (mlxNextToken(s) != MLX_TOK_STRING) msg="Expected str after Cookie:",Throw(e);
-		strcpy(cookie, mlxStringVal(s,NULL));
+		mlxCopyToken(s,cookie,160);
 		while((toktype = mlxNextToken(s)))
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
