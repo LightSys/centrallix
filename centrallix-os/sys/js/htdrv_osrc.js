@@ -350,7 +350,7 @@ function osrc_fetch_next()
     //alert('fetching....');
     if(!this.qid)
 	{
-	alert('somethign is wrong...');
+	alert('something is wrong...');
 	alert(this.src);
 	}
     var lnk=this.document.links;
