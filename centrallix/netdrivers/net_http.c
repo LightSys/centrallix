@@ -61,10 +61,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.36 2003/06/03 23:31:05 gbeeley Exp $
+    $Id: net_http.c,v 1.37 2003/11/12 22:18:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.37  2003/11/12 22:18:42  gbeeley
+    - Begin addition of generalized server->client messages
+    - Addition of delete support for osml-over-http
+
     Revision 1.36  2003/06/03 23:31:05  gbeeley
     Adding pro forma netscape 4.8 support.
 
@@ -272,6 +276,45 @@ typedef struct
     int		LinkCnt;
     }
     NhtConnTrigger, *pNhtConnTrigger;
+
+/*** Parameter/information for a control message, as embedded within a
+ *** link on the page.
+ ***/
+typedef struct
+    {
+    char*	P1;		/* param #1: link TARGET */
+    char*	P2;		/* param #2: link TXT */
+    char*	P3;		/* param #3: link HREF, if entire HREF. */
+    char*	P3a;		/* param #3a: link SERVER if partitioned HREF. */
+    char*	P3b;		/* param #3b: link PATH if partitioned HREF. */
+    char*	P3c;		/* param #3c: link QUERY if partitioned HREF. */
+    char*	P3d;		/* param #3d: link JUMP-TARGET if partitioned HREF. */
+    }
+    NhtControlMsgParam, *pNhtControlMsgParam;
+
+/*** This structure is used for server-to-client OOB control messages. ***/
+typedef struct
+    {
+    int		MsgType;	/* NHT_CONTROL_T_xxx */
+    XArray	Params;		/* xarray of pNhtControlMsgParam */
+    pSemaphore	ResponseSem;	/* if set, control msg posts here when user responds */
+    int		(*ResponseFn)(); /* if set, control msg calls this fn when user responds */
+    int		Status;		/* status - NHT_CONTROL_S_xxx */
+    char*	Response;	/* response string received from client */
+    void*	Context;	/* caller-defined */
+    }
+    NhtControlMsg, *pNhtControlMsg;
+
+#define NHT_CONTROL_T_ERROR	1	/* error message */
+#define NHT_CONTROL_T_QUERY	2	/* query user for information */
+#define NHT_CONTROL_T_GOODBYE	4	/* server shutting down */
+#define NHT_CONTROL_T_REPMSG	8	/* replication message */
+#define NHT_CONTROL_T_EVENT	16	/* remote control channel event */
+
+#define NHT_CONTROL_S_QUEUED	0	/* message queued waiting for client */
+#define NHT_CONTROL_S_SENT	1	/* message sent to client */
+#define NHT_CONTROL_S_ERROR	2	/* could not get client's response */
+#define NHT_CONTROL_S_RESPONSE	3	/* client has responded to message */
 
 /*** This is used to keep track of user/password/cookie information ***/
 typedef struct
@@ -1335,7 +1378,7 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 	    /** Does this request require an object handle? **/
 	    if (obj_handle == XHN_INVALID_HANDLE && (!strcmp(request,"close") || !strcmp(request,"objquery") ||
 		!strcmp(request,"read") || !strcmp(request,"write") || !strcmp(request,"attrs") || 
-		!strcmp(request, "setattrs")))
+		!strcmp(request, "setattrs") || !strcmp(request,"delete")))
 		{
 		snprintf(sbuf,256,"Content-Type: text/html\r\n"
 			 "Pragma: no-cache\r\n"
@@ -1681,6 +1724,35 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 			}
 		    fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 		    }
+		}
+	    else if (!strcmp(request,"delete"))
+		{
+		/** Delete an object that is currently open **/
+		ptr = NULL;
+		stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr);
+		while(ptr && *ptr)
+		    {
+		    obj_handle = xhnStringToHandle(ptr+1, &newptr, 16);
+		    if (newptr <= ptr+1) break;
+		    ptr = newptr;
+		    obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
+		    if (!obj || !ISMAGIC(obj, MGK_OBJECT)) 
+			{
+			mssError(1,"NHT","Invalid object id(s) in OSML 'delete' request");
+			continue;
+			}
+		    xhnFreeHandle(&(sess->Hctx), obj_handle);
+
+		    /** Delete it **/
+		    rval = objDeleteObj(obj);
+		    if (rval < 0) break;
+		    }
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
+	    		 "\r\n"
+			 "<A HREF=/ TARGET=%s>&nbsp;</A>\r\n",
+		    (rval==0)?"X00000000":"ERR");
+	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 		}
 	    }
 	
