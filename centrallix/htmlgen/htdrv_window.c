@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.7 2002/02/13 19:30:48 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.8 2002/02/13 19:35:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.8  2002/02/13 19:35:55  lkehresman
+    Fixed another bug I introduced.  ly.document isn't even always there.
+
     Revision 1.7  2002/02/13 19:30:48  lkehresman
     Fixed a bug I introduced with my last commit.  ly.document.images[6] doesn't always exist.
 
@@ -364,7 +367,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        e.target.src = '/sys/images/01close.gif';\n"
 		"        e.target.layer.visibility = 'hidden';\n"
 		"        }\n"
-		"    else if (ly.document.images.length > 6 && ly.document.images[6].name == 'close')\n"
+		"    else if (ly.document != null && ly.document.images.length > 6 && ly.document.images[6].name == 'close')\n"
 		"        {\n"
 		"        ly.document.images[6].src = '/sys/images/01close.gif';\n"
 		"        }\n"
