@@ -167,12 +167,9 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	
 
 	/** Get colors **/
-	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(bgcolor,"bgcolor=%.100s",ptr);
-	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(bgcolor,"background='%.90s'",ptr);
-	else
-	    strcpy(bgcolor,"bgcolor=#c0c0c0");
+	htrGetBackground(w_obj, NULL, 0, bgcolor, sizeof(bgcolor));
+	if (!*bgcolor) strcpy(bgcolor,"bgcolor=#c0c0c0");
+
 	if (objGetAttrValue(w_obj,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(fgcolor,"%.63s",ptr);
 	else
@@ -185,6 +182,9 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Write named global **/
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
+	htrAddScriptGlobal(s, "dt_timeout", "null", 0);
+	htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0);
+	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Script includes **/
@@ -224,13 +224,13 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","dt",
 		"    if (e.target.kind && e.target.kind.substr(0, 5) == 'dtimg') {\n"
-		"        eval('dt_'+e.target.kind.substr(6, 4)+'()');\n"
+		"        eval('dt_'+e.target.kind.substr(6, 4)+'(true,' + e.y + ')');\n"
 		"    } else {\n"
 		"        if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
 		"            dt_mousedown(ly);\n"
 		"            if (ly.kind == 'dt') cn_activate(ly, 'MouseDown');\n"
 		"        } else if (dt_current && dt_current != ly) {\n"
-		"            dt_current.PaneLayer.visibility = 'hide';\n"
+		"            dt_collapse(dt_current);\n"
 		"            dt_current = null;\n"
 		"        }\n"
 		"    }\n");
@@ -307,10 +307,13 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.25 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_datetime.c,v 1.26 2004/05/06 01:23:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.26  2004/05/06 01:23:00  gbeeley
+    - various enhancements/updates to datetime widget
+
     Revision 1.25  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
