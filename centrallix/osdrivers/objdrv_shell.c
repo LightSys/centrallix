@@ -51,7 +51,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.5 2002/11/22 19:37:59 gbeeley Exp $
+    $Id: objdrv_shell.c,v 1.6 2002/11/22 22:09:42 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -231,6 +231,9 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if(inf->shell_pid==0)
 	    {
 	    int fd;
+	    /** we're in the child process -- disable MTask context switches to be safe **/
+	    thLock();
+
 	    /** child -- shell **/
 	    if(SHELL_DEBUG & SHELL_DEBUG_FORK)
 		printf("in child\n");
