@@ -34,10 +34,12 @@ respective copyright holders for centrallix core code before including any
 of that code in the centrallix-lib package.  The reverse is NOT true,
 however.
 
-Also please note that the centrallix-os package is distributed under a BSD
-type of license.  This is done so that companies wishing to build proprietary
-applications using Centrallix can do so without needing special permission
-from Centrallix's copyright holder(s).
+Also please note that the samples in the centrallix-os package are distributed
+under a BSD type of license.  This is done so that companies wishing to build
+proprietary applications using Centrallix can do so without needing special
+permission from Centrallix's copyright holder(s).  Furthermore, the "sys"
+directory and its contents, including images and javascript library routines,
+are distributed under the LGPL license.
 
 
 COMPILING....
