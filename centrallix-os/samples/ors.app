@@ -316,6 +316,7 @@ ors "widget/page"
 	text='Tab 1';
 	fgcolor1=black;
 	fgcolor2=white;
+	enabled=runclient(:tab1:selected_index != 1);
 	cnt1 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageOne'"; }
 	}
     tabtextbtn2 "widget/textbutton"
@@ -326,6 +327,7 @@ ors "widget/page"
 	text='Tab 2';
 	fgcolor1=black;
 	fgcolor2=white;
+	enabled=runclient(:tab1:selected_index != 2);
 	cnt2 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageTwo'"; }
 	}
     tabtextbtn3 "widget/textbutton"
@@ -336,6 +338,7 @@ ors "widget/page"
 	text='Tab 3';
 	fgcolor1=black;
 	fgcolor2=white;
+	enabled=runclient(:tab1:selected_index != 3);
 	cnt3 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageThree'"; }
 	}
 

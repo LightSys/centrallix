@@ -37,7 +37,11 @@ tabsandtree "widget/page"
         {
 	x = 20; y = 20; width=600; height=400;
 	//bgcolor="#e0e0e0";
+	//inactive_bgcolor="#d0d0d0";
 	background="/sys/images/slate2.gif";
+	inactive_background="/sys/images/slate2_dark.gif";
+	tab_location = right;
+	tab_width = 80;
 
 	TabOne "widget/tabpage"
 	    {
@@ -68,6 +72,7 @@ tabsandtree "widget/page"
 		x=0;y=0;width=598;height=398;
 		tv "widget/treeview"
 		    {
+		    show_branches=yes;
 		    x=0;y=2;width=578;
 		    source="/samples/PeopleComputersFiles.qyt/";
 		    }
@@ -82,6 +87,7 @@ tabsandtree "widget/page"
 		x=0;y=0;width=598;height=398;
 		tv "widget/treeview"
 		    {
+		    show_branches=yes;
 		    x=0;y=2;width=578;
 		    source="/samples/mbox/";
 
@@ -99,6 +105,27 @@ tabsandtree "widget/page"
 			action="LoadPage";
 			Source=Pathname;
 			}
+		    }
+		}
+	    }
+	}
+    debugwin "widget/htmlwindow"
+	{
+	x=20;y=220;width=600;height=330;
+	visible=true;
+	Treeview_pane "widget/pane"
+	    {
+	    x=0; y=0; width=598; height=305;
+	    bgcolor="#e0e0e0";
+	    style=lowered;
+	    Tree_scroll "widget/scrollpane"
+		{
+		x=0; y=0; width=596; height=303;
+		Tree "widget/treeview"
+		    {
+		    show_branches=yes;
+		    x=0; y=1; width=576;
+		    source = "javascript:myTab";
 		    }
 		}
 	    }
