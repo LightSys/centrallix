@@ -331,10 +331,10 @@ backup:
 # this new module.
 osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SYBASE_LIBS@ -o $@
-	
+
 osdrivers/objdrv_http.so: osdrivers/objdrv_http.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-	
+
 # Dependencies made by "make depend"
 include .depend
 
