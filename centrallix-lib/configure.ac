@@ -35,9 +35,14 @@ AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
 FINAL_TARGETS="libCentrallix.a"
 
+dnl Check if -pg is allowed with -fPIC
+AH_TEMPLATE([USE_PROFILE], [Define for profiling])
+CHECK_PROFILE
+
 dnl Build shared libCentrallix
 SHARED_LIBCENTRALLIX
 
+AC_SUBST(PROFILE)
 AC_SUBST(FINAL_TARGETS)
     
 AC_OUTPUT(Makefile, echo timestamp > stamp-h)

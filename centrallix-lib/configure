@@ -3435,6 +3435,62 @@ done
 FINAL_TARGETS="libCentrallix.a"
 
 
+
+
+    echo "$as_me:$LINENO: checking if -fPIC and -pg can be used at the same time" >&5
+echo $ECHO_N "checking if -fPIC and -pg can be used at the same time... $ECHO_C" >&6
+    temp="$CFLAGS"
+    CFLAGS="-fPIC -pg -Werror"
+    cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+#include "confdefs.h"
+
+#ifdef F77_DUMMY_MAIN
+#  ifdef __cplusplus
+     extern "C"
+#  endif
+   int F77_DUMMY_MAIN() { return 1; }
+#endif
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  PROFILE="-pg"
+else
+  echo "$as_me: failed program was:" >&5
+cat conftest.$ac_ext >&5
+PROFILE=""
+
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+    if test "$PROFILE" = "-pg"; then
+	echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+    else
+	echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+    fi
+    CFLAGS="$temp"
+
+
+
+
 	echo "$as_me:$LINENO: checking if a shared libCentrallix is desired" >&5
 echo $ECHO_N "checking if a shared libCentrallix is desired... $ECHO_C" >&6
 	# Check whether --enable-shared-libCentrallix or --disable-shared-libCentrallix was given.
@@ -3465,6 +3521,7 @@ echo "${ECHO_T}no" >&6
 	    fi
 	    CFLAGS="$temp"
 	fi
+
 
 
 
@@ -4049,6 +4106,7 @@ s,@INSTALL_SCRIPT@,$INSTALL_SCRIPT,;t t
 s,@INSTALL_DATA@,$INSTALL_DATA,;t t
 s,@CPP@,$CPP,;t t
 s,@LIBOBJS@,$LIBOBJS,;t t
+s,@PROFILE@,$PROFILE,;t t
 s,@FINAL_TARGETS@,$FINAL_TARGETS,;t t
 CEOF
 

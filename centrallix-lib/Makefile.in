@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.8 2002/09/23 22:52:08 jorupp Exp $
+## $Id: Makefile.in,v 1.9 2002/11/14 17:48:35 jorupp Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -49,8 +49,9 @@ LIBS = @LIBS@
 ## compilation.  DO NOT OPTIMIZE MTASK!!!!  It will cause it to
 ## stop working!!!
 ##
-CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg -g
-MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall -pg -g
+PROFILE=@PROFILE@
+CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
+MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
 
 XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))

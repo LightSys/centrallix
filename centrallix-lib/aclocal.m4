@@ -25,5 +25,24 @@ AC_DEFUN(SHARED_LIBCENTRALLIX,
 	fi
     ]
 )
+
+dnl check if gcc allows -fPIC and -pg at the same time
+AC_DEFUN(CHECK_PROFILE,
+    [
+    AC_MSG_CHECKING(if -fPIC and -pg can be used at the same time)
+    temp="$CFLAGS"
+    CFLAGS="-fPIC -pg -Werror"
+    AC_TRY_COMPILE(,,
+	PROFILE="-pg",
+	PROFILE=""
+    )
+    if test "$PROFILE" = "-pg"; then
+	AC_MSG_RESULT(yes)
+    else
+	AC_MSG_RESULT(no)
+    fi
+    CFLAGS="$temp"
+    ]
+)
 	    
 	    
