@@ -19,14 +19,14 @@
 #include "st_node.h"
 #include "expression.h"
 #include "report.h"
-#include "prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #include "mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2002 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -57,11 +57,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.3 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.4 2003/06/20 03:22:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
-    Revision 1.3  2002/08/10 02:09:45  gbeeley
+    Revision 1.4  2003/06/20 03:22:35  gbeeley
+    Updating changelog and release notes for 0.7.3
+
+    Revision 1.6  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
     causes the data type of the pObjData argument to be passed as well.
@@ -81,12 +84,11 @@
         * Modifying *some* upper-level OSML API calls to the two functions
           in question.  Not all have been updated however (esp. htdrivers)!
 
-    Revision 1.2  2002/05/03 03:48:16  gbeeley
-    Update due to modification in the xhClear() api.
+    Revision 1.5  2002/06/19 23:20:42  gbeeley
+    Fixed some compiler warnings, repaired some potential security issues.
 
-    Revision 1.1  2002/04/25 04:30:13  gbeeley
-    More work on the v3 print formatting subsystem.  Subsystem compiles,
-    but report and uxprint have not been converted yet, thus problems.
+    Revision 1.4  2002/05/03 03:48:16  gbeeley
+    Update due to modification in the xhClear() api.
 
     Revision 1.3  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
@@ -420,7 +422,8 @@ rpt_internal_GetStyle(pStructInf element)
 
 
 /*** rpt_internal_CheckFormats - check for new datetime/money/null formats or
- *** restore original formats
+ *** restore original formats.  Limit on formatting strings is 31 chars, plus
+ *** one null terminator.
  ***/
 int
 rpt_internal_CheckFormats(pStructInf inf, char* savedmfmt, char* saveddfmt, char* savednfmt, int restore)
@@ -452,21 +455,24 @@ rpt_internal_CheckFormats(pStructInf inf, char* savedmfmt, char* saveddfmt, char
 	        {
 		oldfmt = (char*)mssGetParam("dfmt");
 		if (!oldfmt) oldfmt = obj_default_date_fmt;
-		strcpy(saveddfmt, oldfmt);
+		memccpy(saveddfmt, oldfmt, 0, 31);
+		saveddfmt[31] = 0;
 		mssSetParam("dfmt",newdfmt);
 		}
 	    if (newmfmt) 
 	        {
 		oldfmt = (char*)mssGetParam("mfmt");
 		if (!oldfmt) oldfmt = obj_default_money_fmt;
-		strcpy(savedmfmt, oldfmt);
+		memccpy(savedmfmt, oldfmt, 0, 31);
+		savedmfmt[31] = 0;
 		mssSetParam("mfmt",newmfmt);
 		}
 	    if (newnfmt)
 	        {
 		oldfmt = (char*)mssGetParam("nfmt");
 		if (!oldfmt) oldfmt = obj_default_null_fmt;
-		strcpy(savednfmt, oldfmt);
+		memccpy(savednfmt, oldfmt, 0, 31);
+		savednfmt[31] = 0;
 		mssSetParam("nfmt",newnfmt);
 		}
 	    }
@@ -640,6 +646,12 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* dat
 	    	if (!strcmp(subitem->Name, attrname))
 	            {
 		    exp = (pExpression)(qy->AggregateExpList.Items[n]);
+		    if (datatype != exp->DataType && !(exp->Flags & EXPR_F_NULL))
+			{
+			mssError(1,"RPT","Type mismatch accessing query property '%s' [requested=%s, actual=%s]",
+				attrname, datatype, exp->DataType);
+			return -1;
+			}
 		    if (!(exp->Flags & EXPR_F_NULL)) switch(exp->DataType)
 		        {
 			case DATA_T_INTEGER: *(int*)data_ptr = exp->Integer; break;
@@ -838,42 +850,42 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 		switch(t)
 		    {
 		    case DATA_T_INTEGER:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&n)) == 1)
-		            sprintf(nbuf[i],rpt_internal_GetNULLstr());
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_INTEGER, POD(&n)) == 1)
+		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 		        else
-		            sprintf(nbuf[i],"%d",n);
+		            snprintf(nbuf[i],32,"%d",n);
 		        lvalue = nbuf[i];
 			break;
 
 		    case DATA_T_STRING:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&lvalue)) == 1)
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_STRING, POD(&lvalue)) == 1)
 		            {
-		            sprintf(nbuf[i],rpt_internal_GetNULLstr());
+		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			    lvalue = nbuf[i];
 			    }
 			break;
 
 		    case DATA_T_DATETIME:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&dt)) == 1 || dt == NULL)
-			    strcpy(nbuf[i],rpt_internal_GetNULLstr());
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_DATETIME, POD(&dt)) == 1 || dt == NULL)
+		            snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
-			    strcpy(nbuf[i],objDataToStringTmp(DATA_T_DATETIME, dt, 0));
+			    snprintf(nbuf[i],32,"%s",objDataToStringTmp(DATA_T_DATETIME, dt, 0));
 			lvalue = nbuf[i];
 			break;
 
 		    case DATA_T_MONEY:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&m)) == 1 || dt == NULL)
-			    strcpy(nbuf[i],rpt_internal_GetNULLstr());
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_MONEY, POD(&m)) == 1 || dt == NULL)
+			    snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
-			    strcpy(nbuf[i],objDataToStringTmp(DATA_T_MONEY, m, 0));
+			    snprintf(nbuf[i],32,"%s",objDataToStringTmp(DATA_T_MONEY, m, 0));
 			lvalue = nbuf[i];
 			break;
 
 		    case DATA_T_DOUBLE:
-		        if (objGetAttrValue(lqy->QueryItem, cname, POD(&dbl)) == 1)
-			    strcpy(nbuf[i],rpt_internal_GetNULLstr());
+		        if (objGetAttrValue(lqy->QueryItem, cname, DATA_T_DOUBLE, POD(&dbl)) == 1)
+			    snprintf(nbuf[i],32,"%s",rpt_internal_GetNULLstr());
 			else
-			    sprintf(nbuf[i],"%f",dbl);
+			    snprintf(nbuf[i],32,"%f",dbl);
 			lvalue = nbuf[i];
 			break;
 
@@ -944,7 +956,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 int
 rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, pQueryConn this_qy)
     {
-    int style,oldstyle;
+    int style,oldstyle=0;
     char* title = NULL;
     int cols=1,colsep=4,lmargin=0,rmargin=0;
     int oldcols=-1, oldcolsep, oldlmargin=-1, oldrmargin;
@@ -1404,9 +1416,9 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
     {
     char* ptr;
     int titlebar=1;
-    int style,oldstyle;
+    int style,oldstyle=0;
     int cnt,v,colmask,len,i;
-    pQueryConn qy;
+    pQueryConn qy = NULL;
     char* cname;
     char* cname2;
     pStructInf ui;
@@ -1522,6 +1534,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	prtDoTable(rs->PSession, (is_rel_cols?PRT_T_F_RELCOLWIDTH:0) | (lower_sep?PRT_T_F_LOWERSEP:0),colsep);
 
 	/** Decide which columns of the result set to use **/
+	colmask = 0x7FFFFFFF;
 	if (!table->UserData)
 	    {
 	    /** Determine which source to use. **/
@@ -1530,11 +1543,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	    else
 		qy = ac->Queries[ac->Count-1];
 
-	    if (!(ui=stLookup(table,"columns")))
-	        {
-	        colmask = 0x7FFFFFFF;
-	        }
-	    else
+	    if ((ui=stLookup(table,"columns")))
 	        {
 	        colmask=0;
 	        for(v=0,cname=objGetFirstAttr(qy->QueryItem);cname;v++,cname=objGetNextAttr(qy->QueryItem))
@@ -1680,11 +1689,11 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
                     switch(t)
                         {
                         case DATA_T_STRING:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&ptr)) == 1) ptr=NULL;
+                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_STRING, POD(&ptr)) == 1) ptr=NULL;
                             break;
     
                         case DATA_T_INTEGER:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&n)) == 1)
+                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_STRING, POD(&n)) == 1)
                                 {
                                 ptr = NULL;
                                 }
@@ -1697,14 +1706,14 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
     
                         case DATA_T_DATETIME:
                         case DATA_T_MONEY:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&p)) == 1 || p == NULL)
+                            if (objGetAttrValue(qy->QueryItem, cname, t, POD(&p)) == 1 || p == NULL)
                                 ptr = NULL;
                             else
                                 ptr = objDataToStringTmp(t, p, 0);
                             break;
     
                         case DATA_T_DOUBLE:
-                            if (objGetAttrValue(qy->QueryItem, cname, POD(&dbl)) == 1)
+                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_DOUBLE, POD(&dbl)) == 1)
                                 {
                                 ptr = NULL;
                                 }
@@ -1872,7 +1881,7 @@ rpt_internal_WriteExpResult(pRptSession rs, pExpression exp)
 int
 rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs)
     {
-    int attr=0,oldattr;
+    int attr=0,oldattr=0;
     char* ptr = NULL;
     char oldmfmt[32],olddfmt[32],oldnfmt[32];
     char* saved_font = NULL;
@@ -1933,7 +1942,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs)
 int
 rpt_internal_DoComment(pRptData inf, pStructInf comment, pRptSession rs)
     {
-    int attr=0,oldattr;
+    int attr=0,oldattr=0;
     char* ptr=NULL;
     int nl=1;
     pXString text_str;
@@ -1985,7 +1994,7 @@ rpt_internal_DoComment(pRptData inf, pStructInf comment, pRptSession rs)
 int
 rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn this_qy)
     {
-    int style,oldstyle;
+    int style,oldstyle=0;
     char* src;
     char* tsrc;
     int nl=1;
@@ -2109,7 +2118,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 	switch(t)
 	    {
 	    case DATA_T_INTEGER:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&n)) == 1)
+	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_INTEGER, POD(&n)) == 1)
 	            {
 	            txt = rpt_internal_GetNULLstr();
 		    }
@@ -2121,19 +2130,19 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 		break;
 
 	    case DATA_T_STRING:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&txt)) == 1) txt=rpt_internal_GetNULLstr();
+	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_STRING, POD(&txt)) == 1) txt=rpt_internal_GetNULLstr();
 		break;
 
 	    case DATA_T_MONEY:
 	    case DATA_T_DATETIME:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&p)) == 1 || p == NULL) 
+	        if (objGetAttrValue(qy->QueryItem, src, t, POD(&p)) == 1 || p == NULL) 
 		    txt = rpt_internal_GetNULLstr();
 		else 
 		    txt = objDataToStringTmp(t, p, 0);
 		break;
 
 	    case DATA_T_DOUBLE:
-	        if (objGetAttrValue(qy->QueryItem, src, POD(&dbl)) == 1)
+	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_DOUBLE, POD(&dbl)) == 1)
 		    {
 		    txt = rpt_internal_GetNULLstr();
 		    }
@@ -2168,7 +2177,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 int
 rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
     {
-    int style,oldstyle;
+    int style,oldstyle=0;
     int i;
     pQueryConn qy;
     int rulesep=0,ffsep=0;
@@ -2440,7 +2449,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
     int i;
     pStructInf ck_inf;
     char* ptr;
-    pXArray xa;
+    pXArray xa = NULL;
     pExpression exp;
     int err = 0;
     pXString subst_value;
@@ -2506,13 +2515,23 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 			xaAddItem(xa, (void*)exp);
 			}
 		    }
+		else
+		    {
+		    mssError(1,"RPT","Missing '%s' columns= expression list", object->Name);
+		    err = 1;
+		    }
 
 	        /** If errors, free the XArray and its expressions **/
 	        if (err)
 	            {
 	            object->UserData = NULL;
-	            for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
-	            xaDeInit(xa);
+		    if (xa)
+			{
+			for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
+			xaDeInit(xa);
+			nmFree(xa,sizeof(XArray));
+			xa = NULL;
+			}
 	            }
 	        else
 	            {
@@ -2571,8 +2590,13 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	    else if (!strcmp(object->UsrType,"report/table"))
 	        {
 	        object->UserData = NULL;
-	        for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
-	        xaDeInit(xa);
+		if (xa)
+		    {
+		    for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
+		    xaDeInit(xa);
+		    nmFree(xa,sizeof(XArray));
+		    xa = NULL;
+		    }
 		}
 	    }
 
@@ -2680,6 +2704,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
     int no_title_bar = 0;
     pExpression exp;
     char oldmfmt[32],olddfmt[32], oldnfmt[32];
+    int resolution;
 
     	/** Report has no titlebar header? **/
 	stAttrValue(rpt_internal_GetParam(inf,"titlebar"),NULL,&ptr,0);
@@ -2698,6 +2723,12 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    title = title_str->String;
 	    }
 
+	/** Resolution specified? **/
+	if (stAttrValue(rpt_internal_GetParam(inf,"resolution"), &resolution, NULL, 0) == 0)
+	    {
+	    prtSetResolution(ps, resolution);
+	    }
+
 	/** Output the title, unless instructed otherwise. **/
 	if (!no_title_bar)
 	    {
@@ -2714,7 +2745,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	        }
 	    prtWriteNL(ps);
 	    cur_time = time(NULL);
-	    sprintf(sbuf,"REQUESTED BY USER %s AT %s",mssUserName(),ctime(&cur_time));
+	    snprintf(sbuf,128,"REQUESTED BY USER %s AT %s",mssUserName(),ctime(&cur_time));
 	    prtWriteString(ps,sbuf,-1);
 	    /*prtWriteNL(ps);*/
 	    prtSetAttr(ps,0);
@@ -3375,6 +3406,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    /* *((char**)val) = inf->Node->Data->Name;*/
 	    *((char**)val) = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
 	    obj_internal_PathPart(inf->Obj->Pathname,0,0);
@@ -3384,6 +3420,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** If content-type, return as appropriate **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
     	    /** Is the worker thread running yet?  Start it if not. **/
 	    if (inf->MasterFD == NULL)
 	        {
@@ -3396,6 +3437,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    *((char**)val) = inf->Node->Data->UsrType;
 	    return 0;
 	    }
@@ -3403,6 +3449,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Caller is asking for current page #? **/
 	if (!strcmp(attrname,"page"))
 	    {
+	    if (datatype != DATA_T_INTEGER)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be integer)", attrname);
+		return -1;
+		}
 	    if (!inf->RSess || !inf->RSess->PSession)
 	        {
 		*(int*)val = 1;
@@ -3424,19 +3475,29 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		if (tmp_inf) find_inf = tmp_inf;
 		if (stGetAttrType(find_inf,0) == DATA_T_STRING && stAttrIsList(find_inf))
 		    {
+		    if (datatype != DATA_T_STRINGVEC)
+			{
+			mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be stringvec)", attrname);
+			return -1;
+			}
 		    inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
 		    inf->SVvalue.Strings = (char**)(inf->VecData);
                     *(pStringVec*)val = &(inf->SVvalue);
 		    }
                 else if (stGetAttrType(find_inf,0) == DATA_T_INTEGER && stAttrIsList(find_inf))
                     {
+		    if (datatype != DATA_T_INTVEC)
+			{
+			mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be intvec)", attrname);
+			return -1;
+			}
 		    inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
 		    inf->IVvalue.Integers = (int*)(inf->VecData);
                     *(pIntVec*)val = &(inf->IVvalue);
                     }
 		else
 		    {
-		    stGetAttrValue(find_inf, DATA_T_ANY, POD(val), 0);
+		    stGetAttrValue(find_inf, datatype, POD(val), 0);
 		    }
                 return 0;
                 }
@@ -3474,19 +3535,29 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    /** Return the data of the appropriate type. **/
 		    if (stGetAttrType(value_inf,0) == DATA_T_STRING && stAttrIsList(value_inf))
 			{
+			if (datatype != DATA_T_STRINGVEC)
+			    {
+			    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be stringvec)", attrname);
+			    return -1;
+			    }
 			inf->VecData = stGetValueList(value_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
 			inf->SVvalue.Strings = (char**)(inf->VecData);
 			*(pStringVec*)val = &(inf->SVvalue);
 			}
 		    else if (stGetAttrType(value_inf,0) == DATA_T_INTEGER && stAttrIsList(value_inf))
 			{
+			if (datatype != DATA_T_INTVEC)
+			    {
+			    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be intvec)", attrname);
+			    return -1;
+			    }
 			inf->VecData = stGetValueList(value_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
 			inf->IVvalue.Integers = (int*)(inf->VecData);
 			*(pIntVec*)val = &(inf->IVvalue);
 			}
 		    else
 			{
-			stGetAttrValue(value_inf, DATA_T_ANY, POD(val), 0);
+			stGetAttrValue(value_inf, datatype, POD(val), 0);
 			}
 		    }
 		}
@@ -3495,6 +3566,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** If annotation, and not found, return "" **/
         if (!strcmp(attrname,"annotation"))
             {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
+		return -1;
+		}
             *(char**)val = "";
             return 0;
             }
@@ -3574,6 +3650,16 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
+	    /** GRB - error out on this for now.  The stuff that is needed to rename
+	     ** a node like this isn't really in place.
+	     **/
+	    mssErrorErrno(1,"RPT","SetAttr 'name': could not rename report node object");
+	    return -1;
 	    if (inf->Node->Data)
 	        {
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
@@ -3586,11 +3672,15 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
 	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
-	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
+
+		/** GRB - rpt may not be in a fs file.  It is not this driver's
+		 ** duty to call things like rename().
+		 **/
+	        /*if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0)
 		    {
 		    mssErrorErrno(1,"RPT","SetAttr 'name': could not rename report node object");
 		    return -1;
-		    }
+		    }*/
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
 	    strcpy(inf->Node->Data->Name,*(char**)val);
@@ -3600,6 +3690,11 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Content-type?  can't set that **/
 	if (!strcmp(attrname,"content_type")) 
 	    {
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"RPT","Type mismatch setting attribute '%s' (should be string)", attrname);
+		return -1;
+		}
 	    mssError(1,"RPT","Illegal attempt to modify content type");
 	    return -1;
 	    }
@@ -3608,6 +3703,12 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** First, see if the thing exists in the original inf struct. **/
 	type = rptGetAttrType(inf_v, attrname, oxt);
 	if (type < 0) return -1;
+	if (datatype != type)
+	    {
+	    mssError(1,"RPT","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
+		    attrname, obj_type_names[datatype], obj_type_names[type]);
+	    return -1;
+	    }
 
 	/** Now, look for it in the override struct. **/
 	find_inf = stLookup(inf->AttrOverride, attrname);

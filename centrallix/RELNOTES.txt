@@ -1,5 +1,50 @@
 Centrallix Release Notes
 -------------------------------------------------------------------------------
+Version 0.7.3, 19-Jun-2003 
+
+This is a major development release of Centrallix.  See the release notes for
+the previous versions for further details.
+
+1.  Be sure to download at least centrallix, centrallix-lib, and centrallix-os.
+    Without those three packages, things will not work.
+
+2.  This version should not be considered secure enough to run on a computer
+    that can be accessed by a non-trusted network (internet, etc.).  Please
+    firewall your running Centrallix binary from such networks.
+
+3.  The NFS server netdriver is still very unstable, and very insecure.  It
+    is disabled per default.  Don't use it unless you know what you're doing!
+
+4.  The SHL osdriver should be considered insecure.  Don't enable it unless
+    you know what you are doing.
+
+5.  Be sure to edit your rootnode and point the path to the directory for the
+    centrallix-os package!
+
+6.  Basic build and install (if root; it is often better to build/run as non-
+    root, if so the procedure differs slightly and your configuration will 
+    use a different HTTP port and altpasswd auth instead of system auth):
+
+    # cd /usr/local
+    # tar -xzvf /usr/local/archive/centrallix-0.7.3.tgz
+    # tar -xzvf /usr/local/archive/centrallix-lib-0.7.3.tgz
+    # tar -xzvf /usr/local/archive/centrallix-os-0.7.3.tgz
+    # tar -xzvf /usr/local/archive/centrallix-doc-0.7.3.tgz
+    # tar -xzvf /usr/local/archive/centrallix-sysdoc-0.7.3.tgz
+    # cd centrallix-lib
+    # ./configure --prefix=/usr/local
+    # make install
+    # cd ../centrallix
+    # ./configure --prefix=/usr/local
+    # make install
+    # make modules_install
+    # make config
+    # vi /usr/local/etc/centrallix.conf
+    # vi /usr/local/etc/rootnode
+    # centrallix
+
+
+-------------------------------------------------------------------------------
 Version 0.7.2, 20-Jun-2002 
 
 This is an interim development release of Centrallix.  See the release notes

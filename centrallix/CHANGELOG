@@ -1,6 +1,9 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
-0.7.2 --> 0.7.3	    Not Yet Released
+0.7.2 --> 0.7.3	    19-Jun-2003	    MAJOR DEVELOPMENT RELEASE
+
+    This is a major development release.  As before, we've added a lot of
+    features and fixed a number of bugs.
 
     Changes:
 
@@ -32,6 +35,9 @@ Centrallix ChangeLog
 	    default in the build.
 	15. Centrallix shutdown handler mechanism allows for clean shutdown
 	    when receiving SIGINT (ctrl-c).
+	16. Added maintained client-side expressions to the htmlgen subsystem,
+	    currently only active on 'enabled' properties on buttons.
+	17. V3 prtmgmt subsystem is nearing completion.
 
 
 -------------------------------------------------------------------------------
