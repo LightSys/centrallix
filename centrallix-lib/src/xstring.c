@@ -31,10 +31,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.12 2003/04/04 03:18:20 gbeeley Exp $
+    $Id: xstring.c,v 1.13 2003/04/25 15:57:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.13  2003/04/25 15:57:18  gbeeley
+    Minor tweak to cxsec implementation in xstring.
+
     Revision 1.12  2003/04/04 03:18:20  gbeeley
     Added CXSEC_ENTRY and CXSEC_EXIT examples to xstring.
 
@@ -803,6 +806,7 @@ xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, co
 	    }
 
 	/** Ok, got it.  Now send it to the output function **/
+	CXSEC_EXIT(XS_FN_KEY); /* do it here too to protect the write_fn argument on the stack */
 	rval = write_fn(write_arg, *buf, len, 0, FD_U_PACKET);
 	if (mybuf) nmSysFree(mybuf);
 	if (rval != len) rval = -EIO; /* oops!!! routine ignored FD_U_PACKET! */
