@@ -399,6 +399,17 @@ function form_action_prev(aparam)
 /** Helper function -- called from other mode change functions **/
 function form_change_mode(newmode)
     {
+    if (newmode == 'Modify' && !this.allowmodify)
+	return;
+    else if (newmode == 'View' && !this.allowview)
+	return;
+    else if (newmode == 'Query' && !this.allowquery)
+	return;
+    else if (newmode == 'New' && !this.allownew)
+	return;
+    else if (newmode == 'NoData' && !this.allownodata)
+	return;
+
     //confirm('Form is going from '+this.mode+' to '+newmode+' mode.');
     if(this.mode=='Modify' && this.IsUnsaved)
 	{
