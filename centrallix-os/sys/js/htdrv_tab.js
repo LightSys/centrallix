@@ -11,8 +11,9 @@
 
 function tc_makecurrent()
     {
+    var t;
     if (htr_getzindex(this) > htr_getzindex(this.tabctl)) return 0;
-    for(i=0;i<this.tabctl.tabs.length;i++)
+    for(var i=0;i<this.tabctl.tabs.length;i++)
 	{
 	t = this.tabctl.tabs[i];
 	if (t != this && htr_getzindex(t) > htr_getzindex(this))
@@ -48,6 +49,8 @@ function tc_makecurrent()
 
 function tc_addtab(l_tab, l_page, l, nm)
     {
+    var newx;
+    var newy;
     l_tab.tabname = nm;
     l_tab.tabindex = this.tabs.length+1;
     htr_init_layer(l_page,l,'tc_pn');
@@ -107,7 +110,7 @@ function tc_addtab(l_tab, l_page, l, nm)
 	if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
 	}
     var images = pg_images(l_tab);
-    for(i=0;i<images.length;i++)
+    for(var i=0;i<images.length;i++)
 	{
 	images[i].layer = l_tab;
 	images[i].kind = 'tc';
