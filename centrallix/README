@@ -1,0 +1,118 @@
+------------------------------------------------------------------------------
+                         Centrallix Core README File
+                               August 6th, 2001
+		 Greg Beeley (GRB), Greg.Beeley@LightSys.org
+		 (c) 2001 LightSys Technology Services, Inc.
+------------------------------------------------------------------------------
+
+
+OVERVIEW....
+
+This is the main README file for Centrallix, a web-based application server
+featuring data abstraction, structural embedding, DHTML generation, multi-
+source querying, and object-based development.  If you are reading this file,
+you have downloaded the Centrallix source code.  Please note that unless this
+source code came packaged in an RPM or other installable package format, it is
+likely an unstable source release.  In this case, expect parts of the system
+to not work correctly.
+
+Furthermore, Centrallix is currently being developed under Linux.  It should
+work on other platforms, but if you attempt to compile it on such, you are 
+pretty much on your own right now.  Be sure to let us know if you do (and how
+you did) get it to build and run correctly on other platforms.
+
+
+LICENSING....
+
+The core of Centrallix is distributed under the GNU General Public License,
+version 2.  See the included files "LICENSE" and "COPYING" for the details of
+the license.
+
+Please note that the centrallix-lib package is distributed under a different
+license (the LGPL v2.1).  Because of this you MUST obtain permission from the
+respective copyright holders for centrallix core code before including any 
+of that code in the centrallix-lib package.  The reverse is NOT true,
+however.
+
+Also please note that the centrallix-os package is distributed under a BSD
+type of license.  This is done so that companies wishing to build proprietary
+applications using Centrallix can do so without needing special permission
+from Centrallix's copyright holder(s).
+
+
+COMPILING....
+
+Unless you are a developer, you probably should not be compiling Centrallix
+from its sources, but rather use the installable RPM format instead.  It is
+much easier that way.  However, developer or not, if you want to compile the
+system from its sources, here are instructions on how to do so.
+
+    1.  Make sure you have downloaded the "centrallix" and "centrallix-lib"
+        sources.  Build the centrallix-lib sources first, and that will
+	generate both the shared object format (.so) and the static library
+	format (.a) binaries.  See the README file with centrallix-lib for
+	information on building those libraries.
+
+    2.  Install the centrallix-lib libraries in /usr/lib or /usr/local/lib,
+        and make sure those locations are in your LD_LIBRARY_PATH, or else in
+	your /etc/ld.so.conf.
+
+    3.  Edit the Centrallix core makefile, and make sure your centrallix-lib
+        include directory is correct.
+
+    4.  Set the necessary options in the Centrallix core makefile.  In
+        particular, if you do not have Sybase CT library installed on your
+	system, remove the libraries "-lct -lcomn -lintl -lsybtcl -lcs -linsck"
+	from the LIBS line in the makefile, and remove the objdrv_sybase
+	entry from the OSDRIVERS list in the makefile.  Also, depending on 
+	whether your system uses -lcrypt or not for the crypt() function, be
+	sure to add/remove the "-lcrypt" entry from the LIBS line.  Finally,
+	decide what network interfaces to enable and set the appropriate -D
+	lines in the CFLAGS in the Makefile.  Note that CGI_ENABLE excludes
+	RAW_ENABLE and NHT_ENABLE (it does not make sense for a centrallix
+	server running in cgi mode to listen on network ports).
+
+    5.  Type "make centrallix" at the command line, and the server should be
+        built.
+
+    6.  If you want to develop an autoconf script for Centrallix, feel free
+        to do so.  It would make the compilation process a lot simpler :)
+
+    7.  Install the centrallix binary in /usr/bin or /usr/local/bin, as your
+        system's configuration dictates.
+
+
+GETTING STARTED....
+
+Once you have compiled centrallix, you need to install a base ObjectSystem
+package in order for the server to work properly.  Download the centrallix-os
+module and install it, perhaps in /var/centrallix/os.  In the os package will
+also be three key files, "rootnode", "rootnode.type", and "types.cfg".  These
+MUST be installed in /usr/local/etc.  Edit the "rootnode" file to point to the
+directory (such as /var/centrallix/os) where you installed the ObjectSystem
+package.  There are further instructions on this in the centrallix-os package
+itself.
+
+
+QUESTIONS?
+
+The open source Centrallix development effort has several places where you
+can find answers to questions you have about the system.
+
+First, there are two documentation packages.  The first, "centrallix-doc",
+contains documents on using Centrallix as a development environment.  The
+second, "centrallix-sysdoc" is a package for those who wish to develop the
+Centrallix system itself.
+
+Second, there are three mailing lists.  See http://centrallix.sourceforge.net
+for subscription information.  The first, centrallix-announce, is a moderated
+list which generally does not permit posting by its subscribers, and is thus
+used mainly for release and security announcements regarding Centrallix.  The
+second list, centrallix-users, is a great place to ask general usage
+questions about the system as well as correspond with others about building
+applications on top of the Centrallix development environment.  Finally, a
+centrallix-devel list exists for those interested in expanding/revamping/
+building Centrallix itself.
+
+Finally, we are considering setting up a structured FAQ / knowledge base on
+our SourceForge site, for information sharing regarding Centrallix.
