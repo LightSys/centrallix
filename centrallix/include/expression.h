@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.7 2003/06/27 21:19:47 gbeeley Exp $
+    $Id: expression.h,v 1.8 2004/02/24 20:23:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.8  2004/02/24 20:23:00  gbeeley
+    - external reference coverage-mask support to go along with changes to
+      expression/*.c files
+
     Revision 1.7  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -169,6 +173,9 @@ typedef struct _ET
 
 #define	EXPR_OBJID_CURRENT	(-2)
 #define EXPR_OBJID_PARENT	(-3)
+
+#define EXPR_OBJID_EXTREF	(31)
+#define EXPR_MASK_EXTREF	(1<<31)
 
 #define EXPR(x) ((pExpression)(x))
 
