@@ -354,7 +354,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	while((w_obj = objQueryFetch(qy, O_RDONLY))) {
 	   objGetAttrValue(w_obj,"outer_type",POD(&ptr));
 	   if (!strcmp(ptr,"widget/dropdownitem") && mode == 0) {
-		if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
+		if (objGetAttrValue(w_obj,"label",DATA_T_STRING,POD(&ptr)) != 0) {
 		  mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 		  return -1;
 		}
@@ -368,8 +368,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 		}
 		xsConcatPrintf(&xs,"Array('%s',", string);
     
-		if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
-		    mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+		if (objGetAttrValue(w_obj,"value",DATA_T_STRING,POD(&ptr)) != 0) {
+		    mssError(1,"HTDD","Drop Down widget must have a 'value' property");
 		    return -1;
 		}
 		memccpy(string,ptr,0,HT_SBUF_SIZE-1);
@@ -428,10 +428,14 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.35 2002/08/13 19:23:01 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.36 2002/08/21 02:14:15 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.36  2002/08/21 02:14:15  jorupp
+     * updated a couple GetAttrValue calls to explicitly specify the data type, as the code was assuming a certain type anyway
+     * fixed a wrong error message
+
     Revision 1.35  2002/08/13 19:23:01  lkehresman
     Made the dropdown less user-friendly (it used to print out "hi" when you
     clicked a button).
