@@ -37,11 +37,13 @@ function tv_new_layer(width,pdoc,l)
 	else if(cx__capabilities.Dom1HTML)
 	    {
 	    nl = document.createElement('DIV');
+	    nl.style.setProperty('position','absolute','');
 	    nl.style.setProperty('width',width + 'px','');
 	    nl.style.setProperty('height','20px','');
 	    nl.style.setProperty('clip','rect(0px,' + width + 'px, 20px, 0px)','');
 	    nl.style.setProperty('overflow','hidden','');
-	    pdoc.tv_layer_tgt.appendChild(nl);
+	    nl.style.setProperty('visibility','inherit','');
+	    pdoc.appendChild(nl);
 	    }
 	else
 	    {
@@ -568,15 +570,16 @@ function tv_collapse()
     
     l.expanded = 0;
     cnt = 0;
-    var layers = pg_layers(l.pdoc);
-    for(i=layers.length-1;i>=0;i--)
+    var lyrs = pg_layers(l.pdoc);
+    var len = lyrs.length;
+    for(i=len-1;i>=0;i--)
 	{
-	sl = layers[i];
+	sl = lyrs[i];
 	if (sl.fname!=null && sl!=l && l.fname==sl.fname.substring(0,l.fname.length))
 	    {
 	    //alert(sl.fname);
 	    tv_cache_layer(sl,l.pdoc);
-	    delete layers[i];
+	    delete lyrs[i];
 	    sl.fname = null;
 	    if(cx__capabilities.Dom0NS)
 		{
@@ -592,11 +595,13 @@ function tv_collapse()
 		}
 	    cnt++;
 	    }
-	layers = pg_layers(l.pdoc);
+	//layers = pg_layers(l.pdoc);
 	}
-    for (j=0;j<layers.length;j++)
+    //sl = layers[0];
+    var vis = '';
+    for (j=0;j<len;j++)
 	{
-	sl = layers[j];
+	sl = lyrs[j];
 	var visibility = pg_get_style(sl,'visibility');
 	if (sl.pageY > l.pageY && (visibility == 'inherit' || visibility == 'visible') )
 	    {
