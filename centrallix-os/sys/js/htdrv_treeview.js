@@ -70,11 +70,11 @@ function tv_cache_layer(l,pdoc)
     {
     if (cx__capabilities.Dom1HTML)
         {
-		pg_debug('tv_cache_layer: ' + pdoc.id + '\n');
+		//pg_debug('tv_cache_layer: ' + pdoc.id + '\n');
         }
     else if (cx__capabilities.Dom0NS)
         {
-		pg_debug('tv_cache_layer: ' + pdoc.layer.name + '\n');
+		//pg_debug('tv_cache_layer: ' + pdoc.layer.name + '\n');
 		}
     /*l.next = pdoc.tv_layer_cache;
     pdoc.tv_layer_cache = l;*/
@@ -95,7 +95,7 @@ function tv_action_setroot(aparam)
     // Set the root
     if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
     if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init(this.root,aparam.NewRoot,this.root.ld,this.root.pdoc,getClipWidth(this.root),this.root.LSParent,aparam.NewRootObj);
+    tv_init(this.root,aparam.NewRoot,this.root.ld,this.root.pdoc,getClipWidth(this.root),this.root.LSParent,aparam.NewRootObj,this.show_branches);
     if (aparam.Expand == 'yes') this.root.expand();
     }
 
@@ -736,7 +736,7 @@ function tv_collapse()
 	sl = lyrs[i];
 	if (sl.fname!=null && sl!=l && l.fname==sl.fname.substring(0,l.fname.length))
 	    {
-	    pg_debug('tv_collapse: caching ' + sl.fname + '\n');
+	    //pg_debug('tv_collapse: caching ' + sl.fname + '\n');
 	    //alert(sl.fname);
 	    tv_cache_layer(sl,l.pdoc);
 	    //delete lyrs[i];
