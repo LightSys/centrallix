@@ -15,13 +15,27 @@
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
-/* Centrallix Base Library						*/
+/* Centrallix Core       						*/
 /* 									*/
 /* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
 /* 									*/
-/* You may use these files and this library under the terms of the	*/
-/* GNU Lesser General Public License, Version 2.1, contained in the	*/
-/* included file "COPYING".						*/
+/* This program is free software; you can redistribute it and/or modify	*/
+/* it under the terms of the GNU General Public License as published by	*/
+/* the Free Software Foundation; either version 2 of the License, or	*/
+/* (at your option) any later version.					*/
+/* 									*/
+/* This program is distributed in the hope that it will be useful,	*/
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
+/* GNU General Public License for more details.				*/
+/* 									*/
+/* You should have received a copy of the GNU General Public License	*/
+/* along with this program; if not, write to the Free Software		*/
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  		*/
+/* 02111-1307  USA							*/
+/*									*/
+/* A copy of the GNU General Public License has been included in this	*/
+/* distribution in the file "COPYING".					*/
 /* 									*/
 /* Module: 	stparse.c,stparse.h  					*/
 /* Author:	Greg Beeley (GRB)					*/
@@ -33,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.1 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: stparse.c,v 1.2 2001/10/17 18:23:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.2  2001/10/17 18:23:04  gbeeley
+    Fixed incorrect licensing header (was LGPL; now GPL).
+
     Revision 1.1  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
