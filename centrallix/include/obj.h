@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.15 2003/04/04 05:02:43 gbeeley Exp $
+    $Id: obj.h,v 1.16 2003/04/24 03:10:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.16  2003/04/24 03:10:00  gbeeley
+    Adding AllowChars and BadChars to presentation hints base
+    implementation.
+
     Revision 1.15  2003/04/04 05:02:43  gbeeley
     Added more flags to objInfo dealing with content and seekability.
     Added objInfo capability to objdrv_struct.
@@ -231,6 +235,8 @@ typedef struct _PH
     XArray		EnumList;	/* list of string values */
     char*		EnumQuery;	/* query to enumerate the possible values */
     char*		Format;		/* presentation format - datetime or money */
+    char*		AllowChars;	/* characters allowed in this string, if null all allowed */
+    char*		BadChars;	/* characters *not* allowed in this string */
     int			Length;		/* Max length of data that can be entered */
     int			VisualLength;	/* length of data field as presented to user */
     int			VisualLength2;	/* used primarily for # lines in a multiline edit */

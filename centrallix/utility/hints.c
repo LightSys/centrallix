@@ -39,10 +39,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.1 2003/03/10 15:41:47 lkehresman Exp $
+    $Id: hints.c,v 1.2 2003/04/24 03:10:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.2  2003/04/24 03:10:01  gbeeley
+    Adding AllowChars and BadChars to presentation hints base
+    implementation.
+
     Revision 1.1  2003/03/10 15:41:47  lkehresman
     The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
     hints to the OSML.  To do this I had to:
@@ -157,6 +161,16 @@ objInfToHints(pStructInf inf, int data_type)
 	if (stAttrValue(stLookup(inf,"format"),NULL,&ptr,0) >= 0)
 	    {
 	    ph->Format = nmSysStrdup(ptr);
+	    }
+
+	/** Permitted and not permitted characters in a string? **/
+	if (stAttrValue(stLookup(inf,"allowchars"),NULL,&ptr,0) >= 0)
+	    {
+	    ph->AllowChars = nmSysStrdup(ptr);
+	    }
+	if (stAttrValue(stLookup(inf,"badchars"),NULL,&ptr,0) >= 0)
+	    {
+	    ph->BadChars = nmSysStrdup(ptr);
 	    }
 
 	/** Set VisualLength attributes? **/
