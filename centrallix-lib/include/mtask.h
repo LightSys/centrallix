@@ -23,10 +23,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.9 2002/11/22 20:56:57 gbeeley Exp $
+    $Id: mtask.h,v 1.10 2003/02/20 22:57:41 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.10  2003/02/20 22:57:41  jorupp
+     * added quite a bit of debugging to mTask
+     	* call mtSetDebug() to set debugging level
+     	* undefine MTASK_DEBUG to disable
+     * added UDP support (a basic echo client/server is working with it)
+     * changed pFile returned by netConnectTCP to include IP and port of remote computer
+
     Revision 1.9  2002/11/22 20:56:57  gbeeley
     Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
     basically allow printf() style functionality on top of any xxxWrite()
@@ -210,6 +217,8 @@ typedef struct _FD
 #define FD_UF_WRCACHE	64		/* Enable write-cache buffering */
 #define FD_UF_RDCACHE	128		/* Enable read-cache buffering */
 #define FD_UF_GZIP		256		/* Enable Gzip compression */
+#define FD_F_UDP	512		/* is a UDP socket */
+#define FD_F_CONNECTED	1024		/* is a 'connected' UDP socket */
 
 
 #define FD_S_OPENING	0		/* FD is opening or connecting */
@@ -330,6 +339,7 @@ typedef struct _OBJ
 
 
 /** MTASK General Functions. **/
+void mtSetDebug(int debuglevel);
 pThread mtInitialize(int flags, void (*start_fn)());
 unsigned long mtRealTicks();
 unsigned long mtTicks();
@@ -383,6 +393,10 @@ pFile netConnectTCP(const char* host_name, const char* service_name, int flags);
 int netCloseTCP(pFile net_filedesc, int linger_msec, int flags);
 char* netGetRemoteIP(pFile net_filedesc, int flags);
 unsigned short netGetRemotePort(pFile net_filedesc);
+pFile netListenUDP(const char* service_name, int flags);
+pFile netConnectUDP(const char* host_name, const char* service_name, int flags);
+int netRecvUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_in* from, char** host, int* port);
+int netSendUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_in* from, char* host, int port);
 
 
 /** MTASK Synchronization Functions **/

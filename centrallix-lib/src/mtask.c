@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.14 2002/11/22 20:56:58 gbeeley Exp $
+    $Id: mtask.c,v 1.15 2003/02/20 22:57:42 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.15  2003/02/20 22:57:42  jorupp
+     * added quite a bit of debugging to mTask
+     	* call mtSetDebug() to set debugging level
+     	* undefine MTASK_DEBUG to disable
+     * added UDP support (a basic echo client/server is working with it)
+     * changed pFile returned by netConnectTCP to include IP and port of remote computer
+
     Revision 1.14  2002/11/22 20:56:58  gbeeley
     Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
     basically allow printf() style functionality on top of any xxxWrite()
@@ -145,7 +152,7 @@ int mtSched();
 #define MT_TASKSEP	256
 #define MT_TICK_MAX	1
 
-/*#define dbg_write(x,y,z) write(x,y,z)*/
+//#define dbg_write(x,y,z) write(x,y,z)
 #define dbg_write(x,y,z)
 
 typedef struct _MTS
@@ -163,11 +170,50 @@ typedef struct _MTS
     int		CurUserID;
     int		CurGroupID;
     unsigned long LastTick;
+    unsigned int DebugLevel;
     }
     MTSystem, *pMTSystem;
 
 static MTSystem MTASK;
 
+#define MTASK_DEBUG
+
+#ifdef MTASK_DEBUG
+#define MTASK_DEBUG_SHOW_READ_SELECTABLE 0x01
+#define MTASK_DEBUG_SHOW_WRITE_SELECTABLE 0x02
+#define MTASK_DEBUG_SHOW_ERROR_SELECTABLE 0x04
+#define MTASK_DEBUG_SHOW_IO_SELECT 0x08
+#define MTASK_DEBUG_SHOW_READ_SELECTED 0x10
+#define MTASK_DEBUG_SHOW_WRITE_SELECTED 0x20
+#define MTASK_DEBUG_SHOW_ERROR_SELECTED 0x40
+#define MTASK_DEBUG_SHOW_NON_IO_SELECT 0x80
+#define MTASK_DEBUG_SHOW_CONNECTION_OPEN 0x100
+#define MTASK_DEBUG_SHOW_CONNECTION_CLOSE 0x200
+#define MTASK_DEBUG_FDOPEN 0x400
+#define MTASK_DEBUG_FDCLOSE 0x800
+#else
+#define MTASK_DEBUG_SHOW_READ_SELECTABLE 0
+#define MTASK_DEBUG_SHOW_WRITE_SELECTABLE 0
+#define MTASK_DEBUG_SHOW_ERROR_SELECTABLE 0
+#define MTASK_DEBUG_SHOW_IO_SELECT 0
+#define MTASK_DEBUG_SHOW_READ_SELECTED 0
+#define MTASK_DEBUG_SHOW_WRITE_SELECTED 0
+#define MTASK_DEBUG_SHOW_ERROR_SELECTED 0
+#define MTASK_DEBUG_SHOW_NON_IO_SELECT 0
+#define MTASK_DEBUG_SHOW_CONNECTION_OPEN 0
+#define MTASK_DEBUG_SHOW_CONNECTION_CLOSE 0
+#define MTASK_DEBUG_FDOPEN 0
+#define MTASK_DEBUG_FDCLOSE 0
+#endif
+
+/*** mtSetDebug - sets the debugging level ***/
+void
+mtSetDebug(int debuglevel)
+    {
+#ifdef MTASK_DEBUG
+    MTASK.DebugLevel=debuglevel;
+#endif
+    }
 
 /*** EVSEMAPHORE is an event processor for semaphores ***/
 int
@@ -678,12 +724,24 @@ mtSched()
 		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FD_READ)
 		        {
 		        FD_SET(((pFile)(MTASK.EventWaitTable[i]->Object))->FD,&readfds);
+#ifdef MTASK_DEBUG
+			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_READ_SELECTABLE)
+			    printf("Added %i to readable FDSET\n",((pFile)(MTASK.EventWaitTable[i]->Object))->FD);
+#endif
 		        }
 		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FD_WRITE || MTASK.EventWaitTable[i]->EventType == EV_T_FD_OPEN)
 		        {
 		        FD_SET(((pFile)(MTASK.EventWaitTable[i]->Object))->FD,&writefds);
+#ifdef MTASK_DEBUG
+			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_WRITE_SELECTABLE)
+			    printf("Added %i to writeable FDSET\n",((pFile)(MTASK.EventWaitTable[i]->Object))->FD);
+#endif
 		        }
 		    FD_SET(((pFile)(MTASK.EventWaitTable[i]->Object))->FD,&exceptfds);
+#ifdef MTASK_DEBUG
+		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_ERROR_SELECTABLE)
+			printf("Added %i to exception FDSET\n",((pFile)(MTASK.EventWaitTable[i]->Object))->FD);
+#endif
 		    num_fds++;
 		    }
 		else if (MTASK.EventWaitTable[i]->EventType == EV_T_MT_TIMER)
@@ -736,7 +794,15 @@ mtSched()
 	if (n_runnable+n_timerblock == 0)
 	    {
           REISSUE_SELECT:
+#ifdef MTASK_DEBUG
+	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
+		printf("IO select\n");
+#endif
 	    rval = select(max_fd, &readfds, &writefds, &exceptfds, NULL);
+#ifdef MTASK_DEBUG
+	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
+		printf("IO select done\n");
+#endif
 	    if (rval == -1 && (errno == EINTR || errno == EAGAIN)) goto REISSUE_SELECT;
 	    }
 	else
@@ -748,7 +814,15 @@ mtSched()
 	      REISSUE_SELECT2:
 	        tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
 	        tmout.tv_usec = (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)*(1000000/(64*MTASK.TicksPerSec));
+#ifdef MTASK_DEBUG
+		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
+		    printf("non-IO select\n");
+#endif
 	        rval = select(max_fd, &readfds, &writefds, &exceptfds, &tmout);
+#ifdef MTASK_DEBUG
+		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
+		    printf("non-IO select done\n");
+#endif
 	        if (rval == -1 && (errno == EINTR || errno == EAGAIN)) goto REISSUE_SELECT2;
 		}
 	    }
@@ -795,7 +869,12 @@ mtSched()
 		        {
 		        if (FD_ISSET(((pFile)(event->Object))->FD,&readfds))
 			    {
+#ifdef MTASK_DEBUG
+			    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_READ_SELECTED)
+				printf("Found %i in readable FDSET\n",((pFile)(event->Object))->FD);
+#endif
 			    FD_CLR(((pFile)(event->Object))->FD,&readfds);
+			    dbg_write(0,"r",1);
 			    event->Thr->Status = THR_S_RUNNABLE;
 			    ((pFile)(event->Object))->Flags &= ~FD_F_RDBLK;
 			    event->Status = EV_S_COMPLETE;
@@ -807,7 +886,12 @@ mtSched()
 		        {
 		        if (FD_ISSET(((pFile)(event->Object))->FD,&writefds))
 			    {
+#ifdef MTASK_DEBUG
+			    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_WRITE_SELECTED)
+				printf("Found %i in writeable FDSET\n",((pFile)(event->Object))->FD);
+#endif
 			    FD_CLR(((pFile)(event->Object))->FD,&writefds);
+			    dbg_write(0,"w",1);
 			    event->Thr->Status = THR_S_RUNNABLE;
 			    ((pFile)(event->Object))->Flags &= ~FD_F_WRBLK;
 			    if (((pFile)(event->Object))->Status == FD_S_OPENING) 
@@ -847,6 +931,11 @@ mtSched()
 		    /** Or, did the descriptor get an exception/error? **/
 		    if (FD_ISSET(((pFile)(event->Object))->FD,&exceptfds))
 			{
+#ifdef MTASK_DEBUG
+			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_ERROR_SELECTED)
+			    printf("Found %i in exception FDSET\n",((pFile)(event->Object))->FD);
+#endif
+			dbg_write(0,"e",1);
 			event->Thr->Status = THR_S_RUNNABLE;
 			event->Status = EV_S_ERROR;
 			}
@@ -1834,6 +1923,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
     int code;
     int eno;
 
+	//printf("reading %i from %08x(%08x--%08x) to %08x with %08x\n",maxlen,(int)filedesc,(int)filedesc->FD,(int)filedesc->Flags,(int)buffer,flags);
     	/** If closing, cant read **/
     	if (filedesc->Status == FD_S_CLOSING) return -1;
 
@@ -2232,13 +2322,28 @@ fdClose(pFile filedesc, int flags)
     int i,were_entries;
     pEventReq event = NULL;
 
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
+	    printf("fdClose called on %p(%i)\n",filedesc,filedesc->FD);
+#endif
+    
 	/** Need to flush the WrCacheBuf? **/
 	fdUnSetOptions(filedesc, FD_UF_WRCACHE);
+
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
+	    printf("fdClose %p(%i) -- checking if already closed\n",filedesc,filedesc->FD);
+#endif
 
     	/** Already closing? **/
     	if (filedesc->Status == FD_S_CLOSING) return -1;
     	filedesc->Status = FD_S_CLOSING;
 	
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
+	    printf("fdClose %p(%i) -- clearing wait table\n",filedesc,filedesc->FD);
+#endif
+
     	/** If this is immediate, clear all wait table entries. **/
     	for(were_entries=i=0;i<MTASK.nEvents;i++)
     	    {
@@ -2250,12 +2355,22 @@ fdClose(pFile filedesc, int flags)
 		    MTASK.EventWaitTable[i]->Status = EV_S_ERROR;
 		    MTASK.EventWaitTable[i]->Thr->Status = THR_S_RUNNABLE;
 		    }
+		else
+#ifdef MTASK_DEBUG
+		    if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
+			printf("\t\t(Object,ObjType,EventType,Status)\nfdClose %p(%i) -- WT entry: %p,%i,%i,%i\n",filedesc,filedesc->FD,MTASK.EventWaitTable[i]->Object,MTASK.EventWaitTable[i]->ObjType,MTASK.EventWaitTable[i]->EventType,MTASK.EventWaitTable[i]->Status);
+#endif
     	        }
     	    }
 
 	/** If not immediate and there ARE wait table entries, wait on them **/
 	if (!(flags & FD_U_IMMEDIATE) && were_entries)
 	    {
+#ifdef MTASK_DEBUG
+	    if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
+		printf("fdClose %p(%i) -- there are wait table entries, waiting\n",filedesc,filedesc->FD);
+#endif
+
 	    event = (pEventReq)nmMalloc(sizeof(EventReq));
 	    event->Thr = MTASK.CurrentThread;
 	    event->Object = (void*)filedesc;
@@ -2273,7 +2388,14 @@ fdClose(pFile filedesc, int flags)
 	    }
 
 	/** Call scheduler, if necessary **/
-	if (event || !(MTASK.MTFlags & MT_F_NOYIELD)) mtSched();
+	if (event || !(MTASK.MTFlags & MT_F_NOYIELD)) 
+	    {
+#ifdef MTASK_DEBUG
+	    if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
+		printf("fdClose %p(%i) -- calling scheduler\n",filedesc,filedesc->FD);
+#endif
+	    mtSched();
+	    }
 
 	/** Remove event... **/
 	if (event)
@@ -2368,8 +2490,17 @@ netListenTCP(const char* service_name, int queue_length, int flags)
 	    }
 
 	/** Listen on the socket. **/
-	listen(s,queue_length);
+	if(listen(s,queue_length)==-1)
+	    {
+	    close(s);
+	    return NULL;
+	    }
 
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_OPEN)
+	    printf("Opening FD %i to accept TCP connections\n",s);
+#endif
+	
 	/** Create the file descriptor structure **/
 	new_fd = (pFile)nmMalloc(sizeof(File));
 	new_fd->FD = s;
@@ -2388,6 +2519,8 @@ netListenTCP(const char* service_name, int queue_length, int flags)
 
     return new_fd;
     }
+
+
 
 
 /*** NETACCEPTTCP accepts an incoming TCP connection from a TCP server
@@ -2461,6 +2594,12 @@ netAcceptTCP(pFile net_filedesc, int flags)
 	    close(s);
 	    return NULL;
 	    }
+
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_OPEN)
+	    printf("Accepting connection from %i with FD %i\n",net_filedesc->FD,s);
+#endif
+
 	connected_fd->FD = s;
 	connected_fd->Status = FD_S_OPEN;
 	connected_fd->Flags = FD_F_RD | FD_F_WR;
@@ -2498,6 +2637,8 @@ netAcceptTCP(pFile net_filedesc, int flags)
 char*
 netGetRemoteIP(pFile net_filedesc, int flags)
     {
+    if(net_filedesc->Flags & FD_F_UDP && !(net_filedesc->Flags & FD_F_CONNECTED))
+	return (char*)NULL;
     return (char*)inet_ntoa(net_filedesc->RemoteAddr.sin_addr);
     }
 
@@ -2508,6 +2649,8 @@ netGetRemoteIP(pFile net_filedesc, int flags)
 unsigned short
 netGetRemotePort(pFile net_filedesc)
     {
+    if(net_filedesc->Flags & FD_F_UDP && !(net_filedesc->Flags & FD_F_CONNECTED))
+	return 0;
     return ntohs(net_filedesc->RemoteAddr.sin_port);
     }
 
@@ -2574,6 +2717,12 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
 	    close(s);
 	    return NULL;
 	    }
+
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_OPEN)
+	    printf("TCP Connection opened, using FD %i\n",s);
+#endif
+
 	connected_fd->FD = s;
 	connected_fd->Status = FD_S_OPENING;
 	connected_fd->Flags = FD_F_RD | FD_F_WR;
@@ -2592,6 +2741,7 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
 	remoteaddr.sin_family = AF_INET;
 	remoteaddr.sin_port = port;
 	memcpy(&(remoteaddr.sin_addr), &addr, sizeof(unsigned int));
+	memcpy(&(connected_fd->RemoteAddr),&remoteaddr,sizeof(struct sockaddr_in));
 	if (connect(s,(struct sockaddr*)&remoteaddr,sizeof(struct sockaddr_in)) FAIL)
 	    {
 	    if (errno != EINPROGRESS)
@@ -2673,6 +2823,11 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
     int t,t2,rval,arg;
     struct linger l;
 
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_CLOSE)
+	    printf("Closing FD %i\n",net_filedesc->FD);
+#endif
+
     	/** Close the file descriptor normally first. **/
 	t = mtTicks();
 	fdClose(net_filedesc, (flags & (FD_U_IMMEDIATE)) | FD_XU_NODST);
@@ -2714,6 +2869,11 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    close(net_filedesc->FD);
 	    }
 
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_CLOSE)
+	    printf("Closed FD %i\n",net_filedesc->FD);
+#endif
+
 	/** Now we destroy the structure. **/
 	if (net_filedesc->WrCacheBuf) nmFree(net_filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	if (net_filedesc->RdCacheBuf) nmFree(net_filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
@@ -2721,6 +2881,434 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 
     return 0;
     }
+
+/*** NETLISTENUDP creates a listening UDP server socket for a given
+ *** service/port 
+ ***/
+pFile
+netListenUDP(const char* service_name, int flags)
+    {
+    pFile new_fd = NULL;
+    int s,arg;
+    unsigned short port;
+    struct servent *srv;
+    struct sockaddr_in localaddr;
+
+    	/** Create the socket. **/
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+
+	/** Set non-blocking **/
+	arg=1;
+	ioctl(s,FIONBIO,&arg);
+
+	/** Get the port number **/
+	port = htons(strtol(service_name, NULL, 10));
+	if (port == 0)
+	    {
+	    srv = getservbyname(service_name, "udp");
+	    if (!srv)
+	        {
+		close(s);
+		return NULL;
+		}
+	    port = srv->s_port;
+#ifdef HAVE_ENDSERVENT
+	    endservent();
+#endif
+	    }
+
+	/** Setup to bind to that address. **/
+	arg=1;
+	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &arg, sizeof(int));
+	memset(&localaddr,0,sizeof(localaddr));
+	localaddr.sin_family = AF_INET;
+	localaddr.sin_port = port;
+	if (bind(s,(struct sockaddr*)&localaddr, sizeof(struct sockaddr_in)) FAIL)
+	    {
+	    close(s);
+	    return NULL;
+	    }
+
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_OPEN)
+	    printf("Opening FD %i to accept UDP connections\n",s);
+#endif
+	
+	/** Create the file descriptor structure **/
+	new_fd = (pFile)nmMalloc(sizeof(File));
+	new_fd->FD = s;
+	new_fd->Status = FD_S_OPEN;
+	new_fd->Flags = FD_F_RD | FD_F_WR | FD_F_UDP;
+	new_fd->EventCkFn = evFile;
+	new_fd->ErrCode = 0;
+	new_fd->UnReadLen = 0;
+	new_fd->WrCacheBuf = NULL;
+	new_fd->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
+	new_fd->GzFile = NULL;
+#endif
+	new_fd->PrintfBuf = NULL;
+	memcpy(&(new_fd->LocalAddr),&localaddr,sizeof(struct sockaddr_in));
+
+    return new_fd;
+    }
+
+/*** NETCONNECTUDP creats a client socket and connects it to a
+ *** server on a given UDP service/port and host name.  The flag
+ *** NET_U_NOBLOCK causes the request to return immediately even
+ *** if the connection is still trying to establish.  Further
+ *** reads and writes will block until the connection either
+ *** establishes or fails.
+ ***/
+pFile
+netConnectUDP(const char* host_name, const char* service_name, int flags)
+    {
+    pFile connected_fd;
+    struct sockaddr_in remoteaddr;
+    int s,arg,len;
+    struct servent *srv;
+    struct hostent *h;
+    unsigned short port;
+    unsigned int addr;
+    pEventReq event = NULL;
+    int code;
+
+    	/** Create the socket **/
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s FAIL) return NULL;
+	arg=1;
+	ioctl(s,FIONBIO,&arg);
+
+	/** Lookup the service name. **/
+	port = htons(strtol(service_name,NULL,10));
+	if (!port)
+	    {
+	    srv = getservbyname(service_name,"udp");
+#ifdef HAVE_ENDSERVENT
+	    endservent();
+#endif
+	    if (srv == NULL) 
+	        {
+		close(s);
+		return NULL;
+		}
+	    port = srv->s_port;
+	    }
+
+	/** Lookup the host name. **/
+	addr = inet_addr(host_name);
+	if (addr == 0xFFFFFFFF)
+	    {
+	    h = gethostbyname(host_name);
+	    if (h == NULL)
+	        {
+		close(s);
+		return NULL;
+		}
+	    memcpy(&addr,h->h_addr,sizeof(unsigned int));
+	    }
+
+	/** Create the structure **/
+	connected_fd = (pFile)nmMalloc(sizeof(File));
+	if (!connected_fd) 
+	    {
+	    close(s);
+	    return NULL;
+	    }
+
+#ifdef MTASK_DEBUG
+	if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_CONNECTION_OPEN)
+	    printf("UDP Connection opened, using FD %i\n",s);
+#endif
+
+	connected_fd->FD = s;
+	connected_fd->Status = FD_S_OPENING;
+	connected_fd->Flags = FD_F_RD | FD_F_WR | FD_F_UDP | FD_F_CONNECTED;
+	connected_fd->EventCkFn = evFile;
+	connected_fd->ErrCode = 0;
+	connected_fd->UnReadLen = 0;
+	connected_fd->WrCacheBuf = NULL;
+	connected_fd->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
+	connected_fd->GzFile = NULL;
+#endif
+	connected_fd->PrintfBuf = NULL;
+
+	/** Try to connect **/
+	memset(&remoteaddr,0,sizeof(struct sockaddr_in));
+	remoteaddr.sin_family = AF_INET;
+	remoteaddr.sin_port = port;
+	memcpy(&(remoteaddr.sin_addr), &addr, sizeof(unsigned int));
+	memcpy(&(connected_fd->RemoteAddr),&remoteaddr,sizeof(struct sockaddr_in));
+	if (connect(s,(struct sockaddr*)&remoteaddr,sizeof(struct sockaddr_in)) FAIL)
+	    {
+	    if (errno != EINPROGRESS)
+	        {
+		close(s);
+		return NULL;
+		}
+
+	    /** If we can't block, return with errcode = in progress **/
+	    if (flags & NET_U_NOBLOCK)
+	        {
+		connected_fd->ErrCode = EINPROGRESS;
+		}
+	    else
+	        {
+	        event = (pEventReq)nmMalloc(sizeof(EventReq));
+	        if (!event) return NULL;
+	        event->Thr = MTASK.CurrentThread;
+	        event->Object = (void*)connected_fd;
+	        event->ObjType = OBJ_T_FD;
+	        event->EventType = EV_T_FD_WRITE;
+	        event->NextPeer = event;
+	        event->TableIdx = evAdd(event);
+	        if (event->TableIdx == -1)
+	            {
+	            nmFree(event, sizeof(EventReq));
+	            return NULL;
+	            }
+		event->Status = EV_S_INPROC;
+	        MTASK.CurrentThread->Status = THR_S_BLOCKED;
+		}
+	    }
+
+	/** Call the scheduler if necessary **/
+	if (event || !(MTASK.MTFlags & MT_F_NOYIELD)) mtSched();
+
+	/** If event completed, check it. **/
+	if (event)
+	    {
+	    code = event->Status;
+	    evRemoveIdx(event->TableIdx);
+	    nmFree(event,sizeof(EventReq));
+	    event = NULL;
+	    if (code == EV_S_ERROR)
+	        {
+		close(s);
+		nmFree(connected_fd,sizeof(File));
+		return NULL;
+		}
+	    len = sizeof(int);
+	    arg = -1;
+	    getsockopt(s, SOL_SOCKET, SO_ERROR, &arg, &len);
+	    if (arg != 0)
+	        {
+		close(s);
+		nmFree(connected_fd,sizeof(File));
+		return NULL;
+		}
+	    }
+
+    return connected_fd;
+    }
+
+/*** NETRECVUDP recieves from a UDP file descriptor.  The flags can contain the
+ *** option FD_U_NOBLOCK. 
+ ***/
+int
+netRecvUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_in* from, char** host, int* port)
+    {
+    pEventReq event = NULL;
+    int rval = -1;
+    int code;
+    int eno;
+    struct sockaddr_in remotehost;
+    socklen_t fromlen=sizeof(struct sockaddr_in);
+    int recvflags=0;
+
+	/** only UDP sockets **/
+	if(!(filedesc->Flags & FD_F_UDP))
+	    {
+	    return -1;
+	    }
+
+	remotehost.sin_addr.s_addr=0;
+	remotehost.sin_port=0;
+    
+	if(!from)
+	    {
+	    from=&remotehost;
+	    }
+
+    	if (filedesc->Status == FD_S_CLOSING) return -1;
+
+    	/** If filedesc not listed as blocked, try reading now. **/
+    	if (!(filedesc->Flags & FD_F_RDBLK))
+    	    {
+	    rval = recvfrom(filedesc->FD,buffer,maxlen,recvflags,(struct sockaddr*)from,&fromlen);
+    	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN) return -1;
+    	    }
+
+        /** If we need to (and may) block, create the event structure **/
+      DID_BLOCK:
+        if (!(flags & FD_U_NOBLOCK) && rval == -1)
+            {
+            event = (pEventReq)nmMalloc(sizeof(EventReq));
+            if (!event) return -1;
+            event->Thr = MTASK.CurrentThread;
+            event->Object = (void*)filedesc;
+            event->ObjType = OBJ_T_FD;
+            event->EventType = EV_T_FD_READ;
+            event->ReqLen = maxlen;
+            event->NextPeer = event;
+            event->TableIdx = evAdd(event);
+	    if (event->TableIdx == -1)
+	        {
+	        nmFree(event, sizeof(EventReq));
+	        return -1;
+	        }
+	    event->Status = EV_S_INPROC;
+            MTASK.CurrentThread->Status = THR_S_BLOCKED;
+            filedesc->Flags |= FD_F_RDBLK;
+            }
+
+        /** Call the scheduler. **/
+        if (event || !(MTASK.MTFlags & MT_F_NOYIELD)) mtSched();
+
+        /** If event is non-null, we blocked **/
+        if (event)
+            {
+            evRemoveIdx(event->TableIdx);
+            code = event->Status;
+            nmFree(event,sizeof(EventReq));
+            event = NULL;
+            if (code == EV_S_COMPLETE) 
+                {
+		rval = recvfrom(filedesc->FD,buffer,maxlen,recvflags,(struct sockaddr*)from,&fromlen);
+		eno = errno;
+
+    	        /** I sincerely hope this doesn't happen... **/
+    	        if (rval == -1 && eno == EWOULDBLOCK) 
+    	            {
+    	            puts("Got completed readability on fd but it then blocked!");
+    	            goto DID_BLOCK;
+    	            }
+		else if (rval == -1 && eno == EAGAIN) goto DID_BLOCK;
+                }
+	    else if (code == EV_S_ERROR) rval = -1;
+            }
+
+	if(host)
+	    {
+	    *host = (char*)inet_ntoa(from->sin_addr);
+	    }
+	if(port)
+	    {
+	    *port = ntohs(from->sin_port);
+	    }
+
+    return rval;
+    }
+
+/*** NETSENDUDP recieves from a UDP file descriptor.  The flags can contain the
+ *** option FD_U_NOBLOCK. 
+ ***/
+int
+netSendUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_in* from, char* host, int port)
+    {
+    pEventReq event = NULL;
+    int rval = -1;
+    int code;
+    int eno;
+    struct sockaddr_in remotehost;
+    socklen_t fromlen=sizeof(struct sockaddr_in);
+    int sendflags=0;
+
+	/** only UDP sockets **/
+	if(!(filedesc->Flags & FD_F_UDP))
+	    {
+	    printf("not UDP\n");
+	    return -1;
+	    }
+
+	if(filedesc->Flags & FD_F_CONNECTED)
+	    {
+	    from = NULL;
+	    fromlen = 0;
+	    }
+	else
+	    {
+	    if(!from)
+		{
+		from=&remotehost;
+		from->sin_family=AF_INET;
+		if(!(host && port))
+		    {
+		    /** either from or host and port are required **/
+		    printf("host and port required\n");
+		    return -1;
+		    }
+		if(inet_aton(host,&(from->sin_addr))==0)
+		    {
+		    printf("invalid host\n");
+		    return -1;
+		    }
+		}
+		from->sin_port = htons(port);
+	    }
+
+    	if (filedesc->Status == FD_S_CLOSING) return -1;
+
+    	/** If filedesc not listed as blocked, try reading now. **/
+    	if (!(filedesc->Flags & FD_F_WRBLK))
+    	    {
+	    rval = sendto(filedesc->FD,buffer,maxlen,sendflags,(struct sockaddr*)from,fromlen);
+    	    if (rval == -1 && errno != EWOULDBLOCK && errno != EAGAIN) return -1;
+    	    }
+
+        /** If we need to (and may) block, create the event structure **/
+      DID_BLOCK:
+        if (!(flags & FD_U_NOBLOCK) && rval == -1)
+            {
+            event = (pEventReq)nmMalloc(sizeof(EventReq));
+            if (!event) return -1;
+            event->Thr = MTASK.CurrentThread;
+            event->Object = (void*)filedesc;
+            event->ObjType = OBJ_T_FD;
+            event->EventType = EV_T_FD_WRITE;
+            event->ReqLen = maxlen;
+            event->NextPeer = event;
+            event->TableIdx = evAdd(event);
+	    if (event->TableIdx == -1)
+	        {
+	        nmFree(event, sizeof(EventReq));
+	        return -1;
+	        }
+	    event->Status = EV_S_INPROC;
+            MTASK.CurrentThread->Status = THR_S_BLOCKED;
+            filedesc->Flags |= FD_F_WRBLK;
+            }
+
+        /** Call the scheduler. **/
+        if (event || !(MTASK.MTFlags & MT_F_NOYIELD)) mtSched();
+
+        /** If event is non-null, we blocked **/
+        if (event)
+            {
+            evRemoveIdx(event->TableIdx);
+            code = event->Status;
+            nmFree(event,sizeof(EventReq));
+            event = NULL;
+            if (code == EV_S_COMPLETE) 
+                {
+		rval = sendto(filedesc->FD,buffer,maxlen,sendflags,(struct sockaddr*)from,fromlen);
+		eno = errno;
+
+    	        /** I sincerely hope this doesn't happen... **/
+    	        if (rval == -1 && eno == EWOULDBLOCK) 
+    	            {
+    	            puts("Got completed readability on fd but it then blocked!");
+    	            goto DID_BLOCK;
+    	            }
+		else if (rval == -1 && eno == EAGAIN) goto DID_BLOCK;
+                }
+	    else if (code == EV_S_ERROR) rval = -1;
+            }
+
+    return rval;
+    }
+
 
 
 /*** SYCREATESEM creates a new semaphore, initialized with a given initial count
