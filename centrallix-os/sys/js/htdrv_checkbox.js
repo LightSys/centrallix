@@ -137,11 +137,5 @@ function checkbox_toggleMode(layer)
 	layer.src = layer.checkedImage.src;
 	layer.is_checked = 1;
 	}
-    if (layer.parentLayer.EventOnChange != null)
-	{
-	var eparam = new Object();
-	eparam.Caller = layer.parentLayer;
-	cn_activate(layer.parentLayer, 'OnChange', eparam);
-	delete eparam;
-	}
+    cn_activate(layer.parentLayer, 'OnChange');
     }
