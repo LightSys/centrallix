@@ -53,6 +53,7 @@
 #define IFC_CAT_WIDGET_PROP	    3
 #define IFC_CAT_WIDGET_CONTAINER    4
 
+
 /* The user doesn't need to know the contents...just treat it like magic */
 typedef struct IfcHandle_t* IfcHandle;
 
@@ -63,5 +64,8 @@ int ifcIsSubset(IfcHandle h1, IfcHandle h2);	/* is h2 a subset of h1? Does h1 pr
 IfcHandle ifcGetHandle(pObjSession s, char* path);	/* Returns a handle to an interfae */
 void ifcReleaseHandle(IfcHandle handle);    /* Releases a handle to an interface */
 int ifcInitialize();
+
+/** Functions for writing interfaces out in various formats **/
+int ifcToHtml(pFile file, pObjSession s, char* def_str);
 
 #endif

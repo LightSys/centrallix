@@ -62,6 +62,7 @@ wgtformVerify(pWgtrVerifySession s)
 int
 wgtformNew(pWgtrNode node)
     {
+	node->Flags |= WGTR_F_NONVISUAL;
     return 0;
     }
 

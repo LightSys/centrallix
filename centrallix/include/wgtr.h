@@ -42,6 +42,10 @@
 #include "xarray.h"
 #include "iface.h"
 
+
+#define WGTR_F_NONVISUAL    1		/** a widget is visual by default, non-visual if this is set **/
+
+
 typedef struct
     {
     int		Magic;
@@ -61,6 +65,7 @@ typedef struct
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/
     int		Verified;			/** Was the node verified? **/
     XArray	Interfaces;			/** Array of supported interface handles **/
+    pObjSession ObjSession;			/** Object session this node's related to **/
     }
     WgtrNode, *pWgtrNode;
 
@@ -93,7 +98,7 @@ typedef struct
 pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type);  /** parse osml object **/
 pWgtrNode wgtrParseOpenObject(pObject obj);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
-pWgtrNode wgtrNewNode(	char* name, char* type, 
+pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
 			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
 
@@ -116,6 +121,7 @@ int wgtrDeleteChild(pWgtrNode widget, char* child_name);    /** deletes child wi
 int wgtrAddChild(pWgtrNode widget, pWgtrNode child);	    /** graft one tree onto another **/
 pWgtrNode wgtrNextChild(pWgtrNode tree);	/** return the next child **/
 pWgtrNode wgtrFirstChild(pWgtrNode tree);	/** return the first child **/
+int wgtrImplementsInterface(pWgtrNode this, char* iface_ref);	    /** state that a wgt implements an interface **/
 
 /** misc. functions **/
 pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints **/

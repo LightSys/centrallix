@@ -111,7 +111,6 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
     pObject obj;
     pWgtrNode results;
     
-//	fprintf(stderr, "wgtrParseObject(%s)\n", path);
 	/** attempt to open OSML object **/
 	if ( (obj = objOpen(s, path, mode, permission_mask, type)) == NULL)
 	    {
@@ -138,7 +137,6 @@ wgtrParseOpenObject(pObject obj)
     pObject child_obj;
     pObjQuery qy;
 
-//	fprintf(stderr, "Parsing object %s\n", obj->Pathname->Pathbuf);	
 	/** check the outer_type of obj tobe sure it's a widget **/
 	if (objGetAttrValue(obj, "outer_type", DATA_T_STRING, &val) < 0)
 	    {
@@ -163,7 +161,7 @@ wgtrParseOpenObject(pObject obj)
 
 	/** create this node **/
 	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
-	if ( (this_node = wgtrNewNode(name, type, -1, -1, -1, -1, 100, 100, 100, 100)) == NULL)
+	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, 100, 100)) == NULL)
 	    {
 	    mssError(0, "WGTR", "Couldn't create node %s", name);
 	    return NULL;
@@ -177,15 +175,13 @@ wgtrParseOpenObject(pObject obj)
 	    if ( (prop_type = objGetAttrType(obj, prop_name)) < 0) 
 		{
 		mssError(0, "WGTR", "Couldn't get type for property %s", prop_name);
-		nmFree(this_node, sizeof(WgtrNode));
-		return NULL;
+		goto error;
 		}
 	    /** get the value **/ 
 	    if ( objGetAttrValue(obj, prop_name, prop_type, &val) < 0)
 		{
 		mssError(0, "WGTR", "Couldn't get value for property %s", prop_name);
-		nmFree(this_node, sizeof(WgtrNode));
-		return NULL;
+		goto error;
 		}
 
 	    /** add property to node **/
@@ -218,20 +214,33 @@ wgtrParseOpenObject(pObject obj)
 	/** loop through subobjects, and call ourselves recursively to add child nodes **/
 	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
 	    {
-while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
+	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
 		{
 		if ( (child_node = wgtrParseOpenObject(child_obj)) != NULL) wgtrAddChild(this_node, child_node);
+		else
+		    {
+		    mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
+		    objClose(child_obj);
+		    objQueryClose(qy);
+		    goto error;
+		    }
 		objClose(child_obj);
 		}
 	    }
 	objQueryClose(qy);
 	/** return the struct **/
 	return this_node;
+
+    error:
+	wgtrFree(this_node);
+	return NULL;
     }
 
 
 void wgtr_internal_FreeProperty(pObjProperty prop)
     {
+	if (!prop) return;
+
 	switch (prop->Type)
 	    {
 	    case DATA_T_STRING:
@@ -250,21 +259,35 @@ wgtrFree(pWgtrNode tree)
     {
     int i;
     pObjProperty p;
+    IfcHandle ifc;
 
-//	fprintf(stderr, "Freeing %s\n", tree->Name);
 	ASSERTMAGIC(tree, MGK_WGTR);
 
+	if (!tree) return;
+
 	/** free all children **/
-	for (i=0;i<xaCount(&(tree->Children));i++) wgtrFree(xaGetItem(&(tree->Children), i));
+	for (i=0;i<xaCount(&(tree->Children));i++) 
+	    {
+	    wgtrFree(xaGetItem(&(tree->Children), i));
+	    }
 	xaDeInit(&(tree->Children));
 
 	/** free all properties **/
 	for (i=0;i<xaCount(&(tree->Properties));i++)
 	    {
 	    p = xaGetItem(&(tree->Properties), i);
-	    wgtr_internal_FreeProperty(p);
+	    if (p) wgtr_internal_FreeProperty(p);
 	    }
 	xaDeInit(&(tree->Properties));
+
+	/** free the interface handles **/
+	for (i=0;i<xaCount(&(tree->Interfaces));i++)
+	    {
+	    ifc = xaGetItem(&(tree->Interfaces), i);
+	    if (ifc) ifcReleaseHandle(ifc);
+	    }
+	xaDeInit(&(tree->Interfaces));
+
 	/** free the node itself **/
 	nmFree(tree, sizeof(WgtrNode));
     }
@@ -273,7 +296,6 @@ wgtrFree(pWgtrNode tree)
 pWgtrIterator 
 wgtrGetIterator(pWgtrNode tree, int traversal_type)
     {
-//	fprintf(stderr, "wgtrGetIterator(..., %d)\n", traversal_type);
 	ASSERTMAGIC(tree, MGK_WGTR);
 	return NULL;
     }
@@ -282,7 +304,6 @@ wgtrGetIterator(pWgtrNode tree, int traversal_type)
 pWgtrNode 
 wgtrNext(pWgtrIterator itr)
     {
-//	fprintf(stderr, "wgtrNext(..)\n");
 	return NULL;
     }
 
@@ -290,7 +311,6 @@ wgtrNext(pWgtrIterator itr)
 void 
 wgtrFreeIterator(pWgtrIterator itr)
     {
-//	fprintf(stderr, "wgtrFreeIterator(...)\n");
     }
 
 
@@ -516,14 +536,13 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 
     
 pWgtrNode 
-wgtrNewNode(	char* name, char* type, 
+wgtrNewNode(	char* name, char* type, pObjSession s,
 		int rx, int ry, int rwidth, int rheight,
 		int flx, int fly, int flwidth, int flheight)
     {
     pWgtrNode node;
     pWgtrDriver drv;
 
-//	fprintf(stderr, "Creating %s of type %s\n", name, type);
 	if ( (node = (pWgtrNode)nmMalloc(sizeof(WgtrNode))) == NULL)
 	    {
 	    mssError(0, "WGTR", "Couldn't allocate memory for new node");
@@ -542,9 +561,11 @@ wgtrNewNode(	char* name, char* type,
 	node->fl_y = fly;
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
+	node->ObjSession = s;
 
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
+	xaInit(&(node->Interfaces), 8);
 
 	/** look up the 'new' function and call it on the now-init'd struct **/
 	if ( (drv = wgtr_internal_LookupDriver(node)) == NULL) 
@@ -570,7 +591,6 @@ wgtrDeleteChild(pWgtrNode widget, char* child_name)
     pWgtrNode child;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
-//	fprintf(stderr, "Deleting child %s from %s\n", child_name, widget->Name);
 	for (i=0;i<xaCount(&(widget->Children));i++)
 	    {
 		child = xaGetItem(&(widget->Children), i);
@@ -588,7 +608,6 @@ int
 wgtrAddChild(pWgtrNode widget, pWgtrNode child)
     {
 	ASSERTMAGIC(widget, MGK_WGTR);
-//	fprintf(stderr, "Adding %s as child of %s\n", child->Name, widget->Name);
 	xaAddItem(&(widget->Children), child);
 	return 0;
     }
@@ -857,10 +876,13 @@ wgtrVerify(pWgtrNode tree)
     {
     WgtrVerifySession vs;
     pWgtrDriver drv;
+    XArray Names;
+    int i;
 
 	/** initialize datastructures **/
 	vs.Tree = tree;
 	xaInit(&(vs.VerifyQueue), 128);
+	xaInit(&Names, 128);
 
 	/** Build the verification queue **/
 	wgtr_internal_BuildVerifyQueue(&vs, tree);
@@ -871,6 +893,18 @@ wgtrVerify(pWgtrNode tree)
 	    {
 	    /** Get the next node **/
 	    vs.CurrWidget = xaGetItem(&(vs.VerifyQueue), vs.CurrWidgetIndex);
+
+	    /** Make sure its name is unique **/
+	    for (i=0;i<xaCount(&Names);i++)
+		{
+		if (!strcmp(vs.CurrWidget->Name, xaGetItem(&Names, i)))
+		    {
+		    mssError(1, "WGTR", "Widget name '%s' is not unique - widget names must be unique within an application",
+				vs.CurrWidget->Name);
+		    goto error;
+		    }
+		}
+	    xaAddItem(&Names, vs.CurrWidget->Name);
 
 	    /** Get the driver for this node **/
 	    drv = wgtr_internal_LookupDriver(vs.CurrWidget);
@@ -895,6 +929,7 @@ wgtrVerify(pWgtrNode tree)
 
 	return 0;
 error:
+	xaDeInit(&Names);
 	xaDeInit(&(vs.VerifyQueue));
 	return -1;
     }
@@ -903,12 +938,6 @@ error:
 int 
 wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget)
     {
-  /*
-	fprintf(stderr, "wgtrScheduleVerify(vs->NumWidgets=%d, widgth='%s'", vs->NumWidgets, widget->Name);
-	if (parent) fprintf(stderr, ", parent='%s'", parent->Name);
-	fprintf(stderr, ")\n");
-    */
-
 	xaAddItem(&(vs->VerifyQueue), widget);
 	vs->NumWidgets++;
 	return 0;
@@ -1078,4 +1107,22 @@ wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, char
 	return Render(output, obj_s, tree, params);
     }
 
+
+/*** wgtrImplementsInterface - adds an interface definition to the list if interfaces 
+ *** implemented by this widget
+ ***/
+int 
+wgtrImplementsInterface(pWgtrNode this, char* iface_ref)
+    {
+    IfcHandle h;
+
+	if ( (h = ifcGetHandle(this->ObjSession, iface_ref)) == NULL)
+	    {
+	    mssError(0, "IBTN", "Couldn't get interface handle to '%s'", iface_ref);
+	    return -1;
+	    }
+	xaAddItem(&(this->Interfaces), h);
+	
+	return 0;
+    }
 

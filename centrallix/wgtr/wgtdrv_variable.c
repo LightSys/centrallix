@@ -62,6 +62,7 @@ wgtvblVerify(pWgtrVerifySession s)
 int
 wgtvblNew(pWgtrNode node)
     {
+	node->Flags |= WGTR_F_NONVISUAL;
     return 0;
     }
 

@@ -59,10 +59,41 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.43 2004/08/04 20:03:10 mmcgill Exp $
+    $Id: htdrv_table.c,v 1.44 2004/08/13 18:46:13 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.44  2004/08/13 18:46:13  mmcgill
+    *   Differentiated between non-visual widgets and widgets without associated
+        objects during the rendering process. Widgets without associated objects
+        on the client-side (no layers) have an object created for them and are
+        included in the tree. This was not previously the case (for example,
+        widget/table-columns were not previously included in the client-side tree.
+        Now, they are.)
+    *   Added code in ht_render to initiate the process of including interface
+        information on the client-side.
+    *   Modified htdrivers to flag widgets as HT_WGTF_NOOBJECT when appropriate.
+    *   Modified wgtdrivers to flag widgets as WGTR_F_NONVISUAL when appropriate.
+    *   Fixed bug in tab widget
+    *   Added 'fieldname' property to widget/table-column (SEE NOTE BELOW)
+    *   Added support for sending interface definitions to the client dynamically,
+        and for including them statically in an application at render time
+    *   Added a parameter to wgtrNewNode, and added wgtrImplementsInterface()
+    *   Unique widget names are now *required* within an application (SEE NOTE)
+
+    NOTE: THIS UPDATE WILL BREAK YOUR APPLICATIONS.
+
+    The applications in the
+    centrallix-os package have been updated to work with the noted changes. Any
+    applications you may have written that aren't in that module are probably
+    broken now for one of two reasons:
+        1) Not all widgets are uniquely named within an application
+        2) 'fieldname' is not specified for a widget/table-column
+    These are now requirements. Update your applications accordingly. Also note
+    that each widget will now receive a global variable named after that widget
+    on the client side - don't pick widget names that might collide with already-
+    existing globals.
+
     Revision 1.43  2004/08/04 20:03:10  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -707,6 +738,9 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* p
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
+	/** flag ourselves as not having an associated layer **/
+	tree->RenderFlags |= HT_WGTF_NOOBJECT;
+
 	if (t->w >= 0) snprintf(tmpbuf,64,"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
 	htrAddBodyItem_va(s,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, t->outer_border, t->tbl_bgnd);
 	if (t->w >= 0) snprintf(tmpbuf,64,"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
@@ -990,8 +1024,15 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/table-column") != 0)
 		{
+		/** no layer associated with this guy **/
 		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&ptr));
+		if (wgtrGetPropertyValue(sub_tree, "fieldname", DATA_T_STRING, POD(&ptr)) < 0)
+		    {
+		    mssError(1, "HTTBL", "Couldn't get 'fieldname' for '%s'", sub_tree->Name);
+		    nmFree(t, sizeof(httbl_struct));
+		    return -1;
+		    }
 		t->col_infs[t->ncols] = stCreateStruct(ptr, "widget/table-column");
 		attr_inf = stAddAttr(t->col_infs[t->ncols], "width");
 		if (wgtrGetPropertyValue(sub_tree, "width", DATA_T_INTEGER,POD(&n)) == 0)

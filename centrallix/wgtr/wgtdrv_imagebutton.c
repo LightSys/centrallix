@@ -5,6 +5,7 @@
 #include "mtask.h"
 #include "mtsession.h"
 #include "wgtr.h"
+#include "iface.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -62,7 +63,7 @@ wgtibtnVerify(pWgtrVerifySession s)
 int
 wgtibtnNew(pWgtrNode node)
     {
-    return 0;
+	return wgtrImplementsInterface(node, "net/centrallix/button.ifc?cx__version=1.1");
     }
 
 

@@ -41,10 +41,41 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.26 2004/08/04 20:03:10 mmcgill Exp $
+    $Id: htdrv_tab.c,v 1.27 2004/08/13 18:46:13 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.27  2004/08/13 18:46:13  mmcgill
+    *   Differentiated between non-visual widgets and widgets without associated
+        objects during the rendering process. Widgets without associated objects
+        on the client-side (no layers) have an object created for them and are
+        included in the tree. This was not previously the case (for example,
+        widget/table-columns were not previously included in the client-side tree.
+        Now, they are.)
+    *   Added code in ht_render to initiate the process of including interface
+        information on the client-side.
+    *   Modified htdrivers to flag widgets as HT_WGTF_NOOBJECT when appropriate.
+    *   Modified wgtdrivers to flag widgets as WGTR_F_NONVISUAL when appropriate.
+    *   Fixed bug in tab widget
+    *   Added 'fieldname' property to widget/table-column (SEE NOTE BELOW)
+    *   Added support for sending interface definitions to the client dynamically,
+        and for including them statically in an application at render time
+    *   Added a parameter to wgtrNewNode, and added wgtrImplementsInterface()
+    *   Unique widget names are now *required* within an application (SEE NOTE)
+
+    NOTE: THIS UPDATE WILL BREAK YOUR APPLICATIONS.
+
+    The applications in the
+    centrallix-os package have been updated to work with the noted changes. Any
+    applications you may have written that aren't in that module are probably
+    broken now for one of two reasons:
+        1) Not all widgets are uniquely named within an application
+        2) 'fieldname' is not specified for a widget/table-column
+    These are now requirements. Update your applications accordingly. Also note
+    that each widget will now receive a global variable named after that widget
+    on the client side - don't pick widget names that might collide with already-
+    existing globals.
+
     Revision 1.26  2004/08/04 20:03:10  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -321,6 +352,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
     char main_bg[128];
     char inactive_bg[128];
     char sel[128];
+    int sel_idx= -1;
     pWgtrNode tabpage_obj;
     int x=-1,y=-1,w,h;
     int id,tabcnt, i, j;
@@ -404,12 +436,28 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    {
 	    strcpy(sel,"");
 	    }
+	if (wgtrGetPropertyValue(tree,"selected_index", DATA_T_INTEGER, POD(&sel_idx)) != 0)
+	    {
+	    sel_idx = -1;
+	    }
+	if (sel_idx != -1 && *sel != '\0')
+	    {
+	    mssError(1,"HTTAB","%s: cannot specify both 'selected' and 'selected_index'", name);
+	    return -1;
+	    }
 
 	/** User requesting expression for selected tab? **/
 	if (wgtrGetPropertyType(tree,"selected") == DATA_T_CODE)
 	    {
 	    wgtrGetPropertyValue(tree,"selected",DATA_T_CODE,POD(&code));
 	    htrAddExpression(s, name, "selected", code);
+	    }
+
+	/** User requesting expression for selected tab using integer index value? **/
+	if (wgtrGetPropertyType(tree,"selected_index") == DATA_T_CODE)
+	    {
+	    wgtrGetPropertyValue(tree,"selected_index",DATA_T_CODE,POD(&code));
+	    htrAddExpression(s, name, "selected_index", code);
 	    }
 
 	/** Background color/image? **/
@@ -493,7 +541,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		{
 		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 		tabcnt++;
-		is_selected = ((!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+		is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
 		bg = is_selected?main_bg:inactive_bg;
 		if (wgtrGetPropertyValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
 		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
@@ -609,7 +657,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		/** First, render the tabpage and add stuff for it **/
 		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 		tabcnt++;
-		is_selected = ((!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+		is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
 
 		/** Add script initialization to add a new tabpage **/
 		htrAddScriptInit_va(s,"    %s = %s.addTab(%s.cxSubElement(\"tc%dtab%d\"),%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",

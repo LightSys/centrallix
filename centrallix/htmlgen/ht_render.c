@@ -51,10 +51,41 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.50 2004/08/04 20:03:07 mmcgill Exp $
+    $Id: ht_render.c,v 1.51 2004/08/13 18:46:13 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.51  2004/08/13 18:46:13  mmcgill
+    *   Differentiated between non-visual widgets and widgets without associated
+        objects during the rendering process. Widgets without associated objects
+        on the client-side (no layers) have an object created for them and are
+        included in the tree. This was not previously the case (for example,
+        widget/table-columns were not previously included in the client-side tree.
+        Now, they are.)
+    *   Added code in ht_render to initiate the process of including interface
+        information on the client-side.
+    *   Modified htdrivers to flag widgets as HT_WGTF_NOOBJECT when appropriate.
+    *   Modified wgtdrivers to flag widgets as WGTR_F_NONVISUAL when appropriate.
+    *   Fixed bug in tab widget
+    *   Added 'fieldname' property to widget/table-column (SEE NOTE BELOW)
+    *   Added support for sending interface definitions to the client dynamically,
+        and for including them statically in an application at render time
+    *   Added a parameter to wgtrNewNode, and added wgtrImplementsInterface()
+    *   Unique widget names are now *required* within an application (SEE NOTE)
+
+    NOTE: THIS UPDATE WILL BREAK YOUR APPLICATIONS.
+
+    The applications in the
+    centrallix-os package have been updated to work with the noted changes. Any
+    applications you may have written that aren't in that module are probably
+    broken now for one of two reasons:
+        1) Not all widgets are uniquely named within an application
+        2) 'fieldname' is not specified for a widget/table-column
+    These are now requirements. Update your applications accordingly. Also note
+    that each widget will now receive a global variable named after that widget
+    on the client side - don't pick widget names that might collide with already-
+    existing globals.
+
     Revision 1.50  2004/08/04 20:03:07  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -1560,12 +1591,23 @@ int
 htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree)
     {
     int i;
-  
-	if (!(tree->RenderFlags & HT_WGTF_NOOBJECT))
+    char visual[6];
+
+	/** visual or non-visual? **/
+	if (tree->Flags & WGTR_F_NONVISUAL) sprintf(visual, "false");
+	else sprintf(visual, "true");
+
+	/** create an object for this node if there isn't one **/
+	/** NOTE: yes, it is indeed possible to have a visual widget without a layer.
+	 ** Static tables, for example (AAARRGGGGG - MJM)
+	 **/
+	if (tree->RenderFlags & HT_WGTF_NOOBJECT)
 	    {
-	    htrAddScriptWgtr_va(s, "    wgtrAddToTree(%s, '%s', '%s', curr_node[0], true);\n", 
-		tree->Name, tree->Name, tree->Type);
+	    htrAddScriptWgtr_va(s, "    %s = new Object();\n", tree->Name);
 	    }
+	htrAddScriptWgtr_va(s, "    wgtrAddToTree(%s, '%s', '%s', curr_node[0], %s);\n", 
+	    tree->Name, tree->Name, tree->Type, visual);
+
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    if (!(tree->RenderFlags & HT_WGTF_NOOBJECT)) 
@@ -1737,6 +1779,11 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	s->Page.HtmlStylesheetFile = NULL;
 	s->DisableBody = 0;
 
+	/** Initialize the html-related interface stuff **/
+	if (ifcHtmlInit(s, tree) < 0)
+	    {
+	    mssError(0, "HTR", "Error Initializing Html Interface code...continuing, but things might not work for client");
+	    }
 	
 	/** Render the top-level widget. **/
 	rval = htrRenderWidget(s, tree, 10, "document", "document");
@@ -1747,9 +1794,10 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	/** Add wgtr debug window **/
 #ifdef WGTR_DBG_WINDOW
 	htrAddScriptWgtr_va(s, "    wgtrWalk(%s);\n", tree->Name);
+	htrAddScriptWgtr(s, "    ifcLoadDef(\"net/centrallix/button.ifc\");\n");
 	htrAddStylesheetItem(s, "\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
 	htrAddBodyItem(s,   "<div id=\"dbgwnd\"><form name=\"dbgform\">"
-			    "<textarea name=\"dbgtxt\" cols=\"30\" rows=\"10\"></textarea>"
+			    "<textarea name=\"dbgtxt\" cols=\"80\" rows=\"10\"></textarea>"
 			    "</form></div>\n");
 #endif
 

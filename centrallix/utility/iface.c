@@ -44,6 +44,7 @@
 #include "stparse.h"
 #include "obj.h"
 #include "centrallix.h"
+#include "ht_render.h"
 
 
 /************** Internal Typedefs ********************/
@@ -62,6 +63,7 @@ typedef struct
     XArray*	Offsets;	    /* Offsets for each minor version into the members arrays */
     XArray*	Members;	    /* XArrays of members, one for each category */
     XArray*	Properties;	    /* XArrays of properties, one for each category */
+    int		NumMinorVersions;    /* How many minor versions there are */
     } IfcMajorVersion, *pIfcMajorVersion;
 
 /* This struct represents an interface definition - all major and minor versions */
@@ -80,6 +82,7 @@ struct IfcHandle_t
     {
     pObjSession		ObjSession;
     char*		DefPath;
+    char*		FullPath;
     int			MinorVersion, MajorVersion;
     int			LinkCount;
     int			Type;
@@ -201,7 +204,7 @@ pIfcMajorVersion
 ifc_internal_NewMajorVersion(pObject def, int type)
     {
     int			    NumCategories, i, ExpectedMinorVersion, HighestMinorVersion, ThisMinorVersion,
-			    MemberCategory, FirstMember, ThisOffset;
+			    MemberCategory, ThisOffset, NumMinorVersions;
     pIfcMajorVersion	    MajorVersion=NULL;
     pObject		    MinorObj=NULL, MemberObj=NULL;
     pObjQuery		    MinorQy=NULL, MemberQy=NULL;
@@ -235,6 +238,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	    }
 
 	HighestMinorVersion = -1;
+	NumMinorVersions = 0;
 	while ( (MinorObj = objQueryFetch(MinorQy, O_RDONLY)) != NULL)
 	    {
 	    /** process the name, make sure it's legal **/
@@ -262,9 +266,11 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		objQueryClose(MinorQy);
 		goto error;
 		}
+	    NumMinorVersions++;
 	    objClose(MinorObj);
 	    }
 	objQueryClose(MinorQy);
+	MajorVersion->NumMinorVersions = NumMinorVersions;
 	
 	/******* Second pass through minor versions, filling out major version struct **********/
 	if ( (MinorQy = objOpenQuery(def, ":outer_type = 'iface/minorversion'", ":name desc", NULL, NULL)) == NULL)
@@ -300,6 +306,9 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		objQueryClose(MinorQy);
 		goto error;
 		}
+	    /** Set all offsets **/
+	    for (i=0;i<IFC.NumCategories[type];i++)
+		xaSetItem(&(MajorVersion->Offsets[i]), ThisMinorVersion, (void*)xaCount(&(MajorVersion->Members[i])));
 	    /** Process the members **/
 	    if ( (MemberQy = objOpenQuery(MinorObj, NULL, NULL, NULL, NULL)) == NULL)
 		{
@@ -308,7 +317,6 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		objQueryClose(MinorQy);
 		goto error;
 		}
-	    FirstMember = 1;
 	    while ( (MemberObj = objQueryFetch(MemberQy, O_RDONLY)) != NULL)
 		{
 		/** get the member name **/
@@ -340,14 +348,6 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 			MemberObj->Pathname->Pathbuf+1, Val.String+6, IFC.TypeNames[type]);
 		    objClose(MemberObj); objClose(MinorObj); objQueryClose(MemberQy); objQueryClose(MinorQy);
 		    goto error;
-		    }
-		/** add offset entry **/
-		if (FirstMember)
-		    {
-		    FirstMember = 0;
-		    ThisOffset = xaCount(&(MajorVersion->Members[MemberCategory]));
-		    fprintf(stderr, "for '%s', adding offset %d\n", MinorObj->Pathname->Pathbuf+1, ThisOffset);
-		    xaSetItem(&(MajorVersion->Offsets[MemberCategory]), ThisMinorVersion, (void*)ThisOffset);
 		    }
 		/** check for duplicates **/
 		for (i=0;i<xaCount(&(MajorVersion->Members[MemberCategory]));i++)
@@ -510,11 +510,14 @@ void
 ifcReleaseHandle(IfcHandle handle)
     {
 	fprintf(stderr, "ifcReleaseHandle('%s')\n", handle->DefPath);
-	ifc_internal_Print(handle);
+/*	ifc_internal_Print(handle); */
 
 	/** release the memory for every member and property path **/
 	if (handle->LinkCount == 1)
 	    {
+	    /** remove this guy from the handle cache **/
+	    xhRemove(&IFC.HandleCache, handle->FullPath);
+	    nmSysFree(handle->FullPath);
 	    nmSysFree(handle->Offsets);
 	    nmFree(handle, sizeof(struct IfcHandle_t));
 	    }
@@ -530,6 +533,7 @@ ifc_internal_BuildHandle(pIfcDefinition def, int major, int minor)
     IfcHandle h;
     pIfcMajorVersion maj_v;
     int i;
+    XString fullpath;
 
 	fprintf(stderr, "ifc_internal_BuildHandle(%s, %d, %d)\n", def->Path, major, minor);
 
@@ -553,6 +557,10 @@ ifc_internal_BuildHandle(pIfcDefinition def, int major, int minor)
 	    return NULL;
 	    }
 	h->DefPath = def->Path;
+	xsInit(&fullpath);
+	xsConcatPrintf(&fullpath, "%s?cx__version=%d.%d", def->Path, major, minor);
+	h->FullPath = nmSysStrdup(fullpath.String);
+	xsDeInit(&fullpath);
 	h->ObjSession = def->ObjSession;
 	h->MajorVersion = major;
 	h->MinorVersion = minor;
@@ -594,7 +602,10 @@ ifcGetHandle(pObjSession s, char* ref)
 
 	/** check for a cached handle **/
 	if ( (handle = (IfcHandle)xhLookup(&(IFC.HandleCache), path)) != NULL)
+	    {
+	    handle->LinkCount++;
 	    return handle;
+	    }
 
 	/** split path into interface and version info **/
 	ver = strchr(path, '?');
@@ -632,7 +643,7 @@ ifcGetHandle(pObjSession s, char* ref)
 		mssError(0, "IFC", "Couldn't parse interface definition '%s'", path);
 		return NULL;
 		}
-	    xhAdd(&(IFC.Definitions), path, (char*)def);
+	    if (xhAdd(&(IFC.Definitions), def->Path, (char*)def) < 0) mssError(0, "IFC", "Couldn't cache");
 	    }
 	/** we have the interface definition. Now let's build a handle from it **/
 	if ( (handle = ifc_internal_BuildHandle(def, major, minor)) == NULL)
@@ -640,6 +651,11 @@ ifcGetHandle(pObjSession s, char* ref)
 	    mssError(0, "IFC", "Coulnd't build handle from interface definition '%s'", path);
 	    return NULL;
 	    }
+	/** get the absolute path again, since we destroyed it above **/
+	if (ref[0] == '/') strncpy(path, ref, 512);
+	else snprintf(path, 512, "%s/%s", IFC.IfaceDir, ref);
+	/** cache the handle **/
+	xhAdd(&(IFC.HandleCache), handle->FullPath, (void*)handle);
 	return handle;
     }
 
@@ -697,7 +713,7 @@ ifcInitialize()
 	    mssError(0, "IFC", "iface_dir not set in centrallix.conf, defaulting to /etc/iface");
 	    IFC.IfaceDir = "/ifc";
 	    }
-	fprintf(stderr, "IfaceDir = %s\n", IFC.IfaceDir);
+//	fprintf(stderr, "IfaceDir = %s\n", IFC.IfaceDir);
 
 	return 0;
     }
@@ -775,4 +791,315 @@ ifcIsSubset(IfcHandle h1, IfcHandle h2)
     }
 
 
+/*** ifc_internal_EncodeHtml - take an XString, and HTMLify it
+ *** Same idea as nht_internal_EncodeHTML, but with an XString
+ ***/
+int
+ifc_internal_EncodeHTML(pXString str)
+    {
+    XString tmp;
+    int i;
+    char ch;
+    char buf[10];
+
+	xsInit(&tmp);
+	memset(buf, 0, 10);
+	for (i=0;i<strlen(str->String);i++)
+	    {
+	    ch = str->String[i];
+	    if (ch == '<') snprintf(buf, 10, "&lt;");
+	    else if (ch == '>') snprintf(buf, 10, "&gt;");
+	    else if (ch == '&') snprintf(buf, 10, "&amp;");
+	    else snprintf(buf, 10, "%c", ch);
+	    xsConcatenate(&tmp, buf, -1);
+	    }
+	xsCopy(str, tmp.String, -1);
+	xsDeInit(&tmp);
+    
+	return 0;
+    }
+
+
+/*** ifc_internal_ObjToJS - generate a JS inline object instantiation from an OSML object, recursively
+ ***/
+int ifc_internal_ObjToJS(pXString str, pObject obj)
+    {
+    pObject subobj;
+    pObjQuery qy;
+    ObjData val;
+    char* name;
+    int type;
+    XString expr;
+
+	xsConcatenate(str, "{", 1);
+
+	/** output the type **/
+	objGetAttrValue(obj, "outer_type", DATA_T_STRING, &val);
+	xsConcatPrintf(str, "type:\"%s\"", val.String);
+	/** get the properties **/
+	name = objGetFirstAttr(obj);
+	while (name)
+	    {
+	    type = objGetAttrType(obj, name);
+	    if (objGetAttrValue(obj, name, type, &val) < 0)
+		{
+		mssError(0, "IFC", "ifc_internal_ObjToJS - couldn't get value for property %s", name);
+		name = objGetNextAttr(obj);
+		continue;
+		}
+	    xsConcatenate(str, ",", 1);
+	    switch (type)
+		{
+		case DATA_T_STRING:
+		    xsConcatPrintf(str, "%s: \"%s\"", name, val.String);
+		    break;
+		case DATA_T_INTEGER:
+		    xsConcatPrintf(str, "%s: %d", name, val.Integer);
+		    val.Integer=0;
+		    break;
+		case DATA_T_DOUBLE:
+		    xsConcatPrintf(str, "%s: %f", name, val.Double);
+		    break;
+		case DATA_T_CODE:
+		    xsInit(&expr);
+		    expGenerateText((pExpression)val.Generic, NULL, xsWrite, &expr, 0, "javascript");
+		    xsConcatPrintf(str, "%s: \"%s\"", name, expr.String);
+		    xsDeInit(&expr);
+		    break;
+		/** TODO: Support for other datatypes should probably be added **/
+		default:
+		    mssError(1, "IFC", "Can't convert properties of type %d in ObToJS - FIXME!", type);
+		    break;
+		}
+	    name = objGetNextAttr(obj);
+	    }
+
+	/** now get sub-objects **/
+	if ( (qy = objOpenQuery(obj, NULL, NULL, NULL, NULL)) != NULL)
+	    {
+	    while ( (subobj = objQueryFetch(qy, O_RDONLY)) != NULL)
+		{
+		xsConcatenate(str, ",", 1);
+		objGetAttrValue(subobj, "name", DATA_T_STRING, &val);
+		xsConcatPrintf(str, "%s:", val.String);
+		ifc_internal_ObjToJS(str, subobj);
+		objClose(subobj);
+		}
+	    objQueryClose(qy);
+	    }
+
+	/** all done **/
+	xsConcatenate(str, "}", 1);
+
+	return 0;
+    }
+
+
+/*** ifcToHtml - writes the interface out into html code that would be
+ *** easy to parse by a browser. Uses a bunch of nested tables to represent
+ *** the info.
+ ***
+ ***/
+int 
+ifcToHtml(pFile file, pObjSession s, char* def_str)
+    {
+    int i, j, k, l;
+    pIfcDefinition def;
+    pIfcMajorVersion maj_v;
+    char path[512];
+    pObject obj;
+    XString js_obj;
+
+	/** make sure we get an absolute path **/
+	if (def_str[0] == '/') strncpy(path, def_str, 512);
+	else snprintf(path, 512, "%s/%s", IFC.IfaceDir, def_str);
+	    
+	/** see if we can look up the definition **/
+	if ( (def = (pIfcDefinition)xhLookup(&(IFC.Definitions), path)) == NULL)
+	    {
+	    /** hasn't been parsed yet - parse it **/
+	    if ( (def = ifc_internal_NewIfcDef(s, path)) == NULL)
+		{
+		mssError(0, "IFC", "Couldn't parse interface definition '%s'", def_str);
+		return -1;
+		}
+	    if (xhAdd(&(IFC.Definitions), def->Path, (void*)def) < 0) mssError(0, "IFC", "Couldn't cache");
+	    }
+	
+	/** we've got an interface definition, one way or another. Time to translate**/
+	xsInit(&js_obj);
+	for (i=0;i<xaCount(&(def->MajorVersions));i++)
+	    {
+	    if ( (maj_v = xaGetItem(&(def->MajorVersions), i)) == NULL) continue;
+
+	    fdPrintf(file, "<a target=\"start\" href=\"http://v%d\"></a>\n", i);
+	    for (j=0;j<maj_v->NumMinorVersions;j++)
+		{
+		fdPrintf(file, "  <a target=\"start\" href=\"http://v%d\"></a>\n", j);
+		for (k=0;k<IFC.NumCategories[def->Type];k++)
+		    {
+		    fdPrintf(file, "    <a target=\"start\" href=\"http://%s\"></a>\n",
+			IFC.CategoryNames[def->Type][k]);
+		    for (l=(int)xaGetItem(&(maj_v->Offsets[k]), j);l<xaCount(&(maj_v->Members[k]));l++)
+			{
+			fdPrintf(file, "      <a target=\"start\" href=\"http://%s\">", 
+			    xaGetItem(&(maj_v->Members[k]), l));
+			if ( (obj = objOpen(s, xaGetItem(&(maj_v->Properties[k]), l), O_RDONLY, 0400, NULL)) != NULL)
+			    {
+			    xsDeInit(&js_obj);
+			    xsInit(&js_obj);
+			    ifc_internal_ObjToJS(&js_obj, obj);
+			    ifc_internal_EncodeHTML(&js_obj);
+			    fdPrintf(file, "%s", js_obj.String);
+			    objClose(obj);
+			    }
+			fdPrintf(file, "</a>\n");
+//			fdPrintf(file, "      <a target=\"end\" href=\"\"></a>\n", 
+//			    xaGetItem(&(maj_v->Members[k]), l));
+			}
+		    fdPrintf(file, "    <a target=\"end\" href=\"\"></a>\n");
+		    }
+		fdPrintf(file, "  <a target=\"end\" href=\"http://v%d\"></a>\n", j);
+		}
+	    fdPrintf(file, "<a target=\"end\" href=\"http://v%d\"></a>\n",	i);
+	    }
+	xsDeInit(&js_obj);
+
+	return 0;
+    }
+
+/*** ifcHtmlInit_r - recursive function for adding as many interface definitions as
+ *** we can to the client-side code, so they don't have to be loaded from the server
+ *** dynamically
+ ***/
+int
+ifc_internal_HtmlInit_r(pHtSession s, pXString func, pWgtrNode tree, pXArray AlreadyProcessed)
+    {
+    int i, j, maj_v_num, min_v_num, cat, member, first_cat, first_member, first_majv, first_minv, len;
+    IfcHandle h;
+    char* ptr;
+    pIfcDefinition def;
+    pIfcMajorVersion maj_v;
+    XString js_obj;
+    pObject obj;
+
+	xsInit(&js_obj);
+	/** for each interface **/
+	for (i=0;i<xaCount(&(tree->Interfaces));i++)
+	    {
+	    h = xaGetItem(&(tree->Interfaces), i);
+	    len = xaCount(AlreadyProcessed);
+	    /** try to find it in the AlreadyProcessed list **/
+	    for (j=0;j<len;j++)
+		{
+		ptr = xaGetItem(AlreadyProcessed, j);
+		if (!strcmp(ptr, h->DefPath)) break;
+		}
+	    /** did we find it? **/
+	    if (j != len && len != 0) continue;
+
+	    /** add this interface def to the list of defs we already got **/
+	    xaAddItem(AlreadyProcessed, h->DefPath);
+
+	    /** look up the definition this handle was generated from **/
+	    if ( (def = (pIfcDefinition)xhLookup(&(IFC.Definitions), h->DefPath)) == NULL)
+		{
+		xsDeInit(&js_obj);
+		mssError(1, "IFC", "Couldn't lookup definition '%s' that handle was made from", h->DefPath);
+		return -1;
+		}
+
+	    /** add an inline declaration of this guy **/
+	    xsConcatPrintf(func, "    IFC.Definitions['%s'] = new Object();\n", h->DefPath);
+	    xsConcatPrintf(func, "    IFC.Definitions['%s'].Path='%s';\n", h->DefPath, h->DefPath);
+	    xsConcatPrintf(func, "    IFC.Definitions['%s'].Type='%s';\n", h->DefPath, IFC.TypeNames[h->Type]);
+	    xsConcatPrintf(func, "    IFC.Definitions['%s'].DEFINITION=true;\n", h->DefPath);
+	    xsConcatPrintf(func, "    IFC.Definitions['%s'].MajorVersions=[", h->DefPath);
+	    first_majv=1;
+	    /** for each major version **/
+	    for (maj_v_num=0;maj_v_num<xaCount(&(def->MajorVersions));maj_v_num++)
+		{
+		if (!first_majv) xsConcatenate(func, ",", 1);
+		else first_majv=0;
+		if ((maj_v = xaGetItem(&(def->MajorVersions), maj_v_num)) != NULL)
+		    {
+		    xsConcatPrintf(func, "[");
+		    /** for each minor version **/
+		    first_minv=1;
+		    for (min_v_num=0;min_v_num<maj_v->NumMinorVersions;min_v_num++)
+			{
+			if (!first_minv) xsConcatenate(func, ",",1);
+			else first_minv=0;
+			xsConcatPrintf(func, "{");
+			first_cat=1;
+			/** for each category **/
+			for (cat=0;cat<IFC.NumCategories[h->Type];cat++)
+			    {
+			    if (!first_cat) xsConcatPrintf(func, ",");
+			    else first_cat = 0;
+			    xsConcatPrintf(func, "%s:{", IFC.CategoryNames[h->Type][cat]);
+			    first_member=1;
+			    /** for each member **/
+			    for (member=(int)xaGetItem(&(maj_v->Offsets[cat]), min_v_num);
+				 member<xaCount(&(maj_v->Members[cat]));member++)
+				{
+				if (!first_member) xsConcatPrintf(func, ",");
+				else first_member=0;
+				xsDeInit(&js_obj);
+				xsInit(&js_obj);
+				if ( (obj=objOpen(s->ObjSession, xaGetItem(&(maj_v->Properties[cat]), member),
+						    O_RDONLY, 0400, NULL)) != NULL)
+				    {
+				    ifc_internal_ObjToJS(&js_obj, obj);
+				    }
+				xsConcatPrintf(func, "%s:%s", xaGetItem(&(maj_v->Members[cat]), member), js_obj.String);
+				} /** end for each member **/
+			    xsConcatPrintf(func, "}");
+			    } /** end for each category **/
+			xsConcatPrintf(func, "}");
+			} /** end for each minor version **/
+		    xsConcatPrintf(func, "]");
+		    } /** end if **/
+		} /** end for each major version **/
+	    xsConcatPrintf(func, "];"); 
+	    } /** end for each interface **/
+
+	xsDeInit(&js_obj);
+	/** call ourselves recursively on each node **/
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    if (ifc_internal_HtmlInit_r(s, func, xaGetItem(&(tree->Children), i), AlreadyProcessed) < 0) return -1;
+	return 0;
+    }
+
+/*** ifcHtmlInit - write the necessary DHTML that the client-side interface module will need
+ ***/
+int
+ifcHtmlInit(pHtSession s, pWgtrNode tree)
+    {
+    XArray AlreadyProcessed;
+    XString func;
+    char* fnbuf;
+
+	/** first add the necessary DHTML, and call to init **/
+	htrAddScriptInclude(s, "/sys/js/ht_utils_iface.js", 0);
+	htrAddStylesheetItem(s, "        #ifc_layer {position: absolute; visibility: hidden;}\n");
+	htrAddBodyItem(s, "<div id=\"ifc_layer\"></div>\n");
+	htrAddScriptInit_va(s, "    ifcInitialize(\"%s\");\n", IFC.IfaceDir);
+	htrAddScriptInit(s, "    init_inline_interfaces();\n");
+
+	/** now create all the interface info we know of in-line **/
+	xaInit(&AlreadyProcessed, 16);
+	xsInit(&func);
+	xsConcatenate(&func, "\nfunction init_inline_interfaces()\n    {\n", -1);
+	ifc_internal_HtmlInit_r(s, &func, tree, &AlreadyProcessed);
+	xsConcatenate(&func, "\n    }\n", -1);
+
+	/** print the generated function **/
+	fnbuf = nmSysStrdup(func.String);
+	htrAddScriptFunction(s, "init_inline_interfaces", fnbuf, HTR_F_VALUEALLOC);
+	xsDeInit(&func);
+	xaDeInit(&AlreadyProcessed);
+	return 0;
+    }
+   
 

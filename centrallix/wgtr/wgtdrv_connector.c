@@ -62,6 +62,7 @@ wgtconnVerify(pWgtrVerifySession s)
 int
 wgtconnNew(pWgtrNode node)
     {
+	node->Flags |= WGTR_F_NONVISUAL;
     return 0;
     }
 
