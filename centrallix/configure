@@ -4404,6 +4404,51 @@ fi
 rm -f confcache
 
 
+	# Extract the first word of "makedepend", so it can be a program name with args.
+set dummy makedepend; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_MAKEDEPEND+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$MAKEDEPEND"; then
+  ac_cv_prog_MAKEDEPEND="$MAKEDEPEND" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_MAKEDEPEND="yes"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+  test -z "$ac_cv_prog_MAKEDEPEND" && ac_cv_prog_MAKEDEPEND="no"
+fi
+fi
+MAKEDEPEND=$ac_cv_prog_MAKEDEPEND
+if test -n "$MAKEDEPEND"; then
+  echo "$as_me:$LINENO: result: $MAKEDEPEND" >&5
+echo "${ECHO_T}$MAKEDEPEND" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+	if test "$MAKEDEPEND" != "yes"; then
+	    { { echo "$as_me:$LINENO: error: *** The \"makedepend\" utility does not appear to be available on your system.  It is required for building Centrallix and is usually found in the XFree86-devel or xorg-x11-devel packages on RPM-based systems." >&5
+echo "$as_me: error: *** The \"makedepend\" utility does not appear to be available on your system.  It is required for building Centrallix and is usually found in the XFree86-devel or xorg-x11-devel packages on RPM-based systems." >&2;}
+   { (exit 1); exit 1; }; }
+	fi
+
+
+
+
 
 
 	has_ctype_b="test"
@@ -6650,6 +6695,7 @@ s,@LIBOBJS@,$LIBOBJS,;t t
 s,@CXINCDIR@,$CXINCDIR,;t t
 s,@CXLIBDIR@,$CXLIBDIR,;t t
 s,@CXOSDIR@,$CXOSDIR,;t t
+s,@MAKEDEPEND@,$MAKEDEPEND,;t t
 s,@DRIVERLIST@,$DRIVERLIST,;t t
 s,@ENABLE_GZIP@,$ENABLE_GZIP,;t t
 s,@GZIP_CFLAGS@,$GZIP_CFLAGS,;t t

@@ -8,6 +8,17 @@ AC_DEFUN(CENTRALLIX_ADD_DRIVER,
     ]
 )
 
+dnl Check for the presence of makedepend, without which the build will not
+dnl work.  makedepend is typically in an XFree86-devel or xorg-devel package.
+AC_DEFUN(CHECK_MAKEDEPEND,
+    [
+	AC_CHECK_PROG([MAKEDEPEND],[makedepend],[yes],[no])
+	if test "$MAKEDEPEND" != "yes"; then
+	    AC_MSG_ERROR([*** The "makedepend" utility does not appear to be available on your system.  It is required for building Centrallix and is usually found in the XFree86-devel or xorg-x11-devel packages on RPM-based systems.])
+	fi
+    ]
+)
+
 dnl Test for __ctype_b presence and usability.  Newer glibc versions obliterated
 dnl this poor little symbol from being used by older libraries...
 AC_DEFUN(CHECK_CTYPE_B,
