@@ -1,10 +1,9 @@
-#if 0
- vim:softtabstop=4:shiftwidth=4:noexpandtab:
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <regex.h>
 #include "obj.h"
 #include "mtask.h"
 #include "stparse.h"
@@ -92,12 +91,12 @@ typedef struct
     HttpQuery, *pHttpQuery;
 
 /*** GLOBALS ***/
-#if 0
     struct
     {
+    regex_t parsehttp;
+    regex_t httpheader;
     }
     HTTP_INF;
-#endif
     
 /*** http_internal_Cleanup - deallocates all memory allocated
  ***/
@@ -321,51 +320,37 @@ http_internal_GetPageStream(pHttpData inf)
 		if(status/100==3)
 		    {
 		    if(!strcmp(ptr,"Location"))
-			{   // this is VERY trusting parsing code....
-			    //   is there a module with some in?
-			char *server;
-			char *port;
-			char *path;
-			int numslash=0;
-			int colon=0;
-			/** Process ptr2 (the place to go to) **/
-			server=ptr2;
-			while(numslash<2)
+			{   // changed to GNU regex matching -- much better
+			regmatch_t pmatch[5];
+			if(regexec(&HTTP_INF.parsehttp,ptr2,5,pmatch,0)==REG_NOMATCH)
 			    {
-			    if(server[0]=='/') numslash++;
-			    server++;
+			    // the Location: line was unparsable
+			    return 2; // try up one more level
 			    }
-			port=server;
-			while(numslash<3 && colon==0)
-			    {
-			    if(port[0]=='/') numslash++;
-			    if(port[0]==':') colon++;
-			    if(numslash<3) port++;
-			    }
-			path=server;
-			numslash=2;
-			while(numslash<3)
-			    {
-			    if(path[0]=='/') numslash++;
-			    path++;
-			    }
-			free(inf->Path);
-			free(inf->Port);
 			free(inf->Server);
+			free(inf->Port);
+			free(inf->Path);
 
-			inf->Path=(char*)malloc(strlen(path)+1);
-			if(!inf->Path) return (int)http_internal_Cleanup(inf,"malloc error");
-			strcpy(inf->Path,path);
+#define COPY_FROM_PMATCH(p,m) \
+			(p)=(char*)malloc(pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
+			if(!(p)) return (int)http_internal_Cleanup(inf,"malloc error");\
+			memset((p),0,pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
+			strncpy((p),ptr2+pmatch[(m)].rm_so,pmatch[(m)].rm_eo-pmatch[(m)].rm_so);
 
-			(path-1)[0]='\0';
-			inf->Port=(char*)malloc(strlen(port)+1);
-			if(!inf->Port) return (int)http_internal_Cleanup(inf,"malloc error");
-			strcpy(inf->Port,port);
+			COPY_FROM_PMATCH(inf->Server,1);
 			
-			if(port[0]!='\0') (port-1)[0]='\0';
-			inf->Server=(char*)malloc(strlen(server)+1);
-			if(!inf->Server) return (int)http_internal_Cleanup(inf,"malloc error");
-			strcpy(inf->Server,server);
+			if(pmatch[3].rm_so==-1) // port is optional
+			    {
+			    inf->Port=(char*)malloc(1);
+			    if(!inf->Port) return (int)http_internal_Cleanup(inf,"malloc error");
+			    inf->Port[0]='\0';
+			    }
+			else
+			    {
+			    COPY_FROM_PMATCH(inf->Port,3);
+			    }
+
+			COPY_FROM_PMATCH(inf->Path,4);
 
 			inf->Redirected=1;
 			return 2; //unsuccessfull -- try again with updated params
@@ -397,7 +382,7 @@ http_internal_GetPageStream(pHttpData inf)
 		}
 	    else
 		{   /** Look for HTTP -- first line of header if server is >=HTTP/1.0 **/
-		if(ptr[0]=='H' && ptr[1]=='T' && ptr[2]=='T' && ptr[3]=='P')
+		if(regexec(&HTTP_INF.httpheader,ptr,0,NULL,0)==0)
 		    {
 		    p1=ptr;
 		    while(p1[0]!=' ' && p1-ptr<strlen(ptr)) p1++;
@@ -837,11 +822,28 @@ int
 httpInitialize()
     {
     pObjDriver drv;
+    int retval;
+    char temp[256];
 
 	/** Allocate the driver **/
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
 	if (!drv) return -1;
 	memset(drv, 0, sizeof(ObjDriver));
+
+	/** Initialize globals **/
+	memset(&HTTP_INF,0,sizeof(HTTP_INF));
+	retval=regcomp(&HTTP_INF.parsehttp,"http://([^:/]+)(:(.+))?/(.*)",REG_EXTENDED | REG_ICASE);
+	if(retval)
+	{
+	    regerror(retval,&HTTP_INF.parsehttp,temp,256);
+	    mssError(0,"HTTP","Error while building regex: %s",temp);
+	}
+	retval=regcomp(&HTTP_INF.httpheader,"^HTTP",REG_EXTENDED | REG_ICASE | REG_NOSUB);
+	if(retval)
+	{
+	    regerror(retval,&HTTP_INF.httpheader,temp,256);
+	    mssError(0,"HTTP","Error while building regex: %s",temp);
+	}
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"HTTP - HTTP Protocol for objectsystem");
