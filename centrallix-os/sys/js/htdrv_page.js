@@ -103,7 +103,7 @@ function pg_get_style(element,attr)
             }
         else 
             {
-            alert(" attr " + attr + " needs to be implemeneted in pg_get_style in htdrv_page.js");
+            alert(" attr " + attr + " need to be implemeneted in pg_get_style of htdrv_page.js");
             }
         return null;
         }
@@ -205,7 +205,7 @@ function pg_set_style(element,attr, value)
 	    }	    
 	else
 	    {
-	    alert("attr " + attr + " needs to be implemented in pg_set_style in htdrv_page.js.");
+	    alert(attr + " is not implemented.");
 	    return;
 	    }
 	return;
@@ -528,6 +528,7 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     pg_set_style(bl, 'visibility', 'hidden');
     pg_set_style(rl, 'visibility', 'hidden');
     pg_set_style(ll, 'visibility', 'hidden');
+    //abc();
     if (cx__capabilities.Dom0NS)
         {
     	tl.bgColor = c1;
@@ -570,12 +571,11 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
 /** To hide a box **/
 function pg_hidebox(tl,bl,rl,ll)
     {
+    tl.visibility = 'hidden';
+    bl.visibility = 'hidden';
+    rl.visibility = 'hidden';
+    ll.visibility = 'hidden';
     
-    pg_set_style(tl, 'visibility', 'hidden');
-    pg_set_style(bl, 'visibility', 'hidden');
-    pg_set_style(rl, 'visibility', 'hidden');
-    pg_set_style(ll, 'visibility', 'hidden');
-
     if (cx__capabilities.Dom0NS)
         {    
         tl.moveAbove(document.layers.pgtvl);
@@ -725,6 +725,12 @@ function pg_togglecursor()
     if (pg_curkbdlayer != null && pg_curkbdlayer.cursorlayer != null)
 	{
 	var cl = pg_curkbdlayer.cursorlayer;
+
+	//status = cl.currentStyle.visibility;
+	//status = cl.style.left + " " + cl.style.top;
+	//resizeTo(cl, 100, 100);
+	
+	//status = cl.runtimeStyle.zIndex;
 	
 	if (pg_get_style(cl,'visibility') != 'inherit')
 	    pg_set_style(cl,'visibility','inherit');
@@ -1089,12 +1095,14 @@ function pg_setkbdfocus(l, a, xo, yo)
 
     if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
 	{
+		//abc();
 	var v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a);
 	if (v & 1)
 	    {
 	    // mk box for kbd focus
 	    if (prevArea != a)
 		{
+		//alert("inside..");
 		if (cx__capabilities.Dom0NS)
 		    {
 		    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
@@ -1444,5 +1452,35 @@ function pg_debug_register_log(l)
 // send debug msg
 function pg_debug(msg)
     {
-    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg});
+    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg, ContentType:'text/plain'});
     }
+
+// log function calls and return values.
+function pg_log_fn(fnname)
+    {
+    if (typeof(window[fnname]) != 'function') 
+        {
+	pg_debug(fnname + ' is not a function.\n');
+	return;
+	}
+    var oldfn = window[fnname].toString();
+    var openparen = oldfn.indexOf('(');
+    var closeparen = oldfn.indexOf(')');
+    var openbrace = oldfn.indexOf('{');
+    var closebrace = oldfn.lastIndexOf('}');
+    var argstext = oldfn.substring(openparen+1,closeparen);
+    var args = argstext.split(',');
+    var body = oldfn.substring(openbrace+1,closebrace);
+    body = "var __debugmsg = '" + fnname + " called with ('; for(var __i=0;__i<arguments.length;__i++) { if (__i > 0) __debugmsg += ', '; switch(typeof(arguments[__i])) { case 'string': __debugmsg += \"'\" + arguments[__i] + \"'\"; break; case 'function': __debugmsg += arguments[__i].name + '()'; break; default: __debugmsg += arguments[__i]; break; } } __debugmsg += ')\\n'; pg_debug(__debugmsg); function __internal(" + argstext + ") {" + body + "} var __rval = __internal.apply(this,arguments); pg_debug('" + fnname + " returned: ' + __rval + '\\n'); return __rval;";
+    //args.push(body);
+    var fndecl = 'new Function(';
+    for(var i=0;i<args.length;i++)
+	{
+	if (args[i] == '') continue;
+	fndecl += '"' + args[i] + '", ';
+	}
+    fndecl += 'body)';
+    window[fnname] = eval(fndecl);
+    return;
+    }
+
