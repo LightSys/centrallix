@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.10 2004/02/24 20:02:26 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.11 2004/09/01 02:36:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.11  2004/09/01 02:36:26  gbeeley
+    - get rid of last_modification warnings on qyt static elements by setting
+      static element last_modification to that of the node itself.
+
     Revision 1.10  2004/02/24 20:02:26  gbeeley
     - adding proper support for external references in an expression, so
       that they get re-evaluated each time.  Example - getdate().
@@ -1508,7 +1512,7 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 #endif
 	
 	/** If node is NOT stale and NOT in modified cov mask, return now. **/
-	if (!(tree->Flags & (EXPR_F_NEW)) && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) return 0;
+	if (!(tree->Flags & (EXPR_F_NEW)) && objlist && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) return 0;
 	tree->Flags &= ~EXPR_F_NEW;
 
 	/** Call the appropriate evaluator fn based on type **/

@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.11 2004/08/30 19:07:07 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.12 2004/09/01 02:36:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.12  2004/09/01 02:36:27  gbeeley
+    - get rid of last_modification warnings on qyt static elements by setting
+      static element last_modification to that of the node itself.
+
     Revision 1.11  2004/08/30 19:07:07  gbeeley
     - add driver-opened-objects management to qytree to avoid double closes
       on objects when the session times out.
@@ -1260,6 +1264,13 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	/** Low-level object?  Lookup the attribute in it **/
 	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, val);
+
+	/** last_modification?  Lookup from node **/
+	if (!strcmp(attrname,"last_modification"))
+	    {
+	    val->DateTime = snGetLastModification(inf->BaseNode);
+	    return 0;
+	    }
 
 	mssError(1,"QYT","Invalid attribute '%s' for querytree object", attrname);
 

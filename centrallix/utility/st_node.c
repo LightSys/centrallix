@@ -48,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.c,v 1.4 2004/08/30 03:15:03 gbeeley Exp $
+    $Id: st_node.c,v 1.5 2004/09/01 02:36:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/st_node.c,v $
 
     $Log: st_node.c,v $
+    Revision 1.5  2004/09/01 02:36:27  gbeeley
+    - get rid of last_modification warnings on qyt static elements by setting
+      static element last_modification to that of the node itself.
+
     Revision 1.4  2004/08/30 03:15:03  gbeeley
     - adding magic number support to SnNode.  there is a BUG in this module
       regarding a rewritten file and existing references in osdrivers to the
@@ -251,6 +255,7 @@ snNewNode(pObject obj, char* content_type)
     pSnNode new_node;
     char* ptr;
     char* path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr + obj->SubCnt - 1);
+    pExpression exp;
 
     	/** Allocate the node. **/
 	new_node = (pSnNode)nmMalloc(sizeof(SnNode));
@@ -266,6 +271,12 @@ snNewNode(pObject obj, char* content_type)
 	new_node->OpenCnt = 0;
 	new_node->RevisionCnt = (SN_INF.MasterRevCnt++);
 	obj_internal_PathPart(obj->Pathname,0,0);
+
+	/** Set the initial modification time **/
+	exp = expCompileExpression("getdate()", NULL, 0, 0);
+	expEvalTree(exp, NULL);
+	memcpy(&(new_node->LastModification), &(exp->Types.Date), sizeof(DateTime));
+	expFreeExpression(exp);
 
     return new_node;
     }
@@ -298,6 +309,17 @@ snGetSerial(pSnNode node)
     {
     ASSERTMAGIC(node, MGK_STNODE);
     return node->RevisionCnt;
+    }
+
+
+/*** snGetLastModification - return the date/time of the last modification
+ *** of the node file.  Pointer is valid as long as the node remains valid.
+ *** Caller should not free the pointer.
+ ***/
+pDateTime
+snGetLastModification(pSnNode node)
+    {
+    return &(node->LastModification);
     }
 
 

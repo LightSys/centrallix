@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.h,v 1.2 2004/08/30 03:18:48 gbeeley Exp $
+    $Id: st_node.h,v 1.3 2004/09/01 02:36:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/st_node.h,v $
 
     $Log: st_node.h,v $
+    Revision 1.3  2004/09/01 02:36:26  gbeeley
+    - get rid of last_modification warnings on qyt static elements by setting
+      static element last_modification to that of the node itself.
+
     Revision 1.2  2004/08/30 03:18:48  gbeeley
     - magic number checking in SnNode.
 
@@ -86,6 +90,7 @@ int snWriteNode(pObject obj, pSnNode node);
 pSnNode snNewNode(pObject obj, char* content_type);
 int snDelete(pSnNode node);
 int snGetSerial(pSnNode node);
+pDateTime snGetLastModification(pSnNode node);
 
 /** Special node parameter functions. **/
 int snSetParamString(pSnNode node, pObject obj, char* paramname, char* default_val);
