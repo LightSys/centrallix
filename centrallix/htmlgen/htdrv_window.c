@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.41 2004/08/30 03:20:19 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.42 2004/12/31 04:42:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.42  2004/12/31 04:42:03  gbeeley
+    - global variable pollution fixes for dropdown widget
+    - use dd_collapse() for dropdown widget event script
+    - fix to background image for windows
+
     Revision 1.41  2004/08/30 03:20:19  gbeeley
     - updates for widgets
     - bugfix for htrRender() handling of event handler function return values
@@ -678,7 +683,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    htrAddBodyItem_va(s,"<TR><TD colspan=\"5\"><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"%d\" height=\"1\"></TD></TR>\n",w);
 	    htrAddBodyItem(s,"</TABLE>\n");
 
-	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"%d\" height=\"%d\"><tr %s><td>&nbsp;</td></tr></table>\n",id,bw,bh,bgnd);
+	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"%d\" height=\"%d\" %s><tr><td>&nbsp;</td></tr></table>\n",id,bw,bh,bgnd);
 	    }
 
 

@@ -138,17 +138,17 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
     htrAddEventHandler(s, "document","MOUSEMOVE", "dd", 
 	"\n"
-	"    ti=dd_target_img;\n"
+	"    var ti=dd_target_img;\n"
 	"    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')\n"
 	"        {\n"
 	"        var pl=ti.mainlayer.PaneLayer;\n"
-	"        v=pl.clip.height-(3*18)-4;\n"
-	"        new_y=dd_thum_y+(e.pageY-dd_click_y)\n"
+	"        var v=pl.clip.height-(3*18)-4;\n"
+	"        var new_y=dd_thum_y+(e.pageY-dd_click_y)\n"
 	"        if (new_y > pl.pageY+20+v) new_y=pl.pageY+20+v;\n"
 	"        if (new_y < pl.pageY+20) new_y=pl.pageY+20;\n"
 	"        ti.thum.pageY=new_y;\n"
-	"        h=dd_current.PaneLayer.h;\n"
-	"        d=h-pl.clip.height+4;\n"
+	"        var h=dd_current.PaneLayer.h;\n"
+	"        var d=h-pl.clip.height+4;\n"
 	"        if (d<0) d=0;\n"
 	"        dd_incr = (((ti.thum.y-22)/(v-4))*-d)-dd_current.PaneLayer.ScrLayer.y;\n"
 	"        dd_scroll(0);\n"
@@ -254,10 +254,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	"        }\n"
 	"    if (dd_current && dd_current != ly && dd_current.PaneLayer != ly && (!ly.mainlayer || dd_current != ly.mainlayer))\n"
 	"        {\n"
-	"        dd_current.PaneLayer.visibility = 'hide';\n"
-	"        dd_current.clip.height -= dd_current.PaneLayer.clip.height;\n"
-	"        pg_resize_area(dd_current.area,dd_current.clip.width+1,dd_current.clip.height+1);\n"
-	"        dd_current = null;\n"
+	"        dd_collapse(dd_current);\n"
 	"        }\n"
 	"\n");
 
@@ -437,10 +434,15 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.47 2004/08/27 01:28:32 jorupp Exp $
+    $Id: htdrv_dropdown.c,v 1.48 2004/12/31 04:42:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.48  2004/12/31 04:42:03  gbeeley
+    - global variable pollution fixes for dropdown widget
+    - use dd_collapse() for dropdown widget event script
+    - fix to background image for windows
+
     Revision 1.47  2004/08/27 01:28:32  jorupp
      * cleaning up some compile warnings
 
