@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.20 2002/04/28 06:00:38 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.21 2002/04/28 21:36:59 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.21  2002/04/28 21:36:59  jorupp
+     * only one session at a time open
+     * only one query at a time open
+     * disabled query close on exit, as it would crash the browser or load a blank page
+
     Revision 1.20  2002/04/28 06:00:38  jorupp
      * added htrAddScriptCleanup* stuff
      * added cleanup stuff to osrc
@@ -535,8 +540,15 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    {\n"
       "    //Open Session\n"
       "    //alert('open');\n"
-      "    this.onload = osrc_open_query;\n"
-      "    this.src = '/?ls__mode=osml&ls__req=opensession'\n"
+      "    if(this.sid)\n"
+      "        {\n"
+      "        this.OpenQuery();\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        this.onload = osrc_open_query;\n"
+      "        this.src = '/?ls__mode=osml&ls__req=opensession'\n"
+      "        }\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_open_query", "\n"
@@ -544,7 +556,14 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    {\n"
       "    //Open Query\n"
       "    //alert('sid' + this.document.links[0].target);\n"
-      "    this.sid=this.document.links[0].target;\n"
+      "    if(!this.sid) this.sid=this.document.links[0].target;\n"
+      "    if(this.qid)\n"
+      "        {\n"
+      "        this.onload=osrc_open_query;\n"
+      "        this.src=\"/?ls__mode=osml&ls__req=queryclose&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "        this.qid=null;\n"
+      "        return 0;\n"
+      "        }\n"
       "    this.onload = osrc_get_qid;\n"
       "    this.src=\"/?ls__mode=osml&ls__req=multiquery&ls__sid=\"+this.sid+\"&ls__sql=\" + this.query;\n"
       "    //this.src = '/escape.html';\n"
@@ -860,6 +879,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddScriptFunction(s, "osrc_cleanup", "\n"
       "function osrc_cleanup()\n"
       "    {\n"
+      /** this last-second page load is screwing something up... **/
+      /**   sometimes it will cause a blank page to be loaded, others it's a 'bus error' crash **/
+      "    return 0;\n" 
       "    if(this.qid)\n"
       "        {\n" /* why does the browser load a blank page when you try to move away? */
       "        this.onLoad=null;\n"
