@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.24 2002/07/20 19:44:25 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.25 2002/07/24 20:33:15 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.25  2002/07/24 20:33:15  lkehresman
+    Complete reworking of the dropdown widget.  Much more functionality
+    (including, FINALLY, a working scrollbar).  Better interface.  More
+    bugs (still working out some of the kinks).  This also has a shell
+    for client-side dynamic population of the dropdown, which was the
+    main reason for the restructure/rewrite.
+
     Revision 1.24  2002/07/20 19:44:25  lkehresman
     Event handlers now have the variable "ly" defined as the target layer
     and it will be global for all the events.  We were finding that nearly
@@ -179,8 +186,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char *sql;
    char *str;
    char *attr;
-   int type, rval;
-   int x,y,w;
+   int type, rval, mode, count=0;
+   int x,y,w,h;
    int id;
    int num_disp;
    ObjData od;
@@ -193,6 +200,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Get x,y of this object **/
    if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
    if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) h=20;
    if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) {
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	return -1;
@@ -220,145 +228,239 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	fieldname[0]='\0';
    }
 
-   /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+    /** Ok, write the style header items. **/
+    htrAddStylesheetItem_va(s,"\t#dd%dbtn { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+    htrAddStylesheetItem_va(s,"\t#dd%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
 
-   htrAddScriptGlobal(s, "dd_current", "null", 0);
-   htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
+    htrAddScriptGlobal(s, "dd_current", "null", 0);
+    htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
+    htrAddScriptGlobal(s, "dd_target_img", "null", 0);
+    htrAddScriptGlobal(s, "dd_thum_y","0",0);
+    htrAddScriptGlobal(s, "dd_timeout","null",0);
+    htrAddScriptGlobal(s, "dd_click_x","0",0);
+    htrAddScriptGlobal(s, "dd_click_y","0",0);
+    htrAddScriptGlobal(s, "dd_incr","0",0);
 
-   htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js", 0);
+    htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+    htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js", 0);
 
-   htrAddEventHandler(s, "document","MOUSEOVER", "dropdown", 
+    htrAddEventHandler(s, "document","MOUSEMOVE", "dd", 
 	"\n"
-	"   if (dd_current != null && dd_current == ly.topLayer && ly.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
-	"      dd_hilight_item(ly);\n"
-	"   }\n"
+	"    ti=dd_target_img;\n"
+	"    if (ly.kind == 'dd_sc' && ti != null && ti.name == 't')\n"
+	"        {\n"
+	"        var pl=ti.mainlayer.PaneLayer;\n"
+	"        v=pl.clip.height-(3*18)-4;\n"
+	"        new_y=dd_thum_y+(e.pageY-dd_click_y)\n"
+	"        if (new_y > pl.pageY+20+v) new_y=pl.pageY+20+v;\n"
+	"        if (new_y < pl.pageY+20) new_y=pl.pageY+20;\n"
+	"        ti.thum.pageY=new_y;\n"
+	"        h=dd_current.PaneLayer.h;\n"
+	"        d=h-pl.clip.height-4;\n"
+	"        if (d<0) d=0;\n"
+	"        dd_incr = (((ti.thum.y-22)/(v-4))*-d)-dd_current.PaneLayer.ScrLayer.y;\n"
+	"        dd_scroll(0);\n"
+	"        return false;\n"
+	"        }\n"
 	"\n");
 
-   htrAddEventHandler(s, "document","MOUSEUP", "dropdown", 
+    htrAddEventHandler(s, "document","MOUSEOVER", "dd", 
 	"\n"
-	"   if (dd_current != null && ly.subkind == 'dropdown_scroll' && dd_current.enabled == 'full') {\n" 
-	"      if (ly.name == 'up') {\n"
-	"         ly.src = '/sys/images/ico13b.gif';\n"
-	"      } else if (ly.name == 'down') {\n"
-	"         ly.src = '/sys/images/ico12b.gif';\n"
-	"      }\n"
-	"   }\n"
+	"    if (ly.kind == 'dd_itm')\n"
+	"        {\n"
+	"        dd_lastkey = null;\n"
+	"        dd_hilight_item(dd_current, ly.index);\n"
+	"        }\n"
 	"\n");
 
-   htrAddEventHandler(s, "document","MOUSEDOWN", "dropdown", 
+    htrAddEventHandler(s, "document","MOUSEUP", "dd", 
 	"\n"
-	"   if (dd_current != null && (ly != dd_current || ly.kind != 'dropdown')) {\n"
-	"      if (ly.subkind == 'dropdown_scroll' || ly.subkind == 'dropdown_thumb') {\n"
-	"          if (ly.name == 'up' && dd_current.topLayer.scrollPanelLayer.viewRangeTop > 0) {\n"
-	"              ly.src = '/sys/images/ico13c.gif';\n"
-	"              dd_current.topLayer.scrollPanelLayer.y += 8;\n"
-	"              dd_current.topLayer.scrollPanelLayer.viewRangeTop -= 8;\n"
-	"              dd_current.topLayer.scrollPanelLayer.viewRangeBottom -= 8;\n"
-	"          } else if (ly.name == 'down' && dd_current.topLayer.scrollPanelLayer.viewRangeBottom < dd_current.topLayer.scrollPanelLayer.clip.height) {\n"
-	"              ly.src = '/sys/images/ico12c.gif';\n"
-	"              dd_current.topLayer.scrollPanelLayer.y -= 8;\n"
-	"              dd_current.topLayer.scrollPanelLayer.viewRangeTop += 8;\n"
-	"              dd_current.topLayer.scrollPanelLayer.viewRangeBottom += 8;\n"
-	"          }\n"
-	"      } else {\n"
-	"          dd_select_item(ly);\n"
-	"      }\n"
-	"   } else if (ly != null && ly.kind == 'dropdown') {\n"
-	"      ly.ddLayer.zIndex = 1000000;\n"
-	"      ly.ddLayer.pageX = ly.pageX;\n"
-	"      ly.ddLayer.pageY = ly.pageY + 18;\n"
-	"      ly.document.images[8].src = '/sys/images/ico15c.gif';\n"
-	"      dd_current = ly.topLayer;\n"
-	"      dd_lastkey = null;\n"
-	"      if(dd_current.form)\n"
-	"          dd_current.form.FocusNotify(dd_current);\n"
-	"      dd_current.ddLayer.visibility = 'inherit';\n"
-	"   }\n"
+	"    if (dd_timeout != null)\n"
+	"        {\n"
+	"        clearTimeout(dd_timeout);\n"
+	"        dd_timeout = null;\n"
+	"        dd_incr = 0;\n"
+	"        }\n"
+	"    if (dd_target_img != null)\n"
+	"        {\n"
+	"        if (ly.name == 'u') ly.src = '/sys/images/ico13b.gif';\n"
+	"        else if (ly.name == 'd') ly.src = '/sys/images/ico12b.gif';\n"
+	"        dd_target_img = null;\n"
+	"        }\n"
+	"    if (ly.kind == 'dd')\n"
+	"        {\n"
+	"        dd_toggle(ly);\n"
+	"        }\n"
 	"\n");
 
-   /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    dd_init(%s.layers.dd%dmain, '%s', '%s', '%s', %d);\n", parentname, id, bgstr, hilight, fieldname, num_disp);
+    htrAddEventHandler(s, "document","MOUSEDOWN", "dd", 
+	"\n"
+	"    dd_target_img = e.target;\n"
+	"    if (ly.kind == 'dd')\n"
+	"        {\n"
+	"        if (dd_current && dd_current == ly)\n"
+	"            {\n"
+	"            ly.PaneLayer.visibility = 'hide';\n"
+	"            dd_current = null;\n"
+	"            }\n"
+	"        else\n"
+	"            {\n"
+	"            ly.PaneLayer.pageX = ly.pageX;\n"
+	"            ly.PaneLayer.pageY = ly.pageY+20;\n"
+	"            ly.PaneLayer.visibility = 'inherit';\n"
+	"            if(ly.form)\n"
+	"                ly.form.FocusNotify(ly);\n"
+	"            dd_current = ly;\n"
+	"            }\n"
+	"        dd_toggle(ly);\n"
+	"        }\n"
+	"    else if (ly.kind == 'dd_itm')\n"
+	"        {\n"
+	"        dd_select_item(dd_current, ly.index);\n"
+	"        }\n"
+	"    else if (ly.kind == 'dd_sc')\n"
+	"        {\n"
+	"        switch(ly.name)\n"
+	"            {\n"
+	"            case 'u':\n"
+	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
+	"                ly.src = '/sys/images/ico13c.gif';\n"
+	"                dd_incr = 8;\n"
+	"                dd_scroll();\n"
+	"                break;\n"
+	"            case 'd':\n"
+	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
+	"                ly.src = '/sys/images/ico12c.gif';\n"
+	"                dd_incr = -8;\n"
+	"                dd_scroll();\n"
+	"                break;\n"
+	"            case 't':\n"
+	"                dd_click_x = e.pageX;\n"
+	"                dd_click_y = e.pageY;\n"
+	"                dd_thum_y = dd_target_img.thum.pageY;\n"
+	"                break;\n"
+	"            }\n"
+	"        }\n"
+	"    if (dd_current && dd_current != ly && dd_current.PaneLayer != ly && (!ly.mainlayer || dd_current != ly.mainlayer))\n"
+	"        {\n"
+	"        dd_current.PaneLayer.visibility = 'hide';\n"
+	"        dd_current = null;\n"
+	"        }\n"
+	"\n");
 
-   /* Read and initialize the dropdown items */
-   if (objGetAttrValue(w_obj,"sql",POD(&sql)) == 0) {
-       if ((qy = objMultiQuery(w_obj->Session, sql))) {
-	  while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
-	     // Label
-	     attr = objGetFirstAttr(qy_obj);
-	     if (!attr) {
-	        mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
-	        return -1;
-	     }
-	     type = objGetAttrType(qy_obj, attr);
-	     rval = objGetAttrValue(qy_obj, attr, &od);
-	     if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
-	        str = objDataToStringTmp(type, (void*)(&od), 0);
-	     } else {
-	        str = objDataToStringTmp(type, (void*)(od.String), 0);
-	     }
-	     htrAddScriptInit_va(s,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, str);
-	     // Value
-	     attr = objGetNextAttr(qy_obj);
-	     if (!attr) {
-	        mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
-	        return -1;
-	     }
+    /** Get the mode (default to 1, dynamicpage) **/
+    mode = 1;
+    if (objGetAttrValue(w_obj,"mode",POD(&ptr)) == 0) {
+	if (!strcmp(ptr,"static")) mode = 0;
+	else if (!strcmp(ptr,"dynamic_server")) mode = 1;
+	else if (!strcmp(ptr,"dynamic")) mode = 2;
+	else if (!strcmp(ptr,"dynamic_client")) mode = 2;
+	else {
+	    mssError(1,"HTDD","Dropdown widget has not specified a valid mode.");
+	    return -1;
+	}
+    }
 
-	     type = objGetAttrType(qy_obj, attr);
-	     rval = objGetAttrValue(qy_obj, attr, &od);
-	     if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
-	        str = objDataToStringTmp(type, (void*)(&od), 0);
-	     } else {
-	        str = objDataToStringTmp(type, (void*)(od.String), 0);
-	     }
-	     htrAddScriptInit_va(s," '%s');\n", str);
-	     objClose(qy_obj);
-	  }
-	  objQueryClose(qy);
-       }
-   } else {
-       if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
-	  while((w_obj = objQueryFetch(qy, O_RDONLY))) {
-	     objGetAttrValue(w_obj,"outer_type",POD(&ptr));
-	     if (!strcmp(ptr,"widget/dropdownitem")) {
-	        if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
-	           mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-	           return -1;
-	           }
-	        memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	        htrAddScriptInit_va(s,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, string);
+    sql = 0;
+    if (objGetAttrValue(w_obj,"sql",POD(&sql)) != 0 && mode != 0) {
+	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
+	return -1;
+    }
+
+    /* Read and initialize the dropdown items */
+    if (mode == 1) {
+	if ((qy = objMultiQuery(w_obj->Session, sql))) {
+	    count=0;
+	    htrAddScriptInit_va(s,"    dd_add_items(%s.layers.dd%dbtn, Array(",parentname,id);
+	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
+		// Label
+		attr = objGetFirstAttr(qy_obj);
+		if (!attr) {
+		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+		    return -1;
+		}
+		type = objGetAttrType(qy_obj, attr);
+		rval = objGetAttrValue(qy_obj, attr, &od);
+		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
+		    str = objDataToStringTmp(type, (void*)(&od), 0);
+		} else {
+		    str = objDataToStringTmp(type, (void*)(od.String), 0);
+		}
+		if (count) htrAddScriptInit(s,",");
+		htrAddScriptInit_va(s,"Array('%s',",str);
+		// Value
+		attr = objGetNextAttr(qy_obj);
+		if (!attr) {
+		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+		    return -1;
+		}
+
+		type = objGetAttrType(qy_obj, attr);
+		rval = objGetAttrValue(qy_obj, attr, &od);
+		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
+		    str = objDataToStringTmp(type, (void*)(&od), 0);
+		} else {
+		    str = objDataToStringTmp(type, (void*)(od.String), 0);
+		}
+		htrAddScriptInit_va(s,"'%s')", str);
+		objClose(qy_obj);
+		count++;
+	    }
+	    htrAddScriptInit_va(s,"));\n", str);
+	    objQueryClose(qy);
+	}
+    } else if (mode == 0) {
+	if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
+	    count=0;
+	    htrAddScriptInit_va(s, "    dd_add_items(%s.layers.dd%dbtn, Array(", parentname, id);
+	    while((w_obj = objQueryFetch(qy, O_RDONLY))) {
+		objGetAttrValue(w_obj,"outer_type",POD(&ptr));
+		if (!strcmp(ptr,"widget/dropdownitem")) {
+		    if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
+			mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+			return -1;
+		    }
+		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		    if (count) htrAddScriptInit_va(s, ",");
+		    htrAddScriptInit_va(s,"Array('%s',", string);
     
-	        if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
-	           mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-	           return -1;
-	           }
-	        memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	        htrAddScriptInit_va(s,"'%s');\n", string);
-	     }
-	     objClose(w_obj);
-	  }
-	  objQueryClose(qy);
-       }
-   }
+		    if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
+			mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+			return -1;
+		    }
+		    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+		    htrAddScriptInit_va(s,"'%s')", string);
+	        }
+		count++;
+		objClose(w_obj);
+	    }
+	    htrAddScriptInit_va(s, "));\n");
+	    objQueryClose(qy);
+	}
+    }
 
-   /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItem_va(s,"<DIV ID=\"dd%dmain\">\n", id);
-   htrAddBodyItem_va(s,"  <TABLE width=%d cellspacing=0 cellpadding=0 border=0 bgcolor=\"%s\"><TR><TD>\n",w,bgstr);
-   htrAddBodyItem_va(s,"  <TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w-19);
-   htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>\n");
-   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-20);
-   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>\n");
-   htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=16 width=1></TD>\n");
-   htrAddBodyItem_va(s,"       <TD ALIGN=right></TD>\n");
-   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=16 width=1></TD></TR>\n");
-   htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>\n");
-   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-20);
-   htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>\n");
-   htrAddBodyItem_va(s,"  </TABLE></TD><TD width=18><IMG SRC=/sys/images/ico15b.gif></TD></TR></TABLE>\n");
-   htrAddBodyItem_va(s,"</DIV>\n");
+    /** Script initialization call. **/
+    htrAddScriptInit_va(s,"    dd_init(%s.layers.dd%dbtn,%s.layers.dd%dbtn.document.layers.dd%dcon1,%s.layers.dd%dbtn.document.layers.dd%dcon2,'%s','%s','%s',%d,%d,'%s',%d,%d);\n", parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
 
-   return 0;
+    /** HTML body <DIV> element for the layers. **/
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%dbtn\"><BODY bgcolor=\"%s\">\n", id,bgstr);
+    htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
+    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
+    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
+    htrAddBodyItem_va(s,"       <TD align=right valign=middle><IMG SRC=/sys/images/ico15b.gif></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
+    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
+    htrAddBodyItem_va(s,"</TABLE>\n");
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%dcon1\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%dcon2\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"</BODY></DIV>\n");
+    
+    return 0;
 }
 
 
