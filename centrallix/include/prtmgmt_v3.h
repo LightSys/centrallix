@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.8 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.9 2003/02/27 22:02:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.9  2003/02/27 22:02:18  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.8  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -252,6 +258,17 @@ typedef struct _PD
     PrtOutputDriver, *pPrtOutputDriver;
 
 
+/*** Scheduled event structure ***/
+typedef struct _PE
+    {
+    struct _PE*		Next;
+    int			EventType;
+    pPrtObjStream	TargetObject;
+    void*		Parameter;
+    }
+    PrtEvent, *pPrtEvent;
+
+
 /*** Print Session structure ***/
 typedef struct _PS
     {
@@ -267,6 +284,7 @@ typedef struct _PS
     int			ResolutionY;	/* in DPI, always */
     void*		FormatterData;
     int			FocusHandle;
+    pPrtEvent		PendingEvents;
     }
     PrtSession, *pPrtSession;
 
@@ -320,6 +338,9 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_F_ALLOWSOFTBREAK    4096	/* allow break for pagination via wrapping or newlines */
 #define PRT_OBJ_F_ALLOWBREAK	    (PRT_OBJ_F_ALLOWSOFTBREAK | PRT_OBJ_F_ALLOWHARDBREAK)
 #define PRT_OBJ_F_SYNCBREAK	    8192	/* container will break when another on the page does */
+#define PRT_OBJ_F_LMFLAG1	    16384	/* layout-manager specific flag */
+#define PRT_OBJ_F_LMFLAG2	    32768	/* layout-manager specific flag */
+#define PRT_OBJ_F_LMFLAG3	    65536	/* layout-manager specific flag */
 
 /** these flags can be used by the api caller **/
 #define PRT_OBJ_U_FLOWAROUND	    PRT_OBJ_F_FLOWAROUND
@@ -365,6 +386,8 @@ extern PrtGlobals PRTMGMT;
 #define PRT_JUST_T_RIGHT	    1
 #define PRT_JUST_T_CENTER	    2
 #define PRT_JUST_T_FULL		    3
+
+#define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */
 
 
 /*** System functions ***/
@@ -417,6 +440,8 @@ int prt_internal_Dump(pPrtObjStream obj);
 pPrtObjStream prt_internal_Duplicate(pPrtObjStream obj, int with_content);
 int prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment);
 int prt_internal_Reflow(pPrtObjStream obj);
+int prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, void* param);
+int prt_internal_DispatchEvents(pPrtSession s);
 
 /** Strict-formatter to output-driver interfacing **/
 pPrtOutputDriver prt_strictfm_AllocDriver();

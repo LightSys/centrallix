@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.5 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.6 2003/02/27 22:02:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.6  2003/02/27 22:02:25  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.5  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -106,6 +112,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this->PageHeight = 66.0;	    /* 11 inches */
 	this->ResolutionX = 72;		    /* 72 dpi */
 	this->ResolutionY = 72;		    /* 72 dpi */
+	this->PendingEvents = NULL;
 
 	/** Search for a formatter module that will do this content type **/
 	this->Formatter = NULL;

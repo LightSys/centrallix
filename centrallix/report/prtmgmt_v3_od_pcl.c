@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.7 2002/10/22 04:12:56 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.8 2003/02/27 22:02:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.8  2003/02/27 22:02:23  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.7  2002/10/22 04:12:56  gbeeley
     Added justification (left/center/right) support.  Full justification
     does not yet work.  Also, attempted a screen-based color text output
@@ -182,7 +188,7 @@ prt_pclod_Output(pPrtPclodInf context, char* str, int len)
 	if (!len) return 0;
 
 	/** Write the data. **/
-	context->Session->WriteFn(context->Session->WriteArg, str, len, 0, 0);
+	context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET);
 
     return 0;
     }

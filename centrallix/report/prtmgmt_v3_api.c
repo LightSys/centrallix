@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.8 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.9 2003/02/27 22:02:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.9  2003/02/27 22:02:19  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.8  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -280,6 +286,8 @@ prtSetTextStyle(int handle_id, pPrtTextStyle style)
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
 
+	prt_internal_DispatchEvents(PRTSESSION(obj));
+
     return 0;
     }
 
@@ -326,6 +334,8 @@ prtSetAttr(int handle_id, int attrs)
 	/** Add an empty string object to contain the attr change. **/
 	set_obj = prt_internal_AddEmptyObj(obj);
 	set_obj->TextStyle.Attr = attrs;
+
+	prt_internal_DispatchEvents(PRTSESSION(obj));
 
     return 0;
     }
@@ -382,6 +392,8 @@ prtSetFont(int handle_id, char* fontname)
 	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
+
+	prt_internal_DispatchEvents(PRTSESSION(obj));
 
     return 0;
     }
@@ -440,6 +452,8 @@ prtSetFontSize(int handle_id, int fontsize)
 	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    obj->LayoutMgr->AddObject(obj,set_obj);
 
+	prt_internal_DispatchEvents(PRTSESSION(obj));
+
     return 0;
     }
 
@@ -483,6 +497,8 @@ prtSetColor(int handle_id, int color)
 	/** Add an empty string object to contain the attr change. **/
 	set_obj = prt_internal_AddEmptyObj(obj);
 	set_obj->TextStyle.Color = color;
+
+	prt_internal_DispatchEvents(PRTSESSION(obj));
 
     return 0;
     }
@@ -541,6 +557,8 @@ prtSetHPos(int handle_id, double x)
 	    return -1;
 	    }
 
+	prt_internal_DispatchEvents(PRTSESSION(obj));
+
     return 0;
     }
 
@@ -574,6 +592,8 @@ prtSetVPos(int handle_id, double y)
 	    {
 	    return -1;
 	    }
+
+	prt_internal_DispatchEvents(PRTSESSION(obj));
 
     return 0;
     }
@@ -655,6 +675,8 @@ prtWriteString(int handle_id, char* str)
 		}
 	    }
 
+	prt_internal_DispatchEvents(PRTSESSION(obj));
+
     return rval;
     }
 
@@ -684,6 +706,8 @@ prtWriteNL(int handle_id)
 	nl_obj->Flags |= PRT_OBJ_F_NEWLINE;
 	rval = obj->LayoutMgr->AddObject(obj,nl_obj);
 
+	prt_internal_DispatchEvents(PRTSESSION(obj));
+
     return rval;
     }
 
@@ -705,6 +729,8 @@ prtWriteFF(int handle_id)
 	/** Request a break operation on the object. **/
 	if (!(obj->Flags & PRT_OBJ_F_ALLOWHARDBREAK)) return -1;
 	rval = obj->LayoutMgr->Break(obj, &new_obj);
+
+	prt_internal_DispatchEvents(PRTSESSION(obj));
 
     return rval;
     }
@@ -760,6 +786,8 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 
 	/** Add the object to the given parent object. **/
 	obj->LayoutMgr->AddObject(obj, new_obj);
+
+	prt_internal_DispatchEvents(PRTSESSION(obj));
 
     return new_handle_id;
     }

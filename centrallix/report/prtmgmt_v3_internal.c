@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <errno.h>
 #include "barcode.h"
 #include "report.h"
 #include "mtask.h"
@@ -48,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.8 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.9 2003/02/27 22:02:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.9  2003/02/27 22:02:20  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.8  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -718,6 +725,69 @@ prt_internal_Reflow(pPrtObjStream container)
 	    search->LayoutMgr->AddObject(search, childobj);
 	    }
 	if (!cur_container) prtFreeHandle(handle_id);
+
+    return 0;
+    }
+
+
+/*** prt_internal_ScheduleEvent() - schedules an event to occur as soon as
+ *** the current API entry point has completed.  This allows things to be
+ *** schedule to occur without interfering with current goings-on.
+ ***/
+int
+prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, void* param)
+    {
+    pPrtEvent e;
+    pPrtEvent *se;
+
+	/** Find queue tail.  Don't add duplictes. **/
+	se = &(s->PendingEvents);
+	while(*se) 
+	    {
+	    if ((*se)->TargetObject == target && (*se)->EventType == type && (*se)->Parameter == param)
+		return -EEXIST;
+	    se = &((*se)->Next);
+	    }
+
+	/** Allocate a new event **/
+	e = (pPrtEvent)nmMalloc(sizeof(PrtEvent));
+	if (!e) return -ENOMEM;
+	e->TargetObject = target;
+	e->EventType = type;
+	e->Parameter = param;
+	e->Next = NULL;
+
+	/** Add it. **/
+	*se = e;
+
+    return 0;
+    }
+
+
+/*** prt_internal_DispatchEvents() - causes all pending events to be 
+ *** activated and removed from the event queue.
+ ***/
+int
+prt_internal_DispatchEvents(pPrtSession s)
+    {
+    pPrtEvent e,next;
+
+	/** Loop through events, removing and running them. **/
+	while(s->PendingEvents)
+	    {
+	    e = s->PendingEvents;
+	    s->PendingEvents = s->PendingEvents->Next;
+	    switch(e->EventType)
+		{
+		case PRT_EVENT_T_REFLOW:
+		    prt_internal_Reflow(e->TargetObject);
+		    break;
+
+		default:
+		    break;
+		}
+	    nmFree(e,sizeof(PrtEvent));
+	    }
 
     return 0;
     }

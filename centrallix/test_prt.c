@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.10 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: test_prt.c,v 1.11 2003/02/27 22:02:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.11  2003/02/27 22:02:15  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.10  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -258,6 +264,7 @@ start(void* v)
 	prtInitialize();
 	prt_strictfm_Initialize();
 	prt_pclod_Initialize();
+	prt_textod_Initialize();
 
 	/** Disable tab complete until we have a function to do something useful with it. **/
 	rl_bind_key ('\t', rl_insert);

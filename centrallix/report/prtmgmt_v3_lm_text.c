@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.11 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.12 2003/02/27 22:02:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.12  2003/02/27 22:02:22  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.11  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -132,6 +138,9 @@
 
 
  **END-CVSDATA***********************************************************/
+
+
+#define PRT_TEXTLM_F_RMSPACE	PRT_OBJ_F_LMFLAG1	/* space was removed */
 
 
 /*** prt_textlm_Break() - performs a break operation on this area, which 
@@ -498,6 +507,12 @@ prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, doubl
 	    stringobj->Width = new_width;
 	else
 	    stringobj->Width = prt_internal_GetStringWidth(stringobj, stringobj->Content, -1);
+	if (stringobj->Flags & PRT_TEXTLM_F_RMSPACE)
+	    {
+	    split_obj->Flags |= PRT_TEXTLM_F_RMSPACE;
+	    stringobj->Flags &= ~PRT_TEXTLM_F_RMSPACE;
+	    }
+	if (splitlen == 1) stringobj->Flags |= PRT_TEXTLM_F_RMSPACE;
 	split_obj->Height = stringobj->Height;
 	split_obj->YBase = stringobj->YBase;
 	split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
@@ -543,8 +558,9 @@ prt_textlm_UndoWrap(pPrtObjStream obj1, pPrtObjStream obj2)
     char* newptr;
 
 	n = strlen(obj1->Content);
-	if (n >= 1 && obj1->Content[n-1] != '-')
+	if (obj1->Flags & PRT_TEXTLM_F_RMSPACE)
 	    {
+	    obj1->Flags &= ~PRT_TEXTLM_F_RMSPACE;
 	    newptr = nmSysMalloc(strlen(obj2->Content)+2);
 	    strcpy(newptr+1, obj2->Content);
 	    newptr[0] = ' ';
@@ -767,11 +783,15 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Bumped to a new container? **/
 		if (new_parent && this != new_parent)
 		    {
+		    this = new_parent;
 		    objptr->X = 0.0;
 		    objptr->Y = 0.0;
-		    this = new_parent;
-		    objptr->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
-		    if (split_obj) 
+		    if (objptr->Flags & PRT_OBJ_F_SOFTNEWLINE)
+			{
+			prt_textlm_UndoWrap(this->ContentTail, objptr);
+			objptr->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
+			}
+		    if (split_obj && (split_obj->Flags & PRT_OBJ_F_SOFTNEWLINE)) 
 			{
 			prt_textlm_UndoWrap(objptr, split_obj);
 			split_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;

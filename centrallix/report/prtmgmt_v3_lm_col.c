@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.2 2003/02/27 05:21:19 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.3 2003/02/27 22:02:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.3  2003/02/27 22:02:21  gbeeley
+    Some improvements in the balanced multi-column output.  A lot of fixes
+    in the multi-column output and in the text layout manager.  Added a
+    facility to "schedule" reflows rather than having them take place
+    immediately.
+
     Revision 1.2  2003/02/27 05:21:19  gbeeley
     Added multi-column layout manager functionality to support multi-column
     sections (this is newspaper-style multicolumn formatting).  Tested in
@@ -257,7 +263,8 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	     **/
 	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom;
 	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && this != parent->ContentTail &&
-		    new_h <= parent->ContentTail->Height + this->LineHeight &&
+		    /*new_h <= parent->ContentTail->Height + this->LineHeight &&*/
+		    new_h <= parent->ContentTail->Height &&
 		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
 		return 0;
 
@@ -304,7 +311,8 @@ prt_collm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width
 	    reflow_obj = parent->ContentHead->ContentHead;
 	    while(reflow_obj)
 		{
-		prt_internal_Reflow(reflow_obj);
+		prt_internal_ScheduleEvent(PRTSESSION(this), reflow_obj, PRT_EVENT_T_REFLOW, NULL);
+		/*prt_internal_Reflow(reflow_obj);*/
 		reflow_obj = reflow_obj->Next;
 		}
 	    }
@@ -341,6 +349,10 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 		    col_obj->X += (new_width - ow);
 		    }
 		}
+	    if (rval >= 0 && new_height != oh)
+		{
+		this->Height = new_height;
+		}
 	    return rval;
 	    }
 
@@ -353,10 +365,10 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 	 **/
 	ow = this->Width;
 	oh = this->Height;
-	for(col_obj = this->ContentHead; col_obj; col_obj=col_obj->Next)
+	/*for(col_obj = this->ContentHead; col_obj; col_obj=col_obj->Next)
 	    {
 	    col_obj->Height += (new_height - oh);
-	    }
+	    }*/
 	this->Width = new_width;
 	this->Height = new_height;
 
@@ -417,6 +429,12 @@ prt_collm_CreateCols(pPrtObjStream this)
 	    col_obj->ObjID = i;
 	    totalwidth += (lm_inf->ColSep + lm_inf->ColWidths[i]);
 	    prt_internal_Add(this, col_obj);
+	    if (i > 0)
+		{
+		/** emulate link prev/next **/
+		col_obj->LinkPrev = col_obj->Prev;
+		col_obj->Prev->LinkNext = col_obj;
+		}
 	    }
 	lm_inf->CurrentCol = this->ContentHead;
 
@@ -435,6 +453,10 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
     char* attrname;
     int i;
     double totalwidth;
+
+	/** section objects have a minimum height of one LineHeight. **/
+	if (this->Height < this->LineHeight + this->MarginTop + this->MarginBottom) 
+	    this->Height = this->LineHeight + this->MarginTop + this->MarginBottom;
 
 	/** Allocate our layout manager specific info **/
 	lm_inf = (pPrtColLMData)nmMalloc(sizeof(PrtColLMData));
