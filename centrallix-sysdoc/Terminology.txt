@@ -17,8 +17,9 @@ TERMS AND DEFINITIONS....
 
     "Centrallix"
 
-        Stands for "Building a Logically Unified Environment through Fractal
-	principles".  The Fractal principle it is based on is the self-
+	Represents the idea that the Centrallix application server, when 
+	deployed, operates in a very Central capacity in a web-based data
+	management/processing environment.  It also is based on the self-
 	similarity attribute of fractals, conceptually speaking, in reference
 	to Centrallix's ability to embed objects within each other to the nth
 	degree and retain those objects' meaning and detail.

@@ -298,6 +298,15 @@ THE COMMAND PHASE, AND ITS CONVERSION TO THE STRUCTURE...
 	    - Build a new empty-string element with ATTRCHANGED set, and add
 	      it to the objectstream.
 
+    prtSetUnits
+
+        This function allows the caller to change the units for all positional
+	layout operations.  Valid values are PRT_UNIT_INCH (the default) and
+	PRT_UNIT_MM (millimeters).  Note that the internal representation is
+	always in 10ths of an inch for positional items, and in lines per
+	inch for line spacing - calling this function merely changes the way
+	the values are interpreted from the end-user.
+
     prtSetLineSpacing
     prtGetLineSpacing
 
@@ -657,6 +666,20 @@ THE STRUCTURED OBJECTSTREAM
 
         This value tells how many lines will be generated per inch on the 
 	printed page.  The default is 6.0.
+
+    SetRelX (double)
+	
+	This indicates a position that the caller set the object or text string
+	at, in 10ths of an inch, relative to the container the object is 
+	within.  The below two items (RelativeX and RelativeY) indicate where
+	the prtmgmt module has placed the object, as that can be different,
+	depending on how Flags (see above) is set up.
+
+    SetRelY (double)
+
+        Indicates the vertical position that the caller set the object or text
+	string at, relative to the container, in 10ths of an inch.  See the
+	SetRelX explanation above.
 
     RelativeX (double)
 
