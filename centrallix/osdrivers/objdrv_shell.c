@@ -52,7 +52,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.7 2002/12/23 06:28:19 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.8 2002/12/23 06:31:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -1000,26 +1000,31 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    return 0;
 	    }
 
-	pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
-	if(pEV && pEV->changeable && (datatype==DATA_T_STRING || datatype==DATA_T_INTEGER) )
+	if(inf->shell_pid == -1)
 	    {
-	    if(pEV->shouldfree)
+	    /** only do the change if the subprocess hasn't started yet -- now these 
+	        will always reflect the values used to start the subprocess **/
+	    pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
+	    if(pEV && pEV->changeable && (datatype==DATA_T_STRING || datatype==DATA_T_INTEGER) )
 		{
-		free(pEV->value);
+		if(pEV->shouldfree)
+		    {
+		    free(pEV->value);
+		    }
+		if(datatype == DATA_T_STRING)
+		    {
+		    pEV->value = (char*)malloc(strlen(*(char**)val+1));
+		    strcpy(pEV->value,*(char**)val);
+		    }
+		else //datatype == DATA_T_INTEGER
+		    {
+		    pEV->value = (char*)malloc(20);
+		    snprintf(pEV->value,20,"%i",*(int*)val);
+		    pEV->value[19]='\0';
+		    }
+		pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
+		return 0;
 		}
-	    if(datatype == DATA_T_STRING)
-		{
-		pEV->value = (char*)malloc(strlen(*(char**)val+1));
-		strcpy(pEV->value,*(char**)val);
-		}
-	    else //datatype == DATA_T_INTEGER
-		{
-		pEV->value = (char*)malloc(20);
-		snprintf(pEV->value,20,"%i",*(int*)val);
-		pEV->value[19]='\0';
-		}
-	    pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
-	    return 0;
 	    }
 
     return -1;
