@@ -59,10 +59,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.34 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.35 2002/12/04 00:19:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.35  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.34  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -893,8 +900,6 @@ int
 httblInitialize()
     {
     pHtDriver drv;
-    /*pHtEventAction action;
-    pHtParam param;*/
 
     	/** Allocate the driver **/
 	drv = htrAllocDriver();
@@ -905,22 +910,10 @@ httblInitialize()
 	strcpy(drv->WidgetName,"table");
 	drv->Render = httblRender;
 	drv->Verify = httblVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	htrAddEvent(drv,"Click");
 	htrAddEvent(drv,"DblClick");
-
-#if 00
-	/** Add the 'load page' action **/
-	action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(action->Name,"LoadPage");
-	xaInit(&action->Parameters,16);
-	param = (pHtParam)nmSysMalloc(sizeof(HtParam));
-	strcpy(param->ParamName,"Source");
-	param->DataType = DATA_T_STRING;
-	xaAddItem(&action->Parameters,(void*)param);
-	xaAddItem(&drv->Actions,(void*)action);
-#endif
 
 	/** Register. **/
 	htrRegisterDriver(drv);

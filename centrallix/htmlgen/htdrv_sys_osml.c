@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_sys_osml.c,v 1.4 2002/07/25 18:08:36 mcancel Exp $
+    $Id: htdrv_sys_osml.c,v 1.5 2002/12/04 00:19:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/Attic/htdrv_sys_osml.c,v $
 
     $Log: htdrv_sys_osml.c,v $
+    Revision 1.5  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.4  2002/07/25 18:08:36  mcancel
     Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
 
@@ -222,7 +229,7 @@ htosmlInitialize()
 	strcpy(drv->WidgetName,"sys-osml");
 	drv->Render = htosmlRender;
 	drv->Verify = htosmlVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

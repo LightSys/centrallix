@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.6 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: htdrv_variable.c,v 1.7 2002/12/04 00:19:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
+    Revision 1.7  2002/12/04 00:19:12  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.6  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -183,7 +190,7 @@ htvblInitialize()
 	strcpy(drv->WidgetName,"variable");
 	drv->Render = htvblRender;
 	drv->Verify = htvblVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

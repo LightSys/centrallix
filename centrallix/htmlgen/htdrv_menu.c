@@ -346,7 +346,7 @@ int htmenuInitialize() {
    strcpy(drv->WidgetName,"menu");
    drv->Render = htmenuRender;
    drv->Verify = htmnVerify;
-   strcpy(drv->Target, "Netscape47x:default");
+   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
    /** Register events **/
    htrAddEvent(drv,"MouseUp");

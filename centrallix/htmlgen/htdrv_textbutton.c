@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.18 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.19 2002/12/04 00:19:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.19  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.18  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -346,7 +353,7 @@ httbtnInitialize()
 	strcpy(drv->WidgetName,"textbutton");
 	drv->Render = httbtnRender;
 	drv->Verify = httbtnVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Add the 'click' event **/
 	htrAddEvent(drv, "Click");

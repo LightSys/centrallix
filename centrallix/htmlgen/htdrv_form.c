@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.48  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.47  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -405,47 +412,8 @@ htformInitialize()
 	strcpy(drv->WidgetName,"form");
 	drv->Render = htformRender;
 	drv->Verify = htformVerify;
-	strcpy(drv->Target, "Netscape47x:default");
-
-
-	/** Add our actions **/
-	htrAddAction(drv,"Clear");
-	htrAddAction(drv,"Delete");
-	htrAddAction(drv,"Discard");
-	htrAddAction(drv,"Edit");
-	htrAddAction(drv,"First");
-	htrAddAction(drv,"Last");
-	htrAddAction(drv,"New");
-	htrAddAction(drv,"Next");
-	htrAddAction(drv,"Prev");
-	htrAddAction(drv,"Query");
-	htrAddAction(drv,"QueryExec");
-	htrAddAction(drv,"Save");
-
-	/* these don't really do much, since the form doesn't have a layer, so nothing can find it... */
-	htrAddEvent(drv,"StatusChange");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"NoData");
-	htrAddEvent(drv,"View");
-	htrAddEvent(drv,"Modify");
-	htrAddEvent(drv,"Query");
-	htrAddEvent(drv,"QueryExec");
-
-	/** Register. **/
-	htrRegisterDriver(drv);
-
-
-    	/** Allocate the driver **/
-	drv = htrAllocDriver();
-	if (!drv) return -1;
-
-	/** Fill in the structure. **/
-	strcpy(drv->Name,"DHTML Form Widget");
-	strcpy(drv->WidgetName,"form");
-	drv->Render = htformRender;
-	drv->Verify = htformVerify;
-	strcpy(drv->Target, "Mozilla:default");
-
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
+	htrAddSupport(drv, HTR_UA_MOZILLA);
 
 	/** Add our actions **/
 	htrAddAction(drv,"Clear");
@@ -472,8 +440,6 @@ htformInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
-
-
 
 	HTFORM.idcnt = 0;
 

@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.13 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_textarea.c,v 1.14 2002/12/04 00:19:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.14  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.13  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -282,7 +289,7 @@ httxInitialize()
 	strcpy(drv->WidgetName,"textarea");
 	drv->Render = httxRender;
 	drv->Verify = httxVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Add a 'set value' action **/
 	htrAddAction(drv,"SetValue");

@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.11  2002/12/04 00:19:10  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.10  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -147,6 +154,8 @@ htalrtInitialize()
     {
     pHtDriver drv;
 
+	HTALRT.idcnt = 0;
+
     	/** Allocate the driver **/
 	drv = htrAllocDriver();
 	if (!drv) return -1;
@@ -156,9 +165,10 @@ htalrtInitialize()
 	strcpy(drv->WidgetName,"alerter");
 	drv->Render = htalrtRender;
 	drv->Verify = htalrtVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
+	htrAddSupport(drv, HTR_UA_MOZILLA);
 
-	/** Add a 'executemethod' action **/
+	/** Add actions **/
 	htrAddAction(drv,"Alert");
 	htrAddParam(drv,"Alert","Parameter",DATA_T_STRING);
 	htrAddAction(drv,"Confirm");
@@ -169,29 +179,6 @@ htalrtInitialize()
 	/** Register. **/
 	htrRegisterDriver(drv);
 
-
-
-    	/** Allocate the driver **/
-	drv = htrAllocDriver();
-	if (!drv) return -1;
-
-	/** Fill in the structure. **/
-	strcpy(drv->Name,"DHTML Alert Widget");
-	strcpy(drv->WidgetName,"alerter");
-	drv->Render = htalrtRender;
-	drv->Verify = htalrtVerify;
-	strcpy(drv->Target, "Mozilla:default");
-
-	/** Add a 'executemethod' action **/
-	htrAddAction(drv,"Alert");
-	htrAddParam(drv,"Alert","Parameter",DATA_T_STRING);
-	htrAddAction(drv,"Confirm");
-	htrAddParam(drv,"Confirm","Parameter",DATA_T_STRING);
-
-	/** Register. **/
-	htrRegisterDriver(drv);
-
-	HTALRT.idcnt = 0;
 
     return 0;
     }

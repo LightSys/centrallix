@@ -34,10 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.10 2002/07/16 18:23:21 lkehresman Exp $
+    $Id: ht_render.h,v 1.11 2002/12/04 00:19:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.11  2002/12/04 00:19:13  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.10  2002/07/16 18:23:21  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -134,7 +141,7 @@ typedef struct
     XArray	Properties;		/* Properties this thing will have. */
     XArray	Events;			/* Events for this widget type */
     XArray	Actions;		/* Actions on this widget type */
-    char	Target[32];		/* Browser type the widget support */
+    int		Target;			/* Browser types the widget supports */
     }
     HtDriver, *pHtDriver;
 
@@ -177,9 +184,31 @@ typedef struct
 #define HTR_F_NAMEALLOC		1
 #define HTR_F_VALUEALLOC	2
 
-#define HTR_NETSCAPE_47		1
-#define HTR_MOZILLA		2
-#define HTR_MSIE		3
+
+/** Widget set class.  A class refers generally to the deployment language
+ ** to be used (such as DHTML vs. XUL).  A 'user agent' in Centrallix htmlgen
+ ** is a specific combination of a browser and a class (such as moz-dhtml or
+ ** moz-xul or whatever).  The 'class' is merely used to allow the user to
+ ** control which type of widget set is used for their browser if it supports
+ ** more than one type.
+ **/
+typedef struct
+    {
+    char	ClassName[32];
+    int		UAmask;			/* which ua/class combinations this class uses */
+    }
+    HtClass, *pHtClass;
+
+/** max number of user agents we can support **/
+#define HTR_MAX_USERAGENTS	16
+
+/** User agent codes **/
+#define HTR_UA_UNKNOWN		0	/* unknown user agent */
+#define HTR_UA_NETSCAPE_47	1	/* netscape 4.7x series using DHTML */
+#define HTR_UA_MOZILLA		2	/* mozilla/gecko/ns6/ns7 series using DHTML */
+#define HTR_UA_MSIE		3	/* ie5/ie6 series using DHTML */
+
+#define HTR_CLASS_ALL		(0xFFFFFFFF)
 
     
 /** Structure for a named array, for using arrays in lookups. **/
@@ -223,8 +252,16 @@ typedef struct
     int		DisableBody;
     char*	Tmpbuf;			/* temp buffer used in _va() functions */
     int		TmpbufSize;
+    int		BrowserMask;		/* results from GetBrowser() */
+    int		WidgetSet;		/* which widget set we are using */
+    int		WidgetClasses;		/* classes requested by user */
     }
     HtSession, *pHtSession;
+
+
+
+/** Flags for layer addition routines **/
+#define HTR_LAYER_F_DYNAMIC	1	/* layer will be reloaded from server */
 
 
 /** Rendering engine functions **/
@@ -246,6 +283,11 @@ int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);
 int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
 
+/** Content-intelligent (useragent-sensitive) rendering engine functions **/
+int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...);
+int htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt);
+int htrAddBodyItemLayerEnd(pHtSession s, int flags);
+
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
@@ -254,6 +296,7 @@ int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
 pHtDriver htrAllocDriver();
+int htrAddSupport(pHtDriver drv, int user_agent);
 
 
 #endif /* _HT_RENDER_H */

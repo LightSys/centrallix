@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.26 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.27 2002/12/04 00:19:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.27  2002/12/04 00:19:10  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.26  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -374,7 +381,7 @@ htebInitialize()
 	strcpy(drv->WidgetName,"editbox");
 	drv->Render = htebRender;
 	drv->Verify = htebVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Events **/ 
 	htrAddEvent(drv,"Click");

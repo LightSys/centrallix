@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.10 2002/11/02 01:48:27 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.11 2002/12/04 00:19:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.11  2002/12/04 00:19:10  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.10  2002/11/02 01:48:27  gbeeley
     Re-added some script init and subwidget (connectors) lines that got
     removed at some point along the road here.
@@ -182,7 +189,7 @@ htexInitialize()
 	strcpy(drv->WidgetName,"execmethod");
 	drv->Render = htexRender;
 	drv->Verify = htexVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
 	/** Add a 'executemethod' action **/
 	htrAddAction(drv,"ExecuteMethod");

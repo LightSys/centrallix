@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.46 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.47 2002/12/04 00:19:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.47  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.46  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -389,8 +396,6 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 */
 int htosrcInitialize() {
    pHtDriver drv;
-   /*pHtEventAction action;
-   pHtParam param;*/
 
    /** Allocate the driver **/
    drv = htrAllocDriver();
@@ -401,9 +406,9 @@ int htosrcInitialize() {
    strcpy(drv->WidgetName,"osrc");
    drv->Render = htosrcRender;
    drv->Verify = htosrcVerify;
-   strcpy(drv->Target, "Netscape47x:default");
+   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
 
-   /** Add a 'executemethod' action **/
+   /** Add actions **/
    htrAddAction(drv,"Clear");
    htrAddAction(drv,"Query");
    htrAddAction(drv,"Delete");
@@ -412,18 +417,6 @@ int htosrcInitialize() {
 
    htrAddAction(drv,"Sync");
    htrAddAction(drv,"ReverseSync");
-
-#if 00
-   /** Add the 'load page' action **/
-   action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-   strcpy(action->Name,"LoadPage");
-   xaInit(&action->Parameters,16);
-   param = (pHtParam)nmSysMalloc(sizeof(HtParam));
-   strcpy(param->ParamName,"Source");
-   param->DataType = DATA_T_STRING;
-   xaAddItem(&action->Parameters,(void*)param);
-   xaAddItem(&drv->Actions,(void*)action);
-#endif
 
    /** Register. **/
    htrRegisterDriver(drv);

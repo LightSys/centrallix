@@ -42,6 +42,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.14  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.13  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -273,7 +280,8 @@ htlblInitialize()
 	strcpy(drv->WidgetName,"label");
 	drv->Render = htlblRender;
 	drv->Verify = htlblVerify;
-	strcpy(drv->Target, "Netscape47x:default");
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
+	htrAddSupport(drv, HTR_UA_MOZILLA);
 
 	/** Events **/ 
 	htrAddEvent(drv,"Click");
@@ -282,19 +290,6 @@ htlblInitialize()
 	htrAddEvent(drv,"MouseOver");
 	htrAddEvent(drv,"MouseOut");
 	htrAddEvent(drv,"MouseMove");
-
-	/** Register. **/
-	htrRegisterDriver(drv);
-
-	drv = htrAllocDriver();
-	if (!drv) return -1;
-
-	/** Fill in the structure. **/
-	strcpy(drv->Name,"DHTML Single-line Label Driver");
-	strcpy(drv->WidgetName,"label");
-	drv->Render = htlblRender;
-	drv->Verify = htlblVerify;
-	strcpy(drv->Target, "Mozilla:default");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

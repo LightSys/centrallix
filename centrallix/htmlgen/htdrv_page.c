@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.50 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.51 2002/12/04 00:19:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.51  2002/12/04 00:19:11  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.50  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -737,6 +744,15 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 
 #include "htdrv_page_moz.c"
 
+int
+htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+    {
+    if (s->WidgetSet == HTR_UA_NETSCAPE_47)
+	return htpageRenderNtsp47xDefault(s,w_obj,z,parentname,parentobj);
+    else
+	return htpageRenderMozDefault(s,w_obj,z,parentname,parentobj);
+    }
+
 /*** htpageInitialize - register with the ht_render module.
  ***/
 int
@@ -751,28 +767,15 @@ htpageInitialize()
 	/** Fill in the structure. **/
 	strcpy(drv->Name,"HTML Page Driver");
 	strcpy(drv->WidgetName,"page");
-	drv->Render = htpageRenderNtsp47xDefault;
+	drv->Render = htpageRender;
 	drv->Verify = htpageVerify;
-	strcpy(drv->Target, "Netscape47x:default");
-
-	/** Register. **/
-	htrRegisterDriver(drv);
+	htrAddSupport(drv, HTR_UA_NETSCAPE_47);
+	htrAddSupport(drv, HTR_UA_MOZILLA);
 
 	/** Actions **/
 	htrAddAction(drv, "LoadPage");
 	htrAddParam(drv, "LoadPage", "Source", DATA_T_STRING);
 	
-    	/** Allocate the driver **/
-	drv = htrAllocDriver();
-	if (!drv) return -1;
-
-	/** Fill in the structure. **/
-	strcpy(drv->Name,"HTML Page Driver");
-	strcpy(drv->WidgetName,"page");
-	drv->Render = htpageRenderMozDefault;
-	drv->Verify = htpageVerify;
-	strcpy(drv->Target, "Mozilla:default");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.23 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.24 2002/12/04 00:19:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.24  2002/12/04 00:19:10  gbeeley
+    Did some cleanup on the user agent selection mechanism, moving to a
+    bitmask so that drivers don't have to register twice.  Theme will be
+    handled differently, but provision is made for 'classes' of widgets
+    such as dhtml vs. xul.  Started work on some utility functions to
+    resolve some ns47 vs. w3c issues.
+
     Revision 1.23  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -162,6 +169,13 @@ int htcbVerify() {
    return 0;
 }
 
+int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+    if (s->WidgetSet == HTR_UA_NETSCAPE_47)
+	return htcbNs47DefRender(s,w_obj,z,parentname,parentobj);
+    else
+	return htcbMozDefRender(s,w_obj,z,parentname,parentobj);
+}
+
 #include "htdrv_checkbox_moz.c"
 
 /* 
@@ -276,23 +290,10 @@ int htcbInitialize() {
    /** Fill in the structure. **/
    strcpy(drv->Name,"DHTML Checkbox Driver");
    strcpy(drv->WidgetName,"checkbox");
-   drv->Render = htcbNs47DefRender;
+   drv->Render = htcbRender;
    drv->Verify = htcbVerify;
-   strcpy(drv->Target,"Netscape47x:default");
-   /** Register. **/
-   htrRegisterDriver(drv);
-   
-
-   /** Allocate the driver **/
-   drv = htrAllocDriver();
-   if (!drv) return -1;
-
-   /** Fill in the structure. **/
-   strcpy(drv->Name,"DHTML Checkbox Driver");
-   strcpy(drv->WidgetName,"checkbox");
-   drv->Render = htcbMozDefRender;
-   drv->Verify = htcbVerify;
-   strcpy(drv->Target,"Mozilla:default");
+   htrAddSupport(drv, HTR_UA_NETSCAPE_47);
+   htrAddSupport(drv, HTR_UA_MOZILLA);
 
    /** Events **/
    htrAddEvent(drv,"Click");
@@ -302,22 +303,10 @@ int htcbInitialize() {
    htrAddEvent(drv,"MouseOut");
    htrAddEvent(drv,"MouseMove");
    htrAddEvent(drv,"DataChange");
-   
+
    /** Register. **/
    htrRegisterDriver(drv);
-
-#if 00
-   /** Add the 'load page' action **/
-   action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-   strcpy(action->Name,"LoadPage");
-   xaInit(&action->Parameters,16);
-   param = (pHtParam)nmSysMalloc(sizeof(HtParam));
-   strcpy(param->ParamName,"Source");
-   param->DataType = DATA_T_STRING;
-   xaAddItem(&action->Parameters,(void*)param);
-   xaAddItem(&drv->Actions,(void*)action);
-#endif
-
+   
    HTCB.idcnt = 0;
 
    return 0;
