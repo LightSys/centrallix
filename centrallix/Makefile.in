@@ -185,10 +185,9 @@ TESTSUITE=$(patsubst %,testsuite/%,$(XTESTSUITE))
 MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES)
 
 # Configuration Files
-XCONFFILES=centrallix.conf \
-	   rootnode \
-	   types.cfg
-CONFFILES=$(patsubst %,etc/%,$(XCONFFILES))
+CONFFILES=centrallix.conf \
+   	  rootnode \
+	  types.cfg
 
 # Some basic build parameters.
 MASTERHOST=greg
@@ -254,8 +253,13 @@ install: all modules_install
 	@mkdir -p $(sbindir)
 	@mkdir -p $(sysconfdir)
 	$(INSTALL) centrallix $(sbindir)
-	$(INSTALL) -m 644 $(CONFFILES) $(sysconfdir)
-	#$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
+	for CFILE in $(CONFFILES) ; do \
+		if ! [ -a "$(sysconfdir)/$${CFILE}" ] ; then \
+			echo "NOTE: Installed default version of $${CFILE}" ; \
+			$(INSTALL) -m 644 "etc/$${CFILE}" $(sysconfdir) ; \
+		fi \
+	done
+	@#$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
 
 .c.so:	$<
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
