@@ -229,21 +229,28 @@ function osrc_action_delete_cb()
 
 function osrc_action_create(up,formobj)
     {
-    //Create an object through OSML
-    var src = this.baseobj + '/*?ls__mode=osml&ls__req=create&ls__sid=' + this.sid;
-    for(var i in up) if(i!='oid')
-	{
-	src+='&'+escape(up[i]['oid'])+'='+escape(up[i]['value']);
-	}
     this.formobj=formobj;
     this.createddata=up;
-    //this.onload=osrc_action_create_cb;
-    //pg_set(this,'src',src);
-    pg_serialized_load(this, src, osrc_action_create_cb);
+    //First close the currently open query
+    if(this.qid)
+	{
+	pg_serialized_load(this,"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_action_create_cb2);
+	this.qid=null;
+	return 0;
+	}
+    this.ActionCreateCB2();
+    return 0;
+    }
 
-    //this.formobj.ObjectCreated();
-    //this.formobj.OperationComplete();
-    //return 0;
+function osrc_action_create_cb2()
+    {
+    //Create an object through OSML
+    var src = this.baseobj + '/*?ls__mode=osml&ls__req=create&ls__sid=' + this.sid;
+    for(var i in this.createddata) if(i!='oid')
+	{
+	src+='&'+escape(this.createddata[i]['oid'])+'='+escape(this.createddata[i]['value']);
+	}
+    pg_serialized_load(this, src, osrc_action_create_cb);
     }
 
 function osrc_action_create_cb()
@@ -1048,6 +1055,7 @@ function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name,aq)
     loader.ActionOrderObject=osrc_action_order_object;
     loader.ActionDelete=osrc_action_delete;
     loader.ActionCreate=osrc_action_create;
+    loader.ActionCreateCB2 = osrc_action_create_cb2;
     loader.ActionModify=osrc_action_modify;
 
     loader.OpenSession=osrc_open_session;
