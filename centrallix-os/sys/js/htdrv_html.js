@@ -33,30 +33,37 @@ function ht_addtext(aparam)
     }
 function ht_showtext(aparam)
     {
-    if (this.mainlayer.content_type == 'text/plain')
+    if (cx__capabilities.Dom0NS)
 	{
-	// special case for text/plain due to buggy NS4
-	this.document.open('text/html', 'replace');
-	this.document.write('<pre>');
-	var htmltxt = this.mainlayer.content.replace(/&/g,'&amp;');
-	htmltxt = htmltxt.replace(/>/g,'&gt;');
-	htmltxt = htmltxt.replace(/</g,'&lt;');
-	this.document.write(htmltxt);
-	this.document.write('</pre>');
-	this.document.close();
+	if (this.mainlayer.content_type == 'text/plain')
+	    {
+	    // special case for text/plain due to buggy NS4
+	    var newtxt = '<pre>';
+	    var htmltxt = this.mainlayer.content.replace(/&/g,'&amp;');
+	    htmltxt = htmltxt.replace(/>/g,'&gt;');
+	    htmltxt = htmltxt.replace(/</g,'&lt;');
+	    newtxt += htmltxt;
+	    newtxt += '</pre>';
+	    this.document.open('text/html', 'replace');
+	    }
+	else
+	    {
+	    this.document.open(this.mainlayer.content_type, 'replace');
+	    var newtxt = this.mainlayer.content;
+	    }
 	}
     else
 	{
-	this.document.open(this.mainlayer.content_type, 'replace');
-	this.document.write(this.mainlayer.content);
-	this.document.close();
+	newtxt = this.mainlayer.content;
 	}
-    this.clip.height = this.document.height;
+    htr_writecontent(this, newtxt);
+    setClipHeight(this, getdocHeight(this));
     pg_resize(this.mainlayer.parentLayer);
     }
 
 function ht_sourcechanged(prop,oldval,newval)
     {
+    htr_unwatch(this, 'source', 'ht_sourcechanged');
     if (this.mode != 'dynamic' || (this.mode == 'dynamic' && newval.substr(0,5)=='http:'))
 	{
 	this.newsrc = newval;
@@ -72,11 +79,11 @@ function ht_sourcechanged(prop,oldval,newval)
 
 function ht_dosourcechange(l)
     {
-    tmpl = l.curLayer;
-    tmpl.visibility = 'hidden';
+    var tmpl = l.curLayer;
+    htr_setvisibility(tmpl, 'hidden');
     l.curLayer = l.altLayer;
     l.altLayer = tmpl;
-    l.curLayer.bgColor = null;
+    htr_setbgcolor(l.curLayer, null);
     pg_serialized_load(l.curLayer, l.newsrc, ht_reloaded);
     //l.curLayer.onload = ht_reloaded;
     //l.curLayer.load(l.newsrc,l.clip.width);
@@ -84,7 +91,7 @@ function ht_dosourcechange(l)
 
 function ht_fadestep()
     {
-    ht_fadeobj.faderLayer.background.src = '/sys/images/fade_' + ht_fadeobj.transition + '_0' + ht_fadeobj.count + '.gif';
+    htr_setbgimage(ht_fadeobj.faderLayer, '/sys/images/fade_' + ht_fadeobj.transition + '_0' + ht_fadeobj.count + '.gif');
     ht_fadeobj.count++;
     if (ht_fadeobj.count == 5 || ht_fadeobj.count >= 9)
 	{
@@ -97,12 +104,12 @@ function ht_fadestep()
 function ht_startfade(l,ftype,inout,fn)
     {
     ht_fadeobj = l;
-    if (l.faderLayer.clip.height < l.curLayer.clip.height)
-	l.faderLayer.clip.height=l.curLayer.clip.height;
-    if (l.faderLayer.clip.width < l.curLayer.clip.width)
-	l.faderLayer.clip.width=l.curLayer.clip.width;
-    l.faderLayer.moveAbove(l.curLayer);
-    l.faderLayer.visibility='inherit';
+    if (getClipHeight(l.faderLayer) < getClipHeight(l.curLayer))
+	setClipHeight(l.faderLayer, getClipHeight(l.curLayer));
+    if (getClipWidth(l.faderLayer) < getClipWidth(l.curLayer))
+	setClipWidth(l.faderLayer, getClipWidth(l.curLayer));
+    moveAbove(l.faderLayer, l.curLayer);
+    htr_setvisibility(l.faderLayer, 'inherit');
     l.completeFn = fn;
     if (inout == 'in')
 	{
@@ -118,16 +125,19 @@ function ht_startfade(l,ftype,inout,fn)
 
 function ht_reloaded(e)
     {
-    this.mainlayer.watch('source',ht_sourcechanged);
-    this.clip.height = this.document.height;
-    this.mainlayer.faderLayer.moveAbove(this);
-    this.visibility = 'inherit';
+    //this.mainlayer.watch('source',ht_sourcechanged);
+    htr_watch(this.mainlayer, 'source', 'ht_sourcechanged');
+    //this.clip.height = this.document.height;
+    setClipHeight(this, getdocHeight(this));
+    moveAbove(this.mainlayer.faderLayer, this);
+    htr_setvisibility(this, 'inherit');
     if (htutil_url_cmp(this.mainlayer.source, document.location.href))
 	{
-	for(var i=0;i<this.document.links.length;i++)
+	var lnks = pg_links(this);
+	for(var i=0;i<lnks.length;i++)
 	    {
-	    this.document.links[i].layer = this.mainlayer;
-	    this.document.links[i].kind = 'ht';
+	    lnks[i].layer = this.mainlayer;
+	    lnks[i].kind = 'ht';
 	    }
 	}
     pg_resize(this.mainlayer.parentLayer);
@@ -137,23 +147,17 @@ function ht_reloaded(e)
 
 function ht_click(e)
     {
-    e.target.layer.source = e.target.href;
+    e.target.layer.mainlayer.source = e.target.href;
     return false;
     }
 
 function ht_init(l,l2,fl,source,pdoc,w,h,p)
     {
-    l.mainlayer = l;
-    l2.mainlayer = l;
-    fl.mainlayer = l;
-    l.kind = 'ht';
-    l2.kind = 'ht';
-    fl.kind = 'ht';
+    htr_init_layer(l,l,'ht');
+    htr_init_layer(l2,l,'ht');
+    htr_init_layer(fl,l,'ht');
     l.pdoc = pdoc;
     l2.pdoc = pdoc;
-    l.document.layer = l;
-    l2.document.layer = l2;
-    fl.document.layer = fl;
     l.curLayer = l;
     l.altLayer = l2;
     l.faderLayer = fl;
@@ -162,18 +166,29 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
     l.content_type = 'text/html';
     if (h != -1)
 	{
-	l.clip.height = h;
-	l2.clip.height = h;
+	setClipHeight(l, h);
+	setClipHeight(l2, h);
 	}
+    else
+	{
+	setClipHeight(l, getdocHeight(l));
+	}
+    pg_set_style(l, 'height', getdocHeight(l));
     if (w != -1)
 	{
-	l.clip.width = w;
-	l2.clip.width = w;
+	setClipWidth(l, w);
+	setClipWidth(l2, w);
 	}
+    else
+	{
+	setClipWidth(l, getdocWidth(l));
+	}
+    pg_set_style(l, 'width', getdocWidth(l));
     if (source.substr(0,5) == 'http:')
 	{
-	l.onload = ht_reloaded;
-	l.load(source,w);
+	pg_serialized_load(l, source, ht_reloaded);
+	//l.onload = ht_reloaded;
+	//l.load(source,w);
 	}
     else if (source.substr(0,6) == 'debug:')
 	{
@@ -184,7 +199,10 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
     l.ActionAddText = ht_addtext;
     l.ActionShowText = ht_showtext;
     l.ActionSetValue = ht_setvalue;
-    l.watch('source', ht_sourcechanged);
+    //l.watch('source', ht_sourcechanged);
+    l.ht_sourcechanged = ht_sourcechanged;
+    htr_watch(l, 'source', 'ht_sourcechanged');
     pg_resize(l.parentLayer);
+    return l;
     }
 

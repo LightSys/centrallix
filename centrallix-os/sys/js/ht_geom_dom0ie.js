@@ -276,14 +276,22 @@ function setRelativeY(l, value)
    l.style.top = value;
    }
 
-function getdocWidth()
+function getdocWidth(o)
     {
-    return document.body.clientWidth;
+    if (!o) o = document;
+    if (o == document)
+	return o.body.clientWidth;
+    else
+	return o.clientWidth;
     }
 
-function getdocHeight()
+function getdocHeight(o)
     {
-    return document.body.clientHeight;    
+    if (!o) o = document;
+    if (o == document)
+	return o.body.clientHeight;
+    else
+	return o.clientHeight;
     }
 
 function moveToAbsolute(l, x, y)

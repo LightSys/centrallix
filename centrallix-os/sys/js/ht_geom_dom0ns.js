@@ -132,14 +132,42 @@ function getInnerWidth()
     return window.innerWidth;
     }
 
-function getdocWidth()
+function getdocWidth(o)
     {
-    return document.width;
+    if (!o) o = document;
+    if (cx__capabilities.Dom0NS)
+	{
+	if (o == document)
+	    return o.width;
+	else
+	    return o.document.width;
+	}
+    else
+	{
+	if (o == document)
+	    return o.body.scrollWidth;
+	else
+	    return o.scrollWidth;
+	}
     }
 
-function getdocHeight()
+function getdocHeight(o)
     {
-    return document.height;
+    if (!o) o = document;
+    if (cx__capabilities.Dom0NS)
+	{
+	if (o == document)
+	    return o.height;
+	else
+	    return o.document.height;
+	}
+    else
+	{
+	if (o == document)
+	    return o.body.scrollHeight;
+	else
+	    return o.scrollHeight;
+	}
     }
 
 function getpageXOffset()

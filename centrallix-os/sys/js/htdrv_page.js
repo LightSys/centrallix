@@ -219,6 +219,11 @@ function pg_set_style(element,attr, value)
 	    element.runtimeStyle.width = value;
 	    return;
 	    }	    
+	else if(attr == 'height')
+	    {
+	    element.runtimeStyle.height = value;
+	    return;
+	    }	    
 	else
 	    {
 	    alert(attr + " is not implemented.");
