@@ -23,6 +23,10 @@ by Centrallix.  Copying, modification, redistribution, etc., of
 that output (including DHTML, embedded javascript, etc.) is 
 covered under the conditions of the GPL.
 
+We are working on a solution to this issue so that your generated
+DHTML output can be under a copyright and license of your own
+choice.
+
 Any normal .app file, however, you wholly create yourself is
 obviously under your own copyright, and you may distribute (or
 not distribute) such files in any manner you please.
