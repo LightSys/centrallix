@@ -42,6 +42,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.6  2002/04/27 06:37:45  jorupp
+     * some bug fixes in the form
+     * cleaned up some debugging output in the label
+     * added a dynamic table widget
+
     Revision 1.5  2002/04/26 15:00:53  jorupp
      * fixing yet another mistake I made yesterday merging my changes with Greg's
      * the align attribute of a label now works
@@ -98,8 +103,6 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     int id;
     char* nptr;
     char *text;
-    char *c1;
-    char *c2;
 
     	/** Get an id for this. **/
 	id = (HTLBL.idcnt++);
@@ -128,7 +131,6 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    text=nmMalloc(1);
 	    text[0]='\0';
 	    }
-	printf("text -> %s\n",text);
 
 	align[0]='\0';
 	if(objGetAttrValue(w_obj,"align",POD(&ptr)) == 0)

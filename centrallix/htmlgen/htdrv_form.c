@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.27  2002/04/27 06:37:45  jorupp
+     * some bug fixes in the form
+     * cleaned up some debugging output in the label
+     * added a dynamic table widget
+
     Revision 1.26  2002/04/25 23:02:52  jorupp
      * added alternate alignment for labels (right or center should work)
      * fixed osrc/form bug
@@ -195,6 +200,32 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int readonly;
 #define FORM_BUF_SIZE 4096
     
+#if 0
+    char *temp;
+    int type;
+	temp=objGetFirstAttr(w_obj);
+	while(temp && (type=objGetAttrType(w_obj,temp)))
+	    {
+	    int i;
+	    char* c;
+	    printf("name: %s -- type:%i\n",temp,type);
+	    switch (type)
+		{
+		case DATA_T_STRING:
+		    objGetAttrValue(w_obj,temp,POD(&c));
+		    printf("name:%s value:%s\n",temp,c);
+		    break;
+		case DATA_T_INTEGER:
+		    objGetAttrValue(w_obj,temp,POD(&i));
+		    printf("name:%s value:%i\n",temp,i);
+		    break;
+		}
+	    temp=objGetNextAttr(w_obj);
+	    }
+#endif
+
+
+
     basequery=nmMalloc(FORM_BUF_SIZE);
     basewhere=nmMalloc(FORM_BUF_SIZE);
 
@@ -408,6 +439,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            {\n"
 		"            if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)\n"
 		"                {\n"
+		"                this.elements[i]._form_type=data[j].type;\n"
 		"                if(this.data[j].value)\n"
 		"                    {\n"
 		"                    this.elements[i].setvalue(this.data[j].value);\n"
@@ -805,43 +837,56 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                case 'editbox':\n"
 		/* Editbox supports as many</>/=/<=/>=/<=> clauses you can fit to query for data */
 		/*   <=> is the LIKE operator...... */
-		"                    var val=ele.getvalue();\n"
-		"                    var res=String(val).match(/(<=>|<=|>=|=<|=>|<|>|=) ?([^<>=]*? ?)/g);\n"
-		"                    if(res)\n"
+		"                    if(!ele._form_type)\n"
 		"                        {\n"
-		"                        var fone=true;\n"
-		"                        for(var i in res)\n"
-		"                            {\n"
-		"                            if(fone)\n"
-		"                                {\n"
-		"                                fone=false;\n"
-		"                                }\n"
-		"                            else\n"
-		"                                {\n"
-		"                                where+=' AND ';\n"
-		"                                }\n"
-		"                            var res2;\n"
-		"                            if ((/ $/).test(res[i]))\n" /* Horrible hack - FIXME*/
-		"                                {\n"
-		"                                res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*?) /).exec(res[i]);\n"
-		"                                }\n"
-		"                            else\n"
-		"                                {\n"
-		"                                res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*?)/).exec(res[i]);\n"
-		"                                };\n"
-		"                            if(res2[1]=='<=>')\n"
-		"                                {\n"
-		"                                where+=':'+ele.fieldname+' LIKE \"'+res2[2]+'\"';\n"
-		"                                }\n"
-		"                            else\n"
-		"                                {\n"
-		"                                where+=':'+ele.fieldname+res2[1]+'\"'+res2[2]+'\"';\n"
-		"                                }\n"
-		"                            }\n"
+		"                        ele._form_type='string';\n"
 		"                        }\n"
-		"                    else\n"
+		"                    switch(ele._form_type)\n"
 		"                        {\n"
-		"                        where+=':'+ele.fieldname+'=\"'+ele.getvalue()+'\"';\n"
+		"                        case 'integer':\n"
+		"                            if(ele.getvalue())\n"
+		"                                where+=ele.fieldname+'='+ele.getvalue();\n"
+		"                            break;\n"
+		"                        default:\n"
+		"                            var val=ele.getvalue();\n"
+		"                            var res=String(val).match(/(<=>|<=|>=|=<|=>|<|>|=) ?([^<>=]*? ?)/g);\n"
+		"                            if(res)\n"
+		"                                {\n"
+		"                                var fone=true;\n"
+		"                                for(var i in res)\n"
+		"                                    {\n"
+		"                                    if(fone)\n"
+		"                                        {\n"
+		"                                        fone=false;\n"
+		"                                        }\n"
+		"                                    else\n"
+		"                                        {\n"
+		"                                        where+=' AND ';\n"
+		"                                        }\n"
+		"                                    var res2;\n"
+		"                                    if ((/ $/).test(res[i]))\n" /* Horrible hack - FIXME*/
+		"                                        {\n"
+		"                                        res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*?) /).exec(res[i]);\n"
+		"                                        }\n"
+		"                                    else\n"
+		"                                        {\n"
+		"                                        res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*?)/).exec(res[i]);\n"
+		"                                        };\n"
+		"                                    if(res2[1]=='<=>')\n"
+		"                                        {\n"
+		"                                        where+=':'+ele.fieldname+' LIKE \"'+res2[2]+'\"';\n"
+		"                                        }\n"
+		"                                    else\n"
+		"                                        {\n"
+		"                                        where+=':'+ele.fieldname+res2[1]+'\"'+res2[2]+'\"';\n"
+		"                                        }\n"
+		"                                    }\n"
+		"                                }\n"
+		"                            else\n"
+		"                                {\n"
+		"                                where+=':'+ele.fieldname+'=\"'+ele.getvalue()+'\"';\n"
+		"                                }\n"
+		"                            break;\n"
 		"                        }\n"
 		"                    break;\n"
 		"                case 'radiobutton':\n"
