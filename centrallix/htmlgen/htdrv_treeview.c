@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.21 2003/08/02 22:12:06 jorupp Exp $
+    $Id: htdrv_treeview.c,v 1.22 2003/11/18 05:58:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.22  2003/11/18 05:58:34  gbeeley
+    - messing with efficiency issues
+
     Revision 1.21  2003/08/02 22:12:06  jorupp
      * got treeview pretty much working (a bit slow though)
     	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
@@ -231,8 +234,11 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	src[127]=0;
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	    htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
+	    }
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
@@ -269,8 +275,16 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,src);
-	htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\"></DIV>\n",id);
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,src);
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\"></DIV>\n",id);
+	    }
+	else
+	    {
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d;\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,x,y,w,z,src);
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);
+	    }
 
 	/** Event handler for click-on-url **/
 	htrAddEventHandler(s, "document","CLICK","tv",
