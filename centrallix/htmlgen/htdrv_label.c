@@ -42,6 +42,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.19  2004/02/24 20:04:06  gbeeley
+    - adding fgcolor support to label.
+
     Revision 1.18  2003/11/12 22:15:27  gbeeley
     Added font size to label
 
@@ -162,6 +165,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char name[64];
     char align[64];
     char main_bg[128];
+    char fgcolor[64];
     int x=-1,y=-1,w,h;
     int id;
     int fontsize;
@@ -203,6 +207,12 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    text=nmMalloc(1);
 	    text[0]='\0';
 	    }
+
+	/** label text color **/
+	if (objGetAttrValue(w_obj,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    snprintf(fgcolor,sizeof(fgcolor)," color='%.40s'",ptr);
+	else
+	    fgcolor[0] = '\0';
 
 	/** font size in points **/
 	if (objGetAttrValue(w_obj,"fontsize",DATA_T_INTEGER,POD(&fontsize)) != 0)
@@ -281,7 +291,7 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "lbl%d", id, 
-	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d>%s</font></td></tr></table>\n",w,align,fontsize,text);
+	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>%s</font></td></tr></table>\n",w,align,fontsize,fgcolor,text);
 
 	/** Check for more sub-widgets **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
