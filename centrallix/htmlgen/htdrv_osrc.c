@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.26 2002/05/31 05:03:32 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.27 2002/06/01 19:16:48 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.27  2002/06/01 19:16:48  jorupp
+     * down-sized the osrc's hidden layer, which was causing the page to be
+        longer than it should be, which caused the up/down scrollbar to
+        appear, which caused the textarea that handles keypress events to
+        be off the page, which meant that it couldn't recieve keyboard focus,
+        which meant that there were no keypress events.
+
     Revision 1.26  2002/05/31 05:03:32  jorupp
      * OSRC now can do a DoubleSync -- check kardia for an example
 
@@ -255,12 +262,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    //htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
 
   /** Ok, write the style header items. **/
-  snprintf(sbuf3, 200, "    <STYLE TYPE=\"text/css\">\n");
-  htrAddHeaderItem(s,sbuf3);
-  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:300;  WIDTH:500; HEIGHT:500; Z-INDEX:-20; }\n",id);
-  htrAddHeaderItem(s,sbuf3);
-  snprintf(sbuf3, 200, "    </STYLE>\n");
-  htrAddHeaderItem(s,sbuf3);
+  htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
+  htrAddHeaderItem_va(s,"        #osrc%dloader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:1;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
+  htrAddHeaderItem(s,"    </STYLE>\n");
 	 
 #if 0   
    htrAddScriptFunction(s, "osrc_action_clear", "\n"
