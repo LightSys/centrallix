@@ -1,6 +1,9 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
-0.7.1 --> 0.7.2	    ** not yet released **
+0.7.1 --> 0.7.2	    20-Jun-2002	    MAJOR DEVELOPMENT RELEASE
+
+    This is a major development release.  We've added a lot of features and
+    fixed a number of bugs.
 
     Changes:
 
@@ -24,10 +27,30 @@ Centrallix ChangeLog
 	    system.  These files are the "v3" files in the 'report' directory.
 	6.  Major additions to the html generation subsystem including the
 	    form and object source widgets which allow communication with the
-	    Centrallix server from the client.  Many other widgets have been
-	    created and/or updated in this release, too many to name here.
-	7.  Added autoconf support to detect settings and configure the 
-	    Makefile automatically.
+	    Centrallix server from the client.  Many widgets have been created
+	    and/or updated in this release, including the form widget, form
+	    status widget, editbox, objectsource, spinner box, dropdown list,
+	    dynamic mode table, label, DOM-viewer treeview mode for debugging,
+	    as well as various improvements in other widgets.
+	7.  A number of security and bug fixes of a variety of sorts.
+	8.  Added varargs (_va) functions to htmlgen, so that writing htdrivers
+	    is now much cleaner, avoiding buffer overruns and/or string 
+	    truncation via an API change.
+	9.  HTML client objectsystem driver created, mainly for use in "web
+	    services", or accessing data remotely over the network via HTTP.
+	10. Modified net_http to include watchdog timer support to auto-timeout
+	    a user's session after a configurable amount of time.  Default
+	    closes a session after 3 minutes of no access, or 30 minutes of no
+	    actual end-user activity.
+	11. Autoconf support added.  Run the configure script to enable/disable
+	    the http client and sybase client objectsystem drivers.
+	12. Loadable module support added.  Various modules, including htmlgen
+	    drivers, objdrivers, and netdrivers, can all be loaded as shared
+	    object (.so) modules now, if configured as such.
+	13. Initial multi-browser support infrastructure added.  No widgets,
+	    however, currently support anything other than NS4.7x.
+	14. Widget documentation is now in an XML file.  Scripts are included
+	    to transform that into the HTML version of the document.
 
 
 -------------------------------------------------------------------------------
