@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.13 2002/06/02 22:13:21 jorupp Exp $
+    $Id: htdrv_page.c,v 1.14 2002/06/03 05:31:39 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.14  2002/06/03 05:31:39  lkehresman
+    Fixed some global variables that should have been local.
+
     Revision 1.13  2002/06/02 22:13:21  jorupp
      * added disable functionality to image button (two new Actions)
      * bugfixes
@@ -293,16 +296,16 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    if (pg_curlayer != null)\n"
 		"        {\n"
-		"        for(i=0;i<pg_arealist.length;i++) if (pg_curlayer == pg_arealist[i].layer && e.x >= pg_arealist[i].x &&\n"
+		"        for(var i=0;i<pg_arealist.length;i++) if (pg_curlayer == pg_arealist[i].layer && e.x >= pg_arealist[i].x &&\n"
 		"                e.y >= pg_arealist[i].y && e.x < pg_arealist[i].x+pg_arealist[i].width &&\n"
 		"                e.y < pg_arealist[i].y+pg_arealist[i].height && pg_curarea != pg_arealist[i])\n"
 		"            {\n"
 		"            if (pg_curarea == pg_arealist[i]) break;\n"
 		"            pg_curarea = pg_arealist[i];\n"
-		"            x = pg_curarea.layer.pageX+pg_curarea.x;\n"
-		"            y = pg_curarea.layer.pageY+pg_curarea.y;\n"
-		"            w = pg_curarea.width;\n"
-		"            h = pg_curarea.height;\n"
+		"            var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
+		"            var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
+		"            var w = pg_curarea.width;\n"
+		"            var h = pg_curarea.height;\n"
 		"            pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);\n"
 		"            break;\n"
 		"            }\n"
@@ -343,10 +346,10 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    if (pg_curarea != null)\n"
 		"        {\n"
-		"        x = pg_curarea.layer.pageX+pg_curarea.x;\n"
-		"        y = pg_curarea.layer.pageY+pg_curarea.y;\n"
-		"        w = pg_curarea.width;\n"
-		"        h = pg_curarea.height;\n"
+		"        var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
+		"        var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
+		"        var w = pg_curarea.width;\n"
+		"        var h = pg_curarea.height;\n"
 		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
 		"            {\n"
 		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
@@ -355,7 +358,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        pg_curkbdlayer = pg_curlayer;\n"
 		"        if (pg_curkbdlayer.getfocushandler)\n"
 		"            {\n"
-		"            v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
+		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
 		"            if (v & 1)\n"
 		"                {\n"
 		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);\n"
