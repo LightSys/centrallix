@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.7 2004/02/24 20:11:53 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.8 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.8  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.7  2004/02/24 20:11:53  gbeeley
     - better annotation support
     - fixed query-related pathname bug
@@ -1172,7 +1178,7 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-qytGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pQytData inf = QYT(inf_v);
 
@@ -1184,7 +1190,7 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
+	    val->String = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
 	    obj_internal_PathPart(inf->Obj->Pathname,0,0);
 	    return 0;
 	    }
@@ -1199,16 +1205,16 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 
 	    /** If object associated, get annot from it **/
-	    if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, POD(val));
+	    if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, val);
 
 	    /** Otherwise, get annot from node if it has it **/
-	    if (stGetAttrValue(stLookup(inf->NodeData,attrname), DATA_T_STRING, POD(val), 0) == 0)
+	    if (stGetAttrValue(stLookup(inf->NodeData,attrname), DATA_T_STRING, val, 0) == 0)
 		{
 		return 0;
 		}
 	    else
 		{
-		*((char**)val) = "";
+		val->String = "";
 		return 0;
 		}
 	    }
@@ -1221,7 +1227,7 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = inf->NodeData->UsrType;
+	    val->String = inf->NodeData->UsrType;
 	    return 0;
 	    }
 	else if ((!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type")) && !(inf->LLObj))
@@ -1231,12 +1237,12 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"QYT","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = "system/void";
+	    val->String = "system/void";
 	    return 0;
 	    }
 
 	/** Low-level object?  Lookup the attribute in it **/
-	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, POD(val));
+	if (inf->LLObj) return objGetAttrValue(inf->LLObj, attrname, datatype, val);
 
 	mssError(1,"QYT","Invalid attribute for querytree object");
 
@@ -1276,7 +1282,7 @@ qytGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-qytSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+qytSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pQytData inf = QYT(inf_v);
 
@@ -1293,17 +1299,17 @@ qytSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"QYT","SetAttr 'name': name too long for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) return -1;
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
-	    strcpy(inf->NodeData->Name,*(char**)val);
+	    strcpy(inf->NodeData->Name,val->String);
 	    return 0;
 	    }
 
@@ -1319,7 +1325,7 @@ qytSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 /*** qytAddAttr - add an attribute to an object.  Passthrough to lowlevel.
  ***/
 int
-qytAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+qytAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     pQytData inf = QYT(inf_v);
 
@@ -1375,7 +1381,7 @@ qytGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** qytExecuteMethod - passthrough.
  ***/
 int
-qytExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+qytExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     pQytData inf = QYT(inf_v);
 

@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_unixuser.c,v 1.3 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_unixuser.c,v 1.4 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_unixuser.c,v $
 
     $Log: objdrv_unixuser.c,v $
+    Revision 1.4  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.3  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -587,7 +593,7 @@ uxuGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 
@@ -595,14 +601,14 @@ uxuGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** REPLACE MYOBJECT/TYPE WITH AN APPROPRIATE TYPE. **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
-	    if (inf->Type == UXU_T_USERLIST) *((char**)val) = "system/void";
-	    else if (inf->Type == UXU_T_USER) *((char**)val) = "system/void";
+	    if (inf->Type == UXU_T_USERLIST) val->String = "system/void";
+	    else if (inf->Type == UXU_T_USER) val->String = "system/void";
 	    return 0;
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
-	    if (inf->Type == UXU_T_USERLIST) *((char**)val) = "system/uxuserlist";
-	    else if (inf->Type == UXU_T_USER) *((char**)val) = "system/user";
+	    if (inf->Type == UXU_T_USERLIST) val->String = "system/uxuserlist";
+	    else if (inf->Type == UXU_T_USER) val->String = "system/user";
 	    return 0;
 	    }
 
@@ -652,7 +658,7 @@ uxuGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
-	    *(char**)val = inf->PasswdData->Description;
+	    val->String = inf->PasswdData->Description;
 	    return 0;
 	    }
 
@@ -702,7 +708,7 @@ uxuGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-uxuSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+uxuSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pUxuData inf = UXU(inf_v);
     int t;
@@ -725,13 +731,13 @@ uxuSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"UXU","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssError(1,"UXU","SetAttr 'name': could not rename structure file node object");
@@ -764,7 +770,7 @@ uxuSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
  *** files).
  ***/
 int
-uxuAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+uxuAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     /*pUxuData inf = UXU(inf_v);*/
 
@@ -804,7 +810,7 @@ uxuGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** uxuExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-uxuExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+uxuExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

@@ -69,10 +69,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.16 2004/06/10 17:56:28 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.17 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.17  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.16  2004/06/10 17:56:28  gbeeley
     - oops, need to add the config.h include in this file for correct checking
       of the __ctype_b problem.
@@ -3109,7 +3115,7 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
     int i,t,minus,n;
@@ -3131,17 +3137,17 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		{
 		if (!inf->Autoname[0])
 		    return 1; /* value is NULL */
-		*((char**)val) = inf->Autoname;
+		val->String = inf->Autoname;
 		return 0;
 		}
 	    ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
 	    if (ptr[0] == '.' && ptr[1] == '\0')
 	        {
-	        *((char**)val) = "/";
+	        val->String = "/";
 		}
 	    else
 	        {
-	        *((char**)val) = ptr;
+	        val->String = ptr;
 		}
 	    return 0;
 	    }
@@ -3158,24 +3164,24 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    switch(inf->Type)
 	        {
 		case SYBD_T_DATABASE:
-		    *(char**)val = inf->Node->Description;
+		    val->String = inf->Node->Description;
 		    break;
 		case SYBD_T_TABLE:
-		    *(char**)val = inf->TData->Annotation;
+		    val->String = inf->TData->Annotation;
 		    break;
 		case SYBD_T_ROWSOBJ:
-		    *(char**)val = "Contains rows for this table";
+		    val->String = "Contains rows for this table";
 		    break;
 		case SYBD_T_COLSOBJ:
-		    *(char**)val = "Contains columns for this table";
+		    val->String = "Contains columns for this table";
 		    break;
 		case SYBD_T_COLUMN:
-		    *(char**)val = "Column within this table";
+		    val->String = "Column within this table";
 		    break;
 		case SYBD_T_ROW:
 		    if (!inf->TData->RowAnnotExpr)
 		        {
-			*(char**)val = "";
+			val->String = "";
 			break;
 			}
 		    expModifyParam(inf->TData->ObjList, NULL, inf->Obj);
@@ -3184,11 +3190,11 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    if (inf->TData->RowAnnotExpr->Flags & EXPR_F_NULL ||
 		        inf->TData->RowAnnotExpr->String == NULL)
 			{
-			*(char**)val = "";
+			val->String = "";
 			}
 		    else
 		        {
-			*(char**)val = inf->TData->RowAnnotExpr->String;
+			val->String = inf->TData->RowAnnotExpr->String;
 			}
 		    break;
 		}
@@ -3205,19 +3211,19 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		}
 	    switch(inf->Type)
 	        {
-		case SYBD_T_DATABASE: *((char**)val) = "system/void"; break;
-		case SYBD_T_TABLE: *((char**)val) = "system/void"; break;
-		case SYBD_T_ROWSOBJ: *((char**)val) = "system/void"; break;
-		case SYBD_T_COLSOBJ: *((char**)val) = "system/void"; break;
+		case SYBD_T_DATABASE: val->String = "system/void"; break;
+		case SYBD_T_TABLE: val->String = "system/void"; break;
+		case SYBD_T_ROWSOBJ: val->String = "system/void"; break;
+		case SYBD_T_COLSOBJ: val->String = "system/void"; break;
 		case SYBD_T_ROW: 
 		    {
 		    if (inf->TData->HasContent)
-		        *((char**)val) = "application/octet-stream";
+		        val->String = "application/octet-stream";
 		    else
-		        *((char**)val) = "system/void";
+		        val->String = "system/void";
 		    break;
 		    }
-		case SYBD_T_COLUMN: *((char**)val) = "system/void"; break;
+		case SYBD_T_COLUMN: val->String = "system/void"; break;
 		}
 	    return 0;
 	    }
@@ -3232,12 +3238,12 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		}
 	    switch(inf->Type)
 	        {
-		case SYBD_T_DATABASE: *((char**)val) = "application/sybase"; break;
-		case SYBD_T_TABLE: *((char**)val) = "system/table"; break;
-		case SYBD_T_ROWSOBJ: *((char**)val) = "system/table-rows"; break;
-		case SYBD_T_COLSOBJ: *((char**)val) = "system/table-columns"; break;
-		case SYBD_T_ROW: *((char**)val) = "system/row"; break;
-		case SYBD_T_COLUMN: *((char**)val) = "system/column"; break;
+		case SYBD_T_DATABASE: val->String = "application/sybase"; break;
+		case SYBD_T_TABLE: val->String = "system/table"; break;
+		case SYBD_T_ROWSOBJ: val->String = "system/table-rows"; break;
+		case SYBD_T_COLSOBJ: val->String = "system/table-columns"; break;
+		case SYBD_T_ROW: val->String = "system/row"; break;
+		case SYBD_T_COLUMN: val->String = "system/column"; break;
 		}
 	    return 0;
 	    }
@@ -3258,7 +3264,7 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    /** Search table info for this column. **/
 	    for(i=0;i<tdata->nCols;i++) if (!strcmp(tdata->Cols[i],inf->RowColPtr))
 	        {
-		*((char**)val) = inf->Node->Types[tdata->ColTypes[i]];
+		val->String = inf->Node->Types[tdata->ColTypes[i]];
 		return 0;
 		}
 	    }
@@ -3280,7 +3286,7 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
 			return -1;
 			}
-		    *(int*)val = 0;
+		    val->Integer = 0;
 		    if (t==5 || t==16) memcpy(val,ptr,1);
 		    else if (t==6) memcpy(val,ptr,2);
 		    else memcpy(val,ptr,4);
@@ -3293,7 +3299,7 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			mssError(1,"SYBD","Type mismatch accessing attribute '%s' (should be string)", attrname);
 			return -1;
 			}
-		    *(char**)val = ptr;
+		    val->String = ptr;
 		    return 0;
 		    }
 		else if (t==22 || t==12)
@@ -3304,7 +3310,7 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			return -1;
 			}
 		    /** datetime **/
-		    *(pDateTime*)val = &(inf->Types.Date);
+		    val->DateTime = &(inf->Types.Date);
 		    memcpy(&days,ptr,4);
 		    memcpy(&fsec,ptr+4,4);
 
@@ -3357,7 +3363,7 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			return -1;
 			}
 		    memcpy(&f, ptr, 4);
-		    *(double*)val = f;
+		    val->Double = f;
 		    return 0;
 		    }
 		else if (t == 11 || t == 21)
@@ -3368,7 +3374,7 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			return -1;
 			}
 		    /** money **/
-		    *(pMoneyType*)val = &(inf->Types.Money);
+		    val->Money = &(inf->Types.Money);
 		    if (t == 21)
 		        {
 			/** smallmoney, 4-byte **/
@@ -3491,7 +3497,7 @@ sybdGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-sybdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
     int type,rval;
@@ -3523,10 +3529,10 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    switch(inf->Type)
 	        {
 		case SYBD_T_DATABASE:
-		    memccpy(inf->Node->Description, *(char**)val, '\0', 255);
+		    memccpy(inf->Node->Description, val->String, '\0', 255);
 		    inf->Node->Description[255] = 0;
 		    /**
-		    objParamsSet(inf->Node->Params, "description", *(char**)val, 0);
+		    objParamsSet(inf->Node->Params, "description", val->String, 0);
 		    ptr = obj_internal_PathPart(inf->Obj->Pathname, 0, inf->Obj->SubPtr);
 		    node_fd = fdOpen(ptr, O_WRONLY, 0600);
 		    if (node_fd)
@@ -3539,7 +3545,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    break;
 		    
 		case SYBD_T_TABLE:
-		    memccpy(inf->TData->Annotation, *(char**)val, '\0', 255);
+		    memccpy(inf->TData->Annotation, val->String, '\0', 255);
 		    inf->TData->Annotation[255] = 0;
 		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    if (inf->Node->AnnotTable[0])
@@ -3586,7 +3592,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    mssError(1,"SYBD","Type mismatch setting attribute '%s' (should be integer)", attrname);
 		    return -1;
 		    }
-		inf->Size = *(int*)val;
+		inf->Size = val->Integer;
 		}
 	    else
 	        {
@@ -3680,7 +3686,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
  *** unix filesystem objects, so we just deny the request.
  ***/
 int
-sybdAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
+sybdAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
     return -1;
     }
@@ -3719,7 +3725,7 @@ sybdGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 /*** sybdExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-sybdExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree* oxt)
+sybdExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree* oxt)
     {
     return -1;
     }

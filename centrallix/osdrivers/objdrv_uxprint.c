@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_uxprint.c,v 1.6 2003/09/02 15:37:13 gbeeley Exp $
+    $Id: objdrv_uxprint.c,v 1.7 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_uxprint.c,v $
 
     $Log: objdrv_uxprint.c,v $
+    Revision 1.7  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.6  2003/09/02 15:37:13  gbeeley
     - Added enhanced command line interface to test_obj.
     - Enhancements to v3 report writer.
@@ -771,7 +777,7 @@ uxpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+uxpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pUxpData inf = UXP(inf_v);
     char* ptr;
@@ -789,13 +795,13 @@ uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    if (ptr)
 	        {
 		strcpy(inf->Pathname,ptr);
-	        *((char**)val) = inf->Pathname;
+	        val->String = inf->Pathname;
 		}
 	    else
 	        {
-	        *((char**)val) = "/";
+	        val->String = "/";
 		}
-	    /* *((char**)val) = inf->Node->Data->Name;*/
+	    /* val->String = inf->Node->Data->Name;*/
 	    }
 	else if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
@@ -805,7 +811,7 @@ uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		return -1;
 		}
 	    stAttrValue(stLookup(inf->Node->Data,"type"), NULL, &ptr, 0);
-	    *((char**)val) = ptr;
+	    val->String = ptr;
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
@@ -814,7 +820,7 @@ uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = "system/printer";
+	    val->String = "system/printer";
 	    }
 	else if (!strcmp(attrname,"spool_file"))
 	    {
@@ -823,7 +829,7 @@ uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = inf->SpoolPathname;
+	    val->String = inf->SpoolPathname;
 	    }
 	else
 	    {
@@ -836,7 +842,7 @@ uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    mssError(1,"UXP","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		    return -1;
 		    }
-		*((char**)val) = "Printer";
+		val->String = "Printer";
 		return 0;
 		}
 	    else if (!find_inf)
@@ -892,7 +898,7 @@ uxpGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-uxpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+uxpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pUxpData inf = UXP(inf_v);
     pStructInf attr_inf;
@@ -908,13 +914,13 @@ uxpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	    if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	        strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		strlen(*(char**)(val)) + 1 > 255)
+		strlen(val->String) + 1 > 255)
 		{
 		mssError(1,"UXP","SetAttr 'name': new value exceeds internal size limits");
 		return -1;
 		}
 	    strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	    strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	    strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	    if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 	        {
 		mssErrorErrno(1,"UXP","Could not rename printer node object");
@@ -954,7 +960,7 @@ uxpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
  *** unix printer objects, so we just deny the request.
  ***/
 int
-uxpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
+uxpAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
     return -1;
     }
@@ -993,7 +999,7 @@ uxpGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 /*** uxpExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-uxpExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree* oxt)
+uxpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree* oxt)
     {
     return -1;
     }

@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.8 2004/02/24 20:25:41 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.9 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.9  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.8  2004/02/24 20:25:41  gbeeley
     - misc changes: runclient check in evaltree in stparse, eval() function
       rejected in sybase driver, update version in centrallix.conf, .cmp
@@ -660,7 +666,7 @@ rpt_internal_QyGetAttrType(void* qyobj, char* attrname)
  *** value.
  ***/
 int
-rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* data_ptr)
+rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData data_ptr)
     {
     pObject obj = ((pQueryConn)qyobj)->QueryItem;
     pQueryConn qy = (pQueryConn)qyobj;
@@ -693,22 +699,22 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* dat
 			}
 		    if (!(exp->Flags & EXPR_F_NULL)) switch(exp->DataType)
 		        {
-			case DATA_T_INTEGER: *(int*)data_ptr = exp->Integer; break;
-			case DATA_T_DOUBLE: *(double*)data_ptr = exp->Types.Double; break;
+			case DATA_T_INTEGER:	data_ptr->Integer = exp->Integer; break;
+			case DATA_T_DOUBLE:	data_ptr->Double = exp->Types.Double; break;
 			case DATA_T_STRING: 
 			    qy->DataBuf = (char*)nmSysMalloc(strlen(exp->String)+1);
-			    *(char**)data_ptr = qy->DataBuf;
+			    data_ptr->String = qy->DataBuf;
 			    strcpy(qy->DataBuf, exp->String);
 			    break;
 			case DATA_T_MONEY: 
 			    qy->DataBuf = (char*)nmSysMalloc(sizeof(MoneyType));
 			    memcpy(qy->DataBuf, &(exp->Types.Money), sizeof(MoneyType));
-			    *(pMoneyType*)data_ptr = (pMoneyType)(qy->DataBuf);
+			    data_ptr->Money = (pMoneyType)(qy->DataBuf);
 			    break;
 			case DATA_T_DATETIME: 
 			    qy->DataBuf = (char*)nmSysMalloc(sizeof(DateTime));
 			    memcpy(qy->DataBuf, &(exp->Types.Date), sizeof(DateTime));
-			    *(pDateTime*)data_ptr = (pDateTime)(qy->DataBuf);
+			    data_ptr->DateTime = (pDateTime)(qy->DataBuf);
 			    break;
 			default: return -1;
 			}
@@ -726,8 +732,8 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* dat
 	/** Determine whether query is active? **/
 	if (!strcmp(attrname,"ls__isactive"))
 	    {
-	    if (qy->Query) *((int*)data_ptr) = 1;
-	    else *((int*)data_ptr) = 0;
+	    if (qy->Query) data_ptr->Integer = 1;
+	    else data_ptr->Integer = 0;
 	    return 0;
 	    }
 
@@ -741,7 +747,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* dat
     	/** Return 1 if object is NULL. **/
 	if (obj == NULL) return 1;
 
-    return objGetAttrValue(obj, attrname, datatype, POD(data_ptr));
+    return objGetAttrValue(obj, attrname, datatype, data_ptr);
     }
 
 /*** rpt_internal_PrepareQuery - perform all operations necessary to prepare
@@ -3891,7 +3897,7 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pRptData inf = RPT(inf_v);
     pStructInf find_inf, value_inf, tmp_inf;
@@ -3906,8 +3912,8 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    /* *((char**)val) = inf->Node->Data->Name;*/
-	    *((char**)val) = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
+	    /* val->String = inf->Node->Data->Name;*/
+	    val->String = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
 	    obj_internal_PathPart(inf->Obj->Pathname,0,0);
 	    return 0;
 	    }
@@ -3927,7 +3933,7 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	            return -1;
 	        syGetSem(inf->StartSem, 1, 0);
 	        }
-	    *((char**)val) = inf->ContentType;
+	    val->String = inf->ContentType;
 	    return 0;
 	    }
 	else if (!strcmp(attrname,"outer_type"))
@@ -3937,7 +3943,7 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = inf->Node->Data->UsrType;
+	    val->String = inf->Node->Data->UsrType;
 	    return 0;
 	    }
 
@@ -3951,11 +3957,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    if (!inf->RSess || !inf->RSess->PSession)
 	        {
-		*(int*)val = 1;
+		val->Integer = 1;
 		}
 	    else
 	        {
-		*(int*)val = prtGetPageNumber(inf->RSess->PageHandle);
+		val->Integer = prtGetPageNumber(inf->RSess->PageHandle);
 		}
 	    return 0;
 	    }
@@ -3977,7 +3983,7 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 			}
 		    inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
 		    inf->SVvalue.Strings = (char**)(inf->VecData);
-                    *(pStringVec*)val = &(inf->SVvalue);
+                    val->StringVec = &(inf->SVvalue);
 		    }
                 else if (stGetAttrType(find_inf,0) == DATA_T_INTEGER && stAttrIsList(find_inf))
                     {
@@ -3988,11 +3994,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 			}
 		    inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
 		    inf->IVvalue.Integers = (int*)(inf->VecData);
-                    *(pIntVec*)val = &(inf->IVvalue);
+                    val->IntVec = &(inf->IVvalue);
                     }
 		else
 		    {
-		    stGetAttrValue(find_inf, datatype, POD(val), 0);
+		    stGetAttrValue(find_inf, datatype, val, 0);
 		    }
                 return 0;
                 }
@@ -4066,7 +4072,7 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-            *(char**)val = "";
+            val->String = "";
             return 0;
             }
 
@@ -4135,7 +4141,7 @@ rptGetFirstAttr(void* inf_v, pObjTrxTree *oxt)
  *** point to an appropriate data type.
  ***/
 int
-rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree *oxt)
+rptSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree *oxt)
     {
     pRptData inf = RPT(inf_v);
     pStructInf find_inf;
@@ -4160,13 +4166,13 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"RPT","SetAttr 'name': name too long for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 
 		/** GRB - rpt may not be in a fs file.  It is not this driver's
 		 ** duty to call things like rename().
@@ -4178,7 +4184,7 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    }*/
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
-	    strcpy(inf->Node->Data->Name,*(char**)val);
+	    strcpy(inf->Node->Data->Name,val->String);
 	    return 0;
 	    }
 	
@@ -4218,7 +4224,7 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Set the value. **/
 	if (find_inf)
 	    {
-	    stSetAttrValue(find_inf, type, POD(val), 0);
+	    stSetAttrValue(find_inf, type, val, 0);
 	    return 0;
 	    }
 
@@ -4273,7 +4279,7 @@ rptGetNextMethod(void* inf_v, pObjTrxTree *oxt)
 /*** rptExecuteMethod - no methods here.  Fails.
  ***/
 int
-rptExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree *oxt)
+rptExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree *oxt)
     {
     /*pRptData inf = RPT(inf_v);*/
 

@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.13 2004/05/04 18:20:15 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.14 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.14  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.13  2004/05/04 18:20:15  gbeeley
     - Another fix for the RDONLY vs RDWR issue
 
@@ -1039,7 +1045,7 @@ uxdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pUxdData inf = UXD(inf_v);
     struct passwd *pw;
@@ -1061,11 +1067,11 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    if (ptr)
 	        {
 		strcpy(inf->Buffer,ptr+1);
-	        *((char**)val) = inf->Buffer;
+	        val->String = inf->Buffer;
 		}
 	    else
 	        {
-	        *((char**)val) = "/";
+	        val->String = "/";
 		}
 	    /*obj_internal_PathPart(inf->Obj->Pathname,0,0);*/
 	    }
@@ -1082,8 +1088,8 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    uxd_internal_LoadAnnot(inf->RealPathname);
 	    *ptr = '/';
 	    ua = (pUxdAnnotation)xhLookup(&UXD_INF.Annotations, inf->RealPathname);
-	    if (!ua) *((char**)val) = "";
-	    else *((char**)val) = ua->Annotation;
+	    if (!ua) val->String = "";
+	    else val->String = ua->Annotation;
 	    }
 	else if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
@@ -1094,13 +1100,13 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    if (inf->Flags & UXD_F_ISDIR) 
 	        {
-		*((char**)val) = "system/void";
+		val->String = "system/void";
 		}
 	    else 
 	        {
 		ptr = uxd_internal_DirType(inf->RealPathname);
-		if (ptr) *((char**)val) = ptr;
-		else *((char**)val) = "application/octet-stream";
+		if (ptr) val->String = ptr;
+		else val->String = "application/octet-stream";
 		}
 	    }
 	else if (!strcmp(attrname,"outer_type"))
@@ -1110,8 +1116,8 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    if (inf->Flags & UXD_F_ISDIR) *((char**)val) = "system/directory";
-	    else *((char**)val) = "system/file";
+	    if (inf->Flags & UXD_F_ISDIR) val->String = "system/directory";
+	    else val->String = "system/file";
 	    }
 	else if (!strcmp(attrname,"owner"))
 	    {
@@ -1127,7 +1133,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		if (!pw) snprintf(inf->UsrName,16,"%d",inf->Fileinfo.st_uid);
 		else snprintf(inf->UsrName,16,"%s",pw->pw_name);
 		}
-	    *((char**)val) = inf->UsrName;
+	    val->String = inf->UsrName;
 	    }
 	else if (!strcmp(attrname,"group"))
 	    {
@@ -1143,7 +1149,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		if (!gr) snprintf(inf->GrpName,16,"%d",inf->Fileinfo.st_gid);
 		else snprintf(inf->GrpName,16,"%s",gr->gr_name);
 		}
-	    *((char**)val) = inf->GrpName;
+	    val->String = inf->GrpName;
 	    }
 	else if (!strcmp(attrname,"size"))
 	    {
@@ -1153,7 +1159,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		return -1;
 		}
 	    stat(inf->RealPathname, &(inf->Fileinfo));
-	    *((int*)val) = inf->Fileinfo.st_size;
+	    val->Integer = inf->Fileinfo.st_size;
 	    }
 	else if (!strcmp(attrname,"permissions"))
 	    {
@@ -1163,7 +1169,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		return -1;
 		}
 	    stat(inf->RealPathname, &(inf->Fileinfo));
-	    *((int*)val) = inf->Fileinfo.st_mode;
+	    val->Integer = inf->Fileinfo.st_mode;
 	    }
 	else if (!strcmp(attrname,"last_modification"))
 	    {
@@ -1183,7 +1189,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		inf->MTime.Part.Month = t->tm_mon;
 		inf->MTime.Part.Year = t->tm_year;
 		}
-	    *((pDateTime*)val) = &(inf->MTime);
+	    val->DateTime = &(inf->MTime);
 	    }
 	else if (!strcmp(attrname,"last_change"))
 	    {
@@ -1203,7 +1209,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		inf->CTime.Part.Month = t->tm_mon;
 		inf->CTime.Part.Year = t->tm_year;
 		}
-	    *((pDateTime*)val) = &(inf->CTime);
+	    val->DateTime = &(inf->CTime);
 	    }
 	else if (!strcmp(attrname,"last_access"))
 	    {
@@ -1223,7 +1229,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		inf->ATime.Part.Month = t->tm_mon;
 		inf->ATime.Part.Year = t->tm_year;
 		}
-	    *((pDateTime*)val) = &(inf->ATime);
+	    val->DateTime = &(inf->ATime);
 	    }
 	else
 	    {
@@ -1271,7 +1277,7 @@ uxdGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-uxdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+uxdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pUxdData inf = UXD(inf_v);
 
@@ -1286,13 +1292,13 @@ uxdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    /*if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	    if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	        strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		strlen(*(char**)(val)) + 1 > 255)
+		strlen(val->String) + 1 > 255)
 		{
 		mssError(1,"UXD","SetAttr 'name': too long for internal representation");
 		return -1;
 		}
 	    strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	    strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	    strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	    if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 	        {
 		mssErrorErrno(1,"UXD","Could not rename file/directory");
@@ -1307,7 +1313,7 @@ uxdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    uxd_internal_ModifyAnnot(inf, *(char**)val);
+	    uxd_internal_ModifyAnnot(inf, val->String);
 	    }
 	else if (!strcmp(attrname,"content_type"))
 	    {
@@ -1376,7 +1382,7 @@ uxdSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
  *** unix filesystem objects, so we just deny the request.
  ***/
 int
-uxdAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+uxdAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     return -1;
     }
@@ -1415,7 +1421,7 @@ uxdGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** uxdExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-uxdExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+uxdExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

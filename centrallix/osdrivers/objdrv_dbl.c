@@ -57,10 +57,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_dbl.c,v 1.3 2002/09/27 22:26:06 gbeeley Exp $
+    $Id: objdrv_dbl.c,v 1.4 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_dbl.c,v $
 
     $Log: objdrv_dbl.c,v $
+    Revision 1.4  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.3  2002/09/27 22:26:06  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -847,7 +853,7 @@ dblGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+dblGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pDblData inf = DBL(inf_v);
     int i,t,minus,n;
@@ -868,11 +874,11 @@ dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    ptr = inf->Pathname.Elements[inf->Pathname.nElements-1];
 	    if (ptr[0] == '.' && ptr[1] == '\0')
 	        {
-	        *((char**)val) = "/";
+	        val->String = "/";
 		}
 	    else
 	        {
-	        *((char**)val) = ptr;
+	        val->String = ptr;
 		}
 	    return 0;
 	    }
@@ -889,24 +895,24 @@ dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    switch(inf->Type)
 	        {
 		case DBL_T_DATABASE:
-		    *(char**)val = inf->Node->Description;
+		    val->String = inf->Node->Description;
 		    break;
 		case DBL_T_TABLE:
-		    *(char**)val = inf->TData->Annotation;
+		    val->String = inf->TData->Annotation;
 		    break;
 		case DBL_T_ROWSOBJ:
-		    *(char**)val = "Contains rows for this table";
+		    val->String = "Contains rows for this table";
 		    break;
 		case DBL_T_COLSOBJ:
-		    *(char**)val = "Contains columns for this table";
+		    val->String = "Contains columns for this table";
 		    break;
 		case DBL_T_COLUMN:
-		    *(char**)val = "Column within this table";
+		    val->String = "Column within this table";
 		    break;
 		case DBL_T_ROW:
 		    if (!inf->TData->RowAnnotExpr)
 		        {
-			*(char**)val = "";
+			val->String = "";
 			break;
 			}
 		    expModifyParam(inf->TData->ObjList, NULL, inf->Obj);
@@ -915,11 +921,11 @@ dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    if (inf->TData->RowAnnotExpr->Flags & EXPR_F_NULL ||
 		        inf->TData->RowAnnotExpr->String == NULL)
 			{
-			*(char**)val = "";
+			val->String = "";
 			}
 		    else
 		        {
-			*(char**)val = inf->TData->RowAnnotExpr->String;
+			val->String = inf->TData->RowAnnotExpr->String;
 			}
 		    break;
 		}
@@ -943,12 +949,12 @@ dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		case DBL_T_ROW: 
 		    {
 		    if (inf->TData->HasContent)
-		        *((char**)val) = "application/octet-stream";
+		        val->String = "application/octet-stream";
 		    else
-		        *((char**)val) = "system/void";
+		        val->String = "system/void";
 		    break;
 		    }
-		case DBL_T_COLUMN: *((char**)val) = "system/void"; break;
+		case DBL_T_COLUMN: val->String = "system/void"; break;
 		}
 	    return 0;
 	    }
@@ -963,12 +969,12 @@ dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    switch(inf->Type)
 	        {
-		case DBL_T_DATABASE: *((char**)val) = "application/dbl"; break;
-		case DBL_T_TABLE: *((char**)val) = "system/table"; break;
-		case DBL_T_ROWSOBJ: *((char**)val) = "system/table-rows"; break;
-		case DBL_T_COLSOBJ: *((char**)val) = "system/table-columns"; break;
-		case DBL_T_ROW: *((char**)val) = "system/row"; break;
-		case DBL_T_COLUMN: *((char**)val) = "system/column"; break;
+		case DBL_T_DATABASE: val->String = "application/dbl"; break;
+		case DBL_T_TABLE: val->String = "system/table"; break;
+		case DBL_T_ROWSOBJ: val->String = "system/table-rows"; break;
+		case DBL_T_COLSOBJ: val->String = "system/table-columns"; break;
+		case DBL_T_ROW: val->String = "system/row"; break;
+		case DBL_T_COLUMN: val->String = "system/column"; break;
 		}
 	    return 0;
 	    }
@@ -989,7 +995,7 @@ dblGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    /** Search table info for this column. **/
 	    for(i=0;i<tdata->nCols;i++) if (!strcmp(tdata->Cols[i],inf->RowColPtr))
 	        {
-		*((char**)val) = inf->Node->Types[tdata->ColTypes[i]];
+		val->String = inf->Node->Types[tdata->ColTypes[i]];
 		return 0;
 		}
 	    }
@@ -1081,7 +1087,7 @@ dblGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** point to an appropriate data type.
  ***/
 int
-dblSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+dblSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pDblData inf = DBL(inf_v);
     int type,rval;
@@ -1113,12 +1119,12 @@ dblSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    switch(inf->Type)
 	        {
 		case DBL_T_DATABASE:
-		    memccpy(inf->Node->Description, *(char**)val, '\0', 255);
+		    memccpy(inf->Node->Description, val->String, '\0', 255);
 		    inf->Node->Description[255] = 0;
 		    break;
 		    
 		case DBL_T_TABLE:
-		    memccpy(inf->TData->Annotation, *(char**)val, '\0', 255);
+		    memccpy(inf->TData->Annotation, val->String, '\0', 255);
 		    inf->TData->Annotation[255] = 0;
 		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    break;
@@ -1147,7 +1153,7 @@ dblSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    mssError(1,"DBL","Type mismatch setting attribute '%s' [should be integer]", attrname);
 		    return -1;
 		    }
-		inf->Size = *(int*)val;
+		inf->Size = val->Integer;
 		}
 	    else
 	        {
@@ -1202,7 +1208,7 @@ dblSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
  *** unix filesystem objects, so we just deny the request.
  ***/
 int
-dblAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
+dblAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
     return -1;
     }
@@ -1241,7 +1247,7 @@ dblGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 /*** dblExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-dblExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree* oxt)
+dblExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree* oxt)
     {
     return -1;
     }

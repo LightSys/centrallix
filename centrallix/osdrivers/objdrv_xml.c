@@ -57,10 +57,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.21 2003/06/04 08:55:14 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.22 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.22  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.21  2003/06/04 08:55:14  jorupp
      * a number of smaller osdriver patches that have been sitting in my copy for a while....
        * couple better comments in http
@@ -1131,7 +1137,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
  *** pointer must point to an appropriate data type.
  ***/
 int
-xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pXmlData inf = XML(inf_v);
     pStructInf find_inf;
@@ -1168,9 +1174,9 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    /** for the top level one -- return the inner name, not the outer one **/
 	    if(inf->Obj->SubCnt==1)
-		*((char**)val) = (char*)inf->CurNode->name;
+		val->String = (char*)inf->CurNode->name;
 	    else
-		*((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+		val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 
@@ -1182,7 +1188,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"XML","Type mismatch getting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = (char*)inf->CurNode->name;
+	    val->String = (char*)inf->CurNode->name;
 	    return 0;
 	    }
 
@@ -1216,7 +1222,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		{
 		if(datatype==DATA_T_INTEGER)
 		    {
-		    *(int*)val=strtol(inf->AttrValue,&ptr,10);
+		    val->Integer=strtol(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
 			free(inf->AttrValue);
@@ -1230,7 +1236,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    }
 		else if (datatype==DATA_T_STRING)
 		    {
-		    *((char**)val) = inf->AttrValue;
+		    val->String = inf->AttrValue;
 		    return 0;
 		    }
 		else
@@ -1244,7 +1250,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		/** if there's no text, we're going to return the empty string **/
 		inf->AttrValue=(char*)malloc(1);
 		inf->AttrValue[0]='\0';
-		*((char**)val) = inf->AttrValue;
+		val->String = inf->AttrValue;
 		return -0;
 		}
 	    }
@@ -1252,14 +1258,14 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** If content-type, and it wasn't specified in the XML **/
 	if (!strcmp(attrname,"content_type"))
 	    {
-	    *((char**)val) = "text/plain";
+	    val->String = "text/plain";
 	    return 0;
 	    }
 
 	/** If outer type, and it wasn't specified in the XML **/
 	if (!strcmp(attrname,"outer_type"))
 	    {
-	    *((char**)val) = "text/xml-node";
+	    val->String = "text/xml-node";
 	    return 0;
 	    }
 
@@ -1271,7 +1277,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
-	    *(char**)val = "";
+	    val->String = "";
 	    return 0;
 	    }
 
@@ -1365,7 +1371,7 @@ xmlGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-xmlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+xmlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pXmlData inf = XML(inf_v);
     pStructInf find_inf;
@@ -1386,13 +1392,13 @@ xmlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"XML","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssError(1,"XML","SetAttr 'name': could not rename structure file node object");
@@ -1471,7 +1477,7 @@ xmlGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** xmlExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-xmlExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+xmlExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

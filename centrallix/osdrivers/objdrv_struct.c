@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.7 2003/05/30 17:39:53 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.8 2004/06/12 00:10:15 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.8  2004/06/12 00:10:15  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.7  2003/05/30 17:39:53  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -535,7 +541,7 @@ stxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+stxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
@@ -549,7 +555,7 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"STX","Type mismatch getting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = inf->Data->Name;
+	    val->String = inf->Data->Name;
 	    return 0;
 	    }
 
@@ -562,9 +568,9 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		return -1;
 		}
 	    if (stLookup(inf->Data,"content"))
-	        *((char**)val) = "application/octet-stream";
+	        val->String = "application/octet-stream";
 	    else
-	        *((char**)val) = "system/void";
+	        val->String = "system/void";
 	    return 0;
 	    }
 	else if (!strcmp(attrname,"outer_type"))
@@ -574,7 +580,7 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"STX","Type mismatch getting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *((char**)val) = inf->Data->UsrType;
+	    val->String = inf->Data->UsrType;
 	    return 0;
 	    }
 
@@ -589,7 +595,7 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"STX","Type mismatch getting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    *(char**)val = "";
+	    val->String = "";
 	    return 0;
 	    }
 
@@ -608,8 +614,8 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    return -1;
 		    }
 		inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
-		POD(val)->IntVec = &(inf->IVvalue);
-		POD(val)->IntVec->Integers = (int*)(inf->VecData);
+		val->IntVec = &(inf->IVvalue);
+		val->IntVec->Integers = (int*)(inf->VecData);
 		}
 	    else
 		{
@@ -619,8 +625,8 @@ stxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    return -1;
 		    }
 		inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
-		POD(val)->StringVec = &(inf->SVvalue);
-		POD(val)->StringVec->Strings = (char**)(inf->VecData);
+		val->StringVec = &(inf->SVvalue);
+		val->StringVec->Strings = (char**)(inf->VecData);
 		}
 	    return 0;
 	    }
@@ -679,7 +685,7 @@ stxGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-stxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+stxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
@@ -698,13 +704,13 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"STX","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssError(1,"STX","SetAttr 'name': could not rename structure file node object");
@@ -712,7 +718,7 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    }
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
-	    strcpy(inf->Data->Name,*(char**)val);
+	    strcpy(inf->Data->Name,val->String);
 	    return 0;
 	    }
 
@@ -724,7 +730,7 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		mssError(1,"STX","Type mismatch setting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    strcpy(inf->Data->UsrType,*(char**)val);
+	    strcpy(inf->Data->UsrType,val->String);
 	    return 0;
 	    }
 
@@ -759,7 +765,7 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
  *** driver, where attributes are easily added.
  ***/
 int
-stxAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+stxAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     pStxData inf = STX(inf_v);
     pStructInf new_inf;
@@ -769,13 +775,13 @@ stxAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	new_inf = stAddAttr(inf->Data, attrname);
 	if (type == DATA_T_STRING)
 	    {
-	    ptr = (char*)nmSysMalloc(strlen(*(char**)val));
-	    strcpy(ptr, *(char**)val);
+	    ptr = (char*)nmSysMalloc(strlen(val->String));
+	    strcpy(ptr, val->String);
 	    stAddValue(new_inf, ptr, 0);
 	    }
 	else if (type == DATA_T_INTEGER)
 	    {
-	    stAddValue(new_inf, NULL, *(int*)val);
+	    stAddValue(new_inf, NULL, val->String);
 	    }
 	else
 	    {
@@ -821,7 +827,7 @@ stxGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** stxExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-stxExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+stxExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

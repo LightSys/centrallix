@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.25 2004/05/07 01:18:23 gbeeley Exp $
+    $Id: obj.h,v 1.26 2004/06/12 00:10:14 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.26  2004/06/12 00:10:14  mmcgill
+    Chalk one up under 'didn't understand the build process'. The remaining
+    os drivers have been updated, and the prototype for objExecuteMethod
+    in obj.h has been changed to match the changes made everywhere it's
+    called - param is now of type pObjData, not void*.
+
     Revision 1.25  2004/05/07 01:18:23  gbeeley
     - support for StyleMask addition to the Style hint, which allows the
       determination of which hints have been set, not just whether they are on
@@ -688,7 +694,7 @@ int objFreeHints(pObjPresentationHints ph);
 /** objectsystem method functions **/
 char* objGetFirstMethod(pObject this);
 char* objGetNextMethod(pObject this);
-int objExecuteMethod(pObject this, char* methodname, void* param);
+int objExecuteMethod(pObject this, char* methodname, pObjData param);
 
 /** objectsystem driver library functions **/
 pXArray objParamsRead(pFile fd);
