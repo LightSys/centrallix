@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.30 2002/08/13 04:36:29 anoncvs_obe Exp $
+    $Id: htdrv_table.c,v 1.31 2002/08/18 18:46:27 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.31  2002/08/18 18:46:27  jorupp
+     * made the entire current record available on the event object (accessable as .data)
+
     Revision 1.30  2002/08/13 04:36:29  anoncvs_obe
     Changed the 't' table inf structure to be dynamically allocated to
     save the 1.2k that was used on the stack.
@@ -384,6 +387,16 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"                var event = new Object();\n"
 		"                event.Caller = ly.table;\n"
 		"                event.recnum = ly.recnum;\n"
+		"                event.data = new Object();\n"
+		"                var rec=ly.table.osrc.replica[ly.recnum];\n"
+		"                if(rec)\n"
+		"                    {\n"
+		"                    for(var i in rec)\n"
+		"                        {\n"
+		"                        event.data[rec[i].oid]=rec[i].value;\n"
+		"                        }\n"
+		"                    }\n"
+		"		 ly.table.dta=event.data;\n"
 		"                cn_activate(ly.table,'Click', event);\n"
 		"                delete event;\n"
 		"                }\n"
