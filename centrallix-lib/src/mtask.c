@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.26 2004/08/29 05:35:21 jorupp Exp $
+    $Id: mtask.c,v 1.27 2004/08/30 01:36:40 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.27  2004/08/30 01:36:40  jorupp
+     * add a bit more debugging information to non-IO selects
+         this should help diagnose the current issue with cygwin
+
     Revision 1.26  2004/08/29 05:35:21  jorupp
      * fixed an overflow error under cygwin, where MTASK.TicksPerSec is 1000
 
@@ -953,7 +957,7 @@ mtSched()
 		    if (MTASK.EventWaitTable[i]->Thr->Status == THR_S_BLOCKED) n_timerblock++;
 #ifdef MTASK_DEBUG
 		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTABLE)
-			printf("%s is blocked on a timer (k=%i) (cnt=%i)\n",MTASK.EventWaitTable[i]->Thr->Name,k, MTASK.EventWaitTable[i]->TargetTickCnt);
+			printf("%s is blocked on a timer (k=%i) (cnt=%lu)\n",MTASK.EventWaitTable[i]->Thr->Name,k, MTASK.EventWaitTable[i]->TargetTickCnt);
 #endif
 		    }
 		}
@@ -1027,6 +1031,13 @@ mtSched()
 		    }
 	        tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
 	        tmout.tv_usec = ((long long) (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)) * 1000000/(64*MTASK.TicksPerSec);
+#ifdef MTASK_DEBUG
+		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
+		    {
+		    printf("highest_cntdn: %i\n", highest_cntdn);
+		    printf("MTASK.TicksPerSec: %i\n", MTASK.TicksPerSec);
+		    }
+#endif
 		/** if we need 4.5 ticks, we need to select for at least 5 to make sure we don't get 4 and 'deadlock' **/
 		tmout.tv_usec= (tmout.tv_usec/ticklen)*ticklen+ticklen;
 		if(tmout.tv_usec>=1000000)
