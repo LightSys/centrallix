@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.7 2003/04/21 21:00:45 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.8 2003/06/27 21:19:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.8  2003/06/27 21:19:48  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.7  2003/04/21 21:00:45  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -585,6 +589,7 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
     char* attrname;
     pPrtBorder b;
     int rval;
+    double* widths;
 
 	/** Info already provided? **/
 	if (old_lm_data)
@@ -622,10 +627,10 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 	    else if (!strcmp(attrname, "colwidths"))
 		{
 		/** Set widths of columns; default = 1 column and full width **/
+		widths= va_arg(va, double*);
 		for(i=0;i<lm_inf->nColumns;i++)
 		    {
-		    lm_inf->ColWidths[i] = va_arg(va, double);
-		    lm_inf->ColWidths[i] = prtUnitX(this->Session, lm_inf->ColWidths[i]);
+		    lm_inf->ColWidths[i] = prtUnitX(this->Session, widths[i]);
 		    }
 		}
 	    else if (!strcmp(attrname, "colsep"))

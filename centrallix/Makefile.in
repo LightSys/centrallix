@@ -95,9 +95,11 @@ XV3OBJDRIVERS=$(XOBJDRIVERMODULES) \
 	      objdrv_ux.o \
 	      objdrv_unixuser.o \
 	      objdrv_struct.o \
+	      objdrv_report_v3.o \
 	      objdrv_qytree.o \
 	      objdrv_datafile.o \
-	      objdrv_audio.o 
+	      objdrv_audio.o \
+	      @OBJDRIVERS@
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
 # DHTML generation subsystem, including drivers and the ht_render main system.
@@ -228,6 +230,8 @@ LIBS=@LIBS@ @STATIC_LIBS@
 
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
+V3BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
+V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
 
 .PHONY:	modules
 .PHONY:	modules_install
@@ -237,13 +241,13 @@ LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
 
 all:	centrallix mods config
 
-centrallix.o: $(LSOBJS) centrallix.c
+centrallix.o: $(V3LSOBJS) centrallix.c
 
-centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
+centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS)
 	@echo ''
 	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo
-	$(CC) centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o centrallix
+	$(CC) centrallix.o lsmain.o $(V3LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
 	#@rm centrallix.o
 	@echo ''
@@ -303,8 +307,8 @@ sfedit: sfeditor/sfedit.o $(LSOBJS)
 jsengine: $(JSVM)
 	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
 
-test_obj: test_obj.o centrallix.o $(LSOBJS)
-	$(CC) centrallix.o test_obj.o $(LSOBJS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
+test_obj: test_obj.o centrallix.o $(V3LSOBJS)
+	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
 test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
 	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)

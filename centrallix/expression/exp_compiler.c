@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.6 2003/05/30 17:39:48 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.7 2003/06/27 21:19:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.7  2003/06/27 21:19:47  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.6  2003/05/30 17:39:48  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -416,6 +420,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    etmp2->NodeType = EXPR_N_PROPERTY;
 				    etmp2->NameAlloc = 1;
 				    etmp2->Name = mlxStringVal(lxs,&(etmp2->NameAlloc));
+				    etmp2->Flags |= (etmp->Flags & EXPR_F_DOMAINMASK);
+				    if (!(etmp2->Flags & EXPR_F_DOMAINMASK)) etmp2->Flags |= EXPR_F_RUNSERVER;
 				    }
 				else
 				    {
@@ -886,4 +892,35 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
     return e;
     }
 
+
+/*** expBindExpression - do late binding of an expression tree to an
+ *** object list.  'domain' specifies the requested bind domain, whether
+ *** runstatic (EXP_F_RUNSTATIC), runserver (EXP_F_RUNSERVER), or runclient
+ *** (EXP_F_RUNCLIENT).
+ ***/
+int
+expBindExpression(pExpression exp, pParamObjects objlist, int domain)
+    {
+    int i,cm=0;
+
+	/** For a property node, check if the object should be set. **/
+	if (exp->NodeType == EXPR_N_PROPERTY && (exp->Flags & domain) && exp->ObjID == -1 && exp->Parent && exp->Parent->NodeType == EXPR_N_OBJECT)
+	    {
+	    for(i=0;i<objlist->nObjects;i++)
+		{
+		if (!strcmp(exp->Parent->Name, objlist->Names[i]))
+		    {
+		    cm |= (1<<i);
+		    exp->ObjID = i;
+		    break;
+		    }
+		}
+	    }
+
+	/** Loop through subnodes in the tree to process them as well. **/
+	for(i=0;i<exp->Children.nItems;i++) cm |= expBindExpression((pExpression)(exp->Children.Items[i]), objlist, domain);
+	exp->ObjCoverageMask = cm;
+
+    return cm;
+    }
 

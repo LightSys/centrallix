@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.6 2003/05/30 17:39:50 gbeeley Exp $
+    $Id: expression.h,v 1.7 2003/06/27 21:19:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.7  2003/06/27 21:19:47  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.6  2003/05/30 17:39:50  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -268,6 +272,7 @@ pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int
 pExpression expLinkExpression(pExpression this);
 pExpression expPodToExpression(pObjData pod, int type);
 int expExpressionToPod(pExpression this, pObjData pod);
+pExpression expDuplicateExpression(pExpression this);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language);
@@ -308,6 +313,7 @@ int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 
 /*** Param-object functions ***/
 pParamObjects expCreateParamList();
+int expBindExpression(pExpression exp, pParamObjects this, int domain);
 int expFreeParamList(pParamObjects this);
 int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags);
 int expModifyParam(pParamObjects this, char* name, pObject replace_obj);

@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.8 2002/11/22 19:29:36 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.9 2003/06/27 21:19:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.9  2003/06/27 21:19:47  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.8  2002/11/22 19:29:36  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -1497,7 +1501,7 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 #endif
 	
 	/** If node is NOT stale and NOT in modified cov mask, return now. **/
-	if (!(tree->Flags & EXPR_F_NEW) && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) return 0;
+	if (!(tree->Flags & (EXPR_F_NEW)) && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) return 0;
 	tree->Flags &= ~EXPR_F_NEW;
 
 	/** Call the appropriate evaluator fn based on type **/

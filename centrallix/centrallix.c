@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.18 2003/04/03 21:01:23 gbeeley Exp $
+    $Id: centrallix.c,v 1.19 2003/06/27 21:19:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.19  2003/06/27 21:19:47  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.18  2003/04/03 21:01:23  gbeeley
     Fixed make depend to include header dependencies on centrallix-lib
     headers that sometimes change during development.  Fixed autoconf
@@ -300,7 +304,7 @@ cx_internal_LoadModules(char* type)
 void cxShutdownThread(void *v)
     {
     int i;
-    mssError(0,"CN","Centrallix is shutting down");
+    mssError(0,"CX","Centrallix is shutting down");
     for(i=0;i<xaCount(&CxGlobals.ShutdownHandlers);i++)
 	{
 	ShutdownHandlerFunc handler = (ShutdownHandlerFunc) xaGetItem(&CxGlobals.ShutdownHandlers,i);
@@ -416,16 +420,24 @@ cxInitialize(void* v)
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
 	rptInitialize();			/* report writer driver */
-	uxpInitialize();			/* UNIX printer access driver */
+	/*uxpInitialize();*/			/* UNIX printer access driver */
 	datInitialize();			/* flat ascii datafile (CSV, etc) */
 	uxuInitialize();			/* UNIX users list driver */
 	audInitialize();			/* Audio file player driver */
 
 	/** Init the reporting content drivers **/
+#if 0
 	pclInitialize();			/* PCL report generator */
 	htpInitialize();			/* HTML report generator */
 	fxpInitialize();			/* Epson FX report generator */
 	txtInitialize();			/* text only report gen */
+#endif
+
+	prtInitialize();
+	prt_htmlfm_Initialize();
+	prt_strictfm_Initialize();
+	prt_pclod_Initialize();
+	prt_textod_Initialize();
 
 #ifndef WITH_DYNAMIC_LOAD
 	/** Init the modules being used if dynamic loading is disabled **/

@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_html.c,v 1.2 2003/04/21 21:00:43 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_html.c,v 1.3 2003/06/27 21:19:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html.c,v $
 
     $Log: prtmgmt_v3_fm_html.c,v $
+    Revision 1.3  2003/06/27 21:19:48  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.2  2003/04/21 21:00:43  gbeeley
     HTML formatter additions including image, table, rectangle, multi-col,
     fonts and sizes, now supported.  Rearranged header files for the
@@ -552,7 +556,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     {
     char* path;
     void* arg;
-    int w,h;
+    int w,h,id;
 
 	/** Select the type of object we're formatting **/
 	switch(obj->ObjType->TypeID)
@@ -588,13 +592,11 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		/** We need an image store location in order to handle these **/
 		if (context->Session->ImageOpenFn)
 		    {
+		    id = PRT_HTMLFM.ImageID++;
 		    w = obj->Width*PRT_HTMLFM_XPIXEL;
 		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
-			    context->Session->ImageExtDir, PRT_HTMLFM.ImageID, w, h);
 		    path = (char*)nmMalloc(256);
-		    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,PRT_HTMLFM.ImageID);
-		    PRT_HTMLFM.ImageID++;
+		    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
 		    if (!arg)
 			{
@@ -605,6 +607,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_internal_WriteImageToPNG(context->Session->ImageWriteFn, arg, (pPrtImage)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
 		    nmFree(path,256);
+		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
+			    context->Session->ImageExtDir, id, w, h);
 		    }
 		break;
 

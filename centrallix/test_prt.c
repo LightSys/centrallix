@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.19 2003/04/21 21:03:02 gbeeley Exp $
+    $Id: test_prt.c,v 1.20 2003/06/27 21:19:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.20  2003/06/27 21:19:47  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.19  2003/04/21 21:03:02  gbeeley
     Updating Makefile for new files in prtmgmt_v3; updating test_prt to
     reference new prtmgmt header file(s).
@@ -1000,7 +1004,7 @@ start(void* v)
 	if (objInitialize() < 0) exit(1);
 	snInitialize();
 	uxdInitialize();
-	sybdInitialize();
+	/*sybdInitialize();*/
 	stxInitialize();
 	qytInitialize();
 	/*rptInitialize();*/

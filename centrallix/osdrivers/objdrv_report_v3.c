@@ -57,10 +57,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.4 2003/06/20 03:22:35 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.5 2003/06/27 21:19:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.5  2003/06/27 21:19:47  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.4  2003/06/20 03:22:35  gbeeley
     Updating changelog and release notes for 0.7.3
 
@@ -128,6 +132,7 @@
 typedef struct
     {
     pPrtSession		PSession;
+    int			PageHandle;
     pFile		FD;
     pXHashTable		Queries;
     pObjSession		ObjSess;
@@ -135,6 +140,15 @@ typedef struct
     pStructInf		FooterInf;
     }
     RptSession, *pRptSession;
+
+
+/*** Structure for precompiled expressions, etc. ***/
+/*typedef struct
+    {
+    pExpression		DataExp;
+    pExpression		CondExp;
+    }
+    RptUserData, *pRptUserData;*/
 
 
 /*** Structure used by this driver internally. ***/
@@ -158,6 +172,8 @@ typedef struct
     int		Version;
     pSemaphore	StartSem;
     pSemaphore	IOSem;
+    XArray	UserDataSlots;
+    int		NextUserDataSlot;
     }
     RptData, *pRptData;
 
@@ -242,13 +258,13 @@ struct
 static char* attrnames[RPT_NUM_ATTR] = {"bold","expanded","compressed","center","underline","italic","barcode"};
 
 
-int rpt_internal_DoTable(pRptData, pStructInf, pRptSession);
+int rpt_internal_DoTable(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoSection(pRptData, pStructInf, pRptSession, pQueryConn);
 int rpt_internal_DoField(pRptData, pStructInf, pRptSession, pQueryConn);
 int rpt_internal_DoComment(pRptData, pStructInf, pRptSession);
-int rpt_internal_DoData(pRptData, pStructInf, pRptSession);
-int rpt_internal_DoForm(pRptData, pStructInf, pRptSession);
-int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp);
+int rpt_internal_DoData(pRptData, pStructInf, pRptSession, int container_handle);
+int rpt_internal_DoForm(pRptData, pStructInf, pRptSession, int container_handle);
+int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle);
 
 
 /*** rpt_internal_GetNULLstr - get the string to be substituted in place of
@@ -485,7 +501,7 @@ rpt_internal_CheckFormats(pStructInf inf, char* savedmfmt, char* saveddfmt, char
  *** comment element.
  ***/
 int
-rpt_internal_CheckGoto(pRptSession rs, pStructInf object)
+rpt_internal_CheckGoto(pRptSession rs, pStructInf object, int container_handle)
     {
     int xpos = -1;
     int ypos = -1;
@@ -497,18 +513,19 @@ rpt_internal_CheckGoto(pRptSession rs, pStructInf object)
 	stAttrValue(stLookup(object, "relypos"),&relypos,NULL,0);
 
 	/** If ypos is set, do it first **/
-	if (ypos != -1) prtSetVPos(rs->PSession, (double)ypos);
+	if (ypos != -1) prtSetVPos(container_handle, (double)ypos);
 
 	/** Next check xpos **/
-	if (xpos != -1) prtSetHPos(rs->PSession, (double)xpos);
+	if (xpos != -1) prtSetHPos(container_handle, (double)xpos);
 
 	/** Relative y position? **/
-	if (relypos != -1) prtSetRelVPos(rs->PSession, (double)relypos);
+	/*if (relypos != -1) prtSetRelVPos(rs->PSession, (double)relypos);*/
 
     return 0;
     }
 
 
+#if 00
 /*** rpt_internal_CheckFont - check for font setting change or restore an
  *** old font setting.
  ***/
@@ -535,7 +552,7 @@ rpt_internal_CheckFont(pRptSession rs, pStructInf object, char** saved_font)
 
     return 0;
     }
-
+#endif
 
 /*** rpt_internal_ProcessAggregates - checks for aggregate computations in 
  *** the query, and calculates the current row into the aggregate functions.
@@ -704,7 +721,6 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, void* dat
 
     return objGetAttrValue(obj, attrname, datatype, POD(data_ptr));
     }
-
 
 /*** rpt_internal_PrepareQuery - perform all operations necessary to prepare
  *** for the retrieval of a query result set.  This is done in both the 
@@ -949,6 +965,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
     }
 
 
+#if 00
 /*** rpt_internal_DoSection - process a report section, which is an 
  *** abstract division in the report normally used simply to change the
  *** formatting style, such as margins, columns, etc.
@@ -1096,7 +1113,7 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, pQueryC
 
     return err?-1:0;
     }
-
+#endif
 
 /*** rpt_internal_NextRecord_Parallel - processes the next row, but operates
  *** the queries in parallel instead of nested.  It keeps on returning more
@@ -1407,12 +1424,11 @@ rpt_internal_Deactivate(pRptData inf, pRptActiveQueries ac)
     return 0;
     }
 
-
 /*** rpt_internal_DoTable - process tabular data from the database and
  *** output using the print driver's table feature.
  ***/
 int
-rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
+rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int container_handle)
     {
     char* ptr;
     int titlebar=1;
@@ -1430,7 +1446,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
     char* saved_font = NULL;
     int err = 0;
     int reclimit = -1;
-    int colsep = 1;
+    double colsep = 1.0;
     pXArray xa = (pXArray)(table->UserData);
     pExpression exp;
     pRptActiveQueries ac;
@@ -1440,54 +1456,82 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
     int no_data_msg = 1;
     int lower_sep = 0;
     int has_source = 0;
-    unsigned short cwidths[64];
+    double cwidths[64];
     unsigned char cflagslist[64];
     unsigned char hflagslist[64];
+    int table_handle, tablerow_handle, tablecell_handle, area_handle;
+    int flags;
+    double x,y,w,h;
+    int numcols;
+    pPrtBorder outerborder=NULL, innerborder=NULL, shadow=NULL;
+
+	rval = rpt_internal_CheckCondition(inf,table);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+	/** Get table outer geometry **/
+	if (rpt_internal_GetDouble(table, "x", &x, 0) < 0) x = -1;
+	if (rpt_internal_GetDouble(table, "y", &y, 0) < 0) y = -1;
+	if (rpt_internal_GetDouble(table, "width", &w, 0) < 0) w = -1;
+	if (rpt_internal_GetDouble(table, "height", &h, 0) < 0) h = -1;
+
+	/** Check for flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+	if (rpt_internal_GetBool(table, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+
+	/** Get column count and widths. **/
+	numcols = 0;
+	while(numcols < 64 && rpt_internal_GetDouble(table, "widths", &(cwidths[numcols]), numcols) == 0) 
+	    numcols++;
+	if (numcols == 0)
+	    {
+	    mssError(1,"RPT","Table '%s' must have valid width info specifying at least one column.", table->Name);
+	    return -1;
+	    }
+	n = 0;
+	stAttrValue(stLookup(table,"columns"),&n, NULL, 0);
+	if (n != numcols)
+	    {
+	    mssError(1,"RPT","Table '%s' column count %d not specified or does not match number of column widths (%d).", table->Name, n, numcols);
+	    return -1;
+	    }
+
+	/** Check for column separation amount **/
+	if (rpt_internal_GetDouble(table, "widths", &colsep, 0) != 0) colsep = 1.0;
+
+	/** Check for borders / shadow **/
+	if (rpt_internal_GetDouble(table, "outerborder", &dbl, 0) == 0)
+	    outerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(table, "innerborder", &dbl, 0) == 0)
+	    innerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(table, "shadow", &dbl, 0) == 0)
+	    shadow = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+
+	/** Create the table **/
+	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags, "numcols", numcols, "widths", cwidths, "colsep", colsep, "outerborder", outerborder, "innerborder", innerborder, "shadow", shadow, NULL);
+	if (table_handle < 0)
+	    {
+	    mssError(0, "RPT", "Could not create table '%s'", table->Name);
+	    return -1;
+	    }
+
+	/** Output data formats **/
+	rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 0);
 
 	/** Record-count limiter? **/
 	stAttrValue(stLookup(table,"reclimit"),&reclimit,NULL,0);
 
-	/** Column widths relative to pitch or absolute to 80-col page? **/
-	if (stAttrValue(stLookup(table,"widthmode"),NULL,&ptr,0) >=0 && ptr && !strcmp(ptr,"absolute"))
-	    {
-	    is_rel_cols = 0;
-	    }
-
-	/** Get style information **/
-	style = rpt_internal_GetStyle(table);
-
-	/** Check for column separation amount **/
-	stAttrValue(stLookup(table,"colsep"),&colsep,NULL,0);
+	/** Set the style for the table **/
+	rpt_internal_SetStyle(inf, table, rs, table_handle);
+	rpt_internal_SetMargins(table, table_handle);
 
 	/** Suppress "no data returned" message on 0 rows? **/
-	if (stAttrValue(stLookup(table,"nodatamsg"),NULL,&ptr,0) >= 0 && ptr && !strcmp(ptr,"no"))
-	    {
-	    no_data_msg = 0;
-	    }
+	no_data_msg = rpt_internal_GetBool(table, "nodatamsg", 1, 0);
 
 	/** Check to see if table has sources specified. **/
 	if (stLookup(table,"source")) has_source = 1;
-
-	/** Table have a header row? **/
-	if (stAttrValue(stLookup(table,"titlebar"),NULL,&ptr,0) >=0 && ptr && !strcmp(ptr,"no"))
-	    {
-	    titlebar = 0;
-	    }
-
-	/** Add lower separator too? **/
-	if (stAttrValue(stLookup(table,"lowersep"),NULL,&ptr,0) >=0 && ptr && !strcmp(ptr,"yes"))
-	    {
-	    lower_sep = 1;
-	    }
-
-	/** Set the style for the printer **/
-	rpt_internal_CheckFont(rs,table,&saved_font);
-	rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 0);
-	if (style >= 0)
-	    {
-	    oldstyle = prtGetAttr(rs->PSession);
-	    prtSetAttr(rs->PSession, style);
-	    }
 
 	/** Start query if table has source(s), otherwise skip that. **/
 	if (has_source)
@@ -1495,14 +1539,16 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	    /** Start the query. **/
 	    if ((ac = rpt_internal_Activate(inf, table, rs)) == NULL)
 	        {
-	        rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
+		rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
+		prtEndObject(table_handle);
 	        return -1;
 	        }
     
 	    /** Fetch the first row. **/
 	    if ((rval = rpt_internal_NextRecord(ac, inf, table, rs, 1)) < 0)
 	        {
-	        rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
+		rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
+		prtEndObject(table_handle);
 	        return -1;
 	        }
     
@@ -1511,27 +1557,28 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	        {
 	        if (no_data_msg)
 	            {
-		    prtWriteString(rs->PSession, "(no data returned)", -1);
-	            prtWriteNL(rs->PSession);
+		    tablerow_handle = prtAddObject(table_handle, PRT_OBJ_T_TABLEROW, 0,0,-1,-1, 0, NULL);
+		    area_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_AREA, 0,0,-1,-1, 0, NULL);
+		    prtWriteString(area_handle, "(no data returned)");
+		    prtEndObject(area_handle);
+		    prtEndObject(tablerow_handle);
 		    }
 	        rpt_internal_Deactivate(inf, ac);
-	        rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
+		prtEndObject(table_handle);
+		rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
 	        return 0;
 	        }
 	    }
 	else
 	    {
-	    if (!table->UserData)
+	    /*if (!table->UserData)
 	        {
 		mssError(1,"Table '%s' has no source, and no 'expressions=yes'", table->Name);
-	        rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
+		prtEndObject(table_handle);
 	        return -1;
-		}
+		}*/
 	    ac = NULL;
 	    }
-
-	/** Start the tabular output on the printer **/
-	prtDoTable(rs->PSession, (is_rel_cols?PRT_T_F_RELCOLWIDTH:0) | (lower_sep?PRT_T_F_LOWERSEP:0),colsep);
 
 	/** Decide which columns of the result set to use **/
 	colmask = 0x7FFFFFFF;
@@ -1559,7 +1606,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 		    }
 		}
 	    }
-
+#if 00
 	/** Now build the table header if need be. **/
 	if (1)
 	    {
@@ -1800,20 +1847,14 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	    else rval = 1;
 	    reccnt++;
 	    } while(rval == 0);
+#endif
 
-	/** End the table **/
-	prtEndTable(rs->PSession);
+	/** Finish off the table object **/
+	prtEndObject(table_handle);
+	rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
 
 	/** Remove the paramobject item for this query's result set **/
 	if (ac) rpt_internal_Deactivate(inf, ac);
-
-	/** If style changed, change it back. **/
-	if (style >= 0)
-	    {
-	    prtSetAttr(rs->PSession, oldstyle);
-	    }
-	rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
-	rpt_internal_CheckFont(rs,table,&saved_font);
 
 	/** If error, indicate such **/
 	if (err) return -1;
@@ -1827,7 +1868,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
  *** value.
  ***/
 int
-rpt_internal_WriteExpResult(pRptSession rs, pExpression exp)
+rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle)
     {
     pXString str_data;
 
@@ -1866,7 +1907,7 @@ rpt_internal_WriteExpResult(pRptSession rs, pExpression exp)
 	    {
 	    xsCopy(str_data,rpt_internal_GetNULLstr(),-1);
 	    }
-	prtWriteString(rs->PSession,str_data->String,-1);
+	prtWriteString(container_handle, str_data->String);
 	xsDeInit(str_data);
 	nmFree(str_data, sizeof(XString));
 
@@ -1874,67 +1915,141 @@ rpt_internal_WriteExpResult(pRptSession rs, pExpression exp)
     }
 
 
+/*** rpt_internal_WritePOD - take a data type and POD value and write its text
+ *** on output.
+ ***/
+int
+rpt_internal_WritePOD(pRptSession rs, int t, pObjData pod, int container_handle)
+    {
+    pXString str_data;
+
+	/** Init our output data xstring **/
+	str_data = (pXString)nmMalloc(sizeof(XString));
+	xsInit(str_data);
+	xsCopy(str_data,"",-1);
+	if (pod)
+	    {
+	    /** Not null value; output according to data type **/
+	    switch(t)
+	        {
+                case DATA_T_INTEGER:
+                case DATA_T_DOUBLE:
+                    objDataToString(str_data, t, pod, 0);
+                    break;
+                case DATA_T_STRING:
+                case DATA_T_MONEY:
+                case DATA_T_DATETIME:
+                case DATA_T_INTVEC:
+                case DATA_T_STRINGVEC:
+                    objDataToString(str_data, t, pod->Generic, 0);
+                    break;
+		}
+	    }
+	else
+	    {
+	    /** null value - just get the NULL string **/
+	    xsCopy(str_data,rpt_internal_GetNULLstr(),-1);
+	    }
+	prtWriteString(container_handle, str_data->String);
+	xsDeInit(str_data);
+	nmFree(str_data, sizeof(XString));
+
+    return 0;
+    }
+
 /*** rpt_internal_DoData - process an expression-based data element within
  *** the report system.  This element should eventually replace the comment
  *** and column entities, but not necessarily.
  ***/
 int
-rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs)
+rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container_handle)
     {
     int attr=0,oldattr=0;
     char* ptr = NULL;
     char oldmfmt[32],olddfmt[32],oldnfmt[32];
-    char* saved_font = NULL;
     int nl = 0;
     pExpression exp;
+    PrtTextStyle oldstyle;
+    pPrtTextStyle oldstyleptr = &oldstyle;
+    int t,rval;
+    ObjData od;
+    pStructInf value_inf;
+
+	rval = rpt_internal_CheckCondition(inf,data);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
 
 	/** Get style information **/
-	attr = rpt_internal_GetStyle(data);
+	prtGetTextStyle(container_handle, &oldstyleptr);
 	rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 0);
-	rpt_internal_CheckGoto(rs,data);
-	rpt_internal_CheckFont(rs,data,&saved_font);
+	rpt_internal_CheckGoto(rs,data,container_handle);
+	rpt_internal_SetStyle(inf, data, rs, container_handle);
 
-	/** Need to disable auto-newline? **/
+	/** Need to enable auto-newline? **/
 	ptr=NULL;
 	if (stAttrValue(stLookup(data,"autonewline"),NULL,&ptr,0) >=0)
 	    {
 	    if (ptr && !strcmp(ptr,"yes")) nl=1;
 	    }
 
-	/** Get the text of the expression itself **/
-	ptr=NULL;
-	stAttrValue(stLookup(data,"value"),NULL,&ptr,0);
-	if (ptr)
+	/** Get the expression itself **/
+	value_inf = stLookup(data,"value");
+	if (!value_inf)
 	    {
-	    if (attr >= 0) 
-	        {
-		oldattr = prtGetAttr(rs->PSession);
-	        prtSetAttr(rs->PSession,attr);
+	    mssError(0,"RPT","report/data '%s' must have a value expression", data->Name);
+	    prtSetTextStyle(container_handle, &oldstyle);
+	    rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 1);
+	    return -1;
+	    }
+	t = stGetAttrType(value_inf, 0);
+	if (t == DATA_T_CODE)
+	    {
+	    exp = (pExpression)xaGetItem(&(inf->UserDataSlots), (int)(data->UserData));
+	    if (exp)
+		{
+		/** Evaluate the expression **/
+		rval = expEvalTree(exp, inf->ObjList);
+		if (rval < 0)
+		    {
+		    mssError(0,"RPT","Could not evaluate report/data '%s' value expression", data->Name);
+		    prtSetTextStyle(container_handle, &oldstyle);
+		    rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 1);
+		    return -1;
+		    }
+
+		/** Output the result **/
+		rpt_internal_WriteExpResult(rs, exp, container_handle);
 		}
-
-	    /** Compile and evaluate the expression **/
-	    exp = (pExpression)(data->UserData);
-	    if (expEvalTree(exp, inf->ObjList) < 0)
-	        {
-		mssError(0,"RPT","Could not evaluate report/data '%s' value= expression.", data->Name);
-		return -1;
+	    else
+		{
+		rpt_internal_WritePOD(rs, t, NULL, container_handle);
 		}
-
-	    /** Output the result **/
-	    rpt_internal_WriteExpResult(rs, exp);
-	    if (nl) prtWriteNL(rs->PSession);
-
-	    /** restore the attributes, etc **/
-	    if (attr >= 0) prtSetAttr(rs->PSession,oldattr);
+	    }
+	else if (t == DATA_T_STRING || t == DATA_T_DOUBLE || t == DATA_T_INTEGER || t == DATA_T_MONEY)
+	    {
+	    rval = stGetAttrValue(stLookup(data,"value"), t, POD(&od), 0);
+	    if (rval == 0) rpt_internal_WritePOD(rs, t, &od, container_handle);
+	    else if (rval == 1) rpt_internal_WritePOD(rs, t, NULL, container_handle);
+	    }
+	else
+	    {
+	    mssError(1,"RPT","Unknown data value for report/data '%s' element", data->Name);
+	    prtSetTextStyle(container_handle, &oldstyle);
+	    rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 1);
+	    return -1;
 	    }
 
+	/** Emit a newline? **/
+	if (nl) prtWriteNL(container_handle);
+
 	/** Put the fonts etc back **/
-	rpt_internal_CheckFont(rs,data,&saved_font);
+	prtSetTextStyle(container_handle, &oldstyle);
 	rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 1);
 
     return 0;
     }
 
+#if 00
 
 /*** rpt_internal_DoComment - outputs a comment to the printer driver
  *** specified in the req structure.
@@ -2169,15 +2284,14 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 
     return 0;
     }
-
+#endif
 
 /*** rpt_internal_DoForm - creates a free-form style report element, 
  *** which can contain fields, comments, tables, and other forms.
  ***/
 int
-rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
+rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container_handle)
     {
-    int style,oldstyle=0;
     int i;
     pQueryConn qy;
     int rulesep=0,ffsep=0;
@@ -2190,9 +2304,15 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
     int outer_mode = 0;
     int inner_mode = 0;
     pRptActiveQueries ac;
+    PrtTextStyle oldstyle;
+    pPrtTextStyle oldstyleptr = &oldstyle;
     int reccnt;
     int rval;
     int n;
+
+	rval = rpt_internal_CheckCondition(inf,form);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
 
 	/** Issue horizontal rule between records? **/
 	if (stAttrValue(stLookup(form,"rulesep"),NULL,&ptr,0) >= 0 && ptr && !strcmp(ptr,"yes"))
@@ -2207,7 +2327,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
 	    }
 
 	/** Check for set-page-number? **/
-	if (stAttrValue(stLookup(form,"page"),&n,NULL,0) >= 0) prtSetPageNumber(rs->PSession, n);
+	if (stAttrValue(stLookup(form,"page"),&n,NULL,0) >= 0) prtSetPageNumber(rs->PageHandle, n);
 
 	/** Check for a mode entry **/
 	if (stAttrValue(stLookup(form,"mode"),NULL,&ptr,0) >= 0)
@@ -2242,16 +2362,10 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
 	    }
 
 	/** Get style information **/
-	style = rpt_internal_GetStyle(form);
-	rpt_internal_CheckFont(rs,form,&saved_font);
-
-	/** Set the style for the printer, if specified **/
+	prtGetTextStyle(container_handle, &oldstyleptr);
 	rpt_internal_CheckFormats(form, oldmfmt, olddfmt, oldnfmt, 0);
-	if (style >= 0)
-	    {
-	    oldstyle = prtGetAttr(rs->PSession);
-	    prtSetAttr(rs->PSession, style);
-	    }
+	rpt_internal_CheckGoto(rs,form,container_handle);
+	rpt_internal_SetStyle(inf, form, rs, container_handle);
 
 	/** Start the query. **/
 	if ((ac = rpt_internal_Activate(inf, form, rs)) == NULL) return -1;
@@ -2261,36 +2375,14 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
 	    {
 	    return -1;
 	    }
-#if 00
-	/** Set up for the query **/
-	qy = rpt_internal_PrepareQuery(inf, form, rs, 0);
-	if (!qy) return -1;
-
-	/** Add a paramobject item for this query's result set **/
-	if (!inner_mode) 
-	    {
-	    expAddParamToList(inf->ObjList, qy->Name, NULL, EXPR_O_CURRENT);
-	    expSetParamFunctions(inf->ObjList, qy->Name, rpt_internal_QyGetAttrType, rpt_internal_QyGetAttrValue, NULL);
-	    }
-
-	/** Retrieve the first row only if not resuming this query. **/
-	if (!inner_mode) 
-	    {
-	    qy->QueryItem = objQueryFetch(qy->Query,0400);
-	    expModifyParam(inf->ObjList, qy->Name, qy->QueryItem);
-	    }
-	qy->RecordCnt = 0;
-	if (outer_mode) qy->InnerExecCnt = 0;
-	if (inner_mode) qy->InnerExecCnt++;
-#endif
 
 	/** Enter the row retrieval loop.  For each row, do all sub-parts **/
 	reccnt = 0;
-	if (rulesep) prtWriteLine(rs->PSession);
+	/*if (rulesep) prtWriteLine(rs->PSession);*/
 	qy = ac->Queries[ac->Count-1];
 	while(rval == 0)
 	    {
-	    if ((relylimit != -1 && prtGetRelVPos(rs->PSession) >= relylimit) ||
+	    if (/*(relylimit != -1 && prtGetRelVPos(rs->PSession) >= relylimit) || */
 	        (reclimit != -1 && reccnt >= reclimit))
 	        {
 		break;
@@ -2300,100 +2392,24 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
 		err = 1;
 		break;
 		}
-	    /*if (!outer_mode)
-	        {
-		if (rpt_internal_ProcessAggregates(qy) < 0) 
-		    {
-		    err = 1;
-		    break;
-		    }
-		}*/
-	    for(i=0;i<form->nSubInf;i++) if (stStructType(form->SubInf[i]) == ST_T_SUBGROUP)
-		{
-		if (!strcmp("report/column",form->SubInf[i]->UsrType))
-		    {
-		    if (rpt_internal_DoField(inf, form->SubInf[i],rs,qy) <0) 
-		        {
-			err = 1;
-			break;
-			}
-		    }
-		else if (!strcmp("report/form",form->SubInf[i]->UsrType))
-		    {
-		    if (rpt_internal_DoForm(inf, form->SubInf[i],rs) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
-		else if (!strcmp("report/comment",form->SubInf[i]->UsrType))
-		    {
-		    if (rpt_internal_DoComment(inf, form->SubInf[i],rs) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
-		else if (!strcmp("report/data",form->SubInf[i]->UsrType))
-		    {
-		    if (rpt_internal_DoData(inf, form->SubInf[i],rs) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
-		else if (!strcmp("report/table",form->SubInf[i]->UsrType))
-		    {
-		    if (rpt_internal_DoTable(inf, form->SubInf[i],rs) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
-                else if (!strcmp("report/section",form->SubInf[i]->UsrType))
-                    {
-                    if (rpt_internal_DoSection(inf, form->SubInf[i],rs,qy) <0)
-                        {
-                        err = 1;
-                        break;
-                        }
-                    }
-		}
+	    rval = rpt_internal_DoContainer(inf, form, rs, container_handle);
+	    if (rval < 0) err = 1;
 	    if (outer_mode && qy->InnerExecCnt == 0)
 	        {
 		mssError(err?0:1,"RPT","No inner-mode form/table was run for outer-mode '%s'",form->Name);
 		err = 1;
 		}
-	    /*if (!outer_mode) objClose(qy->QueryItem);
-	    if (!outer_mode) qy->QueryItem = NULL;*/
-	    if (ffsep) prtWriteFF(rs->PSession);
-	    if (rulesep) prtWriteLine(rs->PSession);
-	    /*if (!outer_mode) 
-	        {
-		qy->QueryItem = objQueryFetch(qy->Query,0400);
-	        expModifyParam(inf->ObjList, qy->Name, qy->QueryItem);
-		}*/
+	    if (ffsep) prtWriteFF(container_handle);
+	    /*if (rulesep) prtWriteLine(rs->PSession);*/
 	    rval = rpt_internal_NextRecord(ac, inf, form, rs, 0);
 	    reccnt++;
 	    if (err) break;
 	    }
 
-	/** Remove the paramobject item for this query's result set **/
-	/*if (!inner_mode) expRemoveParamFromList(inf->ObjList, qy->Name);*/
-
-	/** Restore the printer style, if we changed it **/
-	if (style >= 0) prtSetAttr(rs->PSession, oldstyle);
-	rpt_internal_CheckFormats(form, oldmfmt, olddfmt, oldnfmt, 1);
-	rpt_internal_CheckFont(rs,form,&saved_font);
-
-	/** Release the database connection **/
-	/*if (!inner_mode) 
-	    {
-	    objQueryClose(qy->Query);
-	    qy->Query = NULL;
-	    }*/
-
 	rpt_internal_Deactivate(inf, ac);
+
+	rpt_internal_CheckFormats(form, oldmfmt, olddfmt, oldnfmt, 1);
+	prtSetTextStyle(container_handle, &oldstyle);
 
 	/** Error? **/
 	if (err) return -1;
@@ -2401,7 +2417,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
     return 0;
     }
 
-
+#if 00
 /*** rpt_internal_DoFooter - generate a report footer on demand.  This is
  *** a callback function from the print management layer when a page reaches
  *** the point where the footer is needed.
@@ -2436,6 +2452,342 @@ rpt_internal_DoHeader(void* v, int cur_line)
 
     return rval;
     }
+#endif
+
+
+
+/*** rpt_internal_CheckCondition - check for a condition statement in the current
+ *** object, and if it exists, evaluate it to see if we can do this object.  If
+ *** the condition is false, return 0, otherwise 1 for success.  On error, return
+ *** -1.
+ ***/
+int
+rpt_internal_CheckCondition(pRptData inf, pStructInf config)
+    {
+    pStructInf condition_inf;
+    int t;
+    pExpression exp;
+    int rval;
+
+	/** Does this object have a condition statement? **/
+	condition_inf = stLookup(config,"condition");
+	if (!condition_inf) return 1; /* succeed */
+
+	/** Get the expression itself **/
+	t = stGetAttrType(condition_inf, 0);
+	if (t == DATA_T_CODE)
+	    {
+	    exp = (pExpression)xaGetItem(&(inf->UserDataSlots), (int)(condition_inf->UserData));
+	    if (exp)
+		{
+		/** Evaluate the expression **/
+		rval = expEvalTree(exp, inf->ObjList);
+		if (rval < 0)
+		    {
+		    mssError(0,"RPT","Could not evaluate '%s' condition expression", config->Name);
+		    return -1;
+		    }
+		if (exp->DataType == DATA_T_INTEGER)
+		    {
+		    if (exp->Integer == 0) return 0;
+		    else return 1;
+		    }
+		return 0;
+		}
+	    else
+		{
+		mssError(0,"RPT","Could not get '%s' condition expression", config->Name);
+		return -1;
+		}
+	    }
+	else if (t == DATA_T_STRING || t == DATA_T_DOUBLE || t == DATA_T_INTEGER || t == DATA_T_MONEY)
+	    {
+	    if (rpt_internal_GetBool(config,"condition",1,0))
+		return 1;
+	    else
+		return 0;
+	    }
+	else
+	    {
+	    mssError(1,"RPT","Unknown data value for condition expression for '%s'", config->Name);
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+
+/*** rpt_internal_SetStyle - check for any style/appearance commands in the current
+ *** object, and if found, configure those for the current print object.
+ ***/
+int
+rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_obj)
+    {
+    char* ptr;
+    int n;
+    int attr = 0;
+    int i;
+
+	/** Check for font, size, color **/
+	if (stAttrValue(stLookup(config,"font"), NULL, &ptr, 0) == 0)
+	    {
+	    prtSetFont(prt_obj, ptr);
+	    }
+	if (stAttrValue(stLookup(config,"fontsize"), &n, NULL, 0) == 0)
+	    {
+	    prtSetFontSize(prt_obj, n);
+	    }
+	if (stAttrValue(stLookup(config,"fontcolor"), NULL, &ptr, 0) == 0)
+	    {
+	    if (ptr[0] == '#')
+		{
+		n = strtol(ptr+1, NULL, 16);
+		prtSetColor(prt_obj, n);
+		}
+	    }
+
+	/** Check justification **/
+	if (stAttrValue(stLookup(config,"align"), NULL, &ptr, 0) == 0)
+	    {
+	    if (!strcmp(ptr,"left")) prtSetJustification(prt_obj, PRT_JUST_T_LEFT);
+	    else if (!strcmp(ptr,"right")) prtSetJustification(prt_obj, PRT_JUST_T_RIGHT);
+	    else if (!strcmp(ptr,"center")) prtSetJustification(prt_obj, PRT_JUST_T_CENTER);
+	    }
+
+	/** Check attrs (bold/italic/underline) **/
+	attr = prtGetAttr(prt_obj);
+	for(i=0;i<16;i++)
+	    {
+	    if (stAttrValue(stLookup(config,"style"), NULL, &ptr, i) != 0) break;
+	    if (!strcmp(ptr,"bold")) attr |= PRT_OBJ_A_BOLD;
+	    else if (!strcmp(ptr,"italic")) attr |= PRT_OBJ_A_ITALIC;
+	    else if (!strcmp(ptr,"underline")) attr |= PRT_OBJ_A_UNDERLINE;
+	    else if (!strcmp(ptr,"plain")) attr = 0;
+	    }
+
+    return 0;
+    }
+
+
+/*** rpt_internal_SetMargins - sets the margins for a print object
+ ***/
+int
+rpt_internal_SetMargins(pStructInf config, int prt_obj)
+    {
+    double ml, mr, mt, mb;
+
+	/** Set the margins **/
+	if (rpt_internal_GetDouble(config, "margintop", &mt, 0) < 0) mt = 0.0;
+	if (rpt_internal_GetDouble(config, "marginbottom", &mb, 0) < 0) mb = 0.0;
+	if (rpt_internal_GetDouble(config, "marginleft", &ml, 0) < 0) ml = 0.0;
+	if (rpt_internal_GetDouble(config, "marginright", &mr, 0) < 0) mr = 0.0;
+	if (mt != 0 || mb != 0 || ml != 0 || mr != 0) 
+	    prtSetMargins(prt_obj, mt, mb, ml, mr);
+
+    return 0;
+    }
+
+
+/*** rpt_internal_GetDouble - gets a double precision floating point value from
+ *** the rpt config, automatically translating any integers into doubles
+ ***/
+int
+rpt_internal_GetDouble(pStructInf config, char* attr, double* val, int nval)
+    {
+    int t,n;
+    pStructInf attr_inf;
+
+	attr_inf = stLookup(config, attr);
+	if (!attr_inf) return -1;
+	t = stGetAttrType(attr_inf, nval);
+	if (t == DATA_T_INTEGER)
+	    {
+	    if (stGetAttrValue(attr_inf, t, POD(&n), nval) != 0) return -1;
+	    *val = (double)n;
+	    }
+	else if (t == DATA_T_DOUBLE)
+	    {
+	    if (stGetAttrValue(attr_inf, t, POD(val), nval) != 0) return -1;
+	    }
+	else
+	    {
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** rpt_internal_GetBool - gets a boolean value, in the form of 0/1, true/false,
+ *** on/off, or yes/no.
+ ***/
+int
+rpt_internal_GetBool(pStructInf config, char* attr, int def, int nval)
+    {
+    int t;
+    pStructInf attr_inf;
+    int n;
+    char* ptr;
+
+	attr_inf = stLookup(config, attr);
+	if (!attr_inf) return def;
+	t = stGetAttrType(attr_inf, nval);
+	if (t == DATA_T_INTEGER)
+	    {
+	    if (stGetAttrValue(attr_inf, t, POD(&n), nval) != 0) return def;
+	    }
+	else if (t == DATA_T_STRING)
+	    {
+	    if (stGetAttrValue(attr_inf, t, POD(&ptr), nval) != 0) return def;
+	    if (!strcmp(ptr,"yes") || !strcmp(ptr,"true") || !strcmp(ptr,"on")) n = 1;
+	    else if (!strcmp(ptr,"no") || !strcmp(ptr,"false") || !strcmp(ptr,"off")) n = 0;
+	    else return def;
+	    }
+
+    return n;
+    }
+
+
+/*** rpt_internal_DoContainer - loop through subobjects of a container (area, table
+ *** cell, etc.)...
+ ***/
+int
+rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int container_handle)
+    {
+    int rval = 0;
+    int i;
+    pStructInf subobj;
+
+	/** Loop through container subobjects **/
+	for (i=0;i<container->nSubInf;i++)
+	    {
+	    subobj = container->SubInf[i];
+	    if (stStructType(subobj) == ST_T_SUBGROUP)
+		{
+		if (!strcmp(subobj->UsrType, "report/area"))
+		    {
+		    rval = rpt_internal_DoArea(inf, subobj, rs, NULL, container_handle);
+		    if (rval < 0) break;
+		    }
+		if (!strcmp(subobj->UsrType, "report/image"))
+		    {
+		    rval = rpt_internal_DoImage(inf, subobj, rs, NULL, container_handle);
+		    if (rval < 0) break;
+		    }
+		if (!strcmp(subobj->UsrType, "report/data"))
+		    {
+		    rval = rpt_internal_DoData(inf, subobj, rs, container_handle);
+		    if (rval < 0) break;
+		    }
+		if (!strcmp(subobj->UsrType, "report/form"))
+		    {
+		    rval = rpt_internal_DoForm(inf, subobj, rs, container_handle);
+		    if (rval < 0) break;
+		    }
+		}
+	    }
+
+    return rval;
+    }
+
+
+/*** rpt_internal_DoImage - put a picture on the report.
+ ***/
+int
+rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn this_qy, int container_handle)
+    {
+    char* imgsrc;
+    pPrtImage img;
+    pObject imgobj;
+    int flags;
+    double x,y,w,h;
+    int rval;
+
+	rval = rpt_internal_CheckCondition(inf,image);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+	/** Get area geometry **/
+	if (rpt_internal_GetDouble(image, "x", &x, 0) < 0) x = -1;
+	if (rpt_internal_GetDouble(image, "y", &y, 0) < 0) y = -1;
+	if (rpt_internal_GetDouble(image, "width", &w, 0) < 0) return -1;
+	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0) return -1;
+
+	/** Load the image **/
+	if (stGetAttrValue(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0) < 0) return -1;
+	if ((imgobj = objOpen(inf->Obj->Session, imgsrc, O_RDONLY, 0400, "image/png")) == NULL) return -1;
+	img = prtCreateImageFromPNG(objRead, imgobj);
+	objClose(imgobj);
+	if (!img) return -1;
+
+	/** Check flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+
+	/** Add it to its container **/
+	if (prtWriteImage(container_handle, img, x,y,w,h, flags) < 0) return -1;
+
+    return 0;
+    }
+
+
+/*** rpt_internal_DoArea - build an 'area' on the report in which textflow type
+ *** content can be placed.  V3 prtmgmt.
+ ***/
+int
+rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn this_qy, int container_handle)
+    {
+    int area_handle;
+    double x, y, w, h, bw;
+    int flags;
+    pPrtBorder bdr = NULL;
+    int rval = 0;
+
+	rval = rpt_internal_CheckCondition(inf,area);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+	/** Get area geometry **/
+	if (rpt_internal_GetDouble(area, "x", &x, 0) < 0) x = -1;
+	if (rpt_internal_GetDouble(area, "y", &y, 0) < 0) y = -1;
+	if (rpt_internal_GetDouble(area, "width", &w, 0) < 0) w = -1;
+	if (rpt_internal_GetDouble(area, "height", &h, 0) < 0) h = -1;
+
+	/** Check for flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+	if (rpt_internal_GetBool(area, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+
+	/** Check for border **/
+	if (stGetAttrValue(stLookup(area, "border"), DATA_T_DOUBLE, POD(&bw), 0) == 0)
+	    {
+	    bdr = prtAllocBorder(1,0.0,0.0, bw,0x000000);
+	    }
+
+	/** Create the area **/
+	if (bdr)
+	    area_handle = prtAddObject(container_handle, PRT_OBJ_T_AREA, x, y, w, h, flags, "border", bdr, NULL);
+	else
+	    area_handle = prtAddObject(container_handle, PRT_OBJ_T_AREA, x, y, w, h, flags, NULL);
+	if (bdr) prtFreeBorder(bdr);
+	if (area_handle < 0) return -1;
+
+	/** Set the style for the area **/
+	rpt_internal_SetStyle(inf, area, rs, area_handle);
+	rpt_internal_SetMargins(area, area_handle);
+
+	/** Do stuff that is contained in the area **/
+	rval = rpt_internal_DoContainer(inf, area, rs, area_handle);
+
+	/** End the area **/
+	prtEndObject(area_handle);
+
+    return rval;
+    }
+
 
 
 /*** rpt_internal_PreProcess - compiles all expressions in the report prior
@@ -2446,7 +2798,7 @@ int
 rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamObjects objlist)
     {
     pParamObjects use_objlist;
-    int i;
+    int i,t,rval;
     pStructInf ck_inf;
     char* ptr;
     pXArray xa = NULL;
@@ -2543,38 +2895,78 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	/** IF this is a report/data, compile its one expression **/
 	if (!strcmp(object->UsrType,"report/data"))
 	    {
-	    if (stAttrValue(stLookup(object,"value"),NULL,&ptr,0) < 0)
-	        {
-		err = 1;
-		mssError(1,"RPT","report/data '%s' must have a value= expression.", object->Name);
-		}
-	    else
-	        {
-	    	subst_value = rpt_internal_SubstParam(inf, ptr);
-		exp = expCompileExpression(subst_value->String, use_objlist, MLX_F_ICASER | MLX_F_FILENAMES, 0);
-		if (!exp)
+	    /** Get the expression itself **/
+	    t = stGetAttrType(stLookup(object,"value"), 0);
+	    if (t == DATA_T_CODE)
+		{
+		rval = stGetAttrValue(stLookup(object,"value"), t, POD(&exp), 0);
+		if (rval == 0)
 		    {
-		    mssError(0,"RPT","Error in '%s' value= expression", object->Name);
-		    err = 1;
+		    exp = expDuplicateExpression(exp);
+		    expBindExpression(exp, use_objlist, EXPR_F_RUNSERVER);
+		    if (!(object->UserData)) 
+			object->UserData = (void*)(inf->NextUserDataSlot++);
+		    else if ((int)(object->UserData) >= inf->NextUserDataSlot)
+			inf->NextUserDataSlot = ((int)(object->UserData))+1;
+		    xaSetItem(&(inf->UserDataSlots), (int)(object->UserData), (void*)exp);
 		    }
 		else
 		    {
-		    object->UserData = (void*)exp;
+		    err = 1;
+		    mssError(1,"RPT","report/data '%s' must have a value expression.", object->Name);
 		    }
-		xsDeInit(subst_value);
-		nmFree(subst_value,sizeof(XString));
+		}
+	    else if (t < 0)
+		{
+		err = 1;
+		mssError(1,"RPT","report/data '%s' must have a value expression.", object->Name);
 		}
 	    }
 
 	/** If no errors, proceed... **/
 	if (!err)
 	    {
-	    for(i=0;i<object->nSubInf;i++) if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
+	    for(i=0;i<object->nSubInf;i++) 
 	        {
-		if (rpt_internal_PreProcess(inf, object->SubInf[i], rs, use_objlist) < 0)
+		if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
 		    {
-		    err = 1;
-		    break;
+		    if (rpt_internal_PreProcess(inf, object->SubInf[i], rs, use_objlist) < 0)
+			{
+			err = 1;
+			break;
+			}
+		    }
+		else
+		    {
+		    /** Attribute, condition exp.? **/
+		    if (!strcmp(object->SubInf[i]->Name, "condition"))
+			{
+			t = stGetAttrType(object->SubInf[i], 0);
+			if (t == DATA_T_CODE)
+			    {
+			    rval = stGetAttrValue(object->SubInf[i], t, POD(&exp), 0);
+			    if (rval == 0)
+				{
+				exp = expDuplicateExpression(exp);
+				expBindExpression(exp, use_objlist, EXPR_F_RUNSERVER);
+				if (!(object->SubInf[i]->UserData)) 
+				    object->SubInf[i]->UserData = (void*)(inf->NextUserDataSlot++);
+				else if ((int)(object->SubInf[i]->UserData) >= inf->NextUserDataSlot)
+				    inf->NextUserDataSlot = ((int)(object->SubInf[i]->UserData))+1;
+				xaSetItem(&(inf->UserDataSlots), (int)(object->SubInf[i]->UserData), (void*)exp);
+				}
+			    else
+				{
+				err = 1;
+				mssError(1,"RPT","condition on '%s' must have an expression.", object->Name);
+				}
+			    }
+			else if (t < 0)
+			    {
+			    err = 1;
+			    mssError(1,"RPT","condition on '%s' must have an expression.", object->Name);
+			    }
+			}
 		    }
 		}
 	    }
@@ -2582,12 +2974,12 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	/** Error? **/
 	if (err && object->UserData)
 	    {
-	    if (!strcmp(object->UsrType,"report/data"))
+	    /*if (!strcmp(object->UsrType,"report/data"))
 	        {
 		expFreeExpression((pExpression)(object->UserData));
 		object->UserData = NULL;
 		}
-	    else if (!strcmp(object->UsrType,"report/table"))
+	    else*/ if (!strcmp(object->UsrType,"report/table"))
 	        {
 	        object->UserData = NULL;
 		if (xa)
@@ -2643,9 +3035,15 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
 		}
 	    else if (!strcmp(object->UsrType,"report/data"))
 	        {
-		expFreeExpression((pExpression)(object->UserData));
+		/*expFreeExpression((pExpression)(object->UserData));*/
 		}
 	    object->UserData = NULL;
+	    }
+
+	for(i=1;i<inf->UserDataSlots.nItems;i++) if (inf->UserDataSlots.Items[i])
+	    {
+	    expFreeExpression((pExpression)(inf->UserDataSlots.Items[i]));
+	    inf->UserDataSlots.Items[i] = NULL;
 	    }
 
     return 0;
@@ -2730,7 +3128,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    }
 
 	/** Output the title, unless instructed otherwise. **/
-	if (!no_title_bar)
+	/*if (!no_title_bar)
 	    {
 	    prtWriteLine(ps);
 	    prtSetAttr(ps, RS_TX_BOLD | RS_TX_CENTER);
@@ -2747,10 +3145,9 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    cur_time = time(NULL);
 	    snprintf(sbuf,128,"REQUESTED BY USER %s AT %s",mssUserName(),ctime(&cur_time));
 	    prtWriteString(ps,sbuf,-1);
-	    /*prtWriteNL(ps);*/
 	    prtSetAttr(ps,0);
 	    prtWriteLine(ps);
-	    }
+	    }*/
 
 	/** Create the parameter object list, adding the report object itself as 'this' **/
 	inf->ObjList = expCreateParamList();
@@ -2767,6 +3164,8 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	rs->HeaderInf = NULL;
 	rs->FooterInf = NULL;
 	inf->RSess = rs;
+	rs->PageHandle = prtGetPageRef(ps);
+	prtSetPageNumber(rs->PageHandle, 1);
 
 	/** Build the object list. **/
 	for(i=0;i<req->nSubInf;i++) if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP && !strcmp(req->SubInf[i]->UsrType,"report/query"))
@@ -2780,6 +3179,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	if (rpt_internal_PreProcess(inf, req, rs, inf->ObjList) < 0) err = 1;
 
 	/** First, check for report/header and report/footer stuff **/
+#if 00
 	for(i=0;i<req->nSubInf;i++)
 	    {
 	    if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP)
@@ -2822,6 +3222,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		}
 	    if (err) break;
 	    }
+#endif
 
 	/** Set top-level formatting **/
 	rpt_internal_CheckFormats(req,oldmfmt,olddfmt,oldnfmt,0);
@@ -2902,6 +3303,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 			    }
 			}
 		    }
+#if 00
 		else if (!strcmp(subreq->UsrType,"report/comment"))
 		    {
 		    if (rpt_internal_DoComment(inf, subreq, rs) <0)
@@ -2910,25 +3312,9 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 			break;
 			}
 		    }
-		else if (!strcmp(subreq->UsrType,"report/data"))
-		    {
-		    if (rpt_internal_DoData(inf, subreq, rs) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
 		else if (!strcmp(subreq->UsrType,"report/column"))
 		    {
 		    if (rpt_internal_DoField(inf, subreq, rs, NULL) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
-		else if (!strcmp(subreq->UsrType,"report/form"))
-		    {
-		    if (rpt_internal_DoForm(inf, subreq,rs) <0)
 		        {
 			err = 1;
 			break;
@@ -2950,6 +3336,39 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
                         break;
                         }
                     }
+#endif
+		else if (!strcmp(subreq->UsrType,"report/area"))
+		    {
+		    if (rpt_internal_DoArea(inf, subreq, rs, NULL, rs->PageHandle) < 0)
+			{
+			err = 1;
+			break;
+			}
+		    }
+		else if (!strcmp(subreq->UsrType,"report/image"))
+		    {
+		    if (rpt_internal_DoImage(inf, subreq, rs, NULL, rs->PageHandle) < 0)
+			{
+			err = 1;
+			break;
+			}
+		    }
+		else if (!strcmp(subreq->UsrType,"report/data"))
+		    {
+		    if (rpt_internal_DoData(inf, subreq, rs, rs->PageHandle) <0)
+		        {
+			err = 1;
+			break;
+			}
+		    }
+		else if (!strcmp(subreq->UsrType,"report/form"))
+		    {
+		    if (rpt_internal_DoForm(inf, subreq,rs, rs->PageHandle) <0)
+		        {
+			err = 1;
+			break;
+			}
+		    }
 		}
 	    if (err) break;
 	    }
@@ -2968,7 +3387,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	expFreeParamList(inf->ObjList);
 
 	/** End with a form feed, close up and get out. **/
-	prtWriteFF(ps);
+	/*prtWriteFF(ps);*/
 
 	/** Need to free up title string? **/
 	if (title_str)
@@ -3018,6 +3437,9 @@ rpt_internal_Generator(void* v)
 	    fdClose(inf->SlaveFD,0);
 	    thExit();
 	    }
+
+	/** Set image store location **/
+	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, (void* (*)())objWrite, (void* (*)())objClose);
 
 	/** Indicate that we've started up here... **/
 	syPostSem(inf->StartSem, 1, 0);
@@ -3122,12 +3544,15 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->AttrOverride = stCreateStruct(NULL,NULL);
 	memccpy(inf->ContentType, usrtype, 0, 63);
 	inf->ContentType[63] = 0;
+	xaInit(&(inf->UserDataSlots), 16);
+	inf->NextUserDataSlot = 1;
 
 	/** Content type must be application/octet-stream or more specific. **/
 	rval = obj_internal_IsA(usrtype, "application/octet-stream");
 	if (rval == OBJSYS_NOT_ISA)
 	    {
 	    mssError(1,"RPT","Requested content type must be at least application/octet-stream");
+	    xaDeInit(&(inf->UserDataSlots));
 	    nmFree(inf,sizeof(RptData));
 	    return NULL;
 	    }
@@ -3170,6 +3595,7 @@ rptClose(void* inf_v, pObjTrxTree* oxt)
 	stFreeInf(inf->AttrOverride);
 	syDestroySem(inf->StartSem, SEM_U_HARDCLOSE);
 	syDestroySem(inf->IOSem, SEM_U_HARDCLOSE);
+	xaDeInit(&(inf->UserDataSlots));
 	nmFree(inf,sizeof(RptData));
 
     return 0;
@@ -3460,7 +3886,7 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		}
 	    else
 	        {
-		*(int*)val = prtGetPageNumber(inf->RSess->PSession);
+		*(int*)val = prtGetPageNumber(inf->RSess->PageHandle);
 		}
 	    return 0;
 	    }

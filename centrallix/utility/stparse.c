@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.6 2003/05/30 17:39:53 gbeeley Exp $
+    $Id: stparse.c,v 1.7 2003/06/27 21:19:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.7  2003/06/27 21:19:48  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.6  2003/05/30 17:39:53  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -121,6 +125,7 @@ stAllocInf()
 	memset(this,0, sizeof(StructInf));
 	SETMAGIC(this,MGK_STRUCTINF);
 	this->Name = nmMalloc(ST_NAME_STRLEN);
+	this->UserData = NULL;
 
     return this;
     }
@@ -463,7 +468,7 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 	if (!find_exp) return -1;
 
 	/** expression code? **/
-	if (type == DATA_T_CODE && (find_exp->Flags & EXPR_F_RUNCLIENT))
+	if (type == DATA_T_CODE && (find_exp->Flags & (EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)))
 	    {
 	    pod->Generic = find_exp;
 	    return 0;
@@ -492,7 +497,7 @@ stGetAttrType(pStructInf this, int nval)
 	if (!find_exp) return -1;
 
 	/** Exception - if runclient, return as code, not data **/
-	if (find_exp->Flags & EXPR_F_RUNCLIENT)
+	if (find_exp->Flags & (EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER))
 	    return DATA_T_CODE;
 
     return find_exp->DataType;
@@ -966,7 +971,7 @@ st_internal_ParseStruct(pLxSession s, pStructInf *info)
 	if (!*info) return -1;
 	(*info)->Flags |= (ST_F_TOPLEVEL | ST_F_GROUP);
 	objlist = expCreateParamList();
-	expAddParamToList(objlist, "this", NULL, 0);
+	/*expAddParamToList(objlist, "this", NULL, 0);*/
 
 	/** In case we get a parse error: **/
 	Catch(parse_err)

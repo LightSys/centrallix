@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.3 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: exp_main.c,v 1.4 2003/06/27 21:19:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.4  2003/06/27 21:19:47  gbeeley
+    Okay, breaking the reporting system for the time being while I am porting
+    it to the new prtmgmt subsystem.  Some things will not work for a while...
+
     Revision 1.3  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -249,6 +253,15 @@ exp_internal_CopyTree(pExpression orig_exp)
 	    }
 
     return new_exp;
+    }
+
+
+/*** expDuplicateExpression - duplicate an expression tree (as above)
+ ***/
+pExpression
+expDuplicateExpression(pExpression orig_exp)
+    {
+    return exp_internal_CopyTree(orig_exp);
     }
 
 
