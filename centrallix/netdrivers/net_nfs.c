@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.8 2003/03/09 06:27:00 nehresma Exp $
+    $Id: net_nfs.c,v 1.9 2003/03/09 07:47:57 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.9  2003/03/09 07:47:57  jorupp
+     * reversed some of the changes nehresma made earlier on bad advice from me
+     * added some extra xdr_free calls
+
     Revision 1.8  2003/03/09 06:27:00  nehresma
     fixed one more place where nmMalloc should be malloc because of the xdr_*
     functions doing the freeing
@@ -120,7 +124,6 @@
 
 typedef struct
     {
-    XDR source_data; // needed so we can xdr_destroy() it at the end to free the memory
     struct sockaddr_in source;
     int xid;
     int procedure;
@@ -453,7 +456,7 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     fhstatus* retval = NULL;
     pExports exp;
 
-    retval = (fhstatus*)malloc(sizeof(fhstatus));
+    retval = (fhstatus*)nmMalloc(sizeof(fhstatus));
     if(!retval)
 	return NULL;
     memset(retval,0,sizeof(fhstatus));
@@ -494,8 +497,7 @@ mountlist* nnfs_internal_mountproc_dump(void* param)
     pMount mnt;
     int i;
 
-    /** malloc instead of nmMalloc so since the xdr_* functions will do the freeing **/
-    head=(mountlist*)malloc(sizeof(mountlist));
+    head=(mountlist*)nmMalloc(sizeof(mountlist));
     *head=NULL;
 
     for (i=0;i<xaCount(NNFS.mountList);i++)
@@ -539,8 +541,7 @@ exportlist* nnfs_internal_mountproc_export(void* param)
     pExports exp;
     int i;
 
-    /** malloc instead of nmMalloc so since the xdr_* functions will do the freeing **/
-    head=(exportlist*)malloc(sizeof(exportlist));
+    head=(exportlist*)nmMalloc(sizeof(exportlist));
     *head=NULL;
 
     for (i=0;i<xaCount(NNFS.exportList);i++)
@@ -821,8 +822,10 @@ nnfs_internal_request_handler(void* v)
 		}
 	    }
 
+	xdr_free((xdrproc_t)xdr_replymsg,(char*)&msg_out);
+	/** free the return value of the function we called**/
+	nmFree(msg_out.rm_reply.rp_acpt.ar_results.where,nfs_program[entry->procedure].ret_size);
 	xdr_destroy(&xdr_out);
-	xdr_destroy(&(entry->source_data));
 	nmFree(buf,MAX_PACKET_SIZE);
 	nmFree(entry,sizeof(QueueEntry));
 	}
@@ -883,6 +886,7 @@ nnfs_internal_nfs_listener(void* v)
 	/** Loop, accepting requests **/
 	while((i=netRecvUDP(NNFS.nfsSocket,buf,MAX_PACKET_SIZE,0,&remoteaddr,&remotehost,&remoteport)) != -1)
 	    {
+	    XDR xdr_in;
 	    XDR xdr_out; // only used on error
 	    struct rpc_msg msg_in;
 	    struct rpc_msg msg_out; // only used on error
@@ -897,12 +901,12 @@ nnfs_internal_nfs_listener(void* v)
 
 	    /** process packet **/
 	    printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
-	    xdrmem_create(&(entry->source_data),buf,i,XDR_DECODE);
+	    xdrmem_create(&xdr_in,buf,i,XDR_DECODE);
 	    xdrmem_create(&xdr_out,outbuf,MAX_PACKET_SIZE,XDR_ENCODE);
-	    if(!xdr_callmsg(&(entry->source_data),&msg_in))
+	    if(!xdr_callmsg(&xdr_in,&msg_in))
 		{
 		mssError(0,"NNFS","unable to retrieve message");
-		xdr_destroy(&(entry->source_data));
+		xdr_destroy(&xdr_in);
 		nmFree(entry,sizeof(QueueEntry));
 		continue;
 		}
@@ -940,13 +944,24 @@ nnfs_internal_nfs_listener(void* v)
 				    entry->procedure = msg_in.rm_call.cb_proc;
 				    entry->param = (void*)nmMalloc(nfs_program[entry->procedure].param_size);
 				    memset(entry->param,0,nfs_program[entry->procedure].param_size);
-				    if(nfs_program[entry->procedure].param(&(entry->source_data),(char*)entry->param))
+				    if(nfs_program[entry->procedure].param(&xdr_in,(char*)entry->param))
 					{
-					wasError = 0;
-					/** add message to the queue **/
-					NNFS.queue[NNFS.nextIn++]=entry;
-					NNFS.nextIn%=NNFS.queueSize;
-					syPostSem(NNFS.semaphore,1,0);
+					if((NNFS.nextIn+1)%NNFS.queueSize!=NNFS.nextOut)
+					    {
+					    wasError = 0;
+					    /** add message to the queue **/
+					    NNFS.queue[NNFS.nextIn++]=entry;
+					    NNFS.nextIn%=NNFS.queueSize;
+					    syPostSem(NNFS.semaphore,1,0);
+					    }
+					else
+					    {
+					    mssError(0,"NNFS","no more room in queue");
+					    /** no good error -- send GARBAGE_ARGS I guess **/
+					    msg_out.rm_reply.rp_acpt.ar_stat = GARBAGE_ARGS;
+					    xdr_free(nfs_program[entry->procedure].param,entry->param);
+					    nmFree(entry->param,nfs_program[entry->procedure].param_size);
+					    }
 					}
 				    else
 					{
@@ -983,6 +998,10 @@ nnfs_internal_nfs_listener(void* v)
 			msg_out.rm_reply.rp_rjct.rj_vers.high = 2;
 			}
 		    }
+		else
+		    {
+		    printf("recieved duplicate request: %i\n",entry->xid);
+		    }
 		if(wasError==1 && isDup==0)
 		    {
 		    if(!xdr_replymsg(&xdr_out,&msg_out))
@@ -1011,11 +1030,11 @@ nnfs_internal_nfs_listener(void* v)
 		mssError(0,"NNFS","invalid message direction: %i",msg_in.rm_direction);
 		}
 	    xdr_destroy(&xdr_out);
+	    xdr_destroy(&xdr_in); // param is still valid, even after the XDR it came from is destroyed
 	    if(wasError==1 && isDup==0)
 		{
 		/** might not need **/
 		xdr_free((xdrproc_t)&xdr_replymsg,(char*)&msg_out);
-		xdr_destroy(&(entry->source_data));
 		nmFree(entry,sizeof(QueueEntry));
 		}
 	    }
@@ -1111,7 +1130,10 @@ nnfs_internal_mount_listener(void* v)
 	    {
 	    mssError(1,"NNFS","No mount points defined in config file");
 	    }
-	nnfs_internal_get_exports(mp_config);
+	else
+	    {
+	    nnfs_internal_get_exports(mp_config);
+	    }
 	NNFS.fhToPath=(pXHashTable)nmMalloc(sizeof(XHashTable));
 	NNFS.pathToFh=(pXHashTable)nmMalloc(sizeof(XHashTable));
 	xhInit(NNFS.fhToPath,16,0);
@@ -1233,6 +1255,7 @@ nnfs_internal_mount_listener(void* v)
 					    }
 					    break;
 					}
+				    xdr_free(mount_program[procnum].param,param);
 				    }
 				else
 				    {
@@ -1283,8 +1306,8 @@ nnfs_internal_mount_listener(void* v)
 			}
 		    }
 		xdr_free((xdrproc_t)&xdr_replymsg,(char*)&msg_out);
-		//xdr_destroy(&xdr_in);
-		if(ret && ret_size>0)
+		/** if the return value wasn't null, free it **/
+		if(ret)
 		    nmFree(ret,ret_size);
 		}
 	    else if(msg_in.rm_direction==REPLY)
