@@ -1,0 +1,47 @@
+Document:   HTML Page "widget" documentation.
+Author:     Greg Beeley (GRB)
+Date:       March 17th, 2000
+MIME Type:  widget/page
+-------------------------------------------------------------------------------
+
+OVERVIEW
+
+    The Page widget represents the HTML page as a whole and serves as the top-
+    level container for other widgets.  The HTML page also provides a basic set
+    of utility functions for other widgets to use.
+
+
+STRUCTURE FILE PROPERTIES
+
+    The following properties are valid for a widget of type "widget/page":
+
+        title		(string) the title to give to this page.
+
+	bgcolor		(string) the background color for the page, if any,
+			expressed as a color name or as an RGB value ("#ff0000"
+			etc).
+
+	background	(string) the background image for the page, if any.
+
+	textcolor	(string) the text color for the page, either expressed
+			as a color name or as an RGB value ("#ff0000", etc).
+
+
+EVENTS
+
+    None yet.
+
+
+ACTIONS
+
+    None yet.
+
+
+EXAMPLE USAGE
+
+    MyPage "widget/page"
+        {
+	title = "This is an example page."
+	bgcolor = white
+	textcolor = black
+	}

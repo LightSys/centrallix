@@ -1,0 +1,93 @@
+Document:   Static/Dynamic HTML area widget
+Author:     Greg Beeley (GRB)
+Date:       March 17th, 2000
+MIME Type:  widget/html
+-------------------------------------------------------------------------------
+
+OVERVIEW
+
+    The htmlarea widget provides a way to insert a plain HTML document into a
+    Centrallix generated page, either in-flow (static) or in its own separate
+    layer that can be reloaded at will (dynamic).  The HTML document can either
+    be given in a property of the widget or can be referenced so that the HTML
+    is read from an external document.
+
+    The HTML area widget also can act as a mini-browser -- clicking on hyper-
+    text links in the visible document will by default cause the link to be 
+    followed, and the new document to be displayed in the HTML area (if the 
+    HTML area is dynamic).
+
+    Dynamic HTML areas also do double-buffering.  This is a workaround for a
+    bug in Netscape which would normally cause a crash when the document that
+    contains the clicked link is reloaded.  So, dynamic html areas actually use
+    two layers, only one of which is visible at a time.  The linked-to document
+    is then loaded in the invisible layer, and then the layer is shown later
+    and the previously visible layer is hidden.
+
+
+STRUCTURE FILE PROPERTIES
+
+    The following properties are valid for a widget of type "widget/html":
+
+        x		(integer) Specifies the x-position of the html area
+			with respect to its parent container, in pixels.  Only
+			meaningful on dynamic mode html areas.
+
+	y		(integer) Specifies the y-position of the html area
+			with respect to its parent container, in pixels.  Only
+			meaningful on dynamic mode html areas.
+
+	width		(integer) Specifies the wrapping width of the HTML
+			area.
+
+	height		(integer) Gives the height, in pixels, of the HTML
+			area.
+
+	mode		(string) Either "static" or "dynamic"; specifies 
+			whether the HTML area is in-flow (static) or whether
+			it is in its own layer (dynamic) that can be positioned
+			and reloaded at will.
+
+	source		(string) The ObjectSystem pathname of the document to
+			be presented, or the HTTP URL of the document to be 
+			presented.  HTTP URL's can only be used on dynamic 
+			mode tables, and some functionality will be disabled
+			if the URL isn't on the local server.
+
+	prologue	(string) HTML text to be placed at the beginning of
+			the html area.  Cannot be used if the "source" is an
+			HTTP URL.
+
+	content		(string) The content for the HTML area.  Typically
+			used in lieu of "source", see above.
+
+	epilogue	(string) HTML text to be placed at the end of the
+			html area.  Cannot be used if the "source" is an HTTP
+			URL.
+
+
+EVENTS
+
+    No events yet.
+
+
+ACTIONS
+
+    LoadPage - load a new document into a dynamic-mode HTML area.
+
+        Source		(string) This parameter specifies the URL of the
+			document to be loaded into the dynamic HTML area.
+
+
+EXAMPLE USAGE
+
+    HTMLArea "widget/html"
+        {
+	mode = dynamic
+	x = 2
+	y = 2
+	width = 478
+	height = 396
+	source = "http://10.4.1.222:800/index.html"
+	}
+

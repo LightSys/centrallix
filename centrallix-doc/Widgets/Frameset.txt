@@ -1,0 +1,98 @@
+Document:   HTML Frameset "container" widget
+Author:     Greg Beeley (GRB)
+Date:       March 16th, 2000
+MIME Type:  "widget/frameset"
+-------------------------------------------------------------------------------
+
+OVERVIEW
+
+    The frameset widget allows for the construction of a page using HTML frames
+    so that multiple pages can be displayed simultaneously.  Frequently frames
+    are frowned upon in the HTML community, but sometimes they can be of some
+    value, so this widget is included here.
+
+    Framesets can have one of two directions: either row-wise or column-wise.
+    A "rows" frameset will have multiple frames stacked one on top of the other
+    from the top of the page to the bottom.  A "columns" frameset will have 
+    the frames stacked side by side from left to right.
+
+    Frameset widgets also gather information from their subwidgets (normally
+    either widget/page or widget/frameset) for information on how large to make
+    each of the frames relative to one another.
+
+
+STRUCTURE FILE PROPERTIES
+
+    The following properties are valid for a widget of type "widget/frameset":
+
+        direction	(string) Specifies whether this is a rows or a columns
+			frameset.  This string value can either be "rows" or
+			"columns".  See the overview, above, for the 
+			difference.
+
+	borderwidth	(integer) Specifies how thick the borders are that 
+			separate the frames from one another.  The borderwidth
+			can be zero.
+
+    The following properties are valid for the sub-widgets of a frameset, and
+    provide information for the widget/frameset that contains those widgets.
+    If, for instance, one frameset is embedded inside another, these properties
+    if they occur in the child frameset, provide information to the parent 
+    frameset, not the child.
+
+        framesize	(integer/string) Specifies the amount of space this
+			element of the frameset will occupy.  Can either be an
+			integer value in pixels, or a string value containing
+			a percentage.  The latter would indicate the relative
+			amount of space the individual frame should occupy.
+
+	marginwidth	(integer) Specifies how wide the margins will be at the
+			top, bottom, left, and right edges of the frame.  Can
+			be zero.
+
+
+EVENTS
+
+    No events yet.
+
+
+ACTIONS
+
+    No actions yet.
+
+
+EXAMPLE USAGE
+
+    // Of course this example doesn't put any content into any of the frames,
+    // but rather just illustrates the principle....  This creates three 
+    // frames, two small ones side by side on top, and one large one on the
+    // bottom of the screen.
+    //
+    BigFrameset "widget/frameset"
+        {
+	direction = rows
+	borderwidth = 3
+
+	TopFrameset "widget/frameset"
+	    {
+	    framesize = "40%"
+	    direction = columns
+	    borderwidth = 3
+
+	    TopLeftDocument "widget/page"
+	        {
+		framesize = "50%"
+		}
+
+	    TopRightDocument "widget/page"
+	        {
+		framesize = "50%"
+		}
+	    }
+
+	BottomDocument "widget/page"
+	    {
+	    framesize = "60%"
+	    }
+	}
+

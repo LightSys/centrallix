@@ -1,0 +1,283 @@
+Document:  Structure File Definition
+Author:    Greg Beeley
+Date:      April 8, 1999
+Updated:   July 3, 2001
+License:   Copyright (C) 2001 LightSys Technology Services.  See "LICENSE".
+-------------------------------------------------------------------------------
+
+I   OVERVIEW
+
+    The structure file is a basic filesystem element within Centrallix.  It
+    provides the ability to construct structured parameter settings within a
+    tree-type framework that can be extended to a number of applications.
+
+    This document defines the general structure of this type of file, provides
+    information about the Centrallix API's for accessing such files, and also
+    gives information about various types of structure files used for specific
+    purposes, including report (.rpt) files, query tree (.qyt) files, and 
+    Centrallix application definition (.app) files.
+
+
+II  DEFINITION
+
+    The structure file is a plain-text file that can be edited/read in any 
+    text editor.  It has two basic constructs: the group element and the
+    attribute-value association element.  Group elements have a name and "data
+    type", and can contain other group elements as well as other attribute-
+    value elements.  Attribute-value association elements have an attribute 
+    name and a value (or list of values).  The syntax is free-form; that is,
+    the usage of comments and white space can be arbitrary and the appearance
+    of the file can be set by the programmer, although the Centrallix 
+    libraries, when writing to a structure file other than in raw i/o mode, 
+    automatically use an internally specified formatting convention.
+
+    Here is the specific syntax of a group element:
+
+    <group-name> "<content-type>" { <zero-or-more-group-or-attr-elements> }
+
+    The content-type must be in quotation marks.  Whitespace surrounding the
+    curly braces is optional.
+
+    And the syntax of an attribute-value association element:
+
+    <attr-name> = <attr-value>
+
+    Where attr-value can be a keyword (string not in quotes), a string, an
+    integer, or a comma-separated list of strings/keywords/integers.  White-
+    space surrounding the equals sign is optional.  Strings may span multiple
+    lines, and may contain newlines signified by \n.  Either single or double
+    quotes may be used to surround the string, and if the quotation mark occurs
+    within the string, it can be escaped using \' or \".
+
+    Keywords, such as group names and attribute names may contain letters, 
+    numbers, and underscores, but may not begin with a numeric digit.
+
+    The current maximum number of items in a comma-separated list is 64, and
+    the current maximum number of group or attribute elements within a group
+    element is 64.  The maximum length of a keyword name or content type is
+    64 characters, but there is no maximum length for strings.  Integers are
+    32-bit, and so can range from -(2^31) to +(2^31) - 1.
+
+    The first element in a structure file must be a group element, and normally
+    has a content type the same as that of the file itself.
+
+    Structure files may contain comments in the C++ style:  on any given line
+    outside of a string, any text following two slashes // will be considered
+    a comment and ignored by the structure file parser.
+
+
+III EXAMPLE #1 - REPORT (.RPT) FILES
+
+    A report file, normally ending in .rpt and having a content-type of 
+    "system/report", is used for managing the information needed to generate a
+    data-driven report.  The report structure file has several group content
+    types that are used for defining various aspects of the report.
+
+    The "system/report" group is the top-level group, and contains mostly
+    other group elements of other types, except that it can contain some
+    attribute-value elements as well, the most important of which is the
+    'title' element, which provides a title for the report.  Any top-level
+    attribute-value element, including 'title', can be subject to parameter
+    substitution when the report is executed, thus its value can be changed
+    dynamically depending on the reporting needs of the end user.  
+    
+    The text of the top-level attribute will then be substituted for any occur-
+    rence of a string of the form '&<attr-name>' in several other places within 
+    the report definition, including the title attribute itself, the sql
+    attribute of a "report/query" group, and the text attribute of a "report/
+    comment" group.
+
+        test "system/report"
+            {
+            // We have a title, but nothing else :)
+            title = "This is my title"
+            }
+
+    The "report/query" content type is used to specify a SQL query that will be
+    used to generate report data.  A report/query group must contain at least
+    one attribute-value element named 'sql', the value of which is the SQL text
+    for the query, in Centrallix SQL syntax.  Query groups can also contain 
+    one or more 'link' attributes, which are used to perform parameter subs-
+    titution on the 'sql' text.  The link attribute contains a list of two 
+    keywords, the first of which refers to the name of a currently-executing 
+    query, and the second of which refers to a column within that query.  The
+    current value of that column is substituted for any occurrence of the 
+    string '&1' within the sql text (for the first link= attribute, or '&2',
+    etc., for the second link= attribute within the report/query group).  In
+    this way, queries can be nested so that the results of one query depend
+    on the value of the current row in the other query.
+
+        locationtypes "report/query"
+            {
+            sql = "select :location_code, :description from 
+                            /datasources/OMSS_DB/_LocationCode/rows"
+            }
+
+    The "report/comment" group is used to insert a non-data-driven comment into
+    the report.  This group must contain a 'text' attribute, specifying the 
+    text of the comment to be inserted.  The value of this 'text' attribute is
+    a string.  This group may also contain a 'style' attribute, which can 
+    contain a list of styles, including bold, italic, compressed, underline,
+    center, expanded, and barcode.  This group may contain a 'autonewline'
+    attribute, which can be set to its default 'yes' or to 'no' to prevent
+    a newline \n from automatically being issued after the comment line.  The
+    'text' attribute is, as mentioned earlier, subject to parameter
+    substitution.
+
+        mycomment "report/comment"
+            {
+            text = "This is my comment's text, in BOLD and UNDERLINED.\n"
+            autonewline=no
+            style=bold,underline
+            }
+
+    The "report/form" group is used to build a freeform layout presentation
+    for a query result row which will repeat for each row in the query result.
+    Any comments, columns, tables, or even forms within the form group will
+    be repeated for each row.  The form group has one required attribute 
+    element, called 'source', which must contain a keyword referring to a
+    report/query group within the report.  The form group can also contain
+    an 'ffsep' attribute, which specifies that a form feed (page break) should
+    occur after each record, when its value is set to 'yes'.  Another optional
+    attribute, 'rulesep', specifies that a horizontal line should be printed
+    between records.
+
+    The form group can contain other form, table, comment, and column groups.
+    Column groups are used to refer to a column's value within the current 
+    row of the form's query.  Comment groups insert non-data-dependent text.
+    Other form and table groups are used to insert a nested subquery into the
+    form, and normally refer to a query group which has a 'link' attribute to
+    the query referred to by the outer form group.  Forms can also have a 
+    'style' attribute element which will define the default style for the 
+    entire contents of the form, but which can be overridden by the elements
+    within the form.
+
+        codelist "report/form"
+            {
+            source = locationtypes
+            rulesep = yes
+            t1 "report/comment" { text = "Code: " autonewline=no }
+            c1 "report/column" { source = location_code }
+            t2 "report/comment" { text = "Desc.: " autonewline=no }
+            c2 "report/column" { source = description }
+            }
+
+    The "report/table" group is used to present tabular data for a query.
+    It is a simple table with rows and columns and an optional table heading
+    row.  The presence/absence of a table heading is controlled by the
+    'titlebar' attribute, which can be set to its default 'yes' or to 'no'
+    to disable the header row.  The table can also have a 'style'.  Table
+    groups must contain a 'source' attribute which refers to the query source
+    for the table, just as with form groups.
+
+    If a 'columns' attribute is present in the table group, it can be used
+    to specify which columns are to be present in the table.  If a 'widths'
+    attribute is present, it specifies a list of column widths.  Otherwise,
+    the widths of the columns are determined by the column names.
+
+        codelist2 "report/table"
+            {
+            source = locationtypes
+            columns = location_code,description
+            widths = 10,40
+            style = italic
+            titlebar = yes
+            }
+
+    Finally, a "report/column" group is used within a form group to insert the
+    contents of a column in the current query result row into the text of the
+    form.  The column has one required attribute, 'source', which names the 
+    column within the query to use.  A column group can also have an optional
+    attribute 'style' to define the style of the column.  Also, the column
+    group can have an 'autonewline' attribute which works the same way that
+    same attribute within a "report/comment" group works.
+
+        mycol "report/column"
+            {
+            source = location_code
+            style = bold
+            }
+
+    Another section has been recently added.  This group is called 
+    "report/section" and is used for dividing the report into sections,
+    each of which can have different formatting properties.  This group can
+    have several attribute/value options, and can contain any of the
+    other groups, except "system/report", of course, and can contain other
+    "report/section" groups.  This group can also be contained within a
+    form.
+
+        section1 "report/section"
+	    {
+	    title="My First Section"
+	    columns=2
+	    colsep=4
+	    margins=4,4
+	    style=plain
+	    }
+
+
+    NEW ATTRIBUTE TYPES -- several new attribute types have been added to the
+    system since the last update of this document.  These are listed below:
+
+    xpos	This attribute is valid within a report/comment or report/column
+    		element.  It causes the printout to tab over to a given 
+		character column on the output, but does not permanently 
+		cause an indent operation on successive newlines (use the margin
+		settings for that).
+
+    ypos	This attribute is valid within a report/comment or report/column
+    		element and causes the printout to tab down to a given line on
+		the page, unless that line has already passed (e.g., there are
+		12 printed lines on the page and a ypos=6 is encountered).
+
+    dateformat	Valid in report/comment, report/column, report/section,
+    		report/table, report/form.  Sets the format to output date/time
+		values.  The format is a string, and can contain the following
+		"special" character sequences that indicate where to place the
+		various elements of the date/time value:
+
+		DDDD = long day-of-week name     NOT YET IMPL.
+		DDD = short day-of-week abbrev.  NOT YET IMPL.
+		dd = 2-digit day of month
+		ddd = day of month plus cardinality '1st','2nd','3rd', etc.
+		MMMM = full (long) month name
+		MMM = short month abbreviation ("Jan" "Feb" "Mar" etc)
+		MM = 2-digit month of year
+		yy = 2-digit year (bad)
+		yyyy = 4-digit year (good)
+		HH = hour in 24-hour format
+		hh = hour in 12-hour format, appends AM/PM also
+		mm = minutes
+		ss = seconds
+
+		The default dateformat is "dd MMM yyyy HH:mm".
+
+    moneyformat	Valid in the same sections as dateformat.  Sets the format to
+    		output money datatypes (used for managing currency).  The 
+		following special character sequences are recognized:
+
+		 # = optional digit unless after the '.' or first before '.'
+		 0 = mandatory digit, no leading zero suppression
+		 , = insert a comma, suppressed if no digits around it.
+		 . = decimal point (only one allowed)
+		 $ = dollar sign
+		 + = mandatory sign, whether + or - (if 0, +)
+		 - = optional sign, space if + or 0
+		 ^ = if last digit, round it (trunc is default).  Otherwise, 
+		     like '0'.  NOT YET IMPL.
+		() = surround # with () if it is negative.
+		[] = surround # with () if it is positive.
+		   = (space) optional digit, but put space in its place if 
+		     suppressing leading 0's.
+
+		The default moneyformat is "$0.00".
+		
+    font	This sets the font type for output.  Standard font types are 
+    		"helvetica", "times", and "courier", which is the default.
+		This attribute is valid for comment, section, column, form,
+		and table elements.
+
+    titlebar	This attribute is now valid at the top level, and if set to
+    		no, disables the automatically generated report title header
+		that contains the report title, requesting user, and date/time
+		stamp.

@@ -1,0 +1,191 @@
+Document:  Centrallix SQL Language Specification
+Author:    Greg Beeley (GRB)
+Date:      July 3, 2001
+License:   Copyright (C) 2001 LightSys Technology Services.  See "LICENSE".
+-------------------------------------------------------------------------------
+
+I   OVERVIEW....
+
+    Centrallix contains a SQL engine, although admittedly its SQL language is
+    a bit different from ANSI SQL.  The primary reason for this is the 
+    difference in the way Centrallix specifies data sources.  In normal ANSI
+    SQL, a data source is a table specification, typically in the form of
+    Database.User.Table.  In Centrallix, a data source is an ObjectSystem
+    pathname to an object which contains subobjects to be queried.  Blue-
+    Fractal also allows for direct referencing of a particular object's
+    attribute by typing /path/to/object:attrname.  For this reason (and others)
+    the SQL language does differ somewhat, although the basic concepts are
+    all still the same.
+
+    This document assumes a moderate prior knowledge of SQL.
+
+
+II  PROJECTION....
+
+    First, projecting data.  The syntax is similar to normal SQL, except that
+    the attribute names (or column names) are normally preceded by a colon,
+    as in:
+
+        SELECT :name from /mydirectory
+
+    More than one attribute may be specified, as in:
+
+        SELECT :name, :size from /mydirectory
+
+    Data source aliases may be used:
+
+        SELECT :d:name, :d:size from /mydirectory d
+
+    Note that aliases can be longer than one letter, if need be.  Finally, 
+    attributes may be renamed for the result set:
+
+        SELECT filename=:d:name, filesize=:d:size from /mydirectory d
+
+    Currently, SELECTing * does not work - it is sometimes possible that the
+    subobjects being queried may not all have the same attributes.  In that
+    case, the results are undefined anyhow.  Support for SELECT * may be added
+    in the future.
+
+
+III SELECTION....
+
+    Second, selecting specific objects that are of interest.  Again, the syntax
+    is similar (a WHERE clause) to standard SQL.  First, a simple WHERE clause:
+
+        SELECT :name, :size from /mydirectory
+	    WHERE :size > 1024
+
+    When aliases are used, they are also to be used in the WHERE clause:
+
+        SELECT :d:name, :d:size from /mydirectory d
+	    WHERE :d:size > 1024
+
+    The WHERE clause can contain compound statements or function calls:
+
+        SELECT :d:name, :d:size from /mydirectory d
+	    WHERE (:d:size < 10240 and :d:size > 1024) and 
+	        left(:d:name, 3) == 'tmp'
+
+
+IV  JOINS....
+
+    Centrallix supports both normal and outer joins.  It also supports joins
+    based on inequality as well as equality statements.  The outer join syntax
+    is identical to that of Sybase ASE database servers.  That is, use *= and
+    =* instead of == (or = ) as the comparison operator, and place the asterisk
+    on the side of the comparison with the table containing the NON OPTIONAL
+    records.
+
+    First, a normal equijoin:
+
+        SELECT :d:size, :u:fullname
+	    FROM /mydirectory d, /sysadm/users.uxu u
+	    WHERE :d:owner == :u:name
+
+    In some cases, an outer join may be desirable.  In the above case, let's
+    print the 'owner' field regardless of whether there is a match from the
+    users.uxu object:
+
+        SELECT :d:size, fullname = isnull(:u:fullname,:d:owner)
+	    FROM /mydirectory d, /sysadm/users.uxu u
+	    WHERE :d:owner *= :u:name
+
+    Three-way joins are also doable, although currently support for them is a
+    little bit buggy.  Self-joins are also possible:
+
+        SELECT :d1:name, "is the same size as", :d2:name
+	    FROM /mydirectory d1, /mydirectory d2
+	    WHERE :d1:size == :d2:size
+
+
+V   SORTING....
+
+    Centrallix supports sorting as well, although sortings support is limited
+    when done at the higher multiquery level.  Until an "indexed file" driver
+    is written for the ObjectSystem, sorting at the multiquery level will not
+    be supported.  Suffice to say, the sort will only work on one data source
+    in a joined environment, and will not work on aggregate columns nor on
+    computed columns.  Under some circumstances, sorting when two datasources
+    are present may fail altogether.
+
+    However, the ORDER BY syntax is present.  First, normal ascending sorting:
+
+        SELECT :d:name, :d:size from /mydirectory d ORDER BY :d:size
+
+    You can specify whether to sort ascending or descending.  The default is
+    ascending if not specified.
+
+        SELECT :d:name, :d:size from /mydirectory d ORDER BY :d:size ASC
+        SELECT :d:name, :d:size from /mydirectory d ORDER BY :d:size DESC
+
+
+VI  AGGREGATES AND GROUPING....
+
+    Centrallix differs a little bit from the standard SQL semantics in its
+    handling of the GROUP BY clause.  It automatically assumes that all fields
+    not mentioned in GROUP BY were supposed to be mentioned to avoid getting
+    a cartesian product in the result data set.  Though this is in violation of
+    ANSI SQL standards, it is currently Centrallix's way....
+
+    Centrallix currently supports the aggregate functions sum(), count(),
+    avg(), min(), and max().  Other functions like first() and last() may
+    be supported in the future.  A column name must be given to count()
+    (instead of just count(*)), although count() does not care about the value
+    of that column (except the field is not counted if NULL).  You can give
+    count() a constant field, as in "count(1)" to avoid the NULL problem.
+    The sum() function also has an interesting behavior:  Centrallix's plus
+    "+" operator allows string concatenation, so sum()ing a string field will
+    return the concatenation of those strings.  Except for count(), these
+    functions return NULL if no records were counted.
+
+    Note that GROUP BY relies on sorting (ORDER BY) internally (though you
+    don't include an order by clause), so currently Centrallix is limited in
+    what can be effectively used in GROUP BY clauses in the same way it is
+    limited with ORDER BY.
+
+    Examples:
+
+        SELECT count(1), sum(:d:size) from /mydirectory d
+
+	SELECT sum(:d:name + ', ') from /mydirectory d
+
+	SELECT :d:owner, sum(:d:size) from /mydirectory d GROUP BY :d:owner
+
+
+VII FUNCTION SUPPORT
+
+    The following is a list of functions currently supported in Centrallix.
+    Some of them are ANSI SQL functions; a few are not.
+
+    getdate()		Returns the current date and time as a DATETIME value.
+    user_name()		Returns the currently logged-in user as a STRING.
+    convert(value,type)	Converts a value from one type to another.  Valid
+    			Centrallix data types are "integer", "string",
+			"money", "datetime", and "double".
+    wordify(number)	Returns a mixed case string representation of a money
+    			or integer data type.  For example, "$21.01" would 
+			become "Twenty-One and 01/100".
+    abs(number)		Returns the number's absolute value.
+    ascii(string)	Returns the ASCII code for the first character.
+    condition(c,v1,v2)	If condition c is true, return v1 else return v2.
+    charindex(s1,s2)	Returns the position of the first location of s1 in
+    			s2, with 1 being the first character.  0 means not 
+			found.
+    upper(string)	Converts a string to all-uppercase.
+    lower(string)	Converts a string to all-lowercase.
+    char_length(string)	Returns the length of the string.
+    datepart(dp,date)	Returns the integer value of the component of the
+    			datetime.  The first param should be "month", "day",
+			"year","hour","minute", or "second".
+    isnull(v1,v2)	If v1 is null, return v2 else return v1.
+    ltrim(string)	Trims spaces off of the left side of string and returns
+    			the result.
+    rtrim(string)	Trims spaces off of the right side of string and
+    			returns the result.
+    substring(s,p,[l])	Returns the substring of string starting at position p
+    			(first position numbered 1), and either up to the end
+			of string or for l characters in length if l is 
+			specified.
+    right(s,n)		Returns the rightmost n characters of string s.
+    ralign(s,n)		Right-justifies string s within n characters, padding
+    			on the left with spaces if need be.

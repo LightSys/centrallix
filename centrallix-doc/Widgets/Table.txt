@@ -1,0 +1,47 @@
+Document:   DHTML table (tabular data) widget documentation.
+Author:     Greg Beeley (GRB)
+Date:       March 17th, 2000
+MIME Type:  widget/table
+-------------------------------------------------------------------------------
+
+OVERVIEW
+
+    The table widget provides the capability to display tabular data on the web
+    page, and will operate in one of three primary modes:  static, dynamicpage,
+    and dynamicrow.  Here is the explanation of these three modes, from the
+    widget driver file itself:
+
+            Static means an inline table that can't be updated
+            without a parent container being completely reloaded.
+            DynamicPage means a table in a layer that can be
+            reloaded dynamically as a whole when necessary.  Good
+            when you need forward/back without reloading the page.
+            DynamicRow means each row is its own layer.  Good when
+            you need to insert rows dynamically and delete rows
+            dynamically at the client side without reloading the
+            whole table contents.
+    
+            A static table's query is performed on the server side
+            and the HTML is generated at the server.  Both dynamic
+            types are built from a client-side query.  Static
+            tables are generally best when the data will be read-
+            only.  Dynamicrow tables use the most client resources.
+
+    Tables
+
+
+STRUCTURE FILE PROPERTIES
+
+    The following properties are valid for a widget of type "":
+
+
+EVENTS
+
+
+
+ACTIONS
+
+
+
+EXAMPLE USAGE
+

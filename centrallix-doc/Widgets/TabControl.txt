@@ -1,0 +1,102 @@
+Document:   The DHTML Tab Control Widget for Centrallix
+Author:     Greg Beeley (GRB)
+Date:       March 14th, 2000
+MIME Type:  widget/tab, widget/tabpage
+-------------------------------------------------------------------------------
+
+OVERVIEW
+
+    The TabControl widget provides a DHTML tab control within Centrallix.  The
+    widget behaves in the same way as tab controls in MS-Windows, X-Windows,
+    and so forth, providing a set of tab pages, layered one on top of the 
+    other, which can be selected (brought to the foreground) by clicking the
+    mouse on the respective visible tab at the top of the tab control.
+
+    To further distinguish which tab at the top of the tab control is active,
+    this widget slightly modifies the X/Y position of the tab as well as 
+    changing a thumbnail image (on the left edge of the tab) to further enhance
+    the distinction between selected and inactive tab pages.
+
+    The tab pages are containers, and as such, controls of various kinds, 
+    including other tab controls, can be placed inside the tab pages.
+
+    Tab pages are added to a tab control by including widgets of type
+    "widget/tabpage" within the "widget/tab" widget in the structure file that
+    defines the application.  Any controls to appear inside a particular tab
+    page should be placed inside their respective "widget/tabpage" widgets in
+    the structure file.
+
+
+STRUCTURE FILE PROPERTIES
+
+    The following properties are valid for a widget of type "widget/tab":
+
+        x		Specifies the left edge of the tab control relative
+			to its container, in pixels.
+
+	y		Specifies the top edge of the tab control relative
+			to its container, in pixels.
+
+	width		Specifies the width, in pixels, of the tab control.
+
+	height		Specifies the height, in pixels, of the tab control.
+			Height should include both the body of the tab
+			control as well as the space used by the tabs at the
+			top.
+
+	selected	(string) Specifies which tab is initially selected.
+			If not specified, the first tab will be initially
+			selected.
+
+	bgcolor		(string) specifies the background color of the tab
+			control, tabs, and tab pages.
+
+	background	(string) specifies an image to be used as the
+			background of the tab control.  If neither bgcolor or
+			background are specified, the tab control is trans-
+			parent.
+
+	textcolor	(string) specifies the color of the text to be used on
+			the tabs.  Defaults to black.
+
+    The following properties are valid for a widget of type "widget/tabpage":
+
+        title		(string) specifies the text to be printed on the tab
+			that goes with this tabpage.  Otherwise the name of
+			the tabpage (from the structure file) is used.
+
+
+EVENTS
+
+    None implemented yet.
+
+
+ACTIONS
+
+    None implemented yet.
+
+
+EXAMPLE USAGE
+
+    myTabControl "widget/tab"
+        {
+	// First, some tab control properties
+	x = 20
+	y = 100
+	bgcolor="#c0c0c0"
+	width=360
+	height=200
+	selected = SecondPage
+
+	// Now for the three tab pages...
+	FirstPage "widget/tabpage"
+	    {
+	    }
+	SecondPage "widget/tabpage"
+	    {
+	    }
+	third_page "widget/tabpage"
+	    {
+	    title = "ThirdPage"
+	    }
+	}

@@ -1,0 +1,100 @@
+Document:   DHTML Connector nonvisual widget
+Author:     Greg Beeley (GRB)
+Date:       March 16th, 2000
+MIME Type:  widget/connector
+-------------------------------------------------------------------------------
+
+OVERVIEW
+
+    Each widget can have events and actions associated with it.  The events 
+    occur when certain things occur via the user interface, via timers, or even
+    as a result of data being loaded from the server.  Actions cause certain
+    things to happen to or within a certain widget, for example causing an HTML
+    layer to reload with a new page, or causing a scrollable area to scroll up
+    or down.
+
+    The connector widget allows an event to be linked with an action without 
+    actually writing any JavaScript code to do so -- the connector object is 
+    created, and given an event to trigger it and an action to perform when it
+    is triggered.
+
+    Events and actions can have parameters, which specify more information 
+    about the occurrence of an event, or which specify more information about
+    how to perform the action.  Such parameters from events can be linked into
+    parameters for actions via the connector widget as well.
+
+    The connector object should be a sub-object of the widget which will 
+    trigger the event.
+
+    An example connector would link the click of a URL in a treeview with the
+    loading of a new page in an HTML area.  See the Example source code at the
+    end of this document to see how this is done.
+
+
+STRUCTURE FILE PROPERTIES
+
+    The following properties are valid for a widget of type "widget/connector":
+
+        event		(string) This is which event in the parent widget
+			object will trigger the connector.
+
+	target		(string) The name of the widget in which the action 
+			will occur.
+	
+	action		(string) The name of the action to take place within
+			the target widget.
+
+    In addition, properties can be listed whose name is the name of a parameter
+    for the action, and whose string value is the name of a parameter for the
+    event.
+
+
+EVENTS
+
+    A connector has no events.
+
+
+ACTIONS
+
+    A connector has no actions.
+
+
+EXAMPLE USAGE
+
+    MyPage "widget/page"
+        {
+	// The treeview, with a list of clickable items.
+	tv1 "widget/treeview"
+	    {
+	    x = 0
+	    y = 0
+	    width = 200
+	    height = 100
+	    source = "/"
+
+	    // Here's our connector
+	    cn1 "widget/connector"
+	        {
+		// Triggered by ClickItem from the treeview.
+		event = ClickItem
+
+		// Causes the LoadPage action on html area 'ht1'
+		target = ht1
+		action = LoadPage
+
+		// The Source for LoadPage is the Pathname from ClickItem.
+		Source = Pathname
+		}
+	    }
+
+	// The HTML area, viewing the selected document.
+	ht1 "widget/html"
+	    {
+	    x = 0
+	    y = 110
+	    width = 200
+	    height = 100
+	    mode = dynamic
+	    }
+	}
+

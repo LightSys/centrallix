@@ -1,0 +1,25 @@
+Document:   
+Author:     
+Date:       
+MIME Type:  
+-------------------------------------------------------------------------------
+
+OVERVIEW
+
+
+
+STRUCTURE FILE PROPERTIES
+
+    The following properties are valid for a widget of type "":
+
+
+EVENTS
+
+
+
+ACTIONS
+
+
+
+EXAMPLE USAGE
+
