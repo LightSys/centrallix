@@ -37,8 +37,10 @@ cx_hints_style.alwaysdef = 32768;
 function cx_set_hints(element, hstr, hinttype)
     {
     if (!element.cx_hints) element.cx_hints = new Object();
+    if (element.cx_hints.hstr == hstr) return;
     element.cx_hints[hinttype] = cx_parse_hints(hstr);
     cx_merge_hints(element);
+    if (element.hintschanged) element.hintschanged();
     }
 
 
@@ -199,6 +201,7 @@ function cx_parse_hints(hstr)
 	// get the information array first.
 	if (!hstr || !hstr.charAt) return ph;
 	if (hstr.charAt(0) == "?") hstr = hstr.substr(1);
+	ph.hstr = hstr;
 	if (hstr == "") return ph;
 	var pha = hstr.split("&");
 

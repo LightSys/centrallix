@@ -18,6 +18,7 @@ function checkbox_getvalue()
 
 function checkbox_setvalue(v)
     {
+    this.is_checked_initial = null;
     if (v == '1') v = 1;
     else if (v == '0') v = 0;
     if (v == null)
@@ -33,6 +34,7 @@ function checkbox_clearvalue()
 	this.setvalue(0);
     else
 	this.setvalue(null);
+    this.is_checked_initial = -1;
     }
 
 function checkbox_resetvalue()
@@ -92,6 +94,27 @@ function checkbox_keyhandler(l,e,k)
     }
 
 
+// presentation hints (may) have changed
+function checkbox_hintschanged()
+    {
+    // If NULL setting has changed, modify appearance appropriately, but
+    // only if user has not already changed it to not-null
+    if (this.is_checked_initial == -1)
+	{
+	if (this.is_checked == -1 && cx_hints_teststyle(this, cx_hints_style.notnull))
+	    {
+	    this.is_checked = 0;
+	    pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
+	    }
+	else if (this.is_checked == 0 && !cx_hints_teststyle(this, cx_hints_style.notnull))
+	    {
+	    this.is_checked = -1;
+	    pg_set(this.img, 'src', this.imgfiles[this.enabled][this.is_checked+1]);
+	    }
+	}
+    }
+
+
 // checked: -1 = null, 0 = unchecked, 1 = checked.
 // enabled: 0 = disabled, 1 = enabled
 function checkbox_init(l,fieldname,checked,enabled) 
@@ -99,6 +122,7 @@ function checkbox_init(l,fieldname,checked,enabled)
     htr_init_layer(l, l, 'checkbox');
     l.fieldname = fieldname;
     l.is_checked = checked;
+    l.is_checked_initial = checked;
     l.enabled = enabled;
     l.form = fm_current;
     var imgs = pg_images(l);
@@ -111,7 +135,9 @@ function checkbox_init(l,fieldname,checked,enabled)
     l.imgfiles[0] = new Array('/sys/images/checkbox_null_dis.gif','/sys/images/checkbox_unchecked_dis.gif','/sys/images/checkbox_checked_dis.gif');
     l.imgfiles[1] = new Array('/sys/images/checkbox_null.gif','/sys/images/checkbox_unchecked.gif','/sys/images/checkbox_checked.gif');
 
-    // default don't allow nulls - but app and data can override this.
+    // hints interaction - default don't allow nulls - 
+    // but app and data can override this.
+    l.hintschanged = checkbox_hintschanged;
     cx_set_hints(l, "Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
 
     // focus interaction
@@ -148,6 +174,7 @@ function checkbox_toggleMode(l)
 	l.is_checked = -1;
     if (l.is_checked == -1 && cx_hints_teststyle(l,cx_hints_style.notnull) && (!l.form || !l.form.IsQueryMode()))
 	l.is_checked = 0;
+    this.is_checked_initial = null;
 
     // update the image
     pg_set(l.img, 'src', l.imgfiles[l.enabled][l.is_checked+1]);
