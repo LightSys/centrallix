@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.6 2002/08/16 20:01:18 gbeeley Exp $
+## $Id: Makefile.in,v 1.7 2002/09/23 22:35:30 jorupp Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -60,7 +60,8 @@ DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
 .SUFFIXES:	.c .o .lo
 
 .PHONY: all
-all:	libCentrallix.so libCentrallix.a
+FINAL_TARGETS = @FINAL_TARGETS@
+all:	${FINAL_TARGETS}
 
 src/mtask.o: src/mtask.c
 	$(CC) $(MTCFLAGS) -c $< -o $@
@@ -85,8 +86,7 @@ install: all
 	mkdir -p $(includedir)
 	$(INSTALL) include/*.h $(includedir)
 	mkdir -p $(libdir)
-	$(INSTALL) libCentrallix.a $(libdir)
-	$(INSTALL) libCentrallix.so $(libdir)
+	$(INSTALL) ${FINAL_TARGETS} $(libdir)
 	@echo ""
 	@echo "***************************************************************"
 	@echo "Libraries have been installed in $(libdir)"
@@ -98,7 +98,7 @@ install: all
 
 .PHONY: clean
 clean:
-	@rm -f src/*.o src/*.lo libCentrallix.a libCentrallix.so 2>/dev/null
+	@rm -f src/*.o src/*.lo ${FINAL_TARGETS} 2>/dev/null
 
 distclean: clean
 	@rm -f config.status config.cache config.log

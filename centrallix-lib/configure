@@ -820,6 +820,12 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Features:
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --disable-shared-libCentrallix
+                          disable building a shared libCentrallix
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -3348,6 +3354,32 @@ fi
 done
 
 
+ALL_TARGET="libCentrallix.a"
+
+
+	echo "$as_me:$LINENO: checking if a shared libCentrallix is desired" >&5
+echo $ECHO_N "checking if a shared libCentrallix is desired... $ECHO_C" >&6
+	# Check whether --enable-shared-libCentrallix or --disable-shared-libCentrallix was given.
+if test "${enable_shared_libCentrallix+set}" = set; then
+  enableval="$enable_shared_libCentrallix"
+  WITH_SHARED_LIBCENTRALLIX="$enableval"
+else
+  WITH_SHARED_LIBCENTRALLIX="yes"
+
+fi;
+	if test "$WITH_SHARED_LIBCENTRALLIX" = "no"; then
+	    echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+	else
+	    echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+	    FINAL_TARGETS="$FINAL_TARGETS libCentrallix.so"
+	fi
+
+
+
+
+
 ac_config_files="$ac_config_files Makefile"
 ac_config_commands="$ac_config_commands default"
 cat >confcache <<\_ACEOF
@@ -3925,6 +3957,7 @@ s,@INSTALL_SCRIPT@,$INSTALL_SCRIPT,;t t
 s,@INSTALL_DATA@,$INSTALL_DATA,;t t
 s,@CPP@,$CPP,;t t
 s,@LIBOBJS@,$LIBOBJS,;t t
+s,@FINAL_TARGETS@,$FINAL_TARGETS,;t t
 CEOF
 
 _ACEOF

@@ -31,4 +31,11 @@ AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
+ALL_TARGET="libCentrallix.a"
+
+dnl Build shared libCentrallix
+SHARED_LIBCENTRALLIX
+
+AC_SUBST(FINAL_TARGETS)
+    
 AC_OUTPUT(Makefile, echo timestamp > stamp-h)
