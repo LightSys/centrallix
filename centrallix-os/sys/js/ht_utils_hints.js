@@ -351,3 +351,12 @@ function cx_hints_checkmodify(e, ov, nv)
     return nv;
     }
 
+
+// cx_hints_teststyle() - test whether a given style bit is set or not.
+function cx_hints_teststyle(e, b)
+    {
+    if (!e.cx_hints) return 0;
+    var h = e.cx_hints['all'];
+    return h.Style & b;
+    }
+

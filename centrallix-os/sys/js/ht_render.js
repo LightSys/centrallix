@@ -428,3 +428,40 @@ function htr_get_parent_div(o)
         }
     return o;
     }
+
+
+function htr_new_layer(w,p)
+    {
+    var nl;
+
+	if (cx__capabilities.Dom0NS)
+	    {
+	    nl = new Layer(w,p);
+	    }
+	else if (cx__capabilities.Dom1HTML)
+	    {
+	    nl = document.createElement('div');
+	    nl.style.width = w;
+	    pg_set_style(nl, 'position','relative');
+	    p.appendChild(nl);
+	    }
+
+    return nl;
+    }
+
+function htr_write_content(l,t)
+    {
+
+	if (cx__capabilities.Dom0NS)
+	    {
+	    l.document.write(t);
+	    l.document.close();
+	    }
+	else if (cx__capabilities.Dom0IE || cx__capabilities.Dom1HTML)
+	    {
+	    l.innerHtml = t;
+	    }
+
+    return;
+    }
+

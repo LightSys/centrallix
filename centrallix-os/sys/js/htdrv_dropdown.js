@@ -18,6 +18,7 @@ function dd_getvalue()
 
 function dd_setvalue(v) 
     {
+    if (!this.PaneLayer) this.PaneLayer = dd_create_pane(this);
     for (var i=0; i < this.Values.length; i++)
 	{
 	if (this.Values[i][1] == v)
@@ -41,14 +42,14 @@ function dd_resetvalue()
 
 function dd_enable()
     {
-    this.document.images[4].src = '/sys/images/ico15b.gif';
+    pg_images(this)[4].src = '/sys/images/ico15b.gif';
     this.keyhandler = dd_keyhandler;
     this.enabled = 'full';
     }
 
 function dd_readonly()
     {
-    this.document.images[4].src = '/sys/images/ico15b.gif';
+    pg_images(this)[4].src = '/sys/images/ico15b.gif';
     this.keyhandler = null;
     this.enabled = 'readonly';
     }
@@ -57,10 +58,10 @@ function dd_disable()
     {
     if (dd_current)
 	{
-	dd_current.PaneLayer.visibility = 'hide';
+	htr_setvisibility(dd_current.PaneLayer, 'hidden');
 	dd_current = null;
 	}
-    this.document.images[4].src = '/sys/images/ico15a.gif';
+    pg_images(this)[4].src = '/sys/images/ico15a.gif';
     this.keyhandler = null;
     this.enabled = 'disabled';
     }
@@ -69,10 +70,13 @@ function dd_disable()
 
 function dd_keyhandler(l,e,k)
     {
-    if (!dd_current) return;
-    if (dd_current.enabled != 'full') return 1;
+    //if (!dd_current) return;
+    var dd = this.mainlayer;
+    if (dd.enabled != 'full') return 1;
     if ((k >= 65 && k <= 90) || (k >= 97 && k <= 122))
 	{
+	if (htr_getvisibility(dd.PaneLayer) != 'inherit')
+	    dd_expand(dd);
 	if (k < 97) 
 	    {
 	    var k_lower = k + 32;
@@ -124,17 +128,33 @@ function dd_keyhandler(l,e,k)
 		}
 	    }
 	}
-    else if (k == 13 && dd_lastkey != 13)
+    else if (k == 32)
 	{
-	if (this.PaneLayer.visibility == 'hide')
+	dd_expand(this);
+	}
+    else if (k == 13)
+	{
+	if (htr_getvisibility(this.PaneLayer) != 'inherit')
 	    {
-	    alert("Drop Down");
+	    if (this.form) this.form.RetNotify(this);
 	    }
 	else
 	    {
 	    dd_select_item(this,this.SelectedItem);
+	    dd_collapse(this);
 	    dd_unhilight_item(this,this.SelectedItem);
 	    }
+	}
+    else if (k == 9)
+	{
+	if (this.form) this.form.TabNotify(this);
+	}
+    else if (k == 27)
+	{
+	if (htr_getvisibility(this.PaneLayer) == 'inherit')
+	    dd_collapse(this);
+	else
+	    if (dd.form) dd.form.EscNotify(dd);
 	}
     dd_lastkey = k;
     return false;
@@ -142,6 +162,13 @@ function dd_keyhandler(l,e,k)
 
 function dd_hilight_item(l,i)
     {
+    if (i == null)
+	{
+	if (l.Values[0][1] == null)
+	    i = 0;
+	else
+	    return;
+	}
     if (l.SelectedItem != null)
 	dd_unhilight_item(l,l.SelectedItem);
     l.SelectedItem = i;
@@ -151,20 +178,60 @@ function dd_hilight_item(l,i)
 
 function dd_unhilight_item(l,i)
     {
+    if (i == null)
+	{
+	if (l.Values[0][1] == null)
+	    i = 0;
+	else
+	    return;
+	}
     l.SelectedItem = null;
     l.Items[i].bgColor=l.bg;
     }
 
+function dd_collapse(l)
+    {
+    if (l && l.PaneLayer && htr_getvisibility(l.PaneLayer) == 'inherit')
+	{
+	setClipHeight(l, getClipHeight(l) - getClipHeight(l.PaneLayer));
+	pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1);
+	htr_setvisibility(l.PaneLayer, 'hidden');
+	dd_current = null;
+	}
+    }
+
+function dd_expand(l)
+    {
+    if (l && !l.PaneLayer) 
+	l.PaneLayer = dd_create_pane(l);
+    if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
+	{
+	moveToAbsolute(l.PaneLayer, getPageX(l), getPageY(l)+20);
+	pg_stackpopup(l.PaneLayer, l);
+	htr_setvisibility(l.PaneLayer, 'inherit');
+	dd_current = l;
+	setClipHeight(l, getClipHeight(l) + getClipHeight(l.PaneLayer));
+	pg_resize_area(l.area, getClipWidth(l)+1, getClipHeight(l)+1);
+	dd_hilight_item(l,l.VisLayer.index);
+	}
+    }
+
 function dd_select_item(l,i)
     {
-    l.HidLayer.document.write("<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>");
-    if (i!=null) l.HidLayer.document.write(l.Values[i][0]);
-    l.HidLayer.document.write("</TD></TR></TABLE>");
-    l.HidLayer.document.close();
-    l.HidLayer.visibility = 'inherit';
-    l.HidLayer.clip.width = l.w-21;
+    var c = "<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>";
+    if (i!=null)
+	{
+	if (!(i==0 && l.Values[i][1]==null)) 
+	    c += l.Values[i][0];
+	else
+	    c += '<i>' + l.Values[i][0] + '</i>';
+	}
+    c += "</TD></TR></TABLE>";
+    htr_write_content(l.HidLayer, c);
     l.HidLayer.index = i;
-    l.VisLayer.visibility = 'hide';
+    htr_setvisibility(l.HidLayer, 'inherit');
+    setClipWidth(l.HidLayer, l.w-21);
+    htr_setvisibility(l.VisLayer, 'hidden');
     var t=l.VisLayer;
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
@@ -173,56 +240,55 @@ function dd_select_item(l,i)
 	l.form.DataNotify(l);
 	cn_activate(l, "DataChange");
 	}
-    if (l.PaneLayer.visibility == 'inherit')
-	{
-	l.clip.height -= l.PaneLayer.clip.height;
-	pg_resize_area(l.area,l.clip.width+1,l.clip.height+1);
-	l.PaneLayer.visibility = 'hide';
-	dd_current = null;
-	}
     }
 
 function dd_getfocus()
     {
+    //dd_expand(this);
     cn_activate(this, "GetFocus");
-    return 0;
+    return 1;
     }
 
 function dd_losefocus()
     {
     cn_activate(this, "LoseFocus");
+    dd_collapse(this);
     return true;
     }
 
-function dd_toggle(l) 
+function dd_toggle(l, dn) 
     {
-    for (var i=0; i<l.document.images.length;i++) {
-	if (i == 4)
-	    continue;
-	else if (l.document.images[i].src.substr(-14, 6) == 'dkgrey')
-	    l.document.images[i].src = '/sys/images/white_1x1.png';
-	else
-	    l.document.images[i].src = '/sys/images/dkgrey_1x1.png';
+    var imgs = pg_images(l);
+    for (var i=0; i<imgs.length;i++) 
+	{
+	//if (i == 4)
+	//    continue;
+	if ((imgs[i].downimg && dn) || (imgs[i].upimg && !dn))
+	    imgs[i].src = '/sys/images/white_1x1.png';
+	else if ((imgs[i].upimg && dn) || (imgs[i].downimg && !dn))
+	    imgs[i].src = '/sys/images/dkgrey_1x1.png';
 	}
     }
 
 function dd_scroll_to(l, n)
     {
-    var top=dd_current.PaneLayer.ScrLayer.clip.top;
-    var btm=top+(dd_current.PaneLayer.clip.height-4);
+    var top = getClipTop(dd_current.PaneLayer.ScrLayer);
+    var btm=top+(getClipHeight(dd_current.PaneLayer)-4);
     var il=l.Items[n];
 
-    if (il.y>=top && il.y+16<=btm) //none
+    if (getRelativeY(il)>=top && getRelativeY(il)+16<=btm) //none
 	return;
-    else if (il.y<top) //up
+    else if (getRelativeY(il)<top) //up
 	{
-	dd_target_img=l.PaneLayer.BarLayer.document.images[0];
-	dd_incr = (top-il.y);
+	var imgs = pg_images(l.PaneLayer.BarLayer);
+	dd_target_img = imgs[0];
+	dd_incr = (top-getRelativeY(il));
 	}
     else //down
 	{
-	dd_target_img=l.PaneLayer.BarLayer.document.images[2];
-	dd_incr = (top-il.y+(16*(dd_current.NumDisplay-1)));
+	var imgs = pg_images(l.PaneLayer.BarLayer);
+	dd_target_img = imgs[2];
+	dd_incr = (top-getRelativeY(il)+(16*(dd_current.NumDisplay-1)));
 	}
     dd_scroll();
     }
@@ -236,138 +302,141 @@ function dd_scroll_tm()
 
 function dd_scroll(t)
     {
-    var ti=dd_target_img;
-    var px=dd_incr;
-    var ly=dd_current.PaneLayer.ScrLayer;
-    var ht1=ly.y-2;
-    var ht2=dd_current.PaneLayer.h-ly.clip.height+ht1;
-    var h=dd_current.PaneLayer.h;
-    var d=h-dd_current.PaneLayer.clip.height+4;
-    var v=dd_current.PaneLayer.clip.height-(3*18)-4;
+    var ti = dd_target_img;
+    var px = dd_incr;
+    var ly = dd_current.PaneLayer.ScrLayer;
+    var ht1 = getRelativeY(ly) - 2;
+    var ht2 = dd_current.PaneLayer.h - getClipHeight(ly) + ht1;
+    var h = dd_current.PaneLayer.h;
+    var d = h - getClipHeight(dd_current.PaneLayer) + 4;
+    var v = getClipHeight(dd_current.PaneLayer) - (3*18) - 4;
     if (ht1+px>0) px = -ht1;
     if (ht2+px<0) px = -ht2;
-    if (px<0 && ht2>0) // down
+    if ((px<0 && ht2>0) || (px>0 && ht1<0)) // up or down
 	{
-	ly.y += px;
-	ly.clip.height -= px;
-	ly.clip.top -= px;
+	moveBy(ly, 0, px);
+	setClipHeight(ly, getClipHeight(ly) - px);
+	setClipTop(ly, getClipTop(ly) - px);
 	if (t==null)
 	    {
-	    if (d<=0) ti.thum.y=18;
-	    else ti.thum.y=20+(-v*((ly.y-2)/d));
-	    }
-	}
-    else if (px>0 && ht1<0) // up
-	{
-	ly.y += px;
-	ly.clip.height -= px;
-	ly.clip.top -= px;
-	if (t==null)
-	    {
-	    if (d<=0) ti.thum.y=18;
-	    else ti.thum.y=20+(-v*((ly.y-2)/d));
+	    if (d<=0) 
+		setRelativeY(ti.thum,18);
+	    else 
+		setRelativeY(ti.thum,20+(-v*((getRelativeY(ly)-2)/d)));
 	    }
 	}
     }
-
+ 
 function dd_create_pane(l)
     {
-    var p = new Layer(1024,pg_toplevel_layer(l));
-    p.kind = 'dd_pn';
-    p.visibility = 'hide';
-    p.document.layer = p;
-    p.mainlayer = l;
-    p.document.write("<BODY bgcolor="+l.bg+">");
-    p.document.write("<TABLE border=0 cellpadding=0 cellspacing=0 width="+l.w+" height="+l.h2+">");
-    p.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>");
-    p.document.write("  <TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(l.w-2)+"></TD>");
-    p.document.write("  <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>");
-    p.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(l.h2-2)+" width=1></TD>");
-    p.document.write("  <TD valign=top>");
-    p.document.write("  </TD>");
-    p.document.write("  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(l.h2-2)+" width=1></TD></TR>");
-    p.document.write("<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>");
-    p.document.write("  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(l.w-2)+"></TD>");
-    p.document.write("  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>");
-    p.document.write("</TABLE>");
-    p.document.write("</BODY>");
-    p.document.close();
+    // First, check to see if we need a NULL entry
+    if (!cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull))
+	{
+	var nullitem = new Array();
+	if (l.mainlayer.w < 108)
+	    nullitem[0] = '(none)';
+	else
+	    nullitem[0] = '(none selected)';
+	nullitem[1] = null;
+	l.Values.splice(0,0,nullitem);
+	}
+
+    // Create the layer
+    l.NumElements = l.Values.length;
+    l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*16)+4;
+    var p = htr_new_layer(1024,pg_toplevel_layer(l));
+    htr_init_layer(p, l, 'dd_pn');
+    htr_setvisibility(p, 'hidden');
+    var c = "<BODY bgcolor="+l.bg+">";
+    c += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+l.w+" height="+l.h2+">";
+    c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>";
+    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(l.w-2)+"></TD>";
+    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>";
+    c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(l.h2-2)+" width=1></TD>";
+    c += "  <TD valign=top>";
+    c += "  </TD>";
+    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(l.h2-2)+" width=1></TD></TR>";
+    c += "<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>";
+    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(l.w-2)+"></TD>";
+    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>";
+    c += "</TABLE>";
+    c += "</BODY>";
+    htr_write_content(p, c);
     htutil_tag_images(p.document,'dt_pn',p,l);
-    //p.moveAbove(l);
-    p.zIndex = l.zIndex + 10;
+    pg_stackpopup(p,l);
 
     /**  Create scroll background layer  **/
-    p.ScrLayer = new Layer(1024, p);
+    p.ScrLayer = htr_new_layer(1024, p);
     p.ScrLayer.document.layer = p;
     p.ScrLayer.mainlayer = l;
-    p.ScrLayer.x = 2; p.ScrLayer.y = 2;
-    p.ScrLayer.clip.height = l.h2;
+    moveTo(p.ScrLayer, 2, 2);
+    setClipHeight(p.ScrLayer, l.h2);
     if (l.NumDisplay < l.NumElements)
 	{
 	/**  If we need a scrollbar, put one in  **/
-	p.ScrLayer.clip.width = p.clip.width - 22;
+	setClipWidth(p.ScrLayer, getClipWidth(p) - 22);
 
-	p.BarLayer = new Layer(1024, p)
-	p.BarLayer.kind = 'dd_sc';
-	p.BarLayer.x = l.w-20; p.BarLayer.y = 2;
-	p.BarLayer.visibility = 'inherit';
-	p.BarLayer.mainlayer = l;
-	var pd = p.BarLayer.document;
-	pd.layer = p.BarLayer;
-	pd.write('<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>');
-	pd.write('<TR><TD><IMG name=u src=/sys/images/ico13b.gif></TD></TR>');
-	pd.write('<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>');
-	pd.write('<TR><TD><IMG name=d src=/sys/images/ico12b.gif></TD></TR>');
-	pd.write('</TABLE>');
-	pd.close();
-	pd.images[0].mainlayer = pd.images[1].mainlayer = pd.images[2].mainlayer = l;
-	pd.images[0].kind = pd.images[1].kind = pd.images[2].kind = 'dd_sc';
-	l.imgup = pd.images[0];
-	l.imgdn = pd.images[2];
+	p.BarLayer = htr_new_layer(1024, p)
+	htr_init_layer(p.BarLayer, l, 'dd_sc');
+	moveTo(p.BarLayer, l.w-20, 2);
+	htr_setvisibility(p.BarLayer, 'inherit');
+	c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
+	c += '<TR><TD><IMG name=u src=/sys/images/ico13b.gif></TD></TR>';
+	c += '<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>';
+	c += '<TR><TD><IMG name=d src=/sys/images/ico12b.gif></TD></TR>';
+	c += '</TABLE>';
+	htr_write_content(p.BarLayer, c);
+	var imgs = pg_images(p.BarLayer);
+	imgs[0].mainlayer = imgs[1].mainlayer = imgs[2].mainlayer = l;
+	imgs[0].kind = imgs[1].kind = imgs[2].kind = 'dd_sc';
+	l.imgup = imgs[0];
+	l.imgdn = imgs[2];
 
-	p.TmbLayer = new Layer(1024, p);
-	pd.images[0].thum = pd.images[1].thum = pd.images[2].thum = p.TmbLayer;
-	p.TmbLayer.x = l.w-20; p.TmbLayer.y = 20;
-	p.TmbLayer.visibility = 'inherit';
+	p.TmbLayer = htr_new_layer(1024, p);
+	imgs[0].thum = imgs[1].thum = imgs[2].thum = p.TmbLayer;
+	moveTo(p.TmbLayer, l.w-20, 20);
+	htr_setvisibility(p.TmbLayer, 'inherit');
 	p.TmbLayer.mainlayer = l;
-	var pd = p.TmbLayer.document;
-	pd.write('<IMG src=/sys/images/ico14b.gif NAME=t>');
-	pd.close();
-	pd.images[0].mainlayer = l;
-	pd.images[0].thum = p.TmbLayer;
-	pd.images[0].kind = 'dd_sc';
-	l.imgtm = pd.images[0];
+	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>');
+	imgs = pg_images(p.TmbLayer);
+	imgs[0].mainlayer = l;
+	imgs[0].thum = p.TmbLayer;
+	imgs[0].kind = 'dd_sc';
+	l.imgtm = imgs[0];
 	}
     else
 	{
 	/**  If no scrollbar is needed, don't use one!  **/
-	p.ScrLayer.clip.width = p.clip.width - 4;
+	setClipWidth(p.ScrLayer, getClipWidth(p) - 4);
 	}
-    p.ScrLayer.clip.height = p.clip.height - 4;
-    p.ScrLayer.visibility = 'inherit';
+    setClipHeight(p.ScrLayer, getClipHeight(p) - 4);
+    htr_setvisibility(p.ScrLayer, 'inherit');
 
     /**  Add items  **/
     for (var i=0; i < l.Values.length; i++)
 	{
 	if (!l.Items[i])
 	    {
-	    l.Items[i] = new Layer(1024, p.ScrLayer);
-	    l.Items[i].kind = 'dd_itm';
+	    l.Items[i] = htr_new_layer(1024, p.ScrLayer);
+	    htr_init_layer(l.Items[i], l, 'dd_itm');
 	    }
-	l.Items[i].mainlayer = l;
-	l.Items[i].document.layer = l.Items[i];
-	l.Items[i].x = 0;
-	l.Items[i].y = (i*16);
-	l.Items[i].clip.width = p.ScrLayer.clip.width;
-	l.Items[i].clip.height = 16;
-	l.Items[i].document.write(l.Values[i][0]);
-	l.Items[i].document.close();
-	l.Items[i].visibility = 'inherit';
+	moveTo(l.Items[i], 0, i*16);
+	setClipWidth(l.Items[i], getClipWidth(p.ScrLayer));
+	setClipHeight(l.Items[i], 16);
+	if (i==0 && l.Values[i][1] == null)
+	    htr_write_content(l.Items[i], '<i>' + l.Values[i][0] + '</i>');
+	else
+	    htr_write_content(l.Items[i], l.Values[i][0]);
+	htr_setvisibility(l.Items[i], 'inherit');
 	l.Items[i].index = i;
 	}
 
+    p.h = l.NumElements*16;
+    p.mainlayer = l;
+
     return p;
     }
+
 
 function dd_add_items(l,ary)
     {
@@ -377,12 +446,8 @@ function dd_add_items(l,ary)
 	ary[i][1] = htutil_rtrim(ary[i][1]);
 	}
     l.Values = ary;
-    l.NumElements = l.Values.length;
-    l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*16)+4;
-    l.PaneLayer = dd_create_pane(l);
-    l.PaneLayer.h = l.NumElements*16;
-    l.PaneLayer.mainlayer = l;
     }
+
 
 function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     {
@@ -391,8 +456,10 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.SQL = s;
     l.VisLayer = c1;
     l.HidLayer = c2;
-    l.VisLayer.document.layer = l.HidLayer.document.layer = l;
-    l.VisLayer.mainlayer = l.HidLayer.mainlayer = l;
+    htr_init_layer(l.VisLayer, l, 'ddtxt');
+    htr_init_layer(l.HidLayer, l, 'ddtxt');
+    l.VisLayer.index = null;
+    l.HidLayer.index = null;
     l.Items = new Array();
     if (l.NumDisplay < 5)
 	{
@@ -414,11 +481,17 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.fieldname = fn;
     l.enabled = 'full';
     l.form = fm_current;
-    l.document.layer = l;
-    l.mainlayer = l;
-    l.kind = 'dd';
+    htr_init_layer(l,l,'dd');
     htutil_tag_images(l.document,'dd',l,l);
-    l.area = pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dd', 'dd', 3);
+    var imgs = pg_images(l);
+    for(var i = 0; i<imgs.length; i++)
+	{
+	if (imgs[i].src.substr(-14, 6) == 'dkgrey')
+	    imgs[i].downimg = true;
+	else if (imgs[i].src.substr(-13,5) == 'white')
+	    imgs[i].upimg = true;
+	}
+    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dd', 'dd', 3);
     if (fm_current) fm_current.Register(l);
     return l;
     }

@@ -47,7 +47,7 @@ function dt_disable() {
 // Date/Time Functions
 
 function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
-	this.enabled = 'full';
+	l.enabled = 'full';
 	c1.mainlayer = l;
 	c2.mainlayer = l;
 	l.setvalue   = dt_setvalue;

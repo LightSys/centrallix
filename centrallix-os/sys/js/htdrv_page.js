@@ -339,7 +339,7 @@ function pg_links(o)
 	}
     }
 
-/** Function to get the layers attacked to a layer **/
+/** Function to get the layers attached to a layer **/
 function pg_layers(o)
     {
     if(!o)
@@ -619,14 +619,32 @@ function pg_resize_area(a,w,h)
     var rl=document.layers.pgrgt;
     a.width = w;
     a.height = h;
-    resizeTo(tl, w,1);
-    resizeTo(bl, w+1,1);
-    resizeTo(rl, 1,h+1);
-    resizeTo(ll, 1,h);
-    moveToAbsolute(tl, x,y);
-    moveToAbsolute(bl, x,y+h);
-    moveToAbsolute(ll, x,y);
-    moveToAbsolute(rl, x+w,y);
+    if (tl.visibility == 'inherit')
+	{
+	resizeTo(tl, w,1);
+	resizeTo(bl, w+1,1);
+	resizeTo(rl, 1,h+1);
+	resizeTo(ll, 1,h);
+	moveToAbsolute(tl, x,y);
+	moveToAbsolute(bl, x,y+h);
+	moveToAbsolute(ll, x,y);
+	moveToAbsolute(rl, x+w,y);
+	}
+    tl=document.layers.pgktop;
+    bl=document.layers.pgkbtm;
+    ll=document.layers.pgklft;
+    rl=document.layers.pgkrgt;
+    if (tl.visibility == 'inherit')
+	{
+	resizeTo(tl, w,1);
+	resizeTo(bl, w+1,1);
+	resizeTo(rl, 1,h+1);
+	resizeTo(ll, 1,h);
+	moveToAbsolute(tl, x,y);
+	moveToAbsolute(bl, x,y+h);
+	moveToAbsolute(ll, x,y);
+	moveToAbsolute(rl, x+w,y);
+	}
     }
 
 /** Function to add a new area to the arealist **/
@@ -716,6 +734,45 @@ function pg_isvisible(l)
 	    return pg_isvisible(l.parentLayer);
 	else
 	    return pg_isvisible(l.parentNode);
+	}
+    }
+
+/// This routine searches for the 'windowing container' of a widget, such
+/// as an htmlwindow or the main document itself.
+function pg_searchwin(l)
+    {
+    if (l.kind && l.kind == 'wn') return l.mainlayer;
+    if (l == document || l == window) return l;
+    if (l.parentLayer)
+	return pg_searchwin(l.parentLayer);
+    else
+	return pg_searchwin(l.parentNode);
+    }
+
+/// This routine brings the given layer to a stacking position above the
+/// 'window' that it is in - which is used for doing popups.
+function pg_stackpopup(p,l)
+    {
+    var win = pg_searchwin(l);
+    if (win == window || win == document)
+	{
+	var doclayers = pg_layers(document);
+	var found_win = null;
+	var min_z = 1000;
+	moveAbove(p,doclayers[0]);
+	for(var i = 0; i < doclayers.length; i++)
+	    {
+	    if (doclayers[i].kind == 'wn' && doclayers[i].zIndex < min_z)
+		{
+		found_win = doclayers[i];
+		min_z = doclayers[i].zIndex;
+		}
+	    }
+	p.zIndex = min_z - 1;
+	}
+    else
+	{
+	moveAbove(p,win);
 	}
     }
 

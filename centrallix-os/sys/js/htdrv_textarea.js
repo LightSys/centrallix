@@ -308,6 +308,16 @@ function tx_keyhandler(l,e,k)
         tx_wordWrapUp(l,l.cursorRow+1,newrow,0);
         tx_getCursorPos(l,1,0);
         }
+    else if (k == 9)
+	{
+	if (tx_current.form) tx_current.form.TabNotify(tx_current);
+	return true;
+	}
+    else if (k == 27)
+	{
+	if (tx_current.form) tx_current.form.EscNotify(tx_current);
+	return true;
+	}
     else if (k == 8)
         {
         txt = l.rows[l.cursorRow].content;
@@ -414,6 +424,7 @@ function tx_keyhandler(l,e,k)
     return false;
     }
 
+
 /** Set focus to a new textarea **/
 function tx_select(x,y,l,c,n)
     {
@@ -423,18 +434,18 @@ function tx_select(x,y,l,c,n)
     l.cursorCol = Math.round(x/text_metric.charWidth);
     if (l.cursorRow >= l.rows.length)
         {
-            l.cursorRow = l.rows.length - 1;
-            l.cursorCol = l.rows[l.cursorRow].content.length;
+	l.cursorRow = l.rows.length - 1;
+	l.cursorCol = l.rows[l.cursorRow].content.length;
         }
     else if (l.cursorCol > l.rows[l.cursorRow].content.length) l.cursorCol = l.rows[l.cursorRow].content.length;
     l.cursorPos = tx_setCursorPos(l,l.cursorRow,l.cursorCol);
     l.cursorlayer = ibeam_current;
     tx_current = l;
-    ibeam_current.visibility = 'hidden';
-    ibeam_current.moveAbove(l);
-    ibeam_current.moveToAbsolute(l.rows[0].contentLayer.pageX + l.cursorCol*text_metric.charWidth, l.rows[0].contentLayer.pageY + l.cursorRow*text_metric.charHeight);
+    pg_set_style(ibeam_current,'visibility', 'hidden');
+    moveAbove(ibeam_current,l);
+    moveToAbsolute(ibeam_current,l.rows[0].contentLayer.pageX + l.cursorCol*text_metric.charWidth, l.rows[0].contentLayer.pageY + l.cursorRow*text_metric.charHeight);
     ibeam_current.zIndex = l.zIndex + 2;
-    ibeam_current.visibility = 'inherit';
+    pg_set_style(ibeam_current,'visibility','inherit');
     cn_activate(l, 'GetFocus');
     return 1;
     }

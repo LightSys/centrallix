@@ -68,7 +68,7 @@ function form_cb_tab_notify(control)
 	{
 	if (pg_removekbdfocus())
 	    {
-	    pg_setkbdfocus(this.elements[nextctrl], null, null);
+	    pg_setkbdfocus(this.elements[nextctrl], null, 0, 0);
 	    }
 	}
     //if(this.elements[ctrlnum+1])
@@ -500,7 +500,7 @@ function form_change_mode(newmode)
 	{
 	if (pg_removekbdfocus())
 	    {
-	    pg_setkbdfocus(this.elements[0], null, null);
+	    pg_setkbdfocus(this.elements[0], null, 0, 0);
 	    }
 	}
 
