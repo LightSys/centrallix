@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <libgen.h>
 #include <unistd.h>
 #include <fcntl.h>
 #ifdef HAVE_CONFIG_H
@@ -50,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.20 2002/07/23 15:57:32 mattphillips Exp $
+    $Id: lsmain.c,v 1.21 2002/08/12 09:16:26 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.21  2002/08/12 09:16:26  mattphillips
+    Added -V for version, and more helpful (and standard) usage message.
+
     Revision 1.20  2002/07/23 15:57:32  mattphillips
     - Modify the daemonizing routine based on
       http://www.unixguide.net/unix/programming/1.7.shtml (information from David
@@ -233,6 +237,21 @@ go_background()
 	open("/dev/null", O_WRONLY);
     }
 
+/*** usage - print out the usage message to stderr
+ ***/
+void
+usage(char* name)
+    {
+	fprintf(stderr,
+		"Usage: %s [-Vdqh] [-c configfile]\n\n"
+		"\t-V          print version number,\n"
+		"\t-d          daemonize (fork into the background),\n"
+		"\t-q          initialize quietly,\n"
+		"\t-c <file>   use <file> for configuration,\n"
+		"\t-h          this message.\n\n"
+		"E-mail bug reports to: %s\n\n",
+		name, PACKAGE_BUGREPORT);
+    }
 
 /*** main - called from the C runtime to start the program.
  ***/
@@ -240,18 +259,28 @@ int
 main(int argc, char* argv[])
     {
     int ch;
+    char* name;
 
 	/** Default global values **/
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
-    
+
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"hdc:q")) > 0)
+	name = basename(argv[0]);
+	while ((ch=getopt(argc,argv,"Vhdc:q")) > 0)
 	    {
 	    switch (ch)
 	        {
+		case 'V':	fprintf(stderr, 
+					"%s\n"
+					"Copyright (C) %s LightSys Technology Services, Inc.\n\n"
+					"This is free software; see the source for copying conditions.  There is NO\n"
+					"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n", 
+					PACKAGE_STRING, YEARS);
+				exit(0);
+
 		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
 				CxGlobals.ConfigFileName[255] = '\0';
 				break;
@@ -263,11 +292,11 @@ main(int argc, char* argv[])
 		case 'q':	CxGlobals.QuietInit = 1;
 				break;
 
-		case 'h':	printf("Usage:  centrallix [-c <config-file>]\n");
+		case 'h':	usage(name);
 				exit(0);
 
 		case '?':
-		default:	printf("Usage:  centrallix [-c <config-file>]\n");
+		default:	usage(name);
 				exit(1);
 		}
 	    }
