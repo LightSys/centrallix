@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.13 2003/03/12 20:51:36 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.14 2003/03/15 04:46:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.14  2003/03/15 04:46:00  gbeeley
+    Added borders to tables.  Not fully tested yet.  Added a new component
+    of the "PrtBorder" object: "Pad", which is the padding 'outside' of
+    the border.  The reporting objdriver is going to have to really
+    simplify the margins/borders stuff on tables because there are so many
+    params that can be set - it can be confusing and hard to get right.
+
     Revision 1.13  2003/03/12 20:51:36  gbeeley
     Tables now working, but borders on tables not implemented yet.
     Completed the prt_internal_Duplicate routine and reworked the
@@ -934,7 +941,7 @@ prtSetMargins(int handle_id, double t, double b, double l, double r)
  *** border descriptor.
  ***/
 pPrtBorder
-prtAllocBorder(int n_lines, double sep, ...)
+prtAllocBorder(int n_lines, double sep, double pad, ...)
     {
     va_list va;
     pPrtBorder b;
@@ -953,13 +960,17 @@ prtAllocBorder(int n_lines, double sep, ...)
 	if (!b) return NULL;
 	b->nLines = n_lines;
 	b->Sep = sep;
+	b->Pad = pad;
+	b->TotalWidth = pad;
 
 	/** Get the params for each line **/
-	va_start(va, sep);
+	va_start(va, pad);
 	for(i=0; i<n_lines; i++)
 	    {
 	    b->Width[i] = va_arg(va, double);
 	    b->Color[i] = va_arg(va, int);
+	    if (i>0) b->TotalWidth += b->Sep;
+	    b->TotalWidth += b->Width[i];
 	    }
 	va_end(va);
 

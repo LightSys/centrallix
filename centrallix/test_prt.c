@@ -58,10 +58,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.15 2003/03/12 20:51:35 gbeeley Exp $
+    $Id: test_prt.c,v 1.16 2003/03/15 04:45:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.16  2003/03/15 04:45:58  gbeeley
+    Added borders to tables.  Not fully tested yet.  Added a new component
+    of the "PrtBorder" object: "Pad", which is the padding 'outside' of
+    the border.  The reporting objdriver is going to have to really
+    simplify the margins/borders stuff on tables because there are so many
+    params that can be set - it can be confusing and hard to get right.
+
     Revision 1.15  2003/03/12 20:51:35  gbeeley
     Tables now working, but borders on tables not implemented yet.
     Completed the prt_internal_Duplicate routine and reworked the
@@ -242,7 +249,7 @@ start(void* v)
     int is_balanced=0, is_unequal=0;
     double x,y,w,h;
     int color;
-    pPrtBorder bdr;
+    pPrtBorder bdr,bdr2;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -380,10 +387,18 @@ start(void* v)
 		printf("table: prtOpenSession returned %8.8X\n", (int)prtsession);
 		pagehandle = prtGetPageRef(prtsession);
 		printf("table: prtGetPageRef returned page handle %d\n", pagehandle);
-		tablehandle = prtAddObject(pagehandle, PRT_OBJ_T_TABLE, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", 2, NULL);
+		bdr = prtAllocBorder(1,0.0,0.0, 0.05,0x00FFFF);
+		bdr2 = prtAllocBorder(1,0.0,0.0, 0.2,0x0000FF);
+		tablehandle = prtAddObject(pagehandle, PRT_OBJ_T_TABLE, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", 2, "border", bdr, "shadow", bdr2, NULL);
+		prtFreeBorder(bdr);
+		prtFreeBorder(bdr2);
 		printf("table: prtAddObject(table) returned table handle %d\n", tablehandle);
-		tablerowhandle = prtAddObject(tablehandle, PRT_OBJ_T_TABLEROW, 0, 0, 0, 0, 0, "header", 1, NULL);
+		rval = prtSetMargins(tablehandle, 0.2, 0.2, 0.2, 0.2);
+		printf("table: prtSetMargins(table) returned %d\n", rval);
+		bdr = prtAllocBorder(1,0.0,0.7, 0.05,0x00FFFF);
+		tablerowhandle = prtAddObject(tablehandle, PRT_OBJ_T_TABLEROW, 0, 0, 0, 0, 0, "header", 1, "bottomborder", bdr, NULL);
 		printf("table: prtAddObject(tablerow) returned table-row handle %d\n", tablerowhandle);
+		prtFreeBorder(bdr);
 		rval = prtSetMargins(tablerowhandle, 0.0, 1.0, 0.0, 0.0);
 		printf("table: prtSetMargins(tablerow) returned %d\n", rval);
 		
@@ -415,7 +430,7 @@ start(void* v)
 
 		rval = prtEndObject(tablerowhandle);
 		printf("table: prtEndObject(tablerow) returned %d\n", rval);
-		for(i=0;i<70;i++)
+		for(i=0;i<24;i++)
 		    {
 		    tablerowhandle = prtAddObject(tablehandle, PRT_OBJ_T_TABLEROW, 0, 0, 0, 0, 0, NULL);
 		    printf("table: prtAddObject(tablerow) returned table-row handle %d\n", tablerowhandle);
@@ -579,7 +594,7 @@ start(void* v)
 		    }
 		else
 		    {
-		    bdr = prtAllocBorder(2, 0.1, 0.1, 0x000000, 0.1, 0x000000);
+		    bdr = prtAllocBorder(2,0.1,0.0, 0.1,0x000000, 0.1,0x000000);
 		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 3.0, "balanced", is_balanced, "separator", bdr, NULL);
 		    prtFreeBorder(bdr);
 		    }
@@ -699,7 +714,7 @@ start(void* v)
 		printf("text: prtGetPageRef returned page handle %d\n", pagehandle);
 		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"border"))
 		    {
-		    bdr = prtAllocBorder(2,0.2,0.2,0x0000FF,0.05,0x00FFFF);
+		    bdr = prtAllocBorder(2,0.2,0.0, 0.2,0x0000FF, 0.05,0x00FFFF);
 		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, "border", bdr, NULL);
 		    prtSetMargins(areahandle,1.0,1.0,1.0,1.0);
 		    prtFreeBorder(bdr);

@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.13 2003/03/12 20:51:34 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.14 2003/03/15 04:46:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.14  2003/03/15 04:46:00  gbeeley
+    Added borders to tables.  Not fully tested yet.  Added a new component
+    of the "PrtBorder" object: "Pad", which is the padding 'outside' of
+    the border.  The reporting objdriver is going to have to really
+    simplify the margins/borders stuff on tables because there are so many
+    params that can be set - it can be confusing and hard to get right.
+
     Revision 1.13  2003/03/12 20:51:34  gbeeley
     Tables now working, but borders on tables not implemented yet.
     Completed the prt_internal_Duplicate routine and reworked the
@@ -353,6 +360,8 @@ typedef struct _PBD
     {
     double		Width[PRT_MAXBDR]; /* width/thickness of border lines in X units (0.1in / 7.2pt) */
     double		Sep;		   /* separation between border lines, if two */
+    double		Pad;		   /* padding before lines start */
+    double		TotalWidth;	   /* total width of border */
     int			nLines;		   /* number of border lines */
     int			Color[PRT_MAXBDR]; /* color of border lines */
     }
@@ -545,7 +554,7 @@ int prtSetHPos(int handle_id, double x);
 int prtSetVPos(int handle_id, double y);
 int prtSetValue(int handle_id, char* attrname, ...);
 int prtSetMargins(int handle_id, double t, double b, double l, double r);
-pPrtBorder prtAllocBorder(int n_lines, double sep, ...);
+pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
 
 /*** Printing content functions ***/

@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.13 2003/03/12 20:51:36 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.14 2003/03/15 04:46:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.14  2003/03/15 04:46:00  gbeeley
+    Added borders to tables.  Not fully tested yet.  Added a new component
+    of the "PrtBorder" object: "Pad", which is the padding 'outside' of
+    the border.  The reporting objdriver is going to have to really
+    simplify the margins/borders stuff on tables because there are so many
+    params that can be set - it can be confusing and hard to get right.
+
     Revision 1.13  2003/03/12 20:51:36  gbeeley
     Tables now working, but borders on tables not implemented yet.
     Completed the prt_internal_Duplicate routine and reworked the
@@ -1014,7 +1021,9 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 	    is_horiz = 0;
 
 	/** Figure total thickness of border **/
-	total_thickness = total_e_thickness = total_s_thickness = 0.0;
+	total_thickness = b->Pad;
+	total_e_thickness = eb?(eb->Pad):0.0;
+	total_s_thickness = sb?(sb->Pad):0.0;
 	for(i=0; i < b->nLines; i++)
 	    {
 	    if (offset_dir != 0) selected_line = i;
@@ -1026,7 +1035,9 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 	    }
 
 	/** Add number of requested line objects **/
-	thickness = s_thickness = e_thickness = 0.0;
+	thickness = b->Pad;
+	e_thickness = eb?(eb->Pad):0.0;
+	s_thickness = sb?(sb->Pad):0.0;
 	for(i=0; i < b->nLines; i++)
 	    {
 	    /** Get a new rectangle **/

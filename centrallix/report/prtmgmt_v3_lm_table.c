@@ -53,10 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.5 2003/03/12 20:51:37 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.6 2003/03/15 04:46:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.6  2003/03/15 04:46:00  gbeeley
+    Added borders to tables.  Not fully tested yet.  Added a new component
+    of the "PrtBorder" object: "Pad", which is the padding 'outside' of
+    the border.  The reporting objdriver is going to have to really
+    simplify the margins/borders stuff on tables because there are so many
+    params that can be set - it can be confusing and hard to get right.
+
     Revision 1.5  2003/03/12 20:51:37  gbeeley
     Tables now working, but borders on tables not implemented yet.
     Completed the prt_internal_Duplicate routine and reworked the
@@ -122,6 +129,7 @@ typedef struct _PTB
     PrtBorder		InnerBorder;	/* used only by cells in lieu of others */
     PrtBorder		OuterBorder;	/* used only by cells in lieu of others */
     PrtBorder		Shadow;		/* only valid on table as a whole */
+    double		ShadowWidth;	/* overall width of the shadow */
     }
     PrtTabLMData, *pPrtTabLMData;
 
@@ -378,6 +386,58 @@ prt_tablm_Resize(pPrtObjStream this, double new_width, double new_height)
     }
 
 
+/*** prt_tablm_SetWidths() - sets up the widths of the columns within a table
+ *** in general or within a particular row, based on the row's geometry and
+ *** on the provided information.
+ ***/
+int
+prt_tablm_SetWidths(pPrtObjStream this)
+    {
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
+    double totalwidth;
+    int i;
+
+	/** Widths not yet set? **/
+	if (lm_inf->ColWidths[0] < 0)
+	    {
+	    for(i=0;i<lm_inf->nColumns;i++)
+		{
+		lm_inf->ColWidths[i] = (this->Width - this->MarginLeft - this->MarginRight - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
+		}
+	    }
+
+	/** Check column width constraints **/
+	totalwidth = lm_inf->ColSep*(lm_inf->nColumns-1);
+	for(i=0;i<lm_inf->nColumns;i++)
+	    {
+	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+		{
+		mssError(1,"TABLM","Invalid width for column #%d",i+1);
+		return -EINVAL;
+		}
+	    totalwidth += lm_inf->ColWidths[i];
+	    }
+
+	/** Check total of column widths. **/
+	if (totalwidth > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+	    {
+	    mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
+	    return -EINVAL;
+	    }
+
+	/** Set column X positions **/
+	totalwidth = 0.0;
+	for(i=0;i<lm_inf->nColumns;i++)
+	    {
+	    lm_inf->ColX[i] = totalwidth;
+	    totalwidth += lm_inf->ColWidths[i];
+	    totalwidth += lm_inf->ColSep;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_tablm_AddObject() - used to add a new object to the table, row, or
  *** cell.  We need to mainly make sure that the added object is valid in its
  *** container, as well as make any final settings.  The object will have
@@ -390,7 +450,7 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtTabLMData lm_inf = (pPrtTabLMData)(new_child_obj->LMData);
     pPrtTabLMData parent_lm_inf = (pPrtTabLMData)(this->LMData);
     pPrtObjStream new_parent;
-    int i;
+    int i,rval;
 
 	/** Make sure the types are OK **/
 	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE && new_child_obj->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
@@ -407,6 +467,13 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    {
 	    mssError(1,"TABLM","Table-cell objects may only be contained within a table-row");
 	    return -1;
+	    }
+
+	/** Init the column widths? **/
+	if (!this->ContentHead && this->ObjType->TypeID == PRT_OBJ_T_TABLE)
+	    {
+	    rval = prt_tablm_SetWidths(this);
+	    if (rval < 0) return rval;
 	    }
 
 	/** Determine geometries and propagate config data. **/
@@ -542,6 +609,7 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
     double totalwidth;
     char* attrname;
     pPrtBorder b;
+    int rval;
 
 	/** Info already provided? **/
 	if (old_lm_data)
@@ -559,6 +627,7 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
 	lm_inf->ColSep = PRT_TABLM_DEFAULT_COLSEP;
 	lm_inf->ColWidths[0] = -1.0;
+	lm_inf->ShadowWidth = 0.0;
 
 	/** Get params from the caller **/
 	while(va && (attrname = va_arg(va, char*)) != NULL)
@@ -597,7 +666,7 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		    return -EINVAL;
 		    }
 		}
-	    else if (!strcmp(attrname, "border"))
+	    else if (!strcmp(attrname, "border") || !strcmp(attrname,"outerborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b)
@@ -606,12 +675,25 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		    memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
 		    memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
 		    memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		    if (!strcmp(attrname,"border"))
+			{
+			memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
+			}
 		    }
 		}
 	    else if (!strcmp(attrname, "shadow"))
 		{
 		b = va_arg(va, pPrtBorder);
-		if (b) memcpy(&(lm_inf->Shadow), b, sizeof(PrtBorder));
+		if (b) 
+		    {
+		    memcpy(&(lm_inf->Shadow), b, sizeof(PrtBorder));
+		    lm_inf->ShadowWidth = 0.0;
+		    for(i=0;i<b->nLines;i++)
+			{
+			if (i > 0) lm_inf->ShadowWidth += b->Sep;
+			lm_inf->ShadowWidth += (b->Width[i]);
+			}
+		    }
 		}
 	    else if (!strcmp(attrname, "topborder"))
 		{
@@ -637,47 +719,12 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
 		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
 		}
-	    }
-
-	/** Widths not yet set? **/
-	if (lm_inf->ColWidths[0] < 0)
-	    {
-	    for(i=0;i<lm_inf->nColumns;i++)
+	    else if (!strcmp(attrname, "innerborder"))
 		{
-		lm_inf->ColWidths[i] = (this->Width - this->MarginLeft - this->MarginRight - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
+		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
 		}
-	    }
-
-	/** Check column width constraints **/
-	totalwidth = lm_inf->ColSep*(lm_inf->nColumns-1);
-	for(i=0;i<lm_inf->nColumns;i++)
-	    {
-	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
-		{
-		mssError(1,"TABLM","Invalid width for column #%d",i+1);
-		nmFree(lm_inf, sizeof(PrtTabLMData));
-		this->LMData = NULL;
-		return -EINVAL;
-		}
-	    totalwidth += lm_inf->ColWidths[i];
-	    }
-
-	/** Check total of column widths. **/
-	if (totalwidth > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
-	    {
-	    mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
-	    nmFree(lm_inf, sizeof(PrtTabLMData));
-	    this->LMData = NULL;
-	    return -EINVAL;
-	    }
-
-	/** Set column X positions **/
-	totalwidth = 0.0;
-	for(i=0;i<lm_inf->nColumns;i++)
-	    {
-	    lm_inf->ColX[i] = totalwidth;
-	    totalwidth += lm_inf->ColWidths[i];
-	    totalwidth += lm_inf->ColSep;
 	    }
 
     return 0;
@@ -764,7 +811,7 @@ prt_tablm_InitRow(pPrtObjStream row, pPrtTabLMData old_lm_data, va_list va)
 		    return -EINVAL;
 		    }
 		}
-	    else if (!strcmp(attrname, "border"))
+	    else if (!strcmp(attrname, "border") || !strcmp(attrname, "outerborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b)
@@ -773,6 +820,10 @@ prt_tablm_InitRow(pPrtObjStream row, pPrtTabLMData old_lm_data, va_list va)
 		    memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
 		    memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
 		    memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
+		    if (!strcmp(attrname,"border"))
+			{
+			memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
+			}
 		    }
 		}
 	    else if (!strcmp(attrname, "topborder"))
@@ -801,17 +852,9 @@ prt_tablm_InitRow(pPrtObjStream row, pPrtTabLMData old_lm_data, va_list va)
 		}
 	    else if (!strcmp(attrname, "innerborder"))
 		{
-		lm_inf->Flags |= PRT_TABLM_F_INNEROUTER;
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
 		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
-		}
-	    else if (!strcmp(attrname, "outerborder"))
-		{
-		lm_inf->Flags |= PRT_TABLM_F_INNEROUTER;
-		b = va_arg(va, pPrtBorder);
-		if (b) memcpy(&(lm_inf->OuterBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->OuterBorder), 0, sizeof(PrtBorder));
 		}
 	    }
 
@@ -968,6 +1011,304 @@ prt_tablm_SetValue(pPrtObjStream this, char* attrname, va_list va)
 int
 prt_tablm_Finalize(pPrtObjStream this)
     {
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
+    pPrtObjStream row, cell;
+    pPrtTabLMData row_inf, cell_inf, adjrow_inf, adjcell_inf;
+    pPrtBorder rowtop, rowbottom, rowleft, rowright;
+    pPrtBorder celltop, cellbottom, cellleft, cellright;
+    int collapse_row_border, collapse_cell_border;
+    int is_first, is_last, is_first_row, is_last_row;
+    int i;
+
+	/** Only operate on table as a whole, because in many many cases
+	 ** we will be combining borders together from cells, rows, table
+	 ** edges, and adjacent cells/rows/etc. 
+	 **/
+	if (this->ObjType->TypeID != PRT_OBJ_T_TABLE) return 0;
+
+	/** Draw the table's shadow **/
+	if (lm_inf->Shadow.nLines > 0)
+	    {
+	    prt_internal_MakeBorder(this, lm_inf->ShadowWidth, this->Height,
+		    this->Width - lm_inf->ShadowWidth, 
+		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
+		    &(lm_inf->Shadow), NULL, &(lm_inf->Shadow));
+	    prt_internal_MakeBorder(this, this->Width, lm_inf->ShadowWidth,
+		    this->Height - lm_inf->ShadowWidth, 
+		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
+		    &(lm_inf->Shadow), NULL, &(lm_inf->Shadow));
+	    }
+
+	/** Draw main table borders **/
+	if (lm_inf->TopBorder.nLines > 0)
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Width - lm_inf->ShadowWidth,
+		    PRT_MKBDR_F_TOP | PRT_MKBDR_F_MARGINRELEASE,
+		    &(lm_inf->TopBorder), &(lm_inf->LeftBorder), &(lm_inf->RightBorder));
+	if (lm_inf->BottomBorder.nLines > 0)
+	    prt_internal_MakeBorder(this, 0.0, this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR, 
+		    this->Width - lm_inf->ShadowWidth,
+		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
+		    &(lm_inf->BottomBorder), &(lm_inf->LeftBorder), &(lm_inf->RightBorder));
+	if (lm_inf->LeftBorder.nLines > 0)
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+		    PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+		    &(lm_inf->LeftBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
+	if (lm_inf->RightBorder.nLines > 0)
+	    prt_internal_MakeBorder(this, this->Width - lm_inf->ShadowWidth, 0.0,
+		    this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
+		    &(lm_inf->RightBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
+
+	/** Inner table borders (between columns) **/
+	if (lm_inf->InnerBorder.nLines > 0)
+	    {
+	    for(i=0;i<lm_inf->nColumns-1;i++)
+		{
+		prt_internal_MakeBorder(this, this->MarginLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep, 0.0,
+			this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+			PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+			&(lm_inf->InnerBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
+		}
+	    }
+
+	/** Now draw borders for individual rows and cells **/
+	row = this->ContentHead;
+	while(row)
+	    {
+	    if (row->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+		{
+		/** Okay, a genuine row object.  Do borders for it.  We need to 
+		 ** be careful to not emit a border if a border in that area was
+		 ** already printed (such as left row border and a left table border
+		 ** at the same time when the table's left margin was 0.0)
+		 **/
+		row_inf = (pPrtTabLMData)(row->LMData);
+		collapse_row_border = 0;
+		is_first_row = (row->Prev == NULL || row->Prev->ObjType->TypeID != PRT_OBJ_T_TABLEROW);
+		is_last_row = (row->Next == NULL || row->Next->ObjType->TypeID != PRT_OBJ_T_TABLEROW);
+
+		/** Figure out what other borders we overlap with **/
+		if (!row->Prev)
+		    {
+		    if (lm_inf->TopBorder.nLines > 0 && this->MarginTop == 0.0)
+			rowtop = &(lm_inf->TopBorder);
+		    else
+			rowtop = NULL;
+		    }
+		else if (row->Prev->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+		    {
+		    adjrow_inf = (pPrtTabLMData)(row->Prev->LMData);
+		    if (adjrow_inf->BottomBorder.nLines >= row_inf->TopBorder.nLines)
+			rowtop = &(adjrow_inf->BottomBorder);
+		    else
+			rowtop = NULL;
+		    }
+		else
+		    {
+		    rowtop = NULL;
+		    }
+		if (lm_inf->LeftBorder.nLines > 0 && this->MarginLeft == 0.0)
+		    rowleft = &(lm_inf->LeftBorder);
+		else
+		    rowleft = NULL;
+		if (lm_inf->RightBorder.nLines > 0 && this->MarginRight == 0.0)
+		    rowright = &(lm_inf->RightBorder);
+		else
+		    rowright = NULL;
+		if (!row->Next || row->Next->ObjType->TypeID == PRT_OBJ_T_RECT)
+		    {
+		    if (lm_inf->BottomBorder.nLines > 0 && this->MarginBottom <= lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR)
+			rowbottom = &(lm_inf->BottomBorder);
+		    else
+			rowbottom = NULL;
+		    }
+		else if (row->Next->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+		    {
+		    adjrow_inf = (pPrtTabLMData)(row->Next->LMData);
+		    if (adjrow_inf->TopBorder.nLines > row_inf->BottomBorder.nLines)
+			rowbottom = &(adjrow_inf->TopBorder);
+		    else
+			rowbottom = NULL;
+		    if (memcmp(&(adjrow_inf->TopBorder), &(row_inf->BottomBorder), sizeof (PrtBorder)) == 0)
+			collapse_row_border = 1;
+		    }
+		else
+		    {
+		    rowbottom = NULL;
+		    }
+
+		/** Now that we know what other borders we're conflicting with, go
+		 ** ahead and output the borders that we can...
+		 **/
+		if (!rowtop)
+		    {
+		    prt_internal_MakeBorder(row, 0.0, 0.0, row->Width,
+			    PRT_MKBDR_F_TOP | PRT_MKBDR_F_MARGINRELEASE,
+			    &(row_inf->TopBorder), rowleft?rowleft:&(row_inf->LeftBorder), 
+			    rowright?rowright:&(row_inf->RightBorder));
+		    }
+		if (!rowbottom)
+		    {
+		    if (!collapse_row_border)
+			prt_internal_MakeBorder(row, 0.0, row->Height, row->Width,
+				PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
+				&(row_inf->BottomBorder), rowleft?rowleft:&(row_inf->LeftBorder), 
+				rowright?rowright:&(row_inf->RightBorder));
+		    else
+			prt_internal_MakeBorder(row, 0.0, row->Height, row->Width,
+				PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_TOP | PRT_MKBDR_F_MARGINRELEASE,
+				&(row_inf->BottomBorder), rowleft?rowleft:&(row_inf->LeftBorder), 
+				rowright?rowright:&(row_inf->RightBorder));
+		    }
+		if (!rowleft)
+		    {
+		    prt_internal_MakeBorder(row, 0.0, 0.0, row->Height,
+			    PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+			    &(row_inf->LeftBorder), rowtop?rowtop:&(row_inf->TopBorder), 
+			    rowbottom?rowbottom:&(row_inf->BottomBorder));
+		    }
+		if (!rowright)
+		    {
+		    prt_internal_MakeBorder(row, row->Width, 0.0, row->Height,
+			    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
+			    &(row_inf->RightBorder), rowtop?rowtop:&(row_inf->TopBorder), 
+			    rowbottom?rowbottom:&(row_inf->BottomBorder));
+		    }
+
+		/** Inner borders between columns in the row? **/
+		if (row_inf->InnerBorder.nLines > 0)
+		    {
+		    for(i=0;i<row_inf->nColumns-1;i++)
+			{
+			prt_internal_MakeBorder(row, row->MarginLeft + row_inf->ColX[i+1] - 0.5*row_inf->ColSep, 0.0,
+				row->Height,
+				PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+				&(row_inf->InnerBorder), rowtop?rowtop:&(row_inf->TopBorder), 
+				rowbottom?rowbottom:&(row_inf->BottomBorder));
+			}
+		    }
+
+		/** Now do borders for the cells in the row **/
+		cell = row->ContentHead;
+		while(cell)
+		    {
+		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+			{
+			cell_inf = (pPrtTabLMData)(cell->LMData);
+			is_first = (cell->Prev == NULL);
+			is_last = (cell->Next == NULL || cell->Next->ObjType->TypeID == PRT_OBJ_T_RECT);
+			collapse_cell_border = 0;
+
+			/** Do inner/outer border settings if cell has that mode **/
+			if (cell_inf->Flags & PRT_TABLM_F_INNEROUTER)
+			    {
+			    if (is_first_row)
+				memcpy(&(cell_inf->TopBorder), &(cell_inf->OuterBorder), sizeof(PrtBorder));
+			    else
+				memcpy(&(cell_inf->TopBorder), &(cell_inf->InnerBorder), sizeof(PrtBorder));
+			    if (is_last_row)
+				memcpy(&(cell_inf->BottomBorder), &(cell_inf->OuterBorder), sizeof(PrtBorder));
+			    else
+				memcpy(&(cell_inf->BottomBorder), &(cell_inf->InnerBorder), sizeof(PrtBorder));
+			    if (is_first)
+				memcpy(&(cell_inf->LeftBorder), &(cell_inf->OuterBorder), sizeof(PrtBorder));
+			    else
+				memcpy(&(cell_inf->LeftBorder), &(cell_inf->InnerBorder), sizeof(PrtBorder));
+			    if (is_last)
+				memcpy(&(cell_inf->RightBorder), &(cell_inf->OuterBorder), sizeof(PrtBorder));
+			    else
+				memcpy(&(cell_inf->RightBorder), &(cell_inf->InnerBorder), sizeof(PrtBorder));
+			    }
+
+			/** Again, we first need to do elimination of borders already written **/
+			if (row->MarginTop == 0.0 && rowtop)
+			    celltop = rowtop;
+			else if (row->MarginTop == 0.0 && row_inf->TopBorder.nLines > 0)
+			    celltop = &(row_inf->TopBorder);
+			else
+			    celltop = NULL;
+			if (row->MarginBottom == 0.0 && rowbottom)
+			    cellbottom = rowbottom;
+			else if (row->MarginBottom == 0.0 && row_inf->BottomBorder.nLines > 0)
+			    cellbottom = &(row_inf->BottomBorder);
+			else
+			    cellbottom = NULL;
+			if (is_first && row->MarginLeft == 0.0 && rowleft)
+			    cellleft = rowleft;
+			else if (is_first && row->MarginLeft == 0.0 && row_inf->LeftBorder.nLines > 0)
+			    cellleft = &(row_inf->LeftBorder);
+			else if (!is_first && row_inf->ColSep == 0.0)
+			    {
+			    adjcell_inf = (pPrtTabLMData)(cell->Prev->LMData);
+			    if (adjcell_inf->RightBorder.nLines >= cell_inf->LeftBorder.nLines)
+				cellleft = &(adjcell_inf->RightBorder);
+			    else 
+				cellleft = NULL;
+			    }
+			else
+			    cellleft = NULL;
+			if (is_last && row->MarginRight == 0.0 && rowright)
+			    cellright = rowright;
+			else if (is_last && row->MarginRight == 0.0 && row_inf->RightBorder.nLines > 0)
+			    cellright = &(row_inf->RightBorder);
+			else if (!is_last && row_inf->ColSep == 0.0)
+			    {
+			    adjcell_inf = (pPrtTabLMData)(cell->Next->LMData);
+			    if (adjcell_inf->LeftBorder.nLines > cell_inf->RightBorder.nLines)
+				cellright = &(adjcell_inf->LeftBorder);
+			    else
+				cellright = NULL;
+			    if (adjcell_inf->LeftBorder.nLines == cell_inf->RightBorder.nLines)
+				{
+				collapse_cell_border = 1;
+				cellright = NULL;
+				}
+			    }
+			else
+			    cellright = NULL;
+
+			/** Ok, determined border interference.  Now draw the thing. **/
+			if (!celltop)
+			    {
+			    prt_internal_MakeBorder(cell, 0.0, 0.0, cell->Width,
+				    PRT_MKBDR_F_TOP | PRT_MKBDR_F_MARGINRELEASE,
+				    &(cell_inf->TopBorder), cellleft?cellleft:&(cell_inf->LeftBorder), 
+				    cellright?cellright:&(cell_inf->RightBorder));
+			    }
+			if (!cellbottom)
+			    {
+			    prt_internal_MakeBorder(cell, 0.0, cell->Height, cell->Width,
+				    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
+				    &(cell_inf->BottomBorder), cellleft?cellleft:&(cell_inf->LeftBorder), 
+				    cellright?cellright:&(cell_inf->RightBorder));
+			    }
+			if (!cellleft)
+			    {
+			    prt_internal_MakeBorder(cell, 0.0, 0.0, cell->Height,
+				    PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+				    &(cell_inf->LeftBorder), celltop?celltop:&(cell_inf->TopBorder), 
+				    cellbottom?cellbottom:&(cell_inf->BottomBorder));
+			    }
+			if (!cellright)
+			    {
+			    if (!collapse_cell_border)
+				prt_internal_MakeBorder(cell, cell->Width, 0.0, cell->Height,
+					PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
+					&(cell_inf->RightBorder), celltop?celltop:&(cell_inf->TopBorder), 
+					cellbottom?cellbottom:&(cell_inf->BottomBorder));
+			    else
+				prt_internal_MakeBorder(cell, cell->Width, 0.0, cell->Height,
+					PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+					&(cell_inf->RightBorder), celltop?celltop:&(cell_inf->TopBorder), 
+					cellbottom?cellbottom:&(cell_inf->BottomBorder));
+			    }
+			}
+		    cell = cell->Next;
+		    }
+		}
+	    row = row->Next;
+	    }
+
     return 0;
     }
 
