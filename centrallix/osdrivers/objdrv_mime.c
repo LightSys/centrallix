@@ -53,10 +53,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.25 2003/06/04 08:55:14 jorupp Exp $
+    $Id: objdrv_mime.c,v 1.26 2004/06/11 21:06:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.26  2004/06/11 21:06:57  mmcgill
+    Did some code tree scrubbing.
+
+    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
+    xxxExecuteMethod() to use pObjData as the type for val (or param in
+    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
+    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
+    overflow in objdrv_shell.c (line 1046).
+
+    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
+    broken as of right now.
+
+    It should be noted that I haven't actually built the audio or Berkeley
+    drivers, so I *could* have messed up, but they look ok. The others
+    compiled, and passed a cursory testing.
+
     Revision 1.25  2003/06/04 08:55:14  jorupp
      * a number of smaller osdriver patches that have been sitting in my copy for a while....
        * couple better comments in http
@@ -527,7 +543,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 **  mimeGetAttrValue
 */
 int
-mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pMimeInfo inf = MIME(inf_v);
     char tmp[32];
@@ -543,12 +559,12 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	}
     if (!strcmp(attrname, "annotation"))
 	{
-	*(char**)val = "";
+	val->String = "";
 	return 0;
 	}
     if (!strcmp(attrname, "name"))
 	{
-	*(char**)val = inf->Header->Filename;
+	val->String = inf->Header->Filename;
 	return 0;
 	}
     if (!strcmp(attrname, "outer_type"))
@@ -556,7 +572,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 	inf->AttrValue = (char*)malloc(128);
 	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
-	*((char**)val) = inf->AttrValue;
+	val->String = inf->AttrValue;
 	return 0;
 	}
     if (!strcmp(attrname, "content_type"))
@@ -564,27 +580,27 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
 	inf->AttrValue = (char*)malloc(128);
 	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
-	*((char**)val) = inf->AttrValue;
+	val->String = inf->AttrValue;
 	return 0;
 	}
     if (!strcmp(attrname, "subject"))
 	{
-	*((char**)val) = inf->Header->Subject;
+	val->String = inf->Header->Subject;
 	return 0;
 	}
     if (!strcmp(attrname, "charset"))
 	{
-	*((char**)val) = inf->Header->Charset;
+	val->String = inf->Header->Charset;
 	return 0;
 	}
     if (!strcmp(attrname, "transfer_encoding"))
 	{
-	*((char**)val) = EncodingStrings[inf->Header->TransferEncoding-1];
+	val->String = EncodingStrings[inf->Header->TransferEncoding-1];
 	return 0;
 	}
     if (!strcmp(attrname, "mime_version"))
 	{
-	*((char**)val) = inf->Header->MIMEVersion;
+	val->String = inf->Header->MIMEVersion;
 	return 0;
 	}
 
@@ -628,9 +644,9 @@ mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 **  mimeSetAttrValue
 */
 int
-mimeSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
-    return 0;
+    return -1;
     }
 
 
@@ -638,7 +654,7 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 **  mimeAddAttr
 */
 int
-mimeAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+mimeAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     return -1;
     }
@@ -678,7 +694,7 @@ mimeGetNextMethod(void* inf_v, pObjTrxTree oxt)
 **  mimeExecuteMethod
 */
 int
-mimeExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+mimeExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

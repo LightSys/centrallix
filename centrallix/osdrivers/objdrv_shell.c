@@ -52,7 +52,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.11 2002/12/24 19:22:53 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.12 2004/06/11 21:06:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -855,7 +855,7 @@ shlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+shlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pShlData inf = SHL(inf_v);
     pStructInf find_inf;
@@ -866,27 +866,27 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 
 	/** If content-type, return as appropriate **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
-	    *((char**)val) = "application/octet-stream";
+	    val->String = "application/octet-stream";
 	    return 0;
 	    }
 
 	if (!strcmp(attrname,"outer_type"))
 	    {
-	    *((char**)val) = "system/shell";
+	    val->String = "system/shell";
 	    return 0;
 	    }
 
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
-	    *(char**)val = "";
+	    val->String = "";
 	    return 0;
 	    }
 
@@ -896,7 +896,7 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		return -1;
 	    if(i>=xaCount(&inf->argArray) || i<0)
 		return -1;
-	    *(char**)val = (char*)xaGetItem(&inf->argArray,i);
+	    val->String = (char*)xaGetItem(&inf->argArray,i);
 	    return 0;
 	    }
 
@@ -907,7 +907,7 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 
 	    if (inf->shell_pid==-1)
 		{
-		*(char**)val = "not started";
+		val->String = "not started";
 		return 0;
 		}
 	    /** it is 'running' if any of the following is true:
@@ -917,17 +917,17 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    **/
 	    else if(inf->shell_pid>0 || !inf->done )
 		{
-		*(char**)val = "running";
+		val->String = "running";
 		return 0;
 		}
 	    else if (inf->shell_pid==0)
 		{
-		*(char**)val = "dead";
+		val->String = "dead";
 		return 0;
 		}
 	    else
 		{
-		*(char**)val = "unknown";
+		val->String = "unknown";
 		return 0;
 		}
 	    }
@@ -935,7 +935,7 @@ shlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	pEV = (pEnvVar)xhLookup(&inf->envHash,attrname);
 	if(pEV)
 	    {
-	    *(char**)val = pEV->value;
+	    val->String = pEV->value;
 	    return 0;
 	    }
 
@@ -994,7 +994,7 @@ shlGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-shlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+shlSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pShlData inf = SHL(inf_v);
     pStructInf find_inf;
@@ -1009,13 +1009,13 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 		if (strlen(inf->Obj->Pathname->Pathbuf) - 
 		    strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"SHL","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
 		strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-		strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+		strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 		if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssError(1,"SHL","SetAttr 'name': could not rename structure file node object");
@@ -1043,13 +1043,14 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    }
 		if(datatype == DATA_T_STRING)
 		    {
-		    pEV->value = (char*)malloc(strlen(*(char**)val+1));
-		    strcpy(pEV->value,*(char**)val);
+		    /* pEV->value = (char*)malloc(strlen(*(char**)val+1)); */ /* whoops */
+		    pEV->value = (char*)malloc(strlen(val->String)+1);
+		    strcpy(pEV->value,val->String);
 		    }
 		else //datatype == DATA_T_INTEGER
 		    {
 		    pEV->value = (char*)malloc(20);
-		    snprintf(pEV->value,20,"%i",*(int*)val);
+		    snprintf(pEV->value,20,"%i",val->Integer);
 		    pEV->value[19]='\0';
 		    }
 		pEV->shouldfree = 1; // we just malloc()ed memory... make sure it gets free()ed
@@ -1108,7 +1109,7 @@ shlGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** shlExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-shlExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+shlExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

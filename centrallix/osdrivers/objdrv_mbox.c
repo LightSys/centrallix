@@ -54,10 +54,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mbox.c,v 1.3 2003/06/04 08:55:14 jorupp Exp $
+    $Id: objdrv_mbox.c,v 1.4 2004/06/11 21:06:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mbox.c,v $
 
     $Log: objdrv_mbox.c,v $
+    Revision 1.4  2004/06/11 21:06:57  mmcgill
+    Did some code tree scrubbing.
+
+    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
+    xxxExecuteMethod() to use pObjData as the type for val (or param in
+    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
+    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
+    overflow in objdrv_shell.c (line 1046).
+
+    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
+    broken as of right now.
+
+    It should be noted that I haven't actually built the audio or Berkeley
+    drivers, so I *could* have messed up, but they look ok. The others
+    compiled, and passed a cursory testing.
+
     Revision 1.3  2003/06/04 08:55:14  jorupp
      * a number of smaller osdriver patches that have been sitting in my copy for a while....
        * couple better comments in http
@@ -527,7 +543,7 @@ mboxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-mboxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+mboxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pMboxData inf = MBOX(inf_v);
     pStructInf find_inf;
@@ -537,21 +553,21 @@ mboxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 	
 	/** If outer-type, return as appropriate **/
 	if (!strcmp(attrname,"outer_type"))
 	    {
-	    *((char**)val) = "system/mailbox";
+	    val->String = "system/mailbox";
 	    return 0;
 	    }
 
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
-	    *(char**)val = "";
+	    val->String = "";
 	    return 0;
 	    }
 
@@ -559,9 +575,9 @@ mboxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	if (!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type") )
 	    {
 	    if(inf->mnum==-1)
-		*((char**)val) = "system/void";
+		val->String = "system/void";
 	    else
-		*((char**)val) = "message/rfc822";
+		val->String = "message/rfc822";
 	    return 0;
 	    }
 
@@ -612,7 +628,7 @@ mboxGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-mboxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+mboxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pMboxData inf = MBOX(inf_v);
     pStructInf find_inf;
@@ -626,13 +642,13 @@ mboxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"MBOX","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssError(1,"MBOX","SetAttr 'name': could not rename structure file node object");
@@ -661,7 +677,7 @@ mboxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
  *** files).
  ***/
 int
-mboxAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+mboxAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     pMboxData inf = MBOX(inf_v);
     pStructInf new_inf;
@@ -703,7 +719,7 @@ mboxGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** mboxExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-mboxExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+mboxExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

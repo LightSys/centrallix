@@ -47,7 +47,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_gzip.c,v 1.2 2002/09/27 22:26:06 gbeeley Exp $
+    $Id: objdrv_gzip.c,v 1.3 2004/06/11 21:06:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_gzip.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -568,7 +568,7 @@ gzipGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-gzipGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+gzipGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pGzipData inf = GZIP(inf_v);
 
@@ -582,7 +582,7 @@ gzipGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	/** outer_type is "application/gzip" **/
 	if(!strcmp(attrname,"outer_type"))
 	    {
-	    *((char**)val)="application/gzip";
+	    val->String="application/gzip";
 	    return 0;
 	    }
 
@@ -590,34 +590,34 @@ gzipGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	if (!strcmp(attrname,"name"))
 	    {
 	    if(inf->Filename)
-		*((char**)val)=inf->Filename;
+		val->String=inf->Filename;
 	    else
 		/** TODO: need to examine the current filename
 		 **   if it ends in .gz, strip that off and return it
 		 **   if it ends in .tgz, change it to .tar and return it (special case)
 		 **   otherwise, return as is
 		 **/
-		*((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+		val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 
 	if (!strcmp(attrname,"content_type"))
 	    {
-	    *((char**)val) = "application/octet-stream";
+	    val->String = "application/octet-stream";
 	    return 0;
 	    }
 
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
-	    *(char**)val = "";
+	    val->String = "";
 	    return 0;
 	    }
 
 	if(!strcmp(attrname,"last_modification"))
 	    if(inf->lastmod.Value>0)
 		{
-		*((DateTime**)val)=&(inf->lastmod);
+		val->DateTime=&(inf->lastmod);
 		return 0;
 		}
 
@@ -650,7 +650,7 @@ gzipGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-gzipSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+gzipSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     return -1;
     }
@@ -661,7 +661,7 @@ gzipSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
  *** files).
  ***/
 int
-gzipAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+gzipAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     return -1;
     }

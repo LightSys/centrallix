@@ -826,7 +826,7 @@ httpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
     pStructInf find_inf;
@@ -842,7 +842,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			attrname, obj_type_names[datatype]);
 		return -1;
 		}
-	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 
@@ -855,7 +855,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		return -1;
 		}
 	    if(httpGetAttrValue(inf_v,"Content-Type", datatype, val, oxt)!=0)
-		*((char**)val) = "application/http";
+		val->String = "application/http";
 	    return 0;
 	    }
 
@@ -870,7 +870,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		return -1;
 		}
 	    if(httpGetAttrValue(inf_v,"Content-Type", datatype, val, oxt)!=0)
-		*((char**)val) = "application/http";
+		val->String = "application/http";
 	    return 0;
 	    }
 
@@ -884,7 +884,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		}
 	    if(inf->Annotation)
 		{
-		*((char**)val)=inf->Annotation;
+		val->String=inf->Annotation;
 		return 0;
 		}
 	    else
@@ -900,7 +900,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		return -1;
 		}
 	    if(inf->LastModified.Value)
-		*((pDateTime*)val)=&(inf->LastModified);
+		val->DateTime=&(inf->LastModified);
 	    else
 		return 0;
 	    }
@@ -912,7 +912,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			attrname, obj_type_names[datatype]);
 		return -1;
 		}
-	    *(int*)val=inf->ContentLength;
+	    val->Integer=inf->ContentLength;
 	    return 0;
 	    }
 
@@ -924,7 +924,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			attrname, obj_type_names[datatype]);
 		return -1;
 		}
-	    return stAttrValue(stLookup(inf->Attr,attrname),NULL,(char**)val,0);
+	    return stAttrValue(stLookup(inf->Attr,attrname),NULL,&(val->String),0);
 	    }
 
 	if(!strcmp(attrname,"inner_type"))
@@ -936,7 +936,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		return -1;
 		}
 	    if(httpGetAttrValue(inf_v,"Content-Type", datatype, val, oxt)!=0)
-		*((char**)val) = "application/http";
+		val->String = "application/http";
 	    return 0;
 	    }
 
@@ -949,7 +949,7 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			attrname, obj_type_names[datatype]);
 		return -1;
 		}
-	    *(char**)val = "";
+	    val->String = "";
 	    return 0;
 	    }
 
@@ -1022,7 +1022,7 @@ httpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-httpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+httpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     return -1;
     }
@@ -1032,7 +1032,7 @@ httpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
  *** files).
  ***/
 int
-httpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+httpAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     return -1;
     }
@@ -1070,7 +1070,7 @@ httpGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** httpExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-httpExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+httpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

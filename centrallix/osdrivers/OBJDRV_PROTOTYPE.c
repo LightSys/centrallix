@@ -54,10 +54,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: OBJDRV_PROTOTYPE.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: OBJDRV_PROTOTYPE.c,v 1.5 2004/06/11 21:06:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/OBJDRV_PROTOTYPE.c,v $
 
     $Log: OBJDRV_PROTOTYPE.c,v $
+    Revision 1.5  2004/06/11 21:06:57  mmcgill
+    Did some code tree scrubbing.
+
+    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
+    xxxExecuteMethod() to use pObjData as the type for val (or param in
+    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
+    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
+    overflow in objdrv_shell.c (line 1046).
+
+    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
+    broken as of right now.
+
+    It should be noted that I haven't actually built the audio or Berkeley
+    drivers, so I *could* have messed up, but they look ok. The others
+    compiled, and passed a cursory testing.
+
     Revision 1.4  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -405,7 +421,7 @@ xxxGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-xxxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+xxxGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pXxxData inf = XXX(inf_v);
     pStructInf find_inf;
@@ -415,7 +431,7 @@ xxxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
 
@@ -423,7 +439,7 @@ xxxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** REPLACE MYOBJECT/TYPE WITH AN APPROPRIATE TYPE. **/
 	if (!strcmp(attrname,"content_type"))
 	    {
-	    *((char**)val) = "myobject/type";
+	    val->String = "myobject/type";
 	    return 0;
 	    }
 
@@ -434,7 +450,7 @@ xxxGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** If annotation, and not found, return "" **/
 	if (!strcmp(attrname,"annotation"))
 	    {
-	    *(char**)val = "";
+	    val->String = "";
 	    return 0;
 	    }
 
@@ -484,7 +500,7 @@ xxxGetFirstAttr(void* inf_v, pObjTrxTree oxt)
  *** point to an appropriate data type.
  ***/
 int
-xxxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree oxt)
+xxxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pXxxData inf = XXX(inf_v);
     pStructInf find_inf;
@@ -498,13 +514,13 @@ xxxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"XXX","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssError(1,"XXX","SetAttr 'name': could not rename structure file node object");
@@ -536,7 +552,7 @@ xxxSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
  *** files).
  ***/
 int
-xxxAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+xxxAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
     {
     pXxxData inf = XXX(inf_v);
     pStructInf new_inf;
@@ -578,7 +594,7 @@ xxxGetNextMethod(void* inf_v, pObjTrxTree oxt)
 /*** xxxExecuteMethod - No methods to execute, so this fails.
  ***/
 int
-xxxExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
+xxxExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }

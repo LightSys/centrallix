@@ -57,10 +57,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_audio.c,v 1.2 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_audio.c,v 1.3 2004/06/11 21:06:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_audio.c,v $
 
     $Log: objdrv_audio.c,v $
+    Revision 1.3  2004/06/11 21:06:57  mmcgill
+    Did some code tree scrubbing.
+
+    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
+    xxxExecuteMethod() to use pObjData as the type for val (or param in
+    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
+    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
+    overflow in objdrv_shell.c (line 1046).
+
+    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
+    broken as of right now.
+
+    It should be noted that I haven't actually built the audio or Berkeley
+    drivers, so I *could* have messed up, but they look ok. The others
+    compiled, and passed a cursory testing.
+
     Revision 1.2  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -319,7 +335,7 @@ audGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
  *** pointer must point to an appropriate data type.
  ***/
 int
-audGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+audGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pAudData inf = AUD(inf_v);
 
@@ -334,7 +350,7 @@ audGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	if (!strcmp(attrname,"name"))
 	    {
 	    /* *((char**)val) = inf->Node->Data->Name;*/
-	    *((char**)val) = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
+	    val->String = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements - 1, 0);
 	    obj_internal_PathPart(inf->Obj->Pathname,0,0);
 	    return 0;
 	    }
@@ -342,19 +358,19 @@ audGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** If content-type, return as appropriate **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
-	    *((char**)val) = "system/void";
+	    val->String = "system/void";
 	    return 0;
 	    }
 	else if (!strcmp(attrname,"outer_type"))
 	    {
-	    *((char**)val) = "system/audio-device";
+	    val->String = "system/audio-device";
 	    return 0;
 	    }
 
 	/** If annotation, and not found, return "" **/
         if (!strcmp(attrname,"annotation"))
             {
-            *(char**)val = "";
+            val->String = "";
             return 0;
             }
 
@@ -395,7 +411,7 @@ audGetFirstAttr(void* inf_v, pObjTrxTree *oxt)
  *** point to an appropriate data type.
  ***/
 int
-audSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree *oxt)
+audSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree *oxt)
     {
     pAudData inf = AUD(inf_v);
     pStructInf find_inf;
@@ -417,13 +433,13 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		    strlen(*(char**)(val)) + 1 > 255)
+		    strlen(val->String) + 1 > 255)
 		    {
 		    mssError(1,"AUD","SetAttr 'name': name too long for internal representation");
 		    return -1;
 		    }
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssErrorErrno(1,"AUD","SetAttr 'name': could not rename report node object");
@@ -431,7 +447,7 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		    }
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
-	    strcpy(inf->Node->Data->Name,*(char**)val);
+	    strcpy(inf->Node->Data->Name,val->String);
 	    return 0;
 	    }
 	
@@ -460,7 +476,7 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	/** Set the value. **/
 	if (find_inf)
 	    {
-	    stSetAttrValue(find_inf, type, POD(val), 0);
+	    stSetAttrValue(find_inf, type, val, 0);
 	    return 0;
 	    }
 
@@ -471,7 +487,7 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 /*** audAddAttr - add an attribute to an object. Fails for this.
  ***/
 int
-audAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree *oxt)
+audAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree *oxt)
     {
     /*pAudData inf = AUD(inf_v);*/
 
@@ -588,7 +604,7 @@ aud_internal_Player(void* v)
  *** method for playing an audio file.
  ***/
 int
-audExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree *oxt)
+audExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree *oxt)
     {
     pAudData inf = AUD(inf_v);
     char* playfile;
@@ -614,7 +630,7 @@ audExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree *oxt)
 		}
 
 	    /** Open the object to play **/
-	    playfile = *((char**)(param));
+	    playfile = param->String;
 	    AUD_INF.PlayObj = objOpen(inf->Obj->Session, playfile, O_RDONLY, 0600, "application/octet-stream");
 	    if (!AUD_INF.PlayObj)
 	    	{

@@ -47,10 +47,26 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_berk.c,v 1.2 2003/08/13 14:45:55 affert Exp $
+    $Id: objdrv_berk.c,v 1.3 2004/06/11 21:06:57 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_berk.c,v $
 
     $Log: objdrv_berk.c,v $
+    Revision 1.3  2004/06/11 21:06:57  mmcgill
+    Did some code tree scrubbing.
+
+    Changed xxxGetAttrValue(), xxxSetAttrValue(), xxxAddAttr(), and
+    xxxExecuteMethod() to use pObjData as the type for val (or param in
+    the case of xxxExecuteMethod) instead of void* for the audio, BerkeleyDB,
+    GZip, HTTP, MBox, MIME, and Shell drivers, and found/fixed a 2-byte buffer
+    overflow in objdrv_shell.c (line 1046).
+
+    Also, the Berkeley API changed in v4 in a few spots, so objdrv_berk.c is
+    broken as of right now.
+
+    It should be noted that I haven't actually built the audio or Berkeley
+    drivers, so I *could* have messed up, but they look ok. The others
+    compiled, and passed a cursory testing.
+
     Revision 1.2  2003/08/13 14:45:55  affert
     Added a new attribute ('transdata') to allow data to be entered in hex
     translated form.  This is a temporary solution to the problem of allowing
@@ -1334,7 +1350,7 @@ berkGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 /*** berkGetAttrValue - gets the value of an attribute by name.  The 'val' ***/
 /*** pointer must point to an appropriate data type. ***/
 int
-berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+berkGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pBerkData inf;
 	inf = (pBerkData)inf_v;
@@ -1342,31 +1358,31 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	if(!strcmp(attrname, "name" ))
 	    {
 	    if(datatype != DATA_T_STRING) return -1;
-	    *((char**)val)=inf->ObjName;
+	    val->String=inf->ObjName;
 	    return 0;
 	    }
 	if(!strcmp(attrname, "content_type") || !strcmp(attrname, "inner_type"))
 	    { 
 	    if(datatype != DATA_T_STRING) return -1;
 	    if(inf->Type == BERK_TYPE_DBT)
-		*((char**)val)="application/octet-stream";
+		val->String="application/octet-stream";
 	    else
-		*((char**)val)="system/void";
+		val->String="system/void";
 	    return 0;
 	    }
 	if(!strcmp(attrname, "outer_type"))
 	    {
 	    if(datatype != DATA_T_STRING) return -1;
 	    if(inf->Type == BERK_TYPE_DBT)
-		*((char**)val) = "application/berkdbt";
+		val->String = "application/berkdbt";
 	    else
-		*((char**)val) = "application/berkfile";
+		val->String = "application/berkfile";
 	    return 0;
 	    }
 	if(!strcmp(attrname, "annotation"))
 	    {
 	    if(datatype!= DATA_T_STRING) return -1;
-	    *((char**)val)=inf->Annotation;
+	    val->String=inf->Annotation;
 	    return 0;
 	    }
 	if(inf->Type == BERK_TYPE_DBT)
@@ -1388,7 +1404,7 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    inf->pStrAttr = nmSysMalloc(inf->pData->size+1);
 		    memcpy(inf->pStrAttr, inf->pData->data, inf->pData->size);
 		    inf->pStrAttr[inf->pData->size] = 0;
-		    *((char**)val) = inf->pStrAttr;
+		    val->String = inf->pStrAttr;
 		    }
 		else if(!strcmp(attrname, "key"))
 		    {
@@ -1405,7 +1421,7 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			}
 		    /* make sure the string is NULL terminated */
 		    inf->pStrAttr[inf->pKey->size] = 0;
-		    *((char**)val) = inf->pStrAttr;
+		    val->String = inf->pStrAttr;
 		    }
 		else if(!strcmp(attrname, "transdata"))
 		    {
@@ -1414,7 +1430,7 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    inf->pStrAttr[inf->pData->size * 2] = 0;
 		    if(berkInternalKeyToHex(inf->pStrAttr, inf->pData->data, inf->pData->size*2+1, inf->pData->size))
 			return -1;
-		    *((char**)val) = inf->pStrAttr;
+		    val->String = inf->pStrAttr;
 		    }
 		else /* attrname wasn't data or key */
 		    return -1;
@@ -1429,14 +1445,14 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 			mssError(0, "BERK", "berkGetAttrValue was asked to find size: the read failed");
 			return -1;
 			}
-		    *(int*)val = inf->pData->size;
+		    val->Integer = inf->pData->size;
 		    }
 		else if(!strcmp(attrname, "key_size"))
 		    {
 		    if(inf->newKey)
-			*(int*)val = strlen(inf->newKey);
+			val->Integer = strlen(inf->newKey);
 		    else
-			*(int*)val = inf->pKey->size;
+			val->Integer = inf->pKey->size;
 		    }
 		else
 		    return -1;
@@ -1452,11 +1468,11 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		inf->AccessMethod = inf->pMyEnvNode->TheDatabase->get_type(inf->pMyEnvNode->TheDatabase);
 		switch(inf->AccessMethod)
 		    {
-		case BERK_AM_UNKNOWN:	*((char**)val) = "unknown";	break;
-		case BERK_AM_BTREE:	*((char**)val) = "btree";	break;
-		case BERK_AM_HASH:	*((char**)val) = "hash";	break;
-		case BERK_AM_QUEUE:	*((char**)val) = "queue";	break;
-		case BERK_AM_RECNO:	*((char**)val) = "recno";	break;
+		case BERK_AM_UNKNOWN:	val->String = "unknown";	break;
+		case BERK_AM_BTREE:	val->String = "btree";	break;
+		case BERK_AM_HASH:	val->String = "hash";	break;
+		case BERK_AM_QUEUE:	val->String = "queue";	break;
+		case BERK_AM_RECNO:	val->String = "recno";	break;
 		default:
 		    return -1;
 		    }
@@ -1514,7 +1530,7 @@ berkGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
 /*** berkSetAttrValue - sets the value of an attribute. 'val' must ***/
 /*** point to an appropriate data type.***/
 int
-berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
+berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pBerkData inf;
     int i, r, NewDataFlag;
@@ -1529,7 +1545,7 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    mssError(0, "BERK", "Trying to set 'annotation' attribute, datatype needs to be DATA_T_STRING");
 	    return -1;
 	    }
-	memccpy(inf->Annotation, *(char**)val, '\0', 255);
+	memccpy(inf->Annotation, val->String, '\0', 255);
 	inf->Annotation[255] = 0;
 	return 0;
 	}
@@ -1540,14 +1556,14 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	    {
 	    if(!strcmp(attrname, "name"))
 		{
-		i = strlen(*(char**)val);
+		i = strlen(val->String);
 		if(i != ((int)(i/2))*2)
 		    {
 		    mssError(0, "BERK", "SetAttrVal: invalid name: must be hex encoded, and therefor even length");
 		    return -1;
 		    }
 		/* set the name */
-		memccpy(inf->ObjName, *(char**)val, '\0', OBJSYS_MAX_PATH);
+		memccpy(inf->ObjName, val->String, '\0', OBJSYS_MAX_PATH);
 		if(inf->AutoName)
 		    {
 		    inf->pKey->data = nmSysMalloc(i / 2);
@@ -1582,9 +1598,11 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		if(!((inf->obj->Mode & O_ACCMODE) == O_WRONLY || (inf->obj->Mode & O_ACCMODE) == O_RDWR)) return -1;
 		/* copy the new value from 'val' to 'inf->pData->data' */
 		if(inf->pData->data) nmSysFree(inf->pData->data);
-		inf->pData->size = strlen(*(const char**)val);
+		/* inf->pData->size = strlen(*(const char**)val); */
+		inf->pData->size = strlen(val->String);
 		inf->pData->data = nmSysMalloc(inf->pData->size); if(!inf->pData->data) return -1;
-		memcpy(inf->pData->data, *(void**)val, inf->pData->size);
+		/* memcpy(inf->pData->data, *(void**)val, inf->pData->size); */
+		memcpy(inf->pData->data, val->Generic, inf->pData->size); 
 		NewDataFlag = 1;
 		}
 	    if(!strcmp(attrname, "transdata"))
@@ -1594,7 +1612,8 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    mssError(0, "BERK", "Trying to set 'transdata' attribute, datatype needs to be string");
 		    return -1;
 		    }
-		i = strlen(*(const char**)val);
+		//i = strlen(*(const char**)val);
+		i = strlen(val->String);
 		
 		if(i != (((int)(i/2))*2))
 		    {
@@ -1605,7 +1624,7 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		inf->pData->size = i/2;
 		inf->pData->data = nmSysMalloc(inf->pData->size);
 		if(!inf->pData->data) return -1;
-		berkInternalHexToKey(inf->pData->data, *(char**)val, inf->pData->size, i);
+		berkInternalHexToKey(inf->pData->data, val->String, inf->pData->size, i);
 		NewDataFlag = 1;
 		}
 	    if(NewDataFlag)
@@ -1646,9 +1665,14 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		    {
 		    /* ok: we need to do these things */
 		    /* set allocate and initialize data into pKey*/
+#if 0		    
 		    inf->pKey->data = nmSysMalloc(strlen(*(const char**)val));
 		    inf->pKey->size = strlen(*(const char**)val);
 		    memcpy(inf->pKey->data, *(void**)val, strlen(*(const char**)val));
+#endif
+		    inf->pKey->data = nmSysMalloc(strlen(val->String));
+		    inf->pKey->size = strlen(val->String);
+		    memcpy(inf->pKey->data, val->Generic, strlen(val->String));
 		    /* translate into hex format */
 		    if(berkInternalKeyToHex(inf->ObjName, inf->pKey->data, OBJSYS_MAX_PATH, inf->pKey->size)) return -1;
 		    /* verify that the record is in the database OR create it */
@@ -1661,11 +1685,11 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		if(inf->newKey)
 		    nmSysFree(inf->newKey);
 		/* make room for the new one */
-		inf->newKey = nmSysMalloc(strlen(*(char**)val) + 1);
-		inf->newKey[strlen(*(char**)val)] = '\0';
+		inf->newKey = nmSysMalloc(strlen(val->String) + 1);
+		inf->newKey[strlen(val->String)] = '\0';
 		if(!inf->newKey) return -1;
 		/* copy the key into inf->newKey */
-		memcpy((void*)inf->newKey, *(void**)val, strlen(*(char**)val));
+		memcpy((void*)inf->newKey, val->Generic, strlen(val->String));
 		/* on close, if newKey has memory, it will be copied in */
 		}
 	    break;
@@ -1688,18 +1712,18 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 		mssError(0, "BERK", "Databases can't be created yet.  Tough luck");
 		return -1;
 		/* alrighty, let's do this */
-		if(!strcmp(*(char**)val, "btree")) inf->AccessMethod = BERK_AM_BTREE;
-		if(!strcmp(*(char**)val, "hash"))  inf->AccessMethod = BERK_AM_HASH;
-		if(!strcmp(*(char**)val, "queue")) inf->AccessMethod = BERK_AM_QUEUE;
-		if(!strcmp(*(char**)val, "recno")) inf->AccessMethod = BERK_AM_RECNO;
-		if(!strcmp(*(char**)val, "unknown")) return -1;
+		if(!strcmp(val->String, "btree")) inf->AccessMethod = BERK_AM_BTREE;
+		if(!strcmp(val->String, "hash"))  inf->AccessMethod = BERK_AM_HASH;
+		if(!strcmp(val->String, "queue")) inf->AccessMethod = BERK_AM_QUEUE;
+		if(!strcmp(val->String, "recno")) inf->AccessMethod = BERK_AM_RECNO;
+		if(!strcmp(val->String, "unknown")) return -1;
 		r=inf->pMyEnvNode->TheDatabase->open(inf->pMyEnvNode->TheDatabase, inf->Filename, NULL, inf->AccessMethod, DB_CREATE, inf->mask);
 		if(r)
 		    {
 		    if(r == EINVAL)
 			mssError(0, "BERK", "Yeah, dang (IE something went wrong: Tried to create the database, which isn't supported yet");
 		    mssError(0, "BERK", "SetAttrValue: Setting access_method.  open failed: (cont. in next error message)");
-		    mssError(0, "BERK", "	Filename = '%s' and access_method = '%s'", inf->Filename, *(char**)val);
+		    mssError(0, "BERK", "	Filename = '%s' and access_method = '%s'", inf->Filename, val->String);
 		    berkInternalDestructor(inf);
 		    }
 		inf->pMyEnvNode->TheDatabaseIni = 1;
@@ -1716,7 +1740,7 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 
 /*** berkAddAttr - add an attribute.  Refused  ***/
 int
-berkAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
+berkAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
     {
     return -1;
     }
@@ -1744,7 +1768,7 @@ berkGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 
 /*** berkExecuteMethod - no methods  ***/
 int
-berkExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree* oxt)
+berkExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree* oxt)
     {
     return -1;
     }
