@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.10 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_pane.c,v 1.11 2002/07/26 20:23:06 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.11  2002/07/26 20:23:06  pfinley
+    Added standard event handlers: Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove
+
     Revision 1.10  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -192,13 +195,40 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);
 
+	/** Event Handlers **/
+	htrAddEventHandler(s, "document","MOUSEUP", "pn", 
+	    "\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly, 'Click');\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseUp');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEDOWN", "pn", 
+	    "\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseDown');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEOVER", "pn", 
+	    "\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseOver');\n"
+	    "\n");
+   
+	htrAddEventHandler(s, "document","MOUSEOUT", "pn", 
+	    "\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseOut');\n"
+	    "\n");
+   
+	htrAddEventHandler(s, "document","MOUSEMOVE", "pn", 
+	    "\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseMove');\n"
+	    "\n");
+
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
 		nptr, parentname, id, parentname, id, id);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
-	htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	htrAddBodyItem_va(s,"    <TABLE red' width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
 	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
@@ -208,7 +238,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
 	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\">\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d><tr><td>\n",id, w-2, h-2);
 
 	/** Check for objects within the pane. **/
 	snprintf(sbuf,160,"%s.mainlayer.document",nptr);
@@ -216,7 +246,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV></DIV>\n");
+	htrAddBodyItem(s, "</td></tr></table></body></DIV></DIV>\n");
 
     return 0;
     }
@@ -239,6 +269,13 @@ htpnInitialize()
 	drv->Render = htpnRender;
 	drv->Verify = htpnVerify;
 	strcpy(drv->Target, "Netscape47x:default");
+
+	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
