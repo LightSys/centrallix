@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.48 2002/08/15 13:58:16 pfinley Exp $
+    $Id: htdrv_page.c,v 1.49 2002/08/23 17:31:05 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.49  2002/08/23 17:31:05  lkehresman
+    moved window_current global to the page widget so it is always defined
+    even if it is null.  This prevents javascript errors from the objectsource
+    widget when no windows exist in the app.
+
     Revision 1.48  2002/08/15 13:58:16  pfinley
     Made graphical window closing and shading properties of the window widget,
     rather than globally of the page.
@@ -457,6 +462,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
+	htrAddScriptGlobal(s, "window_current","null",0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
 
 	/** Add script include to get function declarations **/

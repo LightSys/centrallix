@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.28 2002/08/15 14:08:47 pfinley Exp $
+    $Id: htdrv_window.c,v 1.29 2002/08/23 17:31:05 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.29  2002/08/23 17:31:05  lkehresman
+    moved window_current global to the page widget so it is always defined
+    even if it is null.  This prevents javascript errors from the objectsource
+    widget when no windows exist in the app.
+
     Revision 1.28  2002/08/15 14:08:47  pfinley
     fixed a bit masking issue with the page closetype flag.
 
@@ -353,7 +358,6 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptGlobal(s, "wn_msy","null",0);
 	htrAddScriptGlobal(s, "wn_moved","0",0);
 	htrAddScriptGlobal(s, "wn_clicked","0",0);
-	htrAddScriptGlobal(s, "window_current","null",0);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
