@@ -31,9 +31,7 @@ function dd_setvalue(v)
 
 function dd_clearvalue()
     {
-    /*
-    dd_write_item(this.labelLayer, '', '');
-    */
+    dd_select_item(this, null);
     }
 
 function dd_resetvalue()
@@ -43,20 +41,27 @@ function dd_resetvalue()
 
 function dd_enable()
     {
-    /*
-    this.mainlayer.document.images[8].src = '/sys/images/ico15b.gif';
-    */
+    this.document.images[4].src = '/sys/images/ico15b.gif';
+    this.keyhandler = dd_keyhandler;
     this.enabled = 'full';
     }
 
 function dd_readonly()
     {
+    this.document.images[4].src = '/sys/images/ico15b.gif';
+    this.keyhandler = null;
     this.enabled = 'readonly';
     }
 
 function dd_disable()
     {
-    //this.mainlayer.document.images[8].src = '/sys/images/ico15a.gif';
+    if (dd_current)
+	{
+	dd_current.PaneLayer.visibility = 'hide';
+	dd_current = null;
+	}
+    this.document.images[4].src = '/sys/images/ico15a.gif';
+    this.keyhandler = null;
     this.enabled = 'disabled';
     }
 
@@ -145,7 +150,9 @@ function dd_unhilight_item(l,i)
 
 function dd_select_item(l,i)
     {
-    l.HidLayer.document.write("<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle>"+l.Values[i][0]+"</TD></TR></TABLE>");
+    l.HidLayer.document.write("<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle>");
+    if (i!=null) l.HidLayer.document.write(l.Values[i][0]);
+    l.HidLayer.document.write("</TD></TR></TABLE>");
     l.HidLayer.document.close();
     l.HidLayer.visibility = 'inherit';
     l.HidLayer.index = i;
@@ -155,27 +162,13 @@ function dd_select_item(l,i)
     l.HidLayer = t;
     if(l.form)
 	l.form.DataNotify(l);
-    }
-
-function al(s)
-    {
-    dd_current.document.write(s);
-    dd_current.document.close();
+    l.PaneLayer.visibility = 'hide';
+    dd_current = null;
     }
 
 function dd_losefocus()
     {
     return true;
-    }
-
-function dd_hilight(hl)
-    {
-    hl.bgColor = hl.document.mainlayer.hl;
-    }
-
-function dd_unhilight(hl)
-    {
-    hl.bgColor = hl.document.mainlayer.bg;
     }
 
 function dd_toggle(l) 

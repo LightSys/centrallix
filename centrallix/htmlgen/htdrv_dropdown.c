@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.25 2002/07/24 20:33:15 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.26 2002/07/25 15:06:47 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.26  2002/07/25 15:06:47  lkehresman
+    * Fixed bug where dropdown wasn't going away
+    * Added enable/disable/readonly support
+
     Revision 1.25  2002/07/24 20:33:15  lkehresman
     Complete reworking of the dropdown widget.  Much more functionality
     (including, FINALLY, a working scrollbar).  Better interface.  More
@@ -230,8 +234,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     /** Ok, write the style header items. **/
     htrAddStylesheetItem_va(s,"\t#dd%dbtn { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-    htrAddStylesheetItem_va(s,"\t#dd%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
-    htrAddStylesheetItem_va(s,"\t#dd%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:1024; HEIGHT:%d; Z-INDEX:%d; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:1024; HEIGHT:%d; Z-INDEX:%d; }\n",id,h-2,z+1);
 
     htrAddScriptGlobal(s, "dd_current", "null", 0);
     htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
@@ -248,7 +252,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     htrAddEventHandler(s, "document","MOUSEMOVE", "dd", 
 	"\n"
 	"    ti=dd_target_img;\n"
-	"    if (ly.kind == 'dd_sc' && ti != null && ti.name == 't')\n"
+	"    if (ly.kind == 'dd_sc' && ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')\n"
 	"        {\n"
 	"        var pl=ti.mainlayer.PaneLayer;\n"
 	"        v=pl.clip.height-(3*18)-4;\n"
@@ -267,7 +271,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     htrAddEventHandler(s, "document","MOUSEOVER", "dd", 
 	"\n"
-	"    if (ly.kind == 'dd_itm')\n"
+	"    if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')\n"
 	"        {\n"
 	"        dd_lastkey = null;\n"
 	"        dd_hilight_item(dd_current, ly.index);\n"
@@ -288,7 +292,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        else if (ly.name == 'd') ly.src = '/sys/images/ico12b.gif';\n"
 	"        dd_target_img = null;\n"
 	"        }\n"
-	"    if (ly.kind == 'dd')\n"
+	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
 	"        {\n"
 	"        dd_toggle(ly);\n"
 	"        }\n"
@@ -297,11 +301,11 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     htrAddEventHandler(s, "document","MOUSEDOWN", "dd", 
 	"\n"
 	"    dd_target_img = e.target;\n"
-	"    if (ly.kind == 'dd')\n"
+	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
 	"        {\n"
-	"        if (dd_current && dd_current == ly)\n"
+	"        if (dd_current)\n"
 	"            {\n"
-	"            ly.PaneLayer.visibility = 'hide';\n"
+	"            dd_current.PaneLayer.visibility = 'hide';\n"
 	"            dd_current = null;\n"
 	"            }\n"
 	"        else\n"
@@ -313,9 +317,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"                ly.form.FocusNotify(ly);\n"
 	"            dd_current = ly;\n"
 	"            }\n"
-	"        dd_toggle(ly);\n"
+	"            dd_toggle(ly);\n"
 	"        }\n"
-	"    else if (ly.kind == 'dd_itm')\n"
+	"    else if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')\n"
 	"        {\n"
 	"        dd_select_item(dd_current, ly.index);\n"
 	"        }\n"
