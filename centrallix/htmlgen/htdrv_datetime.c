@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.18 2002/07/25 18:46:35 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.19 2002/07/25 20:26:57 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.19  2002/07/25 20:26:57  lkehresman
+    Changed the "Change" event to our standardized "DataChange" event, and
+    actually added the connector call for it (forgot to do that earlier).
+
     Revision 1.18  2002/07/25 18:46:35  lkehresman
     Standardized event connectors for datetime widget.  It now has:
     MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,Change,GetFocus,LoseFocus
@@ -368,7 +372,7 @@ htdtInitialize()
 	htrAddEvent(drv,"MouseOver");
 	htrAddEvent(drv,"MouseOut");
 	htrAddEvent(drv,"MouseMove");
-	htrAddEvent(drv,"Change");
+	htrAddEvent(drv,"DataChange");
 	htrAddEvent(drv,"GetFocus");
 	htrAddEvent(drv,"LoseFocus");
 

@@ -194,6 +194,7 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	if (dt_current.form) {
 		dt_current.form.FocusNotify(dt_current);
 		dt_current.form.DataNotify(dt_current);
+		cn_activate(dt_current, 'DataChange');
 	}
 	dt_current = null;
 }
