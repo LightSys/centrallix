@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.9 2004/07/30 04:25:35 gbeeley Exp $
+    $Id: obj_query.c,v 1.10 2004/08/27 01:28:32 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.10  2004/08/27 01:28:32  jorupp
+     * cleaning up some compile warnings
+
     Revision 1.9  2004/07/30 04:25:35  gbeeley
     - need to recognize asc/desc in order by text
 
@@ -792,7 +795,7 @@ objQueryClose(pObjQuery this)
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryClose(%8.8X:%3.3s)\n", this, this->Drv->Name);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryClose(%p:%3.3s)\n", this, this->Drv->Name);
 
     	/** Release sort information? **/
 	if (this->SortInf)

@@ -342,7 +342,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 		objClose(qy_obj);
 		flag=1;
 	    }
-	    htrAddScriptInit_va(s,"));\n", str);
+	    htrAddScriptInit_va(s,"));\n");
 	    objQueryClose(qy);
 	}
     }
@@ -437,10 +437,13 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.46 2004/08/04 20:03:08 mmcgill Exp $
+    $Id: htdrv_dropdown.c,v 1.47 2004/08/27 01:28:32 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.47  2004/08/27 01:28:32  jorupp
+     * cleaning up some compile warnings
+
     Revision 1.46  2004/08/04 20:03:08  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,

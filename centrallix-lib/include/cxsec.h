@@ -28,6 +28,10 @@ void cxsecInitialize();
 
 int cxsecVerifySymbol(char* sym);
 
+#ifndef __GNUC__
+#define __attribute__(a) /* hide function attributes from non-GCC compilers */
+#endif
+
 #ifdef CXLIB_SECH
 
 /*** function entry/exit dynamic stack canary checking.  We put the 
@@ -47,7 +51,7 @@ int cxsecVerifySymbol(char* sym);
 
 #else /* defined CXLIB_SECH */
 
-#define CXSEC_ENTRY(x)	unsigned long cx__canary[2]
+#define CXSEC_ENTRY(x)	unsigned long cx__canary[2] __attribute__ ((unused))
 #define CXSEC_EXIT(x)	
 #define CXSEC_DS_BEGIN	unsigned long cx__dsrandom
 #define CXSEC_DS_END	unsigned long cx__dsverify[2]

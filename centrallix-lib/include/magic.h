@@ -26,10 +26,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.10 2004/07/22 00:20:52 mmcgill Exp $
+    $Id: magic.h,v 1.11 2004/08/27 01:28:33 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.11  2004/08/27 01:28:33  jorupp
+     * cleaning up some compile warnings
+
     Revision 1.10  2004/07/22 00:20:52  mmcgill
     Added a magic number define for WgtrNode, and added xaInsertBefore and
     xaInsertAfter functions to the XArray module.
@@ -88,8 +91,8 @@
 
 #else	/* defined DBMAGIC */
 
-#define ASSERTMAGIC(x,y) (y)
-#define ASSERTNOTMAGIC(x,y) (y)
+#define ASSERTMAGIC(x,y) ((void)(y))
+#define ASSERTNOTMAGIC(x,y) ((void)(y))
 
 #endif	/* defined DBMAGIC */
 

@@ -49,10 +49,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.18 2004/06/22 16:06:53 mmcgill Exp $
+    $Id: obj_object.c,v 1.19 2004/08/27 01:28:32 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.19  2004/08/27 01:28:32  jorupp
+     * cleaning up some compile warnings
+
     Revision 1.18  2004/06/22 16:06:53  mmcgill
     Added the flag OBJ_F_NOCACHE, which a driver can set in its xxxOpen call
     to tell OSML not to add the opened object to the Directory Cache.
@@ -1287,7 +1290,7 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%8.8X, \"%s\") = ", (unsigned int)(session), path);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%p, \"%s\") = ", session, path);
 
 	/** Make sure supplied name is "*" if using autokeying **/
 	if (mode & OBJ_O_AUTONAME)
@@ -1322,7 +1325,7 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	/** Add to open objects this session. **/
 	xaAddItem(&(session->OpenObjects),(void*)this);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8X/%s\n", this, this->Driver->Name);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%p/%s\n", this, this->Driver->Name);
 
     return this;
     }
@@ -1338,7 +1341,7 @@ objClose(pObject this)
 
 	ASSERTMAGIC(this,MGK_OBJECT);
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objClose(%8.8X/%3.3s/%s) (LinkCnt now %d)\n", (unsigned int)(this), this->Driver->Name, this->Pathname->Pathbuf, this->LinkCnt-1);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objClose(%p/%3.3s/%s) (LinkCnt now %d)\n", (this), this->Driver->Name, this->Pathname->Pathbuf, this->LinkCnt-1);
 
     	/** LinkCnt will go to zero? **/
 	if (this->LinkCnt == 1 && !(this->Flags & OBJ_F_ROOTNODE))
@@ -1382,7 +1385,7 @@ int
 objLinkTo(pObject this)
     {
 
-	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objLinkTo(%8.8X/%3.3s/%s) (LinkCnt now %d)\n", this, this->Driver->Name, this->Pathname->Pathbuf, this->LinkCnt+1);
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objLinkTo(%p/%3.3s/%s) (LinkCnt now %d)\n", this, this->Driver->Name, this->Pathname->Pathbuf, this->LinkCnt+1);
 
     while(this) 
         {

@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.11 2004/08/02 14:09:36 mmcgill Exp $
+    $Id: obj_datatypes.c,v 1.12 2004/08/27 01:28:32 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.12  2004/08/27 01:28:32  jorupp
+     * cleaning up some compile warnings
+
     Revision 1.11  2004/08/02 14:09:36  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -1799,7 +1802,7 @@ objDebugDate(pDateTime dt)
 	printf("Value:  %16.16llx\n", dt->Value);
 	printf("Binary: ");
 	for(i=63;i>=0;i--)
-	    printf("%d", (dt->Value>>i)&1);
+	    printf("%d", (int)((dt->Value>>i)&1));
 	printf("\n");
 
     return 0;

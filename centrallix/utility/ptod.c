@@ -40,10 +40,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ptod.c,v 1.2 2004/06/12 04:02:29 gbeeley Exp $
+    $Id: ptod.c,v 1.3 2004/08/27 01:28:33 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/ptod.c,v $
 
     $Log: ptod.c,v $
+    Revision 1.3  2004/08/27 01:28:33  jorupp
+     * cleaning up some compile warnings
+
     Revision 1.2  2004/06/12 04:02:29  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -175,6 +178,7 @@ ptodCopy(pTObjData src, pTObjData dst)
 pTObjData
 ptodDuplicate(pTObjData ptod, int flags)
     {
+	return NULL;
     }
 
 
