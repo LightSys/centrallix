@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.5 2002/03/13 01:04:32 jheth Exp $
+    $Id: htdrv_osrc.c,v 1.6 2002/03/13 01:35:02 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.6  2002/03/13 01:35:02  jheth
+    Re-commit of Object Source - No Alerts
+
     Revision 1.5  2002/03/13 01:04:32  jheth
     Partial working Object Source - Functionality added but no reliable testing
 
@@ -142,7 +145,7 @@ int htosrcVerify() {
       "    //Send query as GET request\n"
       "    this.query = escape(q);\n"
       "    this.query = 'select%20%3Aid%2C%20%3Afull_name%2C%20%3Anum_days%20from%20Months.csv'\n"
-      "    alert(this.query);\n"
+      "    //alert(this.query);\n"
       "    this.OpenSession();\n"
       "    }\n",0);
       
@@ -153,7 +156,7 @@ int htosrcVerify() {
       "    if (this.document.links.length > 0)\n"
       "        {\n"
       "        //Store Links\n"
-      "        alert('Store Links');\n"
+      "        //alert('Store Links');\n"
       "        data = new Object();\n"
       "        data.name = \"data\";\n"
       "        data.annotation = \"Data\";\n"
@@ -171,7 +174,7 @@ int htosrcVerify() {
       "    else\n"
       "        {\n"
       "        //Clear Method - No Anchors Returned\n"
-      "        alert('Clear');\n"
+      "        //alert('Clear');\n"
       "        }\n" 
       "    this.form.IsDiscardReady();\n"
       "    }\n",0);
@@ -230,18 +233,18 @@ int htosrcVerify() {
       "function osrc_open_query()\n"
       "    {\n"
       "    //Open Query\n"
-      "    confirm(this.document.anchors.length);\n"
+      "    //confirm(this.document.anchors.length);\n"
       "    //this.src = '/?ls__mode=osml&ls__req=multiquery&ls__sid=01234567&ls__sql=' + this.query;\n"
       "    this.onLoad = osrc_close_query;\n"
       "    this.src = '/escape.html';\n"
-      "    confirm(this.document.anchors.length);\n"
+      "    //confirm(this.document.anchors.length);\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_close_query", "\n"
       "function osrc_close_query()\n"
       "    {\n"
-      "    confirm(this.document.anchors.length);\n"
-      "    confirm('close');\n"
+      "    //confirm(this.document.anchors.length);\n"
+      "    //confirm('close');\n"
       "    return 0;\n"
       "    //Close Query\n"
       "    this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=12345678';\n"
