@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.21 2003/04/16 03:24:14 nehresma Exp $
+    $Id: net_nfs.c,v 1.22 2003/04/16 06:13:41 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.22  2003/04/16 06:13:41  jorupp
+     * implimented write, rename, getattr (correctly this time), and a fake setattr
+
     Revision 1.21  2003/04/16 03:24:14  nehresma
     added CXSEC macros for entry and exit of functions
 
@@ -228,6 +231,7 @@ typedef struct
     pObject obj;
     struct timeval lastused;
     int inode;
+    int flags;
     CXSEC_DS_END;
     } ObjectUse, *pObjectUse;
 
@@ -256,7 +260,10 @@ struct
     }
     NNFS;
 
-pObject nnfs_internal_open_inode(fhandle f);
+pObject nnfs_internal_open_inode(fhandle f, int flags);
+pObject nnfs_internal_reopen_inode(fhandle f, int flags);
+int nnfs_internal_close_inode(fhandle fh, int flags);
+fattr nnfs_internal_get_attributes(pObject, fhandle);
 
 /** typedef for the functions that impliment the individual RPC calls **/
 typedef void* (*rpc_func)(void*);
@@ -694,36 +701,21 @@ attrstat* nnfs_internal_nfsproc_getattr(fhandle* param)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
     attrstat* retval = NULL;
-    char *path;
-    int i;
+    pObject obj;
     retval = (attrstat*)nmMalloc(sizeof(attrstat));
     memset(retval,0,sizeof(attrstat));
     /** do work here **/
 
-    i=nnfs_internal_get_path(&path, *param);
-    if(i==-1)
-	retval->status = 1; /** this should be the UNIX error **/
-    else
+    obj = nnfs_internal_open_inode(*param,O_RDWR);
+    if(!obj)
 	{
-	retval->status = 0;
-	retval->attrstat_u.attributes.type = NFDIR;
-	retval->attrstat_u.attributes.mode = 040777;
-	retval->attrstat_u.attributes.nlink = 1;
-	retval->attrstat_u.attributes.uid = 1;
-	retval->attrstat_u.attributes.gid = 1;
-	retval->attrstat_u.attributes.size = 0;
-	retval->attrstat_u.attributes.blocksize = BLOCK_SIZE;
-	retval->attrstat_u.attributes.rdev = 0;
-	retval->attrstat_u.attributes.blocks = 0;
-	retval->attrstat_u.attributes.fsid = 0;
-	retval->attrstat_u.attributes.fileid = 0;
-	retval->attrstat_u.attributes.atime.seconds = 0;
-	retval->attrstat_u.attributes.atime.useconds = 0;
-	retval->attrstat_u.attributes.ctime.seconds = 0;
-	retval->attrstat_u.attributes.ctime.useconds = 0;
-	retval->attrstat_u.attributes.mtime.seconds = 0;
-	retval->attrstat_u.attributes.mtime.useconds = 0;
+	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
 	}
+
+    retval->status = NFS_OK;
+    retval->attrstat_u.attributes=nnfs_internal_get_attributes(obj,*param);
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -733,8 +725,23 @@ attrstat* nnfs_internal_nfsproc_setattr(sattrargs* param)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
     attrstat* retval = NULL;
+    pObject obj;
     retval = (attrstat*)nmMalloc(sizeof(attrstat));
     /** do work here **/
+    memset(retval,0,sizeof(attrstat));
+
+    /** should do some work here, but we don't yet **/
+    
+    obj = nnfs_internal_open_inode(param->file,O_RDWR);
+    if(!obj)
+	{
+	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    retval->status = NFS_OK;
+    retval->attrstat_u.attributes = nnfs_internal_get_attributes(obj,param->file);
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -781,13 +788,14 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     if(nnfs_internal_get_fhandle(retval->diropres_u.diropok.file,path.String)<0)
 	{
 	retval->status = NFSERR_NOENT;
+	xsDeInit(&path);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
     printf("got fhandle\n");
 
-    obj = nnfs_internal_open_inode(retval->diropres_u.diropok.file);
+    obj = nnfs_internal_open_inode(retval->diropres_u.diropok.file,O_RDWR);
     if(!obj)
 	{
 	retval->status = NFSERR_NOENT;
@@ -795,45 +803,8 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
 	return retval;
 	}
 
-    info = objInfo(obj);
-    if(info)
-	{
-	/** it is a directory unless it can't have subobjects **/
-	if(!(info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ))
-	    isdir = 1;
-	//nmFree(info,sizeof(ObjectInfo));
-	}
-
-    retval->status = NFS_OK;
-    if(isdir)
-	{
-	retval->diropres_u.diropok.attributes.type = NFDIR;
-	retval->diropres_u.diropok.attributes.mode = 040777;
-	}
-    else
-	{
-	retval->diropres_u.diropok.attributes.type = NFREG;
-	retval->diropres_u.diropok.attributes.mode = 0100777;
-	}
-
-    if(objGetAttrValue(obj,"size",DATA_T_INTEGER,POD(&size)) < 0)
-	size = 0;
-    
-    retval->diropres_u.diropok.attributes.nlink = 1;
-    retval->diropres_u.diropok.attributes.uid = 0;
-    retval->diropres_u.diropok.attributes.gid = 0;
-    retval->diropres_u.diropok.attributes.size = size;
-    retval->diropres_u.diropok.attributes.blocksize = BLOCK_SIZE;
-    retval->diropres_u.diropok.attributes.rdev = 0;
-    retval->diropres_u.diropok.attributes.blocks = 0;
-    retval->diropres_u.diropok.attributes.fsid = 0;
-    retval->diropres_u.diropok.attributes.fileid = 0;
-    retval->diropres_u.diropok.attributes.atime.seconds = 0;
-    retval->diropres_u.diropok.attributes.atime.useconds = 0;
-    retval->diropres_u.diropok.attributes.ctime.seconds = 0;
-    retval->diropres_u.diropok.attributes.ctime.useconds = 0;
-    retval->diropres_u.diropok.attributes.mtime.seconds = 0;
-    retval->diropres_u.diropok.attributes.mtime.useconds = 0;
+    printf("filling in attributes\n");
+    retval->diropres_u.diropok.attributes = nnfs_internal_get_attributes(obj,retval->diropres_u.diropok.file);
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -856,13 +827,12 @@ readres* nnfs_internal_nfsproc_read(readargs* param)
     readres* retval = NULL;
     pObject obj;
     int i;
-    int size;
     char *buffer;
     retval = (readres*)nmMalloc(sizeof(readres));
     /** do work here **/
     memset(retval,0,sizeof(readres));
 
-    obj = nnfs_internal_open_inode(param->file);
+    obj = nnfs_internal_open_inode(param->file,O_RDWR);
     if(!obj)
 	{
 	retval->status = NFSERR_NOENT;
@@ -882,29 +852,10 @@ readres* nnfs_internal_nfsproc_read(readargs* param)
 	return retval;
 	}
 
-    if(objGetAttrValue(obj,"size",DATA_T_INTEGER,POD(&size)) < 0)
-	size = 0;
-
     retval->readres_u.data.data.nfsdata_len = i;
     retval->readres_u.data.data.nfsdata_val = buffer;
 
-    retval->readres_u.data.attributes.type = NFREG;
-    retval->readres_u.data.attributes.mode = 0100777;
-    retval->readres_u.data.attributes.nlink = 1;
-    retval->readres_u.data.attributes.uid = 0;
-    retval->readres_u.data.attributes.gid = 0;
-    retval->readres_u.data.attributes.size = size;
-    retval->readres_u.data.attributes.blocksize = BLOCK_SIZE;
-    retval->readres_u.data.attributes.rdev = 0;
-    retval->readres_u.data.attributes.blocks = 0;
-    retval->readres_u.data.attributes.fsid = 0;
-    retval->readres_u.data.attributes.fileid = 0;
-    retval->readres_u.data.attributes.atime.seconds = 0;
-    retval->readres_u.data.attributes.atime.useconds = 0;
-    retval->readres_u.data.attributes.ctime.seconds = 0;
-    retval->readres_u.data.attributes.ctime.useconds = 0;
-    retval->readres_u.data.attributes.mtime.seconds = 0;
-    retval->readres_u.data.attributes.mtime.useconds = 0;
+    retval->readres_u.data.attributes = nnfs_internal_get_attributes(obj,param->file);
 
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -924,9 +875,63 @@ attrstat* nnfs_internal_nfsproc_write(writeargs* param)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
     attrstat* retval = NULL;
+    pObject obj;
+    int i;
+    char *buffer;
+    int len;
+    int offset;
+    int tries=0;
     retval = (attrstat*)nmMalloc(sizeof(attrstat));
     /** do work here **/
+    memset(retval,0,sizeof(attrstat));
+
+    obj = nnfs_internal_open_inode(param->file,O_RDWR);
+    if(!obj)
+	{
+	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+    retval->status = NFS_OK;
     
+    buffer = param->data.nfsdata_val;
+    len = param->data.nfsdata_len;
+    offset = param->offset;
+    
+    /** since the NFS protocol doesn't allow for partial writes, we have to do it ourselves **/
+    while(1)
+	{
+	i = objWrite(obj,buffer,len,offset,OBJ_U_SEEK);
+	printf("writing: %p -- %i -- %i -- %i\n",buffer,len,offset,i);
+	/** there's a chance we only wrote some of the data, then failed -- there's nothing we can do about it **/
+	if(i==-1)
+	    {
+	    retval->status = NFSERR_IO;
+	    CXSEC_EXIT(NFS_FN_KEY);
+	    return retval;
+	    }
+	if(i==len)
+	    break;
+	if(i==0)
+	    {
+	    /** allow 3 tries where no data is written before failing **/
+	    tries++;
+	    if(tries >= 3)
+		{
+		retval->status = NFSERR_IO;
+		CXSEC_EXIT(NFS_FN_KEY);
+		return retval;
+		}
+	    }
+	/** so long as data is written, update the pointers and keep going **/
+	len-=i;
+	buffer+=i;
+	offset+=i;
+	tries++;
+	}
+
+    retval->attrstat_u.attributes = nnfs_internal_get_attributes(obj,param->file);
+
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
@@ -935,8 +940,50 @@ diropres* nnfs_internal_nfsproc_create(createargs* param)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
     diropres* retval = NULL;
+    pObject obj;
+    dirpath parentPath;
+    XString path;
     retval = (diropres*)nmMalloc(sizeof(diropres));
     /** do work here **/
+    memset(retval,0,sizeof(diropres));
+
+    if(nnfs_internal_get_path(&parentPath,param->where.dir)<0)
+	{
+	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    xsInit(&path);
+    xsCopy(&path,parentPath,-1);
+    if(*(xsStringEnd(&path)-1)!='/')
+	xsConcatenate(&path,"/",-1);
+    xsConcatenate(&path,param->where.name,-1);
+
+    if(nnfs_internal_get_fhandle(retval->diropres_u.diropok.file,path.String)<0)
+	{
+	retval->status = NFSERR_NOENT;
+	xsDeInit(&path);
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    obj = nnfs_internal_open_inode(retval->diropres_u.diropok.file,O_RDWR | O_CREAT | O_EXCL);
+    if(!obj)
+	{
+	retval->status = NFSERR_NOENT;
+	xsDeInit(&path);
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    retval->diropres_u.diropok.attributes = nnfs_internal_get_attributes(obj,retval->diropres_u.diropok.file);
+    retval->status = NFS_OK;
+
+    printf("created: %s\n",path.String);
+    xsDeInit(&path);
+
+    nnfs_internal_close_inode(retval->diropres_u.diropok.file,O_RDWR | O_CREAT | O_EXCL);
     
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1053,7 +1100,7 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
 	return retval;
 	}
 
-    obj = nnfs_internal_open_inode(param->dir);
+    obj = nnfs_internal_open_inode(param->dir,O_RDWR);
     if(!obj)
 	{
 	retval->status = NFSERR_NOENT;
@@ -2055,11 +2102,63 @@ void nnfs_internal_monitor_objects()
     CXSEC_EXIT(NFS_FN_KEY);
     }
 
+fattr nnfs_internal_get_attributes(pObject obj, fhandle fh)
+    {
+    CXSEC_ENTRY(NFS_FN_KEY);
+    pObjectInfo info;
+    int isdir = 0;
+    int size;
+    fattr attributes;
+
+    info = objInfo(obj);
+    if(info)
+	{
+	/** it is a directory unless it can't have subobjects **/
+	if(!(info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ))
+	    isdir = 1;
+	//nmFree(info,sizeof(ObjectInfo));
+	}
+
+    if(isdir)
+	{
+	attributes.type = NFDIR;
+	attributes.mode = 040777;
+	}
+    else
+	{
+	attributes.type = NFREG;
+	attributes.mode = 0100777;
+	}
+
+    if(objGetAttrValue(obj,"size",DATA_T_INTEGER,POD(&size)) < 0)
+	size = 0;
+    
+    attributes.nlink = 1;
+    attributes.uid = 0;
+    attributes.gid = 0;
+    attributes.size = size;
+    attributes.blocksize = BLOCK_SIZE;
+    attributes.rdev = 0;
+    attributes.blocks = (size-1)/BLOCK_SIZE+1;
+    attributes.fsid = 0;
+    attributes.fileid = *(int*)fh;
+    attributes.atime.seconds = 0;
+    attributes.atime.useconds = 0;
+    attributes.ctime.seconds = 0;
+    attributes.ctime.useconds = 0;
+    attributes.mtime.seconds = 0;
+    attributes.mtime.useconds = 0;
+    
+    CXSEC_EXIT(NFS_FN_KEY);
+    return attributes;
+    }
+
+
 /***  Get a pObject for a specific inode from the cache, or open one up
  ***  if there isn't one already open.  Do _NOT_ close the returned pObject,
  ***  but let the monitor thread handle the closes.
  ***/
-pObject nnfs_internal_open_inode(fhandle fh)
+pObject nnfs_internal_open_inode(fhandle fh, int flags)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
     int i, inode;
@@ -2071,15 +2170,18 @@ pObject nnfs_internal_open_inode(fhandle fh)
 	int fhi;
 	fhandle fhc;
 	} fhandle_c;
+    int ignoreflags = O_CREAT; // the flags to ignore when looking for a match
 
-    strncpy(fhandle_c.fhc, fh, FHSIZE);
+    memcpy(fhandle_c.fhc, fh, FHSIZE);
     inode=fhandle_c.fhi;
+
+    if(!flags) flags = O_CREAT | O_RDWR;
 
     /* look through the open objects for this inode */
     for (i=0;i<xaCount(NNFS.openObjects);i++)
     	{
 	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
-	if(obj->inode == inode)
+	if(obj->inode == inode && (obj->flags & ~ignoreflags) == (flags & ~ignoreflags))
 	    {
     	    gettimeofday(&(obj->lastused), NULL);
 	    CXSEC_EXIT(NFS_FN_KEY);
@@ -2101,12 +2203,13 @@ pObject nnfs_internal_open_inode(fhandle fh)
     /* set the inode and lastused on the ObjectUse */
     obj=(pObjectUse)nmMalloc(sizeof(ObjectUse));
     obj->inode=inode;
+    obj->flags = flags;
     gettimeofday(&(obj->lastused), NULL);
 
     /** set the pObject 
      ** FIXME: is system/object the right type to use?
      **/
-    obj->obj = objOpen(NNFS.objSess,path,O_RDWR|O_CREAT,0600,"system/object");
+    obj->obj = objOpen(NNFS.objSess,path,flags,0600,"system/object");
     if (!obj->obj)
     	{
 	nmFree(obj,sizeof(ObjectUse));
@@ -2120,39 +2223,30 @@ pObject nnfs_internal_open_inode(fhandle fh)
     }
 
 /***
- *** update last used time stamp
+ *** close and reopen the object
  ***/
-int nnfs_internal_reopen_inode(fhandle fh)
+pObject nnfs_internal_reopen_inode(fhandle fh, int flags)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
-    pObjectUse obj;
-    int i;
-    union
-	{
-	int fhi;
-	fhandle fhc;
-	} fhandle_c;
+    pObject obj;
 
-    strncpy(fhandle_c.fhc,fh,FHSIZE);
-    for(i=0;i<xaCount(NNFS.openObjects);i++)
+    if(!flags) flags = O_CREAT | O_RDWR;
+
+    if(nnfs_internal_close_inode(fh,flags)<0)
 	{
-	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
-	if (obj->inode==fhandle_c.fhi)
-	    {
-	    gettimeofday(&(obj->lastused), NULL);
-	    CXSEC_EXIT(NFS_FN_KEY);
-	    return 0;
-	    }
+	CXSEC_EXIT(NFS_FN_KEY);
+	return NULL;
 	}
+    obj = nnfs_internal_open_inode(fh,flags);
     CXSEC_EXIT(NFS_FN_KEY);
-    return -1;
+    return obj;
     }
 
 /***
  *** Usually you should let an object expire from the cache, but this function
  *** is provided just in case.
  ***/
-int nnfs_internal_close_inode(fhandle fh)
+int nnfs_internal_close_inode(fhandle fh, int flags)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
     pObjectUse obj;
@@ -2162,12 +2256,15 @@ int nnfs_internal_close_inode(fhandle fh)
 	int fhi;
 	fhandle fhc;
 	} fhandle_c;
+    int ignoreflags = O_CREAT; // the flags to ignore when looking for a match
+
+    if(!flags) flags = O_CREAT | O_RDWR;
 
     strncpy(fhandle_c.fhc,fh,FHSIZE);
     for(i=0;i<xaCount(NNFS.openObjects);i++)
 	{
 	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
-	if (obj->inode==fhandle_c.fhi)
+	if(obj->inode == fhandle_c.fhi && (obj->flags & ~ignoreflags) == (flags & ~ignoreflags))
 	    {
 	    xaRemoveItem(NNFS.openObjects,i);
 	    objClose(obj->obj);
