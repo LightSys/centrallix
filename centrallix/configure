@@ -3905,9 +3905,9 @@ fi
 
 	centrallix_config="$sysconfdir/centrallix.conf"
 	if test "$prefix" = "NONE"; then
-	    centrallix_config="${centrallix_config/\$\{prefix\}/$ac_default_prefix}"
+	    centrallix_config="`echo $centrallix_config | sed -e "s|\\\${prefix}|$ac_default_prefix|"`"
 	else
-	    centrallix_config="${centrallix_config/\$\{prefix\}/$prefix}"
+	    centrallix_config="`echo $centrallix_config | sed -e "s|\\\${prefix}|$prefix|"`"
 	fi
 
 

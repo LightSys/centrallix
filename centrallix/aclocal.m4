@@ -69,9 +69,9 @@ AC_DEFUN(CENTRALLIX_CONF_FILE,
     [
 	centrallix_config="$sysconfdir/centrallix.conf"
 	if test "$prefix" = "NONE"; then
-	    centrallix_config="${centrallix_config/\$\{prefix\}/$ac_default_prefix}"
+	    centrallix_config="`echo $centrallix_config | sed -e "s|\\\${prefix}|$ac_default_prefix|"`"
 	else
-	    centrallix_config="${centrallix_config/\$\{prefix\}/$prefix}"
+	    centrallix_config="`echo $centrallix_config | sed -e "s|\\\${prefix}|$prefix|"`"
 	fi
 
 	AC_DEFINE_UNQUOTED(CENTRALLIX_CONFIG, 
