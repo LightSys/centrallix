@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.20 2002/07/08 23:21:38 jorupp Exp $
+    $Id: htdrv_page.c,v 1.21 2002/07/15 21:58:02 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.21  2002/07/15 21:58:02  lkehresman
+    Split the page out into include scripts
+
     Revision 1.20  2002/07/08 23:21:38  jorupp
      * added a global object, cn_browser with two boolean properties -- netscape47 and mozilla
         The corresponding one will be set to true by the page
@@ -264,6 +267,8 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 
+	/** Add script include to get function declarations **/
+	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
 
     return 0;
     }
@@ -312,33 +317,6 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgping\"></DIV>\n");
-
-	htrAddScriptFunction(s, "pg_ping_init","\n"
-		"function pg_ping_init(l,i)\n"
-		"    {\n"
-		"    l.tid=setInterval(pg_ping_send,i,l);\n"
-		"    }\n"
-		"\n",0);
-	
-	htrAddScriptFunction(s, "pg_ping_recieve","\n"
-		"function pg_ping_recieve()\n"
-		"    {\n"
-		"    if(this.document.links[0].target!=='OK')\n"
-		"        {\n"
-		"        clearInterval(this.tid);\n"
-		"        confirm('you have been disconnected from the server');\n"
-		"        }\n"
-		"    }\n"
-		"\n",0);
-
-	htrAddScriptFunction(s, "pg_ping_send","\n"
-		"function pg_ping_send(p)\n"
-		"    {\n"
-		"    //confirm('sending');\n"
-		"    p.onload=pg_ping_recieve;\n"
-		"    p.src='/INTERNAL/ping';\n"
-		"    }\n"
-		"\n",0);
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
 	htrAddScriptInit_va(s,"    pg_ping_init(%s.layers.pgping,%i);\n",parentname,watchdogtimer/2*1000);
@@ -476,250 +454,6 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 	htrAddScriptInit_va(s, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",t.msfocus1,t.msfocus2);
 	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",t.dtfocus1,t.dtfocus2);
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
-
-	/** Function to set modal mode to a layer. **/
-	htrAddScriptFunction(s, "pg_setmodal", "\n"
-		"function pg_setmodal(l)\n"
-		"    {\n"
-		"    pg_modallayer = l;\n"
-		"    }\n", 0);
-
-	/** Function to find out whether image or layer is in a layer **/
-	htrAddScriptFunction(s, "pg_isinlayer", "\n"
-		"function pg_isinlayer(outer,inner)\n"
-		"    {\n"
-		"    if (inner == outer) return true;\n"
-		"    if(!outer) return true;\n"
-		"    if(!inner) return false;\n"
-		"    var i = 0;\n"
-		"    for(i=0;i<outer.layers.length;i++)\n"
-		"        {\n"
-		"        if (outer.layers[i] == inner) return true;\n"
-		"        if (pg_isinlayer(outer.layers[i], inner)) return true;\n"
-		"        }\n"
-		"    for(i=0;i<outer.document.images.length;i++)\n"
-		"        {\n"
-		"        if (outer.document.images[i] == inner) return true;\n"
-		"        }\n"
-		"    return false;\n"
-		"    }\n", 0);
-
-	/** Function to make four layers into a box **/
-	htrAddScriptFunction(s, "pg_mkbox", "\n"
-		"function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)\n"
-		"    {\n"
-		"    tl.visibility = 'hidden';\n"
-		"    bl.visibility = 'hidden';\n"
-		"    rl.visibility = 'hidden';\n"
-		"    ll.visibility = 'hidden';\n"
-		"    tl.bgColor = c1;\n"
-		"    ll.bgColor = c1;\n"
-		"    bl.bgColor = c2;\n"
-		"    rl.bgColor = c2;\n"
-		"    tl.resizeTo(w,1);\n"
-		"    tl.moveAbove(pl);\n"
-		"    tl.moveToAbsolute(x,y);\n"
-		"    tl.zIndex = z;\n"
-		"    bl.resizeTo(w+s-1,1);\n"
-		"    bl.moveAbove(pl);\n"
-		"    bl.moveToAbsolute(x,y+h-s+1);\n"
-		"    bl.zIndex = z;\n"
-		"    ll.resizeTo(1,h);\n"
-		"    ll.moveAbove(pl);\n"
-		"    ll.moveToAbsolute(x,y);\n"
-		"    ll.zIndex = z;\n"
-		"    rl.resizeTo(1,h+1);\n"
-		"    rl.moveAbove(pl);\n"
-		"    rl.moveToAbsolute(x+w-s+1,y);\n"
-		"    rl.zIndex = z;\n"
-		"    tl.visibility = 'inherit';\n"
-		"    bl.visibility = 'inherit';\n"
-		"    rl.visibility = 'inherit';\n"
-		"    ll.visibility = 'inherit';\n"
-		"    return;\n"
-		"    }\n", 0);
-
-	/** To hide a box **/
-	htrAddScriptFunction(s, "pg_hidebox", "\n"
-		"function pg_hidebox(tl,bl,rl,ll)\n"
-		"    {\n"
-		"    tl.visibility = 'hidden';\n"
-		"    bl.visibility = 'hidden';\n"
-		"    rl.visibility = 'hidden';\n"
-		"    ll.visibility = 'hidden';\n"
-		"    tl.moveAbove(document.layers.pgtvl);\n"
-		"    bl.moveAbove(document.layers.pgtvl);\n"
-		"    rl.moveAbove(document.layers.pgtvl);\n"
-		"    ll.moveAbove(document.layers.pgtvl);\n"
-		"    return;\n"
-		"    }\n", 0);
-
-	/** Function to make a new clickable "area" **INTERNAL** **/
-	htrAddScriptFunction(s, "pg_area", "\n"
-		"function pg_area(pl,x,y,w,h,cls,nm,f)\n"
-		"    {\n"
-		"    this.layer = pl;\n"
-		"    this.x = x;\n"
-		"    this.y = y;\n"
-		"    this.width = w;\n"
-		"    this.height = h;\n"
-		"    this.name = nm;\n"
-		"    this.cls = cls;\n"
-		"    this.flags = f;\n"
-		"    return this;\n"
-		"    }\n", 0);
-
-	/** Function to add a new area to the arealist **/
-	htrAddScriptFunction(s, "pg_addarea", "\n"
-		"function pg_addarea(pl,x,y,w,h,cls,nm,f)\n"
-		"    {\n"
-		"    a = new pg_area(pl,x,y,w,h,cls,nm,f);\n"
-		"    pg_arealist.splice(0,0,a);\n"
-		"    return a;\n"
-		"    }\n", 0);
-
-	/** Function to remove an existing area... **/
-	htrAddScriptFunction(s, "pg_removearea", "\n"
-		"function pg_removearea(a)\n"
-		"    {\n"
-		"    for(i=0;i<pg_arealist.length;i++)\n"
-		"        {\n"
-		"        if (pg_arealist[i] == a)\n"
-		"            {\n"
-		"            pg_arealist.splice(i,1);\n"
-		"            return 1;\n"
-		"            }\n"
-		"        }\n"
-		"    return 0;\n"
-		"    }\n", 0);
-
-	/** Add a universal resize manager function. **/
-	htrAddScriptFunction(s, "pg_resize", "\n"
-		"function pg_resize(l)\n"
-		"    {\n"
-		"    maxheight=0;\n"
-		"    maxwidth=0;\n"
-		"    for(i=0;i<l.document.layers.length;i++)\n"
-		"        {\n"
-		"        cl = l.document.layers[i];\n"
-		"        if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.y + cl.clip.height > maxheight)\n"
-		"            maxheight = cl.y + cl.clip.height;\n"
-		"        if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.x + cl.clip.width > maxwidth)\n"
-		"            maxwidth = cl.x + cl.clip.width;\n"
-		"        }\n"
-		"    if (l.maxheight && maxheight > l.maxheight) maxheight = l.maxheight;\n"
-		"    if (l.minheight && maxheight < l.minheight) maxheight = l.minheight;\n"
-		"    if (l!=window) l.clip.height = maxheight;\n"
-		"    else l.document.height = maxheight;\n"
-		"    if (l.maxwidth && maxwidth > l.maxwidth) maxwidth = l.maxwidth;\n"
-		"    if (l.minwidth && maxwidth < l.minwidth) maxwidth = l.minwidth;\n"
-		"    if (l!=window) l.clip.width = maxwidth;\n"
-		"    else l.document.width = maxwidth;\n"
-		"    }\n", 0);
-
-	/** Add a universal "is visible" function that handles inherited visibility. **/
-	htrAddScriptFunction(s, "pg_isvisible", "\n"
-		"function pg_isvisible(l)\n"
-		"    {\n"
-		"    if (l.visibility == 'show') return 1;\n"
-		"    else if (l.visibility == 'hidden') return 0;\n"
-		"    else if (l == window || l.parentLayer == null) return 1;\n"
-		"    else return pg_isvisible(l.parentLayer);\n"
-		"    }\n", 0);
-
-	/** Cursor flash **/
-	htrAddScriptFunction(s, "pg_togglecursor", "\n"
-		"function pg_togglecursor()\n"
-		"    {\n"
-		"    if (pg_curkbdlayer != null && pg_curkbdlayer.cursorlayer != null)\n"
-		"        {\n"
-		"        if (pg_curkbdlayer.cursorlayer.visibility != 'inherit')\n"
-		"            pg_curkbdlayer.cursorlayer.visibility = 'inherit';\n"
-		"        else\n"
-		"            pg_curkbdlayer.cursorlayer.visibility = 'hidden';\n"
-		"        }\n"
-		"    setTimeout(pg_togglecursor,333);\n"
-		"    }\n", 0);
-	htrAddScriptInit(s, "    pg_togglecursor();\n");
-
-	/** Keyboard input handling **/
-	htrAddScriptFunction(s, "pg_addkey", "\n"
-		"function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam)\n"
-		"    {\n"
-		"    kd = new Object();\n"
-		"    kd.startcode = s;\n"
-		"    kd.endcode = e;\n"
-		"    kd.mod = mod;\n"
-		"    kd.modmask = modmask;\n"
-		"    kd.mouselayer = mlayer;\n"
-		"    kd.kbdlayer = klayer;\n"
-		"    kd.target_obj = tgt;\n"
-		"    kd.fnname = 'Action' + action;\n"
-		"    kd.aparam = aparam;\n"
-		"    pg_keylist.splice(0,0,kd);\n"
-		"    pg_keylist.sort(pg_cmpkey);\n"
-		"    return kd;\n"
-		"    }\n", 0);
-	htrAddScriptFunction(s, "pg_cmpkey", "\n"
-		"function pg_cmpkey(k1,k2)\n"
-		"    {\n"
-		"    return (k1.endcode-k1.startcode) - (k2.endcode-k2.startcode);\n"
-		"    }\n", 0);
-	htrAddScriptFunction(s, "pg_removekey", "\n"
-		"function pg_removekey(kd)\n"
-		"    {\n"
-		"    for(i=0;i<pg_keylist.length;i++)\n"
-		"        {\n"
-		"        if (pg_keylist[i] == kd)\n"
-		"            {\n"
-		"            pg_keylist.splice(i,1);\n"
-		"            return 1;\n"
-		"            }\n"
-		"        }\n"
-		"    return 0;\n"
-		"    }\n", 0);
-	htrAddScriptFunction(s, "pg_keytimeout", "\n"
-		"function pg_keytimeout()\n"
-		"    {\n"
-		"    if (pg_lastkey != -1)\n"
-		"        {\n"
-		"        e = new Object();\n"
-		"        e.which = pg_lastkey;\n"
-		"        e.modifiers = pg_lastmodifiers;\n"
-		"        pg_keyhandler(pg_lastkey, pg_lastmodifiers, e);\n"
-		"        delete e;\n"
-		"        pg_keytimeoutid = setTimeout(pg_keytimeout, 50);\n"
-		"        }\n"
-		"    }\n", 0);
-
-	htrAddEventHandler(s, "document", "KEYDOWN", "pg",
-		"    k = e.which;\n"
-		"    if (k > 65280) k -= 65280;\n"
-		"    if (k >= 128) k -= 128;\n"
-		"    if (k == pg_lastkey) return false;\n"
-		"    pg_lastkey = k;\n"
-		"    /*pg_togglecursor();*/\n"
-		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
-		"    pg_keytimeoutid = setTimeout(pg_keytimeout, 200);\n"
-		"    return pg_keyhandler(k, e.modifiers, e);\n");
-
-	htrAddScriptFunction(s, "pg_keyhandler", "\n"
-		"function pg_keyhandler(k,m,e)\n"
-		"    {\n"
-		"    pg_lastmodifiers = m;\n"
-		"    if (pg_curkbdlayer != null && pg_curkbdlayer.keyhandler != null && pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) return false;\n"
-		"    for(i=0;i<pg_keylist.length;i++)\n"
-		"        {\n"
-		"        if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (m & pg_keylist[i].modmask) == pg_keylist[i].mod)\n"
-		"            {\n"
-		"            pg_keylist[i].aparam.KeyCode = k;\n"
-		"            pg_keylist[i].target_obj[pg_keylist[i].fnname](pg_keylist[i].aparam);\n"
-		"            return false;\n"
-		"            }\n"
-		"        }\n"
-		"    return false;\n"
-		"    }\n", 0);
-
 
 	htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
 
