@@ -1,4 +1,4 @@
-## $Id: Makefile,v 1.4 2002/03/23 06:25:09 gbeeley Exp $
+## $Id: Makefile,v 1.5 2002/03/23 18:34:35 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Attic/Makefile,v $
 ##
 ## Centrallix-Lib Makefile
@@ -56,3 +56,4 @@ clean:
 depend:
 	makedepend -I include -f .depend src/*.c 2>/dev/null
 
+include .depend

@@ -1,0 +1,260 @@
+# DO NOT DELETE
+
+src/bdqs_transport.o: /usr/include/stdio.h /usr/include/features.h
+src/bdqs_transport.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/bdqs_transport.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/bdqs_transport.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/bdqs_transport.o: /usr/include/bits/types.h /usr/include/libio.h
+src/bdqs_transport.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/bdqs_transport.o: /usr/include/string.h /usr/include/fcntl.h
+src/bdqs_transport.o: /usr/include/bits/fcntl.h /usr/include/sys/types.h
+src/bdqs_transport.o: /usr/include/time.h /usr/include/endian.h
+src/bdqs_transport.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+src/bdqs_transport.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+src/bdqs_transport.o: /usr/include/sys/sysmacros.h /usr/include/unistd.h
+src/bdqs_transport.o: /usr/include/bits/posix_opt.h
+src/bdqs_transport.o: /usr/include/bits/confname.h /usr/include/getopt.h
+src/bdqs_transport.o: /usr/include/stdlib.h /usr/include/alloca.h
+src/bdqs_transport.o: include/bdqs.h include/mtask.h /usr/include/setjmp.h
+src/bdqs_transport.o: /usr/include/bits/setjmp.h /usr/include/sys/socket.h
+src/bdqs_transport.o: /usr/include/bits/socket.h /usr/include/limits.h
+src/bdqs_transport.o: /usr/include/bits/posix1_lim.h
+src/bdqs_transport.o: /usr/include/bits/local_lim.h
+src/bdqs_transport.o: /usr/include/linux/limits.h
+src/bdqs_transport.o: /usr/include/bits/posix2_lim.h
+src/bdqs_transport.o: /usr/include/bits/sockaddr.h /usr/include/asm/socket.h
+src/bdqs_transport.o: /usr/include/asm/sockios.h /usr/include/netinet/in.h
+src/bdqs_transport.o: /usr/include/stdint.h /usr/include/bits/wordsize.h
+src/bdqs_transport.o: /usr/include/bits/in.h /usr/include/bits/byteswap.h
+src/bdqs_transport.o: include/xarray.h include/xstring.h include/xhash.h
+src/bdqs_transport.o: include/mtsession.h include/newmalloc.h
+src/mtask.o: /usr/include/stdio.h /usr/include/features.h
+src/mtask.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/mtask.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/mtask.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/mtask.o: /usr/include/bits/types.h /usr/include/libio.h
+src/mtask.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/mtask.o: /usr/include/string.h /usr/include/fcntl.h
+src/mtask.o: /usr/include/bits/fcntl.h /usr/include/sys/types.h
+src/mtask.o: /usr/include/time.h /usr/include/endian.h
+src/mtask.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+src/mtask.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+src/mtask.o: /usr/include/sys/sysmacros.h /usr/include/sys/time.h
+src/mtask.o: /usr/include/bits/time.h /usr/include/unistd.h
+src/mtask.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+src/mtask.o: /usr/include/getopt.h /usr/include/stdlib.h
+src/mtask.o: /usr/include/alloca.h /usr/include/errno.h
+src/mtask.o: /usr/include/bits/errno.h /usr/include/linux/errno.h
+src/mtask.o: /usr/include/asm/errno.h /usr/include/sys/times.h
+src/mtask.o: /usr/include/sys/mman.h /usr/include/bits/mman.h
+src/mtask.o: /usr/include/termios.h /usr/include/bits/termios.h
+src/mtask.o: /usr/include/sys/ttydefaults.h /usr/include/netdb.h
+src/mtask.o: /usr/include/rpc/netdb.h /usr/include/sys/socket.h
+src/mtask.o: /usr/include/bits/socket.h /usr/include/limits.h
+src/mtask.o: /usr/include/bits/posix1_lim.h /usr/include/bits/local_lim.h
+src/mtask.o: /usr/include/linux/limits.h /usr/include/bits/posix2_lim.h
+src/mtask.o: /usr/include/bits/sockaddr.h /usr/include/asm/socket.h
+src/mtask.o: /usr/include/asm/sockios.h /usr/include/signal.h
+src/mtask.o: /usr/include/bits/signum.h /usr/include/bits/siginfo.h
+src/mtask.o: /usr/include/bits/sigaction.h /usr/include/bits/sigcontext.h
+src/mtask.o: /usr/include/asm/sigcontext.h /usr/include/bits/sigstack.h
+src/mtask.o: /usr/include/sys/ioctl.h /usr/include/bits/ioctls.h
+src/mtask.o: /usr/include/asm/ioctls.h /usr/include/asm/ioctl.h
+src/mtask.o: /usr/include/bits/ioctl-types.h /usr/include/netinet/in.h
+src/mtask.o: /usr/include/stdint.h /usr/include/bits/wordsize.h
+src/mtask.o: /usr/include/bits/in.h /usr/include/bits/byteswap.h
+src/mtask.o: /usr/include/arpa/inet.h include/newmalloc.h include/mtask.h
+src/mtask.o: /usr/include/setjmp.h /usr/include/bits/setjmp.h
+src/mtlexer.o: /usr/include/stdio.h /usr/include/features.h
+src/mtlexer.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/mtlexer.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/mtlexer.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/mtlexer.o: /usr/include/bits/types.h /usr/include/libio.h
+src/mtlexer.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/mtlexer.o: /usr/include/string.h /usr/include/fcntl.h
+src/mtlexer.o: /usr/include/bits/fcntl.h /usr/include/sys/types.h
+src/mtlexer.o: /usr/include/time.h /usr/include/endian.h
+src/mtlexer.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+src/mtlexer.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+src/mtlexer.o: /usr/include/sys/sysmacros.h /usr/include/unistd.h
+src/mtlexer.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+src/mtlexer.o: /usr/include/getopt.h /usr/include/stdlib.h
+src/mtlexer.o: /usr/include/alloca.h include/newmalloc.h include/mtask.h
+src/mtlexer.o: /usr/include/setjmp.h /usr/include/bits/setjmp.h
+src/mtlexer.o: /usr/include/sys/socket.h /usr/include/bits/socket.h
+src/mtlexer.o: /usr/include/limits.h /usr/include/bits/posix1_lim.h
+src/mtlexer.o: /usr/include/bits/local_lim.h /usr/include/linux/limits.h
+src/mtlexer.o: /usr/include/bits/posix2_lim.h /usr/include/bits/sockaddr.h
+src/mtlexer.o: /usr/include/asm/socket.h /usr/include/asm/sockios.h
+src/mtlexer.o: /usr/include/netinet/in.h /usr/include/stdint.h
+src/mtlexer.o: /usr/include/bits/wordsize.h /usr/include/bits/in.h
+src/mtlexer.o: /usr/include/bits/byteswap.h include/mtlexer.h
+src/mtlexer.o: include/mtsession.h include/xarray.h include/xstring.h
+src/mtlexer.o: include/xhash.h include/magic.h
+src/mtsession.o: /usr/include/stdio.h /usr/include/features.h
+src/mtsession.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/mtsession.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/mtsession.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/mtsession.o: /usr/include/bits/types.h /usr/include/libio.h
+src/mtsession.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/mtsession.o: /usr/include/string.h /usr/include/fcntl.h
+src/mtsession.o: /usr/include/bits/fcntl.h /usr/include/sys/types.h
+src/mtsession.o: /usr/include/time.h /usr/include/endian.h
+src/mtsession.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+src/mtsession.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+src/mtsession.o: /usr/include/sys/sysmacros.h /usr/include/unistd.h
+src/mtsession.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+src/mtsession.o: /usr/include/getopt.h /usr/include/pwd.h
+src/mtsession.o: /usr/include/shadow.h /usr/include/paths.h
+src/mtsession.o: /usr/include/errno.h /usr/include/bits/errno.h
+src/mtsession.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+src/mtsession.o: /usr/include/syslog.h /usr/include/sys/syslog.h
+src/mtsession.o: include/mtask.h /usr/include/setjmp.h
+src/mtsession.o: /usr/include/bits/setjmp.h /usr/include/sys/socket.h
+src/mtsession.o: /usr/include/bits/socket.h /usr/include/limits.h
+src/mtsession.o: /usr/include/bits/posix1_lim.h /usr/include/bits/local_lim.h
+src/mtsession.o: /usr/include/linux/limits.h /usr/include/bits/posix2_lim.h
+src/mtsession.o: /usr/include/bits/sockaddr.h /usr/include/asm/socket.h
+src/mtsession.o: /usr/include/asm/sockios.h /usr/include/netinet/in.h
+src/mtsession.o: /usr/include/stdint.h /usr/include/bits/wordsize.h
+src/mtsession.o: /usr/include/bits/in.h /usr/include/bits/byteswap.h
+src/mtsession.o: include/mtlexer.h include/newmalloc.h include/mtsession.h
+src/mtsession.o: include/xarray.h include/xstring.h include/xhash.h
+src/net_raw_api.o: /usr/include/stdio.h /usr/include/features.h
+src/net_raw_api.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/net_raw_api.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/net_raw_api.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/net_raw_api.o: /usr/include/bits/types.h /usr/include/libio.h
+src/net_raw_api.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/net_raw_api.o: /usr/include/string.h /usr/include/fcntl.h
+src/net_raw_api.o: /usr/include/bits/fcntl.h /usr/include/sys/types.h
+src/net_raw_api.o: /usr/include/time.h /usr/include/endian.h
+src/net_raw_api.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+src/net_raw_api.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+src/net_raw_api.o: /usr/include/sys/sysmacros.h /usr/include/unistd.h
+src/net_raw_api.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+src/net_raw_api.o: /usr/include/getopt.h /usr/include/errno.h
+src/net_raw_api.o: /usr/include/bits/errno.h /usr/include/linux/errno.h
+src/net_raw_api.o: /usr/include/asm/errno.h include/mtask.h
+src/net_raw_api.o: /usr/include/setjmp.h /usr/include/bits/setjmp.h
+src/net_raw_api.o: /usr/include/sys/socket.h /usr/include/bits/socket.h
+src/net_raw_api.o: /usr/include/limits.h /usr/include/bits/posix1_lim.h
+src/net_raw_api.o: /usr/include/bits/local_lim.h /usr/include/linux/limits.h
+src/net_raw_api.o: /usr/include/bits/posix2_lim.h
+src/net_raw_api.o: /usr/include/bits/sockaddr.h /usr/include/asm/socket.h
+src/net_raw_api.o: /usr/include/asm/sockios.h /usr/include/netinet/in.h
+src/net_raw_api.o: /usr/include/stdint.h /usr/include/bits/wordsize.h
+src/net_raw_api.o: /usr/include/bits/in.h /usr/include/bits/byteswap.h
+src/net_raw_api.o: include/mtsession.h include/xarray.h include/xstring.h
+src/net_raw_api.o: include/xhash.h include/mtlexer.h include/exception.h
+src/net_raw_api.o: include/datatypes.h include/stparse.h
+src/net_raw_api.o: include/net_raw_api.h
+src/newmalloc.o: /usr/include/unistd.h /usr/include/features.h
+src/newmalloc.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/newmalloc.o: /usr/include/bits/posix_opt.h /usr/include/bits/types.h
+src/newmalloc.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/newmalloc.o: /usr/include/bits/confname.h /usr/include/getopt.h
+src/newmalloc.o: /usr/include/stdio.h
+src/newmalloc.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/newmalloc.o: /usr/include/libio.h /usr/include/_G_config.h
+src/newmalloc.o: /usr/include/bits/stdio_lim.h /usr/include/string.h
+src/newmalloc.o: /usr/include/stdlib.h /usr/include/sys/types.h
+src/newmalloc.o: /usr/include/time.h /usr/include/endian.h
+src/newmalloc.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+src/newmalloc.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+src/newmalloc.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+src/newmalloc.o: include/magic.h
+src/stparse.o: /usr/include/stdio.h /usr/include/features.h
+src/stparse.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/stparse.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/stparse.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/stparse.o: /usr/include/bits/types.h /usr/include/libio.h
+src/stparse.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/stparse.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
+src/stparse.o: /usr/include/bits/confname.h /usr/include/getopt.h
+src/stparse.o: /usr/include/fcntl.h /usr/include/bits/fcntl.h
+src/stparse.o: /usr/include/sys/types.h /usr/include/time.h
+src/stparse.o: /usr/include/endian.h /usr/include/bits/endian.h
+src/stparse.o: /usr/include/sys/select.h /usr/include/bits/select.h
+src/stparse.o: /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h
+src/stparse.o: /usr/include/string.h include/mtask.h /usr/include/setjmp.h
+src/stparse.o: /usr/include/bits/setjmp.h /usr/include/sys/socket.h
+src/stparse.o: /usr/include/bits/socket.h /usr/include/limits.h
+src/stparse.o: /usr/include/bits/posix1_lim.h /usr/include/bits/local_lim.h
+src/stparse.o: /usr/include/linux/limits.h /usr/include/bits/posix2_lim.h
+src/stparse.o: /usr/include/bits/sockaddr.h /usr/include/asm/socket.h
+src/stparse.o: /usr/include/asm/sockios.h /usr/include/netinet/in.h
+src/stparse.o: /usr/include/stdint.h /usr/include/bits/wordsize.h
+src/stparse.o: /usr/include/bits/in.h /usr/include/bits/byteswap.h
+src/stparse.o: include/mtlexer.h include/exception.h include/stparse.h
+src/stparse.o: include/mtsession.h include/xarray.h include/xstring.h
+src/stparse.o: include/xhash.h include/newmalloc.h
+src/xarray.o: /usr/include/stdio.h /usr/include/features.h
+src/xarray.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/xarray.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/xarray.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/xarray.o: /usr/include/bits/types.h /usr/include/libio.h
+src/xarray.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/xarray.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
+src/xarray.o: /usr/include/bits/confname.h /usr/include/getopt.h
+src/xarray.o: /usr/include/fcntl.h /usr/include/bits/fcntl.h
+src/xarray.o: /usr/include/sys/types.h /usr/include/time.h
+src/xarray.o: /usr/include/endian.h /usr/include/bits/endian.h
+src/xarray.o: /usr/include/sys/select.h /usr/include/bits/select.h
+src/xarray.o: /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h
+src/xarray.o: /usr/include/string.h include/xarray.h include/newmalloc.h
+src/xhash.o: /usr/include/stdio.h /usr/include/features.h
+src/xhash.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/xhash.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/xhash.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/xhash.o: /usr/include/bits/types.h /usr/include/libio.h
+src/xhash.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/xhash.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
+src/xhash.o: /usr/include/bits/confname.h /usr/include/getopt.h
+src/xhash.o: /usr/include/fcntl.h /usr/include/bits/fcntl.h
+src/xhash.o: /usr/include/sys/types.h /usr/include/time.h
+src/xhash.o: /usr/include/endian.h /usr/include/bits/endian.h
+src/xhash.o: /usr/include/sys/select.h /usr/include/bits/select.h
+src/xhash.o: /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h
+src/xhash.o: /usr/include/string.h include/xhash.h include/xarray.h
+src/xhash.o: include/newmalloc.h
+src/xhashqueue.o: /usr/include/stdio.h /usr/include/features.h
+src/xhashqueue.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/xhashqueue.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/xhashqueue.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/xhashqueue.o: /usr/include/bits/types.h /usr/include/libio.h
+src/xhashqueue.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/xhashqueue.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
+src/xhashqueue.o: /usr/include/bits/confname.h /usr/include/getopt.h
+src/xhashqueue.o: /usr/include/fcntl.h /usr/include/bits/fcntl.h
+src/xhashqueue.o: /usr/include/sys/types.h /usr/include/time.h
+src/xhashqueue.o: /usr/include/endian.h /usr/include/bits/endian.h
+src/xhashqueue.o: /usr/include/sys/select.h /usr/include/bits/select.h
+src/xhashqueue.o: /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h
+src/xhashqueue.o: /usr/include/string.h include/xhashqueue.h include/xhash.h
+src/xhashqueue.o: include/xarray.h include/mtask.h /usr/include/setjmp.h
+src/xhashqueue.o: /usr/include/bits/setjmp.h /usr/include/sys/socket.h
+src/xhashqueue.o: /usr/include/bits/socket.h /usr/include/limits.h
+src/xhashqueue.o: /usr/include/bits/posix1_lim.h
+src/xhashqueue.o: /usr/include/bits/local_lim.h /usr/include/linux/limits.h
+src/xhashqueue.o: /usr/include/bits/posix2_lim.h /usr/include/bits/sockaddr.h
+src/xhashqueue.o: /usr/include/asm/socket.h /usr/include/asm/sockios.h
+src/xhashqueue.o: /usr/include/netinet/in.h /usr/include/stdint.h
+src/xhashqueue.o: /usr/include/bits/wordsize.h /usr/include/bits/in.h
+src/xhashqueue.o: /usr/include/bits/byteswap.h include/mtsession.h
+src/xhashqueue.o: include/xstring.h include/newmalloc.h
+src/xstring.o: /usr/include/stdio.h /usr/include/features.h
+src/xstring.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+src/xstring.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+src/xstring.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+src/xstring.o: /usr/include/bits/types.h /usr/include/libio.h
+src/xstring.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+src/xstring.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
+src/xstring.o: /usr/include/bits/confname.h /usr/include/getopt.h
+src/xstring.o: /usr/include/fcntl.h /usr/include/bits/fcntl.h
+src/xstring.o: /usr/include/sys/types.h /usr/include/time.h
+src/xstring.o: /usr/include/endian.h /usr/include/bits/endian.h
+src/xstring.o: /usr/include/sys/select.h /usr/include/bits/select.h
+src/xstring.o: /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h
+src/xstring.o: /usr/include/string.h /usr/include/stdlib.h
+src/xstring.o: /usr/include/alloca.h include/xstring.h include/newmalloc.h
