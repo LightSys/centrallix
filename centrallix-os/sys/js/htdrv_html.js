@@ -56,7 +56,7 @@ function ht_showtext(aparam)
 	{
 	newtxt = this.mainlayer.content;
 	}
-    htr_writecontent(this, newtxt);
+    htr_write_content(this, newtxt);
     setClipHeight(this, getdocHeight(this));
     pg_resize(this.mainlayer.parentLayer);
     }
