@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.6 2002/07/12 14:56:27 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.7 2002/07/15 18:16:39 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.7  2002/07/15 18:16:39  lkehresman
+    * Removed some flickering
+    * Fixed a couple minor bugs with invalid dates
+
     Revision 1.6  2002/07/12 14:56:27  lkehresman
     Added a *simple* fix for invalid dates stored in the database.  This needs
     to be expanded in the future, but now it at least doesn't throw javascript
@@ -244,15 +248,17 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/** Clear Value function **/
 	htrAddScriptFunction(s, "dt_clearvalue", "\n"
 		"function dt_clearvalue() {\n"
-		"   this.wdate = new Date(this.initialdateStr);\n"
-		"   this.tmpdate = new Date(this.initialdateStr);\n"
-		"   dt_drawdate(this.lbdy, this.tmpdate);\n"
+		"   this.wdate = new Date('');\n"
+		"   this.tmpdate = new Date('');\n"
+		"   dt_drawdate(this.lbdy, '');\n"
 		"}\n", 0);
 
 	/** Reset Value function **/
 	htrAddScriptFunction(s, "dt_resetvalue", "\n"
 		"function dt_resetvalue() {\n"
-		"   this.clearvalue();\n"
+		"   this.wdate = new Date(this.initialdateStr);\n"
+		"   this.tmpdate = new Date(this.initialdateStr);\n"
+		"   dt_drawdate(this.lbdy, this.tmpdate);\n"
 		"}\n", 0);
 
 	/** Enable function **/
@@ -413,10 +419,10 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"  </TABLE></BODY>\n"
 		"</DIV><DIV ID=\"dt%dbg3\">\n"
 		"  <BODY bgcolor=\"#7a7a7a\"></BODY>\n"
-		"</DIV><DIV ID=\"dt%dbody\">\n"
-		"  <TABLE border=0 cellspacing=0 cellpadding=0 %s width=%d height=%d>\n"
+		"</DIV><DIV ID=\"dt%dbody\"><BODY %s>\n"
+		"  <TABLE border=0 cellspacing=0 cellpadding=0 width=%d height=%d>\n"
 		"  <TR><TD align=center valign=middle nowrap></TD>\n"
-		"  </TABLE>\n"
+		"  </TABLE></BODY>\n"
 		"</DIV><DIV ID=\"dt%dimg\">\n"
 		"  <TABLE border=0 cellspacing=0 cellpadding=0 %s width=18 height=%d>\n"
 		"  <TD valign=middle align=right><img src=/sys/images/ico17.gif></TD></TR>\n"
@@ -581,7 +587,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    {\n"
 		"    l.document.write('<TABLE border=0 cellspacing=0 cellpadding=0 '+l.document.layer.colorBG+' width='+(l.document.layer.w-20)+' height='+(l.document.layer.h-2)+'>');\n"
 		"    l.document.write('<TR><TD align=center valign=middle nowrap><FONT color=\"'+l.document.layer.colorFG+'\">');\n"
-		"    l.document.write(dt_formatdate(l.document.layer, d, 0));\n"
+		"    if (d && d != 'Invalid Date')\n"
+		"        l.document.write(dt_formatdate(l.document.layer, d, 0));\n"
 		"    l.document.write('</FONT></TD></TR></TABLE>');\n"
 		"    l.document.close();\n"
 		"    }\n", 0);
