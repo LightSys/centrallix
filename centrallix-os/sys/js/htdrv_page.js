@@ -201,10 +201,12 @@ function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam)
     pg_keylist.sort(pg_cmpkey);
     return kd;
     }
+    
 function pg_cmpkey(k1,k2)
     {
     return (k1.endcode-k1.startcode) - (k2.endcode-k2.startcode);
     }
+    
 function pg_removekey(kd)
     {
     for(i=0;i<pg_keylist.length;i++)
@@ -217,6 +219,7 @@ function pg_removekey(kd)
 	}
     return 0;
     }
+    
 function pg_keytimeout()
     {
     if (pg_lastkey != -1)
