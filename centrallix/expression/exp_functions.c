@@ -56,12 +56,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.1 2001/08/13 18:00:48 gbeeley Exp $
+    $Id: exp_functions.c,v 1.2 2001/09/25 18:02:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
-    Revision 1.1  2001/08/13 18:00:48  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/25 18:02:34  gbeeley
+    Added replicate() SQL function.
+
+    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:30:53  gbeeley
     Centrallix Core Initial Import
@@ -560,6 +563,61 @@ int exp_fn_isnull(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
         default: memcpy(&(tree->Types), &(i0->Types), sizeof(tree->Types));
 	}
     tree->DataType = i0->DataType;
+    return 0;
+    }
+
+int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int nl,n,l;
+    char* ptr;
+    int i;
+    
+    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || (i1->DataType != DATA_T_INTEGER && i1->DataType != DATA_T_DOUBLE))
+        {
+	mssError(1,"EXP","replicate() requires a string and a numeric parameter");
+	return -1;
+	}
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i1->DataType == DATA_T_INTEGER && i1->Integer < 0) || (i1->DataType == DATA_T_DOUBLE && i1->Types.Double < 0))
+        {
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+
+    tree->DataType = DATA_T_STRING;
+    if (tree->Alloc && tree->String)
+	{
+	nmSysFree(tree->String);
+	tree->Alloc = 0;
+	}
+    if (i1->DataType == DATA_T_INTEGER)
+        {
+        n = (i1->Integer > 255)?255:i1->Integer;
+	}
+    else
+        {
+	n = i1->Types.Double + 0.0001;
+	n = (n > 255)?255:n;
+	}
+    nl = strlen(i0->String)*n;
+    if (nl <= 63)
+        {
+	tree->String = tree->Types.StringBuf;
+	}
+    else
+        {
+	tree->Alloc = 1;
+	tree->String = nmSysMalloc(nl+1);
+	}
+
+    ptr = tree->String;
+    l = strlen(i0->String);
+    ptr[0] = '\0';
+    if (l) for(i=0;i<n;i++)
+        {
+	strcpy(ptr,i0->String);
+	ptr += l;
+	}
     return 0;
     }
 
@@ -1097,6 +1155,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "substring", (char*)exp_fn_substring);
 	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
+	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
