@@ -1,0 +1,197 @@
+Document:  HTML Generation Subsystem Update Design Spec
+Author:    Greg Beeley (GRB)
+Date:      July 17th, 2002
+-------------------------------------------------------------------------------
+
+A.  OVERVIEW....
+
+    This document describes an important update to the HTMLGEN subsystem in
+    Centrallix.  This update will actually bring the HTMLGEN subsystem closer
+    to its original design (the current design is a simplified one), and will
+    allow for several important pieces of functionality which will greatly
+    extend the flexibility of the HTMLGEN subsystem and its widget modules.
+
+
+B.  BENEFITS....
+
+    The benefits of this update will be as follows:
+
+        1.  Composite widget support.  This will permit widgets to be
+	    functionally embedded within other widgets such that they are
+	    actually an operational part of the other widget.  An example
+	    of this is an editbox being used as a part of a combo dropdown
+	    list box or a combo date/time widget (where the value can be
+	    keyed in as well as selected from a dropdown list or calendar
+	    dialog).  Another example will be scrollbars.
+
+	2.  Auto-layout support.  Certain containers (such as menus) have
+	    intelligence about how items should be arranged within them.
+	    Thus, it is not meaningful for the app designer to specify
+	    absolute (x,y) positions for the contained subwidgets.  This
+	    update will allow the container to control certain aspects of
+	    the geometry and positioning of subwidgets.
+
+	3.  Auto-generated widgets.  Similarly to the composite widget
+	    support, this update will allow a widget to auto-generate needed
+	    subwidgets to enhance functionality.  An example of this might be
+	    the auto-generation of connectors where needed in order to 
+	    simplify application design, or the auto-generation of labels
+	    for editboxes and the like.
+
+	4.  Dynamically loadable widgets.  This will allow, for instance,
+	    a htmlwindow widget to be loaded from the server into the 
+	    running application without having to reload the page or jump to
+	    another page.  It will potentially also allow, for instance, a
+	    dynamic_server dropdown box or static table to be reloaded from
+	    the server, thus gaining new or changed data values.
+		
+		a.  NOTE: the browser-compatiblity/feasibility of this has
+		    *not* been tested.  Reloaded layers may or may not
+		    cooperate with the rest of the application.
+
+	5.  Dynamically created apps or app components.  This will allow,
+	    for instance, a property sheet to be auto-generated for an object
+	    based on that object's presentation hints and attribute list
+	    *alone*.  The intermediate htmlgen page rendering step will allow
+	    for this.
+
+	6.  Themed widget generation.  A theme registry will be created that
+	    will allow substitutions for some hard-coded values currently in
+	    the DHTML widget drivers, including defaults, images, and certain
+	    sizes.
+
+    The drawbacks to this update will be:
+
+	1.  Performance.  The performance of the htmlgen subsystem will be
+	    negatively affected due to the extra steps needed to build the
+	    necessary data structures.
+
+    I feel the benefits gained will outweigh the performance drawback, by
+    far.
+
+
+C.  DHTML GENERATION PROCESS CHANGE OVERVIEW....
+
+    Currently, the htmlgen subsystem uses two basic steps:
+
+	1.  Nested calling of drivers to convert the data from the
+	    objectsystem into the segmented page data (header, events, css
+	    layers, init, cleanup, body, variables, etc.)
+
+	2.  Outputting of the DHTML data, appropriately pieced together.
+
+    The updated htmlgen subsystem will be a bit more complex, but individual
+    widget drivers will not be more complex unless they need the functionality.
+
+    The new procedure will be as follows:
+
+	1.  The ht_render.c main subsystem file will read the app from the
+	    objectsystem and build a tree structure in memory of the entire
+	    app file, including widgets, types, subwidgets, and attributes.
+
+	2.  Starting at the topmost widget and working down through the
+	    tree depth-first, Verify() routines will be called for each 
+	    widget in the tree - for exmaple, the page driver's Verify()
+	    routine will be called first to handle the top-level page
+	    widget.  The Verify() routine may choose to do nothing (as
+	    it currently behaves), or it may choose to do the following:
+
+		a.  Do a quick sanity check on the widget attributes as
+		    needed, or on what subwidgets are or are not present
+		    in the in-memory tree.
+
+		b.  Set attribute values on subwidgets (as an intelligent
+		    container would do) in the in-memory tree (not in the
+		    objectsystem itself).
+
+		c.  Generate new widgets (such as connectors) into the
+		    in-memory tree which represents the app file.
+
+		d.  Generate new tightly-bound composite widgets into the
+		    in-memory tree, to be used specifically by the widget
+		    itself (such as an editbox within a calendar widget).
+		    More about the implications of this later...
+
+	3.  Whenever new widgets are added to the in-memory tree, they are
+	    slated to have Verify() routines called on them as well.  These
+	    Verify() calls may result in more widgets being added to the
+	    tree in memory; this is OK.  The process will continue until
+	    all widgets have been visited by a Verify() call.
+
+	4.  Nested calling of driver Render() methods to convert the data
+	    in the in-memory tree into the segmented page data (header,
+	    events, init, cleanup, layers, etc.).
+
+		a.  A new set of OSML-like API functions will be created to
+		    handle the GetAttrValue() needs.  
+		    
+		b.  A substantial search-and-replace operation will commence
+		    for all widget drivers to update them.
+
+	5.  Outputting of the DHTML data, appropriately pieced together.
+
+
+D.  OVERVIEW OF OTHER CHANGES....
+
+    In addition to this change in the generation/render process, a second
+    change will be made - when net_http receives a request for a widget 
+    other than a page or frameset, it will pass it on to the DHTML generation
+    subsystem to be rendered.  The htmlgen subsystem, recognizing that it is
+    not a full page but rather an individual widget, will not generate the
+    full page header and footer, but just that which is required for the
+    layer to be meaningfully loaded.
+
+    Finally, a theme registry will be created to allow widget modules to derive
+    defaults and other otherwise-hardcoded values from, thus allowing the look
+    and feel of the generated application to be changed without significantly
+    affecting the basic operation of the application (and usability of the .app
+    file as well).  The theme registry will consist of tabular data present in
+    the objectsystem, and pointed to by an entry in the centrallix.conf file
+    under a section labeled "ht_render".  A default theme will be specified in
+    centrallix.conf, but the theme may be selected by the application, and can
+    be overridden by the user.
+
+
+E.  IMPACT....
+
+    These changes will have the following impact:
+
+        1.  All widget drivers will need to be updated to use the htmlgen
+	    GetAttrValue() function instead of accessing the objectsystem
+	    directly.
+
+	2.  Widget objects (the w_obj) will no longer be passed into the
+	    widget drivers as "pObject" types, but rather as an in-memory
+	    tree structure node.
+
+	3.  Widget drivers will no longer use any direct OSML access calls to
+	    obtain attribute values or loop through subwidgets, but instead
+	    will use functions in the ht_render subsystem itself to do these
+	    things.  The functions will have a similar API to the OSML
+	    functions.
+
+	4.  The ht_render module will have to do some preparatory work on the
+	    app to move it from objectsystem to memory before any widget 
+	    drivers are called.
+
+	5.  The ht_render module will need to implement the logic to do the
+	    first Verify() stage before doing the Render() stage.
+
+	6.  The htmlgen subsystem will need to know not to do a full page
+	    rendering operation when told to render just a single subtree of
+	    widgets not comprising an entire application (more on this later).
+
+
+F.  COMPOSITE WIDGET INTERACTION
+
+    This update introduces composite widget support, or the facility to embed
+    one or more widgets logically within another so that the group of widgets
+    act as a single widget.  Here we'll take a look at how those widgets will
+    interact with one another.
+
+	1.  Server-Side Interaction.
+
+
+G.  DETAILS OF CHANGES....
+
+    
