@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.11 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.12 2002/05/03 01:40:55 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.12  2002/05/03 01:40:55  jheth
+    Defined fieldname size to be 60 (from 30) in ht_render.h - HT_FIELDNAME_SIZE
+
     Revision 1.11  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -119,7 +122,7 @@ int htcbVerify() {
 */
 int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
    char sbuf[HT_SBUF_SIZE];
-   char fieldname[30];
+   char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
    int id;
    char *ptr;
@@ -132,7 +135,7 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
    if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
       {
-      strncpy(fieldname,ptr,30);
+      strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
       }
    else 
       { 

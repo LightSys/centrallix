@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.12 2002/04/25 22:51:29 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.13 2002/05/03 01:40:56 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.13  2002/05/03 01:40:56  jheth
+    Defined fieldname size to be 60 (from 30) in ht_render.h - HT_FIELDNAME_SIZE
+
     Revision 1.12  2002/04/25 22:51:29  gbeeley
     Added vararg versions of some key htrAddThingyItem() type of routines
     so that all of this sbuf stuff doesn't have to be done, as we have
@@ -143,7 +146,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char* c1;
     char* c2;
     int maxchars;
-    char fieldname[30];
+    char fieldname[HT_FIELDNAME_SIZE];
 
     	/** Get an id for this. **/
 	id = (HTEB.idcnt++);
@@ -193,7 +196,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
 	    {
-	    strncpy(fieldname,ptr,30);
+	    strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
 	    }
 	else 
 	    { 
