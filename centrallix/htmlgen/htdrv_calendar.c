@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_calendar.c,v 1.2 2003/11/12 22:16:51 gbeeley Exp $
+    $Id: htdrv_calendar.c,v 1.3 2004/06/12 03:59:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_calendar.c,v $
 
     $Log: htdrv_calendar.c,v $
+    Revision 1.3  2004/06/12 03:59:00  gbeeley
+    - starting to implement tree linkages to link the DHTML widgets together
+      on the client in the same organization that they are in within the .app
+      file on the server.
+
     Revision 1.2  2003/11/12 22:16:51  gbeeley
     Trying to improve performance on calendar.
 
@@ -216,6 +221,10 @@ htcaRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    "\n"
 	    "    if (ly.kind == 'ca') cn_activate(ly, 'MouseMove');\n"
 	    "\n");
+
+	/** Set object parent **/
+	htrAddScriptInit_va(s, "    htr_set_parent(%s.layers.ca%dbase, \"%s\", %s);\n",
+		parentname, id, nptr, parentobj);
 
 	/** Script initialization call. **/
 	if (s->Capabilities.Dom0NS)

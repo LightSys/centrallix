@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.27 2004/05/07 01:19:18 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.28 2004/06/12 03:59:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.28  2004/06/12 03:59:00  gbeeley
+    - starting to implement tree linkages to link the DHTML widgets together
+      on the client in the same organization that they are in within the .app
+      file on the server.
+
     Revision 1.27  2004/05/07 01:19:18  gbeeley
     - Fixes and updates to checkbox widget including tri-state support and
       'enabled' property support
@@ -261,6 +266,10 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseMove');\n"
       "\n");
    
+   /** Set object parent **/
+   htrAddScriptInit_va(s, "    htr_set_parent(%s.cxSubElement('cb%dmain'), \"%s\", %s);\n",
+       parentname, id, nptr, parentobj);
+
    /** Script initialization call. **/
    if(s->Capabilities.Dom1HTML)
        {

@@ -288,6 +288,10 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     /** Script initialization call. **/
     htrAddScriptInit_va(s,"    %s = dd_init(%s.layers.dd%dbtn,%s.layers.dd%dbtn.document.layers.dd%dcon1,%s.layers.dd%dbtn.document.layers.dd%dcon2,'%s','%s','%s',%d,%d,'%s',%d,%d);\n", nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
 
+    /** Set object parent **/
+    htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
+	    nptr, nptr, parentobj);
+
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%dbtn\"><BODY bgcolor=\"%s\">\n", id,bgstr);
     htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
@@ -428,10 +432,15 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.40 2004/05/04 18:22:19 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.41 2004/06/12 03:59:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.41  2004/06/12 03:59:00  gbeeley
+    - starting to implement tree linkages to link the DHTML widgets together
+      on the client in the same organization that they are in within the .app
+      file on the server.
+
     Revision 1.40  2004/05/04 18:22:19  gbeeley
     - start of port of dropdown widget to W3C/IE
 

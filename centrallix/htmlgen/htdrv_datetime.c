@@ -204,6 +204,10 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 			parentname,id,id, 
 			initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
 
+	/** Set object parent **/
+	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
+		nptr, nptr, parentobj);
+
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\"><BODY %s>\n", id,bgcolor);
 	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
@@ -307,10 +311,15 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.26 2004/05/06 01:23:00 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.27 2004/06/12 03:59:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.27  2004/06/12 03:59:00  gbeeley
+    - starting to implement tree linkages to link the DHTML widgets together
+      on the client in the same organization that they are in within the .app
+      file on the server.
+
     Revision 1.26  2004/05/06 01:23:00  gbeeley
     - various enhancements/updates to datetime widget
 

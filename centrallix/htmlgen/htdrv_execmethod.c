@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.12 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_execmethod.c,v 1.13 2004/06/12 03:59:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.13  2004/06/12 03:59:00  gbeeley
+    - starting to implement tree linkages to link the DHTML widgets together
+      on the client in the same organization that they are in within the .app
+      file on the server.
+
     Revision 1.12  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -175,7 +180,11 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptInit_va(s, "    %s = ex_init('%s', '%s', '%s');\n", nptr, objname,
 	    methodname, methodparam);
 
-	/** Check for objects within the timer. **/
+	/** Set object parent **/
+	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
+		nptr, nptr, parentobj);
+
+	/** Check for objects within the exec method object. **/
 	snprintf(sbuf, HT_SBUF_SIZE, "%s.document",nptr);
 	snprintf(sbuf2,160,"%s",nptr);
 	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);

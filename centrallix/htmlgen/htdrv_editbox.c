@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.33 2004/03/25 03:08:54 jasonyip Exp $
+    $Id: htdrv_editbox.c,v 1.34 2004/06/12 03:59:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.34  2004/06/12 03:59:00  gbeeley
+    - starting to implement tree linkages to link the DHTML widgets together
+      on the client in the same organization that they are in within the .app
+      file on the server.
+
     Revision 1.33  2004/03/25 03:08:54  jasonyip
 
     Added htrGetBackground support for the table tag.
@@ -389,6 +394,10 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		parentname, id, id,
 		fieldname, is_readonly, main_bg);
 	    }
+
+	/** Set object parent **/
+	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
+		nptr, nptr, parentobj);
 
 	htrGetBackground(w_obj, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
 

@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.9 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_clock.c,v 1.10 2004/06/12 03:59:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.10  2004/06/12 03:59:00  gbeeley
+    - starting to implement tree linkages to link the DHTML widgets together
+      on the client in the same organization that they are in within the .app
+      file on the server.
+
     Revision 1.9  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -285,6 +290,10 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    "        if (ly.mainlayer.moveable && cl_move) ly.mainlayer.moveToAbsolute(e.pageX-cl_xOffset, e.pageY-cl_yOffset);\n"
 	    "        }\n"
 	    "\n");
+
+	/** Set object parent **/
+	htrAddScriptInit_va(s, "    htr_set_parent(%s.cxSubElement('cl%dbase'), \"%s\", %s);\n",
+		parentname, id, nptr, parentobj);
 	    
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = cl_init(%s.layers.cl%dbase, %s.layers.cl%dbase.document.layers.cl%dcon1, %s.layers.cl%dbase.document.layers.cl%dcon2,\"%s\",\"%s\",%d,\"%s\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d);\n",
