@@ -1,0 +1,52 @@
+The Centrallix ObjectSystem
+----------------------------
+
+This is a filesystem-based objectsystem.  Included in this directory
+are the Centrallix bootstrap configuration files.  They normally
+live in /usr/local/etc - put them there and the default install of
+Centrallix should hum along just fine.  What follows is a quick
+explanation of what these three critical files do.
+
+centrallix.conf:
+
+    This main configuration file contains key configuration information
+    for several of Centrallix's modules.  A sample configuration file is
+    contained in this directory, and should be placed in /usr/local/etc.
+    You can change the configuration file used via the -c flag to 
+    the Centrallix program itself.
+
+    Since the filename for "rootnode" must be predictable, the OSML will
+    not be able to determine its type automatically (or else the type of
+    the rootnode would end up being hardcoded into the OSML startup code).
+    Thus, the OSML rootnode pseudo-driver is instructed to read the type
+    from the attribute "rootnode_type" in this file.  The type should 
+    be one of those listed in types.cfg.
+
+
+rootnode:
+
+    The "rootnode" file contains data which would normally be a node
+    object in Centrallix itself.  The rootnode is handled by a special
+    objectsystem driver that is builtin to the OSML.  Normally the 
+    rootnode is based in the filesystem, and so the UXD filesystem
+    driver is invoked for the root of the objectsystem.  This is the
+    default - make sure the path in "rootnode" points to the correct
+    location for the objectsystem, normally /var/centrallix/os on RH7
+    systems or /home/centrallix/os on RH6 systems.
+
+    Don't understand all of this jibber-jabber about node objects and
+    rootnodes?  Don't worry - just make sure the path is correct in
+    the rootnode file and install the rootnode file in /usr/local/etc.
+
+    The name of this file can be changed by changing the attribute
+    "rootnode_file" in the main config file centrallix.conf.
+
+
+types.cfg:
+
+    Centrallix has a hierarchical object and content type database,
+    which exists as /usr/local/etc/types.cfg normally.  This file must be
+    in a predictable location for Centrallix.  The location of this file
+    can be changed by changing the "types_config" attribute in the main
+    config file centrallix.conf.
+
