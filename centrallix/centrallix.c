@@ -48,10 +48,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.9 2002/08/16 03:39:42 jorupp Exp $
+    $Id: centrallix.c,v 1.10 2002/08/16 03:48:29 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.10  2002/08/16 03:48:29  jorupp
+     * removed a debugging statement I added a little while ago
+
     Revision 1.9  2002/08/16 03:39:42  jorupp
      * fixed a bug in the configure script that was causing the 'autodetection' of the
         support of dynamic loading to always fail
@@ -120,8 +123,6 @@ cx_internal_LoadModules(char* type)
     pCxModule moduledata;
     int i,j,found;
     int n_loaded = 0;
-
-	printf("Version: %s\n",PACKAGE_VERSION);
 
 	/** Find the modules section in the configuration file.  It is not
 	 ** an error if the section is not there - just no module loading
