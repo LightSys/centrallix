@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.8 2002/08/13 02:30:59 gbeeley Exp $
+    $Id: mtask.c,v 1.9 2002/08/13 02:38:24 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.9  2002/08/13 02:38:24  gbeeley
+    Added "plan B" in case CLK_TCK ever becomes obsolete.  Linux man page
+    says CLK_TCK is a macro for the sysconf(_SC_CLK_TCK) call.  The sysconf
+    call will be used if CLK_TCK ever disappears.
+
     Revision 1.8  2002/08/13 02:30:59  gbeeley
     Made several of the changes recommended by dman.  Most places where
     const char* would be appropriate have been updated to reflect that,
@@ -431,7 +436,12 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.FirstTick = 0;
 	MTASK.FirstTick = mtTicks();
 	MTASK.TickCnt = 0;
+
+#ifdef CLK_TCK
 	MTASK.TicksPerSec = CLK_TCK;
+#else
+	MTASK.TicksPerSec = sysconf(_SC_CLK_TCK);
+#endif
 	
 	/** Initialize the thread creation jmp buffer **/
 	mtRunStartFn(NULL,0);
