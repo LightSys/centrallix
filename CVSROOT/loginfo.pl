@@ -231,6 +231,7 @@ if (length($diffmsg) > 8000) {
 $email =~ s/\r//g;
 #$email =~ s/\n/\r\n/g;
 
+
 # send our email
 
 print "Mailing the commit email to $mailto ...";
