@@ -48,10 +48,9 @@ typedef struct _MM
     int		ContentLength;
     int		ContentMainType;
     char	ContentSubType[80];
-    char	ContentDisp[80];
-    char	ContentDispFilename[80];
+    char	ContentDisposition[80];
+    char	Filename[80];
     char	Boundary[80];
-    char	PartName[80];
     char	Subject[80];
     char	Charset[32];
     char	TransferEncoding[32];

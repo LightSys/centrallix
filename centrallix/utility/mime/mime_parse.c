@@ -67,12 +67,11 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 
     /** Initialize the message structure **/
     msg->ContentLength = 0;
-    msg->ContentDisp[0] = 0;
-    msg->ContentDispFilename[0] = 0;
+    msg->ContentDisposition[0] = 0;
+    msg->Filename[0] = 0;
     msg->ContentMainType = MIME_TYPE_APPLICATION;
     msg->ContentSubType[0] = 0;
     msg->Boundary[0] = 0;
-    msg->PartName[0] = 0;
     msg->Subject[0] = 0;
     msg->Charset[0] = 0;
     msg->TransferEncoding[0] = 0;
@@ -399,8 +398,8 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
     /** get the display main type **/
     if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
 
-    strncpy(msg->ContentDisp, ptr, 79);
-    msg->ContentDisp[79] = 0;
+    strncpy(msg->ContentDisposition, ptr, 79);
+    msg->ContentDisposition[79] = 0;
 
     /** Check for the "filename=" content-disp token **/
     while ((ptr = strtok_r(buf, "= ", &buf)))
@@ -409,15 +408,15 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
 	while (*ptr == ' ') ptr++;
 	if (!libmime_StringFirstCaseCmp(ptr, "filename"))
 	    {
-	    strncpy(msg->ContentDispFilename, libmime_StringUnquote(cptr), 79);
-	    msg->ContentDispFilename[79] = 0;
+	    strncpy(msg->Filename, libmime_StringUnquote(cptr), 79);
+	    msg->Filename[79] = 0;
 	    }
 	}
 
     if (MIME_DEBUG)
 	{
-	printf("  CONTENT DISP: \"%s\"\n", msg->ContentDisp);
-	printf("  FILENAME    : \"%s\"\n", msg->ContentDispFilename);
+	printf("  CONTENT DISP: \"%s\"\n", msg->ContentDisposition);
+	printf("  FILENAME    : \"%s\"\n", msg->Filename);
 	}
 
     return 0;
@@ -469,18 +468,18 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	    strncpy(msg->Boundary, libmime_StringUnquote(cptr), 79);
 	    msg->Boundary[79] = 0;
 	    }
-	else if (!libmime_StringFirstCaseCmp(ptr, "name"))
+	else if (!libmime_StringFirstCaseCmp(ptr, "name") && !strlen(msg->Filename))
 	    {
 	    strncpy(tmpname, libmime_StringUnquote(cptr), 127);
 	    tmpname[127] = 0;
 	    if (strchr(tmpname,'/'))
-		strncpy(msg->PartName, strrchr(tmpname,'/')+1,79);
+		strncpy(msg->Filename, strrchr(tmpname,'/')+1,79);
 	    else 
-		strncpy(msg->PartName, tmpname, 79);
-	    msg->PartName[79] = 0;
-	    if (strchr(msg->PartName,'\\'))
-		strncpy(msg->PartName,strrchr(tmpname,'\\')+1,79);
-	    msg->PartName[79] = 0;
+		strncpy(msg->Filename, tmpname, 79);
+	    msg->Filename[79] = 0;
+	    if (strchr(msg->Filename,'\\'))
+		strncpy(msg->Filename,strrchr(tmpname,'\\')+1,79);
+	    msg->Filename[79] = 0;
 	    }
 	else if (!libmime_StringFirstCaseCmp(ptr, "subject"))
 	    {
@@ -499,7 +498,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType-1]);
 	printf("  SUBTYPE     : \"%s\"\n", msg->ContentSubType);
 	printf("  BOUNDARY    : \"%s\"\n", msg->Boundary);
-	printf("  NAME        : \"%s\"\n", msg->PartName);
+	printf("  FILENAME    : \"%s\"\n", msg->Filename);
 	printf("  SUBJECT     : \"%s\"\n", msg->Subject);
 	printf("  CHARSET     : \"%s\"\n", msg->Charset);
 	}
