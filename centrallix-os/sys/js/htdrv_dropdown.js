@@ -18,7 +18,7 @@ function dd_getvalue()
 
 function dd_setvalue(v) 
     {
-    for (i=0; i < this.Values.length; i++)
+    for (var i=0; i < this.Values.length; i++)
 	{
 	if (this.Values[i][1] == v)
 	    {
@@ -75,18 +75,18 @@ function dd_keyhandler(l,e,k)
 	{
 	if (k < 97) 
 	    {
-	    k_lower = k + 32;
-	    k_upper = k;
+	    var k_lower = k + 32;
+	    var k_upper = k;
 	    k = k + 32;
 	    }
 	else
 	    {
-	    k_lower = k;
-	    k_upper = k - 32;
+	    var k_lower = k;
+	    var k_upper = k - 32;
 	    }
 	if (!dd_lastkey || dd_lastkey != k)
 	    {
-	    for (i=0; i < this.Values.length; i++)
+	    for (var i=0; i < this.Values.length; i++)
 		{
 		if (this.Values[i][0].substring(0, 1) == String.fromCharCode(k_upper) ||
 		    this.Values[i][0].substring(0, 1) == String.fromCharCode(k_lower))
@@ -101,7 +101,7 @@ function dd_keyhandler(l,e,k)
 	    var first = -1;
 	    var last = -1;
 	    var next = -1;
-	    for (i=0; i < this.Values.length; i++)
+	    for (var i=0; i < this.Values.length; i++)
 		{
 		if (this.Values[i][0].substring(0, 1) == String.fromCharCode(k_upper) ||
 		    this.Values[i][0].substring(0, 1) == String.fromCharCode(k_lower))
@@ -196,7 +196,7 @@ function dd_losefocus()
 
 function dd_toggle(l) 
     {
-    for (i=0; i<l.document.images.length;i++) {
+    for (var i=0; i<l.document.images.length;i++) {
 	if (i == 4)
 	    continue;
 	else if (l.document.images[i].src.substr(-14, 6) == 'dkgrey')
@@ -371,6 +371,11 @@ function dd_create_pane(l)
 
 function dd_add_items(l,ary)
     {
+    for(var i=0; i<ary.length;i++) 
+	{
+	ary[i][0] = htutil_rtrim(ary[i][0]);
+	ary[i][1] = htutil_rtrim(ary[i][1]);
+	}
     l.Values = ary;
     l.NumElements = l.Values.length;
     l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*16)+4;
