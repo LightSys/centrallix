@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.29 2002/07/18 14:27:25 pfinley Exp $
+    $Id: htdrv_page.c,v 1.30 2002/07/18 20:12:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.30  2002/07/18 20:12:40  lkehresman
+    Added support for a loadstatus icon to be displayed, hiding the drawing
+    of the visible windows.  This looks MUCH nicer when loading Kardia or
+    any other large apps.  It is completely optional part of the page widget.
+    To take advantage of it, put the parameter "loadstatus" equal to "true"
+    in the page widget.
+
     Revision 1.29  2002/07/18 14:27:25  pfinley
     fixed another bug i created yesterday. cleaned up code a bit.
 
@@ -209,6 +216,12 @@ typedef struct
     char dtfocus2[64];
     } HtPageStruct, *pHtPageStruct;
 
+typedef struct
+    {
+    char bgstr[128];
+    int show;
+    } HtPageStatusStruct, *pHtPageStatusStruct;
+HtPageStatusStruct htPageStatus;
 
 /*** htpageRenderCommon - do everything common to both browsers
  ***/
@@ -233,13 +246,23 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	    htrAddHeaderItem_va(s, "    <TITLE>%s</TITLE>\n",ptr);
 	    }
 
+    	/** Check for page load status **/
+	htPageStatus.show = 0;
+	if (objGetAttrValue(w_obj,"loadstatus",POD(&ptr)) == 0 && (!strcmp(ptr,"yes") || !strcmp(ptr,"true")))
+	    {
+	    htPageStatus.show = 1;
+	    }
+
+	strcpy(htPageStatus.bgstr, "");
 	/** Check for bgcolor. **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
 	    {
+	    snprintf(htPageStatus.bgstr, 128, " BGCOLOR=%s", ptr);
 	    htrAddBodyParam_va(s, " BGCOLOR=%s",ptr);
 	    }
 	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
 	    {
+	    snprintf(htPageStatus.bgstr, 128, " BACKGROUND=%s", ptr);
 	    htrAddBodyParam_va(s, " BACKGROUND=%s",ptr);
 	    }
 
@@ -342,6 +365,12 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
 		"\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n");
 
+	if (htPageStatus.show == 1)
+	    {
+	    htrAddStylesheetItem(s, "\t#pgstat { POSITION:absolute; VISIBILITY:visible; LEFT:0;TOP:0;WIDTH:100%;HEIGHT:99%; Z-INDEX:100000;}\n");
+	    htrAddBodyItem_va(s, "<DIV ID=\"pgstat\"><BODY%s>", htPageStatus.bgstr);
+	    htrAddBodyItem   (s, "<TABLE width=100\% height=100\% cellpadding=20><TR><TD valign=top><IMG src=/sys/images/loading.gif></TD></TR></TABLE></BODY></DIV>\n");
+	    }
 	htrAddBodyItem(s, "<DIV ID=\"pgtop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");

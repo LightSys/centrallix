@@ -46,10 +46,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.22 2002/07/18 15:17:44 lkehresman Exp $
+    $Id: ht_render.c,v 1.23 2002/07/18 20:12:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.23  2002/07/18 20:12:40  lkehresman
+    Added support for a loadstatus icon to be displayed, hiding the drawing
+    of the visible windows.  This looks MUCH nicer when loading Kardia or
+    any other large apps.  It is completely optional part of the page widget.
+    To take advantage of it, put the parameter "loadstatus" equal to "true"
+    in the page widget.
+
     Revision 1.22  2002/07/18 15:17:44  lkehresman
     Ok, I got caught being lazy.  I used snprintf and the string sbuf to
     help me count the number of characters in the string I modified.  But
@@ -1029,6 +1036,7 @@ htrRender(pFile output, pObject appstruct)
 
 	/** Write the initialization lines **/
 	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
+	fdWrite(output,"    if(typeof(pg_status_init)=='function')pg_status_init();\n",60,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Inits.Items[i]);
@@ -1036,6 +1044,7 @@ htrRender(pFile output, pObject appstruct)
 	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
 	fdWrite(output,"    events();\n", 14,0,FD_U_PACKET);
+	fdWrite(output,"    if(typeof(pg_status_close)=='function')pg_status_close();\n",62,0,FD_U_PACKET);
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 	/** Write the cleanup lines **/

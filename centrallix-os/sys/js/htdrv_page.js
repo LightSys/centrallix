@@ -248,3 +248,19 @@ function pg_keyhandler(k,m,e)
 	}
     return false;
     }
+ 
+function pg_status_init()
+    {
+    if (!document.layers.pgstat)
+	return false
+    pg_status = document.layers.pgstat;
+    pg_status.zIndex = 1000000;
+    pg_status.visibility = 'visible';
+    }
+ 
+function pg_status_close()
+    {
+    if (!document.layers.pgstat)
+	return false
+    pg_status.visibility = 'hide';
+    }
