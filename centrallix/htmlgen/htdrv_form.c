@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.22  2002/04/05 06:39:12  jorupp
+     * Added ReadOnly parameter to form
+     * If ReadOnly is not present, updates will now work properly!
+     * still need to work on stopping updates on client side when readonly is set
+
     Revision 1.21  2002/04/05 06:10:11  gbeeley
     Updating works through a multiquery when "FOR UPDATE" is specified at
     the end of the query.  Fixed a reverse-eval bug in the expression
@@ -168,6 +173,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char basewhere[300];
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
     char _3bconfirmwindow[30];
+    int readonly;
     
     	/** Get an id for this. **/
 	id = (HTFORM.idcnt++);
@@ -189,6 +195,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    multienter=0;
 	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) 
 	    tabmode[0]='\0';
+	if (objGetAttrValue(w_obj,"ReadOnly",POD(&readonly)) != 0) 
+	    readonly=0;
 
 	/*** 03/16/02 Jonathan Rupp
 	 ***   added _3bconfirmwindow, the name of a window that has 
@@ -861,7 +869,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    else\n"
 		"        {\n"
-		"        query=form_build_query(this.basequery,where);\n"
+		"        query=form_build_query(this.basequery,where,this.readonly);\n"
 		"        }\n"
 		"    delete where;\n"
 		"    if(confirm('Send to \"'+this.osrc.name+'\"(osrc):'+query))\n"
@@ -913,13 +921,24 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Helper function to build a query */
 	htrAddScriptFunction(s, "form_build_query", "\n"
-		"function form_build_query(base,where)\n"
+		"function form_build_query(base,where,ro)\n"
 		"    {\n"
 		"    re=/where/i;\n"
+		"    if(!where)\n"
+		"        if(ro)\n"
+		"            return base;\n"
+		"        else\n"
+		"            return base+' FOR UPDATE';\n"
 		"    if(re.test(base))\n"
-		"        return base+' AND '+where;\n"
+		"        if(ro)\n"
+		"           return base+' AND '+where;\n"
+		"        else\n"
+		"           return base+' AND '+where+' FOR UPDATE';\n"
 		"    else\n"
-		"        return base+' WHERE '+where;\n"
+		"        if(ro)\n"
+		"            return base+' WHERE '+where;\n"
+		"        else\n"
+		"            return base+' WHERE '+where+' FOR UPDATE';\n"
 		"    }\n", 0);
 
 
@@ -993,12 +1012,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Form initializer **/
 	htrAddScriptFunction(s, "form_init", "\n"
-		"function form_init(aq,an,am,av,and,me,name,bq,bw,_3b)\n"
+		"function form_init(aq,an,am,av,and,me,name,bq,bw,_3b,ro)\n"
 		"    {\n"
-		"    form = new Object();\n" 
+		"    form = new Object();\n"
+		"    form.readonly=ro;\n" 
 		"    form.basequery = bq;\n"
-		"    if(bw) form.currentquery = form_build_query(bq,bw);\n"
-		"    else form.currentquery = bq;\n"
+		"    form.currentquery = form_build_query(bq,bw,form.readonly);\n"
 		"    form.elements = new Array();\n"
 		"    form.statuswidgets = new Array();\n"
 		"    form.mode = 'No Data';\n"
@@ -1077,9 +1096,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
 	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s','%s','%s',%s);\n",
+	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s','%s','%s',%s,%i);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
-		basequery,basewhere,_3bconfirmwindow);
+		basequery,basewhere,_3bconfirmwindow,readonly);
 	htrAddScriptInit(s,sbuf3);
 	nmFree(sbuf3,200);
 

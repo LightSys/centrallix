@@ -84,6 +84,8 @@ wholePage "widget/page"
 	    form1 "widget/form"
 		{
 		basequery = "SELECT objname = :name, :full_name, :num_days FROM /samples/Months.csv/rows";
+		//ReadOnly = no;
+
 		_3bconfirmwindow = "_3bConfirmWindow";
 		//basequery = "SELECT a,b,c,d,e FROM data WHERE b=true";
 		//basewhere = "a=true";
