@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.49 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.50 2003/07/27 03:24:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.50  2003/07/27 03:24:53  jorupp
+     * added Mozilla support for:
+     	* connector
+    	* formstatus
+    	* imagebutton
+    	* osrc
+    	* pane
+    	* textbutton
+     * a few bug fixes for other Mozilla support as well.
+
     Revision 1.49  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -309,9 +319,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    pObject sub_w_obj;
    pObjQuery qy;
 
-   if(!s->Capabilities.Dom0NS)
+   if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
-       mssError(1,"HTOSRC","Netscape DOM support required");
+       mssError(1,"HTOSRC","Netscape DOM or W3C DOM1 HTML support required");
        return -1;
        }
 
@@ -389,8 +399,20 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddStylesheetItem_va(s,"        #osrc%dloader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:1;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\");\n",
-	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name);
+   if(s->Capabilities.Dom0NS)
+      {
+      htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\");\n",
+	    name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name);
+      }
+   else if(s->Capabilities.Dom1HTML)
+      {
+      htrAddScriptInit_va(s,"    %s=osrc_init(document.getElementById('osrc%dloader'),%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\");\n",
+	    name, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name);
+      }
+   else
+      {
+      mssError(1,"HTOSRC","Cannot render for this browser");
+      }
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
@@ -399,8 +421,10 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddScriptInit_va(s,"    %s.oldosrc=osrc_current;\n",name);
    htrAddScriptInit_va(s,"    osrc_current=%s;\n",name);
 
-   /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItem_va(s,"    <DIV ID=\"osrc%dloader\"></DIV>\n",id);
+   /** HTML body element for the frame **/
+   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%dloader",id);
+   htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
+   htrAddBodyItem(s, "\n");
    
    qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
    if (qy)

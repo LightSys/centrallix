@@ -11,13 +11,45 @@
 
 function pn_init(l,ml)
     {
+    if(!cx__capabilities.Dom0NS && cx__capabilities.CSS1)
+	{
+	ml = l;
+	}
+
     l.mainlayer = ml;
     l.kind = "pn";
-    l.document.layer = ml;
     ml.kind = "pn";
-    ml.document.layer = ml;
+
+    if(cx__capabilities.Dom0NS)
+	{
+	l.document.layer = ml;
+	ml.document.layer = ml;
+	}
+    else if(cx__capabilities.Dom1HTML)
+	{
+	l.layer = ml;
+	ml.layer = ml;
+	}
+    else
+	{
+	alert('browser not supported');
+	}
+
     ml.maxheight = l.clip.height-2;
     ml.maxwidth = l.clip.width-2;
-    htutil_tag_images(l.document,'pn',ml,ml);
+
+    if(cx__capabilities.Dom0NS)
+	{
+	htutil_tag_images(l,'pn',ml,ml);
+	}
+    else if(cx__capabilities.Dom1HTML)
+	{
+	htutil_tag_images(l,'pn',ml,ml);
+	}
+    else
+	{
+	alert('browser not supported');
+	}
+
     return l;
     }

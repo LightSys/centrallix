@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.10 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_connector.c,v 1.11 2003/07/27 03:24:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.11  2003/07/27 03:24:53  jorupp
+     * added Mozilla support for:
+     	* connector
+    	* formstatus
+    	* imagebutton
+    	* osrc
+    	* pane
+    	* textbutton
+     * a few bug fixes for other Mozilla support as well.
+
     Revision 1.10  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -147,8 +157,11 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char* nptr;
     XString xs;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
+	    {
+	    mssError(1,"HTCONN","Netscape DOM or W3C DOM1HTML support required");
 	    return -1;
+	    }
 
     	/** Get an id for this. **/
 	id = (HTCONN.idcnt++);

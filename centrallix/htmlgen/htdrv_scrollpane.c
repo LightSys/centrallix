@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.15 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_scrollpane.c,v 1.16 2003/07/27 03:24:54 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.16  2003/07/27 03:24:54  jorupp
+     * added Mozilla support for:
+     	* connector
+    	* formstatus
+    	* imagebutton
+    	* osrc
+    	* pane
+    	* textbutton
+     * a few bug fixes for other Mozilla support as well.
+
     Revision 1.15  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -170,7 +180,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 
 	if(!s->Capabilities.Dom0NS)
 	    {
-	    mssError(1,"HTWIN","Netscape DOM support required");
+	    mssError(1,"HTSPANE","Netscape DOM support required");
 	    return -1;
 	    }
 

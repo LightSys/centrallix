@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.25 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_imagebutton.c,v 1.26 2003/07/27 03:24:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.26  2003/07/27 03:24:53  jorupp
+     * added Mozilla support for:
+     	* connector
+    	* formstatus
+    	* imagebutton
+    	* osrc
+    	* pane
+    	* textbutton
+     * a few bug fixes for other Mozilla support as well.
+
     Revision 1.25  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -225,9 +235,9 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char* nptr;
     pExpression code;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
-	    mssError(1,"HTIBTN","Netscape DOM support required");
+	    mssError(1,"HTIBTN","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
 	    return -1;
 	    }
 
@@ -299,7 +309,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ib%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#ib%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -318,29 +328,41 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
+	    }
+	else if(s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s,"    %s = document.getElementById('ib%dpane');\n",nptr, id);
+	    }
+	else
+	    {
+	    mssError(1,"HTIBTN","Cannot render for this browser");
+	    }
+
 	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s','%s',%d,%d,%s,'%s',%d);\n",
 	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr,is_enabled);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)
 	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,n_img);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\"></DIV>\n",id,n_img);
 	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,d_img);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\"></DIV>\n",id,d_img);
 	else
 	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,n_img,w,h);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\" width=\"%d\" height=\"%d\"></DIV>\n",id,n_img,w,h);
 	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0 width=%d height=%d></DIV>\n",id,d_img,w,h);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\" width=\"%d\" height=\"%d\"></DIV>\n",id,d_img,w,h);
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","ib",
-		"    if (e.target != null && e.target.kind=='ib' && e.target.layer.enabled==true)\n"
+		"    if (ly.kind=='ib' && ly.enabled==true)\n"
 		"        {\n"
-		"        e.target.src = e.target.layer.cImage.src;\n"
-		"        cn_activate(e.target.layer, 'MouseDown');\n"
-		"        ib_cur_img = e.target;\n"
+		"        pg_set(ly.img,'src',ly.layer.cImage.src);\n"
+		"        cn_activate(ly, 'MouseDown');\n"
+		"        ib_cur_img = ly.img;\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","ib",
@@ -351,35 +373,35 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.pageY >= ib_cur_img.layer.pageY &&\n"
 		"            e.pageY < ib_cur_img.layer.pageY + ib_cur_img.layer.clip.height)\n"
 		"            {\n"
-		"            cn_activate(e.target.layer, 'Click');\n"
-		"            cn_activate(e.target.layer, 'MouseUp');\n"
-		"            ib_cur_img.src = ib_cur_img.layer.pImage.src;\n"
+		"            cn_activate(ly, 'Click');\n"
+		"            cn_activate(ly, 'MouseUp');\n"
+		"            pg_set(ib_cur_img,'src',ib_cur_img.layer.pImage.src);\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
-		"            ib_cur_img.src = ib_cur_img.layer.nImage.src;\n"
+		"            pg_set(ib_cur_img,'src',ib_cur_img.layer.nImage.src);\n"
 		"            }\n"
 		"        ib_cur_img = null;\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOVER","ib",
-		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
+		"    if (ly.kind == 'ib' && ly.enabled == true)\n"
 		"        {\n"
-		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.pImage.src;\n"
+		"        if (ly.img && (ly.img.src != ly.cImage.src)) pg_set(ly.img,'src',ly.pImage.src);\n"
 		"        cn_activate(ly, 'MouseOver');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","ib",
-		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
+		"    if (ly.kind == 'ib' && ly.enabled == true)\n"
 		"        {\n"
-		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.nImage.src;\n"
+		"        if (ly.img && (ly.img.src != ly.cImage.src)) pg_set(ly.img,'src',ly.nImage.src);\n"
 		"        cn_activate(ly, 'MouseOut');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEMOVE","ib",
-		"    if (e.target != null && e.target.kind == 'ib' && ly.enabled == true)\n"
+		"    if (ly.kind == 'ib' && ly.enabled == true)\n"
 		"        {\n"
-		"        if (e.target.img && e.target.img.src != e.target.cImage.src) e.target.img.src = e.target.cImage.src;\n"
+		"        if (ly.img && ly.img.src != ly.cImage.src) pg_set(ly.img,'src',ly.pImage.src);\n"
 		"        cn_activate(ly, 'MouseMove');\n"
 		"        }\n");
 

@@ -41,10 +41,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.18 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_pane.c,v 1.19 2003/07/27 03:24:54 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.19  2003/07/27 03:24:54  jorupp
+     * added Mozilla support for:
+     	* connector
+    	* formstatus
+    	* imagebutton
+    	* osrc
+    	* pane
+    	* textbutton
+     * a few bug fixes for other Mozilla support as well.
+
     Revision 1.18  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -178,9 +188,9 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char* c1;
     char* c2;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
-	    mssError(1,"HTPN","Netscape DOM support required");
+	    mssError(1,"HTPN","Netscape DOM or W3C DOM1 HTML and CSS support required");
 	    return -1;
 	    }
 
@@ -203,11 +213,31 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Background color/image? **/
 	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgcolor='%.40s'",ptr);
+	    {
+	    if(s->Capabilities.Dom0NS)
+		{
+		sprintf(main_bg,"bgcolor='%.40s'",ptr);
+		}
+	    else if(s->Capabilities.CSS1)
+		{
+		sprintf(main_bg,"background-color: %.40s;",ptr);
+		}
+	    }
 	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"background='%.110s'",ptr);
+	    {
+	    if(s->Capabilities.Dom0NS)
+		{
+		sprintf(main_bg,"background='%.110s'",ptr);
+		}
+	    else if(s->Capabilities.CSS1)
+		{
+		sprintf(main_bg,"background-image: url('%.100s');",ptr);
+		}
+	    }
 	else
+	    {
 	    strcpy(main_bg,"");
+	    }
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -218,18 +248,54 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
 	if (is_raised)
 	    {
-	    c1 = "white_1x1.png";
-	    c2 = "dkgrey_1x1.png";
+	    if(s->Capabilities.Dom0NS)
+		{
+		c1 = "white_1x1.png";
+		c2 = "dkgrey_1x1.png";
+		}
+	    else if(s->Capabilities.CSS1)
+		{
+		c1 = "white";
+		c2 = "gray";
+		}
+	    else
+		{
+		mssError(0,"HTPN","Cannot render");
+		}
 	    }
 	else
 	    {
-	    c1 = "dkgrey_1x1.png";
-	    c2 = "white_1x1.png";
+	    if(s->Capabilities.Dom0NS)
+		{
+		c1 = "dkgrey_1x1.png";
+		c2 = "white_1x1.png";
+		}
+	    else if(s->Capabilities.CSS1)
+		{
+		c1 = "gray";
+		c2 = "white";
+		}
+	    else
+		{
+		mssError(0,"HTPN","Cannot render");
+		}
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
+	    }
+	else if(s->Capabilities.CSS1)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w-2,h-2,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%dmain { border-style: solid; border-width: 1px; border-color: %s %s %s %s; %s}\n",id,c1,c2,c2,c1,main_bg);
+	    }
+	else
+	    {
+	    mssError(0,"HTPN","Cannot render");
+	    }
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -267,31 +333,53 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseMove');\n"
 	    "\n");
 
-	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
-		nptr, parentname, id, parentname, id, id);
+	if(s->Capabilities.Dom0NS)
+	    {
+	    /** Script initialization call. **/
+	    htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
+		    nptr, parentname, id, parentname, id, id);
 
-	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
-	htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
-	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	htrAddBodyItem_va(s,"            <TD>&nbsp;</TD>\n");
-	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-	htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
+	    /** HTML body <DIV> element for the base layer. **/
+	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
+	    htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	    htrAddBodyItem_va(s,"            <TD>&nbsp;</TD>\n");
+	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+	    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
 
-	/** Check for objects within the pane. **/
-	snprintf(sbuf,160,"%s.mainlayer.document",nptr);
-	snprintf(sbuf2,160,"%s.mainlayer",nptr);
-	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
+	    /** Check for objects within the pane. **/
+	    snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+	    snprintf(sbuf2,160,"%s.mainlayer",nptr);
+	    htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
-	/** End the containing layer. **/
-	htrAddBodyItem(s, "</td></tr></table></DIV></DIV>\n");
+	    /** End the containing layer. **/
+	    htrAddBodyItem(s, "</td></tr></table></DIV></DIV>\n");
+	    }
+	else if(s->Capabilities.CSS1)
+	    {
+	    /** Script initialization call. **/
+	    htrAddScriptInit_va(s, "    %s = pn_init(document.getElementById('pn%dmain'));\n", nptr, id);
+
+	    /** HTML body <DIV> element for the base layer. **/
+	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\">",id);
+
+	    /** Check for objects within the pane. **/
+	    htrRenderSubwidgets(s, w_obj, nptr, nptr, z+2);
+
+	    /** End the containing layer. **/
+	    htrAddBodyItem(s, "</DIV>\n");
+	    }
+	else
+	    {
+	    mssError(0,"HTPN","Cannot render");
+	    }
+
 
     return 0;
     }

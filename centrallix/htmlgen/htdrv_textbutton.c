@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.21 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_textbutton.c,v 1.22 2003/07/27 03:24:54 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.22  2003/07/27 03:24:54  jorupp
+     * added Mozilla support for:
+     	* connector
+    	* formstatus
+    	* imagebutton
+    	* osrc
+    	* pane
+    	* textbutton
+     * a few bug fixes for other Mozilla support as well.
+
     Revision 1.21  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -193,6 +203,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char fgcolor1[64];
     char fgcolor2[64];
     char bgcolor[128];
+    char bgstyle[128];
     char disable_color[64];
     pObject sub_w_obj;
     pObjQuery qy;
@@ -203,9 +214,9 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int is_enabled = 1;
     pExpression code;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
-	    mssError(1,"HTTBTN","Netscape DOM support required");
+	    mssError(1,"HTTBTN","Netscape DOM or (W3C DOM1 HTML and W3C DOM2 CSS) support required");
 	    return -1;
 	    }
 
@@ -261,11 +272,21 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Get fgnd colors 1,2, and background color **/
 	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
 	    sprintf(bgcolor,"bgcolor=%.100s",ptr);
+	    sprintf(bgstyle,"background-color: %.90s;",ptr);
+	    }
 	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
 	    sprintf(bgcolor,"background='%.90s'",ptr);
+	    sprintf(bgstyle,"background-image: url('%.90s');",ptr);
+	    }
 	else
+	    {
 	    strcpy(bgcolor,"");
+	    strcpy(bgstyle,"");
+	    }
+
 	if (objGetAttrValue(w_obj,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(fgcolor1,"%.63s",ptr);
 	else
@@ -279,15 +300,6 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	else
 	    strcpy(disable_color,"#808080");
 
-	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#tb%dpane2 { POSITION:absolute; VISIBILITY:%s; LEFT:-1; TOP:-1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_enabled?"inherit":"hidden",w-1,z+1);
-	htrAddStylesheetItem_va(s,"\t#tb%dpane3 { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,is_enabled?"hidden":"inherit",x,y,w-1,z+1);
-	htrAddStylesheetItem_va(s,"\t#tb%dtop { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
-	htrAddStylesheetItem_va(s,"\t#tb%dbtm { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
-	htrAddStylesheetItem_va(s,"\t#tb%drgt { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
-	htrAddStylesheetItem_va(s,"\t#tb%dlft { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
-
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
@@ -295,29 +307,69 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
 
-	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
-	htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dpane3,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
-		nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
-
-	/** HTML body <DIV> elements for the layers. **/
-	if (h >= 0)
+	if(s->Capabilities.Dom0NS)
 	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,h);
-	    htrAddBodyItem_va(s, "<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,h);
-	    htrAddBodyItem_va(s, "<DIV ID=\"tb%dpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text,h);
+	    /** Ok, write the style header items. **/
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane2 { POSITION:absolute; VISIBILITY:%s; LEFT:-1; TOP:-1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_enabled?"inherit":"hidden",w-1,z+1);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane3 { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,is_enabled?"hidden":"inherit",w-1,z+1);
+	    htrAddStylesheetItem_va(s,"\t#tb%dtop { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
+	    htrAddStylesheetItem_va(s,"\t#tb%dbtm { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%d; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",w,z+2);
+	    htrAddStylesheetItem_va(s,"\t#tb%drgt { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
+	    htrAddStylesheetItem_va(s,"\t#tb%dlft { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
+
+	    /** Script initialization call. **/
+	    htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
+	    htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dpane3,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
+		    nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
+
+	    /** HTML body <DIV> elements for the layers. **/
+	    if (h >= 0)
+		{
+		htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,h);
+		htrAddBodyItem_va(s, "<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,h);
+		htrAddBodyItem_va(s, "<DIV ID=\"tb%dpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%d></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text,h);
+		}
+	    else
+		{
+		htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=3 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text);
+		htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text);
+		htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text);
+		}
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dtop\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dbtm\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%drgt\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h<0)?1:h);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dlft\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h<0)?1:h);
+	    htrAddBodyItem_va(s,"</DIV>\n");
+	    }
+	else if(s->Capabilities.Dom2CSS)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	    if(h >=0 )
+		{
+		htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { height: %dpx;}\n",id,id,id,h);
+		}
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { font-weight: 600;}\n",id,id,id);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane { %s border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane { color: %s; text-align: center; vertical-align: bottom; }\n",id,fgcolor2);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane2 { color: %s; VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:-1px; top: -1px; width:%dpx; }\n",id,fgcolor1,is_enabled?"inherit":"hidden",z+1,w-1);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane3 { color: %s; VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:0px; top: 0px; width:%dpx; }\n",id,disable_color,is_enabled?"hidden":"inherit",z+1,w-1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\">%s\n",id,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\">%s</DIV>\n",id,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\">%s</DIV>\n",id,text);
+	    htrAddBodyItem_va(s,"</DIV>");
+
+	    /** Script initialization call. **/
+	    htrAddScriptInit_va(s, "    %s = document.getElementById('tb%dpane');\n",nptr, id);
+	    htrAddScriptInit_va(s, "    tb_init(%s,document.getElementById('tb%dpane2'),document.getElementById('tb%dpane3'),null,null,null,null,%d,%d,%s,%d,\"%s\");\n",
+		    nptr, id, id, w, h, parentobj,is_ts, nptr);
+
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><TABLE border=0 cellspacing=0 cellpadding=3 %s width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text);
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%d><TR><TD align=center valign=middle><FONT COLOR='%s'><B>%s</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text);
+	    mssError(0,"HTTBTN","Unable to render for this browser");
+	    return -1;
 	    }
-	htrAddBodyItem_va(s,"<DIV ID=\"tb%dtop\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
-	htrAddBodyItem_va(s,"<DIV ID=\"tb%dbtm\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%d></DIV>\n",id,w);
-	htrAddBodyItem_va(s,"<DIV ID=\"tb%drgt\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h<0)?1:h);
-	htrAddBodyItem_va(s,"<DIV ID=\"tb%dlft\"><IMG SRC=/sys/images/trans_1.gif height=%d width=1></DIV>\n",id,(h<0)?1:h);
-	htrAddBodyItem_va(s,"</DIV>\n");
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tb",
@@ -332,6 +384,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
 		"        ly.moveBy(-1,-1);\n"
+		"        //alert(e.pageX + ' -- ' + ly.pageX + ' -- ' + ly.clip.width);\n"
 		"        if (e.pageX >= ly.pageX &&\n"
 		"            e.pageX < ly.pageX + ly.clip.width &&\n"
 		"            e.pageY >= ly.pageY &&\n"
@@ -350,14 +403,28 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddEventHandler(s, "document","MOUSEOVER","tb",
 		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
-		"        if (e.target.mode != 2) tb_setmode(e.target,1);\n"
+		"        if(cx__capabilities.Dom2CSS)\n"
+		"            {\n"
+		"            if (ly.mode != 2) tb_setmode(ly,1);\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            if (e.target.mode != 2) tb_setmode(e.target,1);\n"
+		"            }\n"
 		"        cn_activate(ly, 'MouseOver');\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","tb",
 		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
-		"        if (e.target.mode != 2) tb_setmode(e.target,0);\n"
+		"        if(cx__capabilities.Dom2CSS)\n"
+		"            {\n"
+		"            if (ly.mode != 2) tb_setmode(ly,0);\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            if (e.target.mode != 2) tb_setmode(e.target,0);\n"
+		"            }\n"
 		"        cn_activate(ly, 'MouseOut');\n"
 		"        }\n");
 
@@ -373,7 +440,11 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		htrRenderWidget(s, sub_w_obj, z+3, parentname, nptr);
+		if(htrRenderWidget(s, sub_w_obj, z+3, parentname, nptr)<0)
+		    {
+		    mssError(0,"HTTBTN","Unable to render child");
+		    }
+
 		objClose(sub_w_obj);
 		}
 	    objQueryClose(qy);

@@ -25,11 +25,26 @@ function ClipObject(o)
 
     this.getpart = function (n)
 	{
+	if(n>4 || n<1)
+	    return null;
 	var clip = this.obj.style.clip;
 	if(!clip)
 	    clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
 	var a = /rect\((.*), (.*), (.*), (.*)\)/.exec(clip);
-	return parseInt(a[n]);
+	if(a)
+	    return parseInt(a[n]);
+	else
+	    {
+	    if(n == 1 || n == 4)
+	        return 0;
+	    else
+		{
+		if(n == 2)
+		    return pg_get_style(this.obj,'width');
+		else
+		    return pg_get_style(this.obj,'height');
+		}
+	    }
 	}
     }
 
@@ -98,6 +113,11 @@ HTMLElement.prototype.clip getter = function ()
     return new ClipObject(this); 
     }
 
+HTMLElement.prototype.moveBy = function(x,y) 
+    {
+    pg_set_style(this,'left',pg_get_style(this,'left')+x);
+    pg_set_style(this,'top',pg_get_style(this,'top')+y);
+    }
 
 HTMLElement.prototype.moveToAbsolute = function (x,y)
     {

@@ -58,7 +58,7 @@ function htr_event(e)
 	cx__event.pageX = e.clientX;
 	cx__event.pageY = e.clientY;
 	}
-    if(e.altKey && e.type && e.type == "mousedown" )
+    if(e.altKey && e.type && e.type.substring(0,5) == "mouse")
 	{
 	htr_alert_obj(cx__event,3);
 	}

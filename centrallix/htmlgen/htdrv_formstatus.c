@@ -41,10 +41,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.14 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_formstatus.c,v 1.15 2003/07/27 03:24:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.15  2003/07/27 03:24:53  jorupp
+     * added Mozilla support for:
+     	* connector
+    	* formstatus
+    	* imagebutton
+    	* osrc
+    	* pane
+    	* textbutton
+     * a few bug fixes for other Mozilla support as well.
+
     Revision 1.14  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -150,9 +160,9 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char* style;
    int w;
 
-   if(!s->Capabilities.Dom0NS)
+   if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
        {
-       mssError(1,"HTFS","Netscape DOM support required");
+       mssError(1,"HTFS","Netscape DOM or W3C DOM1 HTML and CSS1 support required");
        return -1;
        }
 
@@ -179,12 +189,24 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:13; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+   htrAddStylesheetItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    %s = fs_init(%s.layers.fs%dmain,\"%s\");\n", nptr, parentname, id, style);
+   if(s->Capabilities.Dom0NS)
+     {
+     htrAddScriptInit_va(s,"    %s = fs_init(%s.layers.fs%dmain,\"%s\");\n", nptr, parentname, id, style);
+     }
+   else if(s->Capabilities.Dom1HTML)
+     {
+     htrAddScriptInit_va(s,"    %s = fs_init(document.getElementById('fs%dmain'),\"%s\");\n", nptr, id, style);
+     }
+   else
+     {
+     mssError(0,"HTFS","Cannot render -- browser not supported");
+     }
+
    /** HTML body <DIV> element for the layers. **/
    if (!strcmp(style,"large"))
        htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstatL01.png></DIV>\n", id);
@@ -199,9 +221,20 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddEventHandler(s,"document","MOUSEOUT", "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOut');\n\n"); 
    htrAddEventHandler(s,"document","MOUSEMOVE","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseMove');\n\n"); 
    
-   snprintf(sbuf,160,"%s.document",nptr);
-   snprintf(sbuf2,160,"%s",nptr);
-   htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
+   if(s->Capabilities.Dom0NS)
+     {
+     snprintf(sbuf,160,"%s.document",nptr);
+     snprintf(sbuf2,160,"%s",nptr);
+     htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
+     }
+   else if(s->Capabilities.Dom1HTML)
+     {
+     htrRenderSubwidgets(s, w_obj, nptr, nptr, z+2);
+     }
+   else
+     {
+     mssError(0,"HTFS","Cannot render -- browser not supported");
+     }
    return 0;
 }
 
