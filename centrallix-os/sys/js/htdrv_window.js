@@ -35,6 +35,8 @@ function wn_init(l,ml,gs,ct,titlebar)
 	t=t.oldosrc;
 	}
     l.ContentLayer = ml;
+    l.ContentLayer.maxheight = l.ContentLayer.minheight = getClipHeight(l.ContentLayer);
+    l.ContentLayer.maxwidth = l.ContentLayer.minwidth = getClipWidth(l.ContentLayer);
 
     l.orig_width = pg_get_style(l,'clip.width');
     l.orig_height = pg_get_style(l,'clip.height');
