@@ -75,9 +75,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    pObjQuery qy;
    XString xs;
 
-   if(!s->Capabilities.Dom0NS)
+   if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
-       mssError(1,"HTDD","Netscape DOM support required");
+       mssError(1,"HTDD","Netscape or W3C DOM support required");
        return -1;
        }
 
@@ -199,9 +199,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"            dd_target_img.src = htutil_subst_last(dd_target_img.src,\"b.gif\");\n"
 	"        dd_target_img = null;\n"
 	"        }\n"
-	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
+	"    if ((ly.kind == 'dd' || ly.kind == 'ddtxt') && ly.mainlayer.enabled != 'disabled')\n"
 	"        {\n"
-	"        dd_toggle(ly);\n"
+	"        dd_toggle(ly.mainlayer,false);\n"
 	"        }\n"
 	"\n");
 
@@ -209,32 +209,10 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"\n"
 	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd') cn_activate(ly.mainlayer, 'MouseDown');\n"
 	"    dd_target_img = e.target;\n"
-	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
-	"        {\n"
-	"        if (dd_current)\n"
-	"            {\n"
-	"            dd_current.PaneLayer.visibility = 'hide';\n"
-	"            dd_current.clip.height -= dd_current.PaneLayer.clip.height;\n"
-	"            pg_resize_area(dd_current.area,dd_current.clip.width+1,dd_current.clip.height+1);\n"
-	"            dd_toggle(dd_current);\n"
-	"            dd_current = null;\n"
-	"            }\n"
-	"        else\n"
-	"            {\n"
-	"            ly.PaneLayer.pageX = ly.pageX;\n"
-	"            ly.PaneLayer.pageY = ly.pageY+20;\n"
-	"            ly.PaneLayer.visibility = 'inherit';\n"
-	"            if(ly.form)\n"
-	"                ly.form.FocusNotify(ly);\n"
-	"            dd_current = ly;\n"
-	"            ly.clip.height += ly.PaneLayer.clip.height;\n"
-	"            pg_resize_area(ly.area,ly.clip.width+1,ly.clip.height+1);\n"
-	"            dd_toggle(ly);\n"
-	"            }\n"
-	"        }\n"
-	"    else if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')\n"
+	"    if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')\n"
 	"        {\n"
 	"        dd_select_item(dd_current, ly.index);\n"
+	"        dd_collapse(dd_current);\n"
 	"        }\n"
 	"    else if (ly.kind == 'dd_sc')\n"
 	"        {\n"
@@ -263,6 +241,21 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"                dd_click_y = e.pageY;\n"
 	"                dd_thum_y = dd_target_img.thum.pageY;\n"
 	"                break;\n"
+	"            }\n"
+	"        }\n"
+	"    else if ((ly.kind == 'dd' || ly.kind == 'ddtxt') && ly.mainlayer.enabled != 'disabled')\n"
+	"        {\n"
+	"        if (dd_current)\n"
+	"            {\n"
+	"            dd_toggle(dd_current,true);\n"
+	"            dd_collapse(dd_current);\n"
+	"            }\n"
+	"        else\n"
+	"            {\n"
+	"            dd_toggle(ly.mainlayer,true);\n"
+	"            dd_expand(ly.mainlayer);\n"
+	"            if(ly.mainlayer.form)\n"
+	"                ly.mainlayer.form.FocusNotify(ly);\n"
 	"            }\n"
 	"        }\n"
 	"    if (dd_current && dd_current != ly && dd_current.PaneLayer != ly && (!ly.mainlayer || dd_current != ly.mainlayer))\n"
@@ -435,10 +428,13 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.39 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_dropdown.c,v 1.40 2004/05/04 18:22:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.40  2004/05/04 18:22:19  gbeeley
+    - start of port of dropdown widget to W3C/IE
+
     Revision 1.39  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
