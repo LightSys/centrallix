@@ -48,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.2 2001/09/18 15:39:23 mattphillips Exp $
+    $Id: test_obj.c,v 1.3 2001/09/28 19:06:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.3  2001/09/28 19:06:18  gbeeley
+    Fixed EOF handling on readline()==NULL; fixed "query" command to use inbuf
+    instead of sbuf.
+
     Revision 1.2  2001/09/18 15:39:23  mattphillips
     Added GNU Readline support.  This adds full commandline editting support, and
     scrollback support.  No tab completion yet, though.
@@ -166,6 +170,13 @@ start(void* v)
 	    if (inbuf && *inbuf)
 		add_history (inbuf);
 
+	    /** If inbuf is null (end of file, etc.), exit **/
+	    if (!inbuf)
+	        {
+		printf("quit\n");
+		thExit();
+		}
+
 	    if (ls) mlxCloseSession(ls);
 	    ls = mlxStringSession(inbuf,MLX_F_ICASE);
 	    if (mlxNextToken(ls) != MLX_TOK_KEYWORD) continue;
@@ -199,7 +210,7 @@ start(void* v)
 		    printf("Usage: query \"<query-text>\"\n");
 		    continue;
 		    }
-		qy = objMultiQuery(s, sbuf + 6);
+		qy = objMultiQuery(s, inbuf + 6);
 		if (!qy)
 		    {
 		    printf("query: could not open query!\n");
