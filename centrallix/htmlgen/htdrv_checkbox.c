@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.18 2002/07/19 21:17:48 mcancel Exp $
+    $Id: htdrv_checkbox.c,v 1.19 2002/07/20 19:44:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.19  2002/07/20 19:44:25  lkehresman
+    Event handlers now have the variable "ly" defined as the target layer
+    and it will be global for all the events.  We were finding that nearly
+    every widget defined this themselves, so I just made it global to save
+    some variables and a lot of lines of duplicate code.
+
     Revision 1.18  2002/07/19 21:17:48  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -175,14 +181,9 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "checkbox", 
       "\n"
-      "    if (e.target != null && e.target.kind == 'checkbox')\n"
+      "    if (ly.kind == 'checkbox' && ly.enabled)\n"
       "       {\n"
-      "       if (e.target.layer != null)\n"
-      "           layer = e.target.layer;\n"
-      "       else\n"
-      "           layer = e.target;\n"
-      "       if (layer.enabled)\n"
-      "           checkbox_toggleMode(layer);\n"
+      "       checkbox_toggleMode(ly);\n"
       "       }\n"
       "\n");
 

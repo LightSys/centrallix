@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.32 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_page.c,v 1.33 2002/07/20 19:44:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.33  2002/07/20 19:44:25  lkehresman
+    Event handlers now have the variable "ly" defined as the target layer
+    and it will be global for all the events.  We were finding that nearly
+    every widget defined this themselves, so I just made it global to save
+    some variables and a lot of lines of duplicate code.
+
     Revision 1.32  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -397,10 +403,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandler(s, "document", "MOUSEMOVE","pg",
+		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
-		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (pg_curlayer != null)\n"
@@ -423,10 +428,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"            }\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOUT", "pg",
+		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
-		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (ibeam_current && e.target == ibeam_current)\n"
@@ -442,10 +446,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        pg_curarea = null;\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOVER", "pg",
+		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
-		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (ibeam_current && e.target == ibeam_current)\n"
@@ -462,10 +465,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 
 	/** CLICK event handler is for making mouse focus the keyboard focus **/
 	htrAddEventHandler(s, "document", "MOUSEDOWN", "pg",
+		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
-		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
@@ -526,10 +528,9 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 
 	/** This resets the keyboard focus. **/
 	htrAddEventHandler(s, "document", "MOUSEUP", "pg",
+		"    ly = (e.target.layer != null)?e.target.layer:e.target;\n"
 		"    if (pg_modallayer)\n"
 		"        {\n"
-		"        if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
 		"    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);\n");

@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.20 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_window.c,v 1.21 2002/07/20 19:44:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.21  2002/07/20 19:44:25  lkehresman
+    Event handlers now have the variable "ly" defined as the target layer
+    and it will be global for all the events.  We were finding that nearly
+    every widget defined this themselves, so I just made it global to save
+    some variables and a lot of lines of duplicate code.
+
     Revision 1.20  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -303,8 +309,6 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	
 	/** Event handler for mousedown -- initial click **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","wn",
-		"    if (e.target != null && e.target.layer != null) ly = e.target.layer;\n"
-		"    else ly = e.target;\n"
 		"    if (ly.kind == 'wn')\n"
 		"        {\n"
 		"        if (e.target.name == 'close') e.target.src = '/sys/images/02close.gif';\n"

@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.9 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_tab.c,v 1.10 2002/07/20 19:44:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.10  2002/07/20 19:44:25  lkehresman
+    Event handlers now have the variable "ly" defined as the target layer
+    and it will be global for all the events.  We were finding that nearly
+    every widget defined this themselves, so I just made it global to save
+    some variables and a lot of lines of duplicate code.
+
     Revision 1.9  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -203,7 +209,6 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Event handler for click-on-tab **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tc",
-		"    ly = (e.target.layer == null)?e.target:e.target.layer;\n"
 		"    if (ly.kind == 'tc') ly.makeCurrent();\n");
 
 		/*"    for(i=0;i<tc_tabs.length;i++)\n"

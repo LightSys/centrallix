@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.14 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_datetime.c,v 1.15 2002/07/20 19:44:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.15  2002/07/20 19:44:25  lkehresman
+    Event handlers now have the variable "ly" defined as the target layer
+    and it will be global for all the events.  We were finding that nearly
+    every widget defined this themselves, so I just made it global to save
+    some variables and a lot of lines of duplicate code.
+
     Revision 1.14  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -330,18 +336,16 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if (e.target.kind && e.target.kind.substr(0, 5) == 'dtimg') {\n"
 		"        eval('dt_'+e.target.kind.substr(6, 4)+'()');\n"
 		"    } else {\n"
-		"        var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-		"        if (targetLayer.kind && targetLayer.kind.substr(0, 2) == 'dt') {\n"
-		"            dt_mousedown(targetLayer);\n"
-		"        } else if (dt_current && dt_current != targetLayer) {\n"
+		"        if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
+		"            dt_mousedown(ly);\n"
+		"        } else if (dt_current && dt_current != ly) {\n"
 		"            dt_current.PaneLayer.visibility = 'hide';\n"
 		"            dt_current = null;\n"
 		"        }\n"
 		"    }\n");
 	htrAddEventHandler(s, "document","MOUSEUP","dt",
-		"    var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-		"    if (targetLayer.kind && targetLayer.kind.substr(0, 2) == 'dt') {\n"
-		"        dt_mouseup(targetLayer);\n"
+		"    if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
+		"        dt_mouseup(ly);\n"
 		"    }\n");
 
 

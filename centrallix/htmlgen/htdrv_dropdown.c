@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.23 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_dropdown.c,v 1.24 2002/07/20 19:44:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.24  2002/07/20 19:44:25  lkehresman
+    Event handlers now have the variable "ly" defined as the target layer
+    and it will be global for all the events.  We were finding that nearly
+    every widget defined this themselves, so I just made it global to save
+    some variables and a lot of lines of duplicate code.
+
     Revision 1.23  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -224,49 +230,46 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    htrAddEventHandler(s, "document","MOUSEOVER", "dropdown", 
 	"\n"
-	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && dd_current == targetLayer.topLayer && targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
-	"      dd_hilight_item(targetLayer);\n"
+	"   if (dd_current != null && dd_current == ly.topLayer && ly.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
+	"      dd_hilight_item(ly);\n"
 	"   }\n"
 	"\n");
 
    htrAddEventHandler(s, "document","MOUSEUP", "dropdown", 
 	"\n"
-	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && targetLayer.subkind == 'dropdown_scroll' && dd_current.enabled == 'full') {\n" 
-	"      if (targetLayer.name == 'up') {\n"
-	"         targetLayer.src = '/sys/images/ico13b.gif';\n"
-	"      } else if (targetLayer.name == 'down') {\n"
-	"         targetLayer.src = '/sys/images/ico12b.gif';\n"
+	"   if (dd_current != null && ly.subkind == 'dropdown_scroll' && dd_current.enabled == 'full') {\n" 
+	"      if (ly.name == 'up') {\n"
+	"         ly.src = '/sys/images/ico13b.gif';\n"
+	"      } else if (ly.name == 'down') {\n"
+	"         ly.src = '/sys/images/ico12b.gif';\n"
 	"      }\n"
 	"   }\n"
 	"\n");
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "dropdown", 
 	"\n"
-	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && (targetLayer != dd_current || targetLayer.kind != 'dropdown')) {\n"
-	"      if (targetLayer.subkind == 'dropdown_scroll' || targetLayer.subkind == 'dropdown_thumb') {\n"
-	"          if (targetLayer.name == 'up' && dd_current.topLayer.scrollPanelLayer.viewRangeTop > 0) {\n"
-	"              targetLayer.src = '/sys/images/ico13c.gif';\n"
+	"   if (dd_current != null && (ly != dd_current || ly.kind != 'dropdown')) {\n"
+	"      if (ly.subkind == 'dropdown_scroll' || ly.subkind == 'dropdown_thumb') {\n"
+	"          if (ly.name == 'up' && dd_current.topLayer.scrollPanelLayer.viewRangeTop > 0) {\n"
+	"              ly.src = '/sys/images/ico13c.gif';\n"
 	"              dd_current.topLayer.scrollPanelLayer.y += 8;\n"
 	"              dd_current.topLayer.scrollPanelLayer.viewRangeTop -= 8;\n"
 	"              dd_current.topLayer.scrollPanelLayer.viewRangeBottom -= 8;\n"
-	"          } else if (targetLayer.name == 'down' && dd_current.topLayer.scrollPanelLayer.viewRangeBottom < dd_current.topLayer.scrollPanelLayer.clip.height) {\n"
-	"              targetLayer.src = '/sys/images/ico12c.gif';\n"
+	"          } else if (ly.name == 'down' && dd_current.topLayer.scrollPanelLayer.viewRangeBottom < dd_current.topLayer.scrollPanelLayer.clip.height) {\n"
+	"              ly.src = '/sys/images/ico12c.gif';\n"
 	"              dd_current.topLayer.scrollPanelLayer.y -= 8;\n"
 	"              dd_current.topLayer.scrollPanelLayer.viewRangeTop += 8;\n"
 	"              dd_current.topLayer.scrollPanelLayer.viewRangeBottom += 8;\n"
 	"          }\n"
 	"      } else {\n"
-	"          dd_select_item(targetLayer);\n"
+	"          dd_select_item(ly);\n"
 	"      }\n"
-	"   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
-	"      targetLayer.ddLayer.zIndex = 1000000;\n"
-	"      targetLayer.ddLayer.pageX = targetLayer.pageX;\n"
-	"      targetLayer.ddLayer.pageY = targetLayer.pageY + 18;\n"
-	"      targetLayer.document.images[8].src = '/sys/images/ico15c.gif';\n"
-	"      dd_current = targetLayer.topLayer;\n"
+	"   } else if (ly != null && ly.kind == 'dropdown') {\n"
+	"      ly.ddLayer.zIndex = 1000000;\n"
+	"      ly.ddLayer.pageX = ly.pageX;\n"
+	"      ly.ddLayer.pageY = ly.pageY + 18;\n"
+	"      ly.document.images[8].src = '/sys/images/ico15c.gif';\n"
+	"      dd_current = ly.topLayer;\n"
 	"      dd_lastkey = null;\n"
 	"      if(dd_current.form)\n"
 	"          dd_current.form.FocusNotify(dd_current);\n"
