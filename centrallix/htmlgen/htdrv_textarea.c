@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.8 2002/07/16 19:16:21 pfinley Exp $
+    $Id: htdrv_textarea.c,v 1.9 2002/07/16 19:24:34 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.9  2002/07/16 19:24:34  pfinley
+    uses the new header stylesheet function
+
     Revision 1.8  2002/07/16 19:16:21  pfinley
     textarea c file with js includes
 
@@ -153,10 +156,8 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    fieldname[0]='\0';
 	    } 
 
-	/** Ok, write the style header items. **/
-	htrAddHeaderItem(s,"    <STYLE TYPE=\"text/css\">\n");
-	htrAddHeaderItem_va(s,"\t#tx%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddHeaderItem(s,"    </STYLE>\n");
+	/** Write Style header items. **/
+	htrAddStylesheetItem_va(s,"\t#tx%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
