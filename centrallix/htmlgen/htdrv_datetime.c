@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.4 2002/07/10 20:54:29 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.5 2002/07/12 14:24:54 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.5  2002/07/12 14:24:54  lkehresman
+    Added form interaction with the datetime widget.  Works with the Kardia demo!!
+
     Revision 1.4  2002/07/10 20:54:29  lkehresman
     Corrected the leapyear detection
 
@@ -86,13 +89,21 @@ int
 htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
     {
     char* ptr;
+    char *sql;
+    char *str;
+    char *attr;
     char name[128];
     char initialdate[64];
     char fgcolor[64];
     char bgcolor[128];
+    char fieldname[30];
+    int type, rval;
     int x,y,w,h;
     int id;
     DateTime dt;
+    ObjData od;
+    pObject qy_obj;
+    pObjQuery qy;
 
 	/** Get an id for this. **/
 	id = (HTDT.idcnt++);
@@ -119,15 +130,52 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    return -1;
 	    }
 
+	if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+	    strncpy(fieldname,ptr,30);
+	else 
+	    fieldname[0]='\0';
+
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
-	/** Get initial date and time string */
-	if (objGetAttrValue(w_obj,"initialdate",POD(&ptr)) == 0)
+	/** Get initial date **/
+	if (objGetAttrValue(w_obj, "sql", POD(&sql)) == 0) 
 	    {
-	    memccpy(initialdate,ptr,'\0',63);
+	    if ((qy = objMultiQuery(w_obj->Session, sql))) 
+		{
+		while ((qy_obj = objQueryFetch(qy, O_RDONLY)))
+		    {
+		    attr = objGetFirstAttr(qy_obj);
+		    if (!attr)
+			{
+			mssError(1, "HTDT", "There was an error getting date from your SQL query");
+			return -1;
+			}
+		    type = objGetAttrType(qy_obj, attr);
+		    rval = objGetAttrValue(qy_obj, attr, &od);
+		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
+			str = objDataToStringTmp(type, (void*)(&od), 0);
+		    else
+			str = objDataToStringTmp(type, (void*)(od.String), 0);
+		    snprintf(initialdate, 64, "%s", str);
+		    objClose(qy_obj);
+		    }
+		objQueryClose(qy);
+		}
+	    }
+	else if (objGetAttrValue(w_obj,"initialdate",POD(&ptr)) == 0)
+	    {
+	    memccpy(initialdate, ptr, '\0', 63);
+	    }
+	else
+	    {
+	    initialdate[0]='\0';
+	    }
+	if (strlen(initialdate))
+	    {
+	    printf("ID: '%s'\n", initialdate);
 	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
 	    snprintf(initialdate, 64, "%s %d %d, %d:%d:%d", obj_short_months[dt.Part.Month], 
 	                          dt.Part.Day+1,
@@ -136,10 +184,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	                          dt.Part.Minute,
 	                          dt.Part.Second);
 	    }
-	else
-	    {
-	    strcpy(initialdate, "");
-	    }
+	
 
 	/** Get colors **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
@@ -169,10 +214,76 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	//htrAddScriptGlobal(s, name, "null", HTR_F_NAMEALLOC);
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
 
+	/** Get Value function **/
+	htrAddScriptFunction(s, "dt_getvalue", "\n"
+		"function dt_getvalue() {\n"
+		"   return dt_formatdate(this, this.wdate, 0);\n"
+		"   return str;\n"
+		"}\n", 0);
+
+	/** Set Value function **/
+	htrAddScriptFunction(s, "dt_setvalue", "\n"
+		"function dt_setvalue(v) {\n"
+		"   this.wdate = new Date(v);\n"
+		"   this.tmpdate = new Date(v);\n"
+		"   dt_drawdate(this.lbdy, this.tmpdate);\n"
+		"}\n", 0);
+
+	/** Clear Value function **/
+	htrAddScriptFunction(s, "dt_clearvalue", "\n"
+		"function dt_clearvalue() {\n"
+		"   this.wdate = new Date(this.initialdateStr);\n"
+		"   this.tmpdate = new Date(this.initialdateStr);\n"
+		"   dt_drawdate(this.lbdy, this.tmpdate);\n"
+		"}\n", 0);
+
+	/** Reset Value function **/
+	htrAddScriptFunction(s, "dt_resetvalue", "\n"
+		"function dt_resetvalue() {\n"
+		"   this.clearvalue();\n"
+		"}\n", 0);
+
+	/** Enable function **/
+	htrAddScriptFunction(s, "dt_enable", "\n"
+		"function dt_enable() {\n"
+		"   this.enabled = 'full';\n"
+		"}\n", 0);
+
+	/** Read-Only function **/
+	htrAddScriptFunction(s, "dt_readonly", "\n"
+		"function dt_readonly() {\n"
+		"   this.enabled = 'readonly';\n"
+		"}\n", 0);
+
+	/** Disable function **/
+	htrAddScriptFunction(s, "dt_disable", "\n"
+		"function dt_disable() {\n"
+		"   this.enabled = 'disabled';\n"
+		"}\n", 0);
+
+	htrAddScriptFunction(s, "dt_strpad", "\n"
+		"function dt_strpad(str, pad, len)\n"
+		"    {\n"
+		"    str = new String(str);\n"
+		"    for (var i=0; i < len-str.length; i++)\n"
+		"        str = pad+str;\n"
+		"    return str;\n"
+		"    }\n", 0);
+
 	/** Our initialization processor function. **/
 	htrAddScriptFunction(s, "dt_init", "\n"
-		"function dt_init(l,lbg1,lbg2,lbdy,limg,l2,w,h,dt,bgcolor,fgcolor)\n"
+		"function dt_init(l,lbg1,lbg2,lbdy,limg,l2,w,h,dt,bgcolor,fgcolor,fn)\n"
 		"    {\n"
+		"    this.enabled = 'full';\n"
+		"    l.fieldname = fn;\n"
+		"    l.setvalue = dt_setvalue;\n"
+		"    l.getvalue = dt_getvalue;\n"
+		"    l.enable = dt_enable;\n"
+		"    l.readonly = dt_readonly;\n"
+		"    l.disable = dt_disable;\n"
+		"    l.clearvalue = dt_clearvalue;\n"
+		"    l.resetvalue = dt_resetvalue;\n"
+		"    l.form = fm_current;\n"
 		"    l.kind = 'dt';\n"
 		"    lbg1.kind = 'dt';\n"
 		"    lbg2.kind = 'dt';\n"
@@ -195,6 +306,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    limg.document.layer = l;\n"
 		"    l2.document.layer = l2;\n"
 		"    l2.document.mainlayer = l;\n"
+		"    l.initialdateStr = dt;\n"
 		"    if (dt) l.wdate = new Date(dt);\n"
 		"    else l.wdate = new Date();\n"
 		"    l.tmpdate = new Date(l.wdate);\n"
@@ -256,6 +368,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    dt_drawmonth(l.ld, l.tmpdate);\n"
 		"    dt_drawdate(l.lbdy, l.tmpdate);\n"
 		"    dt_drawtime(l, l.tmpdate);\n"
+		"    if (fm_current) fm_current.Register(l);\n"
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
@@ -266,14 +379,14 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	                       "%s.layers.dt%dpane1.document.layers.dt%dbody, "
 	                       "%s.layers.dt%dpane1.document.layers.dt%dimg, "
 	                       "%s.layers.dt%dpane2, "
-	                       "%d,%d,\"%s\",\"%s\",\"%s\")\n",
+	                       "%d,%d,\"%s\",\"%s\",\"%s\",\"%s\")\n",
 			parentname,id, 
 			parentname,id,id, 
 			parentname,id,id, 
 			parentname,id,id, 
 			parentname,id,id, 
 			parentname,id, 
-			w,h, initialdate, bgcolor, fgcolor);
+			w,h, initialdate, bgcolor, fgcolor, fieldname);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s, /* Date Display Button */ 
@@ -468,7 +581,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    lmn = l.ld.tl_mn;\n"
 
 		"    lhr.document.write('<table width=70 height=20 cellpadding=0 cellspacing=0 border=0><tr><td align=right width=58>');\n"
-		"    lmn.document.write(l.wdate.getHours());\n"
+		"    lmn.document.write(dt_strpad(l.wdate.getHours(), '0', 2));\n"
 		"    lhr.document.write('&nbsp;</td><td width=12>');\n"
 		"    lhr.document.write('<table cellpadding=0 cellspacing=0 border=0 width=12><tr><td valign=middle>');\n"
 		"    lhr.document.write('<img src=/sys/images/spnr_up.gif></td></tr><tr><td>');\n"
@@ -484,7 +597,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    lhr.document.close();\n"
 
 		"    lmn.document.write('<table width=70 height=20 cellpadding=0 cellspacing=0 border=0><tr><td align=right width=58>');\n"
-		"    lmn.document.write(l.wdate.getMinutes());\n"
+		"    lmn.document.write(dt_strpad(l.wdate.getMinutes(), '0', 2));\n"
 		"    lmn.document.write('&nbsp;</td><td width=12>');\n"
 		"    lmn.document.write('<table cellpadding=0 cellspacing=0 border=0 width=12><tr><td valign=middle>');\n"
 		"    lmn.document.write('<img src=/sys/images/spnr_up.gif></td></tr><tr><td>');\n"
@@ -534,7 +647,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    switch (d.getMonth())\n"
 		"        {\n"
 		"        case 0: return 31;\n"
-		"        case 1: if (dt_isleapyear(d)) {return 29;} else {return 28;}\n"
+		"        case 1: return (dt_isleapyear(d)?29:28);\n"
 		"        case 2: return 31;\n"
 		"        case 3: return 30;\n"
 		"        case 4: return 31;\n"
@@ -559,7 +672,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"            str  = l.strMonthsAbbrev[d.getMonth()] + ' ';\n"
 		"            str += d.getDate() + ', ';\n"
 		"            str += d.getYear()+1900 + ', ';\n"
-		"            str += d.getHours()+':'+d.getMinutes();\n"
+		"            str += dt_strpad(d.getHours(), '0', 2)+':';\n"
+		"            str += dt_strpad(d.getMinutes(), '0', 2);\n"
 		"            break;\n"
 		"        }\n"
 		"    return str;\n"
@@ -578,6 +692,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"            td.setMinutes(ml.wdate.getMinutes());\n"
 		"            ml.wdate = new Date(td);\n"
 		"            dt_drawdate(ml.lbdy, ml.wdate);\n"
+		"            if (dt_current.form)\n"
+		"                dt_current.form.DataNotify(dt_current);\n"
 		"            dt_current.document.layer.ld.visibility = 'hide';\n"
 		"            dt_current = null;\n"
 		"            }\n"
@@ -615,6 +731,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"                dt_drawtime(targetLayer.mainlayer, d);\n"
 		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
 		"                }\n"
+		"            if (targetLayer.mainlayer.form)\n"
+		"                targetLayer.mainlayer.form.DataNotify(targetLayer.mainlayer);\n"
 		"            }\n"
 		"        else if (targetLayer.subkind == 'dt_hour_down')\n"
 		"            {\n"
@@ -626,6 +744,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"                dt_drawtime(targetLayer.mainlayer, d);\n"
 		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
 		"                }\n"
+		"            if (targetLayer.mainlayer.form)\n"
+		"                targetLayer.mainlayer.form.DataNotify(targetLayer.mainlayer);\n"
 		"            }\n"
 		"        else if (targetLayer.subkind == 'dt_min_up')\n"
 		"            {\n"
@@ -637,6 +757,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"                dt_drawtime(targetLayer.mainlayer, d);\n"
 		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
 		"                }\n"
+		"            if (targetLayer.mainlayer.form)\n"
+		"                targetLayer.mainlayer.form.DataNotify(targetLayer.mainlayer);\n"
 		"            }\n"
 		"        else if (targetLayer.subkind == 'dt_min_down')\n"
 		"            {\n"
@@ -648,6 +770,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"                dt_drawtime(targetLayer.mainlayer, d);\n"
 		"                dt_drawdate(targetLayer.mainlayer.lbdy, d);\n"
 		"                }\n"
+		"            if (targetLayer.mainlayer.form)\n"
+		"                targetLayer.mainlayer.form.DataNotify(targetLayer.mainlayer);\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
@@ -659,6 +783,8 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        {\n"
 		"        if (targetLayer.subkind != 'dt_dropdown')\n"
 		"            {\n"
+		"            if (targetLayer.form)\n"
+		"                targetLayer.form.FocusNotify(targetLayer);\n"
 		"            dt_setmode(targetLayer,0);\n"
 		"            targetLayer.ld.visibility = 'inherit';\n"
 		"            dt_current = targetLayer;\n"
