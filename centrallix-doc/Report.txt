@@ -1,0 +1,493 @@
+Document:  Centrallix Reporting System Documentation
+Author:    Greg Beeley (GRB)
+Date:      August 13th, 2001
+-------------------------------------------------------------------------------
+
+I   OVERVIEW....
+
+    The reporting system in Centrallix is a fairly central piece of function-
+    ality, since it is what has driven the more extensive SQL language develop-
+    ment in the system.  The report writer is an ObjectSystem driver which 
+    reads a Structure File (see the documentation on such) to transform various
+    kinds of data in the ObjectSystem into a textual report which can be 
+    presented in HTML, text, PCL, or in Epson-FX printable format.
+
+    Before reviewing this document, you should learn more about Structure Files
+    first; there is a documentation file in this package on that subject.
+
+
+II  REPORTING BASICS....
+
+    A Centrallix report normally consists of three basic components, the param-
+    eter declaration section, the query section, and the report body.
+
+    The parameter declaration section specifies some simple aspects of the
+    report, such as its title, as well as what parameters the report is 
+    expected to take (including their defaults).
+
+    The query section declares what SQL queries will be used in the report, as 
+    well as any running sums, counts, averages, or other totals to be applied
+    to the query results as they are generated.  The queries listed can also
+    reference each other via linkages, allowing the results of one query to
+    be dependent on the results of another.
+
+    Finally, the report body specifies the order in which the queries are 
+    invoked as well as providing a good deal of structural specification about
+    how the report should look and be formatted.  The report body consists of
+    any number of Tables, Forms, Sections, Comments, Data elements, as well as
+    Column elements.  What each of these elements do is described later in this
+    document.
+
+
+III GETTING STARTED....
+
+    We'll start with a very simple report.  This report doesn't query any data,
+    nor does it compute anything.  Rather it just prints "Hello world"....
+    Seems like a good place to start :)
+
+	HelloWorld "system/report"
+	    {
+	    title = "This is a hello-world report"
+
+	    c1 "report/comment"
+		{
+		text = "Hello world"
+		}
+	    }
+
+    The "system/report" element is the top-level container for the report
+    specification.  Every report needs to have one.  The "title" can be left
+    unspecified, but at the top of the report will appear "UNTITLED" or 
+    something to that effect :)
+
+    The "report/comment" element simply prints a string of text on the report
+    output.  If you need to include double-quote marks within the text= 
+    string, place an escape character \ before the double quotes, as in
+
+        "It said, \"Hello world\""
+    
+    Well, that report doesn't do much that is interesting.  Still, there is a
+    lot more we can do without actually getting into writing SQL queries.  So,
+    let's try something unusual - let's read the contents of a file in the
+    ObjectSystem right into the report body.
+
+        ShowInstallTxt "system/report"
+	    {
+	    title = "These are the installation instructions for Centrallix"
+
+	    c1 "report/comment" { text = "Here are the instructions:" }
+
+	    d1 "report/data"
+	        {
+		value = "/doc/install/INSTALL.txt:objcontent + '\n'"
+		}
+	    }
+
+    Note that this time we put the braces and text= line for the comment all on
+    one line.  This is perfectly fine - Centrallix doesn't much care where you
+    put the braces, as long as everything is in the right order.
+
+    The value= expression in the report/data element is just that - an 
+    expression.  While report/comment elements only print a text string, the 
+    report/data element prints the results of an expression.  In this case, we
+    read the contents of INSTALL.txt, add a newline character, and print the
+    results on the screen.  Note that Centrallix expressions are not inherently
+    limited as to string lengths.
+
+    Centrallix also does not differentiate between single characters and 
+    strings of characters.  As in most languages other than C, a single
+    character is just a very short string ;)
+
+    Well I think we're ready for an actual SQL query, don't you think?  Ok, 
+    let's query the names of the 12 months from the Months.csv file that came
+    with the centrallix-os package.
+
+        Months "system/report"
+	    {
+	    title = "A Months-Of-The-Year Tutorial"
+
+	    monthquery "report/query"
+	        {
+		sql = "select :full_name, id = :id + 1 
+			 from /samples/Months.csv"
+		}
+
+	    months "report/form"
+	        {
+		source = monthquery
+
+		printit "report/data"
+		    {
+		    value = "'Month number ' + :monthquery:id + 
+			' is called ' + :monthquery:full_name + '.\n'"
+		    }
+		}
+	    }
+    
+    In this case, we declared a query which listed the twelve months of the
+    year from the Months CSV file.  Only two elements can invoke a query, the
+    report/form and report/table.  The former leaves it up to the author to 
+    construct what will be output for each record retrieve from the query.  The
+    latter automatically formats the output into a tabular structure.
+
+    Note that in the query, we named the second column "id = :id + 1".  Any
+    time you have a computed column, always be sure to give it an intelligible
+    name - otherwise Centrallix will give it a name for you....
+
+    Also note that queries aren't actually run until they are activated, so a
+    query could potentially be re-run any number of times (in the above example
+    you could have included several "months" form sections, each re-listing the
+    months over and over).
+
+    Finally, we'll take a look at a report that has a parameter passed to it.
+
+        Months2 "system/report"
+	    {
+	    title = "Your month information..."
+	    nDays = 31
+
+	    monthquery1 "report/query"
+	        {
+		sql = "select :full_name
+		         from /samples/Months.csv
+			where :num_days = &nDays"
+		}
+	    monthquery2 "report/query"
+	        {
+		sql = "select :full_name
+		         from /samples/Months.csv
+			where :num_leapyear_days = &nDays"
+		}
+
+	    c1 "report/data" 
+	        { 
+		value = "'These months have ' + :this:nDays + ' days...\n'" 
+		}
+	    t1 "report/table"
+	        {
+		source = monthquery1
+		columns = full_name
+		titlebar = no
+		widths = 20
+		align = left
+		}
+	    c2 "report/data"
+	        {
+		value = "'These months have ' +:this:nDays + 
+		    ' days in a leap-year...\n'"
+		}
+	    t2 "report/table"
+	        {
+		source = monthquery2
+		columns = full_name
+		titlebar = no
+		widths = 20
+		align = left
+		}
+	    }
+
+    So, then, how are parameters passed to such a report?  In order to do this,
+    you must have the Centrallix network driver set the parameters up when it
+    opens the report.  The typical way to do this when using Centrallix as a
+    webserver is as follows:
+
+        http://localhost:800/Months2.rpt?ls__params=yes&nDays=29
+
+    The remaining part of this document is dedicated to reference information
+    regarding reports.  The reporting system has far more capabilities than we
+    have explored in this brief tutorial.  See the next section for more 
+    information on these.
+
+
+IV  REFERENCE....
+
+    "system/report"	    Top-level container for the entire report spec.
+
+	title	    string  The report's title.
+	titlebar    boolean Determines whether an automatic titlebar at the top
+			    of the report is emitted.  The automatic titlebar
+			    contains the username, date, title, and time.
+			    Values can be "yes" or "no".  Default is "yes".
+
+
+    "report/comment"	    Prints a simple string of text.
+
+	style	    strings A comma-separated list of printing styles for the
+			    comment.  Valid values are "bold","italic",
+			    "underline","compressed","barcode","expanded",
+			    "center".  "barcode" style converts a number into
+			    a USPS barcode for mailings.
+	
+	font	    string  The font to output the text in.  Maybe one of the
+			    following: "times","helvetica", or "courier".
+
+	xpos	    integer The numeric X column position to print the text
+			    at.
+	
+	ypos	    integer The numeric Y row position (relative to the page as
+			    a whole) to print thext text at.
+
+	relypos	    integer The numeric Y row position, relative to the current
+			    section, to print the text at.
+
+	autonewline boolean Whether to automatically emit a newline at the end
+			    of the text.  Defaults to "yes" for report/comment
+			    and report/column but to "no" for report/data.
+
+	text	    string  The text to print.
+
+
+    "report/column"	    Prints a single column from a given query.
+
+	Uses all the parameters from "report/comment", except "text", plus:
+
+	source	    strings Determines the column to print.  The first string
+			    is the query name, the second is the field name.
+
+	moneyformat string  The format to print Money data type in.  For the
+			    list of possible format values, see the Structure
+			    File documentation.
+
+	dateformat  string  The format to print date/time fields in.  For the
+			    list of possible date format values, see the
+			    Structure File documentation.
+
+
+    "report/data"	    Prints the result of an expression.
+
+	Uses all the parameters from "report/comment", except "text", plus:
+
+	value	    string  The expression to compute, to be printed.  Any 
+			    legal Centrallix expression is valid here.  Note
+			    that the entire expression must be contained within
+			    quote marks, so quotes may have to be escaped.
+
+
+    "report/section"	    Defines a new section for the report.
+
+	style	    strings A comma-separated list of printing styles for the
+			    comment.  Valid values are "bold","italic",
+			    "underline","compressed","barcode","expanded",
+			    "center".  "barcode" style converts a number into
+			    a USPS barcode for mailings.
+	
+	font	    string  The font to output the text in.  Maybe one of the
+			    following: "times","helvetica", or "courier".
+
+	moneyformat string  The format to print Money data type in.  For the
+			    list of possible format values, see the Structure
+			    File documentation.
+
+	dateformat  string  The format to print date/time fields in.  For the
+			    list of possible date format values, see the
+			    Structure File documentation.
+
+	margins	    ints    Two integers specifying the widths of the left and
+			    right margins, in tenths of an inch.
+
+	linespacing integer The line spacing for the section.  Normally left at
+			    1, but can be set to any positive integer.
+
+	title	    string  The section can have a title - if so it is centered
+			    above the section.
+
+	page	    integer A numeric value setting the current page number.
+			    This is sometimes needed if the page number has to
+			    be reset to 1 (in multipage reports, for instance).
+
+	columns	    integer The number of vertical columns into which to sub-
+			    divide the section.  Default = 1.
+
+	colsep	    integer If more than one column was specified, then this is
+			    the separation between them, in tenths of an inch.
+	
+    
+    "report/form"	    Starts a query and provides a repeating container
+			    for the query's results.  The contents are invoked
+			    once for each record in the query.
+
+	Uses "style", "moneyformat", "dateformat", and "font" plus:
+
+	source	    string  The name of the query(ies) to invoke for this form.
+			    If more than one query is specified, then normally
+			    the queries are nested inside of each other as if
+			    several report/form blocks had ben nested.  This
+			    default can be changed, however.
+
+	page	    integer A numeric value setting the current page number.
+			    This is sometimes needed if the page number has to
+			    be reset to 1 (in multipage reports, for instance).
+
+	rulesep	    boolean "yes" or "no".  Determines whether or not a horiz-
+			    ontal line is drawn between successive records.
+			    Default is No.
+
+	ffsep	    boolean "yes" or "no".  Default No.  Determines whether a
+			    form feed is performed after each record.
+
+	relylimit   integer The "relative Y limit" of the form's contents.  The
+			    form will continue to print successive records of 
+			    data until this number of physical lines on the 
+			    report have been occupied since the top of the 
+			    current section.  For most queries, hitting this
+			    limit will terminate the query early, unless the
+			    form is 'inner mode'.
+
+	reclimit    integer A limit on the number of records to print in this
+			    form.  Unlike the above relylimit, this is not 
+			    dependent on the size of the output on the physical
+			    page but rather on the number of records returned.
+
+	mode	    string  A form can have one of three modes.  The first, the
+			    default, is "normal".  This mode causes the form to
+			    behave as expected - one iteration for each record,
+			    and terminate when finished.  In this mode, if a
+			    relylimit or reclimit is hit, the query is term-
+			    inated prematurely and the remaining data is simply
+			    discarded.  The second mode is "outer".  In this
+			    mode, the form does not 'consume' records with each
+			    iteration - but rather iterates until all of the 
+			    data is used up.  How does it use up data, then if
+			    does not itself consume records?  This requires a
+			    form of the third type - 'inner' - to be included
+			    somewhere within the outer mode form.  An 'inner'
+			    mode form, if it hits a reclimit or relylimit, does
+			    not terminate the query.  In this way, one can
+			    break a query down into blocks of results, for
+			    instance to have a multi-page report with at most
+			    ten records per page and some additional other data
+			    listed after each group of ten records.
+
+	multimode   string  Determines how multiple queries are handled if the
+			    source line lists more than one.  The first mode,
+			    the default, is "nested".  If two queries were 
+			    listed, the second query would be run once in its
+			    entirety for each record that resulted from the
+			    first query.  This is identical to nesting multiple
+			    forms inside of one another, each referencing one
+			    and only one query.  The second mode, "parallel",
+			    runs the queries simultaneously and independently
+			    from one another.  The results are combined 
+			    together in the output.  If one query finishes 
+			    before the other, then some columns will be NULL in
+			    the results.  The final mode, "multinested", is an
+			    interesting one.  In this mode, the form iterates
+			    once through *before* each additional query is run.
+			    What this means is that each record, no matter
+			    which data source it came from, ends up having its
+			    own unique line.  For instance, running a numbers
+			    and a colors query in multinested fashion might 
+			    look like this:
+
+				    NUMBER	COLOR
+				    ----------	----------
+				    1		NULL
+				    1		red
+				    1		blue
+				    2		NULL
+				    2		red
+				    2		blue
+
+
+    "report/table"	    A simplified variant on the report/form which
+			    allows quick construction of tabular data.
+
+	Uses "style", "moneyformat", "dateformat", and "font" plus:
+
+	source	    string  The name of the query(ies) to invoke for this form.
+			    If more than one query is specified, then normally
+			    the queries are nested inside of each other as if
+			    several report/form blocks had ben nested.  This
+			    default can be changed, however.
+
+	reclimit    integer A limit on the number of records to print in this
+			    form.  Unlike the above relylimit, this is not 
+			    dependent on the size of the output on the physical
+			    page but rather on the number of records returned.
+
+	mode	    string  (see report/form)
+
+	multimode   string  (see report/form)
+
+	widthmode   string  Either "relative" or "absolute".  If "absolute" is
+			    specified, the column widths are in tenths of an
+			    inch.  Otherwise, they are relative to the current
+			    font size (as set by style compressed/expanded).
+
+	colsep	    integer The spacing between columns, in tenths of an inch
+			    if widthmode is absolute.
+
+	nodatamsg   boolean Default = "yes".  If the source query does not 
+			    return any data, the default is to print the 
+			    message "(no data returned)" below the table header
+			    if one was specified.  Setting this to "no" turns 
+			    off the "no data message".
+
+	titlebar    boolean Whether to put a title bar with the column names as
+			    a table header.  Default is yes.
+
+	lowersep    boolean Normally a separator line is drawn between the 
+			    table header and body.  If you want one also at the
+			    end of the data, set this to 'yes'.  This is most
+			    typically done if you want to print summary data
+			    at the end of the report.
+
+	expressions boolean This determines whether the columns given in the 
+			    columns= line are column names or full Centrallix
+			    expressions.  See below.  Default is 'no'.  This
+			    should be set to 'yes' if the source line contains
+			    more than one query.
+
+	columns	    strings The names of the columns to include in the table
+			    (if expressions is no), or a list of expressions
+			    for the table elements (if expressions is yes).
+
+	colnames    strings A list of column headers.
+
+	widths	    ints    A list of integers giving the widths of the columns
+
+	align	    strings A list of strings defining how the data in each 
+			    column should be aligned in its cell.  Possible
+			    values are "left", "right", and "center".
+
+	headeralign strings (see align above).  This applies to the cells in
+			    the table header only, however.
+
+    "report/header"	    Specifies a report section to be automatically
+			    included at the top of each page.  Not quite yet
+			    functional.
+
+    "report/footer"	    Specifies a report section to be automatically
+			    included at the bottom of each page.  Not quite
+			    yet functional.
+
+    "report/query"	    Specifies a SQL query to be used in the report, but
+			    does not actually run the query until a section
+			    referencing it executes.
+
+	sql	    string  The text of the SQL query itself.  Can include 
+			    parameter substitution via the "&Xyz" syntax where
+			    "Xyz" is the parameter name.  Also can include
+			    linked parameter substitution via "&1" and "&2"
+			    and the like, for referencing the first and second
+			    links, respectively.
+
+	link	    strings Two strings, specifying a query and column name to
+			    link to in a different query.
+
+
+    "report/aggregate"	    Specifies an aggregate counter or other function
+			    that summarizes data in one or more columns of the
+			    query.  The aggregate can be referenced via a
+			    report/data element.  Note that when the aggregate
+			    is referenced, it is "reset" to NULL or 0, 
+			    depending on the type of aggregate function in use.
+
+	compute	    string  An expression specifying the computation to be
+			    performed.  Normally should include one or more
+			    aggregate functions (sum,count,avg,min,max) in some
+			    form or fashion.
+
+	where	    string  A conditional expression specifying which rows 
+			    should be included in the aggregate computation.
+-------------------------------------------------------------------------------
