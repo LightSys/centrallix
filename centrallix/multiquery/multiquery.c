@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.2 2001/09/27 19:26:23 gbeeley Exp $
+    $Id: multiquery.c,v 1.3 2001/09/28 20:04:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.3  2001/09/28 20:04:50  gbeeley
+    Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
+    are now self-contained and require no redundant OBJECT nodes as parent
+    nodes.  Substantial reduction in expression node allocation and
+    evaluation.
+
     Revision 1.2  2001/09/27 19:26:23  gbeeley
     Minor change to OSML upper and lower APIs: objRead and objWrite now follow
     the same syntax as fdRead and fdWrite, that is the 'offset' argument is
@@ -254,6 +260,10 @@ mq_internal_PostProcess(pQueryStructure qs, pQueryStructure sel, pQueryStructure
 		    {
 		    strcpy(subtree->Presentation, ((pExpression)(subtree->Expr->Children.Items[0]))->Name);
 		    }
+		else if (subtree->Expr->NodeType == EXPR_N_PROPERTY && strcmp(subtree->Expr->Name,"objcontent"))
+		    {
+		    strcpy(subtree->Presentation, subtree->Expr->Name);
+		    }
 		else
 		    {
 		    sprintf(subtree->Presentation, "column_%3.3d", i);
@@ -318,7 +328,7 @@ mq_internal_DetermineCoverage(pExpression where_clause, pQueryStructure qs_where
     pQueryStructure where_item = NULL;
 
     	/** IF this is an OBJECT or PROPERTY node, just grab the coverage mask. **/
-	if (where_clause->NodeType == EXPR_N_OBJECT || where_clause->Children.nItems == 0)
+	if ((where_clause->NodeType == EXPR_N_OBJECT || where_clause->NodeType == EXPR_N_PROPERTY) || where_clause->Children.nItems == 0)
 	    {
 	    sum_objmask = where_clause->ObjCoverageMask;
 	    }

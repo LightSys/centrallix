@@ -66,12 +66,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.1 2001/08/13 18:00:47 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.2 2001/09/28 20:04:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
-    Revision 1.1  2001/08/13 18:00:47  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/28 20:04:50  gbeeley
+    Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
+    are now self-contained and require no redundant OBJECT nodes as parent
+    nodes.  Substantial reduction in expression node allocation and
+    evaluation.
+
+    Revision 1.1.1.1  2001/08/13 18:00:47  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -827,7 +833,7 @@ expRevEvalCompare(pExpression tree, pParamObjects objlist)
 	    {
 	    subtree = (pExpression)(tree->Children.Items[i]);
 	    id = expObjID(subtree,objlist);
-	    if (id != EXPR_CTL_CONSTANT && subtree->NodeType == EXPR_N_OBJECT && (objlist->Flags[id] & EXPR_O_UPDATE))
+	    if (id != EXPR_CTL_CONSTANT && (subtree->NodeType == EXPR_N_OBJECT || subtree->NodeType == EXPR_N_PROPERTY) && (objlist->Flags[id] & EXPR_O_UPDATE))
 	        {
 		if (obj_node) return 0;
 		obj_node = subtree;

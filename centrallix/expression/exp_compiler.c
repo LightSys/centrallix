@@ -47,12 +47,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.1 2001/08/13 18:00:47 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.2 2001/09/28 20:04:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
-    Revision 1.1  2001/08/13 18:00:47  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/28 20:04:50  gbeeley
+    Minor efficiency enhancement to expression trees.  Most PROPERTY nodes
+    are now self-contained and require no redundant OBJECT nodes as parent
+    nodes.  Substantial reduction in expression node allocation and
+    evaluation.
+
+    Revision 1.1.1.1  2001/08/13 18:00:47  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -333,12 +339,12 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			    objlist->Flags[i] |= EXPR_O_REFERENCED;
 			    etmp->ObjCoverageMask |= (1<<(i));
 			    }
-			etmp->Parent = expAllocExpression();
+			/* etmp->Parent = expAllocExpression();
 			xaAddItem(&(etmp->Parent->Children),(void*)etmp);
 			etmp->Parent->ObjID = etmp->ObjID;
 			if (i>=0) etmp->Parent->ObjCoverageMask |= (1<<(i));
 			etmp = etmp->Parent;
-			etmp->NodeType = EXPR_N_OBJECT;
+			etmp->NodeType = EXPR_N_OBJECT;  */
                         break;
     
                     default:
@@ -623,7 +629,7 @@ exp_internal_SetCoverageMask(pExpression exp)
     pExpression subexp;
 
     	/** Shortcut quit **/
-	if (exp->NodeType == EXPR_N_OBJECT) return 0;
+	if (exp->NodeType == EXPR_N_OBJECT || exp->NodeType == EXPR_N_PROPERTY) return 0;
 
 	/** Compute coverage mask for this based on child objects **/
 	for(i=0;i<exp->Children.nItems;i++)
