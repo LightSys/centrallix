@@ -65,10 +65,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.20 2003/04/16 02:14:36 nehresma Exp $
+    $Id: net_nfs.c,v 1.21 2003/04/16 03:24:14 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.21  2003/04/16 03:24:14  nehresma
+    added CXSEC macros for entry and exit of functions
+
     Revision 1.20  2003/04/16 02:14:36  nehresma
     reopen_inode and close_inode support added.
 
@@ -176,8 +179,9 @@
 
  **END-CVSDATA***********************************************************/
 
-#define MAX_PACKET_SIZE 16384
-#define BLOCK_SIZE 512
+#define MAX_PACKET_SIZE	16384
+#define BLOCK_SIZE	512
+#define NFS_FN_KEY	(MGK_NNFS & 0xFFFF00FF)
 
 typedef unsigned int inode;
 
@@ -253,23 +257,6 @@ struct
     NNFS;
 
 pObject nnfs_internal_open_inode(fhandle f);
-
-void
-nnfs_internal_dump_buffer(unsigned char* buf, int len)
-    {
-    int i;
-    printf("Dumping %i byte buffer at %p\n",len,buf);
-    if(len%4)
-        printf("WARNING: %i bytes is not a multiple of 4!\n",len);
-#define GOODC(c) ( (c>=' ' && c<='~') ?c:'.' )
-    for(i=0;i<len;i+=4)
-	{
-	printf("%5i  %02x %02x %02x %02x  %c%c%c%c\n",i
-	    ,(unsigned char)buf[i],(unsigned char)buf[i+1],(unsigned char)buf[i+2],(unsigned char)buf[i+3]
-	    ,GOODC(buf[i]),GOODC(buf[i+1]),GOODC(buf[i+2]),GOODC(buf[i+3])
-	    );
-	}
-    }
 
 /** typedef for the functions that impliment the individual RPC calls **/
 typedef void* (*rpc_func)(void*);
@@ -472,10 +459,29 @@ const struct rpc_struct nfs_program[] =
 const int num_nfs_procs = sizeof(nfs_program)/sizeof(struct rpc_struct);
 
 
+void
+nnfs_internal_dump_buffer(unsigned char* buf, int len)
+    {
+    CXSEC_ENTRY(NFS_FN_KEY);
+    int i;
+    printf("Dumping %i byte buffer at %p\n",len,buf);
+    if(len%4)
+        printf("WARNING: %i bytes is not a multiple of 4!\n",len);
+#define GOODC(c) ( (c>=' ' && c<='~') ?c:'.' )
+    for(i=0;i<len;i+=4)
+	{
+	printf("%5i  %02x %02x %02x %02x  %c%c%c%c\n",i
+	    ,(unsigned char)buf[i],(unsigned char)buf[i+1],(unsigned char)buf[i+2],(unsigned char)buf[i+3]
+	    ,GOODC(buf[i]),GOODC(buf[i+1]),GOODC(buf[i+2]),GOODC(buf[i+3])
+	    );
+	}
+    CXSEC_EXIT(NFS_FN_KEY);
+    }
 
 int
 nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     char *result;
     char *my_fh;
     union 
@@ -503,6 +509,7 @@ nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
 	xhAdd(NNFS.pathToFh,p,my_fh);
 
 	strncpy(fh,fhandle_c.fhc,FHSIZE);
+	CXSEC_EXIT(NFS_FN_KEY);
 	return 0;
 	}
     else
@@ -510,21 +517,28 @@ nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
 	strncpy(fhandle_c.fhc,result,FHSIZE);
 	strncpy(fh,result,FHSIZE);
 	printf("path %s found in hash: %d\n",path,fhandle_c.fhi);
+	CXSEC_EXIT(NFS_FN_KEY);
 	return 0;
 	}
 
+    CXSEC_EXIT(NFS_FN_KEY);
     return -1;
     }
 
 int
 nnfs_internal_get_path(dirpath *path, const fhandle fh)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     char *result;
 
     result = xhLookup(NNFS.fhToPath, (char*)fh);
     if (!result)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return -1;
+	}
     *path=result;
+    CXSEC_EXIT(NFS_FN_KEY);
     return 0;
     }
 
@@ -532,18 +546,24 @@ nnfs_internal_get_path(dirpath *path, const fhandle fh)
 /** the functions that impliement mount (made using the above vim command from the prototypes) **/
 void* nnfs_internal_mountproc_null(void* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
+    CXSEC_EXIT(NFS_FN_KEY);
     return NULL;
     }
 
 fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     int i,f;
     fhstatus* retval = NULL;
     pExports exp;
 
     retval = (fhstatus*)nmMalloc(sizeof(fhstatus));
     if(!retval)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return NULL;
+	}
     memset(retval,0,sizeof(fhstatus));
 
     printf("mount request recieved for: %s\n",*param);
@@ -562,6 +582,7 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
 	{
 	printf("mount point %s is not exported\n",*param);
 	retval->status = ENODEV;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
     
@@ -571,11 +592,13 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     else
 	retval->status = 0;
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 mountlist* nnfs_internal_mountproc_dump(void* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     mountlist* head = NULL;
     mountlist_item* prev = NULL;
     mountlist_item* cur = NULL;
@@ -601,6 +624,7 @@ mountlist* nnfs_internal_mountproc_dump(void* param)
 	prev=cur;
 	}
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return head;
     }
 
@@ -608,6 +632,8 @@ mountlist* nnfs_internal_mountproc_dump(void* param)
   * host for which we are unmounting **/
 void* nnfs_internal_mountproc_umnt(dirpath* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
+    CXSEC_EXIT(NFS_FN_KEY);
     return NULL;
     }
 
@@ -615,11 +641,14 @@ void* nnfs_internal_mountproc_umnt(dirpath* param)
   * host for which we are unmounting **/
 void* nnfs_internal_mountproc_umntall(void* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
+    CXSEC_EXIT(NFS_FN_KEY);
     return NULL;
     }
 
 exportlist* nnfs_internal_mountproc_export(void* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     exportlist* head = NULL;
     exportlist_item* prev = NULL;
     exportlist_item* cur = NULL;
@@ -646,20 +675,24 @@ exportlist* nnfs_internal_mountproc_export(void* param)
 	prev=cur;
 	}
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return head;
     }
 
 /** the functions that impliment nfs **/
 void* nnfs_internal_nfsproc_null(void* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     void* retval = NULL;
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 attrstat* nnfs_internal_nfsproc_getattr(fhandle* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     attrstat* retval = NULL;
     char *path;
     int i;
@@ -692,28 +725,34 @@ attrstat* nnfs_internal_nfsproc_getattr(fhandle* param)
 	retval->attrstat_u.attributes.mtime.useconds = 0;
 	}
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 attrstat* nnfs_internal_nfsproc_setattr(sattrargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     attrstat* retval = NULL;
     retval = (attrstat*)nmMalloc(sizeof(attrstat));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 void* nnfs_internal_nfsproc_root(void* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     void* retval = NULL;
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     diropres* retval = NULL;
     dirpath parentPath;
     XString path;
@@ -730,6 +769,7 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     if(nnfs_internal_get_path(&parentPath,param->dir)<0)
 	{
 	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
@@ -741,6 +781,7 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     if(nnfs_internal_get_fhandle(retval->diropres_u.diropok.file,path.String)<0)
 	{
 	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
@@ -750,6 +791,7 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     if(!obj)
 	{
 	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
@@ -793,20 +835,24 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     retval->diropres_u.diropok.attributes.mtime.seconds = 0;
     retval->diropres_u.diropok.attributes.mtime.useconds = 0;
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 readlinkres* nnfs_internal_nfsproc_readlink(fhandle* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     readlinkres* retval = NULL;
     retval = (readlinkres*)nmMalloc(sizeof(readlinkres));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 readres* nnfs_internal_nfsproc_read(readargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     readres* retval = NULL;
     pObject obj;
     int i;
@@ -820,6 +866,7 @@ readres* nnfs_internal_nfsproc_read(readargs* param)
     if(!obj)
 	{
 	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
     retval->status = NFS_OK;
@@ -831,6 +878,7 @@ readres* nnfs_internal_nfsproc_read(readargs* param)
     if(i==-1)
 	{
 	retval->status = NFSERR_IO;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
@@ -858,91 +906,111 @@ readres* nnfs_internal_nfsproc_read(readargs* param)
     retval->readres_u.data.attributes.mtime.seconds = 0;
     retval->readres_u.data.attributes.mtime.useconds = 0;
 
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 void* nnfs_internal_nfsproc_writecache(void* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     void* retval = NULL;
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 attrstat* nnfs_internal_nfsproc_write(writeargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     attrstat* retval = NULL;
     retval = (attrstat*)nmMalloc(sizeof(attrstat));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 diropres* nnfs_internal_nfsproc_create(createargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     diropres* retval = NULL;
     retval = (diropres*)nmMalloc(sizeof(diropres));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 nfsstat* nnfs_internal_nfsproc_remove(diropargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 nfsstat* nnfs_internal_nfsproc_rename(renameargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 nfsstat* nnfs_internal_nfsproc_link(linkargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 nfsstat* nnfs_internal_nfsproc_symlink(symlinkargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 diropres* nnfs_internal_nfsproc_mkdir(createargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     diropres* retval = NULL;
     retval = (diropres*)nmMalloc(sizeof(diropres));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 nfsstat* nnfs_internal_nfsproc_rmdir(diropargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
     /** do work here **/
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     readdirres* retval = NULL;
     pObject obj;
     pObjQuery qy;
@@ -961,6 +1029,7 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     if(COOKIESIZE != sizeof(int))
 	{
 	retval->status = NFSERR_NXIO;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
     cookie = *(int*)param->cookie;
@@ -969,6 +1038,7 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     if(nnfs_internal_get_path(&currentPath,param->dir)<0)
 	{
 	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
@@ -979,6 +1049,7 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
 	{
 	mssError(0,"NNFS","partial directory listings not implimented");
 	retval->status = NFSERR_NXIO;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
@@ -986,6 +1057,7 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     if(!obj)
 	{
 	retval->status = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
     
@@ -993,6 +1065,7 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     if(!qy)
 	{
 	retval->status = NFSERR_NOTDIR;
+	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
 	}
 
@@ -1045,11 +1118,13 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
 
 
     
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     statfsres* retval = NULL;
     retval = (statfsres*)nmMalloc(sizeof(statfsres));
 
@@ -1062,6 +1137,7 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     retval->statfsres_u.info.bfree = 1024; /* number of free blocks on device */
     retval->statfsres_u.info.bavail = 1024; /* number of blocks available for non-priviledged users */
 
+    CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
@@ -1071,6 +1147,7 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
 void
 nnfs_internal_create_inode_map()
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     pFile inFile;
     pStructInf stInode;
     pStructInf nextHandle;
@@ -1078,6 +1155,7 @@ nnfs_internal_create_inode_map()
 
     if(!NNFS.inodeFile)
 	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
 
@@ -1085,6 +1163,7 @@ nnfs_internal_create_inode_map()
     if(!inFile)
 	{
 	mssError(1,"NNFS","Warning: cannot open %s: %s",NNFS.inodeFile,strerror(errno));
+	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
     
@@ -1092,6 +1171,7 @@ nnfs_internal_create_inode_map()
     if(!stInode)
 	{
 	mssError(1,"NNFS","Cannot parse %s",NNFS.inodeFile);
+	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
 
@@ -1134,6 +1214,7 @@ nnfs_internal_create_inode_map()
 
     stFreeInf(stInode);
     fdClose(inFile,0);
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 /***
@@ -1142,6 +1223,7 @@ nnfs_internal_create_inode_map()
 void
 nnfs_internal_debug_inode_map()
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     int i;
 
     printf("\n");
@@ -1160,6 +1242,7 @@ nnfs_internal_debug_inode_map()
 	    }
 	}
     printf("\n");
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 /***
@@ -1168,6 +1251,7 @@ nnfs_internal_debug_inode_map()
 void
 nnfs_internal_dump_inode_map()
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     pFile outFile;
     pStructInf stInode;
     pStructInf nextHandle;
@@ -1176,6 +1260,7 @@ nnfs_internal_dump_inode_map()
     if(!NNFS.inodeFile)
 	{
 	mssError(0,"NNFS","No inode map file specified in configuration");
+	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
 
@@ -1183,12 +1268,14 @@ nnfs_internal_dump_inode_map()
     if(!outFile)
 	{
 	mssError(1,"NNFS","Cannot open inode.map: %s",strerror(errno));
+	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
     stInode = stCreateStruct("inode_map","system/inode-map");
     if(!stInode)
 	{
 	mssError(1,"NNFS","Cannot create StructInf");
+	CXSEC_EXIT(NFS_FN_KEY);
 	return;
 	}
     /** how do we tell it to create version 2 structure files? **/
@@ -1231,6 +1318,7 @@ nnfs_internal_dump_inode_map()
 
     fdClose(outFile,0);
     stFreeInf(stInode);
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 /***
@@ -1241,30 +1329,65 @@ nnfs_internal_dump_inode_map()
 inode
 nnfs_internal_get_inode(void* data, xdrproc_t func)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     if(func==(xdrproc_t)xdr_void)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return 0;
+	}
     if(func==(xdrproc_t)xdr_fhandle)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return *(inode*)data;
+	}
     if(func==(xdrproc_t)xdr_sattrargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((sattrargs*)data)->file,(xdrproc_t)xdr_fhandle);
+	}
     if(func==(xdrproc_t)(xdrproc_t)xdr_diropargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((diropargs*)data)->dir,(xdrproc_t)xdr_fhandle);
+	}
     if(func==(xdrproc_t)(xdrproc_t)xdr_readargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((readargs*)data)->file,(xdrproc_t)xdr_fhandle);
+	}
     if(func==(xdrproc_t)(xdrproc_t)xdr_writeargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((writeargs*)data)->file,(xdrproc_t)xdr_fhandle);
+	}
     if(func==(xdrproc_t)(xdrproc_t)xdr_createargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return 0;
+	}
     /** may have problems with destination on some of these -- not sure how to handle **/
     if(func==(xdrproc_t)(xdrproc_t)xdr_renameargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((renameargs*)data)->from,(xdrproc_t)xdr_diropargs);
+	}
     if(func==(xdrproc_t)(xdrproc_t)xdr_linkargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((linkargs*)data)->from,(xdrproc_t)xdr_fhandle);
+	}
     if(func==(xdrproc_t)(xdrproc_t)xdr_symlinkargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((symlinkargs*)data)->from,(xdrproc_t)xdr_diropargs);
+	}
     if(func==(xdrproc_t)(xdrproc_t)xdr_readdirargs)
+	{
+	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((readdirargs*)data)->dir,(xdrproc_t)xdr_fhandle);
+	}
     mssError("NNFS",0,"Error getting inode from %p (%p)\n",data,func);
+    CXSEC_EXIT(NFS_FN_KEY);
     return 0;
     }
 
@@ -1274,9 +1397,11 @@ nnfs_internal_get_inode(void* data, xdrproc_t func)
 void
 nnfs_internal_destroy_queueentry(pQueueEntry entry)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     xdr_free(nfs_program[entry->procedure].param,(char*)entry->param);
     nmFree(entry->param,nfs_program[entry->procedure].param_size);
     nmFree(entry,sizeof(QueueEntry));
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 /***
@@ -1285,6 +1410,7 @@ nnfs_internal_destroy_queueentry(pQueueEntry entry)
 void
 nnfs_internal_request_handler(void* v)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     int threadNum = *(int*)v;
     pThreadInfo cThread = &NNFS.threads[threadNum];
     char name[32];
@@ -1387,6 +1513,7 @@ nnfs_internal_request_handler(void* v)
 	cThread->lockedInode = 0;
 	}
     
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 /*** nnfs_internal_nfs_listener - listens for and processes nfs requests
@@ -1395,6 +1522,7 @@ nnfs_internal_request_handler(void* v)
 void
 nnfs_internal_nfs_listener(void* v)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     pStructInf my_config;
     char listen_port[32];
     char* strval;
@@ -1436,6 +1564,7 @@ nnfs_internal_nfs_listener(void* v)
 	if (!NNFS.nfsSocket) 
 	    {
 	    mssErrorErrno(1,"NNFS","Could not open nfs listener");
+	    CXSEC_EXIT(NFS_FN_KEY);
 	    thExit();
 	    }
 	
@@ -1602,12 +1731,14 @@ nnfs_internal_nfs_listener(void* v)
 	mssError(1,"NNFS","Could not continue to accept requests.");
 	netCloseTCP(NNFS.nfsSocket,0,0);
 
+    CXSEC_EXIT(NFS_FN_KEY);
     thExit();
     }
 
 /** Read the export list from the config file **/
 void nnfs_internal_get_exports(pStructInf inf)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     int i;
     char* path;
     pExports exp;
@@ -1632,6 +1763,7 @@ void nnfs_internal_get_exports(pStructInf inf)
 
 	xaAddItem(NNFS.exportList,exp);
 	}
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 /*** nnfs_internal_mount_listener - listens for and processes mount requests
@@ -1640,6 +1772,7 @@ void nnfs_internal_get_exports(pStructInf inf)
 void
 nnfs_internal_mount_listener(void* v)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     pFile listen_socket;
     pFile connection_socket;
     pStructInf my_config;
@@ -1699,6 +1832,7 @@ nnfs_internal_mount_listener(void* v)
 	if (!listen_socket) 
 	    {
 	    mssErrorErrno(1,"NNFS","Could not open mount listener");
+	    CXSEC_EXIT(NFS_FN_KEY);
 	    thExit();
 	    }
 	
@@ -1885,6 +2019,7 @@ nnfs_internal_mount_listener(void* v)
 	mssError(1,"NNFS","Mount listener could not continue to accept requests.");
 	netCloseTCP(listen_socket,0,0);
 
+    CXSEC_EXIT(NFS_FN_KEY);
     thExit();
     }
 
@@ -1893,6 +2028,7 @@ nnfs_internal_mount_listener(void* v)
  ***/
 void nnfs_internal_monitor_objects()
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     int i;
     pObjectUse obj;
     struct timeval cur_time;
@@ -1916,6 +2052,7 @@ void nnfs_internal_monitor_objects()
 		}
 	    }
 	}
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 /***  Get a pObject for a specific inode from the cache, or open one up
@@ -1924,6 +2061,7 @@ void nnfs_internal_monitor_objects()
  ***/
 pObject nnfs_internal_open_inode(fhandle fh)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     int i, inode;
     pObjectUse obj;
     int found=0;
@@ -1944,6 +2082,7 @@ pObject nnfs_internal_open_inode(fhandle fh)
 	if(obj->inode == inode)
 	    {
     	    gettimeofday(&(obj->lastused), NULL);
+	    CXSEC_EXIT(NFS_FN_KEY);
 	    return obj->obj;
 	    }
 	}
@@ -1955,6 +2094,7 @@ pObject nnfs_internal_open_inode(fhandle fh)
     if (!path)
     	{
 	nmFree(obj,sizeof(ObjectUse));
+	CXSEC_EXIT(NFS_FN_KEY);
 	return NULL;
 	}
 
@@ -1970,10 +2110,12 @@ pObject nnfs_internal_open_inode(fhandle fh)
     if (!obj->obj)
     	{
 	nmFree(obj,sizeof(ObjectUse));
+	CXSEC_EXIT(NFS_FN_KEY);
 	return NULL;
 	}
     xaAddItem(NNFS.openObjects,(char*)obj);
 
+    CXSEC_EXIT(NFS_FN_KEY);
     return obj->obj;
     }
 
@@ -1982,6 +2124,7 @@ pObject nnfs_internal_open_inode(fhandle fh)
  ***/
 int nnfs_internal_reopen_inode(fhandle fh)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     pObjectUse obj;
     int i;
     union
@@ -1997,9 +2140,11 @@ int nnfs_internal_reopen_inode(fhandle fh)
 	if (obj->inode==fhandle_c.fhi)
 	    {
 	    gettimeofday(&(obj->lastused), NULL);
+	    CXSEC_EXIT(NFS_FN_KEY);
 	    return 0;
 	    }
 	}
+    CXSEC_EXIT(NFS_FN_KEY);
     return -1;
     }
 
@@ -2009,6 +2154,7 @@ int nnfs_internal_reopen_inode(fhandle fh)
  ***/
 int nnfs_internal_close_inode(fhandle fh)
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     pObjectUse obj;
     int i;
     union
@@ -2026,9 +2172,11 @@ int nnfs_internal_close_inode(fhandle fh)
 	    xaRemoveItem(NNFS.openObjects,i);
 	    objClose(obj->obj);
 	    nmFree(obj,sizeof(ObjectUse));
+	    CXSEC_EXIT(NFS_FN_KEY);
 	    return 0;
 	    }
 	}
+    CXSEC_EXIT(NFS_FN_KEY);
     return -1;
     }
 
@@ -2037,6 +2185,7 @@ int nnfs_internal_close_inode(fhandle fh)
 void
 nnfsShutdownHandler()
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     int i;
     pObjectUse obj;
 
@@ -2051,6 +2200,7 @@ nnfsShutdownHandler()
 	nmFree(obj,sizeof(ObjectUse));
 	}
     objCloseSession(NNFS.objSess);
+    CXSEC_EXIT(NFS_FN_KEY);
     }
 
 
@@ -2060,6 +2210,7 @@ nnfsShutdownHandler()
 int
 nnfsInitialize()
     {
+    CXSEC_ENTRY(NFS_FN_KEY);
     pStructInf my_config;
     int i;
 
@@ -2120,6 +2271,7 @@ nnfsInitialize()
 	if(!NNFS.threads)
 	    {
 	    mssError("NNFS",1,"Unable to get memory for threads");
+	    CXSEC_EXIT(NFS_FN_KEY);
 	    return -1;
 	    }
 
@@ -2138,6 +2290,7 @@ nnfsInitialize()
 
 	/** Start the open object monitoring thread **/
 	thCreate(nnfs_internal_monitor_objects, 0, NULL);
+    CXSEC_EXIT(NFS_FN_KEY);
     return 0;
     }
 
