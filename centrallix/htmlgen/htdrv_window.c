@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.33 2003/07/20 03:41:17 jorupp Exp $
+    $Id: htdrv_window.c,v 1.34 2003/08/02 22:12:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.34  2003/08/02 22:12:06  jorupp
+     * got treeview pretty much working (a bit slow though)
+    	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
+     * scrollpane displays, doesn't scroll
+
     Revision 1.33  2003/07/20 03:41:17  jorupp
      * got window mostly working in Mozilla
 
@@ -384,13 +389,13 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	if(s->Capabilities.HTML40 && s->Capabilities.CSS2)
 	    {
 	    /** Ok, write the style header items. **/
-	    htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; overflow: clip; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; %s}\n",
+	    htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; overflow: hidden; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; %s}\n",
 		    id,visible?"inherit":"hidden",x,y,w,h, w+2, h+2, z, bgnd_style);
-	    htrAddStylesheetItem_va(s,"\t#wn%dbase { border-style: solid; border-width: 1px; border-color: white gray gray white; }\n");
-	    htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %dpx; WIDTH: 100%; overflow: clip; Z-INDEX: %d; text-color: %s; %s}\n", id, tbh, z+1, txtcolor, hdr_bgnd_style);
-	    htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%dpx; WIDTH: %dpx; HEIGHT:%dpx; overflow: clip; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; }\n",
+	    htrAddStylesheetItem_va(s,"\t#wn%dbase { border-style: solid; border-width: 1px; border-color: white gray gray white; }\n", id);
+	    htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %dpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %d; text-color: %s; %s}\n", id, tbh, z+1, txtcolor, hdr_bgnd_style);
+	    htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%dpx; WIDTH: %dpx; HEIGHT:%dpx; overflow: hidden; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; }\n",
 		    id, tbh, w-2, h-tbh-2, w, h-tbh, z+1);
-	    htrAddStylesheetItem_va(s,"\t#wn%dmain { border-style: solid; border-width: 1px; border-color: gray white white gray; }\n");
+	    htrAddStylesheetItem_va(s,"\t#wn%dmain { border-style: solid; border-width: 1px; border-color: gray white white gray; }\n", id);
 	    htrAddStylesheetItem_va(s,"\t#wn%dclose { vertical-align: middle; }\n",id);
 	    }
 	else

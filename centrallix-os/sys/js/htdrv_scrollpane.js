@@ -13,15 +13,29 @@ function sp_init(l,aname,tname,p)
     {
     var alayer=null;
     var tlayer=null;
-    for(i=0;i<l.layers.length;i++)
+    if(cx__capabilities.Dom0NS)
 	{
-	ml=l.layers[i];
-	if(ml.name==aname) alayer=ml;
-	if(ml.name==tname) tlayer=ml;
+	var layers = pg_layers(l);
+	for(i=0;i<layers.length;i++)
+	    {
+	    ml=layers[i];
+	    if(ml.name==aname) alayer=ml;
+	    if(ml.name==tname) tlayer=ml;
+	    }
 	}
-    for(i=0;i<l.document.images.length;i++)
+    else if(cx__capabilities.Dom1HTML)
 	{
-	img=l.document.images[i];
+	alayer = document.getElementById(aname);
+	tlayer = document.getElementById(tname);
+	}
+    else
+	{
+	alert('browser not supported');
+	}
+    var images = pg_images(l);
+    for(i=0;i<images.length;i++)
+	{
+	img=images[i];
 	if(img.name=='d' || img.name=='u' || img.name=='b')
 	    {
 	    img.pane=l;
@@ -32,24 +46,38 @@ function sp_init(l,aname,tname,p)
 	    img.mainlayer=l;
 	    }
 	}
-    tlayer.document.images[0].kind='sp';
-    tlayer.document.images[0].layer = tlayer.document.images[0];
-    tlayer.document.images[0].mainlayer=l;
-    tlayer.document.images[0].thum=tlayer;
-    tlayer.document.images[0].area=alayer;
-    tlayer.document.images[0].pane=l;
+    images = pg_images(tlayer);
+    images[0].kind='sp';
+    images[0].layer = images[0];
+    images[0].mainlayer=l;
+    images[0].thum=tlayer;
+    images[0].area=alayer;
+    images[0].pane=l;
     alayer.clip.width=l.clip.width-18;
     alayer.maxwidth=alayer.clip.width;
     alayer.minwidth=alayer.clip.width;
     tlayer.nofocus = true;
     alayer.nofocus = true;
-    alayer.document.layer = alayer;
     alayer.mainlayer = l;
-    tlayer.document.layer = tlayer;
+    if(cx__capabilities.Dom0NS)
+	{
+	alayer.document.layer = alayer;
+	tlayer.document.layer = tlayer;
+	l.document.layer = l;
+	}
+    else if(cx__capabilities.Dom1HTML)
+	{
+	alayer.layer = alayer;
+	tlayer.layer = tlayer;
+	l.layer = l;
+	}
+    else
+	{
+	alert('browser not supported');
+	}
     tlayer.mainlayer = l;
     alayer.kind = 'sp';
     tlayer.kind = 'sp';
-    l.document.layer = l;
     l.mainlayer = l;
     l.kind = 'sp';
     l.LSParent = p;
@@ -58,14 +86,17 @@ function sp_init(l,aname,tname,p)
 function do_mv()
     {
     var ti=sp_target_img;
+    //alert('moving : ' + ti.kind + ' -- ' + sp_mv_incr);
     if (ti.kind=='sp' && sp_mv_incr > 0)
 	{
 	h=ti.area.clip.height;
 	d=h-ti.pane.clip.height;
+	//alert(h + ' -- ' + d);
 	incr=sp_mv_incr;
 	if(d<0) incr=0; else if (d+ti.area.y<incr) incr=d+ti.area.y;
-	for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)
-	    ti.pane.document.layers[i].y-=incr;
+	var layers = pg_layers(ti.pane);
+	for(i=0;i<layers.length;i++) if (layers[i] != ti.thum)
+	    layers[i].y-=incr;
 	v=ti.pane.clip.height-(3*18);
 	if (d<=0) ti.thum.y=18;
 	else ti.thum.y=18+v*(-ti.area.y/d);
@@ -76,11 +107,16 @@ function do_mv()
 	d=h-ti.pane.clip.height;
 	incr = -sp_mv_incr;
 	if(d<0)incr=0; else if (ti.area.y>-incr) incr=-ti.area.y;
-	for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)
-	    ti.pane.document.layers[i].y+=incr;
+	var layers = pg_layers(ti.pane);
+	for(i=0;i<layers.length;i++) if (layers[i] != ti.thum)
+	    layers[i].y+=incr;
 	v=ti.pane.clip.height-(3*18);
 	if(d<=0) ti.thum.y=18;
 	else ti.thum.y=18+v*(-ti.area.y/d);
+	}
+    else
+	{
+	alert(ti + ' -- ' + ti.id + ' is not known');
 	}
     return true;
     }

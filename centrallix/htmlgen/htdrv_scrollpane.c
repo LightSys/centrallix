@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.16 2003/07/27 03:24:54 jorupp Exp $
+    $Id: htdrv_scrollpane.c,v 1.17 2003/08/02 22:12:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.17  2003/08/02 22:12:06  jorupp
+     * got treeview pretty much working (a bit slow though)
+    	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
+     * scrollpane displays, doesn't scroll
+
     Revision 1.16  2003/07/27 03:24:54  jorupp
      * added Mozilla support for:
      	* connector
@@ -178,9 +183,9 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
     char bcolor[64] = "";
     char bimage[64] = "";
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
-	    mssError(1,"HTSPANE","Netscape DOM support required");
+	    mssError(1,"HTSPANE","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
 	    return -1;
 	    }
 
@@ -233,9 +238,9 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:%d; Z-INDEX:%d; }\n",id,w-18,z+1);
-	htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,w-18,z+1);
+	htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%dpx; }\n",id,w-18,z+1);
+	htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sp_target_img", "null", 0);
@@ -255,15 +260,48 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    sp_init(%s.layers.sp%dpane,\"sp%darea\",\"sp%dthum\",%s);\n", parentname,id,id,id,parentobj);
-	htrAddScriptInit_va(s,"    %s=%s.layers.sp%dpane;\n",name,parentname,id);
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s,"    %s=%s.layers.sp%dpane;\n",name,parentname,id);
+	    }
+	else if(s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s,"    %s=document.getElementById('sp%dpane');\n",name,id);
+	    }
+	else
+	    {
+	    mssError(1,"HTSPANE","Cannot render for this browser");
+	    }
+	htrAddScriptInit_va(s,"    sp_init(%s,\"sp%darea\",\"sp%dthum\",%s);\n", name,id,id,parentobj);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
-	htrAddBodyItem_va(s,"<TR><TD align=right><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR><TR><TD align=right>");
-	htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=%d width=18 name='b'>",h-36);
-	htrAddBodyItem_va(s,"</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR></TABLE>\n");
-	htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\"><table border=0 cellpadding=0 cellspacing=0 width=%d height=%d><tr><td>",id,id,w-2,h-2);
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\"><TABLE %s%s %s%s border='0' cellspacing='0' cellpadding='0' width='%d'>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
+	    htrAddBodyItem_va(s,"<TR><TD align=right><IMG SRC='/sys/images/ico13b.gif' NAME='u'></TD></TR><TR><TD align=right>");
+	    htrAddBodyItem_va(s,"<IMG SRC='/sys/images/trans_1.gif' height='%dpx' width='18px' name='b'>",h-36);
+	    htrAddBodyItem_va(s,"</TD></TR><TR><TD align=right><IMG SRC='/sys/images/ico12b.gif' NAME='d'></TD></TR></TABLE>\n");
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n<DIV ID=\"sp%darea\"><table border='0' cellpadding='0' cellspacing='0' width='%dpx' height='%dpx'><tr><td>",id,id,w-2,h-2);
+	    }
+	else if(s->Capabilities.Dom1HTML)
+	    {
+	    //htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	    htrAddStylesheetItem_va(s,"\t#sp%darea { HEIGHT: %dpx; WIDTH:%dpx; }\n",id, h, w-18);
+	    //htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\">\n",id);
+	    htrAddBodyItem_va(s,"<IMG ID=\"sp%dup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
+	    htrAddBodyItem_va(s,"<IMG ID=\"sp%dbar\" SRC='/sys/images/trans_1.gif' NAME='b'/>", id);
+	    htrAddBodyItem_va(s,"<IMG ID=\"sp%ddown\" SRC='/sys/images/ico12b.gif' NAME='d'/>", id);
+	    htrAddStylesheetItem_va(s,"\t#sp%dup { POSITION: absolute; LEFT: %dpx; TOP: 0px; }\n",id, w-18);
+	    htrAddStylesheetItem_va(s,"\t#sp%dbar { POSITION: absolute; LEFT: %dpx; TOP: 18px; WIDTH: 18px; HEIGHT: %dpx;}\n",id, w-18, h-36);
+	    htrAddStylesheetItem_va(s,"\t#sp%ddown { POSITION: absolute; LEFT: %dpx; TOP: %dpx; }\n",id, w-18, h-18);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%darea\">",id);
+	    }
+	else
+	    {
+	    mssError(1,"HTSPNE","Browser not supported");
+	    }
 
 	/** Add the event handling scripts **/
 
@@ -272,7 +310,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    if (sp_target_img != null && sp_target_img.kind=='sp' && (sp_target_img.name=='u' || sp_target_img.name=='d'))\n"
 		"        {\n"
 		"        if (sp_target_img.name=='u') sp_mv_incr=-10; else sp_mv_incr=+10;\n"
-		"        sp_target_img.src = htutil_subst_last(sp_target_img.src,\"c.gif\");\n"
+		"        pg_set(sp_target_img,'src',htutil_subst_last(sp_target_img.src,\"c.gif\"));\n"
 		"        do_mv();\n"
 		"        sp_mv_timeout = setTimeout(tm_mv,300);\n"
 		"        }\n"
@@ -304,8 +342,9 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        d=h-ti.pane.clip.height;\n"
 		"        if (d<0) d=0;\n"
 		"        yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;\n"
-		"        for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)\n"
-		"            ti.pane.document.layers[i].y+=yincr;\n"
+		"        var layers = pg_layers(ti.pane);\n"
+		"        for(i=0;i<layers.length;i++) if (layers[i] != ti.thum)\n"
+		"            layers[i].y+=yincr;\n"
 		"        return false;\n"
 		"        }\n"
 		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseMove');\n"
@@ -324,7 +363,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    if (sp_target_img != null)\n"
 		"        {\n"
 		"        if (sp_target_img.name != 'b')\n"
-		"            sp_target_img.src = htutil_subst_last(sp_target_img.src,\"b.gif\");\n"
+		"            pg_set(sp_target_img,'src',htutil_subst_last(sp_target_img.src,\"b.gif\"));\n"
 		"        sp_target_img = null;\n"
 		"        }\n"
 		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseUp');\n");
@@ -342,7 +381,18 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	snprintf(sbuf,160,"%s.document.layers.sp%darea.document",name,id);
+	if(s->Capabilities.Dom0NS)
+	    {
+	    snprintf(sbuf,160,"%s.document.layers.sp%darea.document",name,id);
+	    }
+	else if(s->Capabilities.Dom1HTML)
+	    {
+	    snprintf(sbuf,160,"document.getElementById('sp%darea')",id);
+	    }
+	else
+	    {
+	    mssError(1,"HTSPANE","Cannot render for this browser");
+	    }
 	if (qy)
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
@@ -354,7 +404,18 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	    }
 
 	/** Finish off the last <DIV> **/
-	htrAddBodyItem(s,"</td></tr></table></DIV></DIV>\n");
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddBodyItem(s,"</td></tr></table></DIV></DIV>\n");
+	    }
+	else if(s->Capabilities.Dom1HTML)
+	    {
+	    htrAddBodyItem(s,"</DIV></DIV>\n");
+	    }
+	else
+	    {
+	    mssError(1,"HTSPNE","browser not supported");
+	    }
 
     return 0;
     }

@@ -51,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.38 2003/07/15 01:57:51 gbeeley Exp $
+    $Id: ht_render.c,v 1.39 2003/08/02 22:12:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.39  2003/08/02 22:12:06  jorupp
+     * got treeview pretty much working (a bit slow though)
+    	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
+     * scrollpane displays, doesn't scroll
+
     Revision 1.38  2003/07/15 01:57:51  gbeeley
     Adding an independent DHTML scrollbar widget that will be used to
     control scrolling/etc on other widgets.
@@ -1435,7 +1440,7 @@ htrRender(pFile output, pObject appstruct)
 	fdWrite(output, "\n</HEAD>\n",9,0,FD_U_PACKET);
 
 	/** Write the script globals **/
-	fdWrite(output, "<SCRIPT language=javascript>\n\n\n", 31,0,FD_U_PACKET);
+	fdWrite(output, "<SCRIPT language=\"javascript\" DEFER>\n\n\n", 39,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -1450,15 +1455,15 @@ htrRender(pFile output, pObject appstruct)
 	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,FD_U_PACKET);
 
 	/** include ht_render.js **/
-	snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=javascript src=\"/sys/js/ht_render.js\"></SCRIPT>\n\n");
+	snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"/sys/js/ht_render.js\" DEFER></SCRIPT>\n\n");
 	fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
-	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=javascript src=\"%s\"></SCRIPT>\n\n",sv->Name);
+	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=\"javascript\" src=\"%s\" DEFER></SCRIPT>\n\n",sv->Name);
 	    fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
 	    }
-	fdWrite(output, "<SCRIPT language=javascript>\n\n", 30,0,FD_U_PACKET);
+	fdWrite(output, "<SCRIPT language=\"javascript\" DEFER>\n\n", 38,0,FD_U_PACKET);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
@@ -1565,7 +1570,12 @@ htrRender(pFile output, pObject appstruct)
 	        n = *(int*)ptr;
 	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	        }
-	    fdWrite(output, " onResize=\"location.reload()\" onLoad=\"startup();\" onUnload=\"cleanup();\">\n",73,0,FD_U_PACKET);
+	    /** work around the Netscape 4.x bug regarding page resizing **/
+	    if(s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
+		{
+		fdWrite(output, " onResize=\"location.reload()\"",29,0,FD_U_PACKET);
+		}
+	    fdWrite(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n",44,0,FD_U_PACKET);
 	    }
 	else
 	    {

@@ -9,43 +9,47 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+function ClipObject_SetAll(top,right,bottom,left)
+    {
+    var str = "rect(" 
+	    + top + "px, " 
+	    + right + "px, " 
+	    + bottom + "px, "
+	    + left + "px)";
+    this.obj.style.setProperty('clip',str,"");
+    }
+
+var ClipRegexp = /rect\((.*), (.*), (.*), (.*)\)/;
+function ClipObject_GetPart(n)
+    {
+    if(n>4 || n<1)
+	return null;
+    var clip = this.obj.style.clip;
+    if(!clip)
+	clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
+    var a = ClipRegexp.exec(clip);
+    if(a)
+	return parseInt(a[n]);
+    else
+	{
+	if(n == 1 || n == 4)
+	    return 0;
+	else
+	    {
+	    if(n == 2)
+		return pg_get_style(this.obj,'width');
+	    else
+		return pg_get_style(this.obj,'height');
+	    }
+	}
+    }
+
 function ClipObject(o)
     {
     this.obj = o;
 
-    this.setall = function (top,right,bottom,left)
-	{
-	var str = "rect(" 
-		+ top + "px, " 
-		+ right + "px, " 
-		+ bottom + "px, "
-		+ left + "px)";
-	this.obj.style.setProperty('clip',str,"");
-	}
-
-    this.getpart = function (n)
-	{
-	if(n>4 || n<1)
-	    return null;
-	var clip = this.obj.style.clip;
-	if(!clip)
-	    clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
-	var a = /rect\((.*), (.*), (.*), (.*)\)/.exec(clip);
-	if(a)
-	    return parseInt(a[n]);
-	else
-	    {
-	    if(n == 1 || n == 4)
-	        return 0;
-	    else
-		{
-		if(n == 2)
-		    return pg_get_style(this.obj,'width');
-		else
-		    return pg_get_style(this.obj,'height');
-		}
-	    }
-	}
+    this.setall = ClipObject_SetAll;
+    this.getpart = ClipObject_GetPart
     }
 
 ClipObject.prototype.top getter = function () 
@@ -60,7 +64,7 @@ ClipObject.prototype.right getter = function ()
 
 ClipObject.prototype.width getter = function () 
     {
-    return this.right;
+    return this.right - this.left;
     }
 
 ClipObject.prototype.bottom getter = function () 
@@ -70,7 +74,7 @@ ClipObject.prototype.bottom getter = function ()
 
 ClipObject.prototype.height getter = function () 
     {
-    return this.bottom;
+    return this.bottom - this.top;
     }
 
 ClipObject.prototype.left getter = function () 
@@ -90,7 +94,7 @@ ClipObject.prototype.right setter = function (val)
 
 ClipObject.prototype.width setter = function (val) 
     {
-    this.right = val;
+    this.right = this.left + val;
     }
 
 ClipObject.prototype.bottom setter = function (val) 
@@ -100,7 +104,7 @@ ClipObject.prototype.bottom setter = function (val)
 
 ClipObject.prototype.height setter = function (val) 
     {
-    this.bottom = val;
+    this.bottom = this.top + val;
     }
 
 ClipObject.prototype.left setter = function (val) 
@@ -113,43 +117,87 @@ HTMLElement.prototype.clip getter = function ()
     return new ClipObject(this); 
     }
 
-HTMLElement.prototype.moveBy = function(x,y) 
+function Element_MoveBy(x,y)
     {
     pg_set_style(this,'left',pg_get_style(this,'left')+x);
     pg_set_style(this,'top',pg_get_style(this,'top')+y);
     }
 
-HTMLElement.prototype.moveToAbsolute = function (x,y)
+function Element_MoveTo (x,y)
+    {
+    pg_set_style_string(this,'position','absolute');
+    pg_set_style(this,'left',parseInt(x));
+    pg_set_style(this,'top',parseInt(y));
+    }
+
+function Element_MoveToAbsolute(x,y)
     {
     this.pageX = x;
     this.pageY = y;
     }
 
-HTMLElement.prototype.pageX getter = function ()
+
+HTMLElement.prototype.moveBy = Element_MoveBy; 
+HTMLElement.prototype.moveTo = Element_MoveTo;
+HTMLElement.prototype.moveToAbsolute = Element_MoveToAbsolute;
+
+HTMLElement.prototype.x getter = function ()
+    {
+    return parseInt(pg_get_style(this,'left'));
+    }
+
+HTMLElement.prototype.x setter = function (x)
+    {
+    pg_set_style(this,'left',parseInt(x));
+    }
+
+HTMLElement.prototype.y getter = function ()
+    {
+    return parseInt(pg_get_style(this,'top'));
+    }
+
+HTMLElement.prototype.y setter = function (y)
+    {
+    pg_set_style(this,'top',parseInt(y));
+    }
+
+function Element_PageXGetter()
     {
     if(this.nodeName == "BODY")
 	return 0;
-    return this.parentNode.pageX + pg_get_style(this,'left');
+    var left = pg_get_style(this,'left');
+    left = parseInt(left);
+    if(isNaN(left))
+	left = 0;
+    return this.parentNode.pageX + left;
     }
 
-HTMLElement.prototype.pageX setter = function (val)
+function Element_PageXSetter(val)
     {
     if(this.nodeName == "BODY")
 	return;
     pg_set_style(this,'left', val - this.parentNode.pageX);
     }
 
-HTMLElement.prototype.pageY getter = function ()
+function Element_PageYGetter()
     {
     if(this.nodeName == "BODY")
 	return 0;
-    return this.parentNode.pageY + pg_get_style(this,'top');
+    var top = pg_get_style(this,'top');
+    top = parseInt(top);
+    if(isNaN(top))
+	top = 0;
+    return this.parentNode.pageY + top;
     }
 
-HTMLElement.prototype.pageY setter = function (val)
+function Element_PageYSetter(val)
     {
     if(this.nodeName == "BODY")
 	return;
     pg_set_style(this,'top', val - this.parentNode.pageY);
     }
 
+HTMLElement.prototype.pageX getter = Element_PageXGetter;
+HTMLElement.prototype.pageX setter = Element_PageXSetter;
+HTMLElement.prototype.pageY getter = Element_PageYGetter;
+HTMLElement.prototype.pageY setter = Element_PageYSetter;

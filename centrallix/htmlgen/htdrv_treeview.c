@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.20 2003/06/21 23:07:26 jorupp Exp $
+    $Id: htdrv_treeview.c,v 1.21 2003/08/02 22:12:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.21  2003/08/02 22:12:06  jorupp
+     * got treeview pretty much working (a bit slow though)
+    	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
+     * scrollpane displays, doesn't scroll
+
     Revision 1.20  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -185,9 +190,9 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int id;
     char* nptr;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
-	    mssError(1,"HTTREE","Netscape DOM support required");
+	    mssError(1,"HTTREE","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
 	    return -1;
 	    }
 
@@ -226,8 +231,8 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	src[127]=0;
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
+	htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
@@ -242,9 +247,22 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
-	htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
-		nptr, src, parentname, id, parentname, w, parentobj);
+	if(s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
+	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
+		    nptr, src, parentname, id, parentname, w, parentobj);
+	    }
+	else if(s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s,"    %s = document.getElementById('tv%droot');\n",nptr, id);
+	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",document.getElementById('tv%dload'),%s,%d,%s);\n",
+		    nptr, src, id, parentname, w, parentobj);
+	    }
+	else
+	    {
+	    mssError(1,"HTTREE","cannot render for this browser");
+	    }
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js", 0);
@@ -274,7 +292,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        else\n"
 		"            {\n"
 		"            tv_target_img = e.target;\n"
-		"            tv_target_img.src = htutil_subst_last(tv_target_img.src,'c.gif');\n"
+		"            pg_set(tv_target_img,'src',htutil_subst_last(tv_target_img.src,'c.gif'));\n"
 		"            }\n"
 		"        }\n");
 

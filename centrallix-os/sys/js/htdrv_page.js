@@ -154,9 +154,34 @@ function pg_links(o)
 	}
     }
 
+/** Function to get the layers attacked to a layer **/
+function pg_layers(o)
+    {
+    if(!o)
+	return null;
+    if(cx__capabilities.Dom1HTML)
+	{
+	return o.getElementsByTagName("DIV");
+	}
+    else if(cx__capabilities.Dom0NS || cx__capabilities.Dom0IE)
+	{
+	if(!o.document)
+	    {
+	    return o.layers;
+	    }
+	return o.document.layers;
+	}
+    else
+	{
+	return null;
+	}
+    }
+
 /** Function to get the images attacked to a layer **/
 function pg_images(o)
     {
+    if(!o)
+	return null;
     if(cx__capabilities.Dom1HTML)
 	{
 	return o.getElementsByTagName("img");
@@ -165,7 +190,7 @@ function pg_images(o)
 	{
 	if(!o.document)
 	    {
-	    return null;
+	    return o.images;
 	    }
 	return o.document.images;
 	}
@@ -389,11 +414,21 @@ function pg_removearea(a)
 /** Add a universal resize manager function. **/
 function pg_resize(l)
     {
+    /** I think the height/width stuff is updated automatically under a DOM browser **/
+    if(cx__capabilities.Dom1HTML)
+	{
+	return;
+	}
     maxheight=0;
     maxwidth=0;
-    for(i=0;i<l.document.layers.length;i++)
+    var layers = pg_layers(l);
+    if(!layers)
 	{
-	cl = l.document.layers[i];
+	alert(l);
+	}
+    for(i=0;i<layers.length;i++)
+	{
+	cl = layers[i];
 	if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.y + cl.clip.height > maxheight)
 	    maxheight = cl.y + cl.clip.height;
 	if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.x + cl.clip.width > maxwidth)
