@@ -1,4 +1,3 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
 <head>
 <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
@@ -18,6 +17,11 @@
 			<p>The editbox can be placed within any visual widget (or within a form widget).=  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).=  Editboxes can contain no visual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Name of the column in the datasource you want to reference.</td>
+</tr>
 <tr>
 <td class="name">background</td>
 <td class="type">string</td>
@@ -58,6 +62,11 @@
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the editbox, default is 0.</td>
 </tr>
+<tr>
+<td class="name">readonly</td>
+<td class="type">true/false</td>
+<td class="description">Whether or not the contents of the editbox can ever be modified.</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
@@ -70,11 +79,15 @@
 		
 $Version=2$
 // Here is a single lonely edit box.
-my_editbox &quot;widget/editbox&quot;
+my_editbox &quot;widget/editbox&quot; 
 	{
-	style = &quot;lowered&quot;;
-	bgcolor = &quot;white&quot;;
-	x = 10; y = 10; width=100; height=19;
+	x=180; 
+	y=40; 
+	width=120; 
+	height=15; 
+	style=&quot;lowered&quot;; 
+	fieldname=&quot;datasource_fieldname&quot;;
+    bgcolor=&quot;#ffffff&quot;;
 	}
 		
 		</pre>

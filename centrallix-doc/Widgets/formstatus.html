@@ -1,4 +1,3 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
 <head>
 <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
@@ -18,7 +17,18 @@
 <span class="usage">
 			<p>The form status widget can only be used either directly or indirectly within a form widget.It can contain no visual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
-<p class="none">none currently available</p>
+<table class="properties">
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">Allows you to set x position in pixels relative to the window.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Allows you to set y position in pixels relative to the window.</td>
+</tr>
+</table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
@@ -26,6 +36,12 @@
 <h3 class="events">Events:</h3>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
-<p class="none">none currently available</p>
+<pre>
+		
+		  formstatus &quot;widget/formstatus&quot; {
+                 x=5; y=450;
+          }
+		
+		</pre>
 </body>
 </html>

@@ -1,4 +1,3 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
 <head>
 <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
@@ -19,9 +18,14 @@
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">Title of the frameset for an html page.</td>
+</tr>
+<tr>
 <td class="name">borderwidth</td>
 <td class="type">integer</td>
-<td class="description">number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</td>
+<td class="description">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</td>
 </tr>
 <tr>
 <td class="name">direction</td>
@@ -55,6 +59,7 @@ $Version=2$
 //
 BigFrameset &quot;widget/frameset&quot;
 	{
+	title = &quot;MyTitle&quot;;
 	direction = &quot;rows&quot;;
 	borderwidth = 3;
 	TopFrameset &quot;widget/frameset&quot;

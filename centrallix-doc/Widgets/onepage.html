@@ -1,4 +1,3 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
 <head>
 <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
@@ -26,6 +25,7 @@
 <li><a href="#html">html</a></li>
 <li><a href="#htmlwindow">htmlwindow</a></li>
 <li><a href="#imagebutton">imagebutton</a></li>
+<li><a href="#label">label</a></li>
 <li><a href="#menu">menu</a></li>
 <li><a href="#objectsource">objectsource</a></li>
 <li><a href="#page">page</a></li>
@@ -64,6 +64,16 @@
 <td class="name">y</td>
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the checkbox, default is 0.</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Name of the column in the datasource you want to reference.</td>
+</tr>
+<tr>
+<td class="name">checked</td>
+<td class="type">true/false</td>
+<td class="description">Whether or not the initial state is checked.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -144,7 +154,7 @@ cn1 &quot;widget/connector&quot;
 	target = &quot;ht1&quot;;
 	action = &quot;LoadPage&quot;;
 
-	// The Source for LoadPage is the Pathname from ClickItem.
+	// The Source for LoadPage is the Pathname fronm ClickItem.
 	Source = &quot;Pathname&quot;;
 	}
 		
@@ -161,6 +171,11 @@ cn1 &quot;widget/connector&quot;
 			<p>The editbox can be placed within any visual widget (or within a form widget).=  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).=  Editboxes can contain no visual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Name of the column in the datasource you want to reference.</td>
+</tr>
 <tr>
 <td class="name">background</td>
 <td class="type">string</td>
@@ -201,6 +216,11 @@ cn1 &quot;widget/connector&quot;
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the editbox, default is 0.</td>
 </tr>
+<tr>
+<td class="name">readonly</td>
+<td class="type">true/false</td>
+<td class="description">Whether or not the contents of the editbox can ever be modified.</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
@@ -213,11 +233,15 @@ cn1 &quot;widget/connector&quot;
 		
 $Version=2$
 // Here is a single lonely edit box.
-my_editbox &quot;widget/editbox&quot;
+my_editbox &quot;widget/editbox&quot; 
 	{
-	style = &quot;lowered&quot;;
-	bgcolor = &quot;white&quot;;
-	x = 10; y = 10; width=100; height=19;
+	x=180; 
+	y=40; 
+	width=120; 
+	height=15; 
+	style=&quot;lowered&quot;; 
+	fieldname=&quot;datasource_fieldname&quot;;
+    bgcolor=&quot;#ffffff&quot;;
 	}
 		
 		</pre>
@@ -262,6 +286,16 @@ my_editbox &quot;widget/editbox&quot;
 <td class="name">fieldname</td>
 <td class="type">string</td>
 <td class="description">Fieldname (from the dataset) to bind this element to</td>
+</tr>
+<tr>
+<td class="name">numdisplay</td>
+<td class="type">integer</td>
+<td class="description">The number of elements to display before displaying the scroll bars</td>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The SQL query to be used for obtaining the data to populate the dropdown list.  The first elemnt in the SELECT statement will be the description, and the second will be the value. This query's result sets child widgets.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -504,7 +538,14 @@ mySoundPlayer &quot;widget/execmethod&quot;
 <h3 class="events">Events:</h3>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
-<p class="none">none currently available</p>
+<pre>
+		
+form1 &quot;widget/form&quot;
+	{
+	//Form elements here
+	}
+		
+		</pre>
 <!-- PAGE BREAK: 'formstatus.html' -->
 <h2 class="widgetname"><a name="formstatus">formstatus</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/formstatus</span>
@@ -517,7 +558,18 @@ mySoundPlayer &quot;widget/execmethod&quot;
 <span class="usage">
 			<p>The form status widget can only be used either directly or indirectly within a form widget.It can contain no visual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
-<p class="none">none currently available</p>
+<table class="properties">
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">Allows you to set x position in pixels relative to the window.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Allows you to set y position in pixels relative to the window.</td>
+</tr>
+</table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
@@ -525,7 +577,13 @@ mySoundPlayer &quot;widget/execmethod&quot;
 <h3 class="events">Events:</h3>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
-<p class="none">none currently available</p>
+<pre>
+		
+		  formstatus &quot;widget/formstatus&quot; {
+                 x=5; y=450;
+          }
+		
+		</pre>
 <!-- PAGE BREAK: 'frameset.html' -->
 <h2 class="widgetname"><a name="frameset">frameset</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/frameset</span>
@@ -539,9 +597,14 @@ mySoundPlayer &quot;widget/execmethod&quot;
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">Title of the frameset for an html page.</td>
+</tr>
+<tr>
 <td class="name">borderwidth</td>
 <td class="type">integer</td>
-<td class="description">number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</td>
+<td class="description">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</td>
 </tr>
 <tr>
 <td class="name">direction</td>
@@ -575,6 +638,7 @@ $Version=2$
 //
 BigFrameset &quot;widget/frameset&quot;
 	{
+	title = &quot;MyTitle&quot;;
 	direction = &quot;rows&quot;;
 	borderwidth = 3;
 	TopFrameset &quot;widget/frameset&quot;
@@ -832,6 +896,16 @@ MyButton &quot;widget/htmlwindow&quot;
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the button, relative to its container.</td>
 </tr>
+<tr>
+<td class="name">disabledimage</td>
+<td class="type">integer</td>
+<td class="description">Optional parameter that contains the path to the image that should be displayed if the button is disabled (usually a grayscale, lighter version of the original image)</td>
+</tr>
+<tr>
+<td class="name">enabled</td>
+<td class="type">true/false</td>
+<td class="description">Whether or not this button is enabled by default</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
@@ -855,6 +929,79 @@ MyButton &quot;widget/imagebutton&quot;
 	// No pointimage for this one, thus not &quot;tristate&quot;.
 	image = &quot;/images/default.png&quot;
 	clickimage = &quot;/images/clicked.png&quot;
+	}
+		
+		</pre>
+<!-- PAGE BREAK: 'label.html' -->
+<h2 class="widgetname"><a name="label">label</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/label</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			The label will simply display some text at certain coordinates with certain properties.
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The label can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the label relative to its container</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the label relative to its container</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the label</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the label</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">message that is displayed in the label</td>
+</tr>
+<tr>
+<td class="name">align</td>
+<td class="type">string</td>
+<td class="description">the alignment of the text.  This can be &quot;left&quot;, &quot;right&quot;, or &quot;center&quot;</td>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the label.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the label's background.  If neither bgcolor nor background are set, the label will be transparent.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+MyButton &quot;widget/label&quot;
+	{
+	x = 10; y = 10;
+	width = 100;
+	height = 15;
+	align = &quot;center&quot;;
+	text = &quot;Test Label&quot;;
 	}
 		
 		</pre>
@@ -945,15 +1092,94 @@ myMenu &quot;widget/menu&quot;
 <span class="usage">
 			<p>Objectsource widgets are normally used at the top-level of an application, within a &quot;widget/page&quot; object.A page may have more than one objectsource widget.</p>
 		</span><h3 class="properties">Properties:</h3>
-<p class="none">none currently available</p>
+<table class="properties">
+<tr>
+<td class="name">replicasize</td>
+<td class="type">integer</td>
+<td class="description">Represents the number of records to store in its replica.</td>
+</tr>
+<tr>
+<td class="name">readahead</td>
+<td class="type">integer</td>
+<td class="description">Represents the number to read-a-head when replica is over stepped.</td>
+</tr>
+<tr>
+<td class="name">scrollahead</td>
+<td class="type">integer</td>
+<td class="description">Represents the number to step forward when viewing records (Currently set to readahead).</td>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">filter</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+</table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr class="notimplimented">
+<td class="name">Clear</td>
+<td class="description">Clears the replica of data.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Query</td>
+<td class="description">Query</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">QueryObject</td>
+<td class="description">Query Object</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">OrderObject</td>
+<td class="description">Order Object</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Delete</td>
+<td class="description">Deletes an object through OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Create</td>
+<td class="description">Creates an object though OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Modify</td>
+<td class="description">Modifies an object through OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">First</td>
+<td class="description">Returns first record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Next</td>
+<td class="description">Returns next record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Prev</td>
+<td class="description">Returns previous record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Last</td>
+<td class="description">Returns last record in the replica</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
-<p class="none">none currently available</p>
+<pre>
+		
+osrc1 &quot;widget/osrc&quot;
+	{
+	replicasize = 9;
+	readahead = 3;
+	}
+		
+		</pre>
 <!-- PAGE BREAK: 'page.html' -->
 <h2 class="widgetname"><a name="page">page</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/page</span>
@@ -1117,6 +1343,11 @@ mypane &quot;widget/pane&quot;
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Name of the column in the datasource you want to reference.</td>
+</tr>
+<tr>
 <td class="name">background</td>
 <td class="type">string</td>
 <td class="description">A background image for the radio button panel.</td>
@@ -1175,6 +1406,11 @@ mypane &quot;widget/pane&quot;
 <td class="type">true/false</td>
 <td class="description">the radio button is initially selected or not. Should only be set on one radio Default;&quot;false&quot;.</td>
 </tr>
+<tr>
+<td class="name">value</td>
+<td class="type">string</td>
+<td class="description">The value of the selected item</td>
+</tr>
 </table>
 <h3 class="actions">Actions:</h3>
 <p class="none">none currently available</p>
@@ -1194,7 +1430,7 @@ testradio &quot;widget/radiobuttonpanel&quot;
 
 	label1 &quot;widget/radiobutton&quot; { label=&quot;basketball&quot;;selected=&quot;true&quot;; }
 	label2 &quot;widget/radiobutton&quot; { label=&quot;is fun&quot;; }
-	}
+    }
 		
 		</pre>
 <!-- PAGE BREAK: 'remotectl.html' -->
@@ -1286,6 +1522,11 @@ testradio &quot;widget/radiobuttonpanel&quot;
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the scrollpane, relative to its container.</td>
 </tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">string</td>
+<td class="description">allows user to set scroll pane to visible (true) or not (false).</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
@@ -1313,6 +1554,7 @@ MyScrollPane &quot;widget/scrollpane&quot;
 		// The source for the treeview.
 		source = &quot;/&quot;;
 		}
+	visible = &quot;true&quot;;
 	}
 		
 		</pre>
@@ -1405,7 +1647,7 @@ myTabControl &quot;widget/tab&quot;
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
-		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.=  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only s<i>tatic</i> mode was supported.
+		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.  Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.=  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only s<i>tatic</i> mode was supported.
 			<p>Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
@@ -1496,6 +1738,66 @@ myTabControl &quot;widget/tab&quot;
 <td class="name">y</td>
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the table. Default is 0.</td>
+</tr>
+<tr>
+<td class="name">windowsize</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">rowheight</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">cellhspacing</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">cellvspacing</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">dragcols</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">colsep</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">gridinemptyrows</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">followcurrent</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">mode</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">row_backgroundhilight</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">row_bgcolorhilight</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">textcolorhilight</td>
+<td class="type">integer</td>
+<td class="description"></td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>

@@ -1,0 +1,82 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'label.html' -->
+<h2 class="widgetname"><a name="label">label</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/label</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			The label will simply display some text at certain coordinates with certain properties.
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The label can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the label relative to its container</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the label relative to its container</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the label</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the label</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">message that is displayed in the label</td>
+</tr>
+<tr>
+<td class="name">align</td>
+<td class="type">string</td>
+<td class="description">the alignment of the text.  This can be &quot;left&quot;, &quot;right&quot;, or &quot;center&quot;</td>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the label.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the label's background.  If neither bgcolor nor background are set, the label will be transparent.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+MyButton &quot;widget/label&quot;
+	{
+	x = 10; y = 10;
+	width = 100;
+	height = 15;
+	align = &quot;center&quot;;
+	text = &quot;Test Label&quot;;
+	}
+		
+		</pre>
+</body>
+</html>

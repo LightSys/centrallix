@@ -1,4 +1,3 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
 <head>
 <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
@@ -19,14 +18,93 @@
 <span class="usage">
 			<p>Objectsource widgets are normally used at the top-level of an application, within a &quot;widget/page&quot; object.A page may have more than one objectsource widget.</p>
 		</span><h3 class="properties">Properties:</h3>
-<p class="none">none currently available</p>
+<table class="properties">
+<tr>
+<td class="name">replicasize</td>
+<td class="type">integer</td>
+<td class="description">Represents the number of records to store in its replica.</td>
+</tr>
+<tr>
+<td class="name">readahead</td>
+<td class="type">integer</td>
+<td class="description">Represents the number to read-a-head when replica is over stepped.</td>
+</tr>
+<tr>
+<td class="name">scrollahead</td>
+<td class="type">integer</td>
+<td class="description">Represents the number to step forward when viewing records (Currently set to readahead).</td>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description"></td>
+</tr>
+<tr>
+<td class="name">filter</td>
+<td class="type">integer</td>
+<td class="description"></td>
+</tr>
+</table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr class="notimplimented">
+<td class="name">Clear</td>
+<td class="description">Clears the replica of data.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Query</td>
+<td class="description">Query</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">QueryObject</td>
+<td class="description">Query Object</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">OrderObject</td>
+<td class="description">Order Object</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Delete</td>
+<td class="description">Deletes an object through OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Create</td>
+<td class="description">Creates an object though OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Modify</td>
+<td class="description">Modifies an object through OSML</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">First</td>
+<td class="description">Returns first record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Next</td>
+<td class="description">Returns next record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Prev</td>
+<td class="description">Returns previous record in the replica</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Last</td>
+<td class="description">Returns last record in the replica</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
-<p class="none">none currently available</p>
+<pre>
+		
+osrc1 &quot;widget/osrc&quot;
+	{
+	replicasize = 9;
+	readahead = 3;
+	}
+		
+		</pre>
 </body>
 </html>

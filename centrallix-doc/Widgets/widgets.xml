@@ -11,8 +11,8 @@
 		<properties>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the checkbox, default is 0.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the checkbox, default is 0.</property>
-			<property name="fieldname" type="string"></property>
-			<property name="checked" type="integer"></property>
+			<property name="fieldname" type="string">Name of the column in the datasource you want to reference.</property>
+			<property name="checked" type="true/false">Whether or not the initial state is checked.</property>
 		</properties>
 		<children>
 		</children>
@@ -98,7 +98,7 @@ cn1 "widget/connector"
 			<property name="width" type="integer">width, in pixels, of the editbox.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the editbox, default is 0.</property>
-			<property name="readonly" type="integer"></property>
+			<property name="readonly" type="true/false">Whether or not the contents of the editbox can ever be modified.</property>
 		</properties>
 		<children>
 		</children>
@@ -137,8 +137,8 @@ my_editbox "widget/editbox"
 			<property name="highlight" type="integer">The color of the highlighted option when the mouse goes over the itme.</property>
 			<property name="bgcolor" type="integer">The background color for the widget.</property>
 			<property name="fieldname" type="string">Fieldname (from the dataset) to bind this element to</property>
-			<property name="numdisplay" type="integer"></property>
-			<property name="sql" type="string"></property>
+			<property name="numdisplay" type="integer">The number of elements to display before displaying the scroll bars</property>
+			<property name="sql" type="string">The SQL query to be used for obtaining the data to populate the dropdown list.  The first elemnt in the SELECT statement will be the description, and the second will be the value. This query's result sets child widgets.</property>
 		</properties>
 		<children>
 			<child type="widget/dropdownitem">
@@ -464,8 +464,8 @@ MyButton "widget/htmlwindow"
 			<property name="width" type="integer">width, in pixels, of the image button.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
-			<property name="disabledimage" type="integer"></property>
-			<property name="enabled" type="integer"></property>
+			<property name="disabledimage" type="integer">Optional parameter that contains the path to the image that should be displayed if the button is disabled (usually a grayscale, lighter version of the original image)</property>
+			<property name="enabled" type="true/false">Whether or not this button is enabled by default</property>
 			
 		</properties>
 		<children>
@@ -487,6 +487,43 @@ MyButton "widget/imagebutton"
 	// No pointimage for this one, thus not "tristate".
 	image = "/images/default.png"
 	clickimage = "/images/clicked.png"
+	}
+		]]>
+		</sample>
+	</widget>
+	<widget name="label" type="widget/label">
+		<overview>
+			The label will simply display some text at certain coordinates with certain properties.
+		</overview>
+		<usage>
+			<p>The label can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
+		</usage>
+		<properties>
+			<property name="x" type="integer">x-coordinate of the upper left corner of the label relative to its container</property>
+			<property name="y" type="integer">y-coordinate of the upper left corner of the label relative to its container</property>
+			<property name="width" type="integer">width, in pixels, of the label</property>
+			<property name="height" type="integer">height, in pixels, of the label</property>
+			<property name="text" type="string">message that is displayed in the label</property>
+			<property name="align" type="string">the alignment of the text.  This can be "left", "right", or "center"</property>
+			<property name="background" type="string">A background image for the label.</property>
+			<property name="bgcolor" type="string">A color, RGB or named, to be used as the label's background.  If neither bgcolor nor background are set, the label will be transparent.</property>
+		</properties>
+		<children>
+		</children>
+		<events>
+		</events>
+		<actions>
+		</actions>
+		<sample>
+		<![CDATA[
+$Version=2$
+MyButton "widget/label"
+	{
+	x = 10; y = 10;
+	width = 100;
+	height = 15;
+	align = "center";
+	text = "Test Label";
 	}
 		]]>
 		</sample>
@@ -546,7 +583,6 @@ myMenu "widget/menu"
 			<property name="scrollahead" type="integer">Represents the number to step forward when viewing records (Currently set to readahead).</property>
 			<property name="sql" type="string"></property>
 			<property name="filter" type="integer"></property>
-			
 		</properties>
 		<children>
 		</children>
@@ -672,7 +708,7 @@ mypane "widget/pane"
 			<child type="widget/radiobutton">
 				<childproperty name="label" type="string">The text label to appear beside the radio button.</childproperty>
 				<childproperty name="selected" type="true/false">the radio button is initially selected or not. Should only be set on one radio Default;"false".</childproperty>
-				<childproperty name="value" type="string"></childproperty>
+				<childproperty name="value" type="string">The value of the selected item</childproperty>
 			</child>
 		</children>
 		<events>
@@ -834,7 +870,7 @@ myTabControl "widget/tab"
 	<widget name="table" type="widget/table">
 		<overview>
 			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
-		<span class='__TEXT__'>Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.=  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only s<i>tatic</i> mode was supported.</span>
+		<span class='__TEXT__'>Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.  Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.=  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only s<i>tatic</i> mode was supported.</span>
 			<p>Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.</p>
 		</overview>
 		<usage>
@@ -858,6 +894,18 @@ myTabControl "widget/tab"
 			<property name="width" type="integer">width, in pixels, of the table.The height is determined dynamically.</property>
 			<property name="x" type="integer">x-coordinate of the upper left corner of the table. Default is 0.</property>
 			<property name="y" type="integer">y-coordinate of the upper left corner of the table. Default is 0.</property>
+			<property name="windowsize" type="integer"></property>
+			<property name="rowheight" type="integer"></property>
+			<property name="cellhspacing" type="integer"></property>
+			<property name="cellvspacing" type="integer"></property>
+			<property name="dragcols" type="integer"></property>
+			<property name="colsep" type="integer"></property>
+			<property name="gridinemptyrows" type="integer"></property>
+			<property name="followcurrent" type="integer"></property>
+			<property name="mode" type="integer"></property>
+			<property name="row_backgroundhilight" type="integer"></property>
+			<property name="row_bgcolorhilight" type="integer"></property>
+			<property name="textcolorhilight" type="integer"></property>
 		</properties>
 		<children>
 			<child type="any">
