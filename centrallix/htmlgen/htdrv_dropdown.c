@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.6 2002/03/13 19:05:44 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.7 2002/03/14 15:48:43 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.7  2002/03/14 15:48:43  lkehresman
+    * Added enable, disable, readonly functions
+    * Improved GUI quite a bit.. looks purdy
+    * Added/improved forms interaction functions (setvalue, getvalue...)
+
     Revision 1.6  2002/03/13 19:05:44  lkehresman
     Beautified the dropdown widget
     added basic form interaction
@@ -114,13 +119,15 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (objGetAttrValue(w_obj,"hilight",POD(&ptr)) == 0) {
 	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
-   	strcpy(bgstr, "");
+	mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
+	return -1;
    }
 
    if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0) {
 	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
-   	strcpy(bgstr, "");
+	mssError(1,"HTDD","Drop Down widget must have a 'bgcolor' property");
+	return -1;
    }
 
    /** Ok, write the style header items. **/
@@ -145,8 +152,10 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   for (i=0; i < this.values.length; i++) {\n"
 	"      if (this.values[i] == v) {\n"
 	"         dd_write_item(this.document.iLayer, this.labels[i], this.values[i], this);\n"
+	"         return true;\n"
 	"      }\n"
 	"   }\n"
+	"   return false;\n"
 	"}\n", 0);
    
    /** Clear Value function **/
@@ -173,16 +182,21 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Enable function **/
    htrAddScriptFunction(s, "dd_enable", "\n"
 	"function dd_enable() {\n"
+	"   this.document.images[8].src = '/sys/images/ico15b.gif';\n"
+	"   this.enabled = 'full';\n"
 	"}\n", 0);
    
    /** Read-Only function **/
    htrAddScriptFunction(s, "dd_readonly", "\n"
 	"function dd_readonly() {\n"
+	"   this.enabled = 'readonly';\n"
 	"}\n", 0);
    
    /** Disable function **/
    htrAddScriptFunction(s, "dd_disable", "\n"
 	"function dd_disable() {\n"
+	"   this.document.images[8].src = '/sys/images/ico15a.gif';\n"
+	"   this.enabled = 'disabled';\n"
 	"}\n", 0);
    
    /** Disable function **/
@@ -209,13 +223,16 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   tmpLayer.document.parentLayer = l;\n"
 	"   tmpLayer.document.close();\n"
 	"   tmpLayer.clip.width = l.defaultWidth-20;\n"
+	"   tmpLayer.clip.height = 18;\n"
 	"   tmpLayer.clip.top = 1;\n"
 	"   tmpLayer.pageX = l.pageX+1;\n"
-	"   tmpLayer.top = ((l.labels.length-1)*16) + 1;\n"
+	"   tmpLayer.top = ((l.labels.length-1)*16);\n"
 	"   tmpLayer.bgColor = l.bgColor;\n"
 	"   tmpLayer.visibility = 'inherit';\n"
 	"   l.itemLayers.push(tmpLayer);\n"
 	"   l.document.fullLayer.clip.height += 16;\n"
+	"   l.c1Layer.clip.height += 16;\n"
+	"   l.c2Layer.clip.height += 16;\n"
 	"}\n", 0);
    
 
@@ -227,12 +244,13 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.bgColor = color;\n"
 	"   l.hilight = hilight;\n"
 	"   l.kind = 'dropdown';\n"
-	"   l.enabled = true;\n"
+	"   l.enabled = 'full';\n"
 	"   l.labels = new Array();\n"
 	"   l.values = new Array();\n"
 	"   l.itemLayers = new Array();\n"
 	"   l.defaultWidth = w;\n"
-	"   l.document.iLayer = new Layer(1024);\n"
+	"   l.form = fm_current;\n"
+	"   l.document.iLayer = new Layer(1024, l);\n"
 	"   l.document.iLayer.value = '';\n"
 	"   l.document.iLayer.label = '';\n"
 	"   l.document.iLayer.visibility = 'inherit';\n"
@@ -244,30 +262,46 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.document.iLayer.clip.width = l.defaultWidth-20;\n"
 	"   l.document.iLayer.clip.height = 16;\n"
 	"   l.document.iLayer.clip.top = 1;\n"
+	"   l.document.iLayer.enabled = 'full';\n"
 	"   l.document.iLayer.document.layer = l;\n"
 	"   l.document.fullLayer = new Layer(1024);\n"
 	"   l.document.fullLayer.bgColor = l.bgColor;\n"
 	"   l.document.fullLayer.clip.width = w-18;\n"
-	"   l.document.fullLayer.clip.height = 4;\n"
+	"   l.document.fullLayer.clip.height = 3;\n"
 	"   l.document.fullLayer.visibility = 'hidden';\n"
 	"   l.document.fullLayer.pageX = l.pageX;\n"
 	"   l.document.fullLayer.pageY = l.pageY + 18;\n"
 	"   l.document.fullLayer.kind = 'dropdownItemlist'\n"
 	"   l.document.fullLayer.document.layer = l.document.fullLayer;\n"
+	"   l.c1Layer = new Layer(1024, l.document.fullLayer);\n"
+	"   l.c1Layer.bgColor = '#ffffff';\n"
+	"   l.c1Layer.visibility = 'inherit';\n"
+	"   l.c1Layer.clip.width = w;\n"
+	"   l.c1Layer.clip.height = l.document.fullLayer.clip.height;\n"
+	"   l.c2Layer = new Layer(1024, l.document.fullLayer);\n"
+	"   l.c2Layer.bgColor = '#888888';\n"
+	"   l.c2Layer.visibility = 'inherit';\n"
+	"   l.c2Layer.clip.width = w;\n"
+	"   l.c2Layer.clip.top = 1;\n"
+	"   l.c2Layer.clip.left = 1;\n"
+	"   l.c2Layer.clip.height = l.document.fullLayer.clip.height;\n"
 	"   for (i=0; i < l.document.images.length; i++) {\n"
 	"      l.document.images[i].kind = 'dropdown';\n"
-	"      l.document.images[i].enabled = true;\n"
+	"      l.document.images[i].enabled = 'full';\n"
 	"      l.document.images[i].layer = l;\n"
 	"   }\n"
 	"   l.setvalue = dd_setvalue;\n"
 	"   l.getvalue = dd_getvalue;\n"
+	"   l.enable = dd_enable;\n"
+	"   l.readonly = dd_readonly;\n"
+	"   l.disable = dd_disable;\n"
 	"   if (fm_current) fm_current.Register(l);\n"
 	"}\n", 0);
 
    htrAddEventHandler(s, "document","MOUSEOVER", "dropdown", 
 	"\n"
 	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && dd_current == targetLayer.document.parentLayer && targetLayer.subkind == 'dropdownitem') {\n"
+	"   if (dd_current != null && dd_current == targetLayer.document.parentLayer && targetLayer.subkind == 'dropdownitem' && dd_current.enabled == 'full') {\n"
 	"      targetLayer.bgColor = dd_current.hilight;\n"
 	"   }\n"
 	"\n");
@@ -275,7 +309,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddEventHandler(s, "document","MOUSEOUT", "dropdown", 
 	"\n"
 	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && targetLayer.subkind == 'dropdownitem') {\n"
+	"   if (dd_current != null && targetLayer.subkind == 'dropdownitem' && dd_current.enabled == 'full') {\n"
 	"      targetLayer.bgColor = dd_current.bgColor;\n"
 	"   }\n"
 	"\n");
@@ -285,19 +319,24 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
 	"   if (dd_current != null && targetLayer != dd_current) {\n"
 	"      dd_current.document.fullLayer.visibility = 'hide';\n"
-	"      if (targetLayer.subkind == 'dropdownitem') {\n"
+	"      if (targetLayer.subkind == 'dropdownitem' && dd_current.enabled == 'full') {\n"
 	"         targetLayer.bgColor = dd_current.bgColor;\n"
 	"         dd_write_item(dd_current.document.iLayer, targetLayer.label, targetLayer.value, dd_current);\n"
+	"         dd_current.form.DataNotify(dd_current);\n"
 	"      }\n"
+	"      dd_current.document.images[8].src = '/sys/images/ico15b.gif';\n"
 	"      dd_current = null;\n"
 	"   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
-	"      if (targetLayer.enabled) {\n"
+	"      if (targetLayer.enabled != 'disabled') {\n"
 	"         if (targetLayer.document.fullLayer.visibility != 'hide') {\n"
+	"            targetLayer.document.images[8].src = '/sys/images/ico15b.gif';\n"
 	"            targetLayer.document.fullLayer.visibility = 'hide';\n"
+	"            dd_current = null;\n"
 	"         } else {\n"
+	"            targetLayer.document.images[8].src = '/sys/images/ico15c.gif';\n"
 	"            targetLayer.document.fullLayer.visibility = 'inherit';\n"
+	"            dd_current = targetLayer;\n"
 	"         }\n"
-	"         dd_current = targetLayer;\n"
 	"      }\n"
 	"   }\n"
 	"\n");
