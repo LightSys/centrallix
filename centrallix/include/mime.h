@@ -96,9 +96,9 @@ extern char* TypeStrings[];
 
 
 /** mime_parse.c **/
-int libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end);
+int libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex);
 int libmime_ParseHeaderElement(char *buf, char *element);
-int libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end);
+int libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex);
 int libmime_LoadExtendedHeader(pMimeHeader msg, pXString xsbuf, pLxSession lex);
 int libmime_SetMIMEVersion(pMimeHeader msg, char *buf);
 int libmime_SetDate(pMimeHeader msg, char *buf);

@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.11 2002/08/22 20:11:28 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.12 2002/08/26 14:21:24 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.12  2002/08/26 14:21:24  lkehresman
+    Fixed innumerable bugs with the multipart mime parsing, it now successfully
+    detects and parses multipart messages into an internal data structure.
+
     Revision 1.11  2002/08/22 20:11:28  lkehresman
     * Renamed MimeMsg to MimeHeader to be more descriptive
     * Mime Boundary detection and storing of seek points
@@ -164,6 +168,7 @@ typedef struct
 void*
 mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
+    pLxSession lex;
     pMimeData inf;
     pMimeHeader msg;
     pMimeHeader tmp;
@@ -187,16 +192,20 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     inf->Obj = obj;
     inf->Mask = mask;
     inf->InternalSeek = 0;
-    if (libmime_ParseHeader(obj, msg, 0, 0) < 0)
+    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
+    if (libmime_ParseHeader(obj, msg, 0, 0, lex) < 0)
 	{
 	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message header in mimeOpen().\n");
+	mlxCloseSession(lex);
 	return NULL;
 	}
-    if (libmime_ParseEntity(obj, msg, msg->MsgSeekStart, msg->MsgSeekEnd) < 0)
+    if (libmime_ParseEntity(obj, msg, msg->MsgSeekStart, msg->MsgSeekEnd, lex) < 0)
 	{
 	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message entity in mimeOpen().\n");
+	mlxCloseSession(lex);
 	return NULL;
 	}
+    mlxCloseSession(lex);
 
     for (i=0; i < xaCount(&msg->Parts); i++)
 	{

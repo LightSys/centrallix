@@ -59,9 +59,8 @@ char* TypeStrings[] =
 **  and end reading.
 */
 int
-libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end)
+libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex)
     {
-    pLxSession lex;
     int flag, toktype, alloc, err, size;
     XString xsbuf;
     char *hdrnme, *hdrbdy, *buf;
@@ -83,14 +82,13 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end)
     msg->MsgSeekStart = 0;
     msg->MsgSeekEnd = 0;
 
-    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
     if (!lex)
 	{
 	return -1;
 	}
 
     mlxSetOffset(lex, start);
-    printf("\nStarting Header Parsing... (s:%d, e:%d)\n", start, end);
+    if (MIME_DEBUG) fprintf(stderr, "\nStarting Header Parsing... (s:%d, e:%d)\n", start, end);
     flag = 1;
     while (flag)
 	{
@@ -106,7 +104,7 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end)
 	xsInit(&xsbuf);
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
 	xsRTrim(&xsbuf);
-	if (MIME_DEBUG) printf("MIME: Got Token (%s)\n", xsbuf.String);
+	//if (MIME_DEBUG) fprintf(stderr, "MIME: Got Token (%s)\n", xsbuf.String);
 	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
 	/* otherwise parse the header elements */
 	if (!strlen(xsbuf.String))
@@ -117,7 +115,6 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end)
 	    {
 	    if (libmime_LoadExtendedHeader(msg, &xsbuf, lex) < 0)
 		{
-		mlxCloseSession(lex);
 		return -1;
 		}
 
@@ -184,7 +181,6 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, int start, int end)
 	msg->MsgSeekEnd = size;
 	}
 
-    mlxCloseSession(lex);
     return 0;
     }
 
@@ -210,7 +206,6 @@ libmime_LoadExtendedHeader(pMimeHeader msg, pXString xsbuf, pLxSession lex)
 	toktype = mlxNextToken(lex);
 	if (toktype == MLX_TOK_ERROR)
 	    {
-	    mlxCloseSession(lex);
 	    return -1;
 	    }
 	ptr = mlxStringVal(lex, NULL);
@@ -412,7 +407,6 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
 
     if (MIME_DEBUG)
 	{
-	printf("MIME Parser (Content-Disposition)\n");
 	printf("  CONTENT DISP: \"%s\"\n", msg->ContentDisp);
 	printf("  FILENAME    : \"%s\"\n", msg->ContentDispFilename);
 	}
@@ -585,16 +579,14 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
     }
 
 int
-libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end)
+libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex)
     {
-    pLxSession lex;
     XString xsbuf;
     pMimeHeader l_msg;
-    int flag=1, alloc, toktype, count;
+    int flag=1, alloc, toktype, p_count=0, count=0, s=0;
     int l_pos=0;
     char bound[80], bound_end[82];
 
-    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
     if (!lex)
 	{
 	return -1;
@@ -620,7 +612,6 @@ libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end)
 	    alloc = 0;
 	    xsInit(&xsbuf);
 	    xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
-	    xsRTrim(&xsbuf);
 	    count = mlxGetOffset(lex);
 	    /** Check if this is the start of a boundary **/
 	    if (!strncmp(xsbuf.String, bound, strlen(bound)))
@@ -628,15 +619,18 @@ libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end)
 		if (l_pos != 0)
 		    {
 		    l_msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
-		    libmime_ParseHeader(obj, l_msg, l_pos+strlen(bound)+2, count-2);
+		    libmime_ParseHeader(obj, l_msg, l_pos+s, p_count, lex);
 		    xaAddItem(&msg->Parts, l_msg);
 		    }
+		s=strlen(xsbuf.String);
 		l_pos = count;
 		/** Check if it is the boundary end **/
 		if (!strncmp(xsbuf.String, bound_end, strlen(bound_end)))
 		    {
 		    flag = 0;
 		    }
+		p_count = count + strlen(xsbuf.String);
+		mlxSetOffset(lex, p_count);
 		}
 	    }
 	}
