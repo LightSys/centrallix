@@ -233,11 +233,12 @@ G.  DETAILS OF CHANGES....
 	    d.  char[64]	Widget type (such as "widget/page")
 	    e.  char[64]	Widget name
 	    f.  int (4 ea)	Requested Geometry: x, y, width, height
-	    g.  char (4 ea)	Specificity: x, y, width, height (range 0-100)
-	    h.	int (4 ea)	Actual Geometry: x, y, width, height
-	    i.	int (4 ea)	Container Offsets: top, bottom, left, right
-	    i.  XArray		List of additional properties
-	    j.  XArray		List of child widgets
+	    g.  char (4 ea)	Flexibility: x, y, width, height (range 0-100)
+	    h.	double (4 ea)	Internal flexibility computation, x/y/w/h
+	    i.	int (4 ea)	Actual Geometry: x, y, width, height
+	    j.	int (4 ea)	Container Offsets: top, bottom, left, right
+	    k.  XArray		List of additional properties
+	    l.  XArray		List of child widgets
 
 	Flags:
 
@@ -356,3 +357,158 @@ G.  DETAILS OF CHANGES....
 
 	In this case, the container widget driver's Verify() and Render()
 	functions will both be utilized.
+
+
+    7.	HTMLGen interface to the remainder of Centrallix.
+
+	The HTMLGen subsystem will continue to supply the remainder of
+	Centrallix with one main function, htrRender().  However, this
+	function will take some new parameters in order to properly support
+	sizing, dynamic loading, and dynamic reloading.
+
+	The new parameters are as follows:
+
+	    a.	'w' (int)	The width, in pixels, of the area to be loaded
+	    b.	'h' (int)	The height in pixels of the area to be loaded
+	    c.	'parent' (char*) The parent document that the content is to be
+				loaded into ("document" for most things, or 
+				something else for dynamic loading).
+
+
+    8.	New widget properties.
+
+	There will be a few new widget properties available due to the dynamic
+	loading support and to the sizing support.
+
+	The following properties are used to manage sizing; some of them are
+	existing properties but are listed here for completeness.  These are
+	only applicable on visual widgets, and in some cases not all may apply
+	to a given widget.
+
+	    'x' (int)		The X coordinate of the widget in pixels
+	    'y' (int)		The Y coordinate of the widget in pixels
+	    'width' (int)	The width of the widget in pixels
+	    'height' (int)	The height of the widget in pixels
+	    'xflex' (int)	The flexibility of the X coordinate (0-100)
+	    'yflex' (int)	The flexibility of the Y coordinate (0-100)
+	    'widthflex' (int)	The flexibility of the width (0-100)
+	    'heightflex' (int)	The flexibility of the height (0-100)
+
+	Flexibilities determine the "exactness" needed for the given geometric
+	parameter, and are always optional.  If omitted, they default to 0,
+	complete precision, which is compatible with current Centrallix
+	application behavior.  A value of 100 means complete flexibility to be
+	resized and/or move if the application size is different from the page
+	size.
+
+	The 'width' and 'height' are now valid on a page object or frameset
+	object; the system will use these values to determine how far off the
+	actual window size is from the application's "design" size, and will
+	adjust the contents accordingly.  Widgets with higher flexibility will
+	adjust more to a change in page size, relative to those with lower
+	flexibility settings.
+
+	The page widget will have the following five geometric properties now
+	as well to control the size of the application.
+
+	    'autoadjust' (yes/no) Whether the system will automatically adjust
+				the browser window size if the window is
+				larger than the maximum size or smaller than
+				the minimum size.  If set to 'no', the app
+				will end up either being smaller than the
+				visible area or will take up more room than is
+				visible, resulting in scrollbars.
+	    'minwidth' (int)	The minimum width, in pixels, of the app
+	    'maxwidth' (int)	The maximum width, in pixels, of the app
+	    'minheight' (int)	The minimum height, in pixels, of the app
+	    'maxheight' (int)	The maximum height, in pixels, of the app
+
+	In order to allow other layout methods to be used, the following
+	properties are now valid on containers:
+
+	    'layouttype' (enum)	The method for arranging child objects within
+				the current object.  Can be one of 'free' (the
+				default), 'vertical', 'horizontal', or
+				'tabular'.
+
+	    'marginspacing' (int) The padding around the outer edges of the
+				inside of the container.  Affects the position
+				of the (0,0) origin within the container.
+				Defaults to 0.
+
+	    'innerspacing' (int) The padding between widgets within the
+				container.  Only meaningful for layout types
+				other than 'free'.  Defaults to 0.
+
+	The 'free' layout type indicates that objects are placed in the
+	container according to their (x,y) positions relative to the upper
+	left corner of the container.  With a 'vertical' layout type, the 'x'
+	coordinate retains its traditional meaning, but the 'y' coordinate
+	then becomes an ordered number (0 to n-1) indicating the order in which
+	the widget is to appear, vertically, within the container.  Nonvisual
+	widgets are ignored for this purpose.
+
+	The 'horizontal' layout type is the reverse of 'vertical': the 'y'
+	coordinate retains its normal pixel-based meaning, and the 'x'
+	coordinate provides the order (0 to n-1) in which the widget appears
+	horizontally within the container.  Finally, the 'tabular' layout type
+	abstracts both the 'x' and 'y' and creates a 'grid' in the container,
+	where widgets are placed in the grid from (0,0) to (n-1,n-1) in ordered
+	fashion (where (2,2) is the third column across and third column down
+	from the top).
+
+	A given widget cannot occupy more than one cell in a 'tabular' layout
+	situation (no equivalent of 'rowspan' or 'colspan'), for simplicity at
+	the current time.  Those features may be added in later.
+
+	Flexibility settings are valid for all layout methods.
+
+
+    9.	Flexibility calculation.
+
+	This section details how the width, height, x, and y are computed from
+	the requested coordinates and the given flexibility settings, and only
+	applies to containers using the default free-layout method (the
+	default).
+
+	When a container is larger or smaller than anticipated, there will be
+	slack, to be made up for, or too little room, requiring compression of
+	the visible widgets.  Call these amounts the 'xdelta' and 'ydelta',
+	which are the difference between the requested size and the design
+	size as specified in the application.
+
+	The amount that a widget's width and height are adjusted to make up
+	for the xdelta and ydelta are proportional to the widget's flex
+	setting relative to other widgets' flex settings in that container.
+	The calculation process involves computing which widgets are "next to"
+	which other widgets, which is simplest for the 'tabular' layout method
+	and most complex for the 'free' layout method.
+
+	[...incomplete...]
+
+
+H.  IMPLEMENTATION ORDER....
+
+    Obviously this document details some very extensive feature additions, and
+    not all features need be added immediately.  This section seeks to list
+    the (approximate) priorities of the various components.
+
+    1.	First priority is the multi-phase rendering process, which provides
+	the core functionality for many of these features.  This will involve
+	porting the widget driver modules away from direct OSML access to
+	access the in-memory tree using ht_render API functions instead.
+
+    2.	Next priority is the addition of further ht_render API functions to
+	allow widget modules to create, on the fly, child widgets in the tree.
+	This provides for the composite widget support as well as
+	automatically generated connectors and such in certain situations.
+
+    3.	Third would probably be the automatic size and parent determination
+	mechanism, which involves issuing a very short page to the client if
+	the size data is not specified.  This short page will contain a short
+	javascript snippet which will obtain the page size and do an automatic
+	reload with the size specified.  It will also automatically resize the
+	browser window if the window is too large or too small.
+
+    [...incomplete...]
+
