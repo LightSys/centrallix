@@ -19,6 +19,8 @@ dnl Replace `main' with a function in -ldl:
 AC_CHECK_LIB(dl, main)
 dnl Replace `main' with a function in -lm:
 AC_CHECK_LIB(m, main)
+dnl Replace `main' with a function in -lz:
+AC_CHECK_LIB(z, main)
 
 dnl Checks for header files.
 AC_HEADER_DIRENT

@@ -255,6 +255,7 @@ modules_install: mods config_install
 config: etc/rootnode etc/centrallix.conf etc/centrallix.init
 
 config_install: config
+	mkdir -p ${sysconfdir}
 	for CFILE in $(CONFFILES) ; do \
 		if ! [ -a "$(sysconfdir)/$${CFILE}" ] ; then \
 			echo "NOTE: Installed default version of $${CFILE}" ; \

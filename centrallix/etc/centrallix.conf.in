@@ -21,6 +21,7 @@ centrallix "system/config"
 	auth_realm = "Centrallix";
 	session_watchdog_timer = 180; //seconds
 	session_inactivity_timer = 1800; //seconds
+	enable_gzip = 1; // true
 	}
 
     // The BDQS network interface module.

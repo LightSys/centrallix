@@ -5,6 +5,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/types.h> //for regex functions
+#include <regex.h>
 #include "centrallix.h"
 #include "mtask.h"
 #include "mtsession.h"
@@ -52,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.25 2002/07/12 19:57:00 gbeeley Exp $
+    $Id: net_http.c,v 1.26 2002/07/21 05:05:57 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.26  2002/07/21 05:05:57  jorupp
+     * updated net_http.c to take advantage of gziped output (except for non-html docs for Netscape 4.7)
+     * modified config file with new parameter, enable_gzip (0/1)
+     * updated build scripts to reflect new dependency
+
     Revision 1.25  2002/07/12 19:57:00  gbeeley
     Added support for encoding of object attributes, such as those returned
     in a query result set.  Use &ls__encode=1 on the URL line.  Use the
@@ -253,6 +260,8 @@ struct
     HandleContext TimerHctx;
     int		WatchdogTime;
     int		InactivityTime;
+    regex_t*	reNet47;
+    int		EnableGzip;
     }
     NHT;
 
@@ -1601,6 +1610,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     char* dptr;
     char* ptr;
     char* aptr;
+    char* acceptencoding;
     pObject target_obj, sub_obj, tmp_obj;
     char* bufptr;
     char cur_wd[256];
@@ -1609,6 +1619,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     int convert_text = 0;
     int encode_attrs = 0;
 
+	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
         /** If we're opening the "errorstream", pass of processing to err handler **/
@@ -1681,21 +1692,55 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    objGetAttrValue(target_obj, "outer_type", POD(&ptr));
 	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset"))
 	        {
+		int gzip=0;
+		if(NHT.EnableGzip && acceptencoding && strstr(acceptencoding,"gzip"))
+		    gzip=1; /* enable gzip for this request */
 		/*fdSetOptions(conn, FD_UF_WRCACHE);*/
+		if(gzip==1)
+		{
+		    snprintf(sbuf,256,"Content-Encoding: gzip\r\n");
+		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		}
 		snprintf(sbuf,256,"Content-Type: text/html\r\n\r\n");
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		if(gzip==1)
+		    fdSetOptions(conn, FD_UF_GZIP);
 	        htrRender(conn, target_obj);
 	        }
 	    else
 	        {
+		int gzip=0;
+		char *browser;
+
+		browser=(char*)mssGetParam("User-Agent");
+
 		objGetAttrValue(target_obj,"inner_type", POD(&ptr));
 		if (!strcmp(ptr,"text/plain")) 
 		    {
 		    ptr = "text/html";
 		    convert_text = 1;
 		    }
+
+		if(	NHT.EnableGzip && /* global enable flag */
+			obj_internal_IsA(ptr,"text/plain")>0 /* a subtype of text/plain */
+			&& acceptencoding && strstr(acceptencoding,"gzip") /* browser wants it gzipped */
+			&& (!strcmp(ptr,"text/html") || (browser && regexec(NHT.reNet47,browser,(size_t)0,NULL,0) != 0 ) )
+			/* only gzip text/html for Netscape 4.7, which doesn't like it if we gzip .js files */
+		  )
+		    {
+		    gzip=1; /* enable gzip for this request */
+		    }
+		if(gzip==1)
+		{
+		    snprintf(sbuf,256,"Content-Encoding: gzip\r\n");
+		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		}
 		snprintf(sbuf,256,"Content-Type: %s\r\n\r\n", ptr);
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		if(gzip==1)
+		    {
+		    fdSetOptions(conn, FD_UF_GZIP);
+		    }
 		if (convert_text) fdWrite(conn,"<HTML><PRE>",11,0,FD_U_PACKET);
 		bufptr = (char*)nmMalloc(4096);
 	        while((cnt=objRead(target_obj,bufptr,4096,0,0)) > 0)
@@ -2087,6 +2132,7 @@ nht_internal_ConnHandler(void* conn_v)
     char sbuf[160];
     char auth[160] = "";
     char cookie[160] = "";
+    char* acceptencoding=0;
     char* useragent = 0;
     char dest[256] = "";
     char hdr[64];
@@ -2198,6 +2244,24 @@ nht_internal_ConnHandler(void* conn_v)
 		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
 		}
+	    else if (!strcmp(hdr,"accept-encoding"))
+	        {
+		mlxSetOptions(s,MLX_F_IFSONLY);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Accept-encoding:"; goto error; }
+		acceptencoding = (char*)nmMalloc(160);
+		mlxCopyToken(s,acceptencoding,160);
+		while((toktype=mlxNextToken(s)))
+		    {
+		    if(toktype == MLX_TOK_STRING && strlen(acceptencoding)<158)
+			{
+			strcat(acceptencoding+strlen(acceptencoding)," ");
+			mlxCopyToken(s,acceptencoding+strlen(acceptencoding),160-strlen(acceptencoding));
+			}
+		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
+		    }
+		mlxUnsetOptions(s,MLX_F_IFSONLY);
+		//printf("accept-encoding: %s\n",acceptencoding);
+		}
 	    else
 	        {
 		/** Don't know what it is.  Just skip to end-of-line. **/
@@ -2222,6 +2286,7 @@ nht_internal_ConnHandler(void* conn_v)
 			 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 			 "\r\n"
 			 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
+	    //printf("%s",sbuf);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    netCloseTCP(conn,1000,0);
 	    thExit();
@@ -2278,6 +2343,7 @@ nht_internal_ConnHandler(void* conn_v)
 		/** Reset only the watchdog timer on a ping. **/
 		if (nht_internal_ResetWatchdog(w_timer))
 		    {
+		    //printf("ping request ERR\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
 				 "\r\n"
@@ -2288,10 +2354,12 @@ nht_internal_ConnHandler(void* conn_v)
 		    }
 		else
 		    {
+		    //printf("ping request OK\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
 				 "\r\n"
 				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
+		    //printf("%s",sbuf);
 		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		    netCloseTCP(conn,1000,0);
 		    thExit();
@@ -2303,6 +2371,7 @@ nht_internal_ConnHandler(void* conn_v)
 		 ** want to automatically re-login the user since that defeats the purpose
 		 ** of session timeouts.
 		 **/
+		//printf("ping request ERR -- NO SESSION\n");
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
 			     "\r\n"
@@ -2363,8 +2432,12 @@ nht_internal_ConnHandler(void* conn_v)
 	nht_internal_LinkSess(nsess);
 
 	/** Set the session's UserAgent if one was found in the headers. **/
-	if (*useragent)
+	if (useragent && *useragent)
 	    mssSetParam("User-Agent", useragent);
+
+	/** Set the session's AcceptEncoding if one was found in the headers. **/
+	if (acceptencoding && *acceptencoding)
+	    mssSetParam("Accept-Encoding", acceptencoding);
 
 	/** Parse out the requested url **/
 	url_inf = htsParseURL(urlptr);
@@ -2539,6 +2612,10 @@ nht_internal_Handler(void* v)
 		snprintf(NHT.Realm, 80, "Centrallix");
 		}
 
+
+	    /** Should we enable gzip? **/
+	    stAttrValue(stLookup(my_config, "enable_gzip"), &(NHT.EnableGzip), NULL, 0);
+
 	    /** Get the timer settings **/
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
 	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
@@ -2596,6 +2673,14 @@ nhtInitialize()
 	xaInit(&(NHT.Timers),512);
 	NHT.WatchdogTime = 180;
 	NHT.InactivityTime = 1800;
+
+	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
+	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
+	if(!NHT.reNet47 || regcomp(NHT.reNet47, "Mozilla\\/4\\.7[5-9]",REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    {
+	    printf("unable to build Netscape 4.7 regex\n"); // shouldn't this be mssError? -- but there's no session yet..
+	    return -1;
+	    }
 
 	/** Start the watchdog timer thread **/
 	thCreate(nht_internal_Watchdog, 0, NULL);
