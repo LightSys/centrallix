@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.42 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_osrc.c,v 1.43 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.43  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.42  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -377,7 +380,7 @@ int htosrcInitialize() {
    pHtParam param;*/
 
    /** Allocate the driver **/
-   drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+   drv = htrAllocDriver();
    if (!drv) return -1;
 
    /** Fill in the structure. **/
@@ -386,10 +389,6 @@ int htosrcInitialize() {
    drv->Render = htosrcRender;
    drv->Verify = htosrcVerify;
    strcpy(drv->Target, "Netscape47x:default");
-   xaInit(&(drv->PosParams),16);
-   xaInit(&(drv->Properties),16);
-   xaInit(&(drv->Events),16);
-   xaInit(&(drv->Actions),16);
 
    /** Add a 'executemethod' action **/
    htrAddAction(drv,"Clear");

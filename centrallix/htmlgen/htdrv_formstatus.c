@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.8 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_formstatus.c,v 1.9 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.9  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.8  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -135,7 +138,7 @@ int htfsInitialize() {
    pHtParam param;*/
 
    /** Allocate the driver **/
-   drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+   drv = htrAllocDriver();
    if (!drv) return -1;
 
    /** Fill in the structure. **/
@@ -144,10 +147,6 @@ int htfsInitialize() {
    drv->Render = htfsRender;
    drv->Verify = htfsVerify;
    strcpy(drv->Target, "Netscape47x:default");
-   xaInit(&(drv->PosParams),16);
-   xaInit(&(drv->Properties),16);
-   xaInit(&(drv->Events),16);
-   xaInit(&(drv->Actions),16);
 
 #if 00
    /** Add the 'load page' action **/

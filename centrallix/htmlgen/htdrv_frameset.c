@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.4 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_frameset.c,v 1.5 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
+    Revision 1.5  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.4  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -178,7 +181,7 @@ htsetInitialize()
     pHtDriver drv;
 
     	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -186,10 +189,6 @@ htsetInitialize()
 	strcpy(drv->WidgetName,"frameset");
 	drv->Render = htsetRender;
 	drv->Verify = htsetVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/

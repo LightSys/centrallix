@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.6 2002/07/16 17:52:00 lkehresman Exp $
+    $Id: htdrv_connector.c,v 1.7 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.7  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.6  2002/07/16 17:52:00  lkehresman
     Updated widget drivers to use include files
 
@@ -246,7 +249,7 @@ htconnInitialize()
     pHtParam param;*/
 
     	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -254,10 +257,6 @@ htconnInitialize()
 	strcpy(drv->WidgetName,"connector");
 	drv->Render = htconnRender;
 	drv->Verify = htconnVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/

@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.17 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_checkbox.c,v 1.18 2002/07/19 21:17:48 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.18  2002/07/19 21:17:48  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.17  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -204,7 +207,7 @@ int htcbInitialize() {
    pHtDriver drv;
 
    /** Allocate the driver **/
-   drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+   drv = htrAllocDriver();
    if (!drv) return -1;
 
    /** Fill in the structure. **/
@@ -212,17 +215,13 @@ int htcbInitialize() {
    strcpy(drv->WidgetName,"checkbox");
    drv->Render = htcbNs47DefRender;
    drv->Verify = htcbVerify;
-   xaInit(&(drv->PosParams),16);
-   xaInit(&(drv->Properties),16);
-   xaInit(&(drv->Events),16);
-   xaInit(&(drv->Actions),16);
    strcpy(drv->Target,"Netscape47x:default");
    /** Register. **/
    htrRegisterDriver(drv);
 
 
    /** Allocate the driver **/
-   drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+   drv = htrAllocDriver();
    if (!drv) return -1;
 
    /** Fill in the structure. **/
@@ -230,10 +229,6 @@ int htcbInitialize() {
    strcpy(drv->WidgetName,"checkbox");
    drv->Render = htcbMozDefRender;
    drv->Verify = htcbVerify;
-   xaInit(&(drv->PosParams),16);
-   xaInit(&(drv->Properties),16);
-   xaInit(&(drv->Events),16);
-   xaInit(&(drv->Actions),16);
    strcpy(drv->Target,"Mozilla:default");
    /** Register. **/
    htrRegisterDriver(drv);

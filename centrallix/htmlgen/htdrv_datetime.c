@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.13 2002/07/17 20:20:43 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.14 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.14  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.13  2002/07/17 20:20:43  lkehresman
     Overhaul of the datetime widget (c file)
 
@@ -355,7 +358,7 @@ htdtInitialize()
     pHtDriver drv;
 
 	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -363,10 +366,6 @@ htdtInitialize()
 	strcpy(drv->WidgetName,"datetime");
 	drv->Render = htdtRender;
 	drv->Verify = htdtVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/

@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.31 2002/07/19 14:54:22 pfinley Exp $
+    $Id: htdrv_page.c,v 1.32 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.32  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.31  2002/07/19 14:54:22  pfinley
     - Modified the page mousedown & mouseover handlers so that the cursor ibeam
     "can't" be clicked on (only supports the global cursor).
@@ -591,7 +594,7 @@ htpageInitialize()
     pHtDriver drv;
 
     	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -599,17 +602,13 @@ htpageInitialize()
 	strcpy(drv->WidgetName,"page");
 	drv->Render = htpageRenderNtsp47xDefault;
 	drv->Verify = htpageVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
 	
     	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -617,10 +616,6 @@ htpageInitialize()
 	strcpy(drv->WidgetName,"page");
 	drv->Render = htpageRenderMozDefault;
 	drv->Verify = htpageVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 	strcpy(drv->Target, "Mozilla:default");
 
 	/** Register. **/

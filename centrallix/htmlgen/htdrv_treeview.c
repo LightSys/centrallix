@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.15 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_treeview.c,v 1.16 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.16  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.15  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -284,7 +287,7 @@ httreeInitialize()
     pHtDriver drv;
 
     	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -292,10 +295,6 @@ httreeInitialize()
 	strcpy(drv->WidgetName,"treeview");
 	drv->Render = httreeRender;
 	drv->Verify = httreeVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add the 'click item' event **/

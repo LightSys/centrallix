@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.19 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.20 2002/07/19 21:17:49 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.20  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
     Revision 1.19  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -471,7 +474,7 @@ htwinInitialize()
     pHtDriver drv;
 
     	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -479,10 +482,6 @@ htwinInitialize()
 	strcpy(drv->WidgetName,"htmlwindow");
 	drv->Render = htwinRender;
 	drv->Verify = htwinVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 	strcpy(drv->Target, "Netscape47x:default");
 
 	/** Add the 'set visibility' action **/
