@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.16 2002/07/22 15:24:54 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.17 2002/07/25 17:06:45 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.17  2002/07/25 17:06:45  lkehresman
+    Added the width parameter to datetime drawing function.
+
     Revision 1.16  2002/07/22 15:24:54  lkehresman
     Fixed datetime widget so the dropdown calendar wouldn't be hidden by window
     borders.  The dropdown calendar now is just a floating layer that is always
@@ -271,7 +274,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\"><BODY %s>\n", id,bgcolor);
-	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n");
+	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
 	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
