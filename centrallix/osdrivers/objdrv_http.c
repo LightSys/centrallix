@@ -80,7 +80,7 @@ typedef struct
 
     
 #define HTTP(x) ((pHttpData)(x))
-#define HTTP_OS_DEBUG 0
+#define HTTP_OS_DEBUG 1
 
 /*** Structure used by queries for this driver. ***/
 typedef struct
@@ -531,11 +531,10 @@ httpClose(void* inf_v, pObjTrxTree* oxt)
     {
     pHttpData inf = HTTP(inf_v);
 
-	/** Release all internal memory allocations **/
-	http_internal_Cleanup(inf,NULL);
 	/** Release the memory **/
 	inf->Node->OpenCnt --;
-	nmFree(inf,sizeof(HttpData));
+	/** Release all memory allocations **/
+	http_internal_Cleanup(inf,NULL);
 
     return 0;
     }
