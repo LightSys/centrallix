@@ -57,10 +57,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.15 2002/08/13 15:52:45 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.16 2002/08/17 20:01:17 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.16  2002/08/17 20:01:17  jorupp
+     * fixed up some stuff with the new OSML API
+     * removed the returing of the implict attributes from GetNextAttr()
+
     Revision 1.15  2002/08/13 15:52:45  jorupp
      * fixed a bug Michelle found -- I put pXMLCacheObj where it should have been pXmlCacheObj
 
@@ -623,7 +627,7 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	    xhDeInit(inf->Attributes);
 	    nmFree(inf->Attributes,sizeof(XHashTable));
 	    }
-    	/** Write the node first, if need be. **/
+	/** Write the node first, if need be. **/
 	//snWriteNode(inf->Node);
 	
 	//xmlFreeDoc(inf->CurrNode);
@@ -977,34 +981,37 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		ap=(xmlAttrPtr)pHE->ptr;
 		/*ptr2=(char*)xml_internal_GetChildren(ap);*/
 		/* I consider this a hack -- I can't figure out where to get the text! */
-		ptr2=xmlGetProp(ap->parent,ap->name);
-		if(ptr2)
-		    {
-		    (void)strtol(ptr2,&ptr,10);
-		    if(ptr && !*ptr)
-			{
-			free(ptr2);
-			return DATA_T_INTEGER;
-			}
-		    free(ptr2);
-		    return DATA_T_STRING;
-		    }
+		inf->AttrValue=xmlGetProp(ap->parent,ap->name);
 		}
-	    if(pHE->type==XML_SUBOBJ)
+	    else if(pHE->type==XML_SUBOBJ)
 		{
 		np=(xmlNodePtr)pHE->ptr;
-		ptr2=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
-		if(ptr2)
+		inf->AttrValue=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
+		}
+	    else
+		{
+		/** This should never happen, but... **/
+		mssError(0,"XML","Critical error! pHE->type is not valid! --  %s:%i",__FILE__,__LINE__);
+		return -1;
+		}
+
+	    if(inf->AttrValue)
+		{
+		(void)strtol(inf->AttrValue,&ptr,10);
+		if(ptr && !*ptr)
 		    {
-		    (void)strtol(ptr2,&ptr,10);
-		    if(ptr && !*ptr)
-			{
-			free(ptr2);
-			return DATA_T_INTEGER;
-			}
-		    free(ptr2);
-		    return DATA_T_STRING;
+		    free(inf->AttrValue);
+		    inf->AttrValue=NULL;
+		    return DATA_T_INTEGER;
 		    }
+		free(inf->AttrValue);
+		inf->AttrValue=NULL;
+		return DATA_T_STRING;
+		}
+	    else
+		{
+		mssError(0,"XML","unable to get attribute value (and hence a type) for %s",attrname);
+		return -1;
 		}
 	    }
 
@@ -1114,7 +1121,8 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		*((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
 	    return 0;
 	    }
-	/** Choose the type **/
+
+	/** internal_type is the XML node name **/
 	if (!strcmp(attrname,"internal_type"))
 	    {
 	    if (datatype != DATA_T_STRING)
@@ -1139,39 +1147,50 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		/*ptr2=(char*)xml_internal_GetChildren(ap);*/
 		/* I consider this a hack -- I can't figure out where to get the text! */
 		inf->AttrValue=xmlGetProp(ap->parent,ap->name);
-		if(inf->AttrValue)
-		    {
-		    *(int*)val=strtol(inf->AttrValue,&ptr,10);
-		    if(ptr && !*ptr)
-			{
-			//free(inf->AttrValue);
-			//inf->AttrValue=NULL;
-			return 0;
-			}
-		    *((char**)val) = inf->AttrValue;
-		    return 0;
-		    }
 		}
 	    else if(pHE->type==XML_SUBOBJ)
 		{
 		np=(xmlNodePtr)pHE->ptr;
 		inf->AttrValue=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
-		if(inf->AttrValue)
+		}
+	    else
+		{
+		/** This should never happen, but... **/
+		mssError(0,"XML","Critical error! pHE->type is not valid! --  %s:%i",__FILE__,__LINE__);
+		return -1;
+		}
+
+	    if(inf->AttrValue)
+		{
+		if(datatype==DATA_T_INTEGER)
 		    {
 		    *(int*)val=strtol(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
-			//free(inf->AttrValue);
-			//inf->AttrValue=NULL;
+			free(inf->AttrValue);
+			inf->AttrValue=NULL;
 			return 0;
 			}
+		    free(inf->AttrValue);
+		    inf->AttrValue=NULL;
+		    mssError(0,"XML","%s is not an integer",attrname);
+		    return -1;
+		    }
+		else if (datatype==DATA_T_STRING)
+		    {
 		    *((char**)val) = inf->AttrValue;
 		    return 0;
+		    }
+		else
+		    {
+		    mssError(0,"XML","%i is not a valid type for %s",datatype,attrname);
+		    return -1;
 		    }
 		}
 	    else
 		{
-		printf("type wasn't == to one of the choices....\n");
+		mssError(0,"XML","unable to get attribute value for %s",attrname);
+		return -1;
 		}
 	    }
 
@@ -1214,20 +1233,12 @@ xmlGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
     pXmlData inf = XML(inf_v);
     char *p;
-
+    
     switch(inf->CurAttr++)
 	{
-	case 0: return "name";
-	case 1: return "content_type";
-	case 2: return "annotation";
-	case 3: return "inner_type";
-	case 4: return "outer_type";
-	case 5: return "internal_type";
-	case 6: 
-	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",((void*)p))==0)
-		return "last_modification";
+	case 0: return "internal_type";
 	}
-
+    
     /** just for safety's sake -- really shouldn't be needed **/
     xml_internal_BuildAttributeHashTable(inf);
     
