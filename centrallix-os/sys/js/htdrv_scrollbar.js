@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2003 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -47,7 +47,7 @@ function sb_init(l,tname,p,is_h,r)
     l.value = 0;
     l.is_horizontal = is_h;
     l.controlsize = is_h?(getClipWidth(l) - 18*3):(getClipHeight(l) - 18*3);
-    l.watch('range', sb_range_changed);
+    htr_watch(l,'range','sb_range_changed');
     l.ActionMoveTo = sb_action_move_to;
     l.SetThumb = sb_set_thumb;
     return l;
@@ -75,6 +75,17 @@ function sb_set_thumb(r,v)
 
 function sb_range_changed(p,o,n)
     {
+    if(cx__capabilities.Dom0IE)
+	{
+    	if(e.propertyName.substr(0,6) == "style.")
+    	    {
+	    n = e.srcElement.style[e.propertyName.substr(6)];
+	    }
+    	else
+	    {
+	    n = e.srcElement[e.propertyName];
+	    }
+	}
     // do the hokey pokey because 'n' might be a string (silly debug treeview...)
     n = new Number(n);
     n = n.valueOf();
@@ -112,3 +123,4 @@ function sb_tm_mv()
     sb_mv_timeout=setTimeout(sb_tm_mv,50);
     return false;
     }
+
