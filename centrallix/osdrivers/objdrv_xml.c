@@ -57,10 +57,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.14 2002/08/13 14:45:51 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.15 2002/08/13 15:52:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.15  2002/08/13 15:52:45  jorupp
+     * fixed a bug Michelle found -- I put pXMLCacheObj where it should have been pXmlCacheObj
+
     Revision 1.14  2002/08/13 14:45:51  jorupp
      * the header files for libxml2 include stdlib, but apparently the libxml1 ones don't -- added the #include
      * fixed a couple of missed casts that caused compile warnings
@@ -515,7 +518,7 @@ xml_internal_ReadDoc(pObject obj)
 	else
 	    {
 	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
-	    pCache=(pXMLCacheObj)nmMalloc(sizeof(XmlCacheObj));
+	    pCache=(pXmlCacheObj)nmMalloc(sizeof(XmlCacheObj));
 	    if(!pCache) return NULL;
 	    memset(pCache,0,sizeof(XmlCacheObj));
 	    ptr=(char*)malloc(strlen(path)+1);
