@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.1 2003/07/15 01:57:51 gbeeley Exp $
+    $Id: htdrv_scrollbar.c,v 1.2 2003/07/15 01:59:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.2  2003/07/15 01:59:50  gbeeley
+    Fixing bug with the low-value limiter on dragging the thumb around.
+
     Revision 1.1  2003/07/15 01:57:51  gbeeley
     Adding an independent DHTML scrollbar widget that will be used to
     control scrolling/etc on other widgets.
@@ -265,7 +268,7 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"            {\n"
 		"            var new_x=sb_thum_x + (e.pageX-sb_click_x);\n"
 		"            if (new_x > ti.pane.pageX+18+ti.mainlayer.controlsize) new_x=ti.pane.pageX+18+ti.mainlayer.controlsize;\n"
-		"            if (new_x < ti.pane.pageX+18) new_x=ti.pane.pageY+18;\n"
+		"            if (new_x < ti.pane.pageX+18) new_x=ti.pane.pageX+18;\n"
 		"            ti.thum.pageX=new_x;\n"
 		"            ti.mainlayer.value = Math.round((new_x - (ti.pane.pageX+18))*ti.mainlayer.range/ti.mainlayer.controlsize);\n"
 		"            }\n"
