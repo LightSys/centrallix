@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.8 2003/05/30 17:39:52 gbeeley Exp $
+    $Id: obj_main.c,v 1.9 2004/02/24 20:12:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.9  2004/02/24 20:12:38  gbeeley
+    - objTypeID() converts string data type to numeric type id
+
     Revision 1.8  2003/05/30 17:39:52  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -125,6 +128,21 @@ OSYS_t OSYS;
 
 #define OBJ_TYPE_NAMES_CNT  32
 char* obj_type_names[OBJ_TYPE_NAMES_CNT];
+
+/*** objTypeID() - return the numeric type given a name
+ ***/
+int
+objTypeID(char* typename)
+    {
+    int i;
+
+	for(i=0;i<OBJ_TYPE_NAMES_CNT;i++) 
+	    if (obj_type_names[i] && !strcmp(obj_type_names[i],typename))
+		return i;
+
+    return -1;
+    }
+
 
 /*** obj_internal_BuildIsA - scan the content type registry (from types.cfg)
  *** and determine what types are related to what other types.  This is an
