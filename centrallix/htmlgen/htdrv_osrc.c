@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.44 2002/07/31 16:17:55 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.45 2002/08/18 18:43:44 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.45  2002/08/18 18:43:44  jorupp
+     * osrc now uses double quotes to enclose the parameters passed to init -- it's safer
+
     Revision 1.44  2002/07/31 16:17:55  gbeeley
     OSRC relies upon ht_utils_string.js now, so I added a script include
     line to link that one in.  Before, the rtrim thing broke xml_test.app.
@@ -339,7 +342,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrAddStylesheetItem_va(s,"        #osrc%dloader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:1;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,'%s','%s','%s');\n",
+   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\");\n",
 	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter,name);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
