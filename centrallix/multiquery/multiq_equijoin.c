@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.3 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.4 2004/12/31 04:19:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.4  2004/12/31 04:19:43  gbeeley
+    - bug fix for 'cannot be inner and outer member of an outer join'
+    - bug fix for WHERE expression not being completely reevaluated
+
     Revision 1.3  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -159,7 +163,7 @@ mqjAnalyze(pMultiQuery mq)
 			if (join_mask[j] == where_item->Expr->ObjCoverageMask) 
 			    {
 			    n = j;
-			    if (join_outer[n] != where_item->Expr->ObjCoverageMask)
+			    if (join_outer[n] != where_item->Expr->ObjOuterMask)
 			        {
 				mssError(1,"MQJ","An entity cannot be both an inner and outer member of an outer join");
 				return -1;
@@ -404,6 +408,7 @@ mqjAnalyze(pMultiQuery mq)
 			    new_exp->NodeType = EXPR_N_AND;
 			    xaAddItem(&new_exp->Children,(void*)qe->Constraint);
 			    xaAddItem(&new_exp->Children,(void*)where_item->Expr);
+			    new_exp->ObjCoverageMask = qe->Constraint->ObjCoverageMask | where_item->Expr->ObjCoverageMask;
 			    qe->Constraint = new_exp;
 			    }
 			else
