@@ -9,6 +9,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+
+// Sets the value of the current tab (but not the appearance), without
+// triggering on-change events.
+function tc_set_tab_unwatched()
+    {
+    htr_unwatch(this.tabctl,"selected","tc_selection_changed");
+    htr_unwatch(this.tabctl,"selected_index","tc_selection_changed");
+    this.tabctl.selected_index = this.tabindex;
+    this.tabctl.selected = this.tabname;
+    this.tabctl.current_tab = this;
+    htr_watch(this.tabctl,"selected", "tc_selection_changed");
+    htr_watch(this.tabctl,"selected_index", "tc_selection_changed");
+    }
+
+
+// Makes the given tab current.
 function tc_makecurrent()
     {
     var t;
@@ -38,15 +54,11 @@ function tc_makecurrent()
     setPageY(this, getPageY(this)-this.tabctl.yo);
     setPageX(this, getPageX(this)-this.tabctl.xo);
     setClipItem(this,this.tabctl.cl, getClipItem(this,this.tabctl.cl) - this.tabctl.ci);
-    htr_unwatch(this.tabctl,"selected","tc_selection_changed");
-    htr_unwatch(this.tabctl,"selected_index","tc_selection_changed");
-    this.tabctl.selected_index = this.tabindex;
-    this.tabctl.selected = this.tabname;
-    this.tabctl.current_tab = this;
-    htr_watch(this.tabctl,"selected", "tc_selection_changed");
-    htr_watch(this.tabctl,"selected_index", "tc_selection_changed");
+    this.setTabUnwatched();
     }
 
+
+// Adds a new tab to the tab control
 function tc_addtab(l_tab, l_page, l, nm)
     {
     var newx;
@@ -89,15 +101,6 @@ function tc_addtab(l_tab, l_page, l, nm)
 	{
 	newx += l.xo;
 	newy += l.yo;
-	//if (cx__capabilities.Dom0NS)
-	//    {
-	//    l_tab.clip[l.cl] += l.ci;
-	//    }
-	//else
-	//    {
-	//    l.cl = "clip." + l.cl;
-	//    pg_set_style(l_tab, l.cl, pg_get_style(l_tab, l.cl)+l.ci);
-	//    }
 	setClipItem(l_tab, l.cl, getClipItem(l_tab, l.cl) + l.ci);
 	if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
 	else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
@@ -129,6 +132,7 @@ function tc_addtab(l_tab, l_page, l, nm)
     l_tab.tabpage = l_page;
     l_tab.tabctl = this;
     l_tab.makeCurrent = tc_makecurrent;
+    l_tab.setTabUnwatched = tc_set_tab_unwatched;
     setPageX(l_tab, newx);
     setPageY(l_tab, newy);
     l_page.tabctl = this;
@@ -264,6 +268,7 @@ function tc_cb_reveal(e)
 	    break;
 	case 'ObscureFailed':
 	case 'RevealFailed':
+	    this.tabctl.current_tab.setTabUnwatched();
 	    break;
 	}
     return true;
