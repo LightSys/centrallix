@@ -657,7 +657,7 @@ function pg_resize_area(a,w,h)
 /** Function to add a new area to the arealist **/
 function pg_addarea(pl,x,y,w,h,cls,nm,f)
     {    
-    a = new pg_area(pl,x,y,w,h,cls,nm,f);
+    var a = new pg_area(pl,x,y,w,h,cls,nm,f);
     pg_arealist.splice(0,0,a);
     return a;
     }
