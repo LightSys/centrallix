@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.8 2004/06/12 04:02:28 gbeeley Exp $
+    $Id: obj_query.c,v 1.9 2004/07/30 04:25:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.9  2004/07/30 04:25:35  gbeeley
+    - need to recognize asc/desc in order by text
+
     Revision 1.8  2004/06/12 04:02:28  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -337,7 +340,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	else if (order_by)
 	    {
 	    lxs = mlxStringSession(order_by, MLX_F_EOF | MLX_F_FILENAMES | MLX_F_ICASER);
-	    for(i=0;(sort_item=exp_internal_CompileExpression_r(lxs, 0, this->ObjList, 0));i++)
+	    for(i=0;(sort_item=exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC));i++)
 	        {
 		this->SortBy[i] = sort_item;
 		}
