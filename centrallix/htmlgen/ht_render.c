@@ -43,12 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.1 2001/08/13 18:00:48 gbeeley Exp $
+    $Id: ht_render.c,v 1.2 2001/10/22 17:19:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
-    Revision 1.1  2001/08/13 18:00:48  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/22 17:19:42  gbeeley
+    Added a few utility functions in ht_render to simplify the structure and
+    authoring of widget drivers a bit.
+
+    Revision 1.1.1.1  2001/08/13 18:00:48  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -312,6 +316,107 @@ htrDisableBody(pHtSession s)
     }
 
 
+/*** htrAddEvent - adds an event to a driver.
+ ***/
+int
+htrAddEvent(pHtDriver drv, char* event_name)
+    {
+    pHtEventAction event;
+
+	/** Create the action **/
+	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
+	if (!event) return -1;
+	strcpy(event->Name, event_name);
+	xaAddItem(&drv->Events, (void*)event);
+
+    return 0;
+    }
+
+
+/*** htrAddAction - adds an action to a widget.
+ ***/
+int
+htrAddAction(pHtDriver drv, char* action_name)
+    {
+    pHtEventAction action;
+
+	/** Create the action **/
+	action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
+	if (!action) return -1;
+	strcpy(action->Name, action_name);
+	xaAddItem(&drv->Actions, (void*)action);
+
+    return 0;
+    }
+
+
+/*** htrAddParam - adds a parameter to a widget's action or event
+ ***/
+int
+htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
+    {
+    pHtEventAction ea = NULL;
+    int i;
+    pHtParam p;
+
+	/** Look for a matching event/action **/
+	for(i=0;i<drv->Actions.nItems;i++)
+	    {
+	    if (!strcmp(((pHtEventAction)(drv->Actions.Items[i]))->Name, eventaction))
+	        {
+		ea = (pHtEventAction)(drv->Actions.Items[i]);
+		break;
+		}
+	    }
+	if (!ea) for(i=0;i<drv->Events.nItems;i++)
+	    {
+	    if (!strcmp(((pHtEventAction)(drv->Events.Items[i]))->Name, eventaction))
+	        {
+		ea = (pHtEventAction)(drv->Events.Items[i]);
+		break;
+		}
+	    }
+	if (!ea) return -1;
+
+	/** Add the parameter **/
+	p = nmSysMalloc(sizeof(HtParam));
+	if (!p) return -1;
+	strcpy(p->ParamName, param_name);
+	p->DataType = datatype;
+	xaAddItem(&(ea->Parameters), (void*)p);
+
+    return 0;
+    }
+
+
+/*** htrRenderSubwidgets - generates the code for all subwidgets within
+ *** the current widget.  This is  a generic function that does not 
+ *** necessarily apply to all widgets that contain other widgets, but 
+ *** is useful for your basic ordinary "container" type widget, such
+ *** as panes and tab pages.
+ ***/
+int
+htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel)
+    {
+    pObjQuery qy;
+    pObject sub_widget_obj;
+
+	/** Open the query for subwidgets **/
+	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL);
+	if (qy)
+	    {
+	    while((sub_widget_obj = objQueryFetch(qy, O_RDONLY)))
+	        {
+		htrRenderWidget(s, sub_widget_obj, zlevel, docname, layername);
+		objClose(sub_widget_obj);
+		}
+	    objQueryClose(qy);
+	    }
+
+    return 0;
+    }
+
+
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
@@ -538,6 +643,28 @@ htrRender(pFile output, pObject appstruct)
 	nmFree(s,sizeof(HtSession));
 
     return 0;
+    }
+
+
+/*** htrAllocDriver - allocates a driver structure that can later be
+ *** registered by using the next function below, htrRegisterDriver().
+ ***/
+pHtDriver
+htrAllocDriver()
+    {
+    pHtDriver drv;
+
+	/** Allocate the driver structure **/
+	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	if (!drv) return NULL;
+
+	/** Init some of the basic array structures **/
+	xaInit(&(drv->PosParams),16);
+	xaInit(&(drv->Properties),16);
+	xaInit(&(drv->Events),16);
+	xaInit(&(drv->Actions),16);
+
+    return drv;
     }
 
 

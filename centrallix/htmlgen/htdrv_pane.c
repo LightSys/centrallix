@@ -41,12 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.1 2001/08/13 18:00:50 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.2 2001/10/22 17:19:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
-    Revision 1.1  2001/08/13 18:00:50  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/22 17:19:42  gbeeley
+    Added a few utility functions in ht_render to simplify the structure and
+    authoring of widget drivers a bit.
+
+    Revision 1.1.1.1  2001/08/13 18:00:50  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -84,8 +88,6 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char sbuf[160];
     char sbuf2[160];
     char main_bg[128];
-    pObject sub_w_obj;
-    pObjQuery qy;
     int x=-1,y=-1,w,h;
     int id;
     int is_raised = 1;
@@ -191,18 +193,9 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddBodyItem(s, sbuf);
 
 	/** Check for objects within the pane. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    sprintf(sbuf,"%s.mainlayer.document",nptr);
-	    sprintf(sbuf2,"%s.mainlayer",nptr);
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-	        htrRenderWidget(s, sub_w_obj, z+2, sbuf, sbuf2);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
+	sprintf(sbuf,"%s.mainlayer.document",nptr);
+	sprintf(sbuf2,"%s.mainlayer",nptr);
+	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</DIV></DIV>\n");
@@ -221,7 +214,7 @@ htpnInitialize()
     pHtParam param;*/
 
     	/** Allocate the driver **/
-	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	drv = htrAllocDriver();
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
@@ -229,10 +222,6 @@ htpnInitialize()
 	strcpy(drv->WidgetName,"pane");
 	drv->Render = htpnRender;
 	drv->Verify = htpnVerify;
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
 
 #if 00
 	/** Add the 'load page' action **/

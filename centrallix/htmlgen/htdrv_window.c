@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.4 2001/10/09 01:14:52 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.5 2001/10/22 17:19:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.5  2001/10/22 17:19:42  gbeeley
+    Added a few utility functions in ht_render to simplify the structure and
+    authoring of widget drivers a bit.
+
     Revision 1.4  2001/10/09 01:14:52  lkehresman
     Made a few modifications to the behavior of windowshading.  It now forgets
     clicks that do other things such as raising windows--it won't count that as
@@ -516,8 +520,6 @@ int
 htwinInitialize()
     {
     pHtDriver drv;
-    pHtEventAction event,action;
-    pHtParam param;
 
     	/** Allocate the driver **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
@@ -534,19 +536,11 @@ htwinInitialize()
 	xaInit(&(drv->Actions),16);
 
 	/** Add the 'set visibility' action **/
-	action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(action->Name,"SetVisibility");
-	xaInit(&action->Parameters,16);
-	param = (pHtParam)nmSysMalloc(sizeof(HtParam));
-	strcpy(param->ParamName,"IsVisible");
-	param->DataType = DATA_T_INTEGER;
-	xaAddItem(&action->Parameters,(void*)param);
-	xaAddItem(&drv->Actions,(void*)action);
+	htrAddAction(drv,"SetVisibility");
+	htrAddParam(drv,"SetVisibility","IsVisible",DATA_T_INTEGER);
 
 	/** Add the 'window closed' event **/
-	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(event->Name,"Close");
-	xaAddItem(&drv->Events,(void*)event);
+	htrAddEvent(drv,"Close");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

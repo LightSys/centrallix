@@ -34,12 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.1 2001/08/13 18:00:52 gbeeley Exp $
+    $Id: ht_render.h,v 1.2 2001/10/22 17:19:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
-    Revision 1.1  2001/08/13 18:00:52  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/22 17:19:41  gbeeley
+    Added a few utility functions in ht_render to simplify the structure and
+    authoring of widget drivers a bit.
+
+    Revision 1.1.1.1  2001/08/13 18:00:52  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:19  gbeeley
     Centrallix Core Initial Import
@@ -178,6 +182,11 @@ int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentn
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
 int htrRender(pFile output, pObject appstruct);
+int htrAddAction(pHtDriver drv, char* action_name);
+int htrAddEvent(pHtDriver drv, char* event_name);
+int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
+int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
+pHtDriver htrAllocDriver();
 
 
 #endif /* _HT_RENDER_H */

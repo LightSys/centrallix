@@ -43,12 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.1 2001/08/13 18:00:51 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.2 2001/10/22 17:19:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
-    Revision 1.1  2001/08/13 18:00:51  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/22 17:19:42  gbeeley
+    Added a few utility functions in ht_render to simplify the structure and
+    authoring of widget drivers a bit.
+
+    Revision 1.1.1.1  2001/08/13 18:00:51  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -350,8 +354,6 @@ int
 httbtnInitialize()
     {
     pHtDriver drv;
-    pHtEventAction event;
-    /*pHtParam value;*/
 
     	/** Allocate the driver **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
@@ -368,9 +370,7 @@ httbtnInitialize()
 	xaInit(&(drv->Actions),16);
 
 	/** Add the 'click' event **/
-	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	strcpy(event->Name,"Click");
-	xaAddItem(&drv->Events,(void*)event);
+	htrAddEvent(drv, "Click");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
