@@ -40,6 +40,7 @@
 #include "obj.h"
 #include "expression.h"
 #include "xarray.h"
+#include "iface.h"
 
 typedef struct
     {
@@ -58,6 +59,7 @@ typedef struct
     int		CurrProperty;			/** Property to return on next call to wgtNextProperty **/
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/
     int		Verified;			/** Was the node verified? **/
+    XArray	Interfaces;			/** Array of supported interface handles **/
     }
     WgtrNode, *pWgtrNode;
 
@@ -81,36 +83,55 @@ typedef struct
     } WgtrVerifySession, *pWgtrVerifySession;
 
 
+/** traversal methods for iterators **/
 #define WGTR_TM_LEVELORDER	1
 #define	WGTR_TM_PREORDER	2
 #define WGTR_TM_POSTORDER	3
 
+/** wgtr creation and destruction **/
 pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type);  /** parse osml object **/
 pWgtrNode wgtrParseOpenObject(pObject obj);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
+pWgtrNode wgtrNewNode(	char* name, char* type, 
+			int rx, int ry, int rwidth, int rheight,
+			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
+
+/** wgtr iterator functions **/
 pWgtrIterator wgtrGetIterator(pWgtrNode tree, int traversal_type);	/** returns an iterator for the tree **/
 pWgtrNode wgtrNext(pWgtrIterator itr);	/** return next node in tree **/
 void wgtrFreeIterator(pWgtrIterator itr);	/** frees memory associated with a widget tree **/
+
+/** accessors **/
 int wgtrGetPropertyType(pWgtrNode widget, char* name);	/** get the type of the given property **/
 int wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val); /** get property value **/
 char* wgtrFirstPropertyName(pWgtrNode widget);	/** returns name of first property in property array **/
 char* wgtrNextPropertyName(pWgtrNode widget);	/** returns next name in property array **/
+
+/** modifiers **/
 int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val); /** add a property to the widget **/
 int wgtrDeleteProperty(pWgtrNode widget, char* name);	/** deletes the property from the widget **/
 int wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val);	/** sets the widget property val **/
-pWgtrNode wgtrNewNode(	char* name, char* type, 
-			int rx, int ry, int rwidth, int rheight,
-			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
 int wgtrDeleteChild(pWgtrNode widget, char* child_name);    /** deletes child widget from tree, along w/ sub-widgets **/
 int wgtrAddChild(pWgtrNode widget, pWgtrNode child);	    /** graft one tree onto another **/
 pWgtrNode wgtrNextChild(pWgtrNode tree);	/** return the next child **/
 pWgtrNode wgtrFirstChild(pWgtrNode tree);	/** return the first child **/
+
+/** misc. functions **/
 pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints **/
 pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression from a widget node **/
-int wgtrVerify(void* s, pWgtrNode tree);	/** Verify a widget-tree. s must be pHtSession **/
+
+/** verification functions **/
+int wgtrVerify(pWgtrNode tree);	/** Verify a widget-tree. s must be pHtSession **/
 int wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget); /** add a widget to the Verify Queue **/
 int wgtrCancelVerify(pWgtrVerifySession cs, pWgtrNode widget);	/** remove a widget from the Verify Queue **/
 
+/** wgtr driver-related functions **/
+int wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)());	/** registers a widget driver **/
+int wgtrAddType(char* name, char* type_name);	    /** associate a type with a wgtr driver **/
+int wgtrAddDeploymentMethod(char* method, int (*Render)());	/** add a deployment method to a driver **/
+int wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, char* method);
+
+/** for debugging **/
 void wgtrPrint(pWgtrNode tree, int indent);	/** for debug purposes **/
 
 #endif

@@ -67,6 +67,42 @@ typedef struct
 
 
 
+/** Widget Driver information structure **/
+typedef struct
+    {
+    char	    Name[64];		    /* Driver name */
+    int		    (*Verify)();	    /* Function for verifying the widget */
+    int		    (*New)();		    /* Function for initializing a widget */
+    XArray	    Types;		    /* Pseudo-types this widget driver will handle */
+    } WgtrDriver, *pWgtrDriver;
+
+struct
+    {
+    XHashTable	    Methods;		    /* deployment methods */
+    XArray	    Drivers;		    /* simple driver listing */
+    } WGTR;
+
+
+
+pWgtrDriver
+wgtr_internal_LookupDriver(pWgtrNode node)
+    {
+    int i, j;
+    pWgtrDriver drv;
+    char* this_type;
+
+	for (i=0;i<xaCount(&(WGTR.Drivers));i++)
+	    {
+	    drv = xaGetItem(&(WGTR.Drivers), i);
+	    for (j=0;j<xaCount(&(drv->Types));j++)
+		{
+		this_type = xaGetItem(&(drv->Types), j);
+		if (!strncmp(node->Type+7, this_type, 64)) return drv;
+		}
+	    }
+	mssError(1, "WGTR", "No driver registered for type '%s'", node->Type+7);
+	return NULL;
+    }
 
 
 pWgtrNode 
@@ -266,7 +302,7 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	if (!strcmp(name, "name")) return DATA_T_STRING;
-	else if (!strcmp(name, "type") || !strcmp(name, "outer_type")) return DATA_T_INTEGER;
+	else if (!strcmp(name, "type") || !strcmp(name, "outer_type")) return DATA_T_STRING;
 	else if (!strncmp(name, "r_",2) || !strncmp(name, "fl_", 3)) return DATA_T_INTEGER;
 	else if (!strcmp(name, "x") || !strcmp(name, "y") || !strcmp(name, "width") || !strcmp(name, "height"))
 	    return DATA_T_INTEGER;
@@ -325,31 +361,9 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 	    if (prop && !strcmp(name, prop->Name)) break;
 	    }
 	if (i == count || datatype != prop->Type) return -1;
-   
-	/** grrr.... **/
-	switch (prop->Type)
-	    {
-	    case DATA_T_INTEGER:
-		val->Integer = prop->Val.Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		val->Double = prop->Val.Double;
-		break;
-	    case DATA_T_STRING:
-		val->String = prop->Val.String;
-	    case DATA_T_MONEY:
-		val->Money = prop->Val.Money;
-		break;
-	    case DATA_T_DATETIME:
-		val->DateTime = prop->Val.DateTime;
-	    case DATA_T_INTVEC:
-		val->IntVec = prop->Val.IntVec;
-		break;
-	    case DATA_T_STRINGVEC:
-		val->StringVec = prop->Val.StringVec;
-	    case DATA_T_CODE:
-		val->Generic = prop->Val.Generic;
-	    }
+
+	objCopyData(&(prop->Val), val, prop->Type);
+
 	return 0;
     }
 
@@ -507,6 +521,7 @@ wgtrNewNode(	char* name, char* type,
 		int flx, int fly, int flwidth, int flheight)
     {
     pWgtrNode node;
+    pWgtrDriver drv;
 
 //	fprintf(stderr, "Creating %s of type %s\n", name, type);
 	if ( (node = (pWgtrNode)nmMalloc(sizeof(WgtrNode))) == NULL)
@@ -530,6 +545,19 @@ wgtrNewNode(	char* name, char* type,
 
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
+
+	/** look up the 'new' function and call it on the now-init'd struct **/
+	if ( (drv = wgtr_internal_LookupDriver(node)) == NULL) 
+	    {
+	    wgtrFree(node);
+	    return NULL;
+	    }
+	if (drv->New(node) < 0)
+	    {
+	    mssError(1, "WGTR", "Error initializing new widget node '%s'", node->Name);
+	    wgtrFree(node);
+	    return NULL;
+	    }
 
 	return node;
     }
@@ -825,13 +853,10 @@ wgtr_internal_BuildVerifyQueue(pWgtrVerifySession vs, pWgtrNode node)
     }
 
 int
-wgtrVerify(void* v_s, pWgtrNode tree)
+wgtrVerify(pWgtrNode tree)
     {
     WgtrVerifySession vs;
-    pHtSession s = (pHtSession)v_s;
-    pWgtrNode	cur_node;
-    pHtDriver drv;
-    pXHashTable widget_drivers = NULL;
+    pWgtrDriver drv;
 
 	/** initialize datastructures **/
 	vs.Tree = tree;
@@ -841,24 +866,6 @@ wgtrVerify(void* v_s, pWgtrNode tree)
 	wgtr_internal_BuildVerifyQueue(&vs, tree);
 	vs.NumWidgets = xaCount(&(vs.VerifyQueue));
 
-	/** assign the verification session to HtSession **/
-	s->VerifySession = &vs;
-
-	/** Get the drivers **/
-	/*
-	if (!s->Class)
-	    {
-	    mssError(1,"WGTR", "wgtrVerify(): Class not defined in HtSession!");
-	    goto error;
-	    }
-	widget_drivers = &(s->Class->WidgetDrivers);
-	if (!widget_drivers)
-	    {
-	    mssError(1, "WGTR", "wgtrVerify(): No widgets defined for useragent/class combo");
-	    goto error;
-	    }
-	*/
-	    
 	/** Iterate through the queue **/
 	for (vs.CurrWidgetIndex=0;vs.CurrWidgetIndex<vs.NumWidgets;vs.CurrWidgetIndex++)
 	    {
@@ -866,8 +873,7 @@ wgtrVerify(void* v_s, pWgtrNode tree)
 	    vs.CurrWidget = xaGetItem(&(vs.VerifyQueue), vs.CurrWidgetIndex);
 
 	    /** Get the driver for this node **/
-	    //drv = (pHtDriver)xhLookup(widget_drivers, vs.CurrWidget->Type+7);
-	    drv = htrLookupDriver(s, vs.CurrWidget->Type);
+	    drv = wgtr_internal_LookupDriver(vs.CurrWidget);
 	    if (!drv)
 		{
 		mssError(1, "WGTR", "Unknown widget object type '%s' for widget '%s'", 
@@ -876,7 +882,7 @@ wgtrVerify(void* v_s, pWgtrNode tree)
 		}
 
 	    /** Verify the widget **/
-	    if (drv->Verify && (drv->Verify(s) < 0))
+	    if (drv->Verify && (drv->Verify(&vs) < 0))
 		{
 		mssError(0, "WGTR", "Couldn't verify widget '%s'", vs.CurrWidget->Name);
 		goto error;
@@ -886,11 +892,9 @@ wgtrVerify(void* v_s, pWgtrNode tree)
 
 	/** free up data structures **/
 	xaDeInit(&(vs.VerifyQueue));
-	s->VerifySession = NULL;
 
 	return 0;
 error:
-	s->VerifySession = NULL;
 	xaDeInit(&(vs.VerifyQueue));
 	return -1;
     }
@@ -899,8 +903,6 @@ error:
 int 
 wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget)
     {
-    int i;
-  
   /*
 	fprintf(stderr, "wgtrScheduleVerify(vs->NumWidgets=%d, widgth='%s'", vs->NumWidgets, widget->Name);
 	if (parent) fprintf(stderr, ", parent='%s'", parent->Name);
@@ -909,6 +911,7 @@ wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget)
 
 	xaAddItem(&(vs->VerifyQueue), widget);
 	vs->NumWidgets++;
+	return 0;
     }
 
 
@@ -934,6 +937,147 @@ wgtrCancelVerify(pWgtrVerifySession vs, pWgtrNode widget)
 	/** remove the widget from the queue **/
 	xaRemoveItem(&(vs->VerifyQueue), i);
 	return 0;
+    }
+
+
+
+int
+wgtrInitialize()
+    {
+	/** init datastructures for handling drivers **/
+	xaInit(&(WGTR.Drivers), 64);
+	xhInit(&(WGTR.Methods), 5, 0);
+
+	/** call the initialization routines of all the widget drivers. I suppose it's a
+	 ** little weird to do things this way - if they're going to be init'ed from here,
+	 ** why have 'drivers'? Why not just hard-code them? Well, maybe later on they'll
+	 ** become dynamically loaded modules. Then it'll make more sense
+	 **/
+	wgtalrtInitialize();
+	wgtcaInitialize();
+	wgtcbInitialize();
+	wgtclInitialize();
+	wgtcmpdInitialize();
+	wgtconnInitialize();
+	wgtdtInitialize();
+	wgtddInitialize();
+	wgtebInitialize();
+	wgtexInitialize();
+	wgtfbInitialize();
+	wgtformInitialize();
+	wgtfsInitialize();
+	wgtsetInitialize();
+	wgthintInitialize();
+	wgthtmlInitialize();
+	wgtibtnInitialize();
+	wgtimgInitialize();
+	wgtlblInitialize();
+	wgtmenuInitialize();
+	wgtosrcInitialize();
+	wgtpageInitialize();
+	wgtpnInitialize();
+	wgtrbInitialize();
+	wgtrmtInitialize();
+	wgtsbInitialize();
+	wgtspaneInitialize();
+	wgtspnrInitialize();
+	wgtosmlInitialize();
+	wgttabInitialize();
+	wgttblInitialize();
+	wgtxxxInitialize();
+	wgttermInitialize();
+	wgttxInitialize();
+	wgttbtnInitialize();
+	wgttmInitialize();
+	wgttreeInitialize();
+	wgtvblInitialize();
+	wgtwinInitialize();
+
+    return 0;
+    }
+
+
+/*** wgtrRegisterDriver - registers a driver 
+ ***/
+int 
+wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
+    {
+    int i;
+    pWgtrDriver drv;
+
+    fprintf(stderr, "Registering widget driver '%s'\n", name);
+	/** make sure it's not already there **/
+	for (i=0;i<xaCount(&(WGTR.Drivers));i++)
+	    {
+	    if (!strcmp(drv->Name, ((pWgtrDriver)xaGetItem(&(WGTR.Drivers), i))->Name))
+		{
+		mssError(1, "WGTR", "Tried to register driver '%s' twice", name);
+		return -1;
+		}
+	    }
+	
+	/** allocate memory **/
+	if ( (drv = nmMalloc(sizeof(WgtrDriver))) == NULL)
+	    {
+	    mssError(1, "WGTR", "Couldn't allocate memory for new widget driver");
+	    return -1;
+	    }
+	memset(drv, 0, sizeof(WgtrDriver));
+	strncpy(drv->Name, name, 64);
+	drv->New = New;
+	drv->Verify = Verify;
+	xaInit(&(drv->Types), 4);
+
+	xaAddItem(&(WGTR.Drivers), drv);
+
+	return 0;
+    }
+
+
+/*** wgtrAddType - associates a widget type with a wgtr driver 
+ ***/
+int 
+wgtrAddType(char* name, char* type_name)
+    {
+    pWgtrDriver drv;
+    int i;
+
+    fprintf(stderr, "Adding type '%s' to widget driver '%s'\n", type_name, name);
+	for (i=0;i<xaCount(&(WGTR.Drivers));i++)
+	    {
+	    drv = xaGetItem(&(WGTR.Drivers), i);
+	    if (!strncmp(drv->Name, name, 64)) break;
+	    }
+	if (i == xaCount(&(WGTR.Drivers))) return -1;
+	xaAddItem(&(drv->Types), nmSysStrdup(type_name));
+	return 0;
+    }
+
+
+/*** wgtrAddDeploymentMethod - associates a render function with a deployment method
+ ***/
+int
+wgtrAddDeploymentMethod(char* method, int (*Render)())
+    {
+	xhAdd(&(WGTR.Methods), nmSysStrdup(method), (void*)Render);
+	return 0;
+    }
+
+
+/*** wgtrRender - call the appropriate function for the given deployment method
+ ***/
+
+int
+wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, char* method)
+    {
+    int	    (*Render)();
+
+	if ( (Render = xhLookup(&(WGTR.Methods), method)) == NULL)
+	    {
+	    mssError(1, "WGTR", "Couldn't render widget tree '%s': no render function for '%s'", tree->Name, method);
+	    return -1;
+	    }
+	return Render(output, obj_s, tree, params);
     }
 
 

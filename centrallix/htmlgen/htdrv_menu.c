@@ -46,14 +46,6 @@ static struct {
 
 
 /* 
-   htmnVerify - not written yet.
-*/
-int htmnVerify() {
-   return 0;
-}
-
-
-/* 
    htmenuRender - generate the HTML code for the menu widget.
 */
 int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
@@ -358,7 +350,6 @@ int htmenuInitialize() {
    strcpy(drv->Name,"DHTML Menu Widget Driver");
    strcpy(drv->WidgetName,"menu");
    drv->Render = htmenuRender;
-   drv->Verify = htmnVerify;
 
    /** Register events **/
    htrAddEvent(drv,"MouseUp");

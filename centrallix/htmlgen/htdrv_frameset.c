@@ -42,10 +42,41 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.9 2004/07/19 15:30:39 mmcgill Exp $
+    $Id: htdrv_frameset.c,v 1.10 2004/08/02 14:09:34 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
+    Revision 1.10  2004/08/02 14:09:34  mmcgill
+    Restructured the rendering process, in anticipation of new deployment methods
+    being added in the future. The wgtr module is now the main widget-related
+    module, responsible for all non-deployment-specific widget functionality.
+    For example, Verifying a widget tree is non-deployment-specific, so the verify
+    functions have been moved out of htmlgen and into the wgtr module.
+    Changes include:
+    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
+        wgtr drivers.
+    *   Adding wgtr drivers to the widget tree module.
+    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
+    *   Requiring all deployment methods (currently only DHTML) to register a
+        Render() function with the wgtr module.
+    *   Adding wgtrRender(), to abstract the details of the rendering process
+        from the caller. Given a widget tree, a string representing the deployment
+        method to use ("DHTML" for now), and the additional args for the rendering
+        function, wgtrRender() looks up the appropriate function for the specified
+        deployment method and calls it.
+    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
+        is being created. This is primarily to allow widget drivers to declare
+        the interfaces their widgets support when they are instantiated, but other
+        initialization tasks can go there as well.
+
+    Also in this commit:
+    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
+    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
+        other stack variables.
+    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
+        can now be completely insulated from the deployment method by the wgtr
+        module.
+
     Revision 1.9  2004/07/19 15:30:39  mmcgill
     The DHTML generation system has been updated from the 2-step process to
     a three-step process:
@@ -134,15 +165,6 @@
 
 
  **END-CVSDATA***********************************************************/
-
-
-/*** htsetVerify - not written yet.
- ***/
-int
-htsetVerify()
-    {
-    return 0;
-    }
 
 
 /*** htsetRender - generate the HTML code for the page.
@@ -236,7 +258,6 @@ htsetInitialize()
 	strcpy(drv->Name,"HTML Frameset Driver");
 	strcpy(drv->WidgetName,"frameset");
 	drv->Render = htsetRender;
-	drv->Verify = htsetVerify;
 	/** Register. **/
 	htrRegisterDriver(drv);
 

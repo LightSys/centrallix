@@ -1,5 +1,5 @@
 #ifndef _INTERFACE_H
-#define _INTERACE_H
+#define _INTERFACE_H
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

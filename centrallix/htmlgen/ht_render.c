@@ -51,10 +51,41 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.47 2004/07/20 21:28:52 mmcgill Exp $
+    $Id: ht_render.c,v 1.48 2004/08/02 14:09:33 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.48  2004/08/02 14:09:33  mmcgill
+    Restructured the rendering process, in anticipation of new deployment methods
+    being added in the future. The wgtr module is now the main widget-related
+    module, responsible for all non-deployment-specific widget functionality.
+    For example, Verifying a widget tree is non-deployment-specific, so the verify
+    functions have been moved out of htmlgen and into the wgtr module.
+    Changes include:
+    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
+        wgtr drivers.
+    *   Adding wgtr drivers to the widget tree module.
+    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
+    *   Requiring all deployment methods (currently only DHTML) to register a
+        Render() function with the wgtr module.
+    *   Adding wgtrRender(), to abstract the details of the rendering process
+        from the caller. Given a widget tree, a string representing the deployment
+        method to use ("DHTML" for now), and the additional args for the rendering
+        function, wgtrRender() looks up the appropriate function for the specified
+        deployment method and calls it.
+    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
+        is being created. This is primarily to allow widget drivers to declare
+        the interfaces their widgets support when they are instantiated, but other
+        initialization tasks can go there as well.
+
+    Also in this commit:
+    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
+    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
+        other stack variables.
+    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
+        can now be completely insulated from the deployment method by the wgtr
+        module.
+
     Revision 1.47  2004/07/20 21:28:52  mmcgill
     *   ht_render
         -   Added code to perform verification of widget-tree prior to
@@ -1613,6 +1644,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	s->DisableBody = 0;
 
 
+#if 0
 	/** Verify the widget tree **/
 	if (wgtrVerify(s, tree) < 0)
 	    {
@@ -1620,7 +1652,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	    mssPrintError(output);
 	    }
 	else {
-
+#endif
 	    /** Render the top-level widget. **/
 	    rval = htrRenderWidget(s, tree, 10, "document", "document");
 
@@ -1629,7 +1661,9 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 		fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
 		mssPrintError(output);
 		}
+#if 0
 	    }
+#endif
 
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
 	/** FIXME: should probably specify the DTD.... **/
@@ -2020,6 +2054,7 @@ htrInitialize()
 
 	/** Register the classes, user agents and the regular expressions to match them.  **/
 	htrRegisterUserAgents();
+	wgtrAddDeploymentMethod("DHTML", htrRender);
 
     return 0;
     }

@@ -51,10 +51,41 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.10 2004/05/04 18:23:00 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.11 2004/08/02 14:09:36 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.11  2004/08/02 14:09:36  mmcgill
+    Restructured the rendering process, in anticipation of new deployment methods
+    being added in the future. The wgtr module is now the main widget-related
+    module, responsible for all non-deployment-specific widget functionality.
+    For example, Verifying a widget tree is non-deployment-specific, so the verify
+    functions have been moved out of htmlgen and into the wgtr module.
+    Changes include:
+    *   Creating a new folder, wgtr/, to contain the wgtr module, including all
+        wgtr drivers.
+    *   Adding wgtr drivers to the widget tree module.
+    *   Moving the xxxVerify() functions to the wgtr drivers in the wgtr module.
+    *   Requiring all deployment methods (currently only DHTML) to register a
+        Render() function with the wgtr module.
+    *   Adding wgtrRender(), to abstract the details of the rendering process
+        from the caller. Given a widget tree, a string representing the deployment
+        method to use ("DHTML" for now), and the additional args for the rendering
+        function, wgtrRender() looks up the appropriate function for the specified
+        deployment method and calls it.
+    *   Added xxxNew() functions to each wgtr driver, to be called when a new node
+        is being created. This is primarily to allow widget drivers to declare
+        the interfaces their widgets support when they are instantiated, but other
+        initialization tasks can go there as well.
+
+    Also in this commit:
+    *   Fixed a typo in the inclusion guard for iface.h (most embarrasing)
+    *   Fixed an overflow in objCopyData() in obj_datatypes.c that stomped on
+        other stack variables.
+    *   Updated net_http.c to call wgtrRender instead of htrRender(). Net drivers
+        can now be completely insulated from the deployment method by the wgtr
+        module.
+
     Revision 1.10  2004/05/04 18:23:00  gbeeley
     - Adding DATA_T_BINARY data type for counted (non-zero-terminated)
       strings of data.
@@ -1735,12 +1766,15 @@ objCopyData(pObjData src, pObjData dst, int type)
 	    {
 	    case DATA_T_INTEGER:
 	    case DATA_T_STRING:
-	    case DATA_T_DOUBLE:
 	    case DATA_T_MONEY:
 	    case DATA_T_DATETIME:
 	    case DATA_T_INTVEC:
 	    case DATA_T_STRINGVEC:
-		memcpy(dst,src,sizeof(ObjData));
+	    case DATA_T_CODE:
+		memcpy(dst,src,sizeof(void*));
+		break;
+	    case DATA_T_DOUBLE:
+		dst->Double = src->Double;
 		break;
 		
 	    default:
