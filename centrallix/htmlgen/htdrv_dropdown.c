@@ -189,7 +189,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        }\n"
 	"    if (dd_target_img != null)\n"
 	"        {\n"
-	"        if (dd_target_img.name != 'b' && dd_target_img.src)\n"
+	"        if (dd_target_img.name != 'b' && dd_target_img.src && dd_target_img.kind.substr(0,2) == 'dd')\n"
 	"            dd_target_img.src = htutil_subst_last(dd_target_img.src,\"b.gif\");\n"
 	"        dd_target_img = null;\n"
 	"        }\n"
@@ -421,10 +421,16 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.31 2002/07/31 22:03:43 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.32 2002/08/02 14:53:39 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.32  2002/08/02 14:53:39  lkehresman
+    Fixed dropdown bug that was substituting the last 5 characters of images
+    with "b.gif" on MOUSEUP to unpress icon buttons.  However, this wasn't doing
+    proper checking to make sure it was only happening on dropdown images, so
+    all images that had mouseup events would get changed causing errors.
+
     Revision 1.31  2002/07/31 22:03:43  lkehresman
     Fixed mouseup issues when mouseup occurred outside the image for:
       * dropdown scroll images
