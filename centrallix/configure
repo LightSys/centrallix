@@ -259,6 +259,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 
 ac_unique_file="centrallix.c"
+ac_default_prefix=/usr/local
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -1200,6 +1201,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 ac_config_headers="$ac_config_headers config.h"
+
 
 
 ac_ext=c
@@ -3868,7 +3870,11 @@ if test "${with_centrallix_config+set}" = set; then
   withval="$with_centrallix_config"
   centrallix_config="$withval"
 else
-  centrallix_config="$prefix/etc/centrallix.conf"
+  if test "$prefix" = "NONE"; then
+		centrallix_config="$ac_default_prefix/etc/centrallix.conf"
+	    else
+		centrallix_config="$prefix/etc/centrallix.conf"
+	    fi
 
 fi;
 

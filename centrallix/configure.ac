@@ -1,6 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(centrallix.c)
 AC_CONFIG_HEADERS(config.h)
+AC_PREFIX_DEFAULT(/usr/local)
 
 dnl Checks for programs.
 AC_PROG_CC

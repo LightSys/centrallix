@@ -72,7 +72,11 @@ AC_DEFUN(CENTRALLIX_CONF_FILE,
 		[Full path of centrallix config file (default is PREFIX/etc/centrallix.conf)]
 	    ),
 	    centrallix_config="$withval",
-	    centrallix_config="$prefix/etc/centrallix.conf"
+	    if test "$prefix" = "NONE"; then
+		centrallix_config="$ac_default_prefix/etc/centrallix.conf"
+	    else
+		centrallix_config="$prefix/etc/centrallix.conf"
+	    fi
 	)
 
 	AC_DEFINE_UNQUOTED(CENTRALLIX_CONFIG, 
