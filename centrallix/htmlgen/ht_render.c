@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.15 2002/06/24 20:07:41 lkehresman Exp $
+    $Id: ht_render.c,v 1.16 2002/07/07 00:17:01 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.16  2002/07/07 00:17:01  jorupp
+     * add support for Mozilla 1.1alpha (1.1a)
+
     Revision 1.15  2002/06/24 20:07:41  lkehresman
     Committing a fix for Jonathan (he doesn't have CVS access right now).
     This now detects Mozilla pre-1.0 versions.
@@ -144,6 +147,8 @@ XArray htregMSIE;
 
 XHashTable htWidgetSets;
 XHashTable htNtsp47_default;
+XHashTable htMSIE_default;
+XHashTable htMoz_default;
 
 /*** htrRegisterUserAgent - creates a bunch of regular expressions that
  *** will be used to do lookups for detecting the user agent.
@@ -171,6 +176,9 @@ htrRegisterUserAgent()
 	    xaAddItem(&(htregMoz), (void *)reg);
 	reg = (regex_t *)nmMalloc(sizeof(regex_t));
 	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.0\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	    xaAddItem(&(htregMoz), (void *)reg);
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
+	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.1a", REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    xaAddItem(&(htregMoz), (void *)reg);
 
 	/** Internet Explorer regular expressions **/
@@ -848,6 +856,10 @@ htrRender(pFile output, pObject appstruct)
 	/** Render the top-level widget. **/
 	htrRenderWidget(s, appstruct, 10, "document", "document");
 
+	/** Output the DOCTYPE for Mozilla -- this will make Mozilla use HTML 4.0 Strict **/
+	if(htr_internal_GetBrowser((char*)mssGetParam("User-Agent"))==HTR_MOZILLA)
+	    fdWrite(output, "<!DOCTYPE HTML>\n",16,0,FD_U_PACKET);
+	
 	/** Write the HTML out... **/
 	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
 
@@ -1142,9 +1154,13 @@ htrInitialize()
 	    that contain pointers to the widget driver to use.  Each widget set will
 	    need a hashtable. **/
 	xhInit(&(htNtsp47_default),32,0);
+	xhInit(&(htMSIE_default),32,0);
+	xhInit(&(htMoz_default),32,0);
 
 	/** Add the target User-Agent/styles to the hash of widget sets.  Each widget
 	    set will need to be added here. **/
 	xhAdd(&(htWidgetSets),"Netscape47x:default",(char*)&(htNtsp47_default));
+	xhAdd(&(htWidgetSets),"MSIE:default",(char*)&(htMSIE_default));
+	xhAdd(&(htWidgetSets),"Mozilla:default",(char*)&(htMoz_default));
     return 0;
     }
