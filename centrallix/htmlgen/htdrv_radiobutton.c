@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.6 2002/03/05 01:55:09 lkehresman Exp $
+    $Id: htdrv_radiobutton.c,v 1.7 2002/03/09 07:46:04 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.7  2002/03/09 07:46:04  lkehresman
+    Brought radiobutton widget up to date:
+      * enable(), disable(), readonly()
+      * FocusNotify() callback issued
+      * Added disabled images for radio buttons
+
     Revision 1.6  2002/03/05 01:55:09  lkehresman
     Added "clearvalue" method to form widgets
 
@@ -98,6 +104,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char title[64];
    char sbuf[1024];
    char sbuf2[200];
+   char* nptr;
    //char bigbuf[4096];
    char textcolor[32];
    char main_bgcolor[32];
@@ -196,6 +203,11 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
            27,2,w-(2*3 +2+27+1),24,z+2,w-(2*3 +2+27+1),24);
    htrAddHeaderItem(s,sbuf);
    
+   /** Write named global **/
+   nptr = (char*)nmMalloc(strlen(name)+1);
+   strcpy(nptr,name);
+   htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
    /*
       Now lets loop through and create a style sheet for each optionpane on the radiobuttonpanel
    */   
@@ -260,9 +272,58 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "      }\n"
       "   }\n", 0);
 
+   /** reset value function **/
+   htrAddScriptFunction(s, "rb_resetvalue", "\n"
+      "   function rb_resetvalue() {\n"
+      "      if (this.selectedOption != this.defaultSelectedOption) {\n"
+      "         radiobutton_toggle(this.defaultSelectedOption);\n"
+      "      }\n"
+      "   }\n", 0);
+
+   /** enable function **/
+   htrAddScriptFunction(s, "rb_enable", "\n"
+      "   function rb_enable() {\n"
+      "      this.enabled = true;\n"
+      "      for (i=0;i<this.buttonList.length;i++) {\n"
+      "         this.buttonList[i].enabled = this.enabled;;\n"
+      "         this.buttonList[i].setPane.enabled = this.enabled;\n"
+      "         this.buttonList[i].unsetPane.enabled = this.enabled;\n"
+      "         this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;\n"
+      "         this.buttonList[i].setPane.document.images[0].src = '/sys/images/radiobutton_set.gif';\n"
+      "         this.buttonList[i].unsetPane.document.images[0].src = '/sys/images/radiobutton_unset.gif';\n"
+      "      }\n"
+      "   }\n", 0);
+   
+   /** readonly function **/
+   htrAddScriptFunction(s, "rb_readonly", "\n"
+      "   function rb_readonly() {\n"
+      "      this.enabled = false;\n"
+      "      for (i=0;i<this.buttonList.length;i++) {\n"
+      "         this.buttonList[i].enabled = this.enabled;\n"
+      "         this.buttonList[i].setPane.enabled = this.enabled;\n"
+      "         this.buttonList[i].unsetPane.enabled = this.enabled;\n"
+      "         this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;\n"
+      "      }\n"
+      "   }\n", 0);
+   
+   /** disable function **/
+   htrAddScriptFunction(s, "rb_disable", "\n"
+      "   function rb_disable() {\n"
+      "      this.enabled = false;\n"
+      "      for (i=0;i<this.buttonList.length;i++) {\n"
+      "         this.buttonList[i].enabled = this.enabled;\n"
+      "         this.buttonList[i].setPane.enabled = this.enabled;\n"
+      "         this.buttonList[i].unsetPane.enabled = this.enabled;\n"
+      "         this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;\n"
+      "         this.buttonList[i].setPane.document.images[0].src = '/sys/images/radiobutton_set_dis.gif';\n"
+      "         this.buttonList[i].unsetPane.document.images[0].src = '/sys/images/radiobutton_unset_dis.gif';\n"
+      "      }\n"
+      "   }\n", 0);
+
    htrAddScriptFunction(s, "add_radiobutton", "\n"
       "   function add_radiobutton(optionPane, parentPane, selected) {\n"
       "      optionPane.kind = 'radiobutton';\n"
+      "      optionPane.enabled = true;\n"
       "      optionPane.parentPane = parentPane;\n"
       "      optionPane.optionPane = optionPane;\n"
       "      optionPane.setPane = optionPane.layers.radiobuttonpanelbuttonsetpane;\n"
@@ -270,21 +331,28 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
       "      optionPane.document.layer = optionPane;\n"
       "      optionPane.layers.radiobuttonpanelbuttonsetpane.kind = 'radiobutton';\n"
       "      optionPane.layers.radiobuttonpanelbuttonsetpane.optionPane = optionPane;\n"
+      "      optionPane.layers.radiobuttonpanelbuttonsetpane.enabled = optionPane.enabled;\n"
       "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonsetpane;\n"
       "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].kind = 'radiobutton';\n"
       "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonsetpane;\n"
+      "      optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].enabled = optionPane.enabled;\n"
       "      optionPane.layers.radiobuttonpanelbuttonunsetpane.kind = 'radiobutton';\n"
       "      optionPane.layers.radiobuttonpanelbuttonunsetpane.optionPane = optionPane;\n"
+      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.enabled = optionPane.enabled;\n"
       "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;\n"
       "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].kind = 'radiobutton';\n"
       "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;\n"
+      "      optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].enabled = optionPane.enabled;\n"
       "      optionPane.layers.radiobuttonpanellabelpane.kind = 'radiobutton';\n"
       "      optionPane.layers.radiobuttonpanellabelpane.optionPane = optionPane;\n"
+      "      optionPane.layers.radiobuttonpanellabelpane.enabled = optionPane.enabled;\n"
       "      optionPane.layers.radiobuttonpanellabelpane.document.layer = optionPane.layers.radiobuttonpanellabelpane;\n"
+      "      parentPane.buttonList.push(optionPane);\n"
       "      if (selected) {\n"
       "         optionPane.layers.radiobuttonpanelbuttonsetpane.visibility = 'inherit';\n"
       "         optionPane.layers.radiobuttonpanelbuttonunsetpane.visibility = 'hidden';\n"
       "         parentPane.selectedOption = optionPane;\n"
+      "         parentPane.defaultSelectedOption = optionPane;\n"
       "      } else {\n"
       "         optionPane.layers.radiobuttonpanelbuttonsetpane.visibility = 'hidden';\n"
       "         optionPane.layers.radiobuttonpanelbuttonunsetpane.visibility = 'inherit';\n"
@@ -307,32 +375,38 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
          "          coverpane.background.src=main_bg;\n"
          "          titlepane.background.src=main_bg;\n"
          "          }\n"
+	 "      parentPane.buttonList = new Array();\n"
 	 "      parentPane.setvalue = rb_setvalue;\n"
 	 "      parentPane.getvalue = rb_getvalue;\n"
 	 "      parentPane.clearvalue = rb_clearvalue;\n"
+	 "      parentPane.resetvalue = rb_resetvalue;\n"
+	 "      parentPane.enable = rb_enable;\n"
+	 "      parentPane.disable = rb_disable;\n"
+	 "      parentPane.readonly = rb_readonly;\n"
 	 "      parentPane.kind = 'radiobutton';\n"
 	 "      parentPane.fieldname = fieldname;\n"
 	 "      parentPane.form = fm_current;\n"
 	 "      if (fm_current) fm_current.Register(parentPane);\n"
+	 "      return parentPane;\n"
          "   }\n",0);
 
    /** Script initialization call. **/
    if (strlen(main_bgcolor) > 0) {
-      sprintf(sbuf,"    radiobuttonpanel_init(
+      sprintf(sbuf,"    %s = radiobuttonpanel_init(
             %s.layers.radiobuttonpanel%dparentpane,\"%s\",1,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
-	    \"%s\",\"%s\");", parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
+	    \"%s\",\"%s\");", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
    } else if (strlen(main_background) > 0) {
-      sprintf(sbuf,"    radiobuttonpanel_init(
+      sprintf(sbuf,"    %s = radiobuttonpanel_init(
             %s.layers.radiobuttonpanel%dparentpane,\"%s\",2,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
-	    \"%s\",\"%s\");", parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
+	    \"%s\",\"%s\");", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
    } else {
-      sprintf(sbuf,"    radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", parentname, id,fieldname);
+      sprintf(sbuf,"    %s = radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", nptr, parentname, id,fieldname);
    }
    htrAddScriptInit(s, sbuf);
 
@@ -351,7 +425,10 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"
       "   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
       "   if (targetLayer != null && targetLayer.kind == 'radiobutton') {\n"
-      "      radiobutton_toggle(targetLayer);\n"
+      "      targetLayer.optionPane.parentPane.form.FocusNotify(targetLayer.optionPane.parentPane);\n"
+      "      if (targetLayer.enabled) {\n"
+      "         radiobutton_toggle(targetLayer);\n"
+      "      }\n"
       "   }\n");
 
 
