@@ -350,10 +350,11 @@ wholePage "widget/page"
 		{
 		mode="dynamicrow";
 		width=400;
-		height=140;
+		height=105;
+		rowheight=15;
 		x=10;y=260;
-		cellhspacing=2;
-		cellvspacing=2;
+		cellhspacing=1;
+		cellvspacing=1;
 		inner_border=1;
 		inner_padding=1;
 		bgcolor="#c0c0c0";

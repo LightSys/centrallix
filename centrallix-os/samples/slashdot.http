@@ -1,0 +1,9 @@
+$Version=2$
+localind "application/http"
+{
+    server = "slashdot.org";
+    path = "/";
+    //proxyserver="msproxy.tayloru.edu";
+    //proxyport="80";
+    //proxyauthline="Proxy-Authorization: Basic D=dFdsKfuDkjFDKSLWGbkdlDGODLbJFKLDsdd==";
+}
