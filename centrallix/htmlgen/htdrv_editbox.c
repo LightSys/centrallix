@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.16 2002/05/30 04:22:18 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.17 2002/05/31 04:03:02 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.17  2002/05/31 04:03:02  lkehresman
+    Added check if the background color doesn't exist.
+
     Revision 1.16  2002/05/30 04:22:18  lkehresman
     Changed where focus notify was getting called.
 
@@ -414,7 +417,14 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_init", "\n"
 		"function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)\n"
 		"    {\n"
-		"    l.bg = main_bg;\n"
+		"    if (!main_bg)\n"
+		"        {\n"
+		"        l.bg = \"bgcolor='#c0c0c0'\";\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        l.bg = main_bg;\n"
+		"        }\n"
 		"    l.kind = 'editbox';\n"
 		"    l.document.Layer = l;\n"
 		"    l.ContentLayer = c1;\n"
