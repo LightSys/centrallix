@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.24 2002/12/04 00:19:10 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.25 2003/06/03 19:27:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.25  2003/06/03 19:27:08  gbeeley
+    Updates to properties mostly relating to true/false vs. yes/no
+
     Revision 1.24  2002/12/04 00:19:10  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -207,10 +210,10 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    else 
       fieldname[0]='\0';
 
-   if (objGetAttrValue(w_obj,"checked",DATA_T_STRING,POD(&ptr)) != 0)
-      checked = 0;
-   else
+   if (objGetAttrValue(w_obj,"checked",DATA_T_STRING,POD(&ptr)) == 0 && ptr && (!strcasecmp(ptr,"yes") || !strcasecmp(ptr,"no")))
       checked = 1;
+   else
+      checked = 0;
 
    /** Write named global **/
    nptr = (char*)nmMalloc(strlen(name)+1);

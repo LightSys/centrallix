@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.27 2002/12/04 00:19:10 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.28 2003/06/03 19:27:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.28  2003/06/03 19:27:09  gbeeley
+    Updates to properties mostly relating to true/false vs. yes/no
+
     Revision 1.27  2002/12/04 00:19:10  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -206,7 +209,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     int x=-1,y=-1,w,h;
     int id;
     int is_readonly = 0;
-    int is_raised = 1;
+    int is_raised = 0;
     char* nptr;
     char* c1;
     char* c2;
@@ -252,7 +255,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	name[63] = 0;
 
 	/** Style of editbox - raised/lowered **/
-	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
+	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
 	if (is_raised)
 	    {
 	    c1 = "white_1x1.png";

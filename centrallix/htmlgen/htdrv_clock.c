@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.7 2003/05/30 17:39:49 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.8 2003/06/03 19:27:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.8  2003/06/03 19:27:09  gbeeley
+    Updates to properties mostly relating to true/false vs. yes/no
+
     Revision 1.7  2003/05/30 17:39:49  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -152,7 +155,7 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    miltime = 1;
 	    showampm = 0;
 	    }
-	else if (objGetAttrValue(w_obj,"ampm",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"false"))
+	else if (objGetAttrValue(w_obj,"ampm",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
 	    {
 	    showampm = 0;
 	    }
@@ -164,7 +167,7 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	   strcpy(fgcolor1,"black");
 
 	/* Shadowed text? */
-	if (objGetAttrValue(w_obj,"shadowed",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
+	if (objGetAttrValue(w_obj,"shadowed",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"true") || !strcasecmp(ptr,"yes")))
 	    {
 	    shadowed = 1;
 	    if (objGetAttrValue(w_obj,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
@@ -194,7 +197,7 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    moveable = 1;
 
 	/** Show Seconds **/
-	if (objGetAttrValue(w_obj,"seconds",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"false"))
+	if (objGetAttrValue(w_obj,"seconds",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
 	    showsecs = 0;
 
 	/** Get name **/

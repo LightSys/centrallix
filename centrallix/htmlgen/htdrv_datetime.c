@@ -82,7 +82,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTDT.idcnt++);
 
 	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
+	if (objG
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have an 'x' property");
 	    return -1;
@@ -300,10 +300,13 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.22 2002/12/04 00:19:10 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.23 2003/06/03 19:27:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.23  2003/06/03 19:27:09  gbeeley
+    Updates to properties mostly relating to true/false vs. yes/no
+
     Revision 1.22  2002/12/04 00:19:10  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be

@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.35 2002/12/04 00:19:11 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.36 2003/06/03 19:27:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.36  2003/06/03 19:27:09  gbeeley
+    Updates to properties mostly relating to true/false vs. yes/no
+
     Revision 1.35  2002/12/04 00:19:11  gbeeley
     Did some cleanup on the user agent selection mechanism, moving to a
     bitmask so that drivers don't have to register twice.  Theme will be
@@ -753,7 +756,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** Should we follow the current record around? **/
 	if (objGetAttrValue(w_obj,"followcurrent",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    if (!strcmp(ptr,"false")) t->followcurrent = 0;
+	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) t->followcurrent = 0;
 	    }
 
 
