@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.13 2003/06/21 23:07:26 jorupp Exp $
+    $Id: ht_render.h,v 1.14 2003/11/18 06:01:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.14  2003/11/18 06:01:11  gbeeley
+    - adding utility method htrGetBackground to simplify bgcolor/image
+
     Revision 1.13  2003/06/21 23:07:26  jorupp
      * added framework for capability-based multi-browser support.
      * checkbox and label work in Mozilla, and enough of ht_render and page do to allow checkbox.app to work
@@ -320,6 +323,9 @@ int htrAddExpression(pHtSession s, char* objname, char* property, pExpression ex
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname, char* parentobj);
 int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int zlevel);
+
+/** Utility routines **/
+int htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen);
 
 /** Content-intelligent (useragent-sensitive) rendering engine functions **/
 int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...);

@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.39 2003/08/02 22:12:06 jorupp Exp $
+    $Id: ht_render.c,v 1.40 2003/11/18 06:01:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.40  2003/11/18 06:01:10  gbeeley
+    - adding utility method htrGetBackground to simplify bgcolor/image
+
     Revision 1.39  2003/08/02 22:12:06  jorupp
      * got treeview pretty much working (a bit slow though)
     	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
@@ -1746,6 +1749,62 @@ htrInitialize()
 
 	/** Register the classes, user agents and the regular expressions to match them.  **/
 	htrRegisterUserAgents();
+
+    return 0;
+    }
+
+
+/*** htrGetBackground - gets the background image or color from the config
+ *** and converts it into a string we can use in the DHTML
+ ***
+ *** obj - an open Object for the config data
+ *** prefix - the prefix to add to 'bgcolor' and 'background' for the attrs
+ *** as_style - set to 1 to build the string as a style rather than as HTML
+ *** buf - the buffer to print into
+ *** buflen - the buffer length we can use
+ ***
+ *** returns with buf set to "" if any error occurs.
+ ***/
+int
+htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen)
+    {
+    char bgcolor_name[64];
+    char background_name[128];
+    char* bgcolor = "bgcolor";
+    char* background = "background";
+    char* ptr;
+
+	/** init buf **/
+	if (buflen < 1) return -1;
+	buf[0] = '\0';
+
+	/** Prefix supplied? **/
+	if (prefix && *prefix)
+	    {
+	    snprintf(bgcolor_name,sizeof(bgcolor_name),"%s_bgcolor",prefix);
+	    snprintf(background_name,sizeof(background_name),"%s_background",prefix);
+	    bgcolor = bgcolor_name;
+	    background = background_name;
+	    }
+
+	/** Image? **/
+	if (objGetAttrValue(obj, background, DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    if (strpbrk(ptr,"\"'\n\r\t")) return -1;
+	    if (as_style)
+		snprintf(buf,buflen,"background-image: URL('%s');",ptr);
+	    else
+		snprintf(buf,buflen,"background='%s'",ptr);
+	    }
+	else if (objGetAttrValue(obj, bgcolor, DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    /** Background color **/
+	    if (strpbrk(ptr,"\"'\n\r\t;}<>&")) return -1;
+	    if (as_style)
+		snprintf(buf,buflen,"background-color: %s;",ptr);
+	    else
+		snprintf(buf,buflen,"bgcolor='%s'",ptr);
+	    }
 
     return 0;
     }
