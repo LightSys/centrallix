@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.27 2002/06/01 19:16:48 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.28 2002/06/01 19:46:15 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.28  2002/06/01 19:46:15  jorupp
+     * mixed annoying problem where sometimes, OSRC would make the last record the active one instead of the first one
+
     Revision 1.27  2002/06/01 19:16:48  jorupp
      * down-sized the osrc's hidden layer, which was causing the page to be
         longer than it should be, which caused the up/down scrollbar to
@@ -552,8 +555,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "             this.children[i]._osrc_ready=false;\n"
       "             }\n"
 
-      "        this.TargetRecord=0;\n" /* the record we're aiming for -- go until we get it*/
-      "        this.CurrentRecord=0;\n" /* the current record */
+      "        this.TargetRecord=1;\n" /* the record we're aiming for -- go until we get it*/
+      "        this.CurrentRecord=1;\n" /* the current record */
       "        this.OSMLRecord=0;\n" /* the last record we got from the OSML */
 
       /** Clear replica **/
@@ -561,6 +564,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        this.replica=new Array();\n"
       "        this.LastRecord=0;\n"
       "        this.FirstRecord=1;\n"
+      "        this.moveop=true;\n"
 
       "        this.OpenSession();\n"
       "        }\n"
@@ -665,7 +669,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       /* return the last record as the current one if it was our target otherwise, don't */
       "        if(this.moveop)\n"
       "            {\n"
-      "            this.CurrentRecord=this.LastRecord;\n"
+      "            if(this.CurrentRecord>this.LastRecord)\n"
+      "                this.CurrentRecord=this.LastRecord;\n"
       "            this.GiveAllCurrentRecord();\n"
       "            }\n"
       "        else\n"
