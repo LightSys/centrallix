@@ -63,10 +63,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.12 2003/05/30 17:39:53 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.13 2004/02/24 20:25:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.13  2004/02/24 20:25:41  gbeeley
+    - misc changes: runclient check in evaltree in stparse, eval() function
+      rejected in sybase driver, update version in centrallix.conf, .cmp
+      extension added for component-decl in types.cfg
+
     Revision 1.12  2003/05/30 17:39:53  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -1327,6 +1332,13 @@ sybd_internal_TreeToClause(pExpression tree, pSybdTableInf *tdata, int n_tdata, 
 		    xsConcatenate(where_clause, " - char_length(", -1);
 		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ")) ", 3);
+		    }
+		else if (!strcmp(tree->Name,"eval"))
+		    {
+		    mssError(1,"SYBD","Sybase does not support eval() CXSQL function");
+		    /* just put silly thing as text instead of evaluated */
+		    if (tree->Children.nItems == 1) sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, n_tdata, where_clause);
+		    return -1;
 		    }
 		else
 		    {

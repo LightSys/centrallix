@@ -18,11 +18,12 @@ centrallix "system/config"
     net_http "system/config"
         {
 	listen_port = 800;
-	server_string = "Centrallix/0.7.2";
+	server_string = "Centrallix/0.7.3";
 	auth_realm = "Centrallix";
 	session_watchdog_timer = 180; //seconds
 	session_inactivity_timer = 1800; //seconds
-	enable_gzip = 0; // true
+	enable_gzip = 0; // false - NS4 fails on this
+	condense_js = 1; // true
 	}
 
     // The BDQS network interface module.

@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.8 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: stparse.c,v 1.9 2004/02/24 20:25:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.9  2004/02/24 20:25:41  gbeeley
+    - misc changes: runclient check in evaltree in stparse, eval() function
+      rejected in sybase driver, update version in centrallix.conf, .cmp
+      extension added for component-decl in types.cfg
+
     Revision 1.8  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -673,10 +678,13 @@ st_internal_ParseAttr(pLxSession s, pStructInf inf, pParamObjects objlist)
 		    return -1;
 		    }
 		/** Evaluate the thing **/
-		if (expEvalTree(exp,objlist) < 0)
+		if (!(exp->Flags & EXPR_F_RUNCLIENT))
 		    {
-		    mssError(0,"ST","Error in attribute expression for '%s'",inf->Name);
-		    return -1;
+		    if (expEvalTree(exp,objlist) < 0)
+			{
+			mssError(0,"ST","Error in attribute expression for '%s'",inf->Name);
+			return -1;
+			}
 		    }
 	    
 		/** Add the expression to the inf structure **/

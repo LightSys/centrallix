@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.29 2003/09/02 15:37:13 gbeeley Exp $
+    $Id: test_obj.c,v 1.30 2004/02/24 20:25:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.30  2004/02/24 20:25:40  gbeeley
+    - misc changes: runclient check in evaltree in stparse, eval() function
+      rejected in sybase driver, update version in centrallix.conf, .cmp
+      extension added for component-decl in types.cfg
+
     Revision 1.29  2003/09/02 15:37:13  gbeeley
     - Added enhanced command line interface to test_obj.
     - Enhancements to v3 report writer.
@@ -1212,7 +1217,6 @@ start(void* v)
     {
     int rval,t;
     char* inbuf = NULL;
-    pObjSession s;
     char* user;
     char* pwd;
     char prompt[1024];

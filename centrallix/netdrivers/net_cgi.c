@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_cgi.c,v 1.2 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: net_cgi.c,v 1.3 2004/02/24 20:25:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_cgi.c,v $
 
     $Log: net_cgi.c,v $
+    Revision 1.3  2004/02/24 20:25:41  gbeeley
+    - misc changes: runclient check in evaltree in stparse, eval() function
+      rejected in sybase driver, update version in centrallix.conf, .cmp
+      extension added for component-decl in types.cfg
+
     Revision 1.2  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -529,7 +534,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    objGetAttrValue(target_obj, "content_type", &ptr);
 	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset"))
 	        {
-		/*fdSetOptions(conn, FD_UF_WRCACHE);*/
+		/*fdSetOptions(conn, FD_UF_WRBUF);*/
 	        htrRender(conn, target_obj);
 	        }
 	    else

@@ -62,10 +62,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.9 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.10 2004/02/24 20:25:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.10  2004/02/24 20:25:41  gbeeley
+    - misc changes: runclient check in evaltree in stparse, eval() function
+      rejected in sybase driver, update version in centrallix.conf, .cmp
+      extension added for component-decl in types.cfg
+
     Revision 1.9  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -3076,7 +3081,7 @@ rpt_internal_StartGenerator(pRptData inf)
 	    }
 	inf->MasterFD = fdOpenFD(lowlevel_fd[0], O_RDONLY);
 	inf->SlaveFD = fdOpenFD(lowlevel_fd[1], O_WRONLY);
-	/*fdSetOptions(inf->SlaveFD, FD_UF_WRCACHE);*/
+	/*fdSetOptions(inf->SlaveFD, FD_UF_WRBUF);*/
 
 	/** Create a new thread to start the report generation. **/
 	if (!thCreate(rpt_internal_Generator, 0, (void*)inf))
