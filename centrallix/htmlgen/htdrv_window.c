@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.14 2002/06/09 23:44:47 nehresma Exp $
+    $Id: htdrv_window.c,v 1.15 2002/06/17 21:35:56 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.15  2002/06/17 21:35:56  jorupp
+     * allowed for window inside of window (same basic method used with form and osrc)
+
     Revision 1.14  2002/06/09 23:44:47  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -267,6 +270,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptGlobal(s, "wn_msy","null",0);
 	htrAddScriptGlobal(s, "wn_moved","0",0);
 	htrAddScriptGlobal(s, "wn_clicked","0",0);
+	htrAddScriptGlobal(s, "window_current","null",0);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -277,6 +281,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptFunction(s, "wn_init", "\n"
 		"function wn_init(l,ml,h)\n"
 		"    {\n"
+		"    l.oldwin=window_current;\n"
+		"    window_current=l;\n"
 		"    l.osrc = new Array();\n"
 		"    var t = osrc_current;\n"
 		"    while(t)\n"
@@ -448,7 +454,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    window_current = %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
+	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
 		name,parentname,id,parentname,id,id,h);
 
 	/** HTML body <DIV> elements for the layers. **/
@@ -575,7 +581,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    "    for (var t in window_current.osrc)\n"
 		    "        setTimeout(window_current.osrc[t].osrcname+'.InitQuery();',1);\n"
 			    );
-	htrAddScriptInit(s,"    window_current = null;\n");
+	htrAddScriptInit(s,"    window_current = window_current.oldwin;\n");
 
     return 0;
     }
