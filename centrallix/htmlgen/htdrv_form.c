@@ -43,6 +43,12 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.18  2002/03/20 21:13:12  jorupp
+     * fixed problem in imagebutton point and click handlers
+     * hard-coded some values to get a partially working osrc for the form
+     * got basic readonly/disabled functionality into editbox (not really the right way, but it works)
+     * made (some of) form work with discard/save/cancel window
+
     Revision 1.17  2002/03/17 20:45:45  gbeeley
     Re-fixed security update introduced at file rev 1.12 but lost somehow.
 
@@ -259,7 +265,14 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_focus_notify", "\n"
 		"function form_cb_focus_notify(control)\n"
 		"    {\n"
-		"    \n"
+		"    if(this.mode=='View')\n"
+		"        {\n"
+		"        this.ChangeMode('Modify');\n"
+		"        }\n"
+		"    if(this.mode=='No Data')\n"
+		"        {\n"
+		"        this.ChangeMode('New');\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** the tab key was pressed in child 'control' **/
@@ -287,7 +300,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_cb_data_available(aparam)\n"
 		"    {\n"
 		"    this.dataincoming=true;\n"
-		"    //this.cb[\"DataAvailable\"].run();\n"
+		"    this.cb[\"DataAvailable\"].run();\n"
 		"    }\n", 0);
 
 	/** Objectsource wants us to dump our data **/
@@ -322,13 +335,17 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_object_available", "\n"
 		"function form_cb_object_available(data)\n"
 		"    {\n"
+		"    if(this.mode!='View')\n"
+		"        {\n"
+		"        this.ChangeMode('View');\n"
+		"        }\n"
 		"    this.data=data;\n"
 		"    this.ClearAll();\n"
 		"    for(var i in this.elements)\n"
 		"        {\n"
 		"        for(var j in this.data)\n"
 		"            {\n"
-		"            if(this.elements[i].fieldname && this.elements[i].fieldname==j)\n"
+		"            if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)\n"
 		"                {\n"
 		"                this.elements[i].setvalue(this.data[j].value);\n"
 		"                }\n"
@@ -457,19 +474,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    }\n", 0);
 
-	/** tell osrc to go to first record **/
-	htrAddScriptFunction(s, "form_action_first", "\n"
-		"function form_action_first(aparam)\n"
-		"    {\n"
-		"    this.osrc.First();\n"
-		"    }\n", 0);
-
-	htrAddScriptFunction(s, "form_action_last", "\n"
-		"function form_action_last(aparam)\n"
-		"    {\n"
-		"    this.osrc.Last();\n"
-		"    }\n", 0);
-
 	htrAddScriptFunction(s, "form_show_3bconfirm", "\n"
 		"function form_show_3bconfirm()\n"
 		"    {\n"
@@ -578,27 +582,75 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    }\n", 0);
 
+	/** tell osrc to go to first record **/
+	htrAddScriptFunction(s, "form_action_first", "\n"
+		"function form_action_first(aparam)\n"
+		"    {\n"
+		"    if(this.IsUnsaved)\n"
+		"        {\n"
+		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionFirst(this);'))\n"
+		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionFirst(this);\"));'))\n"
+		"        this.show3bconfirm();\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        this.osrc.ActionFirst(this);\n"
+		"        }\n"
+		"    }\n", 0);
+
+	/** tell osrc to go to last record **/
+	htrAddScriptFunction(s, "form_action_last", "\n"
+		"function form_action_last(aparam)\n"
+		"    {\n"
+		"    if(this.IsUnsaved)\n"
+		"        {\n"
+		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionLast(this);'))\n"
+		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionLast(this);\"));'))\n"
+		"        this.show3bconfirm();\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        this.osrc.ActionLast(this);\n"
+		"        }\n"
+		"    }\n", 0);
+
 	/** Save changed data, move the osrc **/
 	htrAddScriptFunction(s, "form_action_next", "\n"
 		"function form_action_next(aparam)\n"
 		"    {\n"
-		"    if(this.IsUnsaved) this.ActionSave();\n"
-		"    objsource.next();\n"
+		"    if(this.IsUnsaved)\n"
+		"        {\n"
+		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionNext(this);'))\n"
+		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionNext(this);\"));'))\n"
+		"        this.show3bconfirm();\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        this.osrc.ActionNext(this);\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** Save changed data, move the osrc **/
 	htrAddScriptFunction(s, "form_action_prev", "\n"
 		"function form_action_prev(aparam)\n"
 		"    {\n"
-		"    if(this.IsUnsaved) this.ActionSave();\n"
-		"    objsource.prev();\n"
+		"    if(this.IsUnsaved)\n"
+		"        {\n"
+		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionPrev(this);'))\n"
+		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionPrev(this);\"));'))\n"
+		"        this.show3bconfirm();\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        this.osrc.ActionPrev(this);\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** Helper function -- called from other mode change functions **/
 	htrAddScriptFunction(s, "form_change_mode", "\n"
 		"function form_change_mode(newmode)\n"
 		"    {\n"
-		"    alert(\"Form is going from \"+this.mode+\" to \"+newmode+\" mode.\");\n"
+		"    //alert(\"Form is going from \"+this.mode+\" to \"+newmode+\" mode.\");\n"
 		"    this.oldmode = this.mode;\n"
 		"    this.mode = newmode;\n"
 		"    this.IsUnsaved = false;\n"
@@ -608,11 +660,11 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    //cn_activate(this, 'StatusChange', event);\n" doesn't work -- FIXME
 		"    delete event;\n"
 		*/
-		"    if(this.mode==\"New\")\n"
+		"    if(this.mode=='No Data' || this.mode=='View')\n"
 		"        {\n"
-		"        this.DisableAll();\n"
+		"        this.ReadOnlyAll();\n"
 		"        }\n"
-		"    if(this.oldmode==\"New\")\n"
+		"    if(this.oldmode=='No Data' || this.oldmode=='View')\n"
 		"        {\n"
 		"        this.EnableAll();\n"
 		"        }\n"
@@ -656,6 +708,16 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    }\n", 0);
 
+	/** make all children readonly**/
+	htrAddScriptFunction(s, "form_readonly_all", "\n"
+		"function form_readonly_all()\n"
+		"    {\n"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        this.elements[i].readonly();\n"
+		"        }\n"
+		"    }\n", 0);
+	
 	/** Change to query mode **/
 	htrAddScriptFunction(s, "form_action_query", "\n"
 		"function form_action_query()\n"
@@ -765,6 +827,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		"        form.Pending=true;\n"
 		"        form.IsUnsaved=false;\n"
+		"        this.cb['DataAvailable'].add(this,new Function('this.osrc.ActionFirst(this)'));\n"
 		"        this.osrc.ActionQuery(query, this);\n"
 		"        }\n"
 		"    delete query;\n"
@@ -949,6 +1012,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.ClearAll = form_clear_all;\n"
 		"    form.DisableAll = form_disable_all;\n"
 		"    form.EnableAll = form_enable_all;\n"
+		"    form.ReadOnlyAll = form_readonly_all;\n"
 		"    form.ChangeMode = form_change_mode;\n"
 		"    return form;\n"
 		"    }\n",0);

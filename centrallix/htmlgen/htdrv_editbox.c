@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.9 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.10 2002/03/20 21:13:12 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.10  2002/03/20 21:13:12  jorupp
+     * fixed problem in imagebutton point and click handlers
+     * hard-coded some values to get a partially working osrc for the form
+     * got basic readonly/disabled functionality into editbox (not really the right way, but it works)
+     * made (some of) form work with discard/save/cancel window
+
     Revision 1.9  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -262,18 +268,21 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_enable", "\n"
 		"function eb_enable()\n"
 		"    {\n"
+		"    this.enabled='full';\n"
 		"    }\n", 0);
 
 	/** Disable control function **/
 	htrAddScriptFunction(s, "eb_disable", "\n"
 		"function eb_disable()\n"
 		"    {\n"
+		"    this.enabled='disabled';\n"
 		"    }\n", 0);
 
 	/** Readonly-mode function **/
 	htrAddScriptFunction(s, "eb_readonly", "\n"
 		"function eb_readonly()\n"
 		"    {\n"
+		"    this.enabled='readonly';\n"
 		"    }\n", 0);
 
 	/** Editbox set-text-value function **/
@@ -294,6 +303,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_keyhandler", "\n"
 		"function eb_keyhandler(l,e,k)\n"
 		"    {\n"
+		"    if(eb_current.form) eb_current.form.FocusNotify(eb_current);\n"
+		"    if(eb_current.enabled!='full') return 1;\n"
 		"    txt = l.content;\n"
 		"    if (k == 9)\n"
 		"        {\n"
@@ -339,6 +350,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_select", "\n"
 		"function eb_select(x,y,l,c,n)\n"
 		"    {\n"
+		"    if(l.form) l.form.FocusNotify(l);\n"
+		"    if(l.enabled=='disabled') return 0;\n"
 		"    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/eb_metric.charWidth);\n"
 		"    if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;\n"
 		"    if (eb_current) eb_current.cursorlayer = null;\n"
@@ -349,7 +362,6 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    eb_ibeam.moveToAbsolute(eb_current.ContentLayer.pageX + eb_current.cursorCol*eb_metric.charWidth, eb_current.ContentLayer.pageY);\n"
 		"    eb_ibeam.zIndex = eb_current.zIndex + 2;\n"
 		"    eb_ibeam.visibility = 'inherit';\n"
-		"    if(l.form) l.form.FocusNotify(l);\n"
 		"    return 1;\n"
 		"    }\n", 0);
 
@@ -416,6 +428,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if (fm_current) fm_current.Register(l);\n"
 		"    l.form = fm_current;\n"
 		"    l.changed = false;\n"
+		"    l.enabled = 'full';\n"
 		"    return l;\n"
 		"    }\n", 0);
 

@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.4 2002/03/16 05:12:02 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.5 2002/03/20 21:13:12 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.5  2002/03/20 21:13:12  jorupp
+     * fixed problem in imagebutton point and click handlers
+     * hard-coded some values to get a partially working osrc for the form
+     * got basic readonly/disabled functionality into editbox (not really the right way, but it works)
+     * made (some of) form work with discard/save/cancel window
+
     Revision 1.4  2002/03/16 05:12:02  gbeeley
     Added the buttonName javascript property for imagebuttons and text-
     buttons.  Allows them to be identified more easily via javascript.
@@ -247,13 +253,13 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddEventHandler(s, "document","MOUSEOVER","ib",
 		"    if (e.target != null && e.target.kind == 'ib')\n"
 		"        {\n"
-		"        if (e.target.img.src != e.target.cImage.src) e.target.img.src = e.target.pImage.src;\n"
+		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.pImage.src;\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","ib",
 		"    if (e.target != null && e.target.kind == 'ib')\n"
 		"        {\n"
-		"        if (e.target.img.src != e.target.cImage.src) e.target.img.src = e.target.nImage.src;\n"
+		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.nImage.src;\n"
 		"        }\n");
 
 	/** Check for more sub-widgets within the imagebutton. **/

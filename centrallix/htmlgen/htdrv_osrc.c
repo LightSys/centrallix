@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.10 2002/03/16 05:55:14 jheth Exp $
+    $Id: htdrv_osrc.c,v 1.11 2002/03/20 21:13:12 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.11  2002/03/20 21:13:12  jorupp
+     * fixed problem in imagebutton point and click handlers
+     * hard-coded some values to get a partially working osrc for the form
+     * got basic readonly/disabled functionality into editbox (not really the right way, but it works)
+     * made (some of) form work with discard/save/cancel window
+
     Revision 1.10  2002/03/16 05:55:14  jheth
     Added Move First/Next/Previous/Last logic
     Query obtains oid and now closes object and session
@@ -326,7 +332,7 @@ int htosrcVerify() {
       "        dataobj[i]['type'] = lnk[i].hash.substr(1);\n"
       "        dataobj[i]['oid'] = lnk[i].host;\n"
       "        }\n"
-      "    this.replica[row]=dataobj;\n"
+      "    this.replica[1]=dataobj;\n"
       "    //this.onLoad = osrc_fetch_next;\n"
       "    //this.onLoad = osrc_store_replica;\n"
       "    this.formobj.DataAvailable();\n"
@@ -364,7 +370,7 @@ int htosrcVerify() {
       "function osrc_move_first(formobj)\n"
       "    {\n"
       "    this.currentRecord = 1;\n"
-      "    formobj.ObjectAvailable(replica[this.num]);\n"
+      "    formobj.ObjectAvailable(this.replica[this.currentRecord]);\n"
       "    //formobj.ObjectAvailable(data.attributes[this.num][1]);\n"
       "    //formobj.ObjectAvailable(data.attributes[this.num][2]);\n"
       "    }\n",0);
