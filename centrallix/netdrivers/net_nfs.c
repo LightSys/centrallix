@@ -59,21 +59,12 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.5 2003/03/09 05:16:09 nehresma Exp $
+    $Id: net_nfs.c,v 1.6 2003/03/09 05:38:03 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
-    Revision 1.5  2003/03/09 05:16:09  nehresma
-    initial commit of the mountd functions working (i think).  some of the
-    functions i was unable to test because the NFSPROC_STATFS(fhandle) function
-    isn't working yet.  things to be aware of:
-      - currently ignores groups in exportlist_item (set to null)
-      - fixed ambiguous names mentioned in previous commit
-      - might be leaking a wee bit of memory per dump and export call (4 bytes
-        each possibly??).  i need to check into this some more.
-      - 3 of the 6 functions need to know the remotehost, so they were implemented
-        inline in mount_listener.  this will need to be cleaned up in one way or
-        another but it works for now.
+    Revision 1.6  2003/03/09 05:38:03  nehresma
+    moved globals to help prevent possible namespace issues
 
     Revision 1.4  2003/03/08 21:24:34  nehresma
     changes:
@@ -157,15 +148,13 @@ struct
     int nextOut;
     pSemaphore semaphore;
     pFile nfsSocket;
+    pXArray exportList;
+    pXArray mountList;
+    pXHashTable fhToPath;
+    pXHashTable pathToFh;
+    int nextFileHandle;
     }
     NNFS;
-pXArray exportList;
-pXArray mountList;
-pXHashTable fhToPath;
-pXHashTable pathToFh;
-/** the next available filehandle **/
-/** 0 is reserved **/
-int nextFileHandle=1;
 
 
 void
@@ -400,18 +389,18 @@ nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
 
     /** First lets look in the hash to see if this path has already 
       * been given a unique inode or file handle. **/
-    result=xhLookup(pathToFh, path);
+    result=xhLookup(NNFS.pathToFh, path);
     if (!result)
 	{
 	printf("path %s not found in hash\n",path);
 	memset(fhandle_c.fhc,0,FHSIZE);
-	fhandle_c.fhi=nextFileHandle++;
+	fhandle_c.fhi=NNFS.nextFileHandle++;
 	my_fh = (char*)nmMalloc(FHSIZE);
 	strncpy(my_fh,fhandle_c.fhc,FHSIZE);
 
 	/** add to both hashes here **/
-	xhAdd(fhToPath,my_fh,path);
-	xhAdd(pathToFh,path,my_fh);
+	xhAdd(NNFS.fhToPath,my_fh,path);
+	xhAdd(NNFS.pathToFh,path,my_fh);
 
 	strncpy(fh,fhandle_c.fhc,FHSIZE);
 	return 0;
@@ -432,7 +421,7 @@ nnfs_internal_get_path(dirpath *path, const fhandle fh)
     {
     char *result;
 
-    result = xhLookup(fhToPath, (char*)fh);
+    result = xhLookup(NNFS.fhToPath, (char*)fh);
     if (!result)
 	return -1;
     path=&result;
@@ -460,9 +449,9 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     printf("mount request recieved for: %s\n",*param);
     
     /** check the exportList **/
-    for (i=0,f=0;i<xaCount(exportList);i++)
+    for (i=0,f=0;i<xaCount(NNFS.exportList);i++)
 	{
-	exp=(pExports)xaGetItem(exportList,i);
+	exp=(pExports)xaGetItem(NNFS.exportList,i);
 	if (!strcmp(exp->path,*param))
 	    {
 	    f=1;
@@ -493,9 +482,9 @@ mountlist* nnfs_internal_mountproc_dump(void* param)
     pMount mnt;
     int i;
 
-    for (i=0;i<xaCount(mountList);i++)
+    for (i=0;i<xaCount(NNFS.mountList);i++)
 	{
-	mnt=xaGetItem(mountList,i);
+	mnt=xaGetItem(NNFS.mountList,i);
 	cur=(mountlist_item*)nmMalloc(sizeof(mountlist_item));
 	cur->hostname=mnt->host;
 	cur->directory=mnt->path;
@@ -532,9 +521,9 @@ exportlist* nnfs_internal_mountproc_export(void* param)
     pExports exp;
     int i;
 
-    for (i=0;i<xaCount(exportList);i++)
+    for (i=0;i<xaCount(NNFS.exportList);i++)
 	{
-	exp=(pExports)xaGetItem(exportList,i);
+	exp=(pExports)xaGetItem(NNFS.exportList,i);
 	cur=(exportlist)nmMalloc(sizeof(exportlist_item));
 	cur->filesys=exp->path;
 	/** FIXME **/
@@ -1026,8 +1015,8 @@ void nnfs_internal_get_exports(pStructInf inf)
 
     /** If we want to provide "reread" functionality in the future, be
       * sure to get rid of the old mount list data first. **/
-    exportList=(pXArray)nmMalloc(sizeof(XArray));
-    xaInit(exportList, 2);
+    NNFS.exportList=(pXArray)nmMalloc(sizeof(XArray));
+    xaInit(NNFS.exportList, 2);
     for (i=0;i<inf->nSubInf;i++)
 	{
 	path=NULL;
@@ -1042,7 +1031,7 @@ void nnfs_internal_get_exports(pStructInf inf)
 	exp=(pExports)malloc(sizeof(Exports));
 	exp->path=path;
 
-	xaAddItem(exportList,exp);
+	xaAddItem(NNFS.exportList,exp);
 	}
     }
 
@@ -1102,12 +1091,12 @@ nnfs_internal_mount_listener(void* v)
 	    thExit();
 	    }
 	nnfs_internal_get_exports(mp_config);
-	fhToPath=(pXHashTable)nmMalloc(sizeof(XHashTable));
-	pathToFh=(pXHashTable)nmMalloc(sizeof(XHashTable));
-	xhInit(fhToPath,16,0);
-	xhInit(pathToFh,16,0);
-	mountList=(pXArray)nmMalloc(sizeof(XArray));
-	xaInit(mountList,4);
+	NNFS.fhToPath=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	NNFS.pathToFh=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	xhInit(NNFS.fhToPath,16,0);
+	xhInit(NNFS.pathToFh,16,0);
+	NNFS.mountList=(pXArray)nmMalloc(sizeof(XArray));
+	xaInit(NNFS.mountList,4);
 
     	/** Open the server listener socket. **/
 	listen_socket = netListenUDP(listen_port, 0);
@@ -1181,7 +1170,7 @@ nnfs_internal_mount_listener(void* v)
 						mnt->host=(char*)nmMalloc(strlen(remotehost)+1);
 						strncpy(mnt->path,*(char**)param,strlen(*(char**)param)+1);
 						strncpy(mnt->host,remotehost,strlen(remotehost)+1);
-						xaAddItem(mountList,mnt);
+						xaAddItem(NNFS.mountList,mnt);
 						}
 					    break;
 					case MOUNTPROC_UMNT:
@@ -1189,12 +1178,12 @@ nnfs_internal_mount_listener(void* v)
 					    int j;
 					    char *dir = *(char**)param;
 					    /** remove the mount point from the list **/
-					    for (j=0;j<xaCount(mountList);j++)
+					    for (j=0;j<xaCount(NNFS.mountList);j++)
 						{
-						pMount mnt=(pMount)xaGetItem(mountList,j);
+						pMount mnt=(pMount)xaGetItem(NNFS.mountList,j);
 						if (!(strcmp(mnt->host,remotehost)) && !(strcmp(mnt->path,dir)))
 						    {
-						    xaRemoveItem(mountList,j);
+						    xaRemoveItem(NNFS.mountList,j);
 						    nmFree(mnt->host,strlen(mnt->host)+1);
 						    nmFree(mnt->path,strlen(mnt->path)+1);
 						    nmFree(mnt,sizeof(Mount));
@@ -1208,12 +1197,12 @@ nnfs_internal_mount_listener(void* v)
 					    int j;
 					    char *dir = *(char**)param;
 					    /** remove the all mount points from remotehost from the list **/
-					    for (j=0;j<xaCount(mountList);j++)
+					    for (j=0;j<xaCount(NNFS.mountList);j++)
 						{
-						pMount mnt=(pMount)xaGetItem(mountList,j);
+						pMount mnt=(pMount)xaGetItem(NNFS.mountList,j);
 						if (!strcmp(mnt->host,remotehost))
 						    {
-						    xaRemoveItem(mountList,j);
+						    xaRemoveItem(NNFS.mountList,j);
 						    nmFree(mnt->host,strlen(mnt->host)+1);
 						    nmFree(mnt->path,strlen(mnt->path)+1);
 						    nmFree(mnt,sizeof(Mount));
@@ -1368,6 +1357,8 @@ nnfsInitialize()
 	NNFS.nextIn=0;
 	NNFS.nextOut=0;
 	NNFS.semaphore = syCreateSem(0,0);
+	/** 0 is reserved **/
+	NNFS.nextFileHandle=1;
 	
 	/** Start the mountd listener **/
 	thCreate(nnfs_internal_mount_listener, 0, NULL);
