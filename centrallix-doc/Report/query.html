@@ -1,0 +1,72 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'query.html' -->
+<h2 class="componentname"><a name="query">query</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/query</span>
+</p>
+<p class="componenttype">visual: <span class="componenttypevalue">no</span>
+</p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
+			<p>Queries can be linked to each other in order to depend on each others' data results.</p>
+			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as a the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Queries can only be contained within a 'system/report'.  They can only contain 'report/aggregate' components.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">A SQL statement.  It can include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz'.  To referenced linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</td>
+</tr>
+<tr>
+<td class="name">link</td>
+<td class="type">stringvec</td>
+<td class="description">Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of report/aggregate child components)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">compute</td>
+<td class="type">string</td>
+<td class="description">An expression specifying the computation to be performed.  Normally this should include one or more aggregate functions (sum, count, avg, min, and max) in some form or fashion.</td>
+</tr>
+<tr>
+<td class="name">where</td>
+<td class="type">string</td>
+<td class="description">A conditional expression specifying which rows should be included in the aggregate computation.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+myQuery &quot;report/query&quot;
+	{
+	sql = &quot;select :name, :size from /samples where :size &gt;= &amp;minsize&quot;;
+	totalsize &quot;report/aggregate&quot; { compute = &quot;sum(:size)&quot;; }
+	bigfilesizetotal &quot;report/aggregate&quot; { compute = &quot;sum(:size)&quot;; where=&quot;:size &gt; 10000&quot;; }
+	}
+		
+		</pre>

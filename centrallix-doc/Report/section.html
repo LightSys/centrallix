@@ -1,0 +1,106 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'section.html' -->
+<h2 class="componentname"><a name="section">section</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/section</span>
+</p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
+</p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The section component of a report basically defines a general subpart of the report, possibly having multiple columns (newspaper-style) plus margin settings and more.  It is also useful for defining a part of the report, perhaps just inside of a form, in which you need to position text or data relative not to the page as a whole but rather to a chunk of information or data.</p>
+			<p>Sections may span multiple pages.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Sections can be used inside of components which are containers.  They can contain other components, except for report/query and system/report components, and cannot contain other section components.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">colsep</td>
+<td class="type">integer</td>
+<td class="description">The separation between columns, if more than one was specified, in 10ths of an inch.</td>
+</tr>
+<tr>
+<td class="name">columns</td>
+<td class="type">integer</td>
+<td class="description">The number of columns for the section (newspaper style).  Default is 1.</td>
+</tr>
+<tr>
+<td class="name">dateformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</td>
+</tr>
+<tr>
+<td class="name">font</td>
+<td class="type">string</td>
+<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
+</tr>
+<tr>
+<td class="name">linespacing</td>
+<td class="type">integer</td>
+<td class="description">Sets the number of lines per inch.  Default is 6 lines per inch.</td>
+</tr>
+<tr>
+<td class="name">margins</td>
+<td class="type">intvec</td>
+<td class="description">The left and right margins for the section, relative to the page.  Defaults to 0,0 (no margins).</td>
+</tr>
+<tr>
+<td class="name">moneyformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</td>
+</tr>
+<tr>
+<td class="name">nullformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default text to use when data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
+</tr>
+<tr>
+<td class="name">page</td>
+<td class="type">integer</td>
+<td class="description">Sets the starting page number for the section.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">stringvec</td>
+<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">A title for the section.  If provided, it will be centered above the section.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+mySection &quot;report/section&quot;
+	{
+	title = &quot;The Next Section&quot;;
+	columns = 2;
+	colsep = 2;       // 39 char wide cols on an 80 col page
+	nullformat = &quot;&quot;;  // display nothing if data is null instead of displaying 'NULL'
+
+	//
+	// more components go here
+	//
+	}
+		
+		</pre>
+</body>
+</html>

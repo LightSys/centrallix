@@ -10,6 +10,7 @@ TABLE	{ margin-left: 16pt; }
 TD.name { font-style:italic;}
 TD	{ vertical-align:top; padding-left: 4pt; padding-right: 4pt; }
 TH.name { border-bottom: solid #999999 1pt; }
+TH { border-bottom: solid #999999 1pt; }
 TH.description { border-bottom: solid #999999 1pt; }
 TH.type { border-bottom: solid #999999 1pt; }
 TR.notimplimented { color:#999999; }

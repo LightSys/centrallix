@@ -1,0 +1,79 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'comment.html' -->
+<h2 class="componentname"><a name="comment">comment</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/comment</span>
+</p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
+</p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The comment report component simply specifies a static string of text to be placed on the report with a given style at a given location.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">autonewline</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to automatically emit a newline at the end of text.  Defaults to &quot;yes&quot;.</td>
+</tr>
+<tr>
+<td class="name">font</td>
+<td class="type">string</td>
+<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
+</tr>
+<tr>
+<td class="name">relypos</td>
+<td class="type">integer</td>
+<td class="description">The vertical position relative to the current section, in lines (6ths of an inch).</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">stringvec</td>
+<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">The text to print on the report.</td>
+</tr>
+<tr>
+<td class="name">xpos</td>
+<td class="type">integer</td>
+<td class="description">The horizontal position, in character cells (10ths of an inch).</td>
+</tr>
+<tr>
+<td class="name">ypos</td>
+<td class="type">integer</td>
+<td class="description">The vertical position relative to the top of the page, in lines (6ths of an inch).</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+myComment &quot;report/comment&quot;
+	{
+	xpos = 10;
+	text = &quot;This is printed starting at column number 10.&quot;;
+	}
+		
+		</pre>
+</body>
+</html>

@@ -109,7 +109,7 @@ III GETTING STARTED....
 	    monthquery "report/query"
 	        {
 		sql = "select :full_name, id = :id + 1 
-			 from /samples/Months.csv"
+			 from /samples/Months.csv/rows"
 		}
 
 	    months "report/form"

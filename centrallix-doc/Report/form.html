@@ -1,0 +1,224 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'form.html' -->
+<h2 class="componentname"><a name="form">form</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/form</span>
+</p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
+</p>
+<p class="componenttype">container: <span class="componenttypevalue">yes</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The form provides a way to display query results in a non-tabular fashion.  Each individual piece of data has to be manually positioned, requiring more effort but giving more flexibility.  The form will essentially iterate through its contents for each record it retrieves from a query.</p>
+			<p>Forms can have one of three modes: normal, outer, and inner.  A 'normal' form simply starts the query, retrieves all of the results from the query (up to the reclimit maximum), iterating over its content once for each record, and then ends the query, discarding any data remaining.  An 'outer' form starts the query and then iterates over its content while more results are available, but does not actually retrieve the results itself.  An 'inner' form works only (directly or indirectly) inside an 'outer' form, and retrieves records (up to the reclimit maximum) but does not start or end the query.</p>
+			<p>The typical reason to use 'outer' and 'inner' mode forms is to group query results in chunks of a certain size, perhaps in a part of a multipage preprinted form such as a receipt or invoice.  The 'outer' mode form is used to surround the multipage preprinted forms as a whole, and the 'inner' mode form is used to generate the section of the report that contains the list that carries over from page to page but in an area not the size of the entire form (and possibly having other data above and/or below it).</p>
+			<p>Forms can also be used with multiple queries simultaneously.  They support running these queries in one of several fashions: 'nested', 'parallel', and 'multinested'.  In the first, 'nested', if two queries were specified, the second query would be run once in its entirety for each record returned from the first - this is identical to nesting multiple forms inside of one another, each referencing only one query.</p>
+			    <table>
+				<tr>
+<th>1,2,3</th>
+<th>a,b</th>
+</tr>
+				<tr>
+<td>1</td>
+<td>a</td>
+</tr>
+				<tr>
+<td>1</td>
+<td>b</td>
+</tr>
+				<tr>
+<td>2</td>
+<td>a</td>
+</tr>
+				<tr>
+<td>2</td>
+<td>b</td>
+</tr>
+				<tr>
+<td>3</td>
+<td>a</td>
+</tr>
+				<tr>
+<td>3</td>
+<td>b</td>
+</tr>
+			    </table>
+			<p>The second, 'parallel', runs the queries simultaneously and independently of one another - the results are combined together on the output - and continues until no query has more records.</p>
+			    <table>
+				<tr>
+<th>1,2,3</th>
+<th>a,b</th>
+</tr>
+				<tr>
+<td>1</td>
+<td>a</td>
+</tr>
+				<tr>
+<td>2</td>
+<td>b</td>
+</tr>
+				<tr>
+<td>3</td>
+<td>NULL</td>
+</tr>
+			    </table>
+			<p>The third, 'multinested', is more interesting - here the form iterates once through each query before the nested queries are run, giving each individual record its own unique line.</p>
+			    <table>
+				<tr>
+<th>1,2,3</th>
+<th>a,b</th>
+</tr>
+				<tr>
+<td>1</td>
+<td>NULL</td>
+</tr>
+				<tr>
+<td>1</td>
+<td>a</td>
+</tr>
+				<tr>
+<td>1</td>
+<td>b</td>
+</tr>
+				<tr>
+<td>2</td>
+<td>NULL</td>
+</tr>
+				<tr>
+<td>2</td>
+<td>a</td>
+</tr>
+				<tr>
+<td>2</td>
+<td>b</td>
+</tr>
+				<tr>
+<td>3</td>
+<td>NULL</td>
+</tr>
+				<tr>
+<td>3</td>
+<td>a</td>
+</tr>
+				<tr>
+<td>3</td>
+<td>b</td>
+</tr>
+			    </table>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>May be used inside any visual container, and may contain any visual component or container.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">dateformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</td>
+</tr>
+<tr>
+<td class="name">ffsep</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to do a page break between successive records.  Default 'no'.</td>
+</tr>
+<tr>
+<td class="name">font</td>
+<td class="type">string</td>
+<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
+</tr>
+<tr>
+<td class="name">mode</td>
+<td class="type">string</td>
+<td class="description">The mode of the form (see overview).  'normal' is the default.</td>
+</tr>
+<tr>
+<td class="name">moneyformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</td>
+</tr>
+<tr>
+<td class="name">multimode</td>
+<td class="type">string</td>
+<td class="description">How the form handles multiple queries (see overview).  'nested' is the default.</td>
+</tr>
+<tr>
+<td class="name">nullformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default text to use when data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
+</tr>
+<tr>
+<td class="name">page</td>
+<td class="type">integer</td>
+<td class="description">Sets the starting page number for the form.  Used sometimes if the page number has to be reset to 1, as in reports containing a series of multipage parts (such as multi-page invoices).</td>
+</tr>
+<tr>
+<td class="name">reclimit</td>
+<td class="type">integer</td>
+<td class="description">Sets a limit on the number of records the form is to print.</td>
+</tr>
+<tr>
+<td class="name">relylimit</td>
+<td class="type">integer</td>
+<td class="description">Sets a limit on the height of the form's contents inside a section or page.  The form will continue to print records until this number of lines on the report have been used since the top of the current section.</td>
+</tr>
+<tr>
+<td class="name">rulesep</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to emit a horizontal line between successive records.  Default 'no'.</td>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">stringvec</td>
+<td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">stringvec</td>
+<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+normalForm &quot;report/form&quot;
+	{
+	source=myQuery;
+	rulesep=yes;
+
+	//
+	// query data is printed here with report/data, report/column, etc.
+	//
+	}
+outerForm &quot;report/form&quot;
+	{
+	source=myQuery;
+	mode=outer;
+	comment &quot;report/comment&quot; { text=&quot;Here are up to six of the records:&quot;; }
+	innerForm &quot;report/form&quot;
+		{
+		source=myQuery;
+		mode=inner;
+		reclimit=6;
+
+		//
+		// display query data here with report/data, report/column, etc.
+		//
+		}
+	}
+		
+		</pre>
+</body>
+</html>

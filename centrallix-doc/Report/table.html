@@ -1,0 +1,151 @@
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Report Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'table.html' -->
+<h2 class="componentname"><a name="table">table</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/table</span>
+</p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span>
+</p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The table component is used to present data in an orderly, tabular fashion, in rows and columns.  While less flexible than the form, it is much easier to use.</p>
+			<p>Tables, like forms, can have more than one 'mode'.  However, tables only support 'normal' and 'inner'; 'outer' is not supported since tables do not contain other components.  See the form documentation for more on the mode.</p>
+			<p>Tables also can handle multiple queries using a 'multimode' - see the form for more information.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Tables can be used inside any visual container, but cannot contain other objects</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">align</td>
+<td class="type">stringvec</td>
+<td class="description">A list of strings defining how the data in each column should be aligned to its cell.  Values are 'left', 'right', and 'center'.</td>
+</tr>
+<tr>
+<td class="name">colsep</td>
+<td class="type">integer</td>
+<td class="description">Sets the separation between the table's columns, in 10ths of an inch.</td>
+</tr>
+<tr>
+<td class="name">columns</td>
+<td class="type">stringvec</td>
+<td class="description">A list of field names from the query source (expressions 'no') or expressions to evaluate for column information (expressions 'yes').</td>
+</tr>
+<tr>
+<td class="name">colnames</td>
+<td class="type">stringvec</td>
+<td class="description">A list of column header titles.</td>
+</tr>
+<tr>
+<td class="name">dateformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</td>
+</tr>
+<tr>
+<td class="name">expressions</td>
+<td class="type">yes/no</td>
+<td class="description">Determines whether the information given for columns in the 'columns' property are column names or full Centrallix expressions.  Default is 'no'.  You will want to set this to 'yes' if the 'source' property contains more than one query.</td>
+</tr>
+<tr>
+<td class="name">font</td>
+<td class="type">string</td>
+<td class="description">The font to use.  Available fonts are &quot;times&quot;, &quot;helvetica&quot;, and &quot;courier&quot;.</td>
+</tr>
+<tr>
+<td class="name">headeralign</td>
+<td class="type">stringvec</td>
+<td class="description">A list of strings defining how the header names in each column should be aligned.  Values are 'left', 'right', and 'center'.</td>
+</tr>
+<tr>
+<td class="name">lowersep</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to display a separator line at the bottom of the table in addition to the one drawn between the table and its header (titlebar).  Default is 'no'.</td>
+</tr>
+<tr>
+<td class="name">mode</td>
+<td class="type">string</td>
+<td class="description">The mode of the table (see overview).  'normal' is the default.</td>
+</tr>
+<tr>
+<td class="name">moneyformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</td>
+</tr>
+<tr>
+<td class="name">multimode</td>
+<td class="type">string</td>
+<td class="description">How the table handles multiple queries (see overview).  'nested' is the default.</td>
+</tr>
+<tr>
+<td class="name">nodatamsg</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to display the '(no data returned)' message below the table if no records were returned from the query source.  Default is 'yes' to display the no-data message.</td>
+</tr>
+<tr>
+<td class="name">nullformat</td>
+<td class="type">string</td>
+<td class="description">Sets the default text to use when data is NULL.  Normally &quot;NULL&quot; is displayed.</td>
+</tr>
+<tr>
+<td class="name">reclimit</td>
+<td class="type">integer</td>
+<td class="description">Sets a limit on the number of records the table is to print.</td>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">stringvec</td>
+<td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">stringvec</td>
+<td class="description">A list of styles, separated by commas.  Values include &quot;bold&quot;, &quot;italic&quot;, &quot;underline&quot;, &quot;compressed&quot;, &quot;barcode&quot;, &quot;expanded&quot;, and &quot;center&quot;.  The &quot;barcode&quot; style converts a number into a USPS barcode for mailings.</td>
+</tr>
+<tr>
+<td class="name">titlebar</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to display a title bar on the table with column header names.  Default is 'yes' to display it.</td>
+</tr>
+<tr>
+<td class="name">widthmode</td>
+<td class="type">string</td>
+<td class="description">How the table computes column widths.  'relative' means column widths are relative to the size of the font, whereas 'absolute' means tenths of an inch.</td>
+</tr>
+<tr>
+<td class="name">widths</td>
+<td class="type">intvec</td>
+<td class="description">A list of numbers giving the widths of the columns.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+myTable &quot;report/table&quot;
+	{
+	source=myQuery;
+	expressions=yes;
+	colnames='Name','Size';
+	columns=':myQuery:name', 'condition(:myQuery:size == 0, \'empty\', :myQuery:size)';
+	align=left,right;
+	headeralign=left,left;
+	titlebar=yes;
+	}
+		
+		</pre>
+</body>
+</html>

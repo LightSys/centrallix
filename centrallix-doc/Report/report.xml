@@ -19,12 +19,314 @@
 $Version=2$
 myreport "system/report"
 	{
+	minsize = 1;  // a parameter.
 	title = "This is a hello-world report";
 
 	comment "report/comment"
 		{
 		text = "Hello World";
 		}
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="comment" type="report/comment" description="A textual comment to be printed on the report" visual="yes" container="no">
+		<overview>
+			<p>The comment report component simply specifies a static string of text to be placed on the report with a given style at a given location.</p>
+		</overview>
+		<usage>
+			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+		</usage>
+		<properties>
+			<property name="autonewline" type="yes/no">Whether to automatically emit a newline at the end of text.  Defaults to "yes".</property>
+			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
+			<property name="relypos" type="integer">The vertical position relative to the current section, in lines (6ths of an inch).</property>
+			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
+			<property name="text" type="string">The text to print on the report.</property>
+			<property name="xpos" type="integer">The horizontal position, in character cells (10ths of an inch).</property>
+			<property name="ypos" type="integer">The vertical position relative to the top of the page, in lines (6ths of an inch).</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+myComment "report/comment"
+	{
+	xpos = 10;
+	text = "This is printed starting at column number 10.";
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="column" type="report/column" description="Prints a single column value from the source query" visual="yes" container="no">
+		<overview>
+			<p>The column component allows the value of a source query's data field to be printed.</p>
+		</overview>
+		<usage>
+			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+		</usage>
+		<properties>
+			<property name="autonewline" type="yes/no">Whether to automatically emit a newline at the end of text.  Defaults to "yes".</property>
+			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.</property>
+			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
+			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.</property>
+			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.</property>
+			<property name="relypos" type="integer">The vertical position relative to the current section, in lines (6ths of an inch).</property>
+			<property name="source" type="stringvec">The source query to use, and the column name in the source query, separated by a comma.</property>
+			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
+			<property name="xpos" type="integer">The horizontal position, in character cells (10ths of an inch).</property>
+			<property name="ypos" type="integer">The vertical position relative to the top of the page, in lines (6ths of an inch).</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+myColumn "report/column"
+	{
+	relypos = 5; // five lines down from top of current section
+	style = bold,italic;
+	source = myQuery,modified_date;
+	dateformat = "MMM ddd, yyyy";
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="data" type="report/data" description="A data component in the report consisting of an arbitrary expression" visual="yes" container="no">
+		<overview>
+			<p>The data component allows the value of an arbitrary expression to be printed.  The expression can contain references to report parameters (via the object 'this') or to query fields.</p>
+		</overview>
+		<usage>
+			<p>This component can be used within a section, form, or at the top level within the report object.  It cannot contain any components.</p>
+		</usage>
+		<properties>
+			<property name="autonewline" type="yes/no">Whether to automatically emit a newline at the end of text.  Defaults to "no".</property>
+			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.</property>
+			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
+			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.</property>
+			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.</property>
+			<property name="relypos" type="integer">The vertical position relative to the current section, in lines (6ths of an inch).</property>
+			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
+			<property name="value" type="string">A quoted expression (inside a string); if string literals are provided inside the expression, they have to be quoted again, as in "'one' + 'two'".</property>
+			<property name="xpos" type="integer">The horizontal position, in character cells (10ths of an inch).</property>
+			<property name="ypos" type="integer">The vertical position relative to the top of the page, in lines (6ths of an inch).</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+myData "report/data"
+	{
+	value = ":myQuery:string1 + ', ' + :myQuery:string2 + '.'";
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="section" type="report/section" description="An overall section of the report, possibly multicolumnar" visual="yes" container="yes">
+		<overview>
+			<p>The section component of a report basically defines a general subpart of the report, possibly having multiple columns (newspaper-style) plus margin settings and more.  It is also useful for defining a part of the report, perhaps just inside of a form, in which you need to position text or data relative not to the page as a whole but rather to a chunk of information or data.</p>
+			<p>Sections may span multiple pages.</p>
+		</overview>
+		<usage>
+			<p>Sections can be used inside of components which are containers.  They can contain other components, except for report/query and system/report components, and cannot contain other section components.</p>
+		</usage>
+		<properties>
+			<property name="colsep" type="integer">The separation between columns, if more than one was specified, in 10ths of an inch.</property>
+			<property name="columns" type="integer">The number of columns for the section (newspaper style).  Default is 1.</property>
+			<property name="dateformat" type="string">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</property>
+			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
+			<property name="linespacing" type="integer">Sets the number of lines per inch.  Default is 6 lines per inch.</property>
+			<property name="margins" type="intvec">The left and right margins for the section, relative to the page.  Defaults to 0,0 (no margins).</property>
+			<property name="moneyformat" type="string">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</property>
+			<property name="nullformat" type="string">Sets the default text to use when data is NULL.  Normally "NULL" is displayed.</property>
+			<property name="page" type="integer">Sets the starting page number for the section.</property>
+			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
+			<property name="title" type="string">A title for the section.  If provided, it will be centered above the section.</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+mySection "report/section"
+	{
+	title = "The Next Section";
+	columns = 2;
+	colsep = 2;       // 39 char wide cols on an 80 col page
+	nullformat = "";  // display nothing if data is null instead of displaying 'NULL'
+
+	//
+	// more components go here
+	//
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="form" type="report/form" description="A freeform layout container for displaying query results" visual="yes" container="yes">
+		<overview>
+			<p>The form provides a way to display query results in a non-tabular fashion.  Each individual piece of data has to be manually positioned, requiring more effort but giving more flexibility.  The form will essentially iterate through its contents for each record it retrieves from a query.</p>
+			<p>Forms can have one of three modes: normal, outer, and inner.  A 'normal' form simply starts the query, retrieves all of the results from the query (up to the reclimit maximum), iterating over its content once for each record, and then ends the query, discarding any data remaining.  An 'outer' form starts the query and then iterates over its content while more results are available, but does not actually retrieve the results itself.  An 'inner' form works only (directly or indirectly) inside an 'outer' form, and retrieves records (up to the reclimit maximum) but does not start or end the query.</p>
+			<p>The typical reason to use 'outer' and 'inner' mode forms is to group query results in chunks of a certain size, perhaps in a part of a multipage preprinted form such as a receipt or invoice.  The 'outer' mode form is used to surround the multipage preprinted forms as a whole, and the 'inner' mode form is used to generate the section of the report that contains the list that carries over from page to page but in an area not the size of the entire form (and possibly having other data above and/or below it).</p>
+			<p>Forms can also be used with multiple queries simultaneously.  They support running these queries in one of several fashions: 'nested', 'parallel', and 'multinested'.  In the first, 'nested', if two queries were specified, the second query would be run once in its entirety for each record returned from the first - this is identical to nesting multiple forms inside of one another, each referencing only one query.</p>
+			    <table border="1">
+				<tr><th>1,2,3</th><th>a,b</th></tr>
+				<tr><td>1</td><td>a</td></tr>
+				<tr><td>1</td><td>b</td></tr>
+				<tr><td>2</td><td>a</td></tr>
+				<tr><td>2</td><td>b</td></tr>
+				<tr><td>3</td><td>a</td></tr>
+				<tr><td>3</td><td>b</td></tr>
+			    </table>
+			<p>The second, 'parallel', runs the queries simultaneously and independently of one another - the results are combined together on the output - and continues until no query has more records.</p>
+			    <table border="1">
+				<tr><th>1,2,3</th><th>a,b</th></tr>
+				<tr><td>1</td><td>a</td></tr>
+				<tr><td>2</td><td>b</td></tr>
+				<tr><td>3</td><td>NULL</td></tr>
+			    </table>
+			<p>The third, 'multinested', is more interesting - here the form iterates once through each query before the nested queries are run, giving each individual record its own unique line.</p>
+			    <table border="1">
+				<tr><th>1,2,3</th><th>a,b</th></tr>
+				<tr><td>1</td><td>NULL</td></tr>
+				<tr><td>1</td><td>a</td></tr>
+				<tr><td>1</td><td>b</td></tr>
+				<tr><td>2</td><td>NULL</td></tr>
+				<tr><td>2</td><td>a</td></tr>
+				<tr><td>2</td><td>b</td></tr>
+				<tr><td>3</td><td>NULL</td></tr>
+				<tr><td>3</td><td>a</td></tr>
+				<tr><td>3</td><td>b</td></tr>
+			    </table>
+		</overview>
+		<usage>
+			<p>May be used inside any visual container, and may contain any visual component or container.</p>
+		</usage>
+		<properties>
+			<property name="dateformat" type="string">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</property>
+			<property name="ffsep" type="yes/no">Whether to do a page break between successive records.  Default 'no'.</property>
+			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
+			<property name="mode" type="string">The mode of the form (see overview).  'normal' is the default.</property>
+			<property name="moneyformat" type="string">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</property>
+			<property name="multimode" type="string">How the form handles multiple queries (see overview).  'nested' is the default.</property>
+			<property name="nullformat" type="string">Sets the default text to use when data is NULL.  Normally "NULL" is displayed.</property>
+			<property name="page" type="integer">Sets the starting page number for the form.  Used sometimes if the page number has to be reset to 1, as in reports containing a series of multipage parts (such as multi-page invoices).</property>
+			<property name="reclimit" type="integer">Sets a limit on the number of records the form is to print.</property>
+			<property name="relylimit" type="integer">Sets a limit on the height of the form's contents inside a section or page.  The form will continue to print records until this number of lines on the report have been used since the top of the current section.</property>
+			<property name="rulesep" type="yes/no">Whether to emit a horizontal line between successive records.  Default 'no'.</property>
+			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
+			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+normalForm "report/form"
+	{
+	source=myQuery;
+	rulesep=yes;
+
+	//
+	// query data is printed here with report/data, report/column, etc.
+	//
+	}
+outerForm "report/form"
+	{
+	source=myQuery;
+	mode=outer;
+	comment "report/comment" { text="Here are up to six of the records:"; }
+	innerForm "report/form"
+		{
+		source=myQuery;
+		mode=inner;
+		reclimit=6;
+
+		//
+		// display query data here with report/data, report/column, etc.
+		//
+		}
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="table" type="report/table" description="A tabular presentation of report data" visual="yes" container="no">
+		<overview>
+			<p>The table component is used to present data in an orderly, tabular fashion, in rows and columns.  While less flexible than the form, it is much easier to use.</p>
+			<p>Tables, like forms, can have more than one 'mode'.  However, tables only support 'normal' and 'inner'; 'outer' is not supported since tables do not contain other components.  See the form documentation for more on the mode.</p>
+			<p>Tables also can handle multiple queries using a 'multimode' - see the form for more information.</p>
+		</overview>
+		<usage>
+			<p>Tables can be used inside any visual container, but cannot contain other objects</p>
+		</usage>
+		<properties>
+			<property name="align" type="stringvec">A list of strings defining how the data in each column should be aligned to its cell.  Values are 'left', 'right', and 'center'.</property>
+			<property name="colsep" type="integer">Sets the separation between the table's columns, in 10ths of an inch.</property>
+			<property name="columns" type="stringvec">A list of field names from the query source (expressions 'no') or expressions to evaluate for column information (expressions 'yes').</property>
+			<property name="colnames" type="stringvec">A list of column header titles.</property>
+			<property name="dateformat" type="string">Sets the default date/time format.  See the introduction to the reporting system documentation for date/time format information.</property>
+			<property name="expressions" type="yes/no">Determines whether the information given for columns in the 'columns' property are column names or full Centrallix expressions.  Default is 'no'.  You will want to set this to 'yes' if the 'source' property contains more than one query.</property>
+			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".</property>
+			<property name="headeralign" type="stringvec">A list of strings defining how the header names in each column should be aligned.  Values are 'left', 'right', and 'center'.</property>
+			<property name="lowersep" type="yes/no">Whether to display a separator line at the bottom of the table in addition to the one drawn between the table and its header (titlebar).  Default is 'no'.</property>
+			<property name="mode" type="string">The mode of the table (see overview).  'normal' is the default.</property>
+			<property name="moneyformat" type="string">Sets the default money format.  See the introduction to the reporting system documentation for money format information.</property>
+			<property name="multimode" type="string">How the table handles multiple queries (see overview).  'nested' is the default.</property>
+			<property name="nodatamsg" type="yes/no">Whether to display the '(no data returned)' message below the table if no records were returned from the query source.  Default is 'yes' to display the no-data message.</property>
+			<property name="nullformat" type="string">Sets the default text to use when data is NULL.  Normally "NULL" is displayed.</property>
+			<property name="reclimit" type="integer">Sets a limit on the number of records the table is to print.</property>
+			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
+			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", "compressed", "barcode", "expanded", and "center".  The "barcode" style converts a number into a USPS barcode for mailings.</property>
+			<property name="titlebar" type="yes/no">Whether to display a title bar on the table with column header names.  Default is 'yes' to display it.</property>
+			<property name="widthmode" type="string">How the table computes column widths.  'relative' means column widths are relative to the size of the font, whereas 'absolute' means tenths of an inch.</property>
+			<property name="widths" type="intvec">A list of numbers giving the widths of the columns.</property>
+		</properties>
+		<children>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+myTable "report/table"
+	{
+	source=myQuery;
+	expressions=yes;
+	colnames='Name','Size';
+	columns=':myQuery:name', 'condition(:myQuery:size == 0, \'empty\', :myQuery:size)';
+	align=left,right;
+	headeralign=left,left;
+	titlebar=yes;
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="query" type="report/query" description="A definition of a SQL query to use elsewhere in the report" visual="no" container="no">
+		<overview>
+			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
+			<p>Queries can be linked to each other in order to depend on each others' data results.</p>
+			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as a the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
+		</overview>
+		<usage>
+			<p>Queries can only be contained within a 'system/report'.  They can only contain 'report/aggregate' components.</p>
+		</usage>
+		<properties>
+			<property name="sql" type="string">A SQL statement.  It can include report parameter substitution by embedding '&amp;xyz' in the report to reference the parameter 'xyz'.  To referenced linked data from other queries, use '&amp;1' and '&amp;2' (and so forth) to reference the first and second links, respectively.</property>
+			<property name="link" type="stringvec">Two strings, one specifying the query to link to, and the second specifying the name of the column/field to reference in that query.</property>
+		</properties>
+		<children>
+			<child type="report/aggregate">
+				<childproperty name="compute" type="string">An expression specifying the computation to be performed.  Normally this should include one or more aggregate functions (sum, count, avg, min, and max) in some form or fashion.</childproperty>
+				<childproperty name="where" type="string">A conditional expression specifying which rows should be included in the aggregate computation.</childproperty>
+			</child>
+		</children>
+		<sample>
+		<![CDATA[
+$Version=2$
+myQuery "report/query"
+	{
+	sql = "select :name, :size from /samples where :size >= &minsize";
+	totalsize "report/aggregate" { compute = "sum(:size)"; }
+	bigfilesizetotal "report/aggregate" { compute = "sum(:size)"; where=":size > 10000"; }
 	}
 		]]>
 		</sample>

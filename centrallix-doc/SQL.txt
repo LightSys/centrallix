@@ -201,4 +201,12 @@ VII FUNCTION SUPPORT
     quote(s)		Encloses string <s> in double quotation marks, and
 			escapes any quotation marks or backslashes that occur 
 			in the string using the backslash character.
-
+    runstatic(x)	Not used in SQL queries, but used elsewhere in 
+			expressions.  Causes the expression x to be run 
+			staticly on the server.
+    runserver(x)	Not used in SQL queries, but used elsewhere in 
+			expressions.  Causes the expression x to be run on the 
+			server and re-evaluated as conditions warrant.
+    runclient(x)	Not used in SQL queries, but used elsewhere in 
+			expressions.  Causes the expression x to be run on the 
+			client and re-evaluated as conditions warrant.
