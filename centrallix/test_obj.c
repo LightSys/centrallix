@@ -64,10 +64,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.14 2002/09/06 02:39:11 lkehresman Exp $
+    $Id: test_obj.c,v 1.15 2002/09/06 02:43:35 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.15  2002/09/06 02:43:35  lkehresman
+    Hmm.. probably shouldn't have committed my username and password with
+    test_obj.
+
+    See: http://dman.ddts.net/~dman/humorous/shooting.html
+    Add:
+      Centrallix:
+        % cd /usr/src/centrallix
+        % cvs commit
+
     Revision 1.14  2002/09/06 02:39:11  lkehresman
     Got OSML interaction to work with the MIME libraries thanks to
     jorupp magic.
@@ -277,8 +287,8 @@ start(void* v)
 	rl_bind_key ('\t', rl_insert);
 
 	/** Authenticate **/
-	//user = readline("Username: ");
-	//pwd = getpass("Password: ");
+	user = readline("Username: ");
+	pwd = getpass("Password: ");
 	user = (char*)malloc(1024);
 	pwd = (char*)malloc(1024);
 	strcpy(user, "luke");
