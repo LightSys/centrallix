@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.3 2002/07/10 20:18:01 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.4 2002/07/10 20:54:29 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.4  2002/07/10 20:54:29  lkehresman
+    Corrected the leapyear detection
+
     Revision 1.3  2002/07/10 20:18:01  lkehresman
     Added time controls
 
@@ -497,15 +500,30 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    lmn.document.close();\n"
 		"    }\n", 0);
 
-	/* ***** *\
-	** FIXME: Make leap year detection actually work!!  This is a hack.
-	\* ***** */
+	/**
+	 **  Here is the leap year algorithm used.  To the best of my knowledge
+	 **  it's the best way to detect leap years.  If I am wrong, please
+	 **  correct me.  - LME (July 2002)
+	 **
+	 **    IF year is divisible by 4, it is a leap year
+	 **    EXCEPT if a year is divisible by 100, it is not a leap year
+	 **    EXCEPT if a year is divisible by 400, then it IS a leap year.
+	 **/
 	htrAddScriptFunction(s, "dt_isleapyear", "\n"
 		"function dt_isleapyear(d)\n"
 		"    {\n"
 		"    var yr = d.getYear()+1900;\n"
 		"    if (yr % 4 == 0)\n"
-		"        return true;\n"
+		"        {\n"
+		"        if (yr % 100 == 0 && yr % 400 != 0)\n"
+		"            {\n"
+		"            return false;\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            return true;\n"
+		"            }\n"
+		"        }\n"
 		"    else\n"
 		"        return false;\n"
 		"    }\n", 0);
