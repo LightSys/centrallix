@@ -1,0 +1,9 @@
+1,Compaq LTE 5300,,dirA
+2,Toshiba 2880,,dirB
+3,,1,fileA1.txt
+4,,1,fileA2.txt
+5,,2,fileB1.txt
+6,,2,dirB1
+7,,6,fileB11.txt
+8,,6,fileB12.txt
+9,,6,fileB13.txt
