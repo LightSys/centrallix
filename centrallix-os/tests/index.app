@@ -64,7 +64,7 @@ Page1 "widget/page"
 
 		    Connector1 "widget/connector"
 			{
-			event="Click";
+			event="DblClick";
 			target="Page1";
 			action="LoadPage";
 			Source="eparam.data.name";
