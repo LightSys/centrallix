@@ -1,0 +1,47 @@
+Centrallix ChangeLog
+-------------------------------------------------------------------------------
+
+0.7.0 --> 0.7.1	    17-Oct-2001	    INTERIM DEVELOPMENT RELEASE
+
+    This is an interim development release.  We've added a few internal 
+    architectural features and fixed some bugs.
+
+    Changes:
+
+	1.  Expressions in structure files support.  Structure files, if they
+	    start with the magic key "$Version=2$", and have semicolons after
+	    attribute values, can now have expressions as attribute values.
+	    This also has helped improve the memory efficiency of structure 
+	    files.  This also involved moving the stparse module into the core
+	    from the lib.
+	2.  Fixed the fdRead()/objRead() incompatibility involving the 
+	    differing order of the 'flags' and 'offset' arguments.  The 
+	    objRead() function is the one that was changed.  This also caused
+	    the OSML lower API to change as well so that objdriver methods
+	    now use the correct ordering in their Read() and Write() functions.
+	3.  Luke added windowshading support to the htdrv_window module.  Just
+	    double-click the titlebar and the window rolls up or down.
+	4.  The XString module in centrallix-lib now has three new XString 
+	    methods: xsPrintf(), xsConcatPrintf(), and xsWrite.  The first two
+	    are sprintf() like functions that handle '%s' and '%d'.  The last
+	    new function works like fdWrite or objWrite, and can be passed to
+	    functions that expect a fdWrite/objWrite type of callback function.
+	5.  The Expression module now has expGenerateText() which can convert
+	    an expression tree back to its text form.  This was used to help
+	    enable the expressions-in-structure-files support listed above.
+	6.  Matt added GNU Readline support to test_obj.  Some of you may 
+	    need to add -lncurses or -lcurses to the LIBS entry in the 
+	    Makefile.  Autoconf support isn't complete yet.
+	7.  The .build file causing commit/update conflicts should not be a
+	    problem anymore - there is a new .build/.subbuild system which
+	    keeps the master .build id's (on Greg's system) separate from
+	    .subbuild id's that others can use.
+	8.  Minor efficiency enhancement to the expression compiler and
+	    evaluator.
+
+
+<n/a> --> 0.7.0	    13-Aug-2001	    INITIAL RELEASE OF DEVELOPMENT BRANCH
+
+    This is the initial public release of Centrallix on the SourceForge open
+    source development service.  See the website for the development roadmap
+    and release information.
