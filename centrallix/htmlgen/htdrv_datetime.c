@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.5 2002/07/12 14:24:54 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.6 2002/07/12 14:56:27 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.6  2002/07/12 14:56:27  lkehresman
+    Added a *simple* fix for invalid dates stored in the database.  This needs
+    to be expanded in the future, but now it at least doesn't throw javascript
+    errors any more.
+
     Revision 1.5  2002/07/12 14:24:54  lkehresman
     Added form interaction with the datetime widget.  Works with the Kardia demo!!
 
@@ -226,7 +231,14 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"function dt_setvalue(v) {\n"
 		"   this.wdate = new Date(v);\n"
 		"   this.tmpdate = new Date(v);\n"
+		"   if (this.wdate == 'Invalid Date')\n"
+		"      {\n"
+		"      this.wdate = new Date();\n"
+		"      this.tmpdate = new Date();\n"
+		"      }\n"
 		"   dt_drawdate(this.lbdy, this.tmpdate);\n"
+		"   dt_drawmonth(this.ld, this.tmpdate);\n"
+		"   dt_drawtime(this, this.tmpdate);\n"
 		"}\n", 0);
 
 	/** Clear Value function **/
@@ -568,9 +580,9 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"function dt_drawdate(l, d)\n"
 		"    {\n"
 		"    l.document.write('<TABLE border=0 cellspacing=0 cellpadding=0 '+l.document.layer.colorBG+' width='+(l.document.layer.w-20)+' height='+(l.document.layer.h-2)+'>');\n"
-		"    l.document.write('<TR><TD align=center valign=middle nowrap><FONT color=\"'+l.document.layer.colorFG+'\"><b>');\n"
+		"    l.document.write('<TR><TD align=center valign=middle nowrap><FONT color=\"'+l.document.layer.colorFG+'\">');\n"
 		"    l.document.write(dt_formatdate(l.document.layer, d, 0));\n"
-		"    l.document.write('</b></FONT></TD></TR></TABLE>');\n"
+		"    l.document.write('</FONT></TD></TR></TABLE>');\n"
 		"    l.document.close();\n"
 		"    }\n", 0);
 
