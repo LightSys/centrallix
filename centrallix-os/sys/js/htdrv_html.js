@@ -82,10 +82,13 @@ function ht_reloaded(e)
     e.target.clip.height = e.target.document.height;
     e.target.mainlayer.faderLayer.moveAbove(e.target);
     e.target.visibility = 'inherit';
-    for(i=0;i<e.target.document.links.length;i++)
+    if (htutil_url_cmp(e.target.mainlayer.source, document.location.href))
 	{
-	e.target.document.links[i].layer = e.target.mainlayer;
-	e.target.document.links[i].kind = 'ht';
+	for(i=0;i<e.target.document.links.length;i++)
+	    {
+	    e.target.document.links[i].layer = e.target.mainlayer;
+	    e.target.document.links[i].kind = 'ht';
+	    }
 	}
     pg_resize(e.target.mainlayer.parentLayer);
     if (e.target.mainlayer.transition && e.target.mainlayer.transition != 'normal')
