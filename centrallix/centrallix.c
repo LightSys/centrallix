@@ -18,6 +18,7 @@
 #include "mtlexer.h"
 #include <signal.h>
 #include "wgtr.h"
+#include "iface.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -52,10 +53,21 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.28 2004/07/20 21:28:51 mmcgill Exp $
+    $Id: centrallix.c,v 1.29 2004/07/30 17:59:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.29  2004/07/30 17:59:55  mmcgill
+    Added the Interface module on the server-side. The module provides support
+    for widget interfaces, and the capability to easily add support for new
+    interface types.
+
+    As yet this module is unused. Future commits will add interface support to
+    the widget tree module, and eventually to the client-side DHTML code.
+
+    This module anticipates the addition of dynamically loadable component
+    widgets, which necessitate some sort of interface support.
+
     Revision 1.28  2004/07/20 21:28:51  mmcgill
     *   ht_render
         -   Added code to perform verification of widget-tree prior to
@@ -535,6 +547,9 @@ cxInitialize(void* v)
 	prt_strictfm_Initialize();
 	prt_pclod_Initialize();
 	prt_textod_Initialize();
+
+	/** Initialize the Interface module **/
+	ifcInitialize();
 
 #ifndef WITH_DYNAMIC_LOAD
 	/** Init the modules being used if dynamic loading is disabled **/
