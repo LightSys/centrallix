@@ -80,7 +80,7 @@ wholePage "widget/page"
 	x = 95; y = 0; width = 600; height = 400;
 	osrc1 "widget/osrc"
 	{
-	    sql = "SELECT objname = :name, :full_name, :num_days FROM /samples/Months.csv/rows";
+	    sql = "SELECT :name, :full_name, :num_days FROM /samples/Months.csv/rows";
 	    readahead=1;
 	    replicasize=6;
 	    form1 "widget/form"
@@ -176,7 +176,7 @@ wholePage "widget/page"
 			testedit2 "widget/editbox"
 			    {
 				x=20;y=100;width=100;height=15;
-				fieldname="objname";
+				fieldname="name";
 			    }
 			testedit3 "widget/editbox"
 			    {
@@ -364,7 +364,7 @@ wholePage "widget/page"
 		textcolor="black";
 		textcolorhighlight="white";
 		titlecolor="red";
-		objname "widget/table-column" { title="Number";width=100; }
+		name "widget/table-column" { title="Number";width=100; }
 		full_name "widget/table-column" { title="Name"; width=100; }
 		num_days "widget/table-column" { title="Days"; width=40; }
 		}
