@@ -20,12 +20,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: datatypes.h,v 1.1 2001/08/13 18:04:19 gbeeley Exp $
+    $Id: datatypes.h,v 1.2 2001/12/28 21:53:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/datatypes.h,v $
 
     $Log: datatypes.h,v $
-    Revision 1.1  2001/08/13 18:04:19  gbeeley
-    Initial revision
+    Revision 1.2  2001/12/28 21:53:25  gbeeley
+    Added some support for the new printmanagement system.
+
+    Revision 1.1.1.1  2001/08/13 18:04:19  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
     Initial checkin of centrallix-lib
@@ -85,6 +88,8 @@ typedef struct _MN
 #define DATA_T_INTVEC           5
 #define DATA_T_STRINGVEC        6
 #define DATA_T_MONEY            7
+#define DATA_T_ARRAY		8	/* generic array, added for jsvm */
+#define DATA_T_CODE		9	/* code; function/expression/etc */
 
 /** structure used to handle data pointers (GetAttrValue, etc) **/
 typedef union _POD

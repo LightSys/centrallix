@@ -26,10 +26,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.2 2001/09/28 20:00:18 gbeeley Exp $
+    $Id: magic.h,v 1.3 2001/12/28 21:53:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.3  2001/12/28 21:53:25  gbeeley
+    Added some support for the new printmanagement system.
+
     Revision 1.2  2001/09/28 20:00:18  gbeeley
     Modified magic number system syntax slightly to eliminate semicolon
     from within the macro expansions of the ASSERT macros.
@@ -75,8 +78,10 @@ typedef struct
 #define MGK_ALLOCMEM	0x1234031f	/* newmalloc.c::Overlay (out,uninitialized)*/
 #define MGK_REGISBLK	0x1234032e	/* newmalloc.c::RegisteredBlockType */
 #define MGK_EXPRESSION	0x12340405	/* expression.h::Expression */
-#define MGK_PRTOBJSTRM	0x12340502	/* prtmgmt_new.h::PrtObjStream */
-#define MGK_PRTOBJSSN	0x1234058e	/* prtmgmt_new.h::PrtSession */
+#define MGK_PRTOBJSTRM	0x12340502	/* prtmgmt_v3.h::PrtObjStream */
+#define MGK_PRTOBJSSN	0x1234058e	/* prtmgmt_v3.h::PrtSession */
+#define MGK_PRTOBJTYPE	0x123405cc	/* prtmgmt_v3.h::PrtObjType */
+#define MGK_PRTLM     	0x1234055a	/* prtmgmt_v3.h::PrtLayoutMgr */
 #define MGK_STRUCTINF	0x123406fd	/* stparse_new.h::StructInf */
 
 
