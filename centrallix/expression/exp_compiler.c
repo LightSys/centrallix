@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.7 2003/06/27 21:19:47 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.8 2003/07/09 18:07:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.8  2003/07/09 18:07:55  gbeeley
+    Added first() and last() aggregate functions.  Strictly speaking these
+    are not truly relational functions, since they are row order dependent,
+    but are useful for summary items in a sorted setting.
+
     Revision 1.7  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -252,7 +257,8 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				etmp->NodeType = EXPR_N_FUNCTION;
 				if (!strcasecmp(etmp->Name,"count") || !strcasecmp(etmp->Name,"avg") ||
 				    !strcasecmp(etmp->Name,"max") || !strcasecmp(etmp->Name,"min") ||
-				    !strcasecmp(etmp->Name,"sum"))
+				    !strcasecmp(etmp->Name,"sum") || !strcasecmp(etmp->Name,"first") ||
+				    !strcasecmp(etmp->Name,"last"))
 				    {
 				    etmp->Flags |= (EXPR_F_AGGREGATEFN | EXPR_F_AGGLOCKED);
 				    /*etmp->AggExp = expAllocExpression();*/
@@ -299,7 +305,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				/** If this was a domain declaration, remove the function entirely
 				 ** from the expression tree since it doesn't really exist
 				 **/
-				if (etmp->Flags & EXPR_F_DOMAINMASK)
+				if (!strcasecmp(etmp->Name,"runserver") || !strcasecmp(etmp->Name,"runclient") || !strcasecmp(etmp->Name,"runstatic"))
 				    {
 				    if (etmp->Children.nItems != 1)
 					{

@@ -56,10 +56,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.4 2003/04/24 02:54:48 gbeeley Exp $
+    $Id: exp_functions.c,v 1.5 2003/07/09 18:07:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.5  2003/07/09 18:07:55  gbeeley
+    Added first() and last() aggregate functions.  Strictly speaking these
+    are not truly relational functions, since they are row order dependent,
+    but are useful for summary items in a sorted setting.
+
     Revision 1.4  2003/04/24 02:54:48  gbeeley
     Added quote() function as a special case of escape().
 
@@ -1261,6 +1266,40 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
+
+int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression exp,subexp;
+
+    /** Initialize the aggexp tree? **/
+    if (!(i0->Flags & EXPR_F_NULL) && !(tree->Flags & EXPR_F_AGGLOCKED))
+        {
+	if (tree->AggCount == 0) 
+	    {
+	    expCopyValue(i0, tree, 1);
+	    }
+	tree->AggCount++;
+	}
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
+int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression exp,subexp;
+
+    /** Initialize the aggexp tree? **/
+    if (!(i0->Flags & EXPR_F_NULL) && !(tree->Flags & EXPR_F_AGGLOCKED))
+        {
+	expCopyValue(i0, tree, 1);
+	tree->AggCount++;
+	}
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
 int
 exp_internal_DefineFunctions()
     {
@@ -1293,6 +1332,8 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "sum", (char*)exp_fn_sum);
 	xhAdd(&EXP.Functions, "max", (char*)exp_fn_max);
 	xhAdd(&EXP.Functions, "min", (char*)exp_fn_min);
+	xhAdd(&EXP.Functions, "first", (char*)exp_fn_first);
+	xhAdd(&EXP.Functions, "last", (char*)exp_fn_last);
 
     return 0;
     }
