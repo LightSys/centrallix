@@ -64,10 +64,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.18 2002/09/28 01:05:30 jorupp Exp $
+    $Id: test_obj.c,v 1.19 2003/02/25 03:31:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.19  2003/02/25 03:31:39  gbeeley
+    Completed the 'help' message in test_obj.
+
     Revision 1.18  2002/09/28 01:05:30  jorupp
      * added tab completion
      * fixed bug where list/ls was relying on the pointers returned by getAttrValue being valid after another getAttrValue
@@ -306,7 +309,7 @@ int handle_tab()
     
     /** find the space, grab everything after it (or the whole thing if there is no space) **/
     i=xsFindRev(xstrInput," ",-1,0);
-    if(i==-1)
+    if(i < 0)
 	xsCopy(xstrLastInputParam,xstrInput->String,xstrInput->Length);
     else
 	xsCopy(xstrLastInputParam,xstrInput->String+i+1,xstrInput->Length-i+1);
@@ -869,7 +872,7 @@ start(void* v)
 		    while(*stringval == ' ') stringval++;
 		    while(attrname[strlen(attrname)-1] == ' ') attrname[strlen(attrname)-1]=0;
 		    type = objGetAttrType(obj,attrname);
-		    if (type == -1 || type == DATA_T_UNAVAILABLE)
+		    if (type < 0 || type == DATA_T_UNAVAILABLE)
 		        {
 		        if (*stringval >= '0' && *stringval <= '9')
 		            {
@@ -932,18 +935,18 @@ start(void* v)
 	    else if (!strcmp(cmdname,"help"))
 		{
 		printf("Available Commands:\n");
-		printf("  annot\n");
+		printf("  annot    - Add or change the annotation on an object.\n");
 		printf("  cd       - Change the current working \"directory\" in the objectsystem.\n");
-		printf("  copy     - \n");
-		printf("  create   - \n");
-		printf("  delete   - \n");
-		printf("  exec     - \n");
+		printf("  copy     - Copy one object's content to another.\n");
+		printf("  create   - Create a new object.\n");
+		printf("  delete   - Delete an object.\n");
+		printf("  exec     - Call a method on an object.\n");
 		printf("  help     - Displays this help screen.\n");
 		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
-		printf("  print    - \n");
-		printf("  query    - \n");
+		printf("  print    - Displays an object's content.\n");
+		printf("  query    - Runs a SQL query.\n");
 		printf("  quit     - Exits this application.\n");
-		printf("  show     - \n");
+		printf("  show     - Displays an object's attributes and methods.\n");
 		}
 	    else
 		{
