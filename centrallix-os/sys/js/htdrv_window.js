@@ -154,13 +154,13 @@ function wn_windowshade(l)
 	    {
 	    if (l.gshade)
 		{
-		var size = Math.ceil((pg_get_style(l,'clip.hieght')-24)*speed/duration);
+		var size = Math.ceil((getClipHeight(l)-24)*speed/duration);
 		l.working = true;
 		wn_graphical_shade(l,24,speed,size);
 		}
 	    else
 		{
-		pg_set_style(l,'clip.height',24);
+		setClipHeight(l, 24);
 		}
 	    l.shaded = true;
 	    }
@@ -174,7 +174,7 @@ function wn_windowshade(l)
 		}
 	    else
 		{
-		pg_set_style(l,'clip.height',l.orig_height);
+		setClipHeight(l, l.orig_height);
 		}
 	    l.shaded = false;
 	    }
@@ -197,38 +197,38 @@ function wn_windowshade(l)
 
 function wn_manual_unshade(l)
     {
-    l.ContentLayer.pageY += l.ContentLayer.clip.top;
-    l.ContentLayer.clip.top = 0;
+    moveBy(l.ContentLayer, 0, getClipTop(l.ContentLayer));
+    setClipTop(l.ContentLayer, 0);
     }
 
 function wn_graphical_shade(l,to,speed,size)
     {
-    var height = pg_get_style(l,'clip.height');
+    var height = getClipHeight(l);
     if (to < height)
     	{
 	if (height - size < to)
 	    {
-	    pg_set_style(l,'clip.height',to);
+	    setClipHeight(l, to);
 	    l.working = false;
 	    return;
 	    }
 	else
-	    pg_set_style(l,'clip.height',height-size);
-	pg_set_style(l.ContentLayer,'clip.top',pg_get_style(l.ContentLayer,'clip.top')+size);
-	pg_set_style(l.ContentLayer,'pageY',pg_get_style(l.ContentLayer,'pageY')-size);
+	    setClipHeight(l, height - size);
+	setClipTop(l.ContentLayer, getClipTop(l.ContentLayer) + size);
+	moveBy(l.ContentLayer, 0, -size);
 	}
     else
         {
 	if (height + size > to)
 	    {
-	    pg_set_style(l,'clip.height',to);
+	    setClipHeight(l, to);
 	    l.working = false;
 	    return;
 	    }
 	else
-	    pg_set_style(l,'clip.height',height+size);
-	pg_set_style(l.ContentLayer,'clip.top',pg_get_style(l.ContentLayer,'clip.top')-size);
-	pg_set_style(l.ContentLayer,'pageY',pg_get_style(l.ContentLayer,'pageY')+size);
+	    setClipHeight(l, height + size);
+	setClipTop(l.ContentLayer, getClipTop(l.ContentLayer) - size);
+	moveBy(l.ContentLayer, 0, size);
 	}
     setTimeout(wn_graphical_shade,speed,l,to,speed,size);
     }
@@ -271,27 +271,26 @@ function wn_graphical_close(l,speed,sizeX,sizeY)
     {
     if (sizeX > 0)
     	{
-	l.clip.right -= sizeX;
-	l.clip.left += sizeX;
+	setClipRight(l, getClipRight(l) - sizeX);
+	setClipLeft(l, getClipLeft(l) + sizeX);
 	if (getClipWidth(l) <= 0) var reset = true;
 	}
     if (sizeY > 0)
     	{
-	l.clip.bottom -= sizeY;
-	l.clip.top += sizeY;
+	setClipBottom(l, getClipBottom(l) - sizeY);
+	setClipTop(l, getClipTop(l) + sizeY);
 	if (getClipHeight(l)<= 0) var reset = true;
 	}
     if (reset)
     	{
 	    l.visibility = 'hidden';
 	    setClipWidth(l, l.orig_width);
-	    l.clip.right = l.orig_right;
-	    l.clip.left = l.orig_left;
-	    l.clip.height = l.orig_height;
-	    l.clip.bottom = l.orig_bottom;
-	    l.clip.top = l.orig_top;
+	    setClipRight(l, l.orig_right);
+	    setClipLeft(l, l.orig_left);
+	    setClipHeight(l, l.orig_height);
+	    setClipBottom(l, l.orig_bottom);
+	    setClipTop(l, l.orig_top);
 	    ft = new Date();
-//	    alert(ft-st);
 	    if (l.shaded) wn_manual_unshade(l);
 	    return;
 	}
@@ -300,7 +299,7 @@ function wn_graphical_close(l,speed,sizeX,sizeY)
 
 function wn_togglevisibility(aparam)
     {
-    if (this.visibility == 'hide')
+    if (htr_getvisibility(this) != 'inherit')
 	{
 	//aparam.IsVisible = 1;
 	//this.ActionSetVisibility(aparam);
