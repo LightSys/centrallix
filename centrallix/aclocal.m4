@@ -37,9 +37,11 @@ AC_DEFUN(CENTRALLIX_CHECK_READLINE,
     ]
 )
 
-dnl Test for the Centrallix header and library files.
+dnl Test for the Centrallix-LIB header and library files.
 AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
     [
+	centrallix_incdir="$prefix/include"
+	centrallix_libdir="$prefix/lib"
 	AC_ARG_WITH(centrallix-inc,
 	    AC_HELP_STRING([--with-centrallix-inc=DIR],
 		[Location of centrallix-libs include directory (default is PREFIX/include)]
@@ -47,6 +49,9 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 	    centrallix_incdir="$withval",
 	    centrallix_incdir="$prefix/include"
 	)
+	if test "$centrallix_incdir" = "NONE/include"; then
+	    centrallix_incdir="$ac_default_prefix/include"
+	fi
 
  	CFLAGS="$CFLAGS -I$centrallix_incdir"
  	CPPFLAGS="$CPPFLAGS -I$centrallix_incdir"
@@ -54,6 +59,7 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 	    [],
  	    AC_MSG_ERROR([Please ensure that Centrallix-libs is installed and use --with-centrallix-inc=DIR to specify the path to the header files])
  	)
+	AC_SUBST(CXINCDIR, $centrallix_incdir)
 
 	AC_ARG_WITH(centrallix-lib,
 	    AC_HELP_STRING([--with-centrallix-lib=DIR],
@@ -63,6 +69,9 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 	    centrallix_libdir="$prefix/lib"
 	)
 	centrallix_libdir="`echo $centrallix_libdir | sed 's|/+|/|g'`"
+	if test "$centrallix_libdir" = "NONE/lib"; then
+	    centrallix_libdir="$ac_default_prefix/lib"
+	fi
 
 	temp=$LIBS
  	LIBS="$LIBS -L$centrallix_libdir"

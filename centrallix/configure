@@ -4090,6 +4090,8 @@ echo "${ECHO_T}$WITH_DYNAMIC_LOAD" >&6
 
 
 
+	centrallix_incdir="$prefix/include"
+	centrallix_libdir="$prefix/lib"
 
 # Check whether --with-centrallix-inc or --without-centrallix-inc was given.
 if test "${with_centrallix_inc+set}" = set; then
@@ -4099,6 +4101,9 @@ else
   centrallix_incdir="$prefix/include"
 
 fi;
+	if test "$centrallix_incdir" = "NONE/include"; then
+	    centrallix_incdir="$ac_default_prefix/include"
+	fi
 
  	CFLAGS="$CFLAGS -I$centrallix_incdir"
  	CPPFLAGS="$CPPFLAGS -I$centrallix_incdir"
@@ -4213,6 +4218,8 @@ echo "$as_me: error: Please ensure that Centrallix-libs is installed and use --w
 fi
 
 
+	CXINCDIR=$centrallix_incdir
+
 
 
 # Check whether --with-centrallix-lib or --without-centrallix-lib was given.
@@ -4224,6 +4231,9 @@ else
 
 fi;
 	centrallix_libdir="`echo $centrallix_libdir | sed 's|/+|/|g'`"
+	if test "$centrallix_libdir" = "NONE/lib"; then
+	    centrallix_libdir="$ac_default_prefix/lib"
+	fi
 
 	temp=$LIBS
  	LIBS="$LIBS -L$centrallix_libdir"
@@ -6384,6 +6394,7 @@ s,@INSTALL_DATA@,$INSTALL_DATA,;t t
 s,@EXPORT_DYNAMIC@,$EXPORT_DYNAMIC,;t t
 s,@CPP@,$CPP,;t t
 s,@LIBOBJS@,$LIBOBJS,;t t
+s,@CXINCDIR@,$CXINCDIR,;t t
 s,@CXLIBDIR@,$CXLIBDIR,;t t
 s,@CXOSDIR@,$CXOSDIR,;t t
 s,@DRIVERLIST@,$DRIVERLIST,;t t

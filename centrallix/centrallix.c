@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.17 2003/03/30 22:49:24 jorupp Exp $
+    $Id: centrallix.c,v 1.18 2003/04/03 21:01:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.18  2003/04/03 21:01:23  gbeeley
+    Fixed make depend to include header dependencies on centrallix-lib
+    headers that sometimes change during development.  Fixed autoconf
+    settings to correctly detect default centrallix-lib directories.
+    Had centrallix.c exit() instead of _exit() since it is truly
+    terminating the process, thus allowing gmon.out to be written.
+
     Revision 1.17  2003/03/30 22:49:24  jorupp
      * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
 
@@ -300,7 +307,7 @@ void cxShutdownThread(void *v)
 	if(handler)
 	    handler();
 	}
-    _exit(0);
+    exit(0);
     thExit();
     }
 

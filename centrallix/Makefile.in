@@ -347,10 +347,10 @@ distreallyclean: distclean
 
 depend:	.depend
 
-.depend: *.[ch] */*.[ch] */*/*.[ch]
+.depend: *.[ch] */*.[ch] */*/*.[ch] @CXINCDIR@/*.h
 	@echo "Rebuilding dependencies..."
-	@makedepend -o.o -Yinclude -I . -I $(CXLIBDIR)/include -f - *.c */*.c */*/*.c >.depend 2>/dev/null
-	@makedepend -o.so -Yinclude -I . -I $(CXLIBDIR)/include -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
+	@makedepend -o.o -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >.depend 2>/dev/null
+	@makedepend -o.so -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
 
 .subbuild:
 	@echo '1' >.subbuild
