@@ -46,10 +46,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.4 2003/05/30 17:39:48 gbeeley Exp $
+    $Id: exp_generator.c,v 1.5 2004/02/24 20:02:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.5  2004/02/24 20:02:26  gbeeley
+    - adding proper support for external references in an expression, so
+      that they get re-evaluated each time.  Example - getdate().
+    - adding eval() function but no implementation at this time - it is
+      however supported for runclient() expressions (in javascript).
+    - fixing some quoting issues
+
     Revision 1.4  2003/05/30 17:39:48  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -119,6 +126,18 @@ exp_internal_WriteText(pExpGen eg, char* text)
 	    if (*text == eg->EscChar || *text == '\\')
 	        {
 		*(ptr++) = '\\';
+		}
+	    if (eg->EscChar == '\\' && (*text == '\r' || *text == '\n' || *text == '\t'))
+		{
+		*(ptr++) = '\\';
+		switch(*text)
+		    {
+		    case '\r': *(ptr++) = 'r'; break;
+		    case '\n': *(ptr++) = 'n'; break;
+		    case '\t': *(ptr++) = 't'; break;
+		    }
+		text++;
+		continue;
 		}
 	    *(ptr++) = *(text++);
 	    }
@@ -575,9 +594,9 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 
 	    case EXPR_N_STRING:
 	        if (eg->EscChar == '"')
-		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_SINGLE));
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_SINGLE | DATA_F_CONVSPECIAL));
 		else
-		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED));
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_CONVSPECIAL));
 		break;
 
 	    case EXPR_N_DOUBLE:

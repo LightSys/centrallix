@@ -66,10 +66,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.9 2003/06/27 21:19:47 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.10 2004/02/24 20:02:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.10  2004/02/24 20:02:26  gbeeley
+    - adding proper support for external references in an expression, so
+      that they get re-evaluated each time.  Example - getdate().
+    - adding eval() function but no implementation at this time - it is
+      however supported for runclient() expressions (in javascript).
+    - fixing some quoting issues
+
     Revision 1.9  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -1443,7 +1450,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
 	    objlist->CurControl = tree->Control;
-	    objlist->ModCoverageMask = 0;
+	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->PSeqID != objlist->PSeqID) 
 		{
 		objlist->ModCoverageMask = 0xFFFFFFFF;

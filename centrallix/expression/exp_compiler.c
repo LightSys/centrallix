@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.8 2003/07/09 18:07:55 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.9 2004/02/24 20:02:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.9  2004/02/24 20:02:26  gbeeley
+    - adding proper support for external references in an expression, so
+      that they get re-evaluated each time.  Example - getdate().
+    - adding eval() function but no implementation at this time - it is
+      however supported for runclient() expressions (in javascript).
+    - fixing some quoting issues
+
     Revision 1.8  2003/07/09 18:07:55  gbeeley
     Added first() and last() aggregate functions.  Strictly speaking these
     are not truly relational functions, since they are row order dependent,
@@ -353,7 +360,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			etmp2->Name = mlxStringVal(lxs,&(etmp2->NameAlloc));
 			etmp2->Parent = etmp;
 			etmp2->ObjID = -1;
-			etmp2->ObjCoverageMask = 0;
+			etmp2->ObjCoverageMask = EXPR_MASK_EXTREF;
 			if (cmpflags & EXPR_CMP_RUNSERVER) etmp2->Flags |= EXPR_F_RUNSERVER;
 			if (cmpflags & EXPR_CMP_RUNCLIENT) etmp2->Flags |= EXPR_F_RUNCLIENT;
 			xaAddItem(&etmp->Children, (void*)etmp2);
@@ -457,6 +464,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			    {
 			    objlist->Flags[i] |= EXPR_O_REFERENCED;
 			    etmp->ObjCoverageMask |= (1<<(i));
+			    }
+			else
+			    {
+			    /** FIXME: we should have more intelligent handling of stuff not known at compile time **/
+			    etmp->ObjCoverageMask = 0xFFFFFFFF;
 			    }
                         break;
     
@@ -756,6 +768,12 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    exp->ObjCoverageMask |= subexp->ObjCoverageMask;
 	    }
 
+	/** Coverage mask for direct references (incl getdate() and user_name()) **/
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate")))
+	    {
+	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
+	    }
+
     return 0;
     }
 
@@ -921,6 +939,16 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 		    break;
 		    }
 		}
+	    if (exp->ObjID == -1)
+		{
+		cm |= EXPR_MASK_EXTREF;
+		}
+	    }
+
+	/** Check for absolute references in functions **/
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name")))
+	    {
+	    cm |= EXPR_MASK_EXTREF;
 	    }
 
 	/** Loop through subnodes in the tree to process them as well. **/

@@ -56,10 +56,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.5 2003/07/09 18:07:55 gbeeley Exp $
+    $Id: exp_functions.c,v 1.6 2004/02/24 20:02:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.6  2004/02/24 20:02:26  gbeeley
+    - adding proper support for external references in an expression, so
+      that they get re-evaluated each time.  Example - getdate().
+    - adding eval() function but no implementation at this time - it is
+      however supported for runclient() expressions (in javascript).
+    - fixing some quoting issues
+
     Revision 1.5  2003/07/09 18:07:55  gbeeley
     Added first() and last() aggregate functions.  Strictly speaking these
     are not truly relational functions, since they are row order dependent,
@@ -951,6 +958,13 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    mssError(1,"EXP","eval() function not supported.");
+    return -1;
+    }
+
+
 int exp_fn_count(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -1326,6 +1340,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
+	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
 
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
