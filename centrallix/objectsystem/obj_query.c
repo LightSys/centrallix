@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.5 2003/05/30 17:39:52 gbeeley Exp $
+    $Id: obj_query.c,v 1.6 2003/07/09 18:05:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.6  2003/07/09 18:05:59  gbeeley
+    Interim fix for 'order by' causing objects to be fetched differently
+    because of the query-sort-reopen logic.  Now uses open-as to reopen
+    objects in a way that won't cause other drivers to be invoked.
+
     Revision 1.5  2003/05/30 17:39:52  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -523,7 +528,7 @@ objQueryFetch(pObjQuery this, int mode)
     pObject obj;
     void* obj_data;
     char* name;
-    char buf[OBJSYS_MAX_PATH];
+    char buf[OBJSYS_MAX_PATH + 32];
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
@@ -563,7 +568,7 @@ objQueryFetch(pObjQuery this, int mode)
 	if (this->Flags & OBJ_QY_F_FROMSORT)
 	    {
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
-	    snprintf(buf,256,"%s/%s",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
+	    snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
 	    obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8X:%3.3s:%s\n", (int)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
