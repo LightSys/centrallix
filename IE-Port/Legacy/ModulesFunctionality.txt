@@ -1,0 +1,154 @@
+Document:  Modules and Functionality Roadmap and Timeframes
+Author:    Greg Beeley (GRB)
+Date:      June 15, 1999
+-------------------------------------------------------------------------------
+
+I   GENERAL FUNCTIONALITY
+
+    The following are desired pieces of general functionality, along with the
+    various 'internal' features/modules that are needed to make that function-
+    ality first of all basically operational, and secondly fully fleshed out.
+
+    FUNCTIONALITY AND DESCRIPTION			STATUS		TIME
+    ================================================	============	=======
+
+    A.  REPORTING SYSTEM - BASIC			IN PROGRESS	12d 4h
+
+        1.  Database connectivity			COMPLETE
+
+	2.  Report Generator				IN PROGRESS	2d 4h
+
+	    a.  Basic tabular & form output		COMPLETE
+	    b.  Summary data items			NOT STARTED	2d
+	    c.  Proportional printing in output		IN PROGRESS
+	    d.  Paper orientation support		NOT STARTED	4h
+	
+	3.  SQL Query Engine (multiquery)		IN PROGRESS	9d 4h
+
+	    a.  Basic query support			COMPLETE
+	    b.  Computed / constant fields		COMPLETE
+	    c.  Join support				COMPLETE
+	    d.  Outer-join support			COMPLETE
+	    e.  Order-by support			COMPLETE
+	    f.  Group-by support, aggregates		IN PROGRESS	2d
+	    g.  Having clause support			IN PROGRESS	4h
+	    h.  Union query support			IN PROGRESS	2d
+	    i.  Crosstab query support			IN PROGRESS	2d
+	    J.  Subquery support			IN PROGRESS	3d
+
+	4.  Printing output generators			COMPLETE
+
+	    a.  Epson-FX compatible			COMPLETE
+	    b.  HP PCL compatible			COMPLETE
+	    c.  HTML output				COMPLETE
+	    d.  Textonly output				COMPLETE
+	    e.  Fix multicolumn output bug		NOT STARTED	4h
+
+
+    B.  OPEN-AS and IS-A OSML UPDATE			NOT STARTED	7d 6h
+
+        1.  Set up is-a registry			NOT STARTED	6h
+	2.  Add open-as-type syntax to pathname		NOT STARTED	2d
+	3.  Add rootnode object				NOT STARTED	4h
+	4.  Update obj drivers for new node access	NOT STARTED	1d
+	5.  Update st_node and stparse			NOT STARTED	4h
+	6.  Add security features to open-as		NOT STARTED	3d
+
+
+    C.  ON-LINE HELP SYSTEM				IN PROGRESS	3d 4h
+
+        1.  HTML dynamic page generator			COMPLETE
+	
+	    a.  TreeView control			COMPLETE
+	    b.  HTML page control			COMPLETE
+	    c.  Command button control			COMPLETE
+	    d.  Scrollable area control			COMPLETE
+	    e.  Event-Target-Action linkage control	COMPLETE
+	    f.  Frames control				COMPLETE
+	
+	2.  Database blob support			COMPLETE
+
+	    a.  Retrieve blob from database		COMPLETE
+	    b.  Update blob in database			COMPLETE
+
+	3.  End-User process integration		NOT STARTED	2d 4h
+
+	    a.  Driver to initiate applications		NOT STARTED	1d
+	    b.  HTML widget to interface w/ web page	NOT STARTED	4h
+	    c.  End-User Module to init apps		NOT STARTED	1d
+
+	4.  Network interface				IN PROGRESS	1d
+	
+	    a.  GET support - retrieve html page	COMPLETE
+	    b.  PUT support - update html page		COMPLETE
+	    c.  POST support - update data items	NOT STARTED	1d
+
+
+    D.  INTEGRATED DEVELOPMENT ENVIRONMENT		NOT STARTED	31d 6h
+
+        1.  Property sheets for all objects		NOT STARTED	5d
+	2.  Report designer html application		NOT STARTED	8d
+	3.  App designer html application		NOT STARTED	8d
+	4.  Additional HTML widgets			NOT STARTED	3d
+
+	    a.  MessageBox html control			NOT STARTED	1d
+	    b.  DirectoryList html control		NOT STARTED	1d
+	    c.  Menu html control			IN PROGRESS	1d
+	    d.  Form html control			NOT STARTED	1d
+	
+	5.  REQUIRES OPEN-AS IS-A OSML UPDATE		NOT STARTED	(7d 6h)
+
+
+    E.  JDBC ACCESS TO LIGHTSERVER			NOT STARTED	19d
+
+        1.  OpenServer network interface		NOT STARTED	15d
+	2.  SQL Translation from SQL92 to LS-SQL	NOT STARTED	4d
+
+
+    F.  LIGHTSERVER TRIGGERS AND SCRIPTING		NOT STARTED	24d
+
+        1.  Scripting language (SQL/JavaScript)		NOT STARTED	22d
+
+	    a.  Parser					NOT STARTED	10d
+	    b.  Executive				NOT STARTED	5d
+	    c.  Run-Time Libraries			NOT STARTED	5d
+	    d.  Security mechanisms			NOT STARTED	2d
+
+	2.  Trigger mechanism				NOT STARTED	2d
+
+	    a.  Trigger registry			NOT STARTED	1d
+	    b.  OSML event linkages for triggers	NOT STARTED	1d
+
+
+    G.  WEB-BASED EMAIL SYSTEM				NOT STARTED	25d 6h
+
+        1.  New ObjectSystem Drivers			NOT STARTED	13d
+	
+	    a.  POP3 or IMAP4 Driver			NOT STARTED	3d
+	    b.  SMTP Driver				NOT STARTED	2d
+	    c.  Mail folder driver			NOT STARTED	3d
+	    d.  Mail message driver w/ MIME/UUE		NOT STARTED	3d
+	    e.  LDAP Driver				NOT STARTED	2d
+
+	2.  REQUIRES OPEN-AS IS-A OSML UPDATE		NOT STARTED	(7d 6h)
+
+	3.  Email interface html application		NOT STARTED	5d
+
+
+    H.  WEB-BASED CALENDARING SYSTEM			NOT STARTED	11d 4h
+
+        1.  Calendaring html application		NOT STARTED	5d
+	2.  Calendar OSML translation driver		NOT STARTED	3d
+	3.  New HTML generator widgets			NOT STARTED	3d 4h
+
+	    a.  Calendar widget				NOT STARTED	2d
+	    b.  Tabular-list widget			NOT STARTED	6h
+	    c.  Time-Slots widget			NOT STARTED	6h
+
+
+    I.  WEB-BASED SYSTEM ADMINISTRATION			NOT STARTED	16d
+
+        1.  Linuxconf-aware objectsystem driver		NOT STARTED	8d
+	2.  Object property sheets (see IDE)		NOT STARTED	(5d)
+	3.  Directory-list html control (see IDE)	NOT STARTED	(1d)
+	4.  Global-user-manager objectsystem driver	NOT STARTED	2d
