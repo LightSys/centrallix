@@ -574,6 +574,15 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     l.childimgs = '';
     l.collapse=tv_collapse;
     l.expand=tv_expand;
+
+    // Actions
+    l.ActionSetRoot = tv_action_setroot;
+    l.ActionSetFocus = tv_action_setfocus;
+
+    l.is_initialized = true;
+
+    // Auto expand if not showing root, otherwise what's the use?
+    if (htr_getvisibility(l) != 'inherit') l.root.expand();
     }
 
 function tv_expand()
