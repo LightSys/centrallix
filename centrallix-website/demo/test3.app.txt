@@ -1,0 +1,166 @@
+test3 "widget/page"
+    {
+    // (c) 2001 LightSys Technology Services, Inc.  See LICENSE.txt for redistribution conditions.
+    background="slate_striped.png"
+    bgcolor = white
+    win1 "widget/htmlwindow"
+        {
+	style=window
+	titlebar = yes
+	visible = yes
+	x = 480
+	y = 100
+	width = 200
+	height = 200
+	hdr_bgcolor='#206088'
+	bgcolor=black
+	btn2 "widget/textbutton"
+	    {
+	    text = "This test button"
+	    x = 20
+	    y = 2
+	    width = 100
+	   // bgcolor = '#c0c0c0'
+	    fgcolor1=white
+	    fgcolor2=navy
+	    tristate = no
+	    }
+	}
+    win2 "widget/htmlwindow"
+        {
+	style=dialog
+	visible = yes
+	x = 480
+	y = 340
+	width = 200
+	height = 200
+	hdr_bgcolor='#209088'
+	bgcolor='#c0c0c0'
+	titlebar=yes
+	}
+    pane1 "widget/pane"
+        {
+	x = 20
+	y = 20
+	width = 400
+	height = 40
+	background = 'red_slate2.png'
+	style = raised
+	//tbl1 "widget/table"
+	//    {
+	//    width = 398
+	//    outer_border=1
+	//    sql = "select :name, :size from /tmp"
+	//    }
+	}
+    tab1 "widget/tab"
+        {
+	x = 20
+	y = 80
+	background="slate2.png"
+	width=400
+	height=400
+	selected=page1
+	page1 "widget/tabpage"
+	    {
+	    title = "&nbsp;<B>This&nbsp;is&nbsp;tab&nbsp;page&nbsp;1</B>&nbsp;"
+	    pane2 "widget/pane"
+	        {
+		x = 3
+		y = 3
+		width = 392
+		height = 392
+		style = lowered
+		spane3 "widget/scrollpane"
+		    {
+		    x = 0
+		    y = 0
+		    width = 390
+		    height = 390
+		    html1 "widget/html"
+		        {
+		    	mode = dynamic
+		        x = 0
+		        y = 0
+		        width = 372
+		    	source = "http://centrallix.sourceforge.net/index_main.html"
+		    	}
+		    }
+		}
+	    }
+	page2 "widget/tabpage"
+	    {
+	    btn1 "widget/textbutton"
+	        {
+		text = "This test button"
+		x = 20
+		y = 2
+		width = 100
+		//bgcolor = '#c0c0c0'
+		background='grey_gradient.png'
+		fgcolor1=navy
+		fgcolor2=white
+		tristate = no
+		}
+	    tab2 "widget/tab"
+	        {
+		x = 20
+		y = 100
+		//background="slate.png"
+		bgcolor="#c0c0c0"
+		width=360
+		height=200
+		textcolor=black
+		subpage1 "widget/tabpage"
+		    {
+		    scroll1 "widget/scrollpane"
+		        {
+			x = 0
+			y = 0
+			width=358
+			height=198
+			tbl2 "widget/table"
+			    {
+			    width=342
+			    //bgcolor = '#808080'
+			    //background = 'slate.png'
+			    row_bgcolor1 = '#d0d0d0'
+			    row_bgcolor2 = '#e0e0e0'
+			    hdr_background = 'slate.png'
+			    //textcolor = black
+			    titlecolor = white
+			    inner_border=4
+			    inner_padding=1
+			    //outer_border=0
+			    sql = "select first_name='first name', last_name='last name', id='id', key='key'"
+			    //width = 340
+			    first_name "widget/table-column" { width = 15 title = "First Name" }
+			    last_name "widget/table-column" { width = 10 title = "Last Name" }
+			    id "widget/table-column" { width = 10 title = "ID#" }
+			    key "widget/table-column" { width = 10 title = "Key Code" }
+			    }
+			}
+		    }
+		subpage2 "widget/tabpage"
+		    {
+		    }
+		subpage3 "widget/tabpage"
+		    {
+		    }
+		subpage4 "widget/tabpage"
+		    {
+		    scroll1 "widget/scrollpane"
+		        {
+			x = 0
+			y = 0
+			width=358
+			height=198
+			}
+		    }
+		}
+	    }
+	page3 "widget/tabpage"
+	    {
+	    }
+	}
+    }

@@ -1,0 +1,122 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <title>Centrallix - For Developers</title>
+</head>
+<body bgcolor="white">
+
+    <table border=0 cellspacing=0 cellpadding=12><tr><td>
+
+	<small><a href="#roadmap">[Roadmap]</a> <a href="#start">[Getting Started]</a> <br><br><br></small>
+	<a name="roadmap"></a>
+	<font size="+2">Development Roadmap....</font>
+	<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
+
+	<p>So, where do we go from here?  If you're interested in helping to develop the Centrallix
+	application server, take a look at this development roadmap and see if there's a place in
+	the development effort that would fit your skills and interests well.  Also take a look
+	at the <a href="details.html">detailed features list</a> for suggestions.  Furthermore,
+	please note that the priorities assigned to the tasks on this page are only approximate...
+	if there is a low-priority task (or a task slated for inclusion in a distant future
+	version) you want to work on, definitely go for it!</p>
+
+	<p>This list was built at or around version 0.7.0.</p>
+
+	<ul><li><b>For semi-stable prerelease 0.8</b>
+	        <ul><li>Completion of some key objectsystem drivers: SMTP, NNTP, POP3, IMAP, 
+		        MAILMSG (MIME), QUERY, flat datafile, indexed file.</li>
+		    <li>Completion of the new printmgt module (for reporting)</li>
+		    <li>Conversion of the htmlgen modules to a themable and browser-sensitive
+		        mode of operation, as well as three-stage generation instead of just
+			two-stage generation (needed for property sheet generator registry
+			later on).</li>
+		    <li>Addition of scripting facilities (Javascript engine)</li>
+		    <li>Basic completion of the SQL engine (add insert/update/delete operations)</li>
+		    <li>Completion of scripting, form elements, and OSML/JS client side integration</li>
+		    <li>The use of the pseudo-object-names "*" and "?" to create new auto-primary-key
+		        objects and query a list of potential object properties, respectively.</li>
+		</ul>
+	    </li>
+	    <br>
+	    <li><b>For stable release 1.0</b>
+	        <ul><li>Addition of new objectsystem drivers: MySQL, PostgreSQL, as well as grouping
+		        MySQL, PostgreSQL, and Sybase-CT drivers under a SQL DB meta-objectsystem
+			driver to make the writing of further SQL DB drivers far easier.</li>
+		    <li>Possible new network interfaces: HTTPS, CORBA, NFS.</li>
+		    <li>The ability in the OSML for underlying objects to trigger events asynchronously.</li>
+		    <li>Triggers and stored procedures within the OSML</li>
+		    <li>SQL extensions for the MQ module: UNION, HAVING, high-level ORDER/GROUP/etc, subqueries</li>
+		    <li>Object property sheet generators and property sheet / icon registry</li>
+		    <li>The BQDS, Batchable Query Data Service, network protocol for interfacing
+		        directly between Centrallix servers (and perhaps more, later on).  This
+			is a network interface AND an objectsystem driver.</li>
+		    <li>An objectsystem driver for XML.</li>
+		    <li>Completion of "proper" transaction support for the OSML.</li>
+		</ul>
+	    </li>
+	    <br>
+	    <li><b>For stable release 1.2</b>
+	        <ul><li>Replication support within the OSML</li>
+		    <li>A GUI graphical design IDE for development of Centrallix applications, reports,
+		        and so forth.</li>
+		    <li>Connectivity via JDBC, ODBC, and other means (use BQDS?).</li>
+		    <li>Dynamic module loading and configuration</li>
+		</ul>
+	    </li
+	    <br>
+	</ul>
+
+	<br>
+
+	<a name="start"></a>
+	<font size="+2">Getting Started Developing Centrallix....</font>
+	<table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
+
+	<p>This section is designed to acquaint you with getting started in the development of
+	Centrallix components, objectsystem drivers, and the like.</p>
+	
+	<p>First, drop me (<a href="mailto:Greg.Beeley@LightSys.org">Greg</a>), or another 
+	project manager, an email describing what you'd like to do in Centrallix.  Then,
+	be sure you have retrieved all five Centrallix packages from CVS (core, sysdoc, doc,
+	lib, and os) and make sure you have Centrallix basically operational on your system.
+	If you've never developed Centrallix before, you'll probably want to work with an
+	anonymously checked-out copy of the source for a while to get used to things before
+	you get developer (read/write) access to CVS from us.  But, if you are going to be a
+	long-term Centrallix core developer, please let us know.</p>
+
+	<p>If you need help learning CVS, see the good documentation that SourceForge has
+	on this topic.  Also, there is a very good CVS online book available (the full
+	book is also available in stores).</p>
+
+	<p>Next, make sure you are subscribed to one or more of the mailing lists, particularly
+	centrallix-devel.  Once your new module is in the source code tree and is in wide
+	use, you will want to subscribe to centrallix-users in order to help people who may
+	have questions about your module.  The centrallix-announce list is also a good one
+	to be on.</p>
+
+	<p>Be sure to read some of the key documentation files.  For all development, read the
+	CodingStandards.txt file in the sysdoc package as well as the Terminology.txt file
+	in that same package.  If you want to use the same coding style as most of the rest
+	of the core, read BeeleyCodingStyle.txt as well.  If you are writing a new 
+	objectsystem driver, read the OSDriver_Authoring.txt file and refer to the OBJDRV_PROTOTYPE.c
+	stub driver file.</p>
+
+	<p>All modules have a two-to-five letter prefix which makes that module unique among
+	the available modules.  If you are writing a new module (os driver, etc.), you will want to chose a
+	unique prefix for it.  See the Prefixes.txt file in the sysdoc package for a list of current
+	prefixes that are in use.  You may also want to grep through the source files looking for
+	"^prefixInitialize" to see if someone forgot to add their prefix to Prefixes.txt.  While you're
+	at it, be sure to add your prefix to Prefixes.txt ;) and CVS commit Prefixes.txt (or if you don't
+	have read/write access to CVS yet, send your prefix to me in an email).</p>
+
+	<p>While developing, make sure you compile Centrallix and its libraries with debugging
+	enabled (-g in CFLAGS).  Also, you may find the test_obj program useful for interactive
+	testing of the OSML at the command line.</p>
+
+	<br>
+
+    <br><br><hr><i><small>(c) 2001 LightSys Technology Services, Inc.  See <a href="LICENSE.txt">LICENSE.txt</a> for redistribution conditions.</small></i>
+    </td></tr></table>
+
+</body>
+</html>

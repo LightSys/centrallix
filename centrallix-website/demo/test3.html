@@ -1,0 +1,1206 @@
+<HTML>
+<!-- (c) 2001 LightSys Technology Services, Inc.  See LICENSE.txt for redistribution conditions. -->
+<HEAD>
+    <STYLE TYPE="text/css">
+        #pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}
+        #pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}
+        #pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}
+        #pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}
+        #pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:1; Z-INDEX:0; }
+        #pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}
+        #pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}
+        #pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}
+        #pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}
+        #pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#wn0base { POSITION:absolute; VISIBILITY:inherit; LEFT:480; TOP:100; WIDTH:200; HEIGHT:200; clip:rect(200,200); Z-INDEX:11; }
+	#wn0main { POSITION:absolute; VISIBILITY:inherit; LEFT:2; TOP:24; WIDTH:196; HEIGHT:174; clip:rect(196,174); Z-INDEX:12; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tb0pane { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:2; WIDTH:100; Z-INDEX:13; }
+	#tb0pane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:-1; TOP:-1; WIDTH:99; Z-INDEX:14; }
+	#tb0top { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:100; Z-INDEX:15; }
+	#tb0btm { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:100; Z-INDEX:15; }
+	#tb0rgt { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:15; }
+	#tb0lft { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:15; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#wn1base { POSITION:absolute; VISIBILITY:inherit; LEFT:480; TOP:340; WIDTH:200; HEIGHT:200; clip:rect(200,200); Z-INDEX:11; }
+	#wn1main { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:25; WIDTH:198; HEIGHT:174; clip:rect(198,174); Z-INDEX:12; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#pn0base { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:20; WIDTH:400; Z-INDEX:11; }
+	#pn0main { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:398; Z-INDEX:12; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc0base { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:104; WIDTH:400; Z-INDEX:12; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc0tab1 { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:80; WIDTH:1; Z-INDEX:13; }
+	#tc0pane1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:398; Z-INDEX:13; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#pn1base { POSITION:absolute; VISIBILITY:inherit; LEFT:3; TOP:3; WIDTH:392; Z-INDEX:14; }
+	#pn1main { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:390; Z-INDEX:15; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#sp0pane { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:390; HEIGHT:390; clip:rect(390,390); Z-INDEX:16; }
+	#sp0area { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:372; Z-INDEX:17; }
+	#sp0thum { POSITION:absolute; VISIBILITY:inherit; LEFT:372; TOP:18; WIDTH:18; Z-INDEX:17; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#ht0pane { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:372; Z-INDEX:18; }
+	#ht0pane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; WIDTH:372; Z-INDEX:18; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc0tab2 { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:80; WIDTH:1; Z-INDEX:11; }
+	#tc0pane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:398; Z-INDEX:13; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tb1pane { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:2; WIDTH:100; Z-INDEX:14; }
+	#tb1pane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:-1; TOP:-1; WIDTH:99; Z-INDEX:15; }
+	#tb1top { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:100; Z-INDEX:16; }
+	#tb1btm { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:100; Z-INDEX:16; }
+	#tb1rgt { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:16; }
+	#tb1lft { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:16; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc1base { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:124; WIDTH:360; Z-INDEX:15; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc1tab1 { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:100; WIDTH:1; Z-INDEX:16; }
+	#tc1pane1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:358; Z-INDEX:16; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#sp1pane { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:358; HEIGHT:198; clip:rect(358,198); Z-INDEX:17; }
+	#sp1area { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:340; Z-INDEX:18; }
+	#sp1thum { POSITION:absolute; VISIBILITY:inherit; LEFT:340; TOP:18; WIDTH:18; Z-INDEX:18; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc1tab2 { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:100; WIDTH:1; Z-INDEX:14; }
+	#tc1pane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:358; Z-INDEX:16; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc1tab3 { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:100; WIDTH:1; Z-INDEX:14; }
+	#tc1pane3 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:358; Z-INDEX:16; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc1tab4 { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:100; WIDTH:1; Z-INDEX:14; }
+	#tc1pane4 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:358; Z-INDEX:16; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#sp2pane { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:358; HEIGHT:198; clip:rect(358,198); Z-INDEX:17; }
+	#sp2area { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; WIDTH:340; Z-INDEX:18; }
+	#sp2thum { POSITION:absolute; VISIBILITY:inherit; LEFT:340; TOP:18; WIDTH:18; Z-INDEX:18; }
+    </STYLE>
+    <STYLE TYPE="text/css">
+	#tc0tab3 { POSITION:absolute; VISIBILITY:inherit; LEFT:20; TOP:80; WIDTH:1; Z-INDEX:11; }
+	#tc0pane3 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:398; Z-INDEX:13; }
+    </STYLE>
+
+</HEAD>
+<SCRIPT language=javascript>
+
+
+var page = new Object();
+var pg_arealist = new Array();
+var pg_keylist = new Array();
+var pg_curarea = null;
+var pg_curlayer = null;
+var pg_curkbdlayer = null;
+var pg_curkbdarea = null;
+var pg_lastkey = -1;
+var wn_top_z = 10000;
+var wn_list = null;
+var wn_current = null;
+var wn_newx = null;
+var wn_newy = null;
+var wn_topwin = null;
+var wn_msx = null;
+var wn_msy = null;
+var wn_moved = 0;
+var win1 = null;
+var btn2 = null;
+var win2 = null;
+var pane1 = null;
+var tab1 = null;
+var tc_tabs = null;
+var page1 = null;
+var pane2 = null;
+var sp_target_img = null;
+var sp_click_x = 0;
+var sp_click_y = 0;
+var sp_thum_y = 0;
+var sp_mv_timeout = null;
+var sp_mv_incr = 0;
+var spane3 = null;
+var html1 = null;
+var page2 = null;
+var btn1 = null;
+var tab2 = null;
+var subpage1 = null;
+var scroll1 = null;
+var tbl2 = null;
+var subpage2 = null;
+var subpage3 = null;
+var subpage4 = null;
+var page3 = null;
+
+function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
+    {
+    tl.visibility = 'hidden';
+    bl.visibility = 'hidden';
+    rl.visibility = 'hidden';
+    ll.visibility = 'hidden';
+    tl.bgColor = c1;
+    ll.bgColor = c1;
+    bl.bgColor = c2;
+    rl.bgColor = c2;
+    tl.resizeTo(w,1);
+    tl.moveAbove(pl);
+    tl.moveToAbsolute(x,y);
+    tl.zIndex = z;
+    bl.resizeTo(w+s-1,1);
+    bl.moveAbove(pl);
+    bl.moveToAbsolute(x,y+h-s+1);
+    bl.zIndex = z;
+    ll.resizeTo(1,h);
+    ll.moveAbove(pl);
+    ll.moveToAbsolute(x,y);
+    ll.zIndex = z;
+    rl.resizeTo(1,h);
+    rl.moveAbove(pl);
+    rl.moveToAbsolute(x+w-s+1,y);
+    rl.zIndex = z;
+    tl.visibility = 'inherit';
+    bl.visibility = 'inherit';
+    rl.visibility = 'inherit';
+    ll.visibility = 'inherit';
+    return;
+    }
+
+function pg_hidebox(tl,bl,rl,ll)
+    {
+    tl.visibility = 'hidden';
+    bl.visibility = 'hidden';
+    rl.visibility = 'hidden';
+    ll.visibility = 'hidden';
+    tl.moveAbove(document.layers.pgtvl);
+    bl.moveAbove(document.layers.pgtvl);
+    rl.moveAbove(document.layers.pgtvl);
+    ll.moveAbove(document.layers.pgtvl);
+    return;
+    }
+
+function pg_area(pl,x,y,w,h,cls,nm,ckfn)
+    {
+    this.layer = pl;
+    this.x = x;
+    this.y = y;
+    this.width = w;
+    this.height = h;
+    this.callback = ckfn;
+    this.name = nm;
+    this.cls = cls;
+    return this;
+    }
+
+function pg_addarea(pl,x,y,w,h,cls,nm,ckfn)
+    {
+    a = new pg_area(pl,x,y,w,h,cls,nm,ckfn);
+    pg_arealist.splice(0,0,a);
+    return a;
+    }
+
+function pg_removearea(a)
+    {
+    for(i=0;i<pg_arealist.length;i++)
+        {
+        if (pg_arealist[i] == a)
+            {
+            pg_arealist.splice(i,1);
+            return 1;
+            }
+        }
+    return 0;
+    }
+
+function pg_resize(l)
+    {
+    maxheight=0;
+    for(i=0;i<l.document.layers.length;i++)
+        {
+        cl = l.document.layers[i];
+        if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.y + cl.clip.height > maxheight)
+            maxheight = cl.y + cl.clip.height;
+        }
+    if (l!=window) l.clip.height = maxheight;
+    else l.document.height = maxheight;
+    }
+
+function pg_isvisible(l)
+    {
+    if (l.visibility == 'show') return 1;
+    else if (l.visibility == 'hidden') return 0;
+    else if (l == window || l.parentLayer == null) return 1;
+    else return pg_isvisible(l.parentLayer);
+    }
+
+function pg_togglecursor()
+    {
+    if (pg_curlayer != null && pg_curlayer.cursorlayer != null)
+        {
+        if (pg_curlayer.cursorlayer.visibility != 'inherit')
+            pg_curlayer.cursorlayer.visibility = 'inherit';
+        else
+            pg_curlayer.cursorlayer.visibility = 'hidden';
+        }
+    setTimeout(pg_togglecursor,333);
+    }
+
+function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam)
+    {
+    kd = new Object();
+    kd.startcode = s;
+    kd.endcode = e;
+    kd.mod = mod;
+    kd.modmask = modmask;
+    kd.mouselayer = mlayer;
+    kd.kbdlayer = klayer;
+    kd.target_obj = tgt;
+    kd.fnname = 'Action' + action;
+    kd.aparam = aparam;
+    pg_keylist.splice(0,0,kd);
+    pg_keylist.sort(pg_cmpkey);
+    return kd;
+    }
+
+function pg_cmpkey(k1,k2)
+    {
+    return (k1.endcode-k1.startcode) - (k2.endcode-k2.startcode);
+    }
+
+function pg_removekey(kd)
+    {
+    for(i=0;i<pg_keylist.length;i++)
+        {
+        if (pg_keylist[i] == kd)
+            {
+            pg_keylist.splice(i,1);
+            return 1;
+            }
+        }
+    return 0;
+    }
+
+function wn_init(l,ml)
+    {
+    l.document.layer = l;
+    ml.document.Layer = ml;
+    l.mainLayer = ml;
+    l.kind = 'wn';
+    for(i=0;i<l.document.images.length;i++)
+        {
+        l.document.images[i].layer = l;
+        l.document.images[i].kind = 'wn';
+        }
+    wn_bring_top(l);
+    l.ActionSetVisibility = wn_setvisibility;
+    return l;
+    }
+
+function wn_setvisibility(aparam)
+    {
+    if (aparam.IsVisible == null || aparam.IsVisible == 1 || aparam.IsVisible == '1')
+        {
+        wn_bring_top(this);
+        this.visibility = 'inherit';
+        }
+    else
+        {
+        this.visibility = 'hidden';
+        }
+    }
+
+function wn_domove()
+    {
+    if (wn_current != null) wn_current.moveTo((wn_newx<0)?0:wn_newx,(wn_newy<0)?0:wn_newy);
+    return true;
+    }
+
+function wn_adjust_z(l,zi)
+    {
+    if (zi < 0) l.zIndex += zi;
+    for(i=0;i<l.document.layers.length;i++)
+        {
+        //wn_adjust_z(l.document.layers[i],zi);
+        }
+    if (zi > 0) l.zIndex += zi;
+    if (l.zIndex > wn_top_z) wn_top_z = l.zIndex;
+    return true;
+    }
+
+function wn_bring_top(l)
+    {
+    if (wn_topwin == l) return true;
+    wn_adjust_z(l, wn_top_z - l.zIndex + 4);
+    wn_topwin = l;
+    }
+
+function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts)
+    {
+    l.LSParent = p;
+    l.nofocus = true;
+    l2.nofocus = true;
+    top.nofocus = true;
+    rgt.nofocus = true;
+    btm.nofocus = true;
+    lft.nofocus = true;
+    l.document.kind = 'tb';
+    l2.document.kind = 'tb';
+    l.document.layer = l;
+    l2.document.layer = l;
+    l.l2 = l2;
+    l.tp = top;
+    l.btm = btm;
+    l.lft = lft;
+    l.rgt = rgt;
+    l.kind = 'tb';
+    l.clip.width = w;
+    if (h != -1) l.clip.height = h;
+    top.bgColor = '#FFFFFF';
+    lft.bgColor = '#FFFFFF';
+    btm.bgColor = '#7A7A7A';
+    rgt.bgColor = '#7A7A7A';
+    lft.clip.height = l.clip.height;
+    rgt.clip.height = l.clip.height;
+    rgt.pageX = l.pageX + l.clip.width - 2;
+    btm.pageY = l.pageY + l.clip.height - 2;
+    l.mode = 0;
+    l.tristate = ts;
+    }
+
+function tb_setmode(layer,mode)
+    {
+    if (mode != layer.mode)
+        {
+        layer.mode = mode;
+        if (layer.tristate == 0 && mode == 0) mode = 1;
+        switch(mode)
+            {
+            case 0: /* no point no click */
+                layer.rgt.visibility = 'hidden';
+                layer.lft.visibility = 'hidden';
+                layer.tp.visibility = 'hidden';
+                layer.btm.visibility = 'hidden';
+                break;
+            case 1: /* point, but no click */
+                layer.rgt.visibility = 'visible';
+                layer.lft.visibility = 'visible';
+                layer.tp.visibility = 'visible';
+                layer.btm.visibility = 'visible';
+                layer.tp.bgColor = '#FFFFFF';
+                layer.lft.bgColor = '#FFFFFF';
+                layer.btm.bgColor = '#7A7A7A';
+                layer.rgt.bgColor = '#7A7A7A';
+                break;
+            case 2: /* point and click */
+                layer.rgt.visibility = 'visible';
+                layer.lft.visibility = 'visible';
+                layer.tp.visibility = 'visible';
+                layer.btm.visibility = 'visible';
+                layer.tp.bgColor = '#7A7A7A';
+                layer.lft.bgColor = '#7A7A7A';
+                layer.btm.bgColor = '#FFFFFF';
+                layer.rgt.bgColor = '#FFFFFF';
+                break;
+            }
+        }
+    }
+
+function pn_init(l,ml)
+    {
+    l.mainlayer = ml;
+    l.document.Layer = l;
+    return l;
+    }
+
+function tc_makecurrent()
+    {
+    if (this.zIndex > this.tabctl.zIndex) return 0;
+    for(i=0;i<this.tabctl.tabs.length;i++)
+        {
+        t = this.tabctl.tabs[i];
+        if (t != this && t.zIndex > this.tabctl.zIndex)
+            {
+            t.zIndex = this.tabctl.zIndex - 1;
+            t.tabpage.visibility = 'hidden';
+            t.document.images['tb'].src = 'tab_lft3.gif';
+            t.pageY += 2;
+            t.pageX += 1;
+            t.clip.height = 23;
+            }
+        }
+    this.zIndex = this.tabctl.zIndex + 1;
+    this.tabpage.visibility = 'inherit';
+    this.document.images['tb'].src = 'tab_lft2.gif';
+    this.pageY -= 2;
+    this.pageX -= 1;
+    this.clip.height = 25;
+    }
+
+function tc_addtab(l_tab, l_page)
+    {
+    if (this.tabs.length > 0)
+        {
+        newx = this.tabs[this.tabs.length-1].pageX + this.tabs[this.tabs.length-1].document.width + 1;
+        if (this.tabs[this.tabs.length-1].tabpage.visibility == 'inherit') newx += 1;
+        }
+    else
+        newx = this.pageX;
+    newy = this.pageY - 24;
+    if (l_page.visibility != 'inherit')
+        {
+        newx += 1;
+        newy += 2;
+        l_tab.clip.height = 23;
+        }
+    for(i=0;i<l_tab.document.images.length;i++)
+        {
+        l_tab.document.images[i].layer = l_tab;
+        l_tab.document.images[i].kind = 'tc';
+        }
+    this.tabs[this.tabs.length++] = l_tab;
+    l_tab.tabpage = l_page;
+    l_tab.tabctl = this;
+    l_tab.makeCurrent = tc_makecurrent;
+    l_tab.pageX = newx;
+    l_tab.pageY = newy;
+    l_tab.kind = 'tc';
+    l_tab.document.layer = l_tab;
+    l_tab.document.Layer = l_tab;
+    return l_tab;
+    }
+
+function tc_init(l)
+    {
+    l.currentTab = 1;
+    l.nTabs = 0;
+    l.isShorting = 0;
+    l.tabs = new Array();
+    l.addTab = tc_addtab;
+    if (tc_tabs == null) tc_tabs = new Array();
+    tc_tabs[tc_tabs.length++] = l;
+    return l;
+    }
+
+function subst_last(str,subst)
+    {
+    return str.substring(0,str.length-subst.length)+subst;
+    }
+
+function do_mv()
+    {
+    var ti=sp_target_img;
+    if (ti.kind=='sp' && sp_mv_incr > 0)
+        {
+        h=ti.area.clip.height;
+        d=h-ti.pane.clip.height;
+        incr=sp_mv_incr;
+        if(d<0) incr=0; else if (d+ti.area.y<incr) incr=d+ti.area.y;
+        for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)
+            ti.pane.document.layers[i].y-=incr;
+        v=ti.pane.clip.height-(3*18);
+        if (d<=0) ti.thum.y=18;
+        else ti.thum.y=18+v*(-ti.area.y/d);
+        }
+    else if (ti.kind=='sp' && sp_mv_incr < 0)
+        {
+        h=ti.area.clip.height;
+        d=h-ti.pane.clip.height;
+        incr = -sp_mv_incr;
+        if(d<0)incr=0; else if (ti.area.y>-incr) incr=-ti.area.y;
+        for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)
+            ti.pane.document.layers[i].y+=incr;
+        v=ti.pane.clip.height-(3*18);
+        if(d<=0) ti.thum.y=18;
+        else ti.thum.y=18+v*(-ti.area.y/d);
+        }
+    return true;
+    }
+
+function tm_mv()
+    {
+    do_mv();
+    sp_mv_timeout=setTimeout(tm_mv,50);
+    return false;
+    }
+
+function sp_init(l,aname,tname,p)
+    {
+    var alayer=null;
+    var tlayer=null;
+    for(i=0;i<l.layers.length;i++)
+        {
+        ml=l.layers[i];
+        if(ml.name==aname) alayer=ml;
+        if(ml.name==tname) tlayer=ml;
+        }
+    for(i=0;i<l.document.images.length;i++)
+        {
+        img=l.document.images[i];
+        if(img.name=='d' || img.name=='u' || img.name=='b')
+            {
+            img.pane=l;
+            img.area=alayer;
+            img.thum=tlayer;
+            img.kind='sp';
+            }
+        }
+    tlayer.document.images[0].kind='sp';
+    tlayer.document.images[0].thum=tlayer;
+    tlayer.document.images[0].area=alayer;
+    tlayer.document.images[0].pane=l;
+    alayer.clip.width=l.clip.width-18;
+    tlayer.nofocus = true;
+    alayer.nofocus = true;
+    alayer.document.Layer = alayer;
+    tlayer.document.Layer = tlayer;
+    l.document.Layer = l;
+    l.LSParent = p;
+    }
+
+function ht_loadpage(aparam)
+    {
+    this.source = aparam.Source;
+    }
+
+function ht_sourcechanged(prop,oldval,newval)
+    {
+    if (newval.substr(0,5)=='http:')
+        {
+        tmpl = this.curLayer;
+        tmpl.visibility = 'hidden';
+        this.curLayer = this.altLayer;
+        this.altLayer = tmpl;
+        this.curLayer.onload = ht_reloaded;
+        this.curLayer.bgColor = null;
+        this.curLayer.load(newval,this.clip.width);
+        }
+    return newval;
+    }
+
+function ht_reloaded(e)
+    {
+    e.target.mainLayer.watch('source',ht_sourcechanged);
+    e.target.clip.height = e.target.document.height;
+    e.target.visibility = 'inherit';
+    for(i=0;i<e.target.document.links.length;i++)
+        {
+        e.target.document.links[i].layer = e.target.mainLayer;
+        e.target.document.links[i].kind = 'ht';
+        }
+    pg_resize(e.target.mainLayer.parentLayer);
+    }
+
+function ht_click(e)
+    {
+    e.target.layer.source = e.target.href;
+    return false;
+    }
+
+function ht_init(l,l2,source,pdoc,w,h,p)
+    {
+    l.mainLayer = l;
+    l2.mainLayer = l;
+    l.curLayer = l;
+    l.altLayer = l2;
+    l.LSParent = p;
+    l.kind = 'ht';
+    l2.kind = 'ht';
+    l.pdoc = pdoc;
+    l2.pdoc = pdoc;
+    if (h != -1)
+        {
+        l.clip.height = h;
+        l2.clip.height = h;
+        }
+    if (w != -1)
+        {
+        l.clip.width = w;
+        l2.clip.width = w;
+        }
+    if (source.substr(0,5) == 'http:')
+        {
+        l.onload = ht_reloaded;
+        l.load(source,w);
+        }
+    l.source = source;
+    l.watch('source', ht_sourcechanged);
+    l.ActionLoadPage = ht_loadpage;
+    l.document.Layer = l;
+    l2.document.Layer = l2;
+    }
+
+function tl_rowclick(l,cls,nm)
+    {
+    //alert(cls + ':' + nm);
+    return 3;
+    }
+
+function tl_init(pl, nm, w, cp, cs)
+    {
+    if (w == -1) w = pl.clip.width;
+    ox = -1;
+    oy = -1;
+    nmstr = 'xy_' + nm;
+    for(i=0;i<pl.document.images.length;i++)
+        {
+        if (pl.document.images[i].name.substr(0,nmstr.length) == nmstr)
+            {
+            img = pl.document.images[i];
+            imgnm = pl.document.images[i].name.substr(nmstr.length+1,255);
+            if (ox != -1)
+                {
+                pg_addarea(pl,img.x-cp-1,img.y-cp-1,w-(cs-1)*2,(img.y-oy)-(cs-1),nm,imgnm,tl_rowclick);
+                }
+            ox = img.x;
+            oy = img.y;
+            }
+        }
+    }
+
+function e0_0(e)
+    {
+    if (pg_curlayer != null)
+        {
+        for(i=0;i<pg_arealist.length;i++) if (pg_curlayer == pg_arealist[i].layer && e.x >= pg_arealist[i].x &&
+                e.y >= pg_arealist[i].y && e.x < pg_arealist[i].x+pg_arealist[i].width &&
+                e.y < pg_arealist[i].y+pg_arealist[i].height && pg_curarea != pg_arealist[i])
+            {
+            if (pg_curarea == pg_arealist[i]) break;
+            pg_curarea = pg_arealist[i];
+            x = pg_curarea.layer.pageX+pg_curarea.x;
+            y = pg_curarea.layer.pageY+pg_curarea.y;
+            w = pg_curarea.width;
+            h = pg_curarea.height;
+            pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
+            break;
+            }
+        }
+    if (wn_current != null)
+        {
+        clearTimeout();
+        if (wn_newx == null)
+            {
+            wn_newx = wn_current.pageX + e.pageX-wn_msx;
+            wn_newy = wn_current.pageY + e.pageY-wn_msy;
+            }
+        else
+            {
+            wn_newx += (e.pageX - wn_msx);
+            wn_newy += (e.pageY - wn_msy);
+            }
+        setTimeout(wn_domove,60);
+        wn_moved = 1;
+        wn_msx = e.pageX;
+        wn_msy = e.pageY;
+        return false;
+        }
+    ti=sp_target_img;
+    if (ti != null && ti.kind=='sp' && ti.name=='t')
+        {
+        v=ti.pane.clip.height-(3*18);
+        new_y=sp_thum_y + (e.pageY-sp_click_y);
+        if (new_y > ti.pane.pageY+18+v) new_y=ti.pane.pageY+18+v;
+        if (new_y < ti.pane.pageY+18) new_y=ti.pane.pageY+18;
+        ti.thum.pageY=new_y;
+        h=ti.area.clip.height;
+        d=h-ti.pane.clip.height;
+        if (d<0) d=0;
+        yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;
+        for(i=0;i<ti.pane.document.layers.length;i++) if (ti.pane.document.layers[i] != ti.thum)
+            ti.pane.document.layers[i].y+=yincr;
+        return false;
+        }
+    return true;
+    }
+
+function e0_1(e)
+    {
+    if (e.target == pg_curlayer) pg_curlayer = null;
+    if (e.target != null && pg_curarea != null && e.target == pg_curarea.layer)
+        {
+        pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);
+        pg_curarea = null;
+        }
+    if (e.target != null && e.target.kind == 'tb')
+        {
+        if (e.target.mode != 2) tb_setmode(e.target,0);
+        }
+    return true;
+    }
+
+function e0_2(e)
+    {
+    if (e.target != null && e.target.pageX != null)
+        {
+        pg_curlayer = e.target;
+        }
+    if (e.target != null && e.target.kind == 'tb')
+        {
+        if (e.target.mode != 2) tb_setmode(e.target,1);
+        }
+    return true;
+    }
+
+function e0_3(e)
+    {
+    if (pg_curarea != null)
+        {
+        pg_curkbdarea = pg_curarea;
+        pg_curkbdlayer = pg_curlayer;
+        x = pg_curarea.layer.pageX+pg_curarea.x;
+        y = pg_curarea.layer.pageY+pg_curarea.y;
+        w = pg_curarea.width;
+        h = pg_curarea.height;
+        if (pg_curarea.callback)
+            {
+            v=pg_curarea.callback(pg_curarea.layer,pg_curarea.cls,pg_curarea.name);
+            if (v & 1)
+                {
+                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);
+                }
+            if (v & 2)
+                {
+                if (pg_curlayer.pg_dttop != null)
+                    {
+                    pg_hidebox(pg_curlayer.pg_dttop,pg_curlayer.pg_dtbtm,pg_curlayer.pg_dtrgt,pg_curlayer.pg_dtlft);
+                    }
+                else
+                    {
+                    pg_curlayer.pg_dttop = new Layer(1152);
+                    //pg_curlayer.pg_dttop.document.write('<IMG SRC=trans_1.gif width=1152 height=1>');
+                    //pg_curlayer.pg_dttop.document.close();
+                    pg_curlayer.pg_dtbtm = new Layer(1152);
+                    //pg_curlayer.pg_dtbtm.document.write('<IMG SRC=trans_1.gif width=1152 height=1>');
+                    //pg_curlayer.pg_dtbtm.document.close();
+                    pg_curlayer.pg_dtrgt = new Layer(2);
+                    //pg_curlayer.pg_dtrgt.document.write('<IMG SRC=trans_1.gif height=864 width=1>');
+                    //pg_curlayer.pg_dtrgt.document.close();
+                    pg_curlayer.pg_dtlft = new Layer(2);
+                    //pg_curlayer.pg_dtlft.document.write('<IMG SRC=trans_1.gif height=864 width=1>');
+                    //pg_curlayer.pg_dtlft.document.close();
+                    }
+                pg_mkbox(pg_curlayer,x-1,y-1,w+2,h+2, 1,  pg_curlayer.pg_dttop,pg_curlayer.pg_dtbtm,pg_curlayer.pg_dtrgt,pg_curlayer.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+1);
+                }
+            }
+        }
+    if (e.target != null && e.target.layer != null) ly = e.target.layer;
+    else ly = e.target;
+    if (ly.kind == 'wn')
+        {
+        if (e.target.name == 'close') e.target.src = '02close.gif';
+        else if (e.pageY < ly.pageY + 20)
+            {
+            wn_current = ly;
+            wn_msx = e.pageX;
+            wn_msy = e.pageY;
+            wn_newx = null;
+            wn_newy = null;
+            wn_moved = 0;
+            }
+        }
+    //alert(show_obj(e.target));
+    if (e.target != null && e.target.kind=='tb')
+        {
+        if (e.target.layer != null) ly = e.target.layer;
+        else ly = e.target;
+        ly.moveBy(1,1);
+        tb_setmode(ly,2);
+        }
+    ly = (e.target.layer == null)?e.target:e.target.layer;
+    if (ly.kind == 'tc') ly.makeCurrent();
+    sp_target_img=e.target;
+    if (sp_target_img != null && sp_target_img.kind=='sp' && (sp_target_img.name=='u' || sp_target_img.name=='d'))
+        {
+        if (sp_target_img.name=='u') sp_mv_incr=-10; else sp_mv_incr=+10;
+        sp_target_img.src = subst_last(sp_target_img.src,"c.gif");
+        do_mv();
+        sp_mv_timeout = setTimeout(tm_mv,300);
+        }
+    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='t')
+        {
+        sp_click_x = e.pageX;
+        sp_click_y = e.pageY;
+        sp_thum_y = sp_target_img.thum.pageY;
+        }
+    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='b')
+        {
+        sp_mv_incr=sp_target_img.height+36;
+        if (e.pageY < sp_target_img.thum.pageY+9) sp_mv_incr = -sp_mv_incr;
+        do_mv();
+        sp_mv_timeout = setTimeout(tm_mv,300);
+        }
+    else sp_target_img = null;
+    return true;
+    }
+
+function e0_4(e)
+    {
+    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);
+    if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')
+        {
+        e.target.src = '01close.gif';
+        e.target.layer.visibility = 'hidden';
+        }
+    if (wn_current != null)
+        {
+        if (wn_moved == 0) wn_bring_top(wn_current);
+        }
+    wn_current = null;
+    if (e.target != null && e.target.kind == 'tb')
+        {
+        if (e.target.layer != null) ly = e.target.layer;
+        else ly = e.target;
+        ly.moveBy(-1,-1);
+        if (e.pageX >= ly.pageX &&
+            e.pageX < ly.pageX + ly.clip.width &&
+            e.pageY >= ly.pageY &&
+            e.pageY < ly.pageY + ly.clip.height)
+            {
+            tb_setmode(ly,1);
+            if (ly.EventClick != null)
+                {
+                eparam = new Object();
+                eparam.Caller = ly;
+                ly.EventClick(eparam);
+                delete eparam;
+                }
+            }
+        else
+            {
+            tb_setmode(ly,0);
+            }
+        }
+    if (sp_mv_timeout != null)
+        {
+        clearTimeout(sp_mv_timeout);
+        sp_mv_timeout = null;
+        sp_mv_incr = 0;
+        }
+    if (sp_target_img != null)
+        {
+        if (sp_target_img.name != 'b')
+            sp_target_img.src = subst_last(sp_target_img.src,"b.gif");
+        sp_target_img = null;
+        }
+    return true;
+    }
+
+function e0_5(e)
+    {
+    k = e.which;
+    if (k > 65280) k -= 65280;
+    if (k >= 128) k -= 128;
+    if (k == pg_lastkey) return false;
+    pg_lastkey = k;
+    pg_togglecursor();
+    alert('Code=' + k + '; Mod=' + e.modifiers);
+    setTimeout('pg_lastkey = -1;',100);
+    if (pg_curkbdlayer != null && pg_curkbdlayer.keyhandler != null && pg_curkbdlayer.keyhandler(e,k) == true) return false;
+    for(i=0;i<pg_keylist.length;i++)
+        {
+        if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (e.modifiers & pg_keylist[i].modmask) == pg_keylist[i].mod)
+            {
+            pg_keylist[i].aparam.KeyCode = k;
+            pg_keylist[i].target_obj[pg_keylist[i].fnname](pg_keylist[i].aparam);
+            return false;
+            }
+        }
+    return false;
+    return true;
+    }
+
+function e0_6(e)
+    {
+    if (e.target != null && e.target.kind == 'ht')
+        {
+        return ht_click(e);
+        }
+    return true;
+    }
+
+function events()
+    {
+    document.captureEvents(Event.MOUSEMOVE | Event.MOUSEOUT | Event.MOUSEOVER | Event.MOUSEDOWN | Event.MOUSEUP | Event.KEYPRESS | Event.CLICK);
+    document.onmousemove=e0_0;
+    document.onmouseout=e0_1;
+    document.onmouseover=e0_2;
+    document.onmousedown=e0_3;
+    document.onmouseup=e0_4;
+    document.onkeypress=e0_5;
+    document.onclick=e0_6;
+    }
+
+function startup()
+    {
+    page.kbcolor1 = '#ffffff';
+    page.kbcolor2 = '#7a7a7a';
+    page.mscolor1 = '#000000';
+    page.mscolor2 = '#000000';
+    page.dtcolor1 = '#000080';
+    page.dtcolor2 = '#000080';
+    document.LSParent = null;
+    pg_togglecursor();
+    document.layers.pginpt.moveTo(window.innerWidth-2, 20);
+    document.layers.pginpt.visibility = 'inherit';
+    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',100);
+    win1 = wn_init(document.layers.wn0base,document.layers.wn0base.document.layers.wn0main);
+    btn2 = win1.mainLayer.document.layers.tb0pane;
+    tb_init(btn2,btn2.document.layers.tb0pane2,btn2.document.layers.tb0top,btn2.document.layers.tb0btm,btn2.document.layers.tb0rgt,btn2.document.layers.tb0lft,100,-1,win1.mainLayer,0);
+    win2 = wn_init(document.layers.wn1base,document.layers.wn1base.document.layers.wn1main);
+    pane1 = pn_init(document.layers.pn0base, document.layers.pn0base.document.layers.pn0main);
+    tab1 = tc_init(document.layers.tc0base);
+    page1 = tab1.addTab(document.layers.tc0tab1,tab1.document.layers.tc0pane1);
+    pane2 = pn_init(page1.tabpage.document.layers.pn1base, page1.tabpage.document.layers.pn1base.document.layers.pn1main);
+    sp_init(pane2.mainlayer.document.layers.sp0pane,"sp0area","sp0thum",pane2.mainlayer);
+    spane3=pane2.mainlayer.document.layers.sp0pane;
+    ht_init(spane3.document.layers.sp0area.document.layers.ht0pane,spane3.document.layers.sp0area.document.layers.ht0pane2,"http://centrallix.sourceforge.net/index_main.html",spane3.document.layers.sp0area.document,372,-1,spane3);
+    html1 = spane3.document.layers.sp0area.document.layers.ht0pane;
+    page2 = tab1.addTab(document.layers.tc0tab2,tab1.document.layers.tc0pane2);
+    btn1 = page2.tabpage.document.layers.tb1pane;
+    tb_init(btn1,btn1.document.layers.tb1pane2,btn1.document.layers.tb1top,btn1.document.layers.tb1btm,btn1.document.layers.tb1rgt,btn1.document.layers.tb1lft,100,-1,page2.tabpage,0);
+    tab2 = tc_init(page2.tabpage.document.layers.tc1base);
+    subpage1 = tab2.addTab(page2.tabpage.document.layers.tc1tab1,tab2.document.layers.tc1pane1);
+    sp_init(subpage1.tabpage.document.layers.sp1pane,"sp1area","sp1thum",subpage1.tabpage);
+    scroll1=subpage1.tabpage.document.layers.sp1pane;
+    tl_init(scroll1.document.layers.sp1area.document.Layer,'tbl2',342,1,4);
+    subpage2 = tab2.addTab(page2.tabpage.document.layers.tc1tab2,tab2.document.layers.tc1pane2);
+    subpage3 = tab2.addTab(page2.tabpage.document.layers.tc1tab3,tab2.document.layers.tc1pane3);
+    subpage4 = tab2.addTab(page2.tabpage.document.layers.tc1tab4,tab2.document.layers.tc1pane4);
+    sp_init(subpage4.tabpage.document.layers.sp2pane,"sp2area","sp2thum",subpage4.tabpage);
+    scroll1=subpage4.tabpage.document.layers.sp2pane;
+    page3 = tab1.addTab(document.layers.tc0tab3,tab1.document.layers.tc0pane3);
+    events();
+    }
+
+</SCRIPT>
+<BODY BGCOLOR=white BACKGROUND=slate_striped.png onLoad="startup();">
+<DIV ID="pgtop"><IMG SRC=trans_1.gif WIDTH=1152 HEIGHT=1></DIV>
+<DIV ID="pgbtm"><IMG SRC=trans_1.gif WIDTH=1152 HEIGHT=1></DIV>
+<DIV ID="pgrgt"><IMG SRC=trans_1.gif WIDTH=1 HEIGHT=864></DIV>
+<DIV ID="pglft"><IMG SRC=trans_1.gif WIDTH=1 HEIGHT=864></DIV>
+<DIV ID="pgtvl"></DIV>
+<DIV ID="pgktop"><IMG SRC=trans_1.gif WIDTH=1152 HEIGHT=1></DIV>
+<DIV ID="pgkbtm"><IMG SRC=trans_1.gif WIDTH=1152 HEIGHT=1></DIV>
+<DIV ID="pgkrgt"><IMG SRC=trans_1.gif WIDTH=1 HEIGHT=864></DIV>
+<DIV ID="pgklft"><IMG SRC=trans_1.gif WIDTH=1 HEIGHT=864></DIV>
+<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>
+<DIV ID="wn0base"><TABLE bgcolor='black' border=0 cellspacing=0 cellpadding=0>
+<TR><TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD><IMG SRC=white_1x1.png width=196 height=1></TD>
+    <TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD><IMG SRC=white_1x1.png width=1 height=1></TD></TR>
+<TR><TD width=1><IMG SRC=white_1x1.png width=1 height=22></TD>
+    <TD width=198 bgcolor='#206088' colspan=3><IMG SRC=01close.gif name=close align=left><FONT COLOR='black'> win1</FONT></TD>
+    <TD width=1><IMG SRC=dkgrey_1x1.png width=1 height=22></TD></TR>
+<TR><TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD colspan=2><IMG SRC=dkgrey_1x1.png width=197 height=1></TD>
+    <TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD><IMG SRC=dkgrey_1x1.png width=1 height=1></TD></TR>
+<TR><TD><IMG SRC=white_1x1.png width=1 height=174></TD>
+    <TD><IMG SRC=dkgrey_1x1.png width=1 height=174></TD>
+    <TD>
+&nbsp;</TD>
+    <TD><IMG SRC=white_1x1.png width=1 height=174></TD>
+    <TD><IMG SRC=dkgrey_1x1.png width=1 height=174></TD></TR>
+<TR><TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD><IMG SRC=dkgrey_1x1.png width=1 height=1></TD>
+    <TD colspan = 2><IMG SRC=white_1x1.png width=197 height=1></TD>
+    <TD><IMG SRC=dkgrey_1x1.png width=1 height=1></TD></TR>
+<TR><TD colspan=5><IMG SRC=dkgrey_1x1.png width=200 height=1></TD></TR>
+</TABLE>
+<DIV ID="wn0main">
+<DIV ID="tb0pane"><TABLE border=0 cellspacing=0 cellpadding=3  width=100><TR><TD align=center valign=middle><FONT COLOR='navy'><B>This test button</B></FONT></TD></TR></TABLE>
+<DIV ID="tb0pane2"><TABLE border=0 cellspacing=0 cellpadding=3 width=100><TR><TD align=center valign=middle><FONT COLOR='white'><B>This test button</B></FONT></TD></TR></TABLE>
+</DIV><DIV ID="tb0top"><IMG SRC=trans_1.gif height=1 width=100></DIV>
+<DIV ID="tb0btm"><IMG SRC=trans_1.gif height=1 width=100></DIV>
+<DIV ID="tb0rgt"><IMG SRC=trans_1.gif height=1 width=1></DIV>
+<DIV ID="tb0lft"><IMG SRC=trans_1.gif height=1 width=1></DIV>
+</DIV>
+</DIV></DIV>
+<DIV ID="wn1base"><TABLE bgcolor='#c0c0c0' border=0 cellspacing=0 cellpadding=0>
+<TR><TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD><IMG SRC=white_1x1.png width=198 height=1></TD>
+    <TD><IMG SRC=white_1x1.png width=1 height=1></TD></TR>
+<TR><TD width=1><IMG SRC=white_1x1.png width=1 height=22></TD>
+    <TD width=198 bgcolor='#209088' colspan=1><IMG SRC=01close.gif name=close align=left><FONT COLOR='black'> win2</FONT></TD>
+    <TD width=1><IMG SRC=dkgrey_1x1.png width=1 height=22></TD></TR>
+<TR><TD><IMG SRC=white_1x1.png width=1 height=1></TD>
+    <TD colspan=2><IMG SRC=dkgrey_1x1.png width=199 height=1></TD></TR>
+<TR><TD colspan=2><IMG SRC=white_1x1.png width=199 height=1></TD>
+    <TD><IMG SRC=dkgrey_1x1.png width=1 height=1></TD></TR>
+<TR><TD><IMG SRC=white_1x1.png width=1 height=174></TD>
+    <TD>
+&nbsp;</TD>
+    <TD><IMG SRC=dkgrey_1x1.png width=1 height=174></TD></TR>
+<TR><TD colspan=5><IMG SRC=dkgrey_1x1.png width=200 height=1></TD></TR>
+</TABLE>
+<DIV ID="wn1main">
+</DIV></DIV>
+<DIV ID="pn0base">
+    <TABLE width=400 cellspacing=0 cellpadding=0 border=0 background='red_slate2.png'>
+        <TR><TD><IMG SRC=white_1x1.png></TD>
+            <TD><IMG SRC=white_1x1.png height=1 width=398></TD>
+            <TD><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=white_1x1.png height=38 width=1></TD>
+            <TD>&nbsp;</TD>
+            <TD><IMG SRC=dkgrey_1x1.png height=38 width=1></TD></TR>
+        <TR><TD><IMG SRC=dkgrey_1x1.png></TD>
+            <TD><IMG SRC=dkgrey_1x1.png height=1 width=398></TD>
+            <TD><IMG SRC=dkgrey_1x1.png></TD></TR>
+    </TABLE>
+
+<DIV ID="pn0main">
+</DIV></DIV>
+<DIV ID="tc0tab1">
+    <TABLE cellspacing=0 cellpadding=0 border=0 background='slate2.png'>
+        <TR><TD colspan=3 background=white_1x1.png><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=tab_lft2.gif name=tb></TD>
+            <TD valign=middle><FONT COLOR=black>&nbsp;<B>This&nbsp;is&nbsp;tab&nbsp;page&nbsp;1</B>&nbsp;</FONT></TD>
+            <TD><IMG SRC=dkgrey_1x1.png width=1 height=24></TD></TR>
+    </TABLE>
+</DIV>
+<DIV ID="tc0tab2">
+    <TABLE cellspacing=0 cellpadding=0 border=0 background='slate2.png'>
+        <TR><TD colspan=3 background=white_1x1.png><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=tab_lft3.gif name=tb></TD>
+            <TD valign=middle><FONT COLOR=black><B>&nbsp;page2&nbsp;</B></FONT></TD>
+            <TD><IMG SRC=dkgrey_1x1.png width=1 height=24></TD></TR>
+    </TABLE>
+</DIV>
+<DIV ID="tc0tab3">
+    <TABLE cellspacing=0 cellpadding=0 border=0 background='slate2.png'>
+        <TR><TD colspan=3 background=white_1x1.png><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=tab_lft3.gif name=tb></TD>
+            <TD valign=middle><FONT COLOR=black><B>&nbsp;page3&nbsp;</B></FONT></TD>
+            <TD><IMG SRC=dkgrey_1x1.png width=1 height=24></TD></TR>
+    </TABLE>
+</DIV>
+<DIV ID="tc0base">
+    <TABLE width=400 cellspacing=0 cellpadding=0 border=0 background='slate2.png'>
+        <TR><TD><IMG SRC=white_1x1.png></TD>
+            <TD><IMG SRC=white_1x1.png height=1 width=398></TD>
+            <TD><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=white_1x1.png height=398 width=1></TD>
+            <TD>&nbsp;</TD>
+            <TD><IMG SRC=dkgrey_1x1.png height=398 width=1></TD></TR>
+        <TR><TD><IMG SRC=dkgrey_1x1.png></TD>
+            <TD><IMG SRC=dkgrey_1x1.png height=1 width=398></TD>
+            <TD><IMG SRC=dkgrey_1x1.png></TD></TR>
+    </TABLE>
+
+<DIV ID="tc0pane1">
+<DIV ID="pn1base">
+    <TABLE width=392 cellspacing=0 cellpadding=0 border=0 >
+        <TR><TD><IMG SRC=dkgrey_1x1.png></TD>
+            <TD><IMG SRC=dkgrey_1x1.png height=1 width=390></TD>
+            <TD><IMG SRC=dkgrey_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=dkgrey_1x1.png height=390 width=1></TD>
+            <TD>&nbsp;</TD>
+            <TD><IMG SRC=white_1x1.png height=390 width=1></TD></TR>
+        <TR><TD><IMG SRC=white_1x1.png></TD>
+            <TD><IMG SRC=white_1x1.png height=1 width=390></TD>
+            <TD><IMG SRC=white_1x1.png></TD></TR>
+    </TABLE>
+
+<DIV ID="pn1main">
+<DIV ID="sp0pane"><TABLE   border=0 cellspacing=0 cellpadding=0 width=390><TR><TD align=right><IMG SRC=ico13b.gif NAME=u></TD></TR><TR><TD align=right><IMG SRC=trans_1.gif height=354 width=18 name='b'></TD></TR><TR><TD align=right><IMG SRC=ico12b.gif NAME=d></TD></TR></TABLE>
+<DIV ID="sp0thum"><IMG SRC=ico14b.gif NAME=t></DIV>
+<DIV ID="sp0area"><DIV ID="ht0pane2"></DIV><DIV ID="ht0pane">
+</DIV>
+</DIV></DIV>
+</DIV></DIV>
+</DIV>
+<DIV ID="tc0pane2">
+<DIV ID="tb1pane"><TABLE border=0 cellspacing=0 cellpadding=3 background='grey_gradient.png' width=100><TR><TD align=center valign=middle><FONT COLOR='white'><B>This test button</B></FONT></TD></TR></TABLE>
+<DIV ID="tb1pane2"><TABLE border=0 cellspacing=0 cellpadding=3 width=100><TR><TD align=center valign=middle><FONT COLOR='navy'><B>This test button</B></FONT></TD></TR></TABLE>
+</DIV><DIV ID="tb1top"><IMG SRC=trans_1.gif height=1 width=100></DIV>
+<DIV ID="tb1btm"><IMG SRC=trans_1.gif height=1 width=100></DIV>
+<DIV ID="tb1rgt"><IMG SRC=trans_1.gif height=1 width=1></DIV>
+<DIV ID="tb1lft"><IMG SRC=trans_1.gif height=1 width=1></DIV>
+</DIV>
+<DIV ID="tc1tab1">
+    <TABLE cellspacing=0 cellpadding=0 border=0 bgcolor='#c0c0c0'>
+        <TR><TD colspan=3 background=white_1x1.png><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=tab_lft2.gif name=tb></TD>
+            <TD valign=middle><FONT COLOR=black><B>&nbsp;subpage1&nbsp;</B></FONT></TD>
+            <TD><IMG SRC=dkgrey_1x1.png width=1 height=24></TD></TR>
+    </TABLE>
+</DIV>
+<DIV ID="tc1tab2">
+    <TABLE cellspacing=0 cellpadding=0 border=0 bgcolor='#c0c0c0'>
+        <TR><TD colspan=3 background=white_1x1.png><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=tab_lft3.gif name=tb></TD>
+            <TD valign=middle><FONT COLOR=black><B>&nbsp;subpage2&nbsp;</B></FONT></TD>
+            <TD><IMG SRC=dkgrey_1x1.png width=1 height=24></TD></TR>
+    </TABLE>
+</DIV>
+<DIV ID="tc1tab3">
+    <TABLE cellspacing=0 cellpadding=0 border=0 bgcolor='#c0c0c0'>
+        <TR><TD colspan=3 background=white_1x1.png><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=tab_lft3.gif name=tb></TD>
+            <TD valign=middle><FONT COLOR=black><B>&nbsp;subpage3&nbsp;</B></FONT></TD>
+            <TD><IMG SRC=dkgrey_1x1.png width=1 height=24></TD></TR>
+    </TABLE>
+</DIV>
+<DIV ID="tc1tab4">
+    <TABLE cellspacing=0 cellpadding=0 border=0 bgcolor='#c0c0c0'>
+        <TR><TD colspan=3 background=white_1x1.png><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=tab_lft3.gif name=tb></TD>
+            <TD valign=middle><FONT COLOR=black><B>&nbsp;subpage4&nbsp;</B></FONT></TD>
+            <TD><IMG SRC=dkgrey_1x1.png width=1 height=24></TD></TR>
+    </TABLE>
+</DIV>
+<DIV ID="tc1base">
+    <TABLE width=360 cellspacing=0 cellpadding=0 border=0 bgcolor='#c0c0c0'>
+        <TR><TD><IMG SRC=white_1x1.png></TD>
+            <TD><IMG SRC=white_1x1.png height=1 width=358></TD>
+            <TD><IMG SRC=white_1x1.png></TD></TR>
+        <TR><TD><IMG SRC=white_1x1.png height=198 width=1></TD>
+            <TD>&nbsp;</TD>
+            <TD><IMG SRC=dkgrey_1x1.png height=198 width=1></TD></TR>
+        <TR><TD><IMG SRC=dkgrey_1x1.png></TD>
+            <TD><IMG SRC=dkgrey_1x1.png height=1 width=358></TD>
+            <TD><IMG SRC=dkgrey_1x1.png></TD></TR>
+    </TABLE>
+
+<DIV ID="tc1pane1">
+<DIV ID="sp1pane"><TABLE   border=0 cellspacing=0 cellpadding=0 width=358><TR><TD align=right><IMG SRC=ico13b.gif NAME=u></TD></TR><TR><TD align=right><IMG SRC=trans_1.gif height=162 width=18 name='b'></TD></TR><TR><TD align=right><IMG SRC=ico12b.gif NAME=d></TD></TR></TABLE>
+<DIV ID="sp1thum"><IMG SRC=ico14b.gif NAME=t></DIV>
+<DIV ID="sp1area"><TABLE width=342 border=0 cellspacing=0 cellpadding=0 ><TR><TD>
+<TABLE border=0 background=trans_1.gif cellspacing=4 cellpadding=1 width=342>
+    <TR background='slate.png'><TH align=left><IMG name="xy_tbl2_" src=trans_1.gif align=top><FONT color='white'>First Name</FONT></TH><TH align=left><FONT color='white'>Last Name</FONT></TH><TH align=left><FONT color='white'>ID#</FONT></TH><TH align=left><FONT color='white'>Key Code</FONT></TH></TR>
+    <TR bgcolor='#d0d0d0'><TD width=105 nowrap><IMG name="xy_tbl2_first name" src=trans_1.gif align=top>first name</TD><TD width=70 nowrap>last name</TD><TD width=70 nowrap>id</TD><TD width=70 nowrap>key</TD></TR>
+</TABLE></TD></TR></TABLE>
+</DIV></DIV>
+</DIV>
+<DIV ID="tc1pane2">
+</DIV>
+<DIV ID="tc1pane3">
+</DIV>
+<DIV ID="tc1pane4">
+<DIV ID="sp2pane"><TABLE   border=0 cellspacing=0 cellpadding=0 width=358><TR><TD align=right><IMG SRC=ico13b.gif NAME=u></TD></TR><TR><TD align=right><IMG SRC=trans_1.gif height=162 width=18 name='b'></TD></TR><TR><TD align=right><IMG SRC=ico12b.gif NAME=d></TD></TR></TABLE>
+<DIV ID="sp2thum"><IMG SRC=ico14b.gif NAME=t></DIV>
+<DIV ID="sp2area"></DIV></DIV>
+</DIV>
+</DIV>
+</DIV>
+<DIV ID="tc0pane3">
+</DIV>
+</DIV>
+</BODY>
+</HTML>
