@@ -56,10 +56,10 @@ function cl_get_time(l) {
 
 function cl_update_time(l) {
 	var time = cl_get_time(l);
-	l.hiddenLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font face='fixed' size='+"+l.fontSize+"' color='"+l.fgColor1+"'>"+((l.bold)?'<b>':'')+time.formated+((l.bold)?'</b>':'')+"</font></td></tr></table>");
+	l.hiddenLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font size='+"+l.fontSize+"' color='"+l.fgColor1+"'><pre>"+((l.bold)?'<b>':'')+time.formated+((l.bold)?'</b>':'')+"</pre></font></td></tr></table>");
 	l.hiddenLayer.document.close();
 	if (l.shadowed) {
-		l.hiddenLayer.shadowLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font face='fixed' size='+"+l.fontSize+"' color='"+l.fgColor2+"'>"+((l.bold)?'<b>':'')+time.formated+((l.bold)?'</b>':'')+"</font></td></tr></table>");
+		l.hiddenLayer.shadowLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font size='+"+l.fontSize+"' color='"+l.fgColor2+"'><pre>"+((l.bold)?'<b>':'')+time.formated+((l.bold)?'</b>':'')+"</pre></font></td></tr></table>");
 		l.hiddenLayer.shadowLayer.document.close();
 		l.contentLayer.shadowLayer.visibility = 'hidden';
 		l.hiddenLayer.shadowLayer.visibility = 'inherit';

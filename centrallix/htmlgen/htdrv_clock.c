@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.3 2002/08/09 19:25:22 pfinley Exp $
+    $Id: htdrv_clock.c,v 1.4 2002/08/14 23:07:46 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.4  2002/08/14 23:07:46  lkehresman
+    Fixed some font size issues with the clock widget
+
     Revision 1.3  2002/08/09 19:25:22  pfinley
     added missing line for version logs of clock widget
 
@@ -82,7 +85,7 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     int shadowed = 0;
     int shadowx = 0;
     int shadowy = 0;
-    int size = 2;
+    int size = 0;
     int moveable = 0;
     int bold = 0;
     int showsecs = 1;
