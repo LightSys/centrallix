@@ -26,10 +26,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.4 2002/08/06 16:00:29 lkehresman Exp $
+    $Id: xstring.c,v 1.5 2002/08/06 16:39:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.5  2002/08/06 16:39:25  lkehresman
+    Fixed a bug (that greg noticed) in the xsRTrim function that was
+    inaccurately setting the string length.
+
     Revision 1.4  2002/08/06 16:00:29  lkehresman
     Added some xstring manipulation functions:
       xsRTrim - right trim whitespace
@@ -394,7 +398,7 @@ xsRTrim(pXString this)
 		    this->String[i] == '\t' ||
 		    this->String[i] == ' '); i--);
 	this->String[i+1] = '\0';
-	this->Length -= (i+1);
+	this->Length = i+1;
 
     return 0;
     }
