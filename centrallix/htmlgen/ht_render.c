@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.34 2003/05/30 17:39:49 gbeeley Exp $
+    $Id: ht_render.c,v 1.35 2003/06/03 23:31:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.35  2003/06/03 23:31:04  gbeeley
+    Adding pro forma netscape 4.8 support.
+
     Revision 1.34  2003/05/30 17:39:49  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -251,7 +254,7 @@ htrRegisterUserAgents()
 
 	/** Netscape 4.7x regular expressions **/
 	reg = (regex_t *)nmMalloc(sizeof(regex_t));
-	if (!regcomp(reg, "Mozilla\\/4\\.7[5-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	if (!regcomp(reg, "Mozilla\\/4\\.(7[5-9]|8)", REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    xaAddItem(&(HTR.UAreg[HTR_UA_NETSCAPE_47]), (void *)reg);
 
 	/** Mozilla regular expressions **/

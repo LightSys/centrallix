@@ -61,10 +61,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.35 2003/05/30 17:58:27 gbeeley Exp $
+    $Id: net_http.c,v 1.36 2003/06/03 23:31:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.36  2003/06/03 23:31:05  gbeeley
+    Adding pro forma netscape 4.8 support.
+
     Revision 1.35  2003/05/30 17:58:27  gbeeley
     - turned off OSML API debugging
     - fixed bug in WriteOneAttr() that was truncating a string
@@ -2844,7 +2847,7 @@ nhtInitialize()
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
-	if(!NHT.reNet47 || regcomp(NHT.reNet47, "Mozilla\\/4\\.7[5-9]",REG_EXTENDED|REG_NOSUB|REG_ICASE))
+	if(!NHT.reNet47 || regcomp(NHT.reNet47, "Mozilla\\/4\\.(7[5-9]|8)",REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    {
 	    printf("unable to build Netscape 4.7 regex\n"); // shouldn't this be mssError? -- but there's no session yet..
 	    return -1;
