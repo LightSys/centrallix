@@ -157,6 +157,7 @@ ReportingSystem "widget/page"
 		mode=dynamic;
 		x=0; y=0; width=576;
 		source = "http://localhost:800/samples/Samples.rpt";
+		//source="http://localhost:800/test/index.html";
 		}
 	    }
 	}
@@ -289,6 +290,16 @@ ReportingSystem "widget/page"
 	    tristate=no;
 	    cnEditSource "widget/connector" { event=Click; target=dlgEditSource; action=SetVisibility; IsVisible=1; }
 	    }
+	btnEditSource "widget/textbutton"
+	    {
+	    x=464; y=4; width=100; height=30;
+	    text = "Debug Window";
+	    background="/sys/images/grey_gradient.png";
+	    fgcolor1=black;
+	    fgcolor2=white;
+	    tristate=no;
+	    cnEditSource "widget/connector" { event=Click; target=debugwin; action=SetVisibility; IsVisible=1; }
+	    }
 
 	pnLogoPanel "widget/pane"
 	    {
@@ -300,6 +311,22 @@ ReportingSystem "widget/page"
 		content = "<IMG SRC=/sys/images/lightsys_logo2d.png width=76 height=66>";
 		}
 	    style=raised;
+	    }
+	}
+    debugwin "widget/htmlwindow"
+	{
+	x=100;y=100;width=800;height=530;
+	visible=false;
+	bgcolor="#c0c0c0";
+	style=dialog;
+	Tree_scroll "widget/scrollpane"
+	    {
+	    x=0; y=0; width=798; height=504;
+	    Tree "widget/treeview"
+		{
+		x=0; y=1; width=20000;
+		source = "javascript:window";
+		}
 	    }
 	}
     }
