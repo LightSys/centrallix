@@ -59,6 +59,11 @@ function pg_set_style(element,attr, value)
 	}
     else if(cx__capabilities.Dom0NS)
 	{
+	if (attr.substr(0,5) == 'clip.')
+	    {
+	    element.clip[attr.substr(5)] = value;
+	    return;
+	    }
 	element[attr] = value;
 	return;
 	}
@@ -396,7 +401,7 @@ function pg_resize_area(a,w,h)
 /** Function to add a new area to the arealist **/
 function pg_addarea(pl,x,y,w,h,cls,nm,f)
     {
-    a = new pg_area(pl,x,y,w,h,cls,nm,f);
+    var a = new pg_area(pl,x,y,w,h,cls,nm,f);
     pg_arealist.splice(0,0,a);
     return a;
     }
@@ -404,7 +409,7 @@ function pg_addarea(pl,x,y,w,h,cls,nm,f)
 /** Function to remove an existing area... **/
 function pg_removearea(a)
     {
-    for(i=0;i<pg_arealist.length;i++)
+    for(var i=0;i<pg_arealist.length;i++)
 	{
 	if (pg_arealist[i] == a)
 	    {
@@ -426,7 +431,7 @@ function pg_resize(l)
 	alert("Cannot resize " + l.id + l.name + "(" + l + ") -- no child layers");
 	return;
 	}
-    for(i=0;i<layers.length;i++)
+    for(var i=0;i<layers.length;i++)
 	{
 	var cl = layers[i];
 	var visibility = pg_get_style(cl,'visibility');
@@ -522,7 +527,7 @@ function pg_cmpkey(k1,k2)
     
 function pg_removekey(kd)
     {
-    for(i=0;i<pg_keylist.length;i++)
+    for(var i=0;i<pg_keylist.length;i++)
 	{
 	if (pg_keylist[i] == kd)
 	    {
@@ -550,7 +555,7 @@ function pg_keyhandler(k,m,e)
     {
     pg_lastmodifiers = m;
     if (pg_curkbdlayer != null && pg_curkbdlayer.keyhandler != null && pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) return false;
-    for(i=0;i<pg_keylist.length;i++)
+    for(var i=0;i<pg_keylist.length;i++)
 	{
 	if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (m & pg_keylist[i].modmask) == pg_keylist[i].mod)
 	    {
@@ -1136,5 +1141,35 @@ function pg_debug_register_log(l)
 // send debug msg
 function pg_debug(msg)
     {
-    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg});
+    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg, ContentType:'text/plain'});
     }
+
+// log function calls and return values.
+function pg_log_fn(fnname)
+    {
+    if (typeof(window[fnname]) != 'function') 
+	{
+	pg_debug(fnname + ' is not a function.\n');
+	return;
+	}
+    var oldfn = window[fnname].toString();
+    var openparen = oldfn.indexOf('(');
+    var closeparen = oldfn.indexOf(')');
+    var openbrace = oldfn.indexOf('{');
+    var closebrace = oldfn.lastIndexOf('}');
+    var argstext = oldfn.substring(openparen+1,closeparen);
+    var args = argstext.split(',');
+    var body = oldfn.substring(openbrace+1,closebrace);
+    body = "var __debugmsg = '" + fnname + " called with ('; for(var __i=0;__i<arguments.length;__i++) { if (__i > 0) __debugmsg += ', '; switch(typeof(arguments[__i])) { case 'string': __debugmsg += \"'\" + arguments[__i] + \"'\"; break; case 'function': __debugmsg += arguments[__i].name + '()'; break; default: __debugmsg += arguments[__i]; break; } } __debugmsg += ')\\n'; pg_debug(__debugmsg); function __internal(" + argstext + ") {" + body + "} var __rval = __internal.apply(this,arguments); pg_debug('" + fnname + " returned: ' + __rval + '\\n'); return __rval;";
+    //args.push(body);
+    var fndecl = 'new Function(';
+    for(var i=0;i<args.length;i++)
+	{
+	if (args[i] == '') continue;
+	fndecl += '"' + args[i] + '", ';
+	}
+    fndecl += 'body)';
+    window[fnname] = eval(fndecl);
+    return;
+    }
+
