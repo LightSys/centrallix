@@ -41,12 +41,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.1 2001/08/13 18:00:50 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.2 2001/10/23 00:25:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
-    Revision 1.1  2001/08/13 18:00:50  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/23 00:25:09  gbeeley
+    Added rudimentary single-line editbox widget.  No data source linking
+    or anything like that yet.  Fixed a few bugs and made a few changes to
+    other controls to make this work more smoothly.  Page widget still needs
+    some key de-bounce and key repeat overhaul.  Arrow keys don't work in
+    Netscape 4.xx.
+
+    Revision 1.1.1.1  2001/08/13 18:00:50  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -220,6 +227,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (e.target != null && e.target.pageX != null)\n"
 		"        {\n"
 		"        pg_curlayer = e.target;\n"
+		"        while(pg_curlayer.mainlayer != null) pg_curlayer = pg_curlayer.mainlayer;\n"
 		"        }\n" );
 
 	/** CLICK event handler is for making mouse focus the keyboard focus **/
@@ -234,7 +242,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        h = pg_curarea.height;\n"
 		"        if (pg_curarea.callback)\n"
 		"            {\n"
-		"            v=pg_curarea.callback(pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
+		"            v=pg_curarea.callback(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name);\n"
 		"            if (v & 1)\n"
 		"                {\n"
 		"                pg_mkbox(pg_curlayer,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);\n"
@@ -302,7 +310,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    ll.moveAbove(pl);\n"
 		"    ll.moveToAbsolute(x,y);\n"
 		"    ll.zIndex = z;\n"
-		"    rl.resizeTo(1,h);\n"
+		"    rl.resizeTo(1,h+1);\n"
 		"    rl.moveAbove(pl);\n"
 		"    rl.moveToAbsolute(x+w-s+1,y);\n"
 		"    rl.zIndex = z;\n"
@@ -396,12 +404,12 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "pg_togglecursor", "\n"
 		"function pg_togglecursor()\n"
 		"    {\n"
-		"    if (pg_curlayer != null && pg_curlayer.cursorlayer != null)\n"
+		"    if (pg_curkbdlayer != null && pg_curkbdlayer.cursorlayer != null)\n"
 		"        {\n"
-		"        if (pg_curlayer.cursorlayer.visibility != 'inherit')\n"
-		"            pg_curlayer.cursorlayer.visibility = 'inherit';\n"
+		"        if (pg_curkbdlayer.cursorlayer.visibility != 'inherit')\n"
+		"            pg_curkbdlayer.cursorlayer.visibility = 'inherit';\n"
 		"        else\n"
-		"            pg_curlayer.cursorlayer.visibility = 'hidden';\n"
+		"            pg_curkbdlayer.cursorlayer.visibility = 'hidden';\n"
 		"        }\n"
 		"    setTimeout(pg_togglecursor,333);\n"
 		"    }\n", 0);
@@ -449,10 +457,10 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (k >= 128) k -= 128;\n"
 		"    if (k == pg_lastkey) return false;\n"
 		"    pg_lastkey = k;\n"
-		"    pg_togglecursor();\n"
-		"    alert('Code=' + k + '; Mod=' + e.modifiers);\n"
+		"    /*pg_togglecursor();*/\n"
+		"    /*alert('Code=' + k + '; Mod=' + e.modifiers);*/\n"
 		"    setTimeout('pg_lastkey = -1;',100);\n"
-		"    if (pg_curkbdlayer != null && pg_curkbdlayer.keyhandler != null && pg_curkbdlayer.keyhandler(e,k) == true) return false;\n"
+		"    if (pg_curkbdlayer != null && pg_curkbdlayer.keyhandler != null && pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) return false;\n"
 		"    for(i=0;i<pg_keylist.length;i++)\n"
 		"        {\n"
 		"        if (k >= pg_keylist[i].startcode && k <= pg_keylist[i].endcode && (pg_keylist[i].kbdlayer == null || pg_keylist[i].kbdlayer == pg_curkbdlayer) && (pg_keylist[i].mouselayer == null || pg_keylist[i].mouselayer == pg_curlayer) && (e.modifiers & pg_keylist[i].modmask) == pg_keylist[i].mod)\n"

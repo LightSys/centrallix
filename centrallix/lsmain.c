@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.2 2001/10/02 20:45:03 gbeeley Exp $
+    $Id: lsmain.c,v 1.3 2001/10/23 00:25:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.3  2001/10/23 00:25:09  gbeeley
+    Added rudimentary single-line editbox widget.  No data source linking
+    or anything like that yet.  Fixed a few bugs and made a few changes to
+    other controls to make this work more smoothly.  Page widget still needs
+    some key de-bounce and key repeat overhaul.  Arrow keys don't work in
+    Netscape 4.xx.
+
     Revision 1.2  2001/10/02 20:45:03  gbeeley
     New build/subbuild system; fixed Makefile to work better with it...
 
@@ -134,6 +141,7 @@ start(void* v)
 	htwinInitialize();			/* draggable window module */
 	htcbInitialize();			/* checkbox module */
 	htrbInitialize();			/* radiobutton module */
+	htebInitialize();			/* editbox module */
 
 	/** Init the reporting content drivers **/
 	pclInitialize();			/* PCL report generator */

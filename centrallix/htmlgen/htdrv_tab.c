@@ -41,12 +41,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.1 2001/08/13 18:00:51 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.2 2001/10/23 00:25:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
-    Revision 1.1  2001/08/13 18:00:51  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/23 00:25:09  gbeeley
+    Added rudimentary single-line editbox widget.  No data source linking
+    or anything like that yet.  Fixed a few bugs and made a few changes to
+    other controls to make this work more smoothly.  Page widget still needs
+    some key de-bounce and key repeat overhaul.  Arrow keys don't work in
+    Netscape 4.xx.
+
+    Revision 1.1.1.1  2001/08/13 18:00:51  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -220,6 +227,8 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"    l_tab.kind = 'tc';\n"
 		"    l_tab.document.layer = l_tab;\n"
 		"    l_tab.document.Layer = l_tab;\n"
+		"    l_page.clip.width = this.clip.width-2;\n"
+		"    l_page.clip.height = this.clip.height-24;\n"
 		"    return l_tab;\n"
 		"    }\n", 0);
 

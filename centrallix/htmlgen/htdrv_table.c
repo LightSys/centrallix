@@ -59,10 +59,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.2 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.3 2001/10/23 00:25:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.3  2001/10/23 00:25:09  gbeeley
+    Added rudimentary single-line editbox widget.  No data source linking
+    or anything like that yet.  Fixed a few bugs and made a few changes to
+    other controls to make this work more smoothly.  Page widget still needs
+    some key de-bounce and key repeat overhaul.  Arrow keys don't work in
+    Netscape 4.xx.
+
     Revision 1.2  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -210,7 +217,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Function to handle clicking of a table row **/
 	htrAddScriptFunction(s, "tl_rowclick", "\n"
-		"function tl_rowclick(l,cls,nm)\n"
+		"function tl_rowclick(x,y,l,cls,nm)\n"
 		"    {\n"
 		"    //alert(cls + ':' + nm);\n"
 		"    return 3;\n"
