@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.9 2002/05/02 01:12:43 gbeeley Exp $
+    $Id: ht_render.c,v 1.10 2002/05/03 03:43:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.10  2002/05/03 03:43:25  gbeeley
+    Added FD_U_PACKET to the fdWrite() calls in ht_render.  It is possible
+    that some data was getting dropped - fdWrite() makes no guarantee of
+    writing *all* the data unless you include the FD_U_PACKET flag :)
+
     Revision 1.9  2002/05/02 01:12:43  gbeeley
     Fixed some buggy initialization code where an XArray was not being
     setup prior to being used.  Was causing potential bad pointers to
@@ -674,19 +679,19 @@ htrRender(pFile output, pObject appstruct)
 	htrRenderWidget(s, appstruct, 10, "document", "document");
 
 	/** Write the HTML out... **/
-	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,0);
+	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
 
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlHeader.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,0);
+	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
-	fdWrite(output, "\n</HEAD>\n",9,0,0);
+	fdWrite(output, "\n</HEAD>\n",9,0,FD_U_PACKET);
 
 	/** Write the script globals **/
-	fdWrite(output, "<SCRIPT language=javascript>\n\n\n", 31,0,0);
+	fdWrite(output, "<SCRIPT language=javascript>\n\n\n", 31,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -694,24 +699,24 @@ htrRender(pFile output, pObject appstruct)
 		snprintf(sbuf,HT_SBUF_SIZE,"var %s = %s;\n", sv->Name, sv->Value);
 	    else
 		snprintf(sbuf,HT_SBUF_SIZE,"var %s;\n", sv->Name);
-	    fdWrite(output, sbuf, strlen(sbuf),0,0);
+	    fdWrite(output, sbuf, strlen(sbuf),0,FD_U_PACKET);
 	    }
 
 	/** Write the includes **/
-	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,0);
+	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
 	    snprintf(sbuf,HT_SBUF_SIZE,"<SCRIPT language=javascript src=\"%s\"></SCRIPT>\n\n",sv->Name);
-	    fdWrite(output, sbuf, strlen(sbuf), 0,0);
+	    fdWrite(output, sbuf, strlen(sbuf), 0,FD_U_PACKET);
 	    }
-	fdWrite(output, "<SCRIPT language=javascript>\n\n", 30,0,0);
+	fdWrite(output, "<SCRIPT language=javascript>\n\n", 30,0,FD_U_PACKET);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Functions.Items[i]);
-	    fdWrite(output, sv->Value, strlen(sv->Value),0,0);
+	    fdWrite(output, sv->Value, strlen(sv->Value),0,FD_U_PACKET);
 	    }
 
 	/** Write the event scripts themselves. **/
@@ -722,22 +727,22 @@ htrRender(pFile output, pObject appstruct)
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
 	        snprintf(sbuf,HT_SBUF_SIZE,"\nfunction e%d_%d(e)\n    {\n",i,j);
-		fdWrite(output,sbuf,strlen(sbuf),0,0);
+		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
 		for(k=0;k<tmp_a2->Array.nItems;k++)
 		    {
 		    tmp_a3 = (pHtNameArray)(tmp_a2->Array.Items[k]);
 		    for(l=0;l<tmp_a3->Array.nItems;l++)
 		        {
 		        ptr = (char*)(tmp_a3->Array.Items[l]);
-		        fdWrite(output,ptr+8,*(int*)ptr,0,0);
+		        fdWrite(output,ptr+8,*(int*)ptr,0,FD_U_PACKET);
 			}
 		    }
-		fdWrite(output,"    return true;\n    }\n",23,0,0);
+		fdWrite(output,"    return true;\n    }\n",23,0,FD_U_PACKET);
 		}
 	    }
 
 	/** Write the event capture lines **/
-	fdWrite(output,"\nfunction events()\n    {\n", 25,0,0);
+	fdWrite(output,"\nfunction events()\n    {\n", 25,0,FD_U_PACKET);
 	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
 	    {
 	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
@@ -750,56 +755,56 @@ htrRender(pFile output, pObject appstruct)
 		strcat(sbuf,tmp_a2->Name);
 		}
 	    strcat(sbuf,");\n");
-	    fdWrite(output,sbuf,strlen(sbuf),0,0);
+	    fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
 	    for(j=0;j<tmp_a->Array.nItems;j++)
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
 		n = strlen(tmp_a2->Name);
 		for(k=0;k<=n;k++) ename[k] = tolower(tmp_a2->Name[k]);
 		snprintf(sbuf,HT_SBUF_SIZE,"    %.64s.on%s=e%d_%d;\n",tmp_a->Name,ename,i,j);
-		fdWrite(output,sbuf,strlen(sbuf),0,0);
+		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
 		}
 	    }
-	fdWrite(output,"    }\n",6,0,0);
+	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 	/** Write the initialization lines **/
-	fdWrite(output,"\nfunction startup()\n    {\n",26,0,0);
+	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Inits.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,0);
+	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
-	fdWrite(output,"    events();\n", 14,0,0);
-	fdWrite(output,"    }\n",6,0,0);
+	fdWrite(output,"    events();\n", 14,0,FD_U_PACKET);
+	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 	/** Write the cleanup lines **/
-	fdWrite(output,"\nfunction cleanup()\n    {\n",26,0,0);
+	fdWrite(output,"\nfunction cleanup()\n    {\n",26,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Cleanups.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Cleanups.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,0);
+	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
-	fdWrite(output,"    }\n",6,0,0);
+	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 
 	/** If the body part is disabled, skip over body section generation **/
 	if (s->DisableBody == 0)
 	    {
 	    /** Write the HTML body params **/
-	    fdWrite(output, "\n</SCRIPT>\n<BODY", 16,0,0);
+	    fdWrite(output, "\n</SCRIPT>\n<BODY", 16,0,FD_U_PACKET);
 	    for(i=0;i<s->Page.HtmlBodyParams.nItems;i++)
 	        {
 	        ptr = (char*)(s->Page.HtmlBodyParams.Items[i]);
 	        n = *(int*)ptr;
-	        fdWrite(output, ptr+8, n,0,0);
+	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	        }
-	    fdWrite(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n", 43,0,0);
+	    fdWrite(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n", 43,0,FD_U_PACKET);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</SCRIPT>\n",11,0,0);
+	    fdWrite(output, "\n</SCRIPT>\n",11,0,FD_U_PACKET);
 	    }
 
 	/** Write the HTML body. **/
@@ -807,16 +812,16 @@ htrRender(pFile output, pObject appstruct)
 	    {
 	    ptr = (char*)(s->Page.HtmlBody.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,0);
+	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
 
 	if (s->DisableBody == 0)
 	    {
-	    fdWrite(output, "</BODY>\n</HTML>\n",16,0,0);
+	    fdWrite(output, "</BODY>\n</HTML>\n",16,0,FD_U_PACKET);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</HTML>\n",9,0,0);
+	    fdWrite(output, "\n</HTML>\n",9,0,FD_U_PACKET);
 	    }
 
 	/** Deinitialize the session and page structures **/
