@@ -584,6 +584,35 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
     ]
 )
 
+dnl Test for the SHELL os driver.
+AC_DEFUN(CENTRALLIX_CHECK_NET_NFS,
+    [
+	AC_MSG_CHECKING(if NFS netdriver support is desired)
+
+	AC_ARG_ENABLE(net-nfs,
+	    AC_HELP_STRING([--enable-net-nfs],
+		[enable NFS netdriver support]
+	    ),
+	    WITH_NETNFS="$enableval", 
+	    WITH_NETNFS="no"
+	)
+ 
+	if test "$WITH_NETNFS" = "yes"; then
+	    AC_DEFINE(USE_NETNFS)
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		NETDRIVERMODULES="$NETDRIVERMODULES net_nfs.so"
+	    else
+		NETDRIVERS="$OBJDRIVERS net_nfs.o"
+	    fi
+	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(nfs,nfs)
+	else
+	    AC_MSG_RESULT(no)
+	fi
+    ]
+)
+
+
 dnl check if gcc allows -fPIC and -pg at the same time
 AC_DEFUN(CHECK_PROFILE,
     [

@@ -307,7 +307,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE AWK STRIP SED INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA EXPORT_DYNAMIC CPP EGREP LIBOBJS CXLIBDIR CXOSDIR DRIVERLIST GZIP_CFLAGS GZIP_LIBS SYBASE_LIBS SYBASE_CFLAGS xmlconfig XML_CFLAGS XML_LIBS OBJDRIVERMODULES OBJDRIVERS STATIC_CFLAGS STATIC_LIBS PROFILE LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE AWK STRIP SED INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA EXPORT_DYNAMIC CPP EGREP LIBOBJS CXLIBDIR CXOSDIR DRIVERLIST GZIP_CFLAGS GZIP_LIBS SYBASE_LIBS SYBASE_CFLAGS xmlconfig XML_CFLAGS XML_LIBS OBJDRIVERMODULES OBJDRIVERS NETDRIVERMODULES NETDRIVERS STATIC_CFLAGS STATIC_LIBS PROFILE LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -850,6 +850,7 @@ Optional Features:
   --disable-libxml2       ignore libxml2 even if installed
   --disable-mbox          disable mbox support
   --enable-shell-os       enable shell osdriver support
+  --enable-net-nfs        enable NFS netdriver support
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -5665,6 +5666,48 @@ echo "${ECHO_T}no" >&6
 
 
 
+	echo "$as_me:$LINENO: checking if NFS netdriver support is desired" >&5
+echo $ECHO_N "checking if NFS netdriver support is desired... $ECHO_C" >&6
+
+	# Check whether --enable-net-nfs or --disable-net-nfs was given.
+if test "${enable_net_nfs+set}" = set; then
+  enableval="$enable_net_nfs"
+  WITH_NETNFS="$enableval"
+else
+  WITH_NETNFS="no"
+
+fi;
+
+	if test "$WITH_NETNFS" = "yes"; then
+	    cat >>confdefs.h <<\_ACEOF
+#define USE_NETNFS 1
+_ACEOF
+
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		NETDRIVERMODULES="$NETDRIVERMODULES net_nfs.so"
+	    else
+		NETDRIVERS="$OBJDRIVERS net_nfs.o"
+	    fi
+	    echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+
+	DRIVERLIST="$DRIVERLIST nfs"
+	drivernames="$drivernames|nfs"
+
+
+
+	else
+	    echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+	fi
+
+
+
+
+
+
+
+
 
 
 
@@ -5676,10 +5719,6 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 fi
-
-
-
-
 
           ac_config_files="$ac_config_files Makefile"
           ac_config_commands="$ac_config_commands default"
@@ -6305,6 +6344,8 @@ s,@XML_CFLAGS@,$XML_CFLAGS,;t t
 s,@XML_LIBS@,$XML_LIBS,;t t
 s,@OBJDRIVERMODULES@,$OBJDRIVERMODULES,;t t
 s,@OBJDRIVERS@,$OBJDRIVERS,;t t
+s,@NETDRIVERMODULES@,$NETDRIVERMODULES,;t t
+s,@NETDRIVERS@,$NETDRIVERS,;t t
 s,@STATIC_CFLAGS@,$STATIC_CFLAGS,;t t
 s,@STATIC_LIBS@,$STATIC_LIBS,;t t
 s,@PROFILE@,$PROFILE,;t t

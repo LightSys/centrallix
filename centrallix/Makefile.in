@@ -143,8 +143,12 @@ QYDRIVERS=$(patsubst %,multiquery/%,$(XQYDRIVERS))
 
 # Network drivers.
 XNETDRIVERS=net_http.o \
-	    net_bdqs.o
+	    net_bdqs.o \
+	    @NETDRIVERS@
 NETDRIVERS=$(patsubst %,netdrivers/%,$(XNETDRIVERS))
+
+XNETDRIVERMODULES=@NETDRIVERMODULES@
+NETDRIVERMODULES=$(patsubst %,netdrivers/%,$(XNETDRIVERMODULES))
 
 # Reporting subsystem, including printer drivers and print management system.
 XRPTMODS=epsonfx_prt.o \
@@ -190,7 +194,7 @@ XTESTSUITE=ts1.c \
 TESTSUITE=$(patsubst %,testsuite/%,$(XTESTSUITE))
 
 # Loadable modules.
-MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES)
+MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES) $(NETDRIVERMODULES)
 
 # Configuration Files
 CONFFILES=centrallix.conf \
@@ -307,13 +311,13 @@ lsclient: lsclient.o $(BASIC)
 htmltest: htmltest.o $(SUPPORT)
 	$(CC) htmltest.o $(SUPPORT) $(PROFILE) -o htmltest
 
-etc/rootnode:
+etc/rootnode: etc/rootnode.in
 	@$(SED) -e "s|##OSDIR##|@CXOSDIR@|g" etc/rootnode.in > etc/rootnode
 
-etc/centrallix.conf:
+etc/centrallix.conf: etc/centrallix.conf.in
 	@$(SED) -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LIBDIR##|$(libdir)|g" etc/centrallix.conf.in > etc/centrallix.conf
 
-etc/centrallix.init:
+etc/centrallix.init: etc/centrallix.init.in
 	@$(SED) -e "s|##SBINDIR##|$(sbindir)|g" -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LOCALSTATEDIR##|$(localstatedir)|g" -e "s|##LIBDIR##|$(libdir)|g" -e "s|##CXLIBDIR##|$(CXLIBDIR)|g" etc/centrallix.init.in > etc/centrallix.init
 
 clean:

@@ -147,6 +147,9 @@
 /* Define for MIME support */
 #undef USE_MIME
 
+/* Define for NFS netdriver support */
+#undef USE_NETNFS
+
 /* Define for profiling */
 #undef USE_PROFILE
 

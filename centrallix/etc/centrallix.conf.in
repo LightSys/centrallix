@@ -60,6 +60,7 @@ centrallix "system/config"
 	dbl "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_dbl.so"; type="osdriver"; }
 	mbox "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_mbox.so"; type="osdriver"; }
 	shell "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_shell.so"; type="osdriver"; }
+	nnfs "system/config-module" { enable_module=no; path="##LIBDIR##/net_nfs.so"; type="netdriver"; }
 	}
     }
 
