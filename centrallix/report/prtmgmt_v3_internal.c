@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.14 2003/03/15 04:46:00 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.15 2003/03/18 04:06:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.15  2003/03/18 04:06:25  gbeeley
+    Added basic image (picture/bitmap) support; only PNG images supported
+    at present.  Moved image and border (rectangles) functionality into a
+    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
+    present and work only under PCL (not plain text!!!).  PNG support is
+    via libpng, so libpng was added to configure/autoconf.
+
     Revision 1.14  2003/03/15 04:46:00  gbeeley
     Added borders to tables.  Not fully tested yet.  Added a new component
     of the "PrtBorder" object: "Pad", which is the padding 'outside' of
@@ -974,121 +981,6 @@ prt_internal_DispatchEvents(pPrtSession s)
 		    break;
 		}
 	    nmFree(e,sizeof(PrtEvent));
-	    }
-
-    return 0;
-    }
-
-
-/*** prt_internal_MakeBorder() - creates rectangles to represent the
- *** given border data, and adds them to the parent container at the
- *** requested location with the given size.
- ***
- *** Params:
- ***	parent	- the object to add the borders within.
- ***	x	- the X coordinate of the start of the border
- ***	y	- the Y coordinate of the start of the border
- ***	len	- the length of the border line
- ***	flags	- PRT_MKBDR_F_xxx flags bitmask
- ***	b	- border data for *this* border, must be set.
- ***	sb	- border that this one connects to at starting point, NULL if none.
- ***	eb	- border that this one connects to at ending point, NULL if none.
- ***/
-int
-prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, int flags, pPrtBorder b, pPrtBorder sb, pPrtBorder eb)
-    {
-    pPrtObjStream rect_obj;
-    int i, selected_line;
-    int offset_dir;
-    int is_horiz;
-    double total_s_thickness, total_e_thickness, total_thickness;
-    double s_thickness, e_thickness, thickness;
-
-	/** Which 'direction' (as in positive or negative) **/
-	if ((flags & PRT_MKBDR_DIRFLAGS) == PRT_MKBDR_F_TOP ||
-	    (flags & PRT_MKBDR_DIRFLAGS) == PRT_MKBDR_F_LEFT)
-	    offset_dir = +1;
-	else if ((flags & PRT_MKBDR_DIRFLAGS) == PRT_MKBDR_F_BOTTOM ||
-	    (flags & PRT_MKBDR_DIRFLAGS) == PRT_MKBDR_F_RIGHT)
-	    offset_dir = -1;
-	else
-	    offset_dir = 0;
-
-	/** Which 'orientation' (vertical vs. horizontal) **/
-	if (flags & (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM))
-	    is_horiz = 1;
-	else
-	    is_horiz = 0;
-
-	/** Figure total thickness of border **/
-	total_thickness = b->Pad;
-	total_e_thickness = eb?(eb->Pad):0.0;
-	total_s_thickness = sb?(sb->Pad):0.0;
-	for(i=0; i < b->nLines; i++)
-	    {
-	    if (offset_dir != 0) selected_line = i;
-	    else selected_line = ((b->nLines-1)-i/2);
-	    if (i > 0) total_thickness += b->Sep;
-	    total_thickness += b->Width[selected_line];
-	    if (sb && sb->nLines > i+1) total_s_thickness += (sb->Sep + sb->Width[i]);
-	    if (eb && eb->nLines > i+1) total_e_thickness += (eb->Sep + eb->Width[i]);
-	    }
-
-	/** Add number of requested line objects **/
-	thickness = b->Pad;
-	e_thickness = eb?(eb->Pad):0.0;
-	s_thickness = sb?(sb->Pad):0.0;
-	for(i=0; i < b->nLines; i++)
-	    {
-	    /** Get a new rectangle **/
-	    rect_obj = prt_internal_AllocObjByID(PRT_OBJ_T_RECT);
-	    if (!rect_obj) return -ENOMEM;
-	    rect_obj->TextStyle.Color = rect_obj->FGColor = b->Color[i];
-	    if (flags & PRT_MKBDR_F_MARGINRELEASE) rect_obj->Flags |= PRT_OBJ_F_MARGINRELEASE;
-
-	    /** Set up its geometry **/
-	    if (offset_dir != 0) selected_line = i;
-	    else selected_line = ((b->nLines-1)-i/2);
-	    if (is_horiz)
-		{
-		rect_obj->Height = b->Width[selected_line]*PRT_XY_CORRECTION_FACTOR;
-		if (offset_dir != 0) 
-		    {
-		    rect_obj->Width = len - s_thickness - e_thickness;
-		    rect_obj->X = x + s_thickness;
-		    }
-		else 
-		    {
-		    rect_obj->Width = len - total_s_thickness - total_e_thickness;
-		    rect_obj->X = x + total_s_thickness;
-		    }
-		rect_obj->Y = y - ((offset_dir==0)*(total_thickness/2.0) + (offset_dir==-1)*(b->Width[selected_line]) - (offset_dir!=-1)*thickness + (offset_dir==-1)*thickness)*PRT_XY_CORRECTION_FACTOR;
-		}
-	    else
-		{
-		rect_obj->Width = b->Width[selected_line];
-		if (offset_dir != 0) 
-		    {
-		    rect_obj->Height = len - (s_thickness + e_thickness)*PRT_XY_CORRECTION_FACTOR;
-		    rect_obj->Y = y + (s_thickness*PRT_XY_CORRECTION_FACTOR);
-		    }
-		else
-		    {
-		    rect_obj->Height = len - (total_s_thickness + total_e_thickness)*PRT_XY_CORRECTION_FACTOR;
-		    rect_obj->Y = y + (total_s_thickness*PRT_XY_CORRECTION_FACTOR);
-		    }
-		rect_obj->X = x - (offset_dir==0)*(total_thickness/2.0) - (offset_dir==-1)*(b->Width[selected_line]) + (offset_dir!=-1)*thickness - (offset_dir==-1)*thickness;
-		}
-
-	    /** Add the rectangle **/
-	    prt_internal_Add(parent, rect_obj);
-
-	    /** Account for our own line thickness **/
-	    thickness += (b->Sep + b->Width[selected_line]);
-
-	    /** Account for thickness of connecting border lines **/
-	    if (sb && sb->nLines > i+1) s_thickness += (sb->Sep + sb->Width[i]);
-	    if (eb && eb->nLines > i+1) e_thickness += (eb->Sep + eb->Width[i]);
 	    }
 
     return 0;

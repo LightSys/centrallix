@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.9 2003/03/06 02:52:36 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.10 2003/03/18 04:06:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.10  2003/03/18 04:06:25  gbeeley
+    Added basic image (picture/bitmap) support; only PNG images supported
+    at present.  Moved image and border (rectangles) functionality into a
+    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
+    present and work only under PCL (not plain text!!!).  PNG support is
+    via libpng, so libpng was added to configure/autoconf.
+
     Revision 1.9  2003/03/06 02:52:36  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -541,14 +548,65 @@ prt_pclod_WriteText(void* context_v, char* str)
 
 /*** prt_pclod_WriteRasterData() - outputs a block of raster (image) data
  *** at the current printing position on the page, given the selected
- *** pixel and color resolution.  Data[] is an array of 32-bit integers, one
- *** per pixel, containing 0x00RRGGBB values for the pixel.
+ *** pixel and color resolution.  Currently, we just do black+white 
+ *** graphics only.
  ***/
-int
-prt_pclod_WriteRasterData(void* context_v, int xpixels, int ypixels, unsigned int data[])
+double
+prt_pclod_WriteRasterData(void* context_v, pPrtImage img, double width, double height, double next_y)
     {
-    /*pPrtPclodInf context = (pPrtPclodInf)context_v;*/
-    return 0;
+    pPrtPclodInf context = (pPrtPclodInf)context_v;
+    char pclbuf[80];
+    unsigned char* rowbuf;
+    unsigned char* colptr;
+    unsigned char* origcolptr;
+    int rows,cols,y,x,b,color;
+    double actual_height;
+
+	/** How many raster rows/cols are we looking at here? **/
+	actual_height = (context->CurVPos + height <= next_y)?height:(next_y - context->CurVPos);
+	rows = actual_height/6.0*(context->SelectedResolution->Yres);
+	cols = width/10.0*(context->SelectedResolution->Xres);
+
+	/** Build and print the raster graphics command header **/
+	snprintf(pclbuf,sizeof(pclbuf),"\33&f0S\33*r1U\33*r0F\33*t%dR\33*r%dT\33*r%dS\33*r1A",
+		context->SelectedResolution->Yres, rows,cols);
+	prt_pclod_Output(context, pclbuf, -1);
+
+	/** Send each row **/
+	rowbuf = (unsigned char*)nmSysMalloc(20 + (cols+7)/8);
+	sprintf(rowbuf, "\33*b%dW", (cols+7)/8);
+	colptr = strchr(rowbuf,'\0');
+	for(y=0;y<rows;y++)
+	    {
+	    for(x=0;x<(cols+7)/8;x++)
+		{
+		colptr[x] = '\0';
+		for(b=0;b<8;b++)
+		    {
+		    color = prt_internal_GetPixel(img, ((double)(x*8+b))/cols, (((double)y)/rows)*((actual_height/height))*(1.0-img->Hdr.YOffset) + img->Hdr.YOffset);
+		    if ((color&0xFF) + ((color>>8)&0xFF) + ((color>>16)&0xFF) < 0x180)
+			{
+			colptr[x] |= ((unsigned int)0x80)>>b;
+			/*printf("*");*/
+			}
+		    else
+			{
+			/*printf(" ");*/
+			}
+		    }
+		}
+	    /*printf("\n");*/
+	    prt_pclod_Output(context, rowbuf, colptr-rowbuf + (cols+7)/8);
+	    }
+	img->Hdr.YOffset += (1.0 - img->Hdr.YOffset)*(actual_height/height);
+	nmSysFree(rowbuf);
+
+	/** End graphics mode **/
+	prt_pclod_Output(context, "\33*rB\33&f1S", -1);
+	snprintf(pclbuf, 64, "\33&a%.1fV", (context->CurVPos)*120 + 0.000001);
+	prt_pclod_Output(context, pclbuf, -1);
+
+    return context->CurVPos + actual_height;
     }
 
 
@@ -569,10 +627,11 @@ prt_pclod_WriteFF(void* context_v)
 
 /*** prt_pclod_WriteRect() - write a rectangular area out to the page (or
  *** a fragment of one).  Return the Y coordinate of the bottom of the
- *** fragment that was actually output.
+ *** fragment that was actually output.  'next_y' is the next Y position
+ *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_pclod_WriteRect(void* context_v, double width, double height)
+prt_pclod_WriteRect(void* context_v, double width, double height, double next_y)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[80];

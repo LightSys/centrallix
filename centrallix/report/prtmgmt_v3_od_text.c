@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.2 2003/03/06 02:52:36 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.3 2003/03/18 04:06:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.3  2003/03/18 04:06:25  gbeeley
+    Added basic image (picture/bitmap) support; only PNG images supported
+    at present.  Moved image and border (rectangles) functionality into a
+    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
+    present and work only under PCL (not plain text!!!).  PNG support is
+    via libpng, so libpng was added to configure/autoconf.
+
     Revision 1.2  2003/03/06 02:52:36  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -299,13 +306,14 @@ prt_textod_WriteText(void* context_v, char* str)
  *** at the current printing position on the page, given the selected
  *** pixel and color resolution.  Data[] is an array of 32-bit integers, one
  *** per pixel, containing 0x00RRGGBB values for the pixel.  The text driver
- *** does NOT support writing raster data, so we just ignore it.
+ *** does NOT support writing raster data, so we just ignore it (and pretend
+ *** it succeeded).
  ***/
-int
-prt_textod_WriteRasterData(void* context_v, int xpixels, int ypixels, unsigned int data[])
+double
+prt_textod_WriteRasterData(void* context_v, pPrtImage img, double w, double h, double next_y)
     {
     /*pPrtTextodInf context = (pPrtTextodInf)context_v;*/
-    return 0;
+    return next_y;
     }
 
 
@@ -330,10 +338,11 @@ prt_textod_WriteFF(void* context_v)
  *** document.  Depending on the geometry and so forth, we write a 
  *** character to represent the line or shaded area, such as - or |
  *** or perhaps = or * for a larger area.  Return the absolute Y point at
- *** which we ended the rectangle.
+ *** which we ended the rectangle.  'next_y' is the next Y position on the
+ *** page which will be printed after the current row of objects.
  ***/
 double
-prt_textod_WriteRect(void* context_v, double width, double height)
+prt_textod_WriteRect(void* context_v, double width, double height, double next_y)
     {
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     double new_y;

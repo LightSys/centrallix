@@ -26,13 +26,15 @@ dnl Replace `main' with a function in -lm:
 AC_CHECK_LIB(m, main)
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
+dnl Check for libpng
+AC_CHECK_LIB(png, png_read_png)
 AC_CACHE_SAVE
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h unistd.h readline/readline.h readline/history.h libgen.h)
+AC_CHECK_HEADERS(fcntl.h unistd.h readline/readline.h readline/history.h libgen.h png.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_STRUCT_TM

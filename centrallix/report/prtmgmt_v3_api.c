@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.14 2003/03/15 04:46:00 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.15 2003/03/18 04:06:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.15  2003/03/18 04:06:25  gbeeley
+    Added basic image (picture/bitmap) support; only PNG images supported
+    at present.  Moved image and border (rectangles) functionality into a
+    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
+    present and work only under PCL (not plain text!!!).  PNG support is
+    via libpng, so libpng was added to configure/autoconf.
+
     Revision 1.14  2003/03/15 04:46:00  gbeeley
     Added borders to tables.  Not fully tested yet.  Added a new component
     of the "PrtBorder" object: "Pad", which is the padding 'outside' of
@@ -933,57 +940,6 @@ prtSetMargins(int handle_id, double t, double b, double l, double r)
 	if (l >= 0.0) obj->MarginLeft = l;
 	if (r >= 0.0) obj->MarginRight = r;
 
-    return 0;
-    }
-
-
-/*** prtAllocBorder - this is a convenience function to allocate a new
- *** border descriptor.
- ***/
-pPrtBorder
-prtAllocBorder(int n_lines, double sep, double pad, ...)
-    {
-    va_list va;
-    pPrtBorder b;
-    int i;
-
-	/** Make sure caller didn't ask for too many border lines **/
-	if (n_lines > PRT_MAXBDR)
-	    {
-	    mssError(1,"PRT","Too many lines (%d) requested in border.  Max is %d.",
-		    n_lines, PRT_MAXBDR);
-	    return NULL;
-	    }
-
-	/** Allocate the thing **/
-	b = (pPrtBorder)nmMalloc(sizeof(PrtBorder));
-	if (!b) return NULL;
-	b->nLines = n_lines;
-	b->Sep = sep;
-	b->Pad = pad;
-	b->TotalWidth = pad;
-
-	/** Get the params for each line **/
-	va_start(va, pad);
-	for(i=0; i<n_lines; i++)
-	    {
-	    b->Width[i] = va_arg(va, double);
-	    b->Color[i] = va_arg(va, int);
-	    if (i>0) b->TotalWidth += b->Sep;
-	    b->TotalWidth += b->Width[i];
-	    }
-	va_end(va);
-
-    return b;
-    }
-
-
-/*** prtFreeBorder() - reverse of the above.
- ***/
-int
-prtFreeBorder(pPrtBorder b)
-    {
-    nmFree(b, sizeof(PrtBorder));
     return 0;
     }
 

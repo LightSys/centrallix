@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.5 2003/03/06 02:52:33 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.6 2003/03/18 04:06:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.6  2003/03/18 04:06:25  gbeeley
+    Added basic image (picture/bitmap) support; only PNG images supported
+    at present.  Moved image and border (rectangles) functionality into a
+    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
+    present and work only under PCL (not plain text!!!).  PNG support is
+    via libpng, so libpng was added to configure/autoconf.
+
     Revision 1.5  2003/03/06 02:52:33  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -243,7 +250,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
     pXArray resolutions;
     pPrtResolution res, best_res=NULL, best_greater_res=NULL;
     double dist, best_dist=0.0, best_greater_dist=0.0, xratio, yratio;
-    pPrtObjStream cur_obj, rect_obj;
+    pPrtObjStream cur_obj, rect_obj, search_obj;
     pPrtOutputDriver drv;
     void* drvdata;
     PrtTextStyle cur_style;
@@ -251,6 +258,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
     /*XArray cur_objlist;*/
     int i;
     double end_y;
+    double next_y;
 
 	/** First, determine what resolution the graphics will be rendered at **/
 	drv = context->OutputDriver;
@@ -295,6 +303,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 	/** Ok, follow the object chain on the page, generating the bits and pieces **/
 	memcpy(&cur_style, &(page_obj->TextStyle), sizeof(PrtTextStyle));
 	cur_y = -1.0;
+	next_y = -1.0;
 	drv->SetTextStyle(drvdata, &cur_style);
 	cur_obj = page_obj;
 	while((cur_obj = cur_obj->YNext))
@@ -306,6 +315,17 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		drv->SetVPos(drvdata, cur_y);
 		}
 	    drv->SetHPos(drvdata, cur_obj->PageX);
+
+	    /** Figure out next Y position? **/
+	    if (next_y <= cur_y)
+		{
+		search_obj = cur_obj;
+		while(search_obj && search_obj->PageY <= cur_y) search_obj = search_obj->YNext;
+		if (search_obj)
+		    next_y = search_obj->PageY;
+		else
+		    next_y = page_obj->Height;
+		}
 
 	    /** Style change? **/
 	    if (memcmp(&cur_style, &(cur_obj->TextStyle), sizeof(PrtTextStyle)))
@@ -322,11 +342,12 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    break;
 
 		case PRT_OBJ_T_IMAGE:
-		    break;
-
 		case PRT_OBJ_T_RECT:
-		    /** Ask output driver to print as much of the rectangle as it can **/
-		    end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height);
+		    /** Ask output driver to print as much of the rectangle/image as it can **/
+		    if (cur_obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
+			end_y = drv->WriteRasterData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
+		    else
+			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y);
 
 		    /** Adjust the rectangle to remove what was already printed **/
 		    if (end_y < cur_obj->PageY + cur_obj->Height && end_y > cur_obj->PageY)
@@ -336,7 +357,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 			/** Remove from YList and re-add in a sorted manner.  This way, it
 			 ** comes back up when we need to print the next segment of
-			 ** the rectangle.
+			 ** the rectangle or image.
 			 **/
 			rect_obj = cur_obj;
 			cur_obj = cur_obj->YPrev;

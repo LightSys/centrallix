@@ -58,10 +58,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.16 2003/03/15 04:45:58 gbeeley Exp $
+    $Id: test_prt.c,v 1.17 2003/03/18 04:06:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.17  2003/03/18 04:06:22  gbeeley
+    Added basic image (picture/bitmap) support; only PNG images supported
+    at present.  Moved image and border (rectangles) functionality into a
+    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
+    present and work only under PCL (not plain text!!!).  PNG support is
+    via libpng, so libpng was added to configure/autoconf.
+
     Revision 1.16  2003/03/15 04:45:58  gbeeley
     Added borders to tables.  Not fully tested yet.  Added a new component
     of the "PrtBorder" object: "Pad", which is the padding 'outside' of
@@ -250,6 +257,7 @@ start(void* v)
     double x,y,w,h;
     int color;
     pPrtBorder bdr,bdr2;
+    pPrtImage img;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -366,6 +374,7 @@ start(void* v)
 		       "  columns     - prints a file into a multicolumn format\n"
 		       "  fonts       - writes text in three fonts and five sizes\n"
 		       "  help        - show this help message\n"
+		       "  image       - tests a bitmap image\n"
 		       "  justify     - writes text in each of four justification modes\n"
 		       "  output      - redirects output to a file/device instead of screen\n"
 		       "  printfile   - output contents of a file into a whole-page area\n"
@@ -374,6 +383,95 @@ start(void* v)
 		       "  table       - do a simple test of a table\n"
 		       "  text        - puts a given string of text in a given content type\n"
 		      );
+		}
+	    else if (!strcmp(cmdname,"image"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: image <mime type> <imagefile> <x> <y> <width> <height>\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
+		printf("image: prtOpenSession returned %8.8X\n", (int)prtsession);
+		rval = prtSetResolution(prtsession, 300);
+		printf("image: prtSetResolution(300) returned %d\n", rval);
+		pagehandle = prtGetPageRef(prtsession);
+		printf("image: prtGetPageRef returned page handle %d\n", pagehandle);
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: image <mime type> <imagefile> <x> <y> <width> <height>\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		fd = fdOpen(ptr, O_RDONLY, 0600);
+		if (!fd)
+		    {
+		    printf("image: %s: could not access file\n", ptr);
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		img = prtCreateImageFromPNG(fdRead, fd);
+		if (!img)
+		    {
+		    printf("image: %s: could not read PNG data\n", ptr);
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: image <mime type> <imagefile> <x> <y> <width> <height>\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		x = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: image <mime type> <imagefile> <x> <y> <width> <height>\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		y = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: image <mime type> <imagefile> <x> <y> <width> <height>\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		w = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: image <mime type> <imagefile> <x> <y> <width> <height>\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		h = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) == MLX_TOK_STRING)
+		    {
+		    ptr = nmSysStrdup(mlxStringVal(ls,NULL));
+		    if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"border"))
+			{
+			bdr = prtAllocBorder(2,0.2,0.0, 0.2,0x0000FF, 0.05,0x00FFFF);
+			areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, x+w+10, y, 80-(x+w+10), h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET, "border", bdr, NULL);
+			prtSetMargins(areahandle,1.0,1.0,1.0,1.0);
+			prtFreeBorder(bdr);
+			}
+		    else
+			{
+			areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, x+w+10, y, 80-(x+w+10), h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET, NULL);
+			}
+		    printf("text: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			    areahandle);
+		    rval = prtWriteString(areahandle, ptr);
+		    printf("text: prtWriteString returned %d\n", rval);
+		    rval = prtEndObject(areahandle);
+		    printf("text: prtEndObject(area) returned %d\n", rval);
+		    }
+		rval = prtWriteImage(pagehandle, img, x,y,w,h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET);
+		printf("image: prtWriteImage() returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("image: prtCloseSession returned %d\n", rval);
 		}
 	    else if (!strcmp(cmdname,"table"))
 		{
@@ -709,9 +807,9 @@ start(void* v)
 		    prtCloseSession(prtsession);
 		    continue;
 		    }
-		ptr = nmSysStrdup(mlxStringVal(ls,NULL));
 		pagehandle = prtGetPageRef(prtsession);
 		printf("text: prtGetPageRef returned page handle %d\n", pagehandle);
+		ptr = nmSysStrdup(mlxStringVal(ls,NULL));
 		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"border"))
 		    {
 		    bdr = prtAllocBorder(2,0.2,0.0, 0.2,0x0000FF, 0.05,0x00FFFF);

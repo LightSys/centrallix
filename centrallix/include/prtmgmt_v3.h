@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.14 2003/03/15 04:46:00 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.15 2003/03/18 04:06:24 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.15  2003/03/18 04:06:24  gbeeley
+    Added basic image (picture/bitmap) support; only PNG images supported
+    at present.  Moved image and border (rectangles) functionality into a
+    new file prtmgmt_v3_graphics.c.  Graphics are only monochrome at the
+    present and work only under PCL (not plain text!!!).  PNG support is
+    via libpng, so libpng was added to configure/autoconf.
+
     Revision 1.14  2003/03/15 04:46:00  gbeeley
     Added borders to tables.  Not fully tested yet.  Added a new component
     of the "PrtBorder" object: "Pad", which is the padding 'outside' of
@@ -299,7 +306,7 @@ typedef struct _PD
     int			(*SetHPos)();
     int			(*SetVPos)();
     int			(*WriteText)();
-    int			(*WriteRasterData)();
+    double		(*WriteRasterData)();
     int			(*WriteFF)();
     double		(*WriteRect)();
     }
@@ -366,6 +373,30 @@ typedef struct _PBD
     int			Color[PRT_MAXBDR]; /* color of border lines */
     }
     PrtBorder, *pPrtBorder;
+
+
+/*** image data header structure ***/
+typedef struct _PIH
+    {
+    int			Width;		    /* raster data width in pixels */
+    int			Height;		    /* raster data height in pixels */
+    int			ColorMode;	    /* PRT_COLOR_T_xxx; mono=1bpp, grey=8bpp, color=32bpp */
+    int			DataLength;	    /* length of raster data in bytes */
+    double		YOffset;	    /* offset into image next printed area is. Used by output drv. */
+    }
+    PrtImageHdr, *pPrtImageHdr;
+
+typedef struct _PIM
+    {
+    PrtImageHdr		Hdr;
+    union
+	{
+	unsigned char	Byte[1];	    /* content in byte-addressing */
+	unsigned int	Word[1];	    /* content in word (32bit) addressing */
+	}		
+	Data;
+    }
+    PrtImage, *pPrtImage;
 
 
 /*** Print management global structure ***/
@@ -438,9 +469,9 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_T_SECTION	    10		/* columnar section */
 #define PRT_OBJ_T_SECTCOL	    11		/* one column in a section. */
 
-#define PRT_COLOR_T_MONO	    1		/* black/white only image */
-#define PRT_COLOR_T_GREY	    2		/* greyscale image */
-#define PRT_COLOR_T_FULL	    3		/* RGB color image */
+#define PRT_COLOR_T_MONO	    1		/* black/white only image, 1 bit per pixel */
+#define PRT_COLOR_T_GREY	    2		/* greyscale image, 1 byte per pixel */
+#define PRT_COLOR_T_FULL	    3		/* RGB color image, 1 int (32bit) per pixel */
 
 #define PRT_FONT_T_MONOSPACE	    1		/* typically courier */
 #define PRT_FONT_T_SANSSERIF	    2		/* typically helvetica */
@@ -518,6 +549,7 @@ int prt_internal_Reflow(pPrtObjStream obj);
 int prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, void* param);
 int prt_internal_DispatchEvents(pPrtSession s);
 int prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, int flags, pPrtBorder b, pPrtBorder sb, pPrtBorder eb);
+int prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset);
 
 /** Strict-formatter to output-driver interfacing **/
 pPrtOutputDriver prt_strictfm_AllocDriver();
@@ -556,8 +588,12 @@ int prtSetValue(int handle_id, char* attrname, ...);
 int prtSetMargins(int handle_id, double t, double b, double l, double r);
 pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
+pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
+int prtFreeImage(pPrtImage i);
+int prtImageSize(pPrtImage i);
 
 /*** Printing content functions ***/
+int prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width, double height, int flags);
 int prtWriteString(int handle_id, char* str);
 int prtWriteNL(int handle_id);
 int prtWriteFF(int handle_id);
