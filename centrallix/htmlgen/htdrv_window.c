@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.15 2002/06/17 21:35:56 jorupp Exp $
+    $Id: htdrv_window.c,v 1.16 2002/06/18 15:41:52 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.16  2002/06/18 15:41:52  lkehresman
+    Fixed a bug that made window header backgrounds transparent if the color
+    wasn't specifically set.  Now it grabs the normal background color/image
+    by default but the default can be overwritten by "hdr_bgcolor" and
+    "hdr_background".
+
     Revision 1.15  2002/06/17 21:35:56  jorupp
      * allowed for window inside of window (same basic method used with form and osrc)
 
@@ -179,10 +185,14 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	name[63]=0;
 
 	/** Check background color **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0) {
 	    sprintf(bgnd,"bgcolor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
+	}
+	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0) {
 	    sprintf(bgnd,"background='%.110s'",ptr);
+	    sprintf(hdr_bgnd,"background='%.110s'",ptr);
+	}
 
 	/** Check header background color/image **/
 	if (objGetAttrValue(w_obj,"hdr_bgcolor",POD(&ptr)) == 0)
@@ -483,7 +493,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD width=1><IMG SRC=/sys/images/white_1x1.png width=1 height=22></TD>\n");
 	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=%d %s colspan=%d><TABLE border=0><TR><TD><IMG SRC=/sys/images/01close.gif name=close align=left></TD><TD valign=\"middle\" nowrap><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=%d %s colspan=%d><TABLE border=0><TR><TD><IMG SRC=/sys/images/01close.gif name=close align=left></TD><TD valign=\"middle\"><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
 	    	tbw,hdr_bgnd,is_dialog_style?1:3,txtcolor,title);
 	    htrAddBodyItem(s, sbuf);
 	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=1><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=22></TD></TR>\n");
