@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.4 2003/03/01 07:24:02 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.5 2003/03/03 23:45:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.5  2003/03/03 23:45:22  gbeeley
+    Added support for multi-column formatting where columns are not equal
+    in width.  Specifying width/height as negative when adding one object
+    to another causes that object to fill its container in the respective
+    dimension(s).  Fixed a bug in the Justification logic.
+
     Revision 1.4  2003/03/01 07:24:02  gbeeley
     Ok.  Balanced columns now working pretty well.  Algorithm is currently
     somewhat O(N^2) however, and is thus a bit expensive, but still not
@@ -208,6 +214,12 @@ prt_pagelm_Resize(pPrtObjStream this, double new_width, double new_height)
 int
 prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
+
+	/** Need to adjust the height/width if unspecified? **/
+	if (new_child_obj->Width < 0)
+	    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight;
+	if (new_child_obj->Height < 0)
+	    new_child_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
 
 	/** Just add it... **/
 	prt_internal_Add(this, new_child_obj);

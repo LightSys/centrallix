@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.14 2003/03/01 07:24:02 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.15 2003/03/03 23:45:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.15  2003/03/03 23:45:22  gbeeley
+    Added support for multi-column formatting where columns are not equal
+    in width.  Specifying width/height as negative when adding one object
+    to another causes that object to fill its container in the respective
+    dimension(s).  Fixed a bug in the Justification logic.
+
     Revision 1.14  2003/03/01 07:24:02  gbeeley
     Ok.  Balanced columns now working pretty well.  Algorithm is currently
     somewhat O(N^2) however, and is thus a bit expensive, but still not
@@ -366,14 +372,16 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 	start = scan;
 	for(scan=starting_point; scan; scan=scan->Prev)
 	    {
-	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_XSET)) break;
 	    start = scan;
+	    if (scan->Flags & PRT_OBJ_F_XSET) break;
+	    if (scan->Prev && scan->Prev->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
 	    }
 	end = scan;
 	for(scan=starting_point; scan; scan=scan->Next)
 	    {
 	    end = scan;
-	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_XSET)) break;
+	    if (scan->Next && scan->Next->Flags & PRT_OBJ_F_XSET) break;
+	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
 	    }
 
 	/** Compute the amount of "slack space" in the region.  We need to count
@@ -823,6 +831,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream new_parent;
     double x,y;
     int handle_id;
+
+	/** Need to adjust the height/width if unspecified? **/
+	if (new_child_obj->Width < 0)
+	    new_child_obj->Width = this->Width - this->MarginLeft - this->MarginRight;
+	if (new_child_obj->Height < 0)
+	    new_child_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);

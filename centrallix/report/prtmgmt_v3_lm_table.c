@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.1 2003/03/02 04:17:35 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.2 2003/03/03 23:45:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.2  2003/03/03 23:45:22  gbeeley
+    Added support for multi-column formatting where columns are not equal
+    in width.  Specifying width/height as negative when adding one object
+    to another causes that object to fill its container in the respective
+    dimension(s).  Fixed a bug in the Justification logic.
+
     Revision 1.1  2003/03/02 04:17:35  gbeeley
     Adding skeleton tabular layout manager, for table/row/cell formatted
     data.
@@ -66,7 +72,7 @@
 
 
 /*** table specific data ***/
-typedef struct _PMC
+typedef struct _PTB
     {
     }
     PrtTabLMData, *pPrtTabLMData;

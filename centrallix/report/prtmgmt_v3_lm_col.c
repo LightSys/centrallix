@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.5 2003/03/01 07:24:02 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.6 2003/03/03 23:45:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.6  2003/03/03 23:45:21  gbeeley
+    Added support for multi-column formatting where columns are not equal
+    in width.  Specifying width/height as negative when adding one object
+    to another causes that object to fill its container in the respective
+    dimension(s).  Fixed a bug in the Justification logic.
+
     Revision 1.5  2003/03/01 07:24:02  gbeeley
     Ok.  Balanced columns now working pretty well.  Algorithm is currently
     somewhat O(N^2) however, and is thus a bit expensive, but still not
@@ -415,6 +421,12 @@ prt_collm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	/** Just makin' sure... **/
 	if (!lm_inf) return -1;
+
+	/** Need to adjust the height/width if unspecified? **/
+	if (new_child_obj->Width < 0)
+	    new_child_obj->Width = lm_inf->CurrentCol->Width - lm_inf->CurrentCol->MarginLeft - lm_inf->CurrentCol->MarginRight;
+	if (new_child_obj->Height < 0)
+	    new_child_obj->Height = lm_inf->CurrentCol->Height - lm_inf->CurrentCol->MarginTop - lm_inf->CurrentCol->MarginBottom;
 
 	/** Just add it to the currently active column object **/
 	prt_internal_Add(lm_inf->CurrentCol, new_child_obj);

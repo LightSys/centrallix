@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.11 2003/02/27 22:02:15 gbeeley Exp $
+    $Id: test_prt.c,v 1.12 2003/03/03 23:45:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.12  2003/03/03 23:45:19  gbeeley
+    Added support for multi-column formatting where columns are not equal
+    in width.  Specifying width/height as negative when adding one object
+    to another causes that object to fill its container in the respective
+    dimension(s).  Fixed a bug in the Justification logic.
+
     Revision 1.11  2003/02/27 22:02:15  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -210,6 +216,7 @@ start(void* v)
     char* fontnames[] = {"courier","helvetica","times"};
     pPrtObjStream prtobj;
     int ncols;
+    int is_balanced=0, is_unequal=0;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -337,7 +344,7 @@ start(void* v)
 		{
 		if (mlxNextToken(ls) != MLX_TOK_STRING) 
 		    {
-		    printf("test_prt: usage: columns <mime type> <numcols> <filename> {balanced}\n");
+		    printf("test_prt: usage: columns <mime type> <numcols> <filename> {balanced} {unequal}\n");
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
@@ -370,12 +377,38 @@ start(void* v)
 		    }
 		pagehandle = prtGetPageRef(prtsession);
 		printf("columns: prtGetPageRef returned page handle %d\n", pagehandle);
-		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"balanced"))
-		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", 1, NULL);
+		is_balanced = 0;
+		is_unequal = 0;
+		if (mlxNextToken(ls) == MLX_TOK_KEYWORD) 
+		    {
+		    if (!strcmp(mlxStringVal(ls,NULL),"balanced")) is_balanced=1;
+		    if (!strcmp(mlxStringVal(ls,NULL),"unequal")) is_unequal=1;
+		    if (mlxNextToken(ls) == MLX_TOK_KEYWORD) 
+			{
+			if (!strcmp(mlxStringVal(ls,NULL),"balanced")) is_balanced=1;
+			if (!strcmp(mlxStringVal(ls,NULL),"unequal")) is_unequal=1;
+			}
+		    }
+		if (is_unequal)
+		    {
+		    if (ncols == 1)
+			sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", is_balanced, NULL);
+		    else if (ncols == 2)
+			sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", is_balanced, "colwidths", 30.0, 48.0, NULL);
+		    else if (ncols == 3)
+			sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", is_balanced, "colwidths", 28.0, 16.0, 32.0, NULL);
+		    else if (ncols == 4)
+			sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", is_balanced, "colwidths", 25.0, 15.0, 10.0, 24.0, NULL);
+		    else /* sorry, didnt code any more of this test */
+			sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", is_balanced, NULL);
+		    }
 		else
-		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, NULL);
+		    {
+		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", is_balanced, NULL);
+		    }
 		printf("columns: prtAddObject(PRT_OBJ_T_SECTION) returned section handle %d\n", sectionhandle);
-		areahandle = prtAddObject(sectionhandle, PRT_OBJ_T_AREA, 0, 0, (80-2*(ncols-1))/ncols, 0, PRT_OBJ_U_ALLOWBREAK, NULL);
+		/*areahandle = prtAddObject(sectionhandle, PRT_OBJ_T_AREA, 0, 0, (80-2*(ncols-1))/ncols, 0, PRT_OBJ_U_ALLOWBREAK, NULL);*/
+		areahandle = prtAddObject(sectionhandle, PRT_OBJ_T_AREA, 0, 0, -1, 0, PRT_OBJ_U_ALLOWBREAK, NULL);
 		printf("columns: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		while((rcnt = fdRead(fd, sbuf, 255, 0, 0)) > 0)
