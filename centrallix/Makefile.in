@@ -352,9 +352,11 @@ rhinit_install: config
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
 
-sfedit: sfeditor/sfedit.o $(LSOBJS)
-	$(CC) sfeditor/sfedit.o centrallix.o $(LSOBJS) $(LIBDIRS) $(PROFILE) -o sfedit $(LIBS) `gtk-config --libs`
-	
+sfedit: sfeditor/sfedit.o $(V3LSOBJS)
+	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -o sfedit $(LIBS) `gtk-config --libs`
+
+clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
+	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) -o clog $(LIBS)
 
 .c.so:	$<
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
