@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.4  2002/03/09 20:24:10  jorupp
+    * modified ActionViewDOM to handle recursion and functions better
+    * removed some redundant code
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -147,7 +151,7 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        funcbehav=1;\n"
 		"        }\n"
 		*/
-		"    var DOM=alrt_walk_DOM(walkthis,\"Base Object\",\"Unknown\",0);\n"
+		"    var DOM=alrt_walk_DOM(walkthis,\"Base Object\",typeof(walkthis),0);\n"
 		"    var win=window.open();\n"
 		"    win.document.write(\"<PRE>\"+DOM+\"</PRE>\\n\");\n"
 		"    win.document.close();\n"
@@ -158,12 +162,14 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    if(depth>=7)\n" /* no inf loop */
 		"        return \"\";\n"
-		"    if(typeof(walkthis)==\"function\")\n"
+		"    if(type==\"function\")\n"
 		"        {\n"
-		"        return \"<LI>\"+name+\" (\"+type+\"): <small>\"+walkthis+\"</small></LI>\\n\"\n"
+		"        var fname=((/function ([^(]*)/).exec(walkthis))[1];\n"
+		"        return \"<LI>\"+name+\" (\"+type+\"): <b>\"+fname+\"</b></LI>\\n\"\n"
 		/*
 		"        if(funcbehav==1)\n"
 		"            {\n"
+		"            return \"<LI>\"+name+\" (\"+type+\"): <small>\"+walkthis+\"</small></LI>\\n\"\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
@@ -173,7 +179,7 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            }\n"
 		*/
 		"        }\n"
-		"    if(typeof(walkthis)!=\"object\" && typeof(walkthis)!=\"array\")\n"
+		"    if(type!=\"object\" && type!=\"array\")\n"
 		"        {\n"
 		"        return \"<LI>\"+name+\" (\"+type+\"): \"+walkthis+\"</LI>\\n\";\n"
 		"        }\n"
@@ -189,7 +195,14 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            ((/below/i).test(i)) || \n"
 		"            ((/window/i).test(i)) )\n"
 		"            {\n"
-		"            ret+=\"<LI>\"+name+\" (\"+type+\"): <small>recursive</small></LI>\\n\";\n"
+		"            if(walkthis[i] && walkthis[i].name)\n"
+		"                {\n"
+		"                ret+=\"<LI>\"+i+\" (\"+type+\"): <b>\"+walkthis[i].name+\"</b> <small>(recursive)</small></LI>\\n\";\n"
+		"                }\n"
+		"            else\n"
+		"                {\n"
+		"                ret+=\"<LI>\"+i+\" (\"+type+\"): <b>\"+walkthis[i]+\"</b></LI>\\n\";\n"
+		"                }\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
