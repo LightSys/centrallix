@@ -159,6 +159,7 @@ libmime_PrintAddressList(pXArray xary, int level)
 	    printf("%s@%s\n", addr->Mailbox, addr->Host);
 	    }
 	}
+    return 0;
     }
 
 /*  libmime_StringUnquote

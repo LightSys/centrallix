@@ -78,7 +78,6 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
     msg->TransferEncoding[0] = 0;
     msg->MIMEVersion[0] = 0;
     msg->Mailer[0] = 0;
-    msg->HdrSeekStart = 0;
     msg->MsgSeekStart = 0;
     msg->MsgSeekEnd = 0;
 
@@ -88,7 +87,7 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 	}
 
     mlxSetOffset(lex, start);
-    if (MIME_DEBUG) fprintf(stderr, "\nStarting Header Parsing... (s:%d, e:%d)\n", start, end);
+    if (MIME_DEBUG) fprintf(stderr, "\nStarting Header Parsing... (s:%ld)\n", start);
     flag = 1;
     while (flag)
 	{
@@ -145,18 +144,12 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 		if (MIME_DEBUG) fprintf(stderr, "ERROR PARSING: %s\n", xsbuf.String);
 		}
 	    }
-	}
-    xsDeInit(&xsbuf);
-    msg->HdrSeekStart = start;
-    if (start)
-	{
-	msg->MsgSeekStart = start;
-	}
-    else
-	{
-	msg->MsgSeekStart = mlxGetOffset(lex) + 1;
+	xsDeInit(&xsbuf);
 	}
 
+    /** Set the start and end offsets for the message **/
+    msg->MsgSeekStart = mlxGetOffset(lex) + 1;
+    /** If an end offset was passed in, use it!  If not (end==0), then find the end **/
     if (end)
 	{
 	msg->MsgSeekEnd = end;
@@ -168,14 +161,17 @@ libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSessi
 	mlxSetOffset(lex, msg->MsgSeekStart);
 	while (flag)
 	    {
-	    size = objRead(obj->Prev, buf, MIME_BUFSIZE, 0, 0);
-	    start += size;
-	    if (!size)
+	    toktype = mlxNextToken(lex);
+	    if (toktype == MLX_TOK_ERROR)
 		{
 		flag = 0;
 		}
 	    else
 		{
+		xsInit(&xsbuf);
+		xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
+		xsDeInit(&xsbuf);
+		start += strlen(xsbuf.String);
 		}
 	    }
 	msg->MsgSeekEnd = size;
@@ -590,8 +586,17 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
     return -1;
     }
 
+/*
+**  int
+**  libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex)
+**
+**  Parses the body of a multipart message.  This fills in the Parts section of the
+**  pMimeHeader data structure.  It will start parsing at the "start" location, and
+**  will keep parsing until all the boundaries have been found or until the byte "end"
+**  has been reached.
+*/
 int
-libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex)
+libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex)
     {
     XString xsbuf;
     pMimeHeader l_msg;
@@ -615,7 +620,7 @@ libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end, pLxSession
 	{
 	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
 	toktype = mlxNextToken(lex);
-	if (toktype == MLX_TOK_ERROR)
+	if (toktype == MLX_TOK_ERROR || end <= count)
 	    {
 	    flag = 0;
 	    }
@@ -641,9 +646,10 @@ libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end, pLxSession
 		    {
 		    flag = 0;
 		    }
-		p_count = count + strlen(xsbuf.String);
-		mlxSetOffset(lex, p_count);
+		mlxSetOffset(lex, l_pos+s);
 		}
+	    p_count = count + strlen(xsbuf.String);
+	    xsDeInit(&xsbuf);
 	    }
 	}
 

@@ -58,7 +58,6 @@ typedef struct _MM
     char	MIMEVersion[16];
     char	Mailer[80];
     DateTime	Date;
-    long	HdrSeekStart;
     long	MsgSeekStart;
     long	MsgSeekEnd;
     pXArray	ToList;
@@ -98,7 +97,7 @@ extern char* TypeStrings[];
 /** mime_parse.c **/
 int libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex);
 int libmime_ParseHeaderElement(char *buf, char *element);
-int libmime_ParseEntity(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex);
+int libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLxSession lex);
 int libmime_LoadExtendedHeader(pMimeHeader msg, pXString xsbuf, pLxSession lex);
 int libmime_SetMIMEVersion(pMimeHeader msg, char *buf);
 int libmime_SetDate(pMimeHeader msg, char *buf);
@@ -109,6 +108,8 @@ int libmime_SetTo(pMimeHeader msg, char *buf);
 int libmime_SetTransferEncoding(pMimeHeader msg, char *buf);
 int libmime_SetContentDisp(pMimeHeader msg, char *buf);
 int libmime_SetContentType(pMimeHeader msg, char *buf);
+void libmime_PrintEntityContent(pMimeHeader msg, pLxSession lex);
+int libmime_GetEntityContent(long start, long end, pLxSession lex);
 
 /** mime_address.c **/
 int libmime_ParseAddressList(char *buf, pXArray xary);

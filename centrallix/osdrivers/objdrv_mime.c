@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.12 2002/08/26 14:21:24 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.13 2002/08/26 17:36:52 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.13  2002/08/26 17:36:52  lkehresman
+    * Added some documentation to the functions in libmime
+    * Cleaned up some quite a bit of the code in the MIME parser
+    * DeInit'ed some xstrings that I forgot to do earlier
+
     Revision 1.12  2002/08/26 14:21:24  lkehresman
     Fixed innumerable bugs with the multipart mime parsing, it now successfully
     detects and parses multipart messages into an internal data structure.
@@ -199,19 +204,21 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	mlxCloseSession(lex);
 	return NULL;
 	}
-    if (libmime_ParseEntity(obj, msg, msg->MsgSeekStart, msg->MsgSeekEnd, lex) < 0)
+    if (libmime_ParseMultipartBody(obj, msg, msg->MsgSeekStart, msg->MsgSeekEnd, lex) < 0)
 	{
 	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message entity in mimeOpen().\n");
 	mlxCloseSession(lex);
 	return NULL;
 	}
-    mlxCloseSession(lex);
 
+    if (MIME_DEBUG) fprintf(stderr, "\n-----------------------------------------------------------------\n");
     for (i=0; i < xaCount(&msg->Parts); i++)
 	{
 	tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
-	printf("PART: s(%d),e(%d)\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
+	fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
 	}
+    if (MIME_DEBUG) fprintf(stderr, "-----------------------------------------------------------------\n\n");
+    mlxCloseSession(lex);
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;
