@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.26 2003/03/31 22:54:11 jorupp Exp $
+    $Id: lsmain.c,v 1.27 2003/04/04 05:56:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.27  2003/04/04 05:56:53  gbeeley
+    Forgot to seed the random number generator (gulp)
+
     Revision 1.26  2003/03/31 22:54:11  jorupp
      * I really ought to make clean before I commit....
 
@@ -293,6 +296,27 @@ main(int argc, char* argv[])
     {
     int ch;
     char* name;
+    unsigned int seed;
+    int fd;
+
+	/** Seed random number generator **/
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd < 0)
+	    {
+	    srand(time(NULL));
+	    }
+	else
+	    {
+	    if (read(fd, &seed, sizeof(seed)) != sizeof(seed))
+		{
+		srand(time(NULL));
+		}
+	    else
+		{
+		srand(seed);
+		}
+	    close(fd);
+	    }
 
 	/** Default global values **/
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
