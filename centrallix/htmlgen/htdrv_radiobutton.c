@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.8 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.9 2002/06/06 17:12:22 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.9  2002/06/06 17:12:22  jorupp
+     * fix bugs in radio and dropdown related to having no form
+     * work around Netscape bug related to functions not running all the way through
+        -- Kardia has been tested on Linux and Windows to be really stable now....
+
     Revision 1.8  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -421,7 +426,9 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    htrAddScriptFunction(s, "radiobutton_toggle", "\n"
       "   function radiobutton_toggle(layer) {\n"
-      "      layer.optionPane.parentPane.form.DataNotify(layer.optionPane.parentPane);\n"
+      "      if(!layer) return;\n"
+      "      if(layer.optionPane.parentPane.form)\n"
+      "          layer.optionPane.parentPane.form.DataNotify(layer.optionPane.parentPane);\n"
       "      if (layer.optionPane.parentPane.selectedOption) {\n"
       "          layer.optionPane.parentPane.selectedOption.unsetPane.visibility = 'inherit';\n"
       "          layer.optionPane.parentPane.selectedOption.setPane.visibility = 'hidden';\n"
@@ -434,7 +441,8 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"
       "   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
       "   if (targetLayer != null && targetLayer.kind == 'radiobutton') {\n"
-      "      targetLayer.optionPane.parentPane.form.FocusNotify(targetLayer.optionPane.parentPane);\n"
+      "      if(layer.optionPane.parentPane.form)\n"
+      "          targetLayer.optionPane.parentPane.form.FocusNotify(targetLayer.optionPane.parentPane);\n"
       "      if (targetLayer.enabled) {\n"
       "         radiobutton_toggle(targetLayer);\n"
       "      }\n"

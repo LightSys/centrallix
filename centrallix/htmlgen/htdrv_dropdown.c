@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.14 2002/06/02 22:13:21 jorupp Exp $
+    $Id: htdrv_dropdown.c,v 1.15 2002/06/06 17:12:20 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.15  2002/06/06 17:12:20  jorupp
+     * fix bugs in radio and dropdown related to having no form
+     * work around Netscape bug related to functions not running all the way through
+        -- Kardia has been tested on Linux and Windows to be really stable now....
+
     Revision 1.14  2002/06/02 22:13:21  jorupp
      * added disable functionality to image button (two new Actions)
      * bugfixes
@@ -293,6 +298,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Form Status initializer **/
    htrAddScriptFunction(s, "dd_init", "\n"
 	"function dd_init(l, clr_b, clr_h, fn, disp) {\n"
+	"   //alert('dd init start');\n"
 	"   l.numItems = 0;\n"
 	"   l.numDispElements = disp;\n"
 	"   l.fieldname = fn;\n"
@@ -349,6 +355,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.disable = dd_disable;\n"
 	"   l.clearvalue = dd_clearvalue;\n"
 	"   l.resetvalue = dd_resetvalue;\n"
+	"   //alert('dd init end');\n"
 	"   if (fm_current) fm_current.Register(l);\n"
 	"}\n", 0);
 
@@ -404,7 +411,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"          if (targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
 	"             targetLayer.bgColor = dd_current.colorBack;\n"
 	"             dd_write_item(dd_current.labelLayer, targetLayer.label, targetLayer.value, dd_current);\n"
-	"             dd_current.form.DataNotify(dd_current);\n"
+	"             if(dd_current.form)\n"
+	"                 dd_current.form.DataNotify(dd_current);\n"
 	"          }\n"
 	"          dd_current = null;\n"
 	"      }\n"
@@ -414,7 +422,8 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"      targetLayer.ddLayer.pageY = targetLayer.pageY + 18;\n"
 	"      targetLayer.document.images[8].src = '/sys/images/ico15c.gif';\n"
 	"      dd_current = targetLayer.topLayer;\n"
-	"      dd_current.form.FocusNotify(dd_current);\n"
+	"      if(dd_current.form)\n"
+	"          dd_current.form.FocusNotify(dd_current);\n"
 	"      dd_current.ddLayer.visibility = 'inherit';\n"
 	"   }\n"
 	"\n");

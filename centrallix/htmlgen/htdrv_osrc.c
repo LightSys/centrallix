@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.33 2002/06/03 19:10:29 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.34 2002/06/06 17:12:21 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.34  2002/06/06 17:12:21  jorupp
+     * fix bugs in radio and dropdown related to having no form
+     * work around Netscape bug related to functions not running all the way through
+        -- Kardia has been tested on Linux and Windows to be really stable now....
+
     Revision 1.33  2002/06/03 19:10:29  jorupp
      * =>,<=
 
@@ -308,6 +313,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "function osrc_init_query()\n"
       "    {\n"
       "    //alert();\n"
+      "    if(this.init==true)\n"
+      "        return;\n"
       "    this.init=true;\n"
       "    this.ActionQueryObject(null,null);\n"
       "    }\n",0);
@@ -678,12 +685,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    this.qid=this.document.links[0].target;\n"
       "    for(var i in this.children)\n"
       "        this.children[i].DataAvailable();\n"
-      /** should this be a special case for our initialization ?**/
-      "    //if(this.init)\n"
-      "    //    {\n"
-      "        this.init=false;\n"
-      "        this.ActionFirst();\n"
-      "    //    }\n"
+      "    this.ActionFirst();\n"
       /** normally don't actually load the data...just let children know that the data is available **/
       "    }\n",0);
 
@@ -1211,8 +1213,11 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
-      "function osrc_init(loader,ra,sa,rs,sql,filter)\n"
+      "function osrc_init(loader,ra,sa,rs,sql,filter,name)\n"
       "    {\n"
+      "    if(window_current)\n"
+      "        window_current.RegisterOSRC(loader);\n"
+      "    loader.osrcname=name;\n"
       "    loader.readahead=ra;\n"
       "    loader.scrollahead=sa;\n"
       "    loader.replicasize=rs;\n"
@@ -1266,8 +1271,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,'%s','%s');\n",
-	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter);
+   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,'%s','%s','%s');\n",
+	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter,name);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInit_va(s,"    %s.oldosrc=osrc_current;\n",name);
@@ -1292,7 +1297,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    }
    
    /** We set osrc_current=null so that orphans can't find us  **/
-   htrAddScriptInit(s, "    osrc_current.InitQuery();\n");
+   htrAddScriptInit(s, "    //osrc_current.InitQuery();\n");
    htrAddScriptInit_va(s,"    osrc_current=%s.oldosrc;\n\n",name);
 
 

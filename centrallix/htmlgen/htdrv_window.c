@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.12 2002/06/01 19:49:30 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.13 2002/06/06 17:12:23 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.13  2002/06/06 17:12:23  jorupp
+     * fix bugs in radio and dropdown related to having no form
+     * work around Netscape bug related to functions not running all the way through
+        -- Kardia has been tested on Linux and Windows to be really stable now....
+
     Revision 1.12  2002/06/01 19:49:30  lkehresman
     A couple changes that provide visual enhancements to the window widget
 
@@ -267,6 +272,13 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptFunction(s, "wn_init", "\n"
 		"function wn_init(l,ml,h)\n"
 		"    {\n"
+		"    l.osrc = new Array();\n"
+		"    var t = osrc_current;\n"
+		"    while(t)\n"
+		"        {\n"
+		"        l.osrc.push(t);\n"
+		"        t=t.oldosrc;\n"
+		"        }\n"
 		"    l.document.layer = l;\n"
 		"    ml.document.Layer = ml;\n"
 		"    l.orig_height = h;\n"
@@ -279,7 +291,14 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n"
 		"    wn_bring_top(l);\n"
 		"    l.ActionSetVisibility = wn_setvisibility;\n"
+		"    l.RegisterOSRC = wn_register_osrc;\n"
 		"    return l;\n"
+		"    }\n",0);
+
+	htrAddScriptFunction(s, "wn_register_osrc", "\n"
+		"function wn_register_osrc(t)\n"
+		"    {\n"
+		"    this.osrc.push(t);\n"
 		"    }\n",0);
 
 	/* Action handlers for WindowShade
@@ -318,6 +337,11 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        {\n"
 		"        wn_bring_top(this);\n"
 		"        this.visibility = 'inherit';\n"
+		"        if(!(aparam.NoInit && aparam.NoInit!=false && aparam.NoInit!=0))\n"
+		"            {\n"
+		"            for (var t in this.osrc)\n"
+		"                this.osrc[t].InitQuery();\n"
+		"            }\n"
 		"        }\n"
 		"    else\n"
 		"        {\n"
@@ -419,9 +443,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        }\n");
 
 	/** Script initialization call. **/
-	snprintf(sbuf,HT_SBUF_SIZE,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
+	htrAddScriptInit_va(s,"    window_current = %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
 		name,parentname,id,parentname,id,id,h);
-	htrAddScriptInit(s, sbuf);
 
 	/** HTML body <DIV> elements for the layers. **/
 	/** This is the top white edge of the window **/
@@ -542,6 +565,13 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	htrAddBodyItem(s,"</DIV></DIV>\n");
 
+	if(visible==1)
+	    htrAddScriptInit(s,
+		    "    for (var t in window_current.osrc)\n"
+		    "        setTimeout(window_current.osrc[t].osrcname+'.InitQuery();',1);\n"
+			    );
+	htrAddScriptInit(s,"    window_current = null;\n");
+
     return 0;
     }
 
@@ -570,6 +600,7 @@ htwinInitialize()
 	/** Add the 'set visibility' action **/
 	htrAddAction(drv,"SetVisibility");
 	htrAddParam(drv,"SetVisibility","IsVisible",DATA_T_INTEGER);
+	htrAddParam(drv,"SetVisibility","NoInit",DATA_T_INTEGER);
 
 	/** Add the 'window closed' event **/
 	htrAddEvent(drv,"Close");
