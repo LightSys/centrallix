@@ -81,6 +81,7 @@ wholePage "widget/page"
 	x = 95; y = 0; width = 600; height = 300;
 	osrc1 "widget/osrc"
 	    {
+	    sql = "SELECT :name, :full_name, :num_days FROM /samples/Months.csv/rows";
 	    bigTabFrame "widget/tab" 
 		{
 		x = 5; y = 5; width = 590; height = 200;
