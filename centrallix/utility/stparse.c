@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.7 2003/06/27 21:19:48 gbeeley Exp $
+    $Id: stparse.c,v 1.8 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.8  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.7  2003/06/27 21:19:48  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -751,15 +757,15 @@ st_internal_ParseAttr(pLxSession s, pStructInf inf, pParamObjects objlist)
 int
 st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
     {
-    int toktype;
+    int toktype,nametoktype;
     pStructInf subinf;
     char* str;
 
 	while(1)
 	    {
-	    toktype = mlxNextToken(s);
-	    if (toktype == MLX_TOK_CLOSEBRACE) break;
-	    else if (toktype == MLX_TOK_KEYWORD)
+	    nametoktype = mlxNextToken(s);
+	    if (nametoktype == MLX_TOK_CLOSEBRACE) break;
+	    else if (nametoktype == MLX_TOK_KEYWORD || nametoktype == MLX_TOK_STRING)
 		{
 		/** Check the string **/
 		str = mlxStringVal(s,NULL);
@@ -796,6 +802,13 @@ st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
 		/** Check next token.  eq means attrib, brace means subgrp **/
 		if (toktype == MLX_TOK_EQUALS)
 		    {
+		    /** attrs must have keyword names, not strings **/
+		    if (nametoktype != MLX_TOK_KEYWORD)
+			{
+			mssError(1,"ST","Attribute name '%s' must be a nonquoted keyword, not a string.", subinf->Name);
+			mlxNotePosition(s);
+			return -1;
+			}
 		    if (subinf->UsrType && subinf->UsrType[0] != 0) 
 		        {
 			mssError(1,"ST","Attribute '%s' cannot have an object type", subinf->Name);
@@ -1020,7 +1033,8 @@ st_internal_ParseStruct(pLxSession s, pStructInf *info)
 	    }
 
 	/** Get a token to see what command we have. **/
-	if (mlxNextToken(s) != MLX_TOK_KEYWORD) msg="Expected object name at beginning",Throw(parse_err);
+	toktype = mlxNextToken(s);
+	if (toktype != MLX_TOK_KEYWORD && toktype != MLX_TOK_STRING) msg="Expected object name at beginning",Throw(parse_err);
 	mlxCopyToken(s,(*info)->Name,ST_NAME_STRLEN);
 
 	/** GRB 2/2000 - Is this a FormLayout style file? **/

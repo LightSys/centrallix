@@ -54,10 +54,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.10 2003/09/02 15:37:13 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.11 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.11  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.10  2003/09/02 15:37:13  gbeeley
     - Added enhanced command line interface to test_obj.
     - Enhancements to v3 report writer.
@@ -763,6 +769,38 @@ uxdCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
     }
 
 
+/*** uxdDeleteObj - delete a file or directory for an open
+ *** object.  This will replace uxdDelete in the future.
+ ***/
+int
+uxdDeleteObj(void* inf_v, pObjTrxTree* oxt)
+    {
+    pUxdData inf = UXD(inf_v);
+
+	/** Directory? **/
+	if (inf->Flags & UXD_F_ISDIR)
+	    {
+	    if (rmdir(inf->RealPathname) < 0) 
+	        {
+		mssErrorErrno(1,"UXD","Could not delete directory");
+		uxdClose((void*)inf, oxt);
+		return -1;
+		}
+	    }
+	else
+	    {
+	    if (unlink(inf->RealPathname) < 0)
+	        {
+		mssErrorErrno(1,"UXD","Could not delete file");
+		uxdClose((void*)inf, oxt);
+		return -1;
+		}
+	    }
+	
+    return uxdClose((void*)inf, oxt);
+    }
+
+
 /*** uxdDelete - delete an existing file or directory.
  ***/
 int
@@ -779,26 +817,7 @@ uxdDelete(pObject obj, pObjTrxTree* oxt)
 	    return -1;
 	    }
 
-	/** Directory? **/
-	if (inf->Flags & UXD_F_ISDIR)
-	    {
-	    if (rmdir(inf->RealPathname) < 0) 
-	        {
-		mssErrorErrno(1,"UXD","Could not delete directory");
-		uxdClose((void*)inf, oxt);
-		return -1;
-		}
-	    }
-	else
-	    {
-	    if (unlink(inf->RealPathname) < 0)
-	        {
-		mssErrorErrno(1,"UXD","Could not delete directory");
-		uxdClose((void*)inf, oxt);
-		return -1;
-		}
-	    }
-	uxdClose((void*)inf, oxt);
+	uxdDeleteObj(inf,oxt);
 
     return 0;
     }
@@ -1458,6 +1477,7 @@ uxdInitialize()
 	drv->Close = uxdClose;
 	drv->Create = uxdCreate;
 	drv->Delete = uxdDelete;
+	drv->DeleteObj = uxdDeleteObj;
 	drv->OpenQuery = uxdOpenQuery;
 	drv->QueryDelete = NULL;
 	drv->QueryFetch = uxdQueryFetch;

@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.22 2003/05/30 17:58:26 gbeeley Exp $
+    $Id: obj.h,v 1.23 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.23  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.22  2003/05/30 17:58:26  gbeeley
     - turned off OSML API debugging
     - fixed bug in WriteOneAttr() that was truncating a string
@@ -313,6 +319,7 @@ typedef struct _OSD
     int		(*Close)();
     int		(*Create)();
     int		(*Delete)();
+    int		(*DeleteObj)();
     void*	(*OpenQuery)();
     int		(*QueryDelete)();
     void*	(*QueryFetch)();
@@ -343,6 +350,8 @@ typedef struct _OSD
 #define OBJDRV_C_ISMULTIQUERY	16
 #define OBJDRV_C_INHERIT	32	/* driver desires inheritance support */
 #define OBJDRV_C_ISINHERIT	64	/* driver is the inheritance layer */
+#define OBJDRV_C_OUTERTYPE	128	/* driver layering depends on outer, not inner, type */
+#define OBJDRV_C_NOAUTO		256	/* driver should never be automatically invoked */
 
 /** objxact transaction tree **/
 typedef struct _OT
@@ -466,6 +475,7 @@ typedef struct _OF
 
 #define OBJ_F_ROOTNODE		1	/* is rootnode object, handle specially */
 #define	OBJ_F_CREATED		2	/* O_CREAT requested; object didn't exist but was created */
+#define OBJ_F_DELETE		4	/* object should be deleted on final close */
 
 
 /** structure used for sorting a query result set. **/
@@ -628,6 +638,7 @@ pObject objOpen(pObjSession session, char* path, int mode, int permission_mask, 
 int objClose(pObject this);
 int objCreate(pObjSession session, char* path, int permission_mask, char* type);
 int objDelete(pObjSession session, char* path);
+int objDeleteObj(pObject this);
 int objLinkTo(pObject this);
 pObjectInfo objInfo(pObject this);
 
@@ -688,6 +699,7 @@ pObjTrxTree obj_internal_FindAttrOxt(pObjTrxTree oxt, char* attrname);
 char* obj_internal_PathPart(pPathname path, int start_element, int length);
 int obj_internal_PathPrefixCnt(pPathname full_path, pPathname prefix);
 int obj_internal_CopyPath(pPathname dest, pPathname src);
+int obj_internal_AddToPath(pPathname path, char* new_element);
 
 /** objectsystem datatype functions **/
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);

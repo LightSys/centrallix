@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.23 2003/08/05 16:45:12 affert Exp $
+    $Id: centrallix.c,v 1.24 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.24  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.23  2003/08/05 16:45:12  affert
     Initial Berkeley DB support.
 
@@ -172,7 +178,7 @@ char* cx__years = YEARS;
 /*** Instantiate the globals from centrallix.h 
  ***/
 CxGlobals_t CxGlobals;
-int CxSupportedInterfaces[] = {1, 0};
+int CxSupportedInterfaces[] = {2, 0};
 
 int
 cx_internal_LoadModules(char* type)
@@ -275,7 +281,7 @@ cx_internal_LoadModules(char* type)
 		{
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
-		mssError(1,"CX","Module '%s' has unsupported interface version %d",
+		mssError(1,"CX","Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?)",
 		    modpath, *(moduledata->InterfaceVer));
 		continue;
 		}

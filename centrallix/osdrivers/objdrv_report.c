@@ -22,6 +22,11 @@
 #include "prtmgmt.h"
 #include "mtsession.h"
 
+/** GRB - this file is becoming obsolete and should not be in any current
+ ** build under 'normal' circumstances.  Will be removed from CVS later.
+ **/
+#error "Please re-run configure; this file should not be in the build."
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -57,10 +62,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.8 2003/08/11 14:18:52 jorupp Exp $
+    $Id: objdrv_report.c,v 1.9 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.9  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.8  2003/08/11 14:18:52  jorupp
      * fixing the bug lehresma reported -- I had it fixed in my copy, just forgot to commit it...
 

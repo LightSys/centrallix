@@ -79,7 +79,7 @@ extern CxGlobals_t CxGlobals;
 #define MODULE_IFACE(x)		
 #endif
 
-#define CX_CURRENT_IFACE	(1)
+#define CX_CURRENT_IFACE	(2)
 extern int CxSupportedInterfaces[];
 
 /** shutdown handlers function **/

@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.8 2003/07/15 19:42:34 gbeeley Exp $
+    $Id: obj_trx.c,v 1.9 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.9  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.8  2003/07/15 19:42:34  gbeeley
     Don't try calling driver PresentationHints function if the driver
     does not implement that function.
@@ -446,6 +452,42 @@ oxtClose(void* this_v, pObjTrxTree* oxt)
     	/** Call the driver to make the close operation. **/
     	pass_oxt = &(this->Trx);
 	rval = this->Obj->TLowLevelDriver->Close(this->LLParam, pass_oxt);
+
+	/** Completed or error? **/
+	if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
+	    {
+	    if (*oxt == *pass_oxt) *oxt = NULL;
+	    obj_internal_FreeTree(*pass_oxt);
+	    *pass_oxt = NULL;
+	    }
+	else if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_FAILED)
+	    {
+	    rval = -1;
+	    if (*oxt == *pass_oxt) *oxt = NULL;
+	    obj_internal_FreeTree(*pass_oxt);
+	    *pass_oxt = NULL;
+	    }
+
+	/** Free the ptr structure. **/
+	nmFree(this,sizeof(ObjTrxPtr));
+
+    return rval;
+    }
+
+
+/*** oxtDeleteObj - delete an already open object, resulting in its closure
+ *** This has similar logic to Close().
+ ***/
+int
+oxtDeleteObj(void* this_v, pObjTrxTree* oxt)
+    {
+    pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    pObjTrxTree* pass_oxt;
+    int rval;
+
+    	/** Call the driver to make the delete operation. **/
+    	pass_oxt = &(this->Trx);
+	rval = this->Obj->TLowLevelDriver->DeleteObj(this->LLParam, pass_oxt);
 
 	/** Completed or error? **/
 	if (pass_oxt && *pass_oxt && (*pass_oxt)->Status == OXT_S_COMPLETE)
@@ -950,6 +992,7 @@ oxtInitialize()
 	drv->Open = oxtOpen;
 	drv->Close = oxtClose;
 	drv->Delete = oxtDelete;
+	drv->DeleteObj = oxtDeleteObj;
 	drv->Create = oxtCreate;
 	drv->Read = oxtRead;
 	drv->Write = oxtWrite;

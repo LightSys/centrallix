@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.14 2003/09/02 15:37:13 gbeeley Exp $
+    $Id: obj_object.c,v 1.15 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.15  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.14  2003/09/02 15:37:13  gbeeley
     - Added enhanced command line interface to test_obj.
     - Enhancements to v3 report writer.
@@ -410,7 +416,13 @@ obj_internal_FreeObj(pObject this)
 	    if ((--del->LinkCnt) <= 0)
 	        {
 	        pathinfo = del->Pathname;
-	        if (del->Data) del->Driver->Close(del->Data,&(s->Trx));
+	        if (del->Data) 
+		    {
+		    if (del->Flags & OBJ_F_DELETE)
+			del->Driver->DeleteObj(del->Data,&(s->Trx));
+		    else
+			del->Driver->Close(del->Data,&(s->Trx));
+		    }
 		xaDeInit(&(del->Attrs));
 	        nmFree(del,sizeof(Object));
 	    
@@ -661,11 +673,14 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    }
 		}
 
-	    /** Find out what driver handles this type. **/
+	    /** Find out what driver handles this type.   Since type was determined from
+	     ** name, inner_type of Prev object, and/or ls__type open-as param, ignore
+	     ** drivers for now that key off of the outer type. 
+	     **/
 	    orig_ck_type = ck_type;
 	    do  {
 	        drv = (pObjDriver)xhLookup(&OSYS.DriverTypes, (void*)ck_type->Name);
-		if (!drv)
+		if (!drv || (drv->Capabilities & OBJDRV_C_OUTERTYPE) || (!used_openas && (drv->Capabilities & OBJDRV_C_NOAUTO)))
 		    {
 		    if (ck_type->IsA.nItems > 0)
 		        {
@@ -1073,6 +1088,47 @@ obj_internal_CopyPath(pPathname dest, pPathname src)
     }
 
 
+/*** obj_internal_AddToPath() - adds a pathname element to an existing
+ *** path structure.  Returns the index of the element on success, or
+ *** -1 on failure.
+ ***/
+int
+obj_internal_AddToPath(pPathname path, char* new_element)
+    {
+    int new_index;
+    char* pathend_ptr;
+    int new_len;
+
+	/** Find end of current pathname text **/
+	if (path->nElements == 0)
+	    pathend_ptr = path->Pathbuf;
+	else
+	    pathend_ptr = path->Elements[path->nElements-1] + strlen(path->Elements[path->nElements-1]);
+
+	/** Do we have space in the pathname for another element? **/
+	if (path->nElements+1 >= OBJSYS_MAX_ELEMENTS)
+	    {
+	    mssError(1,"OSML","Path exceeded internal limits - too many subobject names (limit is %d names)", OBJSYS_MAX_ELEMENTS);
+	    return -1;
+	    }
+	new_len = strlen(new_element);
+	if ((pathend_ptr - path->Pathbuf) + new_len + 1 >= (OBJSYS_MAX_PATH-1))
+	    {
+	    mssError(1,"OSML","Path exceeded internal limits - too long (limit is %d characters)", OBJSYS_MAX_PATH-1);
+	    return -1;
+	    }
+
+	/** Okay, we can append it.  Go for it. **/
+	new_index = (path->nElements++);
+	if (pathend_ptr != path->Pathbuf) *(pathend_ptr++) = '/';
+	path->Elements[new_index] = pathend_ptr;
+	path->OpenCtl[new_index] = NULL;
+	strcpy(pathend_ptr, new_element);
+
+    return new_index;
+    }
+
+
 #if 00
 /*** obj_internal_ProcessPath - handles the preprocessing needs for the
  *** Open, Create, and Delete calls.  Determines the driver, content type,
@@ -1385,5 +1441,32 @@ objInfo(pObject this)
 	if (this->Driver->Info(this->Data, &(this->AdditionalInfo)) < 0)
 	    return NULL;
     return &(this->AdditionalInfo);
+    }
+
+
+/*** objDeleteObj - delete an already open object.  This basically marks
+ *** the object for deletion at the driver level, and then does a close
+ *** operation.  That way, the object only actually gets deleted once 
+ *** no one else has it open anymore.
+ ***
+ *** If this was the last open (linked to object handle) for this object,
+ *** the delete happens immediately.  In any event, the caller should
+ *** not use the object handle after passing it to this routine.
+ ***/
+int
+objDeleteObj(pObject this)
+    {
+
+	ASSERTMAGIC(this,MGK_OBJECT);
+
+	/** Mark it for deletion **/
+	if (this->Driver->DeleteObj == NULL)
+	    {
+	    mssError(1,"OSML","objDeleteObj: %s objects do not support deletion",this->Driver->Name);
+	    return -1;
+	    }
+	this->Flags |= OBJ_F_DELETE;
+
+    return objClose(this);
     }
 

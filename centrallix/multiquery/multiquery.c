@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.14 2003/08/03 01:00:53 gbeeley Exp $
+    $Id: multiquery.c,v 1.15 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.15  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.14  2003/08/03 01:00:53  gbeeley
     Suppress attr-not-found warnings for certain attrs in mq.
 
@@ -1565,6 +1571,29 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
     }
 
 
+/*** mqDeleteObj - delete an open query result item.  This only
+ *** works on queries off of a single source.
+ ***/
+int
+mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
+    {
+    pPseudoObject inf = (pPseudoObject)inf_v;
+    int rval;
+
+	/** Do a 'delete obj' operation on the source object **/
+	if (inf->ObjList.nObjects != 1)
+	    {
+	    mssError(1,"MQ","Could not delete - query has more than one source");
+	    return -1;
+	    }
+	rval = objDeleteObj((pObject)(inf->ObjList.Objects[0]));
+	inf->ObjList.Objects[0] = NULL;
+	if (rval < 0) return rval;
+	
+    return mqClose(inf_v, oxt);
+    }
+
+
 /*** mqQueryFetch - retrieves the next item in the query result set.
  ***/
 void*
@@ -2117,6 +2146,7 @@ mqInitialize()
 	drv->Close = mqClose;
 	drv->Create = NULL;
 	drv->Delete = NULL;
+	drv->DeleteObj = mqDeleteObj;
 	drv->OpenQuery = mqStartQuery;
 	drv->QueryDelete = NULL;
 	drv->QueryFetch = mqQueryFetch;

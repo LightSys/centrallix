@@ -55,10 +55,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.13 2003/09/02 15:37:13 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.14 2003/11/12 22:21:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.14  2003/11/12 22:21:39  gbeeley
+    - addition of delete support to osml, mq, datafile, and ux modules
+    - added objDeleteObj() API call which will replace objDelete()
+    - stparse now allows strings as well as keywords for object names
+    - sanity check - old rpt driver to make sure it isn't in the build
+
     Revision 1.13  2003/09/02 15:37:13  gbeeley
     - Added enhanced command line interface to test_obj.
     - Enhancements to v3 report writer.
@@ -1450,6 +1456,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 		    nmFree(dn,sizeof(DatNode));
 		    return NULL;
 		    }
+		objUnmanageObject(obj->Session, context->SpecObj);
 		context->DataObj = obj->Prev;
 		objLinkTo(context->DataObj);
 		}
@@ -2450,15 +2457,69 @@ datCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
     }
 
 
+/*** datDeleteObj - delete an existing open object.
+ ***/
+int
+datDeleteObj(void* inf_v, pObjTrxTree* oxt)
+    {
+    pDatData inf = DAT(inf_v);
+    unsigned char* dstptr;
+    int curpg,i;
+    pDatRowInfo ri;
+
+	if (!inf->Row || !(inf->Flags & DAT_F_ROWPRESENT))
+	    {
+	    inf->Row = dat_internal_GetRow(inf,inf->Node, inf->RowID);
+	    if (inf->Row && inf->Row->Flags & DAT_R_F_DELETED)
+		{
+		dat_internal_ReleaseRow(inf->Row);
+		inf->Row = NULL;
+		}
+	    if (!inf->Row)
+		{
+		mssError(1,"DAT","DeleteObj: Could not access row data for row %d",inf->RowID);
+		if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
+		inf->Pathname.OpenCtlBuf = NULL;
+		nmFree(inf,sizeof(DatData));
+		return -1;
+		}
+	    }
+
+	/** Now delete the thing. **/
+	ri = inf->Row;
+	ri->Pages[0]->Flags |= DAT_CACHE_F_DIRTY;
+	dstptr = ri->Pages[0]->Data + ri->Offset;
+	curpg = 0;
+	while(*dstptr != '\n')
+	    {
+	    *(dstptr++) = ' ';
+	    if (dstptr >= ri->Pages[curpg]->Data + ri->Pages[curpg]->Length)
+		{
+		curpg++;
+		dstptr = ri->Pages[curpg]->Data;
+		ri->Pages[curpg]->Flags |= DAT_CACHE_F_DIRTY;
+		}
+	    }
+	*dstptr = 1;
+	for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
+	dat_internal_FlushPages(inf,ri->Pages[0]);
+	nmFree(ri,sizeof(DatRowInfo));
+
+	/** Free the structure **/
+        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
+        inf->Pathname.OpenCtlBuf = NULL;
+	nmFree(inf,sizeof(DatData));
+
+    return 0;
+    }
+
+
 /*** datDelete - delete an existing object.
  ***/
 int
 datDelete(pObject obj, pObjTrxTree* oxt)
     {
     pDatData inf;
-    unsigned char* dstptr;
-    int curpg,i;
-    pDatRowInfo ri;
 
 	/** Allocate the structure **/
 	inf = (pDatData)nmMalloc(sizeof(DatData));
@@ -2492,9 +2553,10 @@ datDelete(pObject obj, pObjTrxTree* oxt)
 	    nmFree(inf,sizeof(DatData));
 	    return -1;
 	    }
+	
+	inf->RowID = strtol(inf->RowColPtr,NULL,10);
 
 	/** Get the rowid and fetch the row **/
-	inf->RowID = strtol(inf->RowColPtr,NULL,10);
 	inf->Row = dat_internal_GetRow(inf,inf->Node, inf->RowID);
 	if (inf->Row && inf->Row->Flags & DAT_R_F_DELETED)
 	    {
@@ -2510,33 +2572,8 @@ datDelete(pObject obj, pObjTrxTree* oxt)
 	    return -1;
 	    }
 	inf->Flags |= DAT_F_ROWPRESENT;
-	ri = inf->Row;
 
-	/** Now delete the thing. **/
-	ri->Pages[0]->Flags |= DAT_CACHE_F_DIRTY;
-	dstptr = ri->Pages[0]->Data + ri->Offset;
-	curpg = 0;
-	while(*dstptr != '\n')
-	    {
-	    *(dstptr++) = ' ';
-	    if (dstptr >= ri->Pages[curpg]->Data + ri->Pages[curpg]->Length)
-		{
-		curpg++;
-		dstptr = ri->Pages[curpg]->Data;
-		ri->Pages[curpg]->Flags |= DAT_CACHE_F_DIRTY;
-		}
-	    }
-	*dstptr = 1;
-	for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
-	dat_internal_FlushPages(inf,ri->Pages[0]);
-	nmFree(ri,sizeof(DatRowInfo));
-
-	/** Free the structure **/
-        if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-        inf->Pathname.OpenCtlBuf = NULL;
-	nmFree(inf,sizeof(DatData));
-
-    return 0;
+    return datDeleteObj(inf,oxt);
     }
 
 
@@ -3550,6 +3587,7 @@ datInitialize()
 	drv->Close = datClose;
 	drv->Create = datCreate;
 	drv->Delete = datDelete;
+	drv->DeleteObj = datDeleteObj;
 	drv->OpenQuery = datOpenQuery;
 	drv->QueryDelete = datQueryDelete;
 	drv->QueryFetch = datQueryFetch;
