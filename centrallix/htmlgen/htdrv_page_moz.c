@@ -9,7 +9,13 @@ htpageRenderMozDefault(pHtSession s, pObject w_obj, int z, char* parentname, cha
     int watchdogtimer;
     HtPageStruct t;
 
-    htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"IFRAME");
+	htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"IFRAME");
+
+	/** set variable so javascript can run alternate code for a different browser **/    
+	htrAddScriptInit(s,
+		"    cn_browser=new Object();\n"
+		"    cn_browser.netscape47=false;\n"
+		"    cn_browser.mozilla=true;\n");
 
 	/** Add focus box **/
 	htrAddHeaderItem(s, 

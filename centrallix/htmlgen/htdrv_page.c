@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.19 2002/07/07 00:21:46 jorupp Exp $
+    $Id: htdrv_page.c,v 1.20 2002/07/08 23:21:38 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.20  2002/07/08 23:21:38  jorupp
+     * added a global object, cn_browser with two boolean properties -- netscape47 and mozilla
+        The corresponding one will be set to true by the page
+     * made one minor change to the form to get around the one .layers reference in the form (no .document references)
+        It _should_ work, however I don't have a _simple_ form test to try it on, so it'll have to wait
+
     Revision 1.19  2002/07/07 00:21:46  jorupp
      * added Mozilla support for the page
        * BARELY WORKS -- hardly any events checked
@@ -256,6 +262,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
+	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 
 
     return 0;
@@ -271,7 +278,13 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
     int watchdogtimer;
     HtPageStruct t;
 
-    htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"DIV");
+        htpageRenderCommon(s,w_obj,z,parentname,parentobj,&t,"DIV");
+
+	/** set variable so javascript can run alternate code for a different browser **/    
+	htrAddScriptInit(s,
+		"    cn_browser=new Object();\n"
+		"    cn_browser.netscape47=true;\n"
+		"    cn_browser.mozilla=false;\n");
 
 	/** Add focus box **/
 	htrAddHeaderItem(s, 

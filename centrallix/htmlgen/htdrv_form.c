@@ -43,6 +43,12 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.45  2002/07/08 23:21:38  jorupp
+     * added a global object, cn_browser with two boolean properties -- netscape47 and mozilla
+        The corresponding one will be set to true by the page
+     * made one minor change to the form to get around the one .layers reference in the form (no .document references)
+        It _should_ work, however I don't have a _simple_ form test to try it on, so it'll have to wait
+
     Revision 1.44  2002/06/24 17:29:44  jorupp
      * clarified an error message
      * added a potential feature, but commented it out do to implimentation difficulties
@@ -607,7 +613,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_show_3bconfirm()\n"
 		"    {\n"
 		"    var discard,save,cancel;\n"
-		"    var lay=this._3bconfirmwindow.mainLayer.layers;\n"
+		"    if(cn_browser.mozilla)\n"
+		"        var lay=this._3bconfirmwindow.mainLayer.getElementsByTagName('div');\n"
+		"    else if(cn_browser.netscape47)\n"
+		"        var lay=this._3bconfirmwindow.mainLayer.layers;\n"
+		"    else\n"
+		"        return false;\n"
 		"    for(var i in lay)\n"
 		"        {\n"
 		"        if(lay[i] && lay[i].buttonName)\n"
@@ -1309,6 +1320,47 @@ htformInitialize()
 
 	/** Register. **/
 	htrRegisterDriver(drv);
+
+
+    	/** Allocate the driver **/
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+
+	/** Fill in the structure. **/
+	strcpy(drv->Name,"DHTML Form Widget");
+	strcpy(drv->WidgetName,"form");
+	drv->Render = htformRender;
+	drv->Verify = htformVerify;
+	strcpy(drv->Target, "Mozilla:default");
+
+
+	/** Add our actions **/
+	htrAddAction(drv,"Clear");
+	htrAddAction(drv,"Delete");
+	htrAddAction(drv,"Discard");
+	htrAddAction(drv,"Edit");
+	htrAddAction(drv,"First");
+	htrAddAction(drv,"Last");
+	htrAddAction(drv,"New");
+	htrAddAction(drv,"Next");
+	htrAddAction(drv,"Prev");
+	htrAddAction(drv,"Query");
+	htrAddAction(drv,"QueryExec");
+	htrAddAction(drv,"Save");
+
+	/* these don't really do much, since the form doesn't have a layer, so nothing can find it... */
+	htrAddEvent(drv,"StatusChange");
+	htrAddEvent(drv,"DataChange");
+	htrAddEvent(drv,"NoData");
+	htrAddEvent(drv,"View");
+	htrAddEvent(drv,"Modify");
+	htrAddEvent(drv,"Query");
+	htrAddEvent(drv,"QueryExec");
+
+	/** Register. **/
+	htrRegisterDriver(drv);
+
+
 
 	HTFORM.idcnt = 0;
 
