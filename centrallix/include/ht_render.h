@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.15 2003/11/22 16:34:37 jorupp Exp $
+    $Id: ht_render.h,v 1.16 2003/11/22 16:37:18 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.16  2003/11/22 16:37:18  jorupp
+     * add support for moving event handler scripts to the .js code
+     	note: the underlying implimentation in ht_render.c_will_ change, this was
+    	just to get opinions on the API and output
+     * moved event handlers for htdrv_window from the .c to the .js
+
     Revision 1.15  2003/11/22 16:34:37  jorupp
      * add definitions for htrAddStyleSheetItem*
      * add GCC __attribute__ definition to _va functions (adds warning about mismatched format type options)
@@ -321,6 +327,7 @@ int htrAddBodyItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(print
 int htrAddBodyParam(pHtSession s, char* html_param);
 int htrAddBodyParam_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
 int htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code);
+int htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function);
 int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
 int htrAddScriptInit(pHtSession s, char* init_text);

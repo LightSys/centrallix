@@ -9,6 +9,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+/** values to be returned from event handling functions
+    should return one of the first two and one of the last two, ored together **/
+var EVENT_CONTINUE = 0;
+var EVENT_HALT = 1;
+var EVENT_ALLOW_DEFAULT_ACTION = 0;
+var EVENT_PREVENT_DEFAULT_ACTION = 2;
 
 function htr_event(e)
     {

@@ -51,10 +51,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.40 2003/11/18 06:01:10 gbeeley Exp $
+    $Id: ht_render.c,v 1.41 2003/11/22 16:37:18 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.41  2003/11/22 16:37:18  jorupp
+     * add support for moving event handler scripts to the .js code
+     	note: the underlying implimentation in ht_render.c_will_ change, this was
+    	just to get opinions on the API and output
+     * moved event handlers for htdrv_window from the .c to the .js
+
     Revision 1.40  2003/11/18 06:01:10  gbeeley
     - adding utility method htrGetBackground to simplify bgcolor/image
 
@@ -611,6 +617,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 	if(!session->Class)
 	    {
 	    printf("Class not defined %s:%i\n",__FILE__,__LINE__);
+	    return -1;
 	    }
 	widget_drivers = &( session->Class->WidgetDrivers);
 	if (!widget_drivers)
@@ -1022,6 +1029,24 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
     return 0;
     }
 
+/*** htrAddEventHandlerFunction - adds an event handler script code segment for a
+ *** given event on a given object (usually the 'document').
+ ***/
+int
+htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function)
+    {
+    char buf[HT_SBUF_SIZE];
+    snprintf(buf, HT_SBUF_SIZE, 
+	"    handler_return = %s(e);\n"
+	"    if(handler_return & EVENT_PREVENT_DEFAULT_ACTION)\n"
+	"        prevent_default = true;\n"
+	"    if(handler_return & EVENT_HALT)\n"
+	"        return !prevent_default;\n",
+	function);
+    buf[HT_SBUF_SIZE-1] = '\0';
+	
+    return htrAddEventHandler(s, event_src, event, drvname, buf);
+    }
 
 /*** htrDisableBody - disables the <BODY> </BODY> tags so that, for instance,
  *** a frameset item can be used.
@@ -1484,7 +1509,7 @@ htrRender(pFile output, pObject appstruct)
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
 	        snprintf(sbuf,HT_SBUF_SIZE,"\nfunction e%d_%d(e)\n    {\n",i,j);
 		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
-	        snprintf(sbuf,HT_SBUF_SIZE,"    var e = htr_event(e);\n    var ly = (e.target.layer != null)?e.target.layer:e.target;\n");
+	        snprintf(sbuf,HT_SBUF_SIZE,"    var e = htr_event(e);\n    var ly = (typeof e.target.layer != \"undefined\" && e.target.layer != null)?e.target.layer:e.target;\n    var handler_return;\n    var prevent_default=false;\n");
 		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
 		for(k=0;k<tmp_a2->Array.nItems;k++)
 		    {

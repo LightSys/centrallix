@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.34 2003/08/02 22:12:06 jorupp Exp $
+    $Id: htdrv_window.c,v 1.35 2003/11/22 16:37:18 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.35  2003/11/22 16:37:18  jorupp
+     * add support for moving event handler scripts to the .js code
+     	note: the underlying implimentation in ht_render.c_will_ change, this was
+    	just to get opinions on the API and output
+     * moved event handlers for htdrv_window from the .c to the .js
+
     Revision 1.34  2003/08/02 22:12:06  jorupp
      * got treeview pretty much working (a bit slow though)
     	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
@@ -427,76 +433,18 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
 	
 
-	// FIXME: does this MOUSEDOWN work if for NS4 if there is no title?
 	/** Event handler for mousedown -- initial click **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","wn",
-		"    if (ly.kind == 'wn')\n"
-		"        {\n"
-		"        if (e.target.name == 'close') \n"
-		"            pg_set(e.target,'src','/sys/images/02close.gif');\n"
-		"        else if (\n"
-		"                (cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||\n"
-		"                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' )\n"
-		"             )\n"
-		"            {\n"
-		"            wn_current = ly.mainlayer;\n"
-		"            wn_msx = e.pageX;\n"
-		"            wn_msy = e.pageY;\n"
-		"            wn_newx = null;\n"
-		"            wn_newy = null;\n"
-		"            wn_moved = 0;\n"
-		"            wn_windowshade(ly.mainlayer);\n"
-		"            }\n"
-		"        cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"        }\n");
+	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "wn", "wn_mousedown");
 
 	/** Mouse up event handler -- when user releases the button **/
-	htrAddEventHandler(s, "document","MOUSEUP","wn",
-		"    if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')\n"
-		"        {\n"
-		"        pg_set(e.target,'src','/sys/images/01close.gif');\n"
-		"        wn_close(ly.mainlayer);\n"
-		"        }\n"
-		"    else if (ly.document != null && pg_images(ly).length > 6 && pg_images(ly)[6].name == 'close')\n"
-		"        {\n"
-		"        pg_set(pg_images(ly)[6],'src','/sys/images/01close.gif');\n"
-		"        }\n"
-		"    if (wn_current != null)\n"
-		"        {\n"
-		"        if (wn_moved == 0) wn_bring_top(wn_current);\n"
-		"        }\n"
-		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseUp');\n"
-		"    wn_current = null;\n");
+	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "wn", "wn_mouseup");
 
 	/** Mouse move event handler -- when user drags the window **/
-	htrAddEventHandler(s, "document","MOUSEMOVE","wn",
-		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseMove');\n"
-		"    if (wn_current != null)\n"
-		"        {\n"
-		"        wn_current.clicked = 0;\n"
-		"        clearTimeout(ly.mainlayer.tid);\n"
-		"        if (wn_newx == null)\n"
-		"            {\n"
-		"            wn_newx = wn_current.pageX + e.pageX-wn_msx;\n"
-		"            wn_newy = wn_current.pageY + e.pageY-wn_msy;\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            wn_newx += (e.pageX - wn_msx);\n"
-		"            wn_newy += (e.pageY - wn_msy);\n"
-		"            }\n"
-		"        setTimeout(wn_domove,60);\n"
-		"        wn_moved = 1;\n"
-		"        wn_msx = e.pageX;\n"
-		"        wn_msy = e.pageY;\n"
-		"        return false;\n"
-		"        }\n");
+	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "wn", "wn_mousemove");
 
-	htrAddEventHandler(s, "document", "MOUSEOVER", "wn",
-		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOver');\n");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "wn", "wn_mouseover");
 
-	htrAddEventHandler(s, "document", "MOUSEOUT", "wn",
-		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');\n");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "wn", "wn_mouseout");
 
 	if(s->Capabilities.Dom1HTML)
 	    {

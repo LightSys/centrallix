@@ -310,3 +310,95 @@ function wn_bring_top(l)
     wn_topwin = l;
 //    wn_clicked = 0;
     }
+
+// FIXME: does this MOUSEDOWN work if for NS4 if there is no title?
+function wn_mousedown(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.kind == 'wn')
+        {
+        if (e.target.name == 'close') 
+            pg_set(e.target,'src','/sys/images/02close.gif');
+        else if (
+                (cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' )
+             )
+            {
+            wn_current = ly.mainlayer;
+            wn_msx = e.pageX;
+            wn_msy = e.pageY;
+            wn_newx = null;
+            wn_newy = null;
+            wn_moved = 0;
+            wn_windowshade(ly.mainlayer);
+            }
+        cn_activate(ly.mainlayer, 'MouseDown');
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function wn_mouseup(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')
+        {
+        pg_set(e.target,'src','/sys/images/01close.gif');
+        wn_close(ly.mainlayer);
+        }
+    else if (ly.document != null && pg_images(ly).length > 6 && pg_images(ly)[6].name == 'close')
+        {
+        pg_set(pg_images(ly)[6],'src','/sys/images/01close.gif');
+        }
+    if (wn_current != null)
+        {
+        if (wn_moved == 0) wn_bring_top(wn_current);
+        }
+    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseUp');
+    wn_current = null;
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function wn_mousemove(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseMove');
+    if (wn_current != null)
+        {
+        wn_current.clicked = 0;
+        clearTimeout(ly.mainlayer.tid);
+        if (wn_newx == null)
+            {
+            wn_newx = wn_current.pageX + e.pageX-wn_msx;
+            wn_newy = wn_current.pageY + e.pageY-wn_msy;
+            }
+        else
+            {
+            wn_newx += (e.pageX - wn_msx);
+            wn_newy += (e.pageY - wn_msy);
+            }
+        setTimeout(wn_domove,60);
+        wn_moved = 1;
+        wn_msx = e.pageX;
+        wn_msy = e.pageY;
+        return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function wn_mouseover(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOver');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function wn_mouseout(e)
+    {
+    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+
+
+
