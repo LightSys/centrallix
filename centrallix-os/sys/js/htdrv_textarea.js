@@ -425,6 +425,7 @@ function tx_init(l,fieldname,is_readonly,main_bg)
     {
     if (!main_bg) l.bg = "bgcolor='#c0c0c0'";
     else l.bg = main_bg;
+    htutil_tag_images(l.document,'tx',l,l);
     l.kind = 'tx';
     l.mainlayer = l;
     l.document.layer = l;

@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.11 2002/07/30 21:38:37 pfinley Exp $
+    $Id: htdrv_textarea.c,v 1.12 2002/08/01 15:14:38 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.12  2002/08/01 15:14:38  lkehresman
+    Tagged textarea images with .kind, .layer, and .mainlayer
+
     Revision 1.11  2002/07/30 21:38:37  pfinley
     Added events: MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,DataChange,
     GetFocus,LoseFocus to textarea widget.
@@ -181,6 +184,7 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptGlobal(s, "tx_cur_mainlayer", "null", 0);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_textarea.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 
