@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.23 2004/02/24 05:09:10 gbeeley Exp $
+    $Id: mtask.c,v 1.24 2004/05/04 18:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.24  2004/05/04 18:18:59  gbeeley
+    - Adding fdAccess() wrapper for access(2).
+    - Moving PTOD definition to module in centrallix core.
+
     Revision 1.23  2004/02/24 05:09:10  gbeeley
     - fixed error in mtask's handling of group id.
     - renamed WRCACHE/RDCACHE to WRBUF/RDBUF.
@@ -2657,6 +2661,26 @@ int
 fdFD(pFile filedesc)
     {
     return filedesc->FD;
+    }
+
+
+/*** FDACCESS checks to see if the thread has permission to do the
+ *** given operation (W_OK, R_OK, etc.) on the file, without actually
+ *** performing the operation.  Like access() but works with MTask and
+ *** is based on the effective UID of the thread.
+ ***/
+int
+fdAccess(const char* pathname, int check_ok)
+    {
+    int rval;
+
+	setregid(getegid(), getgid());
+	setreuid(geteuid(), getuid());
+	rval = access(pathname, check_ok);
+	setreuid(geteuid(), getuid());
+	setregid(getegid(), getgid());
+
+    return rval;
     }
 
 

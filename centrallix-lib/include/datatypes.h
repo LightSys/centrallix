@@ -20,10 +20,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: datatypes.h,v 1.4 2004/02/24 05:08:26 gbeeley Exp $
+    $Id: datatypes.h,v 1.5 2004/05/04 18:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/datatypes.h,v $
 
     $Log: datatypes.h,v $
+    Revision 1.5  2004/05/04 18:18:59  gbeeley
+    - Adding fdAccess() wrapper for access(2).
+    - Moving PTOD definition to module in centrallix core.
+
     Revision 1.4  2004/02/24 05:08:26  gbeeley
     - lengthen Value in DateTime datatype to 'long long' (64 bit).
     - Add pTObjData (PTOD) as more descriptive of an atomic data element,
@@ -86,6 +90,14 @@ typedef struct _MN
     }
     MoneyType, *pMoneyType;
 
+/** Binary data (counted string) structure **/
+typedef struct _BN
+    {
+    int			Size;
+    unsigned char*	Data;
+    }
+    Binary, *pBinary;
+
 /** Data Types. **/
 #define DATA_T_UNAVAILABLE      0
 #define DATA_T_ANY		0
@@ -98,12 +110,14 @@ typedef struct _MN
 #define DATA_T_MONEY            7
 #define DATA_T_ARRAY		8	/* generic array, added for jsvm */
 #define DATA_T_CODE		9	/* code; function/expression/etc */
+#define DATA_T_BINARY		10
 
 /** structure used to handle data pointers (GetAttrValue, etc) **/
 typedef union _POD
     {
     int         Integer;
     char*       String;
+    Binary	Binary;
     pMoneyType  Money;
     pDateTime   DateTime;
     double      Double;
@@ -114,19 +128,6 @@ typedef union _POD
     ObjData, *pObjData;
 
 #define POD(x)  ((pObjData)(x))
-
-/** typed POD structure, PTOD **/
-typedef struct _TPOD
-    {
-    ObjData	Data;
-    unsigned char DataType;
-    unsigned char Flags;
-    }
-    TObjData, *pTObjData;
-
-#define DATA_TF_NULL		1	/* data value is NULL */
-   
-#define PTOD(x)	((pTObjData)(x))
 
 
 #endif /* _DATATYPES_H */

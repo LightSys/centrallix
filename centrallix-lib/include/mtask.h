@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.12 2004/02/24 05:09:10 gbeeley Exp $
+    $Id: mtask.h,v 1.13 2004/05/04 18:18:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.13  2004/05/04 18:18:59  gbeeley
+    - Adding fdAccess() wrapper for access(2).
+    - Moving PTOD definition to module in centrallix core.
+
     Revision 1.12  2004/02/24 05:09:10  gbeeley
     - fixed error in mtask's handling of group id.
     - renamed WRCACHE/RDCACHE to WRBUF/RDBUF.
@@ -397,6 +401,7 @@ int fdFD(pFile filedesc);
 int fdSetOptions(pFile filedesc, int options);
 int fdUnSetOptions(pFile filedesc, int options);
 int fdPrintf(pFile filedesc, const char* fmt, ...);
+int fdAccess(const char* filename, int check_ok);
 
 
 /** MTASK Networking Functions **/
