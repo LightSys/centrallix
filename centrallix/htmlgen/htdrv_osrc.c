@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.4 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.5 2002/03/13 01:04:32 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.5  2002/03/13 01:04:32  jheth
+    Partial working Object Source - Functionality added but no reliable testing
+
     Revision 1.4  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -112,7 +115,7 @@ int htosrcVerify() {
   /** Ok, write the style header items. **/
   snprintf(sbuf3, 200, "    <STYLE TYPE=\"text/css\">\n");
   htrAddHeaderItem(s,sbuf3);
-  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:0; clip:rect(1,1); Z-INDEX:0; }\n",id);
+  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:visible; LEFT:0; TOP:300;  WIDTH:500; HEIGHT:500; Z-INDEX:20; }\n",id);
   htrAddHeaderItem(s,sbuf3);
   snprintf(sbuf3, 200, "    </STYLE>\n");
   htrAddHeaderItem(s,sbuf3);
@@ -121,36 +124,82 @@ int htosrcVerify() {
    htrAddScriptFunction(s, "osrc_action_clear", "\n"
       "function osrc_action_clear()\n"
       "    {\n"
+      "    //No Records Returned\n"
+      "    for (var i in this.children)\n"
+      "         {\n"
+      "         this.children[i] = ClearAll();\n"
+      "         }\n"
+      "         \n"
+      "    //Clear replica of data\n"
+      "    delete data;\n"
       "    }\n",0);
 
 
    htrAddScriptFunction(s, "osrc_action_query", "\n"
-      "function osrc_action_query(query)\n"
+      "function osrc_action_query(q)\n"
       "    {\n"
+      "    //Is discard ready\n"
       "    //Send query as GET request\n"
-      "    query = escape(query);\n"
-      "    this.src = '/?ls__mode=osml&ls__req=' + query;\n"
-      "    alert(query);\n" 
+      "    this.query = escape(q);\n"
+      "    this.query = 'select%20%3Aid%2C%20%3Afull_name%2C%20%3Anum_days%20from%20Months.csv'\n"
+      "    alert(this.query);\n"
+      "    this.OpenSession();\n"
+      "    }\n",0);
+      
+   htrAddScriptFunction(s, "osrc_store_replica", "\n"
+      "function osrc_store_replica()\n"
+      "    {\n"
+      "    alert(this.document.links[0].target);\n"
+      "    if (this.document.links.length > 0)\n"
+      "        {\n"
+      "        //Store Links\n"
+      "        alert('Store Links');\n"
+      "        data = new Object();\n"
+      "        data.name = \"data\";\n"
+      "        data.annotation = \"Data\";\n"
+      "        data.Attributes = new Array();\n"
+      "        for (var i in this.document.links)\n"
+      "             {\n"
+      "             data.Attributes[i] = new Array();\n"
+      "             //Attr Type\n"
+      "             data.Attributes[i][i] = this.document.links[i].target;\n"
+      "             //Attr Value\n"
+      "             data.Attributes[i][i+1] = this.document.links[i].text;\n"
+      "             }\n"
+      "        form.DataReady(data);\n"
+      "        }\n"
+      "    else\n"
+      "        {\n"
+      "        //Clear Method - No Anchors Returned\n"
+      "        alert('Clear');\n"
+      "        }\n" 
+      "    this.form.IsDiscardReady();\n"
       "    }\n",0);
    
    htrAddScriptFunction(s, "osrc_action_delete", "\n"
       "function osrc_action_delete()\n"
       "    {\n"
+      "    //Delete an object\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_action_create", "\n"
       "function osrc_action_create()\n"
       "    {\n"
+      "    //Create an object\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_action_modify", "\n"
       "function osrc_action_modify()\n"
       "    {\n"
+      "    //Modify an object\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_cb_query_continue", "\n"
       "function osrc_cb_query_continue()\n"
       "    {\n"
+      "    //Is Form Ready - Return\n"
+      "    this.form.ready = TRUE;\n"
+      "    return 0;\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_cb_query_cancel", "\n"
@@ -163,21 +212,82 @@ int htosrcVerify() {
       "    {\n"
       "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_cb_register", "\n"
+      "function osrc_cb_register(aparam)\n"
+      "    {\n"
+      "    this.children.push(aparam);\n"
+      "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_open_session", "\n"
+      "function osrc_open_session()\n"
+      "    {\n"
+      "    //Open Session\n"
+      "    this.src = '/?ls__mode=osml&ls__req=opensession'\n"
+      "    this.onLoad = osrc_open_query;\n"
+      "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_open_query", "\n"
+      "function osrc_open_query()\n"
+      "    {\n"
+      "    //Open Query\n"
+      "    confirm(this.document.anchors.length);\n"
+      "    //this.src = '/?ls__mode=osml&ls__req=multiquery&ls__sid=01234567&ls__sql=' + this.query;\n"
+      "    this.onLoad = osrc_close_query;\n"
+      "    this.src = '/escape.html';\n"
+      "    confirm(this.document.anchors.length);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_close_query", "\n"
+      "function osrc_close_query()\n"
+      "    {\n"
+      "    confirm(this.document.anchors.length);\n"
+      "    confirm('close');\n"
+      "    return 0;\n"
+      "    //Close Query\n"
+      "    this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=12345678';\n"
+      "    this.onLoad = osrc_close_object;\n"
+      "    }\n",0);
+ 
+   htrAddScriptFunction(s, "osrc_close_object", "\n"
+      "function osrc_close_object()\n"
+      "    {\n"
+      "    //Close Object\n"
+      "    this.src = '/?ls__mode=osml&ls__req=close&ls__oid=23456789';\n"
+      "    this.onLoad = osrc_close_session;\n"
+      "    }\n",0);
+ 
+   htrAddScriptFunction(s, "osrc_close_session", "\n"
+      "function osrc_close_session()\n"
+      "    {\n"
+      "    //Close Session\n"
+      "    this.src = '/?ls__mode=osml&ls__req=closesession&ls__sid=01234567';\n"
+      "    this.onLoad = osrc_store_replica;\n"
+      "    }\n",0);
+
+      
    /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
       "function osrc_init(loader)\n"
-      "    {\n"      
+      "    {\n"
+      "    loader.chilren = new Array();\n"
+      "    loader.form = fm_current;\n"
       "    loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
       "    loader.ActionDelete=osrc_action_delete;\n"
       "    loader.ActionCreate=osrc_action_create;\n"
       "    loader.ActionModify=osrc_action_modify;\n"
+
+      "    loader.OpenSession=osrc_open_session;\n"
+      "    loader.OpenQuery=osrc_open_query;\n"
+      "    loader.CloseQuery=osrc_close_query;\n"
+      "    loader.CloseObject=osrc_close_object;\n"
+      "    loader.CloseSession=osrc_close_session;\n"
+      "    loader.StoreReplica=osrc_store_replica;\n"
             
       "    loader.QueryContinue = osrc_cb_query_continue;\n"
       "    loader.QueryCancel = osrc_cb_query_cancel;\n"
       "    loader.RequestObject = osrc_cb_request_object;\n"
+      "    loader.Register = osrc_cb_register;\n"
       "    return loader;\n"
       "    }\n", 0);
 
@@ -187,9 +297,7 @@ int htosrcVerify() {
    htrAddScriptInit(s, sbuf3);
 
    /** HTML body <DIV> element for the layers. **/
-   snprintf(sbuf3, 200, "   <DIV ID=\"osrc%dloader\">\n",id);
-   htrAddBodyItem(s, sbuf3);
-   snprintf(sbuf3, 200, "   </DIV>\n");
+   snprintf(sbuf3, 200, "   <DIV ID=\"osrc%dloader\"></DIV>\n",id);
    htrAddBodyItem(s, sbuf3);
    
    nmFree(sbuf3, 200);
