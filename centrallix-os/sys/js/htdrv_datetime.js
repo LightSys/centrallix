@@ -257,7 +257,7 @@ function dt_drawmonth(l, d) {
 	var tmpDate = new Date(d);
 	tmpDate.setDate(1);
 	var col=tmpDate.getDay();
-	for (var i=1; i <= dt_getdaysinmonth(tmpDate); i++) {
+	for (var i=1; i <= htutil_days_in_month(tmpDate); i++) {
 		if (col!=0 && col%7==0) { row++; col=0; }
 		dt_drawday(l.document.mainlayer.ld.hiddenLayer.dayLayersArray[i-1], i, col, row);
 		col++;
@@ -330,46 +330,6 @@ function dt_drawtime(l, d) {
 	lmn.document.images[1].mainlayer = l;
 	lmn.document.close();
 }
-
-/**
- **  Here is the leap year algorithm used.  To the best of my knowledge
- **  it's the best way to detect leap years.  If I am wrong, please
- **  correct me.  - LME (July 2002)
- **
- **	IF year is divisible by 4, it is a leap year
- **	EXCEPT if a year is divisible by 100, it is not a leap year
- **	EXCEPT if a year is divisible by 400, then it IS a leap year.
- **/
-function dt_isleapyear(d) {
-	var yr = d.getYear()+1900;
-	if (yr % 4 == 0) {
-		if (yr % 100 == 0 && yr % 400 != 0) {
-			return false;
-		} else {
-			return true;
-		}
-	} else {
-		return false;
-	}
-}
-
-function dt_getdaysinmonth(d) {
-	switch (d.getMonth()) {
-		case 0: return 31;
-		case 1: return (dt_isleapyear(d)?29:28);
-		case 2: return 31;
-		case 3: return 30;
-		case 4: return 31;
-		case 5: return 30;
-		case 6: return 31;
-		case 7: return 31;
-		case 8: return 30;
-		case 9: return 31;
-		case 10: return 30;
-		case 11: return 31;
-	}
-}
-
 
 /* Event Handler Functions */
 
