@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.25 2004/03/17 20:29:50 jasonyip Exp $
+    $Id: htdrv_treeview.c,v 1.26 2004/06/12 03:57:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.26  2004/06/12 03:57:11  gbeeley
+    - adding support for treeview branch decorations
+
     Revision 1.25  2004/03/17 20:29:50  jasonyip
 
     Fixed the problem of cannot click on the open folder picture on treeview:
@@ -215,6 +218,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int id;
     char* nptr;
     int show_root = 1;
+    int show_branches = 0;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -246,6 +250,9 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	show_root = htrGetBoolean(w_obj, "show_root", 1);
 	if (show_root < 0) return -1;
 
+	/** How about branches? (branch decorations, etc.) **/
+	show_branches = htrGetBoolean(w_obj, "show_branches", 0);
+
 	/** Compensate hidden root position if not shown **/
 	if (!show_root)
 	    {
@@ -272,8 +279,8 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (s->Capabilities.Dom0NS)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,show_root?"inherit":"hidden",x,y,w,z);
-	    htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
 	    }
+	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
@@ -291,14 +298,14 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if(s->Capabilities.Dom0NS)
 	    {
 	    htrAddScriptInit_va(s,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
-	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s,null);\n",
-		    nptr, src, parentname, id, parentname, w, parentobj);
+	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s,null,%d);\n",
+		    nptr, src, parentname, id, parentname, w, parentobj, show_branches);
 	    }
 	else if(s->Capabilities.Dom1HTML)
 	    {
 	    htrAddScriptInit_va(s,"    %s = document.getElementById('tv%droot');\n",nptr, id);
-	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",document.getElementById('tv%dload'),%s,%d,%s,null);\n",
-		    nptr, src, id, parentname, w, parentobj);
+	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",document.getElementById('tv%dload'),%s,%d,%s,null,%d);\n",
+		    nptr, src, id, parentname, w, parentobj, show_branches);
 	    }
 	else
 	    {
@@ -308,6 +315,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_info.js", 0);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (s->Capabilities.Dom0NS)
@@ -318,7 +326,8 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	else
 	    {
 	    htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d;\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,show_root?"inherit":"hidden",x,y,w,z,src);
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);
+	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%dload", id, "");
+	    /*htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);*/
 	    }
 
 	/** Event handler for click-on-url **/
@@ -355,7 +364,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        else\n"
 		"            {\n"
 		"            tv_target_img = e.target;\n"
-		"            pg_set(tv_target_img,'src',htutil_subst_last(tv_target_img.src,'c.gif'));\n"
+		"            pg_set(tv_target_img.layer.img,'src',htutil_subst_last(tv_target_img.layer.img.src,'c.gif'));\n"
 		"            }\n"
 		"        }\n");
 	    }
@@ -372,7 +381,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        else\n"
 		"            {\n"
 		"            tv_target_img = e.target;\n"
-		"            pg_set(tv_target_img,'src',htutil_subst_last(tv_target_img.src,'c.gif'));\n"
+		"            pg_set(tv_target_img.layer.img,'src',htutil_subst_last(tv_target_img.layer.img.src,'c.gif'));\n"
 		"            }\n"
 		"        }\n");
 	    }
