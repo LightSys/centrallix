@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.4 2002/02/23 04:28:29 jorupp Exp $
+    $Id: htdrv_editbox.c,v 1.5 2002/02/27 02:37:19 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.5  2002/02/27 02:37:19  jorupp
+    * moved editbox I-beam movement functionality to function
+    * cleaned up form, added comments, etc.
+
     Revision 1.4  2002/02/23 04:28:29  jorupp
     bug fixes in form, I-bar in editbox is reset on a setvalue()
 
@@ -191,20 +195,34 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    return this.content;\n"
 		"    }\n", 0);
 
+	/** Helper function -- update cursor **/
+	htrAddScriptFunction(s, "eb_update_cursor", "\n"
+		"function eb_update_cursor(eb,val)\n"
+		"    {\n"
+		"    if(eb.cursorCol>val.length);\n"
+		"        {\n"
+		"        eb.cursorCol=val.length;\n"
+		"        }\n"
+		"    if(eb.cursorlayer == eb_ibeam)\n"
+		"        {\n"
+		"        eb_ibeam.moveToAbsolute(eb.ContentLayer.pageX + eb.cursorCol*eb_metric.charWidth, eb.ContentLayer.pageY);\n"
+		"        }\n"
+		"    }\n",0);
+
 	/** Set value function **/
 	htrAddScriptFunction(s, "eb_setvalue", "\n"
 		"function eb_setvalue(v,f)\n"
 		"    {\n"
-		"    var x=String(v);\n"
-		"    eb_settext(this,x);\n"
-		"    if(this.cursorCol>x.length);\n"
-		"        {\n"
-		"        this.cursorCol=x.length;\n"
-		"        }\n"
-		"    if(this.cursorlayer == eb_ibeam)\n"
-		"        {\n"
-		"        eb_ibeam.moveToAbsolute(this.ContentLayer.pageX + this.cursorCol*eb_metric.charWidth, this.ContentLayer.pageY);\n"
-		"        }\n"
+		"    eb_settext(this,String(v));\n"
+		"    eb_update_cursor(this,String(v));\n"
+		"    }\n", 0);
+	
+	/** Clear function **/
+	htrAddScriptFunction(s, "eb_clear", "\n"
+		"function eb_clear()\n"
+		"    {\n"
+		"    eb_settext(this,new String(''));\n"
+		"    eb_update_cursor(this,String(''));\n"
 		"    }\n", 0);
 
 	/** Enable control function **/
@@ -351,6 +369,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.losefocushandler = eb_deselect;\n"
 		"    l.getvalue = eb_getvalue;\n"
 		"    l.setvalue = eb_setvalue;\n"
+		"    l.clear = eb_clear;\n"
 		"    l.setoptions = null;\n"
 		"    l.enable = eb_enable;\n"
 		"    l.disable = eb_disable;\n"

@@ -35,7 +35,7 @@
 /* 									*/
 /* Module: 	htdrv_form.c      					*/
 /* Author:	Jonathan Rupp (JDR) and Aaron Williams 			*/
-/* Creation:	November 4, 2001 					*/
+/* Creation:	February 20, 2002 					*/
 /* Description:	This is the non-visual widget that interfaces the 	*/
 /*		objectsource widget and the visual sub-widgets		*/
 /************************************************************************/
@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.5  2002/02/27 02:37:19  jorupp
+    * moved editbox I-beam movement functionality to function
+    * cleaned up form, added comments, etc.
+
     Revision 1.4  2002/02/23 19:35:28  lkehresman
     * Radio button widget is now forms aware.
     * Fixes a couple of oddities in the checkbox.
@@ -96,14 +100,22 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTFORM.idcnt++);
 
 	/** Get params. **/
-	if (objGetAttrValue(w_obj,"AllowQuery",POD(&allowquery)) != 0) allowquery=1;
-	if (objGetAttrValue(w_obj,"AllowNew",POD(&allownew)) != 0) allownew=1;
-	if (objGetAttrValue(w_obj,"AllowModify",POD(&allowmodify)) != 0) allowmodify=1;
-	if (objGetAttrValue(w_obj,"AllowView",POD(&allowview)) != 0) allowview=1;
-	if (objGetAttrValue(w_obj,"AllowNoData",POD(&allownodata)) != 0) allownodata=1;
-	/** The way I read the specs -- overriding this resides in the code, not here **/
-	if (objGetAttrValue(w_obj,"MultiEnter",POD(&multienter)) != 0) multienter=0;
-	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) tabmode[0]='\0';
+	if (objGetAttrValue(w_obj,"AllowQuery",POD(&allowquery)) != 0) 
+	    allowquery=1;
+	if (objGetAttrValue(w_obj,"AllowNew",POD(&allownew)) != 0) 
+	    allownew=1;
+	if (objGetAttrValue(w_obj,"AllowModify",POD(&allowmodify)) != 0) 
+	    allowmodify=1;
+	if (objGetAttrValue(w_obj,"AllowView",POD(&allowview)) != 0) 
+	    allowview=1;
+	if (objGetAttrValue(w_obj,"AllowNoData",POD(&allownodata)) != 0) 
+	    allownodata=1;
+	/** The way I read the specs -- overriding this resides in 
+	 **   the code, not here -- JDR **/
+	if (objGetAttrValue(w_obj,"MultiEnter",POD(&multienter)) != 0) 
+	    multienter=0;
+	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) 
+	    tabmode[0]='\0';
 
 
 	/** Get name **/
@@ -114,8 +126,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 
-	htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); /* create our instance variable */
-
+	/** create our instance variable **/
+	htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
 
 	htrAddScriptFunction(s, "form_cb_register", "\n"
 		"function form_cb_register(aparam)\n"
@@ -123,17 +135,20 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.elements.push(aparam);\n"
 		"    }\n", 0);
 
+	/** A child 'control' has changed it's data **/
 	htrAddScriptFunction(s, "form_cb_data_notify", "\n"
-		"function form_cb_data_notify(aparam)\n"
+		"function form_cb_data_notify(control)\n"
 		"    {\n"
-		"	this.changed=true;\n"
+		"	this.IsUnsaved=true;\n"
 		"    }\n", 0);
 
+	/** A child 'control' got or lost focus **/
 	htrAddScriptFunction(s, "form_cb_focus_notify", "\n"
-		"function form_cb_focus_notify(aparam)\n"
+		"function form_cb_focus_notify(control)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/** the tab key was pressed in child 'control' **/
 	htrAddScriptFunction(s, "form_cb_tab_notify", "\n"
 		"function form_cb_tab_notify(control)\n"
 		"    {\n"
@@ -147,52 +162,61 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    if(this.elements[ctrlnum+1])\n"
 		"        {\n"
-		"        \n"			/* this is where we bounce the tab up the call tree */
+		"        \n" 	/* bounce the tab up the call tree */
 		"        } else {\n"
-		"        \n"			/* this is where we set the focus */
+		"        \n"			/* set the focus */
 		"        }\n"
 		"    }\n", 0);
 
+	/** Objectsource says there's data ready **/
 	htrAddScriptFunction(s, "form_cb_data_available", "\n"
 		"function form_cb_data_available(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/** Objectsource wants us to dump our data **/
 	htrAddScriptFunction(s, "form_cb_is_discard_ready", "\n"
 		"function form_cb_is_discard_ready(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
-
+	
+	/** Objectsource says our object is available **/
 	htrAddScriptFunction(s, "form_cb_object_available", "\n"
 		"function form_cb_object_available(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/** Objectsource says the operation is complete **/
 	htrAddScriptFunction(s, "form_cb_operation_complete", "\n"
 		"function form_cb_operation_complete(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/** Objectsource says the object was deleted **/
 	htrAddScriptFunction(s, "form_cb_object_deleted", "\n"
 		"function form_cb_object_deleted(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/** Objectsource says the object was created **/
 	htrAddScriptFunction(s, "form_cb_object_created", "\n"
 		"function form_cb_object_created(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/** Objectsource says the object was modified **/
 	htrAddScriptFunction(s, "form_cb_object_modified", "\n"
 		"function form_cb_object_modified(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
-
+	
+	/** Moves form to "No Data" mode **/
 	htrAddScriptFunction(s, "form_action_clear", "\n"
 		"function form_action_clear(aparam)\n"
 		"    {\n"
 		"    }\n", 0);
 
+	/**  **/
 	htrAddScriptFunction(s, "form_action_delete", "\n"
 		"function form_action_delete(aparam)\n"
 		"    {\n"
@@ -226,47 +250,67 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_action_next", "\n"
 		"function form_action_next(aparam)\n"
 		"    {\n"
-		"    var flag=0\n;"
-		"    for(var i in this.elements)\n"
-		"        {\n"
-		"        if(this.elements[i].IsUnsaved) flag=1;\n"
-		"        }\n"
-		"    if(flag) this.ActionSave();\n"
 		"    objsource.next();\n"
+		"    if(this.IsUnsaved) this.ActionSave();\n"
 		"    }\n", 0);
 
+	/** Helper function -- called from other mode change functions **/
 	htrAddScriptFunction(s, "form_change_mode", "\n"
 		"function form_change_mode(form,newmode)\n"
 		"    {\n"
-		"    for(var i in form.elements)\n"
-		"        {\n"
-		"        form.elements[i].setvalue('');\n"
-		"        }\n"
+		"    alert(\"Form is going from \"+form.mode+\" to \"+newmode+\" mode.\");\n"
 		"    form.oldmode = form.mode;\n"
-		"    form.mode = \"query\";\n"
+		"    form.mode = newmode;\n"
 		"    form.changed = false;\n"
 		"    var event = new Object();\n"
 		"    event.Caller = form;\n"
-		/*"    //cn_activate(form, 'StatusChange', event);\n"		 doesn't work -- FIX ME*/
+		/*"    //cn_activate(form, 'StatusChange', event);\n" doesn't work -- FIXME*/
 		"    delete event;\n"
 		"    return 1;\n"
 		"    }\n", 0);
 
+	/** Change to query mode **/
 	htrAddScriptFunction(s, "form_action_query", "\n"
-		"function form_action_query(aparam)\n"
+		"function form_action_query()\n"
 		"    {\n"
 		"    if(!this.allowquery) {alert(\"Query mode not allowed\");return 0;}\n"
+		"    for(var i in form.elements)\n"
+		"        {\n"
+		/*"        form.elements[i].Clear();\n" -- change soon */
+		"        form.elements[i].setvalue('');\n"
+		"        }\n"
+		"    this.IsUnsaved=false;\n"
 		"    return form_change_mode(this,\"Query\");\n"
 		"    }\n", 0);
 
+	/** Execute query **/
 	htrAddScriptFunction(s, "form_action_queryexec", "\n"
-		"function form_action_queryexec(aparam)\n"
+		"function form_action_queryexec()\n"
 		"    {\n"
+		"    if(!this.allowquery) {alert(\"Query not allowed\");return 0;}\n"
+		"    for(var i in form.elements)\n"
+		"        {\n"
+		/*"        form.elements[i].Clear();\n" -- change soon */
+		"        form.elements[i].setvalue('');\n"
+		"        }\n"
+		"    query=new String;\n"
+		/* Build the query, I think, oh joy......*/
+		"    form.Pending=true;\n"
+		"    this.osrc.ActionQuery(query);\n"
+		"    delete query;\n"
 		"    }\n", 0);
 
 	htrAddScriptFunction(s, "form_action_save", "\n"
-		"function form_action_save(aparam)\n"
+		"function form_action_save()\n"
 		"    {\n"
+		"    if(!this.IsUnsaved)\n"
+		"    	{\n"
+		"    	alert(\"There isn't any reason to save.\");\n"
+		"    	return 0;\n"
+		"    	}\n"
+		/** either have to build the query, or build the object to
+		 ** pass to objectsource **/
+		"    \n"
 		"    }\n", 0);
 
 
@@ -279,17 +323,18 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.elements = new Array();\n"
 		"    form.mode = \"No Data\";\n"
 		"    form.oldmode = null;\n"
-		"    form.objsrc = new Object();\n"
-		"    form.changed = false;\n"
+		"    form.osrc = new Object();\n"
+		"    form.IsUnsaved = false;\n"
 		"    form.name = name;\n"
-
+		"    form.Pending = false;\n"
+		/** initialize params from .app file **/
 		"    form.allowquery = aq;\n"
 		"    form.allownew = an;\n"
 		"    form.allowmodify = am;\n"
 		"    form.allowview = av;\n"
 		"    form.allownodata = and;\n"
 		"    form.multienter = me;\n"
-
+		/** initialize actions and callbacks **/
 		"    form.ActionClear = form_action_clear;\n"
 		"    form.ActionDelete = form_action_delete;\n"
 		"    form.ActionDiscard = form_action_discard;\n"
@@ -313,53 +358,25 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.FocusNotify = form_cb_focus_notify;\n"
 		"    form.TabNotify = form_cb_tab_notify;\n"
 
-		/** editbox expects lower case......**/
-		/**
-		"    form.register = form_cb_register;\n"
-		"    form.datanotify = form_cb_data_notify;\n"
-		"    form.focusnotify = form_cb_focus_notify;\n"
-		**/
 		"    return form;\n"
 		"    }\n",0);
 	//nmFree(sbuf3,800);
 
+	/** Write out the init line for this instance of the form
+	 **   the name of this instance was defined to be global up above
+	 **   and fm_current is defined in htdrv_page.c 
+	 **/
 	sbuf3 = nmMalloc(200);
 	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,%s);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name);
 	htrAddScriptInit(s,sbuf3);
 	nmFree(sbuf3,200);
 
-	/*
-	snprintf(sbuf3,800,
-			"    if(fm_current)\n"
-			"        {\n"
-			"        var old_fm=fm_current;\n"
-			"        %s=fm_current=form_init(%i,%i,%i,%i,%i,%i);\n"
-			"        old_fm.register(fm_current);\n"
-			"        fm_current=old_fm;\n"
-			"        }\n"
-			"    else\n"
-			"        {\n"
-			"        %s=fm_current=form_init(%i,%i,%i,%i,%i,%i);\n"
-			"        }\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,
-		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter
-	    );
-	*/
-
-
-
-
-
-	//htrAddScriptInit(s,sbuf3);
-
-	/** Check for objects within the form. **/
-
-	//sprintf(sbuf,"%s.document",parentname);
-	//sprintf(sbuf2,"%s",parentname);
-	//htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z);	/* non-visual, don't consume a z level */
-	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);	/* non-visual, don't consume a z level */
+	/** Check for and render all subobjects. **/
+	/** non-visual, don't consume a z level **/
+	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
 	
+	/** Make sure we don't claim orphans **/
 	htrAddScriptInit(s,"    fm_current = null;\n\n");
 
     return 0;
@@ -383,7 +400,7 @@ htformInitialize()
 	drv->Render = htformRender;
 	drv->Verify = htformVerify;
 
-	/** Add a 'executemethod' action **/
+	/** Add our actions **/
 	htrAddAction(drv,"Clear");
 	htrAddAction(drv,"Delete");
 	htrAddAction(drv,"Discard");
@@ -397,8 +414,7 @@ htformInitialize()
 	htrAddAction(drv,"QueryExec");
 	htrAddAction(drv,"Save");
 
-	/*htrAddParam(drv,"ExecuteMethod","Parameter",DATA_T_STRING);*/
-	htrAddEvent(drv,"StatusChange");
+	htrAddEvent(drv,"StatusChange"); /* Not documented */
 
 	/** Register. **/
 	htrRegisterDriver(drv);
