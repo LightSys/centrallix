@@ -56,10 +56,13 @@ CODING STYLE GUIDELINES
     group of developers.  In this case, we are <sigh>....
 
 
-NAMING CONVENTIONS AND OTHER FUN STUFF
+CONVENTIONS AND OTHER FUN STUFF
 
-    Centrallix makes heavy use of typedefs for naming structures and unions
-    and such.  A normal typedef declaration for a structure looks like this:
+    1.  Conventions for struct/union definitions:
+
+	Centrallix makes heavy use of typedefs for naming structures and unions
+	and such.  A normal typedef declaration for a structure looks like 
+	this:
 
         typedef struct _EL
 	    {
@@ -69,14 +72,54 @@ NAMING CONVENTIONS AND OTHER FUN STUFF
 	    }
 	    Element, *pElement;
 
-    I intentionally have used the "pElement" syntax for showing that the type
-    is a pointer.  This avoids the neverending squabble over the more readable
-    "char* ptr;" syntax and the more correct "char *ptr;" syntax <grin>....
+	I intentionally have used the "pElement" syntax for showing that the 
+	type is a pointer.  This avoids the neverending squabble over the more
+	readable "char* ptr;" syntax and the more correct "char *ptr;" 
+	syntax <grin>....
 
-    You are encouraged to use the "pXxxyyy" style in your own Centrallix code
-    modules.  That helps keep things consistent, but as with things before, if
-    you already have a well-developed coding style, feel free to use that 
-    instead.  The indentation is up to you (as before).
+	You are encouraged to use the "pXxxyyy" style in your own Centrallix
+	code modules.  That helps keep things consistent, but as with things
+	before, if you already have a well-developed coding style, feel free
+	to use that instead.  The indentation is up to you (as before).
+
+
+    2.	Return values for C functions in Centrallix:
+
+	There are many conventions and ideas on how to use return values 
+	from functions.  Here, the established approach used in Centrallix
+	is documented:
+
+	The main purpose of the return value for a procedural function (a
+	function which "accomplishes some task") is to indicate the status
+	of the task the function performed (did it fail or succeed?) and
+	if it failed, possibly why the task failed.  A pure function (which
+	computes a value without accessing or modifying external resources)
+	has a return value which is the result of the computation.  That
+	distinction is important in Centrallix (procedural function results
+	generally affect the flow of the program, whereas pure function
+	results generally only affect program flow when the results are a 
+	part of another expression).
+
+	First, if a procedural function returns a pointer, it should return
+	NULL if an error occurs.  In such an event, it should also, if
+	need be, log an error using mssError() or mssErrorErrno().  Note
+	that in some cases it is better for a procedure which generates a
+	pointer to pass that pointer through a reference argument rather
+	than through the return value, so that better status information
+	is possible through the return value (other than just "failed").
+
+	Second, if a procedural function normally returns a non-negative
+	integer value of some kind, it should return a negative value if
+	an error occurrs.  To simply indicate "failed", return negative
+	one (-1).  In the future, other more error-specific values may be
+	possible (such as the way Linux kernel functions internally handle
+	errors).
+
+	Third, if a procedural function does not naturally return a value
+	at all, it should return 0 on success and a negative value on 
+	failure (as in the above case) for consistency.  Boolean values
+	indicating failure/success status should be avoided - they are to
+	be used for the result of boolean computations in pure functions.
 
 
 MODULE PREFIXES
@@ -92,7 +135,7 @@ MODULE PREFIXES
 SECURE CODING RECOMMENDATIONS
 
     Here are a few tips for improving the security of Centrallix by taking 
-    care during development:
+    care during development.
 
     1.  When using the sprintf() routines, take the following precautions:
 
@@ -107,7 +150,8 @@ SECURE CODING RECOMMENDATIONS
 	a.  Don't use strcpy() unless you are copying a constant text string
 	    into the buffer.
 	b.  strncpy() fills the remainder of the buffer with zeros, even when
-	    unnecessary.  memccpy() is an alternative that does not.
+	    unnecessary.  memccpy() is an alternative that does not.  Neither
+	    function guarantees that the destination will be null-terminated.
 	c.  Watch out for other memory copying routines that don't respect 
 	    array boundaries - strcat is another one :)
 
@@ -120,8 +164,8 @@ SECURE CODING RECOMMENDATIONS
     4.  When reading from a file or from the network,
 
         a.  NEVER USE fscanf().  It is a pain.
-	b.  NEVER USE fgets()/gets() when running with privileges different
-	    than those of the connecting/calling user.
+	b.  NEVER USE gets() when running with privileges different than those
+	    of the connecting/calling user (this is most of the time).
 	c.  Never assume that the remote end, whether server or client, will
 	    honor the protocol specification.  Check for errors and respond
 	    accordingly.  Remember - someone could just telnet to the port
@@ -221,7 +265,7 @@ MTASK DEVELOPMENT ISSUES
 	a syGetSem or similar function that blocks while the scheduler is
 	thLock()ed will cause a deadlock, which currently exits the process.
 
-    6.  DO NOT OPTIMIZE (-O) MTASK WHEN COMPILING.  It will cause the stack-
+    6.  DO NOT OPTIMIZE (-O) MTASK WHEN COMPILING.  It may cause the stack-
         separating local variable to get optimized out, which will cause the
 	whole system to break :)
 
