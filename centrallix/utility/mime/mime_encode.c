@@ -104,10 +104,12 @@ int
 libmime_DecodeBase64(char* dst, char* src, int maxdst)
     {
     static char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    char* ptr;
-    int ix;
+    char* ptr, *orig;
+    int ix, size;
 
     /** Step through src 4 bytes at a time. **/
+    size = 0;
+    orig = src;
     while(*src)
 	{
 	/** First 6 bits. **/
@@ -142,6 +144,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	    maxdst -= 1;
 	    dst += 1;
 	    src += 4;
+	    size += 1;
 	    break;
 	    }
 	ptr = strchr(b64,src[2]);
@@ -160,6 +163,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	    maxdst -= 2;
 	    dst += 2;
 	    src += 4;
+	    size += 2;
 	    break;
 	    }
 	ptr = strchr(b64,src[3]);
@@ -173,10 +177,9 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	maxdst -= 3;
 	src += 4;
 	dst += 3;
+	size += 3;
 	}
 
-    /** Null terminate the destination **/
-    dst[0] = 0;
-
-    return 0;
+    src = orig;
+    return size;
     }

@@ -53,10 +53,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.17 2002/08/27 20:49:39 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.18 2002/08/29 14:27:55 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.18  2002/08/29 14:27:55  lkehresman
+    Brand spankin' new base64 decoding algorithm.  This one is much better
+    than the previous one.  It includes internal buffering, sliding
+    windows, and arbitrary seek points without having to read and decode
+    the whole document again.
+
+    Also changed the MimeData structure in objdrv_mime.c to be called MimeInfo
+    because I added a new data structure internal to the mime parser called
+    MimeData.  The new names are more descriptive.
+
     Revision 1.17  2002/08/27 20:49:39  lkehresman
     I should have checked my code before committing.  I had the conditionals
     mixed up in mimeRead().
@@ -172,12 +182,13 @@ typedef struct
     char	Pathname[256];
     char*	AttrValue; /* GetAttrValue has to return a refence to memory that won't be free()ed */
     pMimeHeader	Header;
+    pMimeData	MimeDat;
     int		NextAttr;
     int		InternalSeek;
     }
-    MimeData, *pMimeData;
+    MimeInfo, *pMimeInfo;
 
-#define MIME(x) ((pMimeData)(x))
+#define MIME(x) ((pMimeInfo)(x))
 
 /* ***********************************************************************
 ** API FUNCTIONS                                                        **
@@ -190,28 +201,34 @@ void*
 mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pLxSession lex;
-    pMimeData inf;
+    pMimeInfo inf;
     pMimeHeader msg;
     pMimeHeader tmp;
     char *node_path;
     char *buffer;
     int i,size;
 
-    printf("MIMEOPEN()\n");
     if (MIME_DEBUG) fprintf(stderr, "\n");
     if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
     if (MIME_DEBUG) fprintf(stderr, "objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
 	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
 
     /** Allocate and initialize the MIME structure **/
-    inf = (pMimeData)nmMalloc(sizeof(MimeData));
+    inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
     if (!inf) return NULL;
     msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
-    memset(inf,0,sizeof(MimeData));
+    memset(inf,0,sizeof(MimeInfo));
     memset(msg,0,sizeof(MimeHeader));
     /** Set object parameters **/
     node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
     strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
+    inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
+    memset(inf->MimeDat,0,sizeof(MimeData));
+    inf->MimeDat->Parent = obj->Prev;
+    inf->MimeDat->ReadFn = objRead;
+    inf->MimeDat->WriteFn = objWrite;
+    inf->MimeDat->Buffer[0] = 0;
+    inf->MimeDat->EncBuffer[0] = 0;
     inf->Header = msg;
     inf->Obj = obj;
     inf->Mask = mask;
@@ -230,20 +247,20 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	return NULL;
 	}
 
-    if (MIME_DEBUG) fprintf(stderr, "\n-----------------------------------------------------------------\n");
+    /*
+    fprintf(stderr, "\n-----------------------------------------------------------------\n");
     for (i=0; i < xaCount(&msg->Parts); i++)
 	{
 	tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
-	if (MIME_DEBUG) fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
-	/*
-	buffer = (char*)nmMalloc(64);
-	size = libmime_PartRead(obj, tmp, buffer, 63, 10);
+	fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
+	buffer = (char*)nmMalloc(1024);
+	size = libmime_PartRead(inf->MimeDat, tmp, buffer, 11, 360, FD_U_SEEK);
 	buffer[size] = 0;
 	printf("--%d--%s--\n", size,buffer);
-	nmFree(buffer, 64);
-	*/
+	nmFree(buffer, 1024);
 	}
-    if (MIME_DEBUG) fprintf(stderr, "-----------------------------------------------------------------\n\n");
+    fprintf(stderr, "-----------------------------------------------------------------\n\n");
+    */
     mlxCloseSession(lex);
 
     /** assume we're only going to handle one level **/
@@ -260,7 +277,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 int
 mimeClose(void* inf_v, pObjTrxTree* oxt)
     {
-    pMimeData inf = MIME(inf_v);
+    pMimeInfo inf = MIME(inf_v);
 
     /** free any memory used to return an attribute **/
     if(inf->AttrValue)
@@ -299,27 +316,11 @@ int
 mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     int size;
-    pMimeData inf = (pMimeData)inf_v;
+    pMimeInfo inf = (pMimeInfo)inf_v;
 
-    /*
-    **  We can read content from any of the five discrete top-level media types,
-    **  but not from the two composite media types (rfc2046 section 3)
-    */
-    if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART ||
-        inf->Header->ContentMainType == MIME_TYPE_MESSAGE)
-	{
-	return -1;
-	}
-    else
-	{
-	if (!offset && !inf->InternalSeek)
-	    inf->InternalSeek = 0;
-	else if (offset)
-	    inf->InternalSeek = offset;
-	size = libmime_PartRead(inf->Obj, inf->Header, buffer, maxcnt, inf->InternalSeek);
-	inf->InternalSeek += size;
-	return size;
-	}
+    size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, offset, flags);
+
+    return size;
     }
 
 
@@ -390,7 +391,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
-    pMimeData inf = MIME(inf_v);
+    pMimeInfo inf = MIME(inf_v);
     char tmp[32];
 
     if (inf->AttrValue)
@@ -456,7 +457,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 char*
 mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
-    pMimeData inf = MIME(inf_v);
+    pMimeInfo inf = MIME(inf_v);
     switch (inf->NextAttr++)
 	{
 	case 0: return "content_type";
@@ -475,7 +476,7 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 char*
 mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
-    pMimeData inf = MIME(inf_v);
+    pMimeInfo inf = MIME(inf_v);
     inf->NextAttr=0;
     return mimeGetNextAttr(inf,oxt);
     return NULL;

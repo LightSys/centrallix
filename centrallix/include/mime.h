@@ -31,6 +31,37 @@
 /* Description:	Provides declarations for the MIME parser		*/
 /************************************************************************/
 
+#define MIME_DEBUG            0
+#define MIME_DEBUG_ADDR       0
+
+#define MIME_ST_NORM          0
+#define MIME_ST_QUOTE         1
+#define MIME_ST_COMMENT       2
+#define MIME_ST_GROUP         3
+
+#define MIME_ST_ADR_HOST      0
+#define MIME_ST_ADR_MAILBOX   1
+#define MIME_ST_ADR_DISPLAY   2
+
+#define MIME_BUFSIZE          64
+
+#define MIME_TYPE_TEXT        1
+#define MIME_TYPE_MULTIPART   2
+#define MIME_TYPE_APPLICATION 3
+#define MIME_TYPE_MESSAGE     4
+#define MIME_TYPE_IMAGE       5
+#define MIME_TYPE_AUDIO       6
+#define MIME_TYPE_VIDEO       7
+
+#define MIME_ENC_7BIT         1
+#define MIME_ENC_8BIT         2
+#define MIME_ENC_BASE64       3
+#define MIME_ENC_QP           4
+#define MIME_ENC_BINARY       5
+
+#define MIME_BUF_SIZE         768   // These must be in a 3/4 ratio (or higher) of
+#define MIME_ENCBUF_SIZE      1024  // each other because of how b64 encoding works
+
 /** Structure used to represent an email address **/
 typedef struct
     {
@@ -67,37 +98,25 @@ typedef struct _MM
     }
     MimeHeader, *pMimeHeader;
 
+/** libmime internal structure **/
+typedef struct
+    {
+    void*	Parent;
+    int		(*ReadFn)();
+    int		(*WriteFn)();
+    long	ExternalChunkSeek;
+    int		ExternalChunkSize;
+    long	InternalSeek;
+    long	InternalChunkSeek;
+    int		InternalChunkSize;
+    char	Buffer[MIME_BUF_SIZE];
+    char	EncBuffer[MIME_ENCBUF_SIZE+1];
+    }
+    MimeData, *pMimeData;
+
 /*** Possible Main Content Types ***/
 extern char* TypeStrings[];
 extern char* EncodingStrings[];
-
-#define MIME_DEBUG            1
-#define MIME_DEBUG_ADDR       0
-
-#define MIME_ST_NORM          0
-#define MIME_ST_QUOTE         1
-#define MIME_ST_COMMENT       2
-#define MIME_ST_GROUP         3
-
-#define MIME_ST_ADR_HOST      0
-#define MIME_ST_ADR_MAILBOX   1
-#define MIME_ST_ADR_DISPLAY   2
-
-#define MIME_BUFSIZE          64
-
-#define MIME_TYPE_TEXT        1
-#define MIME_TYPE_MULTIPART   2
-#define MIME_TYPE_APPLICATION 3
-#define MIME_TYPE_MESSAGE     4
-#define MIME_TYPE_IMAGE       5
-#define MIME_TYPE_AUDIO       6
-#define MIME_TYPE_VIDEO       7
-
-#define MIME_ENC_7BIT         1
-#define MIME_ENC_8BIT         2
-#define MIME_ENC_BASE64       3
-#define MIME_ENC_QP           4
-#define MIME_ENC_BINARY       5
 
 /** mime_parse.c **/
 int libmime_ParseHeader(pObject obj, pMimeHeader msg, long start, long end, pLxSession lex);
@@ -131,6 +150,7 @@ int libmime_StringTrim(char *str);
 int libmime_StringFirstCaseCmp(char *c1, char *c2);
 int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
+int libmime_B64Purify(char *str);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();

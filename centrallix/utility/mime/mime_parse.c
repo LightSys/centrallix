@@ -685,15 +685,12 @@ libmime_ParseMultipartBody(pObject obj, pMimeHeader msg, int start, int end, pLx
 **  specified by the Content-Transfer-Encoding header element).
 */
 int
-libmime_PartRead(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int offset)
+libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags)
     {
-    static char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    int size;
-    char *a_buf, *b_buf, a_ch, *ptr;
-    int a_count=0, a_bufcnt=0, a_pos=0;  /**  NOTE: a_* vars are messing with the encoded strings  **/
-    int b_count=0, i, buf_cnt=0;         /**        b_* vars are messing with the DEcoded strings  **/
+    int size=0, bytes_left, len, rem=0, left, end;
+    int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
+    char *ptr, *bptr, *tptr;
 
-    a_pos = msg->MsgSeekStart;
     switch (msg->TransferEncoding)
 	{
 	/** 7BIT AND 8BIT ENCODING **/
@@ -707,73 +704,111 @@ libmime_PartRead(pObject obj, pMimeHeader msg, char* buffer, int maxcnt, int off
 		return 0;
 	    if (msg->MsgSeekStart+offset+maxcnt > msg->MsgSeekEnd)
 		maxcnt = msg->MsgSeekEnd - (msg->MsgSeekStart + offset);
-	    buf_cnt = objRead(obj->Prev, buffer, maxcnt, msg->MsgSeekStart+offset, FD_U_SEEK);
+	    size = mdat->ReadFn(mdat->Parent, buffer, maxcnt, msg->MsgSeekStart+offset, FD_U_SEEK);
 	    break;
 	/** BASE64 ENCODING **/
 	case MIME_ENC_BASE64:
-	    /**
-	     **  NOTE:  This is not optomized.  It should be possible to 
-	     **  not have to read every character in, but to seek to the
-	     **  specific point in the stream using the fact that 4-b64
-	     **  characters decodes to 3 bytes.  Do this at some point.
-	     */
-	    a_buf = (char*)nmMalloc(5);
-	    b_buf = (char*)nmMalloc(4);
-	    size = objRead(obj->Prev, &a_ch, 1, msg->MsgSeekStart, FD_U_SEEK);
-	    a_pos += size;
-	    a_count += size;
-	    while (size && a_pos <= msg->MsgSeekEnd+2)
+	    ptr = buffer;
+	    if (flags & FD_U_SEEK)
 		{
-		/** If the character isn't in the b64 alphabet, ignore it **/
-		ptr = strchr(b64, a_ch);
-		if (ptr)
+		mdat->InternalSeek = offset;
+		}
+	    bytes_left = maxcnt;
+
+	    end = 0;
+	    while (bytes_left > 0 && !end)
+		{
+		/**  Figure out what chunk we're inside  **/
+		mdat->InternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_BUF_SIZE;
+		mdat->ExternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_ENCBUF_SIZE+rem;
+		/*
+		**  If the InternalSeek is not inside the chunk that is already buffered
+		**  then we need to rebuffer.  We also need to rebuffer if there is nothing
+		**  currently buffered.
+		*/
+		if (!mdat->InternalChunkSize || (mdat->InternalSeek <= mdat->InternalChunkSeek || mdat->InternalSeek > (mdat->InternalChunkSeek + mdat->InternalChunkSize)))
 		    {
-		    a_buf[a_bufcnt++] = a_ch;
-		    /** Collect 4 characters before sending it through the decoder **/
-		    if (a_bufcnt >= 4)
+		    /*
+		    **  Figure out the ExternalChunkSize (number of b64 characters to get).
+		    **  This checks if we're trying to read past the end or not.  Note that
+		    **  this number includes characters that are not in the b64 alphabet.
+		    **  The next code chunk goes through and purifies the stream, refilling
+		    **  the buffer as necessary.  This is just the initial chunk.
+		    */
+		    mdat->ExternalChunkSize = MIME_ENCBUF_SIZE;
+		    if (msg->MsgSeekEnd < (msg->MsgSeekStart + mdat->ExternalChunkSeek + MIME_ENCBUF_SIZE))
+			mdat->ExternalChunkSize = msg->MsgSeekEnd - msg->MsgSeekStart - mdat->ExternalChunkSeek;
+
+		    /*
+		    **  Now we need to fetch a chunk of base64 encoded data.  The only
+		    **  problems is that we need to ignore anything that is not in the
+		    **  base64 alphabet.  Here, I'm looping through and filling up the
+		    **  buffer with base64 encoded data until the buffer is full or
+		    **  until I've reached the end of the stream, ignoring all characters
+		    **  that are not part of the base64 alphabet.
+		    */
+		    tptr = mdat->EncBuffer;
+		    tlen = tsize = toffset = tremoved = trem_total = 0;
+		    tleft = mdat->ExternalChunkSize;
+		    while (tleft > 0)
 			{
-			a_bufcnt = 0;
-			a_buf[4] = 0;
-			b_count += 3;
-			/** If we are somewhere within the read range (offset by max 3 on each side) **/
-			if (b_count >= offset && b_count <= offset+maxcnt+2)
+			if (msg->MsgSeekEnd < msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen + tleft)
 			    {
-			    libmime_DecodeBase64(b_buf, a_buf, 4);
-			    b_buf[3] = 0;
-			    /** within three on the left side of the string **/
-			    if ((b_count-offset) < 3)
-				{
-				for (i=3-(b_count-offset); i < 3; i++)
-				    {
-				    buffer[buf_cnt++] = b_buf[i];
-				    }
-				}
-			    /** within three on the right side of the string **/
-			    else if (b_count >= (offset+maxcnt))
-				{
-				for (i=0; i <= 2-(b_count-(offset+maxcnt)); i++)
-				    {
-				    buffer[buf_cnt++] = b_buf[i];
-				    }
-				}
-			    /** the full three characters **/
-			    else
-				{
-				buffer[buf_cnt++] = b_buf[0];
-				buffer[buf_cnt++] = b_buf[1];
-				buffer[buf_cnt++] = b_buf[2];
-				}
+			    toffset = msg->MsgSeekEnd - (msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen);
+			    left = 0;
 			    }
+			else
+			    {
+			    toffset = msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen;
+			    }
+			tsize = mdat->ReadFn(mdat->Parent, tptr, tleft, toffset, FD_U_SEEK);
+			tlen += tsize;
+			tremoved = libmime_B64Purify(mdat->EncBuffer); // tremoved is the number of chars removed this iteration
+			trem_total += tremoved; // trem_total is the total number of chars removed for this chunk
+			tptr += (tsize - tremoved);
+			tleft -= (tsize - tremoved);
+			}
+		    mdat->EncBuffer[tlen-trem_total] = 0;
+		    tsize = libmime_DecodeBase64(mdat->Buffer, mdat->EncBuffer, tlen-trem_total);
+		    rem += trem_total; // rem is the total characters removed (non b64 chars)
+		    }
+
+		/*
+		**  Now lets figure out the number of characters that we want out of
+		**  this chunk.  It could be a few characters on the left side of the
+		**  buffer, on the right side of the buffer, or the whole buffer.  We
+		**  gotta check.
+		*/
+		bptr = mdat->Buffer + (mdat->InternalSeek - mdat->InternalChunkSeek);
+		len = MIME_BUF_SIZE - (bptr - mdat->Buffer);
+		if (len > bytes_left) len = bytes_left;
+		if (len >= MIME_BUF_SIZE)
+		    {
+		    if (tsize < MIME_BUF_SIZE)
+			{
+			mdat->InternalChunkSize = tsize;
+			end = 1;
+			}
+		    else
+			{
+			mdat->InternalChunkSize = MIME_BUF_SIZE;
 			}
 		    }
-		size = objRead(obj->Prev, &a_ch, 1, msg->MsgSeekStart+a_count, FD_U_SEEK);
-		a_pos += size;
-		a_count += size;
+		else
+		    {
+		    mdat->InternalChunkSize = len;
+		    }
+		size += mdat->InternalChunkSize;
+
+		/**  Now copy the chunk of bytes into the buffer  **/
+		memcpy(ptr, bptr, mdat->InternalChunkSize);
+		/**  Update counters and pointers **/
+		ptr += mdat->InternalChunkSize;
+		bytes_left -= mdat->InternalChunkSize;
+		mdat->InternalSeek += mdat->InternalChunkSize;
 		}
-	    nmFree(a_buf, 5);
-	    nmFree(b_buf, 4);
 	    break;
 	}
 
-    return buf_cnt;
+    return size;
     }
