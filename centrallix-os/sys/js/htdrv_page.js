@@ -380,12 +380,20 @@ function pg_expchange(p,o,n)
 function pg_dosched()
     {
     var p = null;
-    while(pg_schedtimeoutlist.length > 0)
-	{
+    if (pg_schedtimeoutlist.length > 0)
+    	{
 	p = pg_schedtimeoutlist.pop();
 	eval(p);
 	}
-    pg_schedtimeout = null;
+
+    if (pg_schedtimeoutlist.length > 0)
+	{
+	pg_schedtimeout = setTimeout(pg_dosched,0);
+	}
+    else
+	{
+	pg_schedtimeout = null;
+	}
     }
 
 function pg_expression(o,p,e,l)
