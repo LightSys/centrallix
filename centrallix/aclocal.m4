@@ -279,13 +279,11 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 		AC_CHECK_PROG(xmlconfig, 
 		    xml-config,
 		    xml-config,
-		    no
-		)
+		    no)
 	    else
 		AC_CHECK_PROGS(xmlconfig, 
 		    xml2-config xml-config,
-		    no
-		)
+		    no)
 	    fi
 
 	    if test "$xmlconfig" = "no"; then

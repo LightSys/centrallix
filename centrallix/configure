@@ -4940,8 +4940,7 @@ do
 done
 done
 
-  test -z "$ac_cv_prog_xmlconfig" && ac_cv_prog_xmlconfig="no
-		"
+  test -z "$ac_cv_prog_xmlconfig" && ac_cv_prog_xmlconfig="no"
 fi
 fi
 xmlconfig=$ac_cv_prog_xmlconfig
@@ -4993,8 +4992,7 @@ fi
 
   test -n "$xmlconfig" && break
 done
-test -n "$xmlconfig" || xmlconfig="no
-		"
+test -n "$xmlconfig" || xmlconfig="no"
 
 	    fi
 
