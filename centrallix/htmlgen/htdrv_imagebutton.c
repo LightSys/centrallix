@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.9 2002/06/02 22:13:21 jorupp Exp $
+    $Id: htdrv_imagebutton.c,v 1.10 2002/06/02 22:47:23 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.10  2002/06/02 22:47:23  jorupp
+     * fix some problems I introduced before
+
     Revision 1.9  2002/06/02 22:13:21  jorupp
      * added disable functionality to image button (two new Actions)
      * bugfixes
@@ -240,8 +243,9 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	
 	/** Our initialization processor function. **/
 	htrAddScriptFunction(s, "ib_init", "\n"
-		"function ib_init(l,n,p,c,d,w,h,po,nm)\n"
+		"function ib_init(l,n,p,c,d,w,h,po,nm,enable)\n"
 		"    {\n"
+		"    l.enabled = enable;\n"
 		"    l.LSParent = po;\n"
 	     	"    l.nofocus = true;\n" 
 		"    l.img = l.document.images[0];\n"
@@ -264,12 +268,16 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    l.dImage.src = d;\n"
 		"    l.ActionEnable = ib_enable;\n"
 		"    l.ActionDisable = ib_disable;\n"
+		"    if(enable)\n"
+		"        l.ActionEnable();\n"
+		"    else\n"
+		"        l.ActionDisable();\n"
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
-	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s','%s',%d,%d,%s,'%s');\n",
-	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr);
+	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s','%s',%d,%d,%s,'%s',%s);\n",
+	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr,enabled);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h == -1)
