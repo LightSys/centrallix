@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.17 2004/02/24 20:23:38 gbeeley Exp $
+    $Id: ht_render.h,v 1.18 2004/03/10 10:40:10 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.18  2004/03/10 10:40:10  jasonyip
+
+    I have added JS15 for javascript 1.5 Capabilities.
+
     Revision 1.17  2004/02/24 20:23:38  gbeeley
     - adding htrGetBoolean and htrParamValue to header file
 
@@ -296,6 +300,7 @@ typedef struct
     unsigned int CSS1:1; /* W3C CSS Level 1 */
     unsigned int CSS2:1; /* W3C CSS Level 2 */
     unsigned int HTML40:1; /* W3C HTML 4.0 */
+    unsigned int JS15:1; /* W3C HTML 4.0 */
     }
     HtCapabilities, *pHtCapabilities;
 
