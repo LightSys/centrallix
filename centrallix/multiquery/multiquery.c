@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.7 2002/04/05 06:10:11 gbeeley Exp $
+    $Id: multiquery.c,v 1.8 2002/04/30 23:27:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.8  2002/04/30 23:27:45  gbeeley
+    Fixed a bug which caused a segfault on update of the last record if
+    the query had already been closed.
+
     Revision 1.7  2002/04/05 06:10:11  gbeeley
     Updating works through a multiquery when "FOR UPDATE" is specified at
     the end of the query.  Fixed a reverse-eval bug in the expression
@@ -1526,9 +1530,15 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
 	/** Search for results matching the HAVING clause **/
 	while(1)
 	    {
+	    /** We're about to modify the objlist implicitly - bump the
+	     ** counter so it doesn't match any existing pseudo-objects.
+	     **/
+	    qy->CurSerial++;
+
     	    /** Try to fetch the next record. **/
 	    if (qy->Tree->Driver->NextItem(qy->Tree, qy) != 1)
 	        {
+		memcpy(&qy->CurObjList, qy->QTree->ObjList, sizeof(ParamObjects));
 	        return NULL;
 	        }
 
@@ -1553,9 +1563,7 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
 	        }
 
 	    /** Update row serial # **/
-	    qy->CntSerial++;
-	    p->Serial = qy->CntSerial;
-	    qy->CurSerial = qy->CntSerial;
+	    p->Serial = qy->CntSerial = qy->CurSerial;
 
 	    /** Verify HAVING clause **/
 	    if (!qy->HavingClause) break;
