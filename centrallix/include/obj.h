@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.27 2004/06/12 04:02:27 gbeeley Exp $
+    $Id: obj.h,v 1.28 2004/06/22 16:06:53 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.28  2004/06/22 16:06:53  mmcgill
+    Added the flag OBJ_F_NOCACHE, which a driver can set in its xxxOpen call
+    to tell OSML not to add the opened object to the Directory Cache.
+
     Revision 1.27  2004/06/12 04:02:27  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -507,6 +511,7 @@ typedef struct _OF
 #define OBJ_F_ROOTNODE		1	/* is rootnode object, handle specially */
 #define	OBJ_F_CREATED		2	/* O_CREAT requested; object didn't exist but was created */
 #define OBJ_F_DELETE		4	/* object should be deleted on final close */
+#define OBJ_F_NOCACHE		8	/* object should *not* be cached by the Directory Cache */
 
 
 /** structure used for sorting a query result set. **/

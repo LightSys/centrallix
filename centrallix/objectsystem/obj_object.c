@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.17 2004/06/12 04:02:28 gbeeley Exp $
+    $Id: obj_object.c,v 1.18 2004/06/22 16:06:53 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.18  2004/06/22 16:06:53  mmcgill
+    Added the flag OBJ_F_NOCACHE, which a driver can set in its xxxOpen call
+    to tell OSML not to add the opened object to the Directory Cache.
+
     Revision 1.17  2004/06/12 04:02:28  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -771,7 +775,10 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	if (name && !this->Type) this->Type = obj_internal_TypeFromName(name);
 
 	/** Cache the upper-level node for this object? **/
-	if (this->Prev && this->Prev->Driver != OSYS.RootDriver && !(this->Prev->TLowLevelDriver == OSYS.RootDriver && this->Prev->Driver == OSYS.TransLayer) && !(this->Prev->ILowLevelDriver == OSYS.RootDriver && this->Prev->Driver == OSYS.InheritanceLayer))
+	if (this->Prev && this->Prev->Driver != OSYS.RootDriver && 
+	    !(this->Prev->TLowLevelDriver == OSYS.RootDriver && this->Prev->Driver == OSYS.TransLayer) && 
+	    !(this->Prev->ILowLevelDriver == OSYS.RootDriver && this->Prev->Driver == OSYS.InheritanceLayer) && 
+	    !(this->Prev->Flags & OBJ_F_NOCACHE))
 	    {
 	    /** Only cache if not already cached. **/
 	    if (!dc || dc->NodeObj != this->Prev)
@@ -1277,6 +1284,7 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
     pObject this;
     int len;
 
+
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%8.8X, \"%s\") = ", (unsigned int)(session), path);
@@ -1424,7 +1432,7 @@ int
 objDelete(pObjSession session, char* path)
     {
     pObject tmp;
-
+	
 	/** Lookup the directory path. **/
 	/*tmp = obj_internal_ProcessPath(session, path, 0, "");*/
 	tmp = obj_internal_ProcessOpen(session, path, O_RDWR, 0, "");
@@ -1475,7 +1483,6 @@ objInfo(pObject this)
 int
 objDeleteObj(pObject this)
     {
-
 	ASSERTMAGIC(this,MGK_OBJECT);
 
 	/** Mark it for deletion **/
