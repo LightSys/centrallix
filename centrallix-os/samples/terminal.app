@@ -8,7 +8,7 @@ editbox_test "widget/page"
 
     term1 "widget/terminal"
 	{
-	x=0; y=100; rows=15; cols=80;
+	x=0; y=100; rows=24; cols=80;
 	//source = "/samples/environ.shl";
 	source = "/samples/top.shl";
 	}
