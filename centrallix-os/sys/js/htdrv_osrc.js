@@ -145,23 +145,23 @@ function osrc_action_query(q, formobj)
     this.pending=true;
     var someunsaved=false;
 /** Check if any children are modified and call IsDiscardReady if they are **/
-    for(var i in this.children)
+    for(var i in this.child)
 	 {
-	 if(this.children[i].IsUnsaved)
+	 if(this.child[i].IsUnsaved)
 	     {
-	     this.children[i]._osrc_ready=false;
-	     this.children[i].IsDiscardReady();
+	     this.child[i]._osrc_ready=false;
+	     this.child[i].IsDiscardReady();
 	     someunsaved=true;
 	     }
 	 else
 	     {
-	     this.children[i]._osrc_ready=true;
+	     this.child[i]._osrc_ready=true;
 	     }
 	 }
     //if someunsaved is false, there were no unsaved forms, so no callbacks
     //  so, we'll just fake one using the first form....
     if(someunsaved) return 0;
-    this.QueryContinue(this.children[0]);
+    this.QueryContinue(this.child[0]);
     }
 
 function osrc_action_delete(up,formobj)
@@ -188,8 +188,8 @@ function osrc_action_delete_cb()
 	if(cr)
 	    {
 	    // Notify osrc clients (forms/tables/etc)
-	    for(var i in this.children)
-		this.children[i].ObjectDeleted(recnum);
+	    for(var i in this.child)
+		this.child[i].ObjectDeleted(recnum);
 
 	    // Remove the deleted row
 	    delete this.replica[recnum];
@@ -270,8 +270,8 @@ function osrc_action_create_cb()
 	    }
 	
 	this.formobj.OperationComplete(true);
-	for(var i in this.children)
-	    this.children[i].ObjectCreated(recnum);
+	for(var i in this.child)
+	    this.child[i].ObjectCreated(recnum);
 	}
     else
 	{
@@ -314,8 +314,8 @@ function osrc_action_modify_cb()
 			cr[j].value=this.modifieddata[i].value;
 	
 	this.formobj.OperationComplete(true);
-	for(var i in this.children)
-	    this.children[i].ObjectModified(recnum);
+	for(var i in this.child)
+	    this.child[i].ObjectModified(recnum);
 	}
     else
 	{
@@ -334,9 +334,9 @@ function osrc_cb_query_continue(o)
     if(o)
     	o._osrc_ready = true;
     //If all other forms are ready then go
-    for(var i in this.children)
+    for(var i in this.child)
 	 {
-	 if(this.children[i]._osrc_ready == false)
+	 if(this.child[i]._osrc_ready == false)
 	      {
 	      return 0;
 	      }
@@ -351,9 +351,9 @@ function osrc_cb_query_continue(o)
 	this.pendingquery=null;
 	this.pendingqueryobject=null;
 	this.pendingorderobject=null;
-	for(var i in this.children)
+	for(var i in this.child)
 	     {
-	     this.children[i]._osrc_ready=false;
+	     this.child[i]._osrc_ready=false;
 	     }
 
 	this.TargetRecord=1;/* the record we're aiming for -- go until we get it*/
@@ -384,9 +384,9 @@ function osrc_cb_query_continue(o)
 function osrc_cb_query_cancel()
     {
     this.pendingquery = null;
-    for(var i in this.children)
+    for(var i in this.child)
 	 {
-	 this.children[i]._osrc_ready=false;
+	 this.child[i]._osrc_ready=false;
 	 }
     this.pendingquery=null;
     this.pending=false;
@@ -399,7 +399,7 @@ function osrc_cb_request_object(aparam)
 
 function osrc_cb_register(aparam)
     {
-    this.children.push(aparam);
+    this.child.push(aparam);
     }
 
 function osrc_open_session()
@@ -440,8 +440,8 @@ function osrc_get_qid()
     {
     //return;
     this.qid=pg_links(this)[0].target;
-    for(var i in this.children)
-	this.children[i].DataAvailable();
+    for(var i in this.child)
+	this.child[i].DataAvailable();
     this.ActionFirst();
 /** normally don't actually load the data...just let children know that the data is available **/
     }
@@ -624,8 +624,8 @@ function osrc_move_first(formobj)
 function osrc_give_all_current_record()
     {
     //confirm('give_all_current_record start');
-    for(var i in this.children)
-	this.children[i].ObjectAvailable(this.replica[this.CurrentRecord]);
+    for(var i in this.child)
+	this.child[i].ObjectAvailable(this.replica[this.CurrentRecord]);
     cn_activate(this,"DataFocusChanged");
     //confirm('give_all_current_record done');
     }
@@ -633,9 +633,9 @@ function osrc_give_all_current_record()
 function osrc_tell_all_replica_moved()
     {
     //confirm('tell_all_replica_moved start');
-    for(var i in this.children)
-	if(this.children[i].ReplicaMoved)
-	    this.children[i].ReplicaMoved();
+    for(var i in this.child)
+	if(this.child[i].ReplicaMoved)
+	    this.child[i].ReplicaMoved();
     //confirm('tell_all_replica_moved done');
     }
 
@@ -655,18 +655,18 @@ function osrc_move_to_record(recnum)
     this.pending=true;
     var someunsaved=false;
     this.RecordToMoveTo=recnum;
-    for(var i in this.children)
+    for(var i in this.child)
 	 {
-	 if(this.children[i].IsUnsaved)
+	 if(this.child[i].IsUnsaved)
 	     {
-	     //alert('child: '+i+' : '+this.children[i].IsUnsaved+' isn\\'t saved...IsDiscardReady');
-	     this.children[i]._osrc_ready=false;
-	     this.children[i].IsDiscardReady();
+	     //alert('child: '+i+' : '+this.child[i].IsUnsaved+' isn\\'t saved...IsDiscardReady');
+	     this.child[i]._osrc_ready=false;
+	     this.child[i].IsDiscardReady();
 	     someunsaved=true;
 	     }
 	 else
 	     {
-	     this.children[i]._osrc_ready=true;
+	     this.child[i]._osrc_ready=true;
 	     }
 	 }
     //if someunsaved is false, there were no unsaved forms, so no callbacks
@@ -685,11 +685,11 @@ function osrc_move_to_record_cb(recnum)
 	return 0;
 	}
     this.RecordToMoveTo=recnum;
-    for(var i in this.children)
+    for(var i in this.child)
 	 {
-	 if(this.children[i].IsUnsaved)
+	 if(this.child[i].IsUnsaved)
 	     {
-	     //confirm('child: '+i+' : '+this.children[i].IsUnsaved+' isn\\'t saved...');
+	     //confirm('child: '+i+' : '+this.child[i].IsUnsaved+' isn\\'t saved...');
 	     return 0;
 	     }
 	 }
@@ -1046,7 +1046,7 @@ function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name,aq)
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
-    loader.children = new Array();
+    loader.child = new Array();
     loader.oldoids = new Array();
     
     //loader.ActionClear=osrc_action_clear;
