@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.6 2002/02/14 01:05:07 gbeeley Exp $
+    $Id: test_obj.c,v 1.7 2002/05/02 01:14:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.7  2002/05/02 01:14:56  gbeeley
+    Added dynamic module loading support in Centrallix, starting with the
+    Sybase driver, using libdl.
+
     Revision 1.6  2002/02/14 01:05:07  gbeeley
     Fixed test_obj so that it works with the new config file stuff.
 
@@ -85,10 +89,6 @@
 
 void* my_ptr;
 
-
-/*** Instantiate the globals from centrallix.h 
- ***/
-CxGlobals_t CxGlobals;
 
 
 void
@@ -134,65 +134,9 @@ start(void* v)
     char mname[64];
     char mparam[256];
     char* mptr;
-    pFile cxconf;
-    pStructInf mss_conf;
-    char* authmethod;
-    char* authmethodfile;
-    char* logmethod;
-    char* logprog;
-    int log_all_errors;
 
-	/** Load the configuration file **/
-	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
-	if (!cxconf)
-	    {
-	    printf("centrallix: could not open config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	CxGlobals.ParsedConfig = stParseMsg(cxconf, 0);
-	if (!CxGlobals.ParsedConfig)
-	    {
-	    printf("centrallix: error parsing config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	fdClose(cxconf, 0);
-
-	/** Init the session handler.  We have to extract the config data for this 
-	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't
-	 ** use the new stparse module's routines.
-	 **/
-	mss_conf = stLookup(CxGlobals.ParsedConfig, "mtsession");
-	if (stAttrValue(stLookup(mss_conf,"auth_method"),NULL,&authmethod,0) < 0) authmethod = "system";
-	if (stAttrValue(stLookup(mss_conf,"altpasswd_file"),NULL,&authmethodfile,0) < 0) authmethodfile = "/usr/local/etc/cxpasswd";
-	if (stAttrValue(stLookup(mss_conf,"log_method"),NULL,&logmethod,0) < 0) logmethod = "stdout";
-	if (stAttrValue(stLookup(mss_conf,"log_progname"),NULL,&logprog,0) < 0) logprog = "centrallix";
-	log_all_errors = 0;
-	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
-
-	/** Initialize the various parts **/
-	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
-	nmInitialize();
-	expInitialize();
-	if (objInitialize() < 0) exit(1);
-	snInitialize();
-	uxdInitialize();
-	sybdInitialize();
-	stxInitialize();
-	qytInitialize();
-	rptInitialize();
-	datInitialize();
-	uxpInitialize();
-	uxuInitialize();
-	audInitialize();
-	mqInitialize();
-	mqtInitialize();
-	mqpInitialize();
-	mqjInitialize();
-
-	pclInitialize();
-	fxpInitialize();
-	htpInitialize();
-	txtInitialize();
+	/** Initialize. **/
+	cxInitialize();
 
 	/** Disable tab complete until we have a function to do something useful with it. **/
 	rl_bind_key ('\t', rl_insert);
@@ -698,6 +642,7 @@ main(int argc, char* argv[])
 	strcpy(CxGlobals.ConfigFileName, "/usr/local/etc/centrallix.conf");
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.ModuleList = NULL;
     
 	/** Check for config file options on the command line **/
 	while ((ch=getopt(argc,argv,"hc:q")) > 0)

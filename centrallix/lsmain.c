@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.15 2002/04/25 03:13:50 jorupp Exp $
+    $Id: lsmain.c,v 1.16 2002/05/02 01:14:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.16  2002/05/02 01:14:56  gbeeley
+    Added dynamic module loading support in Centrallix, starting with the
+    Sybase driver, using libdl.
+
     Revision 1.15  2002/04/25 03:13:50  jorupp
      * added label widget
      * bug fixes in form and osrc
@@ -124,21 +128,6 @@
  **END-CVSDATA***********************************************************/
 
 
-/*** The following variables are used to access build/version/stability
- *** information so that other modules don't have to be rebuilt with
- *** every compile - just this file in particular.
- ***/
-char* cx__version = VERSION;
-int cx__build = BUILD;
-int cx__subbuild = SUBBUILD;
-char* cx__stability = STABILITY;
-char* cx__years = YEARS;
-
-
-/*** Instantiate the globals from centrallix.h 
- ***/
-CxGlobals_t CxGlobals;
-
 /*** start - this function is called by the MTASK module once the 
  *** mtInitialize() routine is finished intializing the first thread.  This
  *** is where processing really starts.  The purpose of this function is
@@ -148,137 +137,11 @@ CxGlobals_t CxGlobals;
 void
 start(void* v)
     {
-    pFile cxconf;
-    pStructInf mss_conf;
-    char* authmethod;
-    char* authmethodfile;
-    char* logmethod;
-    char* logprog;
-    int log_all_errors;
-    char* ptr;
 
-#ifndef LS_QUIET_INIT
-
-	/** Startup message **/
-	if (!CxGlobals.QuietInit)
-	    {
-	    printf("\n");
-	    printf("Centrallix/%s build #%4.4d-%d [%s]\n\n", cx__version, cx__build, cx__subbuild, cx__stability);
-	    printf("Copyright (C) %s LightSys Technology Services, Inc.\n", cx__years);
-	    printf("An open source community developed project.  Provided with\n");
-	    printf("ABSOLUTELY NO WARRANTY.  See the file 'COPYING' for details.\n");
-	    printf("\n");
-	    }
-
-#endif
-
-
-	/** Load the configuration file **/
-	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
-	if (!cxconf)
-	    {
-	    printf("centrallix: could not open config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	CxGlobals.ParsedConfig = stParseMsg(cxconf, 0);
-	if (!CxGlobals.ParsedConfig)
-	    {
-	    printf("centrallix: error parsing config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	fdClose(cxconf, 0);
-
-	/** Init the session handler.  We have to extract the config data for this 
-	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't
-	 ** use the new stparse module's routines.
-	 **/
-	mss_conf = stLookup(CxGlobals.ParsedConfig, "mtsession");
-	if (stAttrValue(stLookup(mss_conf,"auth_method"),NULL,&authmethod,0) < 0) authmethod = "system";
-	if (stAttrValue(stLookup(mss_conf,"altpasswd_file"),NULL,&authmethodfile,0) < 0) authmethodfile = "/usr/local/etc/cxpasswd";
-	if (stAttrValue(stLookup(mss_conf,"log_method"),NULL,&logmethod,0) < 0) logmethod = "stdout";
-	if (stAttrValue(stLookup(mss_conf,"log_progname"),NULL,&logprog,0) < 0) logprog = "centrallix";
-	log_all_errors = 0;
-	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
-	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
-
-	/** Initialize the various parts **/
-	nmInitialize();				/* memory manager */
-	expInitialize();			/* expression processor/compiler */
-	if (objInitialize() < 0) thExit();	/* OSML */
-	snInitialize();				/* Node structure file handler */
-
-	/** Init the multiquery system and drivers **/
-	mqInitialize();				/* MultiQuery system */
-	mqtInitialize();			/* tablegen query module */
-	mqpInitialize();			/* projection query module */
-	mqjInitialize();			/* join query module */
-
-	/** Init the objectsystem drivers **/
-	uxdInitialize();			/* UNIX filesystem driver */
-	sybdInitialize();			/* Sybase CT-lib driver */
-	stxInitialize();			/* Structure file driver */
-	qytInitialize();			/* Query Tree driver */
-	rptInitialize();			/* report writer driver */
-	uxpInitialize();			/* UNIX printer access driver */
-	datInitialize();			/* flat ascii datafile (CSV, etc) */
-	uxuInitialize();			/* UNIX users list driver */
-	audInitialize();			/* Audio file player driver */
-
-	/** Init the html-generation subsystem **/
-	htrInitialize();			/* HTML generator */
-	htpageInitialize();			/* DHTML page generator */
-	htspaneInitialize();			/* scrollable pane module */
-	httreeInitialize();			/* treeview module */
-	hthtmlInitialize();			/* html pane module */
-	htconnInitialize();			/* connector nonvisual module */
-	htibtnInitialize();			/* image button module */
-	httbtnInitialize();			/* text button module */
-	htmenuInitialize();			/* dropdown/popup menu module */
-	htsetInitialize();			/* frameset module */
-	htvblInitialize();			/* variable nonvisual module */
-	httabInitialize();			/* tab control / tab page module */
-	htpnInitialize();			/* pane module */
-	httblInitialize();			/* tabular data module */
-	htwinInitialize();			/* draggable window module */
-	htcbInitialize();			/* checkbox module */
-	htrbInitialize();			/* radiobutton module */
-	htebInitialize();			/* editbox module */
-	httmInitialize();			/* timer nonvisual module */
-	htexInitialize();			/* method exec module */
-	htspnrInitialize();			/* spinner box module*/
-	htfsInitialize();			/* form status module */
-	htddInitialize();			/* dropdown htdrv module */
-
-	htformInitialize();			/* forms module */
-	htosrcInitialize();			/* osrc module */
-	htalrtInitialize();			/* alert module */
-	htlblInitialize();			/* label module */
-
-	/** Init the reporting content drivers **/
-	pclInitialize();			/* PCL report generator */
-	htpInitialize();			/* HTML report generator */
-	fxpInitialize();			/* Epson FX report generator */
-
-	nmRegister(sizeof(XString),"XString");
-	nmRegister(sizeof(XArray),"XArray");
-	nmRegister(sizeof(XHashTable),"XHashTable");
-	nmRegister(sizeof(XHashEntry),"XHashEntry");
-	nmRegister(sizeof(StructInf),"StructInf");
-	nmRegister(sizeof(LxSession),"LxSession");
-	nmRegister(sizeof(MTObject),"MTObject");
-	nmRegister(sizeof(File),"File");
-	nmRegister(sizeof(EventReq),"EventReq");
-	nmRegister(sizeof(Thread),"Thread");
-
-	/** Init the network listeners. **/
-#ifdef NHT_ENABLE
-	nhtInitialize();			/* HTTP network listener */
-#endif
-#ifdef CGI_ENABLE
-	cgiInitialize();			/* CGI "listener" */
-#endif
-
-	bnetInitialize();			/* BDQS network listener */
+	/** Initialization. **/
+	if (cxInitialize() < 0) thExit();
+	cxHtInit();
+	cxNetworkInit();
 
     thExit();
     }
@@ -295,6 +158,7 @@ main(int argc, char* argv[])
 	strcpy(CxGlobals.ConfigFileName, "/usr/local/etc/centrallix.conf");
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.ModuleList = NULL;
     
 	/** Check for config file options on the command line **/
 	while ((ch=getopt(argc,argv,"hc:q")) > 0)

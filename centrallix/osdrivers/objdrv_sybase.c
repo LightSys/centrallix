@@ -22,6 +22,7 @@
 #include "xhashqueue.h"
 #include "multiquery.h"
 #include "magic.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -62,10 +63,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.6 2002/05/01 02:20:31 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.7 2002/05/02 01:14:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.7  2002/05/02 01:14:56  gbeeley
+    Added dynamic module loading support in Centrallix, starting with the
+    Sybase driver, using libdl.
+
     Revision 1.6  2002/05/01 02:20:31  gbeeley
     Modification in net_http: ls__req=close now allows multiple object
     ids to be strung together in the ls__oid parameter.
@@ -3568,3 +3573,10 @@ int _IO_putc(char _ch, FILE* _fp)
         : (unsigned char)(*(_fp)->_IO_write_ptr++ = (_ch)));
     }
 #endif
+
+
+MODULE_INIT(sybdInitialize);
+MODULE_PREFIX("sybd");
+MODULE_DESC("Sybase ObjectSystem Driver");
+MODULE_VERSION(0,9,0);
+MODULE_IFACE(CX_CURRENT_IFACE);

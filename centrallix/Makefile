@@ -27,8 +27,11 @@ OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 
 # Objectsystem drivers.
 #XOBJDRIVERS=objdrv_ux.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_report.o objdrv_uxprint.o objdrv_datafile.o objdrv_unixuser.o
-XOBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_report.o objdrv_uxprint.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
+XOBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_struct.o objdrv_report.o objdrv_uxprint.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
 OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
+XOBJDRIVERMODULES=objdrv_sybase.so
+OBJDRIVERMODULES=$(patsubst %,osdrivers/%,$(XOBJDRIVERMODULES))
+
 XV3OBJDRIVERS=objdrv_ux.o objdrv_unixuser.o objdrv_sybase.o objdrv_struct.o objdrv_qytree.o objdrv_datafile.o objdrv_audio.o
 V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 
@@ -95,7 +98,11 @@ JSVM=$(patsubst %,jsvm/%,$(XJSVM))
 XTESTSUITE=ts1.c ts2.c ts3.c
 TESTSUITE=$(patsubst %,testsuite/%,$(XTESTSUITE))
 
+# Loadable modules.
+MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES)
+
 # Some basic build parameters.
+CXLIBDIR=../centrallix-lib
 MASTERHOST=greg
 PROFILE=-pg
 SYBASE=/opt/sybase
@@ -106,11 +113,12 @@ PREVBUILD=$(shell expr $(BUILD) - 1)
 #YEARS=$(shell YR=1998; while [ $$YR != `date +%Y` ]; do /bin/echo -n $$YR,; YR=`expr $$YR + 1`; done; /bin/echo -n $$YR)
 YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
 VERSION=$(shell cat .version)
-CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -Wall -Wno-implicit-function-declaration
-#CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I../centrallix-lib/include -DBUILD=$(BUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -Wall
+CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I$(CXLIBDIR)/include -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -Wall -Wno-implicit-function-declaration
+#CFLAGS=-g $(PROFILE) -I$(SYBASE)/include -I./include -I$(CXLIBDIR)/include -DBUILD=$(BUILD) -DYEARS=\"$(YEARS)\" -DVERSION=\"$(VERSION)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -Wall
 #LIBS=-lnsl -lsocket
 #LIBS=-lsybtcl -lct -linsck -lcomn -lintl -lcs -lm
-LIBS=-lct -lcomn -lintl -lsybtcl -lcs -linsck -lm -lcrypt -lreadline ../centrallix-lib/libCentrallix.a -lncurses
+#LIBS=-lct -lcomn -lintl -lsybtcl -lcs -linsck -lm -lcrypt -lreadline $(CXLIBDIR)/libCentrallix.a -lncurses
+LIBS=-lm -lcrypt -lreadline $(CXLIBDIR)/libCentrallix.a -lncurses -ldl
 #LIBS=-lm
 STATICLIBS=/usr/local/syblinux/elf/lib/libct.a /usr/local/syblinux/elf/lib/libcomn.a /usr/local/syblinux/elf/lib/libintl.a /usr/local/syblinux/elf/lib/libsybtcl.a /usr/local/syblinux/elf/lib/libcs.a /usr/local/syblinux/elf/lib/libinsck.a
 LIBDIRS=-L$(SYBASE)/lib
@@ -119,19 +127,38 @@ LIBDIRS=-L$(SYBASE)/lib
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
 
-centrallix: .build .subbuild lsmain.o $(LSOBJS)
+.PHONY:	modules
+.PHONY:	modules_install
+.PHONY:	depend
+
+centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
 	@echo ''
 	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo
-	cc lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -o centrallix
+	cc centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl,-export-dynamic -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
-	@rm lsmain.o
+	@rm centrallix.o
+
+
+modules: $(MODULES)
+
+modules_install: modules
+	-@mkdir /usr/local/lib/centrallix/ 2>/dev/null; exit 0
+	@/bin/cp $(MODULES) /usr/local/lib/centrallix/
+	@echo "*** Be sure to do a 'make modules_install'"
+
+osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
+	cc $(CFLAGS) $(LIBDIRS) -DMODULE -Wno-unused -shared -fPIC $< -lct -lcomn -lintl -lsybtcl -lcs -linsck -o $@
+	
+.c.so:	$<
+	cc $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+
 
 jsengine: $(JSVM)
 	cc $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
 
-test_obj: test_obj.o $(BASEOBJS)
-	cc test_obj.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -o test_obj $(LIBS)
+test_obj: test_obj.o centrallix.o $(BASEOBJS)
+	cc centrallix.o test_obj.o $(BASEOBJS) $(LIBDIRS) $(PROFILE) -Wl,-export-dynamic -o test_obj $(LIBS)
 
 test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
 	cc test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
@@ -150,12 +177,20 @@ htmltest: htmltest.o $(SUPPORT)
 
 clean:
 	-@rm */*.o
+	-@rm */*.so
 	-@rm centrallix test_obj lsclient
 	-@rm *.o
 
-depend:
-	makedepend -I include -I ../centrallix-lib/include -f .depend *.c */*.c 2>/dev/null
+depend:	.depend
 
+.depend: *.[ch] */*.[ch] $(CXLIBDIR)/include/*.h
+	@echo "Rebuilding dependencies..."
+	makedepend -o.o -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c >.depend 2>/dev/null
+	makedepend -o.so -Yinclude -I $(CXLIBDIR)/include -f - *.c */*.c >>.depend 2>/dev/null
+	@echo ""
+
+#%.d: %.c
+#        $(SHELL) -ec '$(CC) -M $(CPPFLAGS) $< | sed '\"s/$*\\.o[ :]*/& $@/g'\" > $@'
 backup:
 	@/bin/echo -n Creating a backup of $(VERSION).$(PREVBUILD) "... "
 	@mkdir VER/$(VERSION).$(PREVBUILD) 2>/dev/null; exit 0
@@ -164,3 +199,4 @@ backup:
 
 # Dependencies made by "make depend"
 include .depend
+
