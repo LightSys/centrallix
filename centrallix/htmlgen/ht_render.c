@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.6 2002/04/25 22:54:48 gbeeley Exp $
+    $Id: ht_render.c,v 1.7 2002/04/28 03:19:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.7  2002/04/28 03:19:53  gbeeley
+    Fixed a bit of a bug in ht_render where it did not properly set the
+    length on the StrValue structures when adding script functions.  This
+    was basically causing some substantial heap corruption.
+
     Revision 1.6  2002/04/25 22:54:48  gbeeley
     Set the starting tmpbuf back to 512 from the 8 bytes I was using to
     test the auto-realloc logic... ;)
@@ -333,6 +338,7 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
 	if (!sv) return -1;
 	sv->Name = filename;
+	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(filename)+1;
 	sv->Value = "";
 	sv->Alloc = (flags & HTR_F_NAMEALLOC);
 
@@ -358,7 +364,9 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
 	if (!sv) return -1;
 	sv->Name = fn_name;
+	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(fn_name)+1;
 	sv->Value = fn_text;
+	if (flags & HTR_F_VALUEALLOC) sv->ValueSize = strlen(fn_text)+1;
 	sv->Alloc = flags;
 
 	/** Add to the hash table and array **/

@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.9 2002/03/23 01:18:09 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.10 2002/04/28 03:19:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.10  2002/04/28 03:19:53  gbeeley
+    Fixed a bit of a bug in ht_render where it did not properly set the
+    length on the StrValue structures when adding script functions.  This
+    was basically causing some substantial heap corruption.
+
     Revision 1.9  2002/03/23 01:18:09  lkehresman
     Fixed focus detection and form notification on editbox and anything that
     uses keyboard input.
@@ -120,7 +125,6 @@ int
 htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
     {
     char* ptr;
-    char sbuf[HT_SBUF_SIZE];
     char kbfocus1[64] = "#ffffff";	/* kb focus = 3d raised */
     char kbfocus2[64] = "#7a7a7a";
     char msfocus1[64] = "#000000";	/* ms focus = black rectangle */
@@ -137,27 +141,23 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     	/** Check for a title. **/
 	if (objGetAttrValue(w_obj,"title",POD(&ptr)) == 0)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TITLE>%s</TITLE>\n",ptr);
-	    htrAddHeaderItem(s, sbuf);
+	    htrAddHeaderItem_va(s, "    <TITLE>%s</TITLE>\n",ptr);
 	    }
 
 	/** Check for bgcolor. **/
 	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE," BGCOLOR=%s",ptr);
-	    htrAddBodyParam(s, sbuf);
+	    htrAddBodyParam_va(s, " BGCOLOR=%s",ptr);
 	    }
 	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE," BACKGROUND=%s",ptr);
-	    htrAddBodyParam(s, sbuf);
+	    htrAddBodyParam_va(s, " BACKGROUND=%s",ptr);
 	    }
 
 	/** Check for text color **/
 	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
 	    {
-	    snprintf(sbuf,HT_SBUF_SIZE," TEXT=%s",ptr);
-	    htrAddBodyParam(s, sbuf);
+	    htrAddBodyParam_va(s, " TEXT=%s",ptr);
 	    }
 
 	/** Keyboard Focus Indicator colors 1 and 2 **/
@@ -227,16 +227,11 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        #pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
 		"        #pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
 		"    </STYLE>\n" );
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pgtop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pgbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE,"<DIV ID=\"pgrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pglft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
-	htrAddBodyItem(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE, "<DIV ID=\"pgtvl\"></DIV>\n");
-	htrAddBodyItem(s, sbuf);
+	htrAddBodyItem(s, "<DIV ID=\"pgtop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgrgt\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pglft\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1 HEIGHT=864></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgtvl\"></DIV>\n");
 	htrAddBodyItem(s,
 		"<DIV ID=\"pgktop\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n"
 		"<DIV ID=\"pgkbtm\"><IMG SRC=/sys/images/trans_1.gif WIDTH=1152 HEIGHT=1></DIV>\n"
@@ -363,12 +358,9 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);\n");
 
 	/** Set colors for the focus layers **/
-	snprintf(sbuf, HT_SBUF_SIZE,"    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",kbfocus1,kbfocus2);
-	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE,"    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",msfocus1,msfocus2);
-	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf, HT_SBUF_SIZE,"    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s, "    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",kbfocus1,kbfocus2);
+	htrAddScriptInit_va(s, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",msfocus1,msfocus2);
+	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
 	htrAddScriptInit(s, "    document.LSParent = null;\n");
 
 	/** Function to set modal mode to a layer. **/
