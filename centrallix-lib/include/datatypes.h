@@ -20,10 +20,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: datatypes.h,v 1.2 2001/12/28 21:53:25 gbeeley Exp $
+    $Id: datatypes.h,v 1.3 2003/05/30 17:40:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/datatypes.h,v $
 
     $Log: datatypes.h,v $
+    Revision 1.3  2003/05/30 17:40:42  gbeeley
+    - make magic number assertion tell us the bad pointer address
+
     Revision 1.2  2001/12/28 21:53:25  gbeeley
     Added some support for the new printmanagement system.
 
@@ -101,6 +104,7 @@ typedef union _POD
     double      Double;
     pStringVec	StringVec;
     pIntVec	IntVec;
+    void*	Generic;
     }
     ObjData, *pObjData;
 

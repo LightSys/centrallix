@@ -26,10 +26,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.8 2003/04/16 03:26:38 nehresma Exp $
+    $Id: magic.h,v 1.9 2003/05/30 17:40:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.9  2003/05/30 17:40:42  gbeeley
+    - make magic number assertion tell us the bad pointer address
+
     Revision 1.8  2003/04/16 03:26:38  nehresma
     oops.  forgot to commit the update to magic.h to go along with the nfs CXSEC stuff
 
@@ -76,7 +79,7 @@
 
 #ifdef 	DBMAGIC
 
-#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y)),(*((int*)(8)) = *((int*)(0)))))
+#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X for %8.8X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y),(int)(x)),(*((int*)(8)) = *((int*)(0)))))
 #define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(8)) = *((int*)(0)))))
 
 #else	/* defined DBMAGIC */
