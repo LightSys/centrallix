@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.8 2002/04/27 22:47:45 jorupp Exp $
+    $Id: htdrv_table.c,v 1.9 2002/04/28 00:30:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.9  2002/04/28 00:30:53  jorupp
+     * full sorting support added to table
+
     Revision 1.8  2002/04/27 22:47:45  jorupp
      * re-wrote form and osrc interaction -- more happens now in the form
      * lots of fun stuff in the table....check form.app for an example (not completely working yet)
@@ -490,18 +493,20 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        var neworder=new Array();\n"
 		"        for(i in targetLayer.row.table.osrc.orderobject)\n"
 		"            neworder[i]=targetLayer.row.table.osrc.orderobject[i];\n"
+		"        \n"
 		"        var colname=targetLayer.row.table.cols[targetLayer.colnum][0];\n"
-		/* Something is wrong with centrallix and ORDER BY, when it is fixed, uncomment
-		 *     this and remove the line after the comment*/
-		/*
-		"        if(colname+' ASC'==neworder[0])\n"
-		"            neworder[0]=colname+' DESC';\n"
-		"        else if (colname+' DESC'==neworder[0])\n"
-		"            neworder[0]=colname+' ASC';\n"
+		/** check for the this field already in the sort criteria **/
+		"        if(':'+colname+' asc'==neworder[0])\n"
+		"            neworder[0]=':'+colname+' desc';\n"
+		"        else if (':'+colname+' desc'==neworder[0])\n"
+		"            neworder[0]=':'+colname+' asc';\n"
 		"        else\n"
-		"            neworder.push(colname+' ASC');\n"
-		*/
-		"        neworder.unshift(':'+colname);\n"
+		"            {\n"
+		"            for(i in neworder)\n"
+		"                if(neworder[i]==':'+colname+' asc' || neworder[i]==':'+colname+' desc')\n"
+		"                    delete neworder[i];\n"
+		"            neworder.unshift(':'+colname+' asc');\n"
+		"            }\n"
 		"        targetLayer.row.table.osrc.ActionOrderObject(neworder);\n"
 		"        }\n"
 		"    \n"
@@ -718,6 +723,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	t.row_bgnd2[0]='\0';
 	t.row_bgndhigh[0]='\0';
 	t.textcolor[0]='\0';
+	t.textcolorhighlight[0]='\0';
 	t.titlecolor[0]='\0';
 	t.x=-1;
 	t.y=-1;
