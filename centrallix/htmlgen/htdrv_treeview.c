@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.30 2004/08/04 20:03:11 mmcgill Exp $
+    $Id: htdrv_treeview.c,v 1.31 2004/08/30 03:20:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.31  2004/08/30 03:20:19  gbeeley
+    - updates for widgets
+    - bugfix for htrRender() handling of event handler function return values
+
     Revision 1.30  2004/08/04 20:03:11  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -346,7 +350,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	/** Compensate hidden root position if not shown **/
 	if (!show_root)
 	    {
-	    x -= 20;
+	    if (!show_branches) x -= 20;
 	    y -= 20;
 	    }
 

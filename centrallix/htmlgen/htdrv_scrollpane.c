@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.23 2004/08/02 14:09:34 mmcgill Exp $
+    $Id: htdrv_scrollpane.c,v 1.24 2004/08/30 03:20:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.24  2004/08/30 03:20:19  gbeeley
+    - updates for widgets
+    - bugfix for htrRender() handling of event handler function return values
+
     Revision 1.23  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -435,7 +439,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 		"        if (new_y > getPageY(ti.pane)+18+v) new_y=getPageY(ti.pane)+18+v;\n"
 		"        if (new_y < getPageY(ti.pane)+18) new_y=getPageY(ti.pane)+18;\n"
 		"        setPageY(ti.thum,new_y);\n"
-		"        var h=getClipHeight(ti.area);\n"
+		"        var h=getClipHeight(ti.area)+getClipTop(ti.area);\n"
 		"        var d=h-getClipHeight(ti.pane);\n"
 		"        if (d<0) d=0;\n"
 		"        var yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;\n"

@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.54 2004/08/15 03:10:48 gbeeley Exp $
+    $Id: ht_render.c,v 1.55 2004/08/30 03:20:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.55  2004/08/30 03:20:17  gbeeley
+    - updates for widgets
+    - bugfix for htrRender() handling of event handler function return values
+
     Revision 1.54  2004/08/15 03:10:48  gbeeley
     - moving client canvas size detection logic from htmlgen to net_http so
       that it can be passed to wgtrVerify(), later to be used in adjusting
@@ -1806,6 +1810,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
 	snprintf(sbuf, HT_SBUF_SIZE, "    <META NAME=\"Generator\" CONTENT=\"Centrallix v%s\">\n", cx__version);
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
+	fdPrintf(output, "    <META NAME=\"Pragma\" CONTENT=\"no-cache\">\n");
 
 	fdWrite(output, "    <STYLE TYPE=\"text/css\">\n", 28, 0, FD_U_PACKET);
 	/** Write the HTML header items. **/
@@ -1887,7 +1892,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 		        fdWrite(output,ptr+8,*(int*)ptr,0,FD_U_PACKET);
 			}
 		    }
-		fdWrite(output,"    return true;\n    }\n",23,0,FD_U_PACKET);
+		fdPrintf(output,"    return !prevent_default;\n    }\n");
 		}
 	    }
 

@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.40 2004/08/15 02:08:38 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.41 2004/08/30 03:20:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.41  2004/08/30 03:20:19  gbeeley
+    - updates for widgets
+    - bugfix for htrRender() handling of event handler function return values
+
     Revision 1.40  2004/08/15 02:08:38  gbeeley
     - fixing lots of geometry and functionality issues for IE and Moz for the
       window widget.
@@ -364,6 +368,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
     int gshade = 0;
     int closetype = 0;
     int box_offset = 1;
+    char icon[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -445,6 +450,17 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    if (!strcmp(ptr,"shrink1")) closetype = 1;
 	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
 	    else if (!strcmp(ptr,"shrink3")) closetype = 1 | 2;
+	    }
+
+	/** Window icon? **/
+	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    memccpy(icon, ptr, '\0', sizeof(icon)-1);
+	    icon[sizeof(icon)-1] = '\0';
+	    }
+	else
+	    {
+	    strcpy(icon, "/sys/images/centrallix_18x18.gif");
 	    }
 
 	/** Compute titlebar width & height - includes edge below titlebar. **/
@@ -584,7 +600,8 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    if (has_titlebar)
 		{
 		htrAddBodyItem_va(s,"<DIV ID=\"wn%dtitlebar\">\n",id);
-		htrAddBodyItem_va(s,"<table border=0 cellspacing=0 cellpadding=0 height=%d><tr><td valign=middle align=center width=26><img name=\"close\" src=\"/sys/images/01close.gif\"/></td><td valign=middle align=left nobreak><b>%s</b></td></tr></table>\n", tbh-1, title);
+		htrAddBodyItem_va(s,"<table border=0 cellspacing=0 cellpadding=0 height=%d><tr><td><table cellspacing=0 cellpadding=0 border=0 width=%d><tr><td align=left><TABLE cellspacing=0 cellpadding=0 border=\"0\"><TR><td width=26 align=center><img width=18 height=18 src=\"%s\" name=\"icon\"></td><TD valign=\"middle\" nobreak><FONT COLOR='%s'>&nbsp;<b>%s</b></FONT></TD></TR></TABLE></td><td align=right><IMG src=\"/sys/images/01bigclose.gif\" name=\"close\" align=\"right\"></td></tr></table></td></tr></table>\n", 
+			tbh-1, tbw-2, icon, txtcolor, title);
 		htrAddBodyItem_va(s,"</DIV>\n");
 		}
 	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\">\n",id);
@@ -609,8 +626,8 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    if (has_titlebar)
 		{
 		htrAddBodyItem_va(s,"<TR><TD width=\"1\"><IMG src=\"/sys/images/white_1x1.png\" width=\"1\" height=\"22\"></TD>\n");
-		htrAddBodyItem_va(s,"    <TD width=\"%d\" %s colspan=\"%d\"><TABLE border=\"0\"><TR><TD><IMG src=\"/sys/images/01close.gif\" name=\"close\" align=\"left\"></TD><TD valign=\"middle\"><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
-		    tbw,hdr_bgnd,is_dialog_style?1:3,txtcolor,title);
+		htrAddBodyItem_va(s,"    <TD valign=middle width=\"%d\" %s colspan=\"%d\"><table cellspacing=0 cellpadding=0 border=0 width=%d><tr><td align=left><TABLE cellspacing=0 cellpadding=0 border=\"0\"><TR><td><img width=18 height=18 src=\"%s\" name=\"icon\" align=\"left\"></td><TD valign=\"middle\"><FONT COLOR='%s'>&nbsp;<b>%s</b></FONT></TD></TR></TABLE></td><td align=right><IMG src=\"/sys/images/01bigclose.gif\" name=\"close\" align=\"right\"></td></tr></table></TD>\n",
+		    tbw,hdr_bgnd,is_dialog_style?1:3,tbw,icon,txtcolor,title);
 		htrAddBodyItem_va(s,"    <TD width=\"1\"><IMG src=\"/sys/images/dkgrey_1x1.png\" width=\"1\" height=\"22\"></TD></TR>\n");
 		}
 

@@ -42,6 +42,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_image.c,v $
+    Revision 1.4  2004/08/30 03:20:19  gbeeley
+    - updates for widgets
+    - bugfix for htrRender() handling of event handler function return values
+
     Revision 1.3  2004/08/02 14:09:34  mmcgill
     Restructured the rendering process, in anticipation of new deployment methods
     being added in the future. The wgtr module is now the main widget-related
@@ -198,6 +202,11 @@ htimgRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
+	/** Init image widget (?) **/
+	htrAddScriptInit_va(s, "    %s = im_init(%s.cxSubElement(\"img%d\"));\n",
+		nptr, parentname, id);
+	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
+
 	/** Event Handlers **/
 	htrAddEventHandler(s, "document","MOUSEUP", "img", 
 	    "\n"
@@ -227,7 +236,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "img%d", id, 
-	    "\n<img width=%d height=%d src=\"%s\">\n",w,h,src);
+	    "\n<img id=im%d width=%d height=%d src=\"%s\">\n",id,w,h,src);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
