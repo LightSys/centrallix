@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.3 2002/10/17 20:23:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.3  2002/10/17 20:23:18  gbeeley
+    Got printing v3 subsystem open/close session working (basically)...
+
     Revision 1.2  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -412,6 +415,8 @@ prt_pclod_Initialize()
 	drv->WriteText = prt_pclod_WriteText;
 	drv->WriteRasterData = prt_pclod_WriteRasterData;
 	drv->WriteFF = prt_pclod_WriteFF;
+
+	prt_strictfm_RegisterDriver(drv);
 
     return 0;
     }

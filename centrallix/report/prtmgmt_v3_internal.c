@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.3 2002/10/17 20:23:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.3  2002/10/17 20:23:18  gbeeley
+    Got printing v3 subsystem open/close session working (basically)...
+
     Revision 1.2  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -157,10 +160,21 @@ prt_internal_Add(pPrtObjStream parent, pPrtObjStream new_child)
 	    return parent->LayoutMgr->AddObject(parent, new_child);*/
 
 	/** No layout manager? Add it manually. **/
-	new_child->Prev = parent->ContentTail;
-	parent->ContentTail->Next = new_child;
-	parent->ContentTail = new_child;
-	new_child->Parent = parent;
+	if (parent->ContentTail)
+	    {
+	    /** Container has content already **/
+	    new_child->Prev = parent->ContentTail;
+	    parent->ContentTail->Next = new_child;
+	    parent->ContentTail = new_child;
+	    new_child->Parent = parent;
+	    }
+	else
+	    {
+	    /** Container has no content at all. **/
+	    parent->ContentHead = new_child;
+	    parent->ContentTail = new_child;
+	    new_child->Parent = parent;
+	    }
 
     return 0;
     }
@@ -389,7 +403,7 @@ prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
     {
 
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);
-	ASSERTMAGIC(s, MGK_PRTOBJSTRM);
+	ASSERTMAGIC(page, MGK_PRTOBJSTRM);
 
 	/** First, y-sort the page **/
 	prt_internal_YSort(page);

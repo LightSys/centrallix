@@ -13,15 +13,16 @@
 #ifdef HAVE_CONFIG_H
 #undef HAVE_CONFIG_H
 #include <readline/readline.h>
+#include <readline/history.h>
 #define HAVE_CONFIG_H
 #else
 #include <readline/readline.h>
-#endif
 #include <readline/history.h>
 #endif
 #ifndef CENTRALLIX_CONFIG
 #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
 #endif
+#include "prtmgmt_v3.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -57,10 +58,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.2 2002/06/13 15:21:04 mattphillips Exp $
+    $Id: test_prt.c,v 1.3 2002/10/17 20:23:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.3  2002/10/17 20:23:17  gbeeley
+    Got printing v3 subsystem open/close session working (basically)...
+
     Revision 1.2  2002/06/13 15:21:04  mattphillips
     Adding autoconf support to centrallix
 
@@ -77,6 +81,38 @@ void* my_ptr;
 /*** Instantiate the globals from centrallix.h 
  ***/
 CxGlobals_t CxGlobals;
+
+/*** testWrite() - takes data being output by the printing subsystem and
+ *** converts nonprintables (e.g., ESC sequences) into printables that can
+ *** be debugged more easily.
+ ***/
+int
+testWrite(void* arg, char* buffer, int len, int offset, int flags)
+    {
+    int i;
+
+	for(i=0;i<len;i++)
+	    {
+	    if (buffer[i] >= 0x20 && buffer[i] <= 0x7D)
+		printf("%c", buffer[i]);
+	    else if (buffer[i] == 0x1B)
+		printf("\\ESC\\");
+	    else if (buffer[i] == 0x08)
+		printf("\\BS\\");
+	    else if (buffer[i] == 0x7E)
+		printf("\\DEL\\");
+	    else if (buffer[i] == '\n')
+		printf("\n");
+	    else if (buffer[i] == '\r')
+		printf("\\CR\\");
+	    else 
+		printf("\\%3.3d\\",buffer[i]);
+	    }
+	printf("\n");
+
+    return len;
+    }
+
 
 void
 start(void* v)
@@ -98,6 +134,8 @@ start(void* v)
     char* logmethod;
     char* logprog;
     int log_all_errors;
+    pPrtSession prtsession;
+    int rval;
 
 	/** Load the configuration file **/
 	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
@@ -192,7 +230,7 @@ start(void* v)
 		}
 
 	    if (ls) mlxCloseSession(ls);
-	    ls = mlxStringSession(inbuf,MLX_F_ICASE);
+	    ls = mlxStringSession(inbuf,MLX_F_ICASE | MLX_F_EOF);
 	    if (mlxNextToken(ls) != MLX_TOK_KEYWORD) continue;
 	    ptr = mlxStringVal(ls,NULL);
 	    if (!ptr) continue;
@@ -202,6 +240,26 @@ start(void* v)
 	    if (!strcmp(cmdname,"quit"))
 		{
 		break;
+		}
+	    else if (!strcmp(cmdname,"session"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: session <mime type>\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, testWrite, NULL);
+		printf("session: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (prtsession) 
+		    {
+		    rval = prtCloseSession(prtsession);
+		    printf("session: prtCloseSession returned %d\n", rval);
+		    }
+		}
+	    else
+		{
+		printf("test_prt: error: unknown command '%s'\n", cmdname);
 		}
 	    }
 
