@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.7  2002/03/02 21:57:00  jorupp
+    * Editbox supports as many</>/=/<=/>=/<=> clauses you can fit to query for data
+        (<=> is the LIKE operator)
+
     Revision 1.6  2002/03/02 03:06:50  jorupp
     * form now has basic QBF functionality
     * fixed function-building problem with radiobutton
@@ -157,6 +161,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_cb_data_notify(control)\n"
 		"    {\n"
 		"	this.IsUnsaved=true;\n"
+		"       control.IsChanged=true;\n"
 		"    }\n", 0);
 
 	/** A child 'control' got or lost focus **/
@@ -317,6 +322,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		/*"        form.elements[i].Clear();\n" -- change soon */
 		"        form.elements[i].setvalue('');\n"
+		"        form.elements[i].IsChanged=false;\n"
 		/* temp check"        confirm(form.elements[i].fieldname);\n"*/
 		"        }\n"
 		"    this.IsUnsaved=false;\n"
@@ -359,6 +365,35 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                        }\n"
 		"                    break;\n"
 		"                case \"editbox\":\n"
+		/* Editbox supports as many</>/=/<=/>=/<=> clauses you can fit to query for data */
+		/*   <=> is the LIKE operator...... */
+		"                    var val=ele.getvalue();\n"
+		"                    var res=String(val).match(/(<=>|<=|>=|=<|=>|<|>|=) ?([^<>=]*)/g);\n"
+		"                    if(res)\n"
+		"                        {\n"
+		"                        var fone=true;\n"
+		"                        for(var i in res)\n"
+		"                            {\n"
+		"                            if(fone)\n"
+		"                                {\n"
+		"                                fone=false;\n"
+		"                                }\n"
+		"                            else\n"
+		"                                {\n"
+		"                                where+=\" AND \";\n"
+		"                                }\n"
+		"                            var res2=(/(<=>|<=|>=|=<|=>|<|>|=) ?(.*)/).exec(res[i]);\n"
+		"                            if(res2[1]==\"<=>\")\n"
+		"                                {\n"
+		"                                where+=ele.fieldname+\" LIKE \\\"\"+res2[2]+\"\\\"\";\n"
+		"                                }\n"
+		"                            else\n"
+		"                                {\n"
+		"                                where+=ele.fieldname+\"\"+res2[1]+\"\\\"\"+res2[2]+\"\\\"\";\n"
+		"                                }\n"
+		"                            }\n"
+		"                        break;\n"
+		"                        }\n"
 		"                    where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
 		"                    break;\n"
 		"                case \"radiobutton\":\n"
@@ -383,9 +418,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    delete where;\n"
 		"    if(confirm(\"Send to \\\"\"+this.osrc.name+\"\\\"(osrc):\\\n\"+query))\n"
 		"        {\n"
-		"        form.Pending=true;\n"
-		"        form.IsUnsaved=false;\n"
-		"        this.osrc.ActionQuery(query);\n"
+		"        //form.Pending=true;\n"
+		"        //form.IsUnsaved=false;\n"
+		"        //this.osrc.ActionQuery(query);\n"
 		"        }\n"
 		"    delete query;\n"
 		"    }\n", 0);
