@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_scrollpane.c,v 1.5 2002/06/19 16:31:04 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.5  2002/06/19 16:31:04  lkehresman
+    * Changed snprintf to *_va functions in several places
+    * Allow fading to both static and dynamic pages
+
     Revision 1.4  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -269,20 +273,15 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    }\n",0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,160,"    sp_init(%s.layers.sp%dpane,\"sp%darea\",\"sp%dthum\",%s);\n", parentname,id,id,id,parentobj);
-	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf,160,"    %s=%s.layers.sp%dpane;\n",name,parentname,id);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s,"    sp_init(%s.layers.sp%dpane,\"sp%darea\",\"sp%dthum\",%s);\n", parentname,id,id,id,parentobj);
+	htrAddScriptInit_va(s,"    %s=%s.layers.sp%dpane;\n",name,parentname,id);
 
 	/** HTML body <DIV> elements for the layers. **/
-	snprintf(sbuf,160,"<DIV ID=\"sp%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
-	htrAddBodyItem(s, sbuf);
-	htrAddBodyItem(s, "<TR><TD align=right><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR><TR><TD align=right>");
-	snprintf(sbuf,160,"<IMG SRC=/sys/images/trans_1.gif height=%d width=18 name='b'>",h-36);
-	htrAddBodyItem(s,sbuf);
-	htrAddBodyItem(s,"</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR></TABLE>\n");
-	snprintf(sbuf,160,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\">",id,id);
-	htrAddBodyItem(s,sbuf);
+	htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
+	htrAddBodyItem_va(s,"<TR><TD align=right><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR><TR><TD align=right>");
+	htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=%d width=18 name='b'>",h-36);
+	htrAddBodyItem_va(s,"</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR></TABLE>\n");
+	htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\">",id,id);
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","sp",

@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.4 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_html.c,v 1.5 2002/06/19 16:31:04 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.5  2002/06/19 16:31:04  lkehresman
+    * Changed snprintf to *_va functions in several places
+    * Allow fading to both static and dynamic pages
+
     Revision 1.4  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -177,6 +181,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
                     "function ht_loadpage(aparam)\n"
                     "    {\n"
 		    "    this.transition = aparam.Transition;\n"
+		    "    this.mode = aparam.Mode;\n"
                     "    this.source = aparam.Source;\n"
                     "    }\n", 0);
     
@@ -184,7 +189,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
             htrAddScriptFunction(s, "ht_sourcechanged", "\n"
                     "function ht_sourcechanged(prop,oldval,newval)\n"
                     "    {\n"
-                    "    if (newval.substr(0,5)=='http:')\n"
+                    "    if (this.mode != 'dynamic' || (this.mode == 'dynamic' && newval.substr(0,5)=='http:'))\n"
                     "        {\n"
 		    "        this.newsrc = newval;\n"
 		    "        if (this.transition && this.transition != 'normal')\n"
@@ -308,8 +313,8 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
                     "        l.load(source,w);\n"
                     "        }\n"
                     "    l.source = source;\n"
-                    "    l.watch('source', ht_sourcechanged);\n"
                     "    l.ActionLoadPage = ht_loadpage;\n"
+                    "    l.watch('source', ht_sourcechanged);\n"
 		    "    l.document.Layer = l;\n"
 		    "    l2.document.Layer = l2;\n"
                     "    }\n" ,0);
@@ -322,15 +327,12 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    "        }\n");
     
             /** Script initialization call. **/
-            snprintf(sbuf,320,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,%s.layers.ht%dfader,\"%s\",%s,%d,%d,%s);\n",
+            htrAddScriptInit_va(s,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,%s.layers.ht%dfader,\"%s\",%s,%d,%d,%s);\n",
                     parentname, id, parentname, id, parentname, id, src, parentname, w,h, parentobj);
-            htrAddScriptInit(s, sbuf);
-            snprintf(sbuf,320,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
-            htrAddScriptInit(s, sbuf);
+            htrAddScriptInit_va(s,"    %s = %s.layers.ht%dpane;\n",nptr,parentname,id);
     
             /** HTML body <DIV> element for the layer. **/
-            snprintf(sbuf,320,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV><DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id,id);
-            htrAddBodyItem(s, sbuf);
+            htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV><DIV ID=\"ht%dpane2\"></DIV><DIV ID=\"ht%dpane\">\n",id,id,id);
 	    }
 
         /** If prefix text given, put it. **/
@@ -420,6 +422,7 @@ hthtmlInitialize()
 
         /** Add the 'load page' action **/
 	htrAddAction(drv,"LoadPage");
+	htrAddParam(drv,"LoadPage","Mode",DATA_T_STRING);
 	htrAddParam(drv,"LoadPage","Source",DATA_T_STRING);
 	htrAddParam(drv,"LoadPage","Transition",DATA_T_STRING);
 
