@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.20 2004/04/29 16:26:43 gbeeley Exp $
+    $Id: ht_render.h,v 1.21 2004/06/25 16:46:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.21  2004/06/25 16:46:31  gbeeley
+    - Auto-detect size of user-agent's window
+
     Revision 1.20  2004/04/29 16:26:43  gbeeley
     - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
     - Added inline-include feature to help with debugging in IE, which does
@@ -326,6 +329,9 @@ typedef struct
     pHtClass	Class;			/* the widget class to use **/
     pStruct	Params;			/* params from the user */
     pObjSession	ObjSession;		/* objectsystem session */
+    int		Width;			/* target container (browser) width in pixels */
+    int		Height;			/* target container height in pixels */
+    char*	Parent;			/* name of target container */
     }
     HtSession, *pHtSession;
 

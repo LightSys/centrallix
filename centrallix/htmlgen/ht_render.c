@@ -51,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.44 2004/04/29 16:26:41 gbeeley Exp $
+    $Id: ht_render.c,v 1.45 2004/06/25 16:46:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.45  2004/06/25 16:46:30  gbeeley
+    - Auto-detect size of user-agent's window
+
     Revision 1.44  2004/04/29 16:26:41  gbeeley
     - Fixes to get FourTabs.app working again in NS4/Moz, and in IE5.5/IE6.
     - Added inline-include feature to help with debugging in IE, which does
@@ -1359,6 +1362,30 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     }
 
 
+/*** htr_internal_GetGeom() - deploy a snippet of javascript to the browser
+ *** to fetch the window geometry and reload the application.
+ ***/
+int
+htr_internal_GetGeom(pFile output)
+    {
+
+	fdPrintf(output, "<html><head></head><script language='javascript'>\n");
+	fdPrintf(output, "function startup()\n"
+			 "    {\n"
+			 "    var loc = window.location.href;\n"
+			 "    if (loc.indexOf('?') >= 0)\n"
+			 "        loc += '&';\n"
+			 "    else\n"
+			 "        loc += '?';\n"
+			 "    loc += 'cx__width=' + window.innerWidth + '&cx__height=' + window.innerHeight;\n"
+			 "    window.location.href = loc;\n"
+			 "    }\n");
+	fdPrintf(output, "</script><body onload='startup();'>Please Wait...</body></html>\n");
+
+    return 0;
+    }
+
+
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
@@ -1376,6 +1403,8 @@ htrRender(pFile output, pObject appstruct, pStruct params)
     char* agent = NULL;
     char* classname = NULL;
     int rval;
+    char* hptr;
+    char* wptr;
 
 	/** What UA is on the other end of the connection? **/
 	agent = (char*)mssGetParam("User-Agent");
@@ -1391,6 +1420,28 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	memset(s,0,sizeof(HtSession));
 	s->Params = params;
 	s->ObjSession = appstruct->Session;
+
+	/** Width and Height of user agent specified? **/
+	hptr = htrParamValue(s, "cx__height");
+	wptr = htrParamValue(s, "cx__width");
+	if (!hptr || !wptr)
+	    {
+	    htr_internal_GetGeom(output);
+	    nmFree(s, sizeof(HtSession));
+	    return 0;
+	    }
+	s->Width = strtol(wptr,NULL,10);
+	if (s->Width < 0) s->Width = 0;
+	if (s->Width > 10000) s->Width = 10000;
+	s->Height = strtol(hptr,NULL,10);
+	if (s->Height < 0) s->Height = 0;
+	if (s->Height > 10000) s->Height = 10000;
+
+	/** Parent container name specified? **/
+	if ((ptr = htrParamValue(s, "cx__parent")))
+	    s->Parent = nmSysStrdup(ptr);
+	else
+	    s->Parent = nmSysStrdup("window");
 
 	/** Did user request a class of widgets? **/
 	classname = (char*)mssGetParam("Class");
@@ -1456,6 +1507,7 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	s->TmpbufSize = 512;
 	if (!s->Tmpbuf)
 	    {
+	    nmSysFree(s->Parent);
 	    nmFree(s, sizeof(HtSession));
 	    return -1;
 	    }
@@ -1773,6 +1825,8 @@ htrRender(pFile output, pObject appstruct, pStruct params)
 	xaDeInit(&(s->Page.EventScripts.Array));
 
 	nmSysFree(s->Tmpbuf);
+
+	nmSysFree(s->Parent);
 
 	nmFree(s,sizeof(HtSession));
 
