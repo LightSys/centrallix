@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.8 2003/04/24 19:28:12 gbeeley Exp $
+    $Id: obj_object.c,v 1.9 2003/04/25 02:43:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.9  2003/04/25 02:43:28  gbeeley
+    Fixed some object open nuances with node object caching where a cached
+    object might be open readonly but we would need read/write.  Added a
+    xhandle-based session identifier for future use by objdrivers.
+
     Revision 1.8  2003/04/24 19:28:12  gbeeley
     Moved the OSML open node object cache to the session level rather than
     global.  Otherwise, the open node objects could be accessed by the
@@ -519,6 +524,16 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		/** Lookup was successful - get the data for it **/
 		dc = (pDirectoryCache)xhqGetData(&(s->DirectoryCache), xe, 0);
 		this = dc->NodeObj;
+
+		/** Make sure the access mode is what we need **/
+		if (((this->Mode & O_ACCMODE) == O_RDONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY)) ||
+			((this->Mode & O_ACCMODE) == O_WRONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_RDONLY)))
+		    {
+		    /** Discard cached entry, in hopes of caching the one we have. **/
+		    this = NULL;
+		    xhqRemove(&(s->DirectoryCache), xe, 0);
+		    break;
+		    }
 
 		/** Link to the intermediate object to lock it open. **/
 		objLinkTo(this);

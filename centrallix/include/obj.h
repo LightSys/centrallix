@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.17 2003/04/24 19:28:10 gbeeley Exp $
+    $Id: obj.h,v 1.18 2003/04/25 02:43:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.18  2003/04/25 02:43:27  gbeeley
+    Fixed some object open nuances with node object caching where a cached
+    object might be open readonly but we would need read/write.  Added a
+    xhandle-based session identifier for future use by objdrivers.
+
     Revision 1.17  2003/04/24 19:28:10  gbeeley
     Moved the OSML open node object cache to the session level rather than
     global.  Otherwise, the open node objects could be accessed by the
@@ -179,6 +184,7 @@
 #include "newmalloc.h"
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "xhandle.h"
 
 #define OBJSYS_DEFAULT_ROOTNODE		"/usr/local/etc/rootnode"
 #define OBJSYS_DEFAULT_ROOTTYPE		"/usr/local/etc/rootnode.type"
@@ -344,6 +350,7 @@ typedef struct _OSS
     XArray		OpenQueries;
     pObjTrxTree		Trx;
     XHashQueue		DirectoryCache;		/* directory entry cache */
+    handle_t		Handle;
     }
     ObjSession, *pObjSession;
 
@@ -520,6 +527,7 @@ typedef struct
     pContentType RootType;		/* Type of root node */
     char	RootPath[OBJSYS_MAX_PATH]; /* Path to root node file */
     pObjDriver	RootDriver;
+    HandleContext SessionHandleCtx;	/* context for session handles */
     }
     OSYS_t;
 

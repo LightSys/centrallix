@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_session.c,v 1.4 2003/04/24 19:28:12 gbeeley Exp $
+    $Id: obj_session.c,v 1.5 2003/04/25 02:43:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_session.c,v $
 
     $Log: obj_session.c,v $
+    Revision 1.5  2003/04/25 02:43:28  gbeeley
+    Fixed some object open nuances with node object caching where a cached
+    object might be open readonly but we would need read/write.  Added a
+    xhandle-based session identifier for future use by objdrivers.
+
     Revision 1.4  2003/04/24 19:28:12  gbeeley
     Moved the OSML open node object cache to the session level rather than
     global.  Otherwise, the open node objects could be accessed by the
@@ -102,6 +107,7 @@ objOpenSession(char* current_dir)
 	this->Trx = NULL;
 	this->Magic = MGK_OBJSESSION;
 	xhqInit(&(this->DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);
+	this->Handle = xhnAllocHandle(&(OSYS.SessionHandleCtx), this);
 
 	/** Add to the sessions list **/
 	xaAddItem(&(OSYS.OpenSessions),(void*)this);
@@ -118,6 +124,8 @@ objCloseSession(pObjSession this)
     {
 
 	ASSERTMAGIC(this, MGK_OBJSESSION);
+
+	xhnFreeHandle(&(OSYS.SessionHandleCtx), this->Handle);
 
 	/** Uncache any cached node objects **/
 	xhqDeInit(&(this->DirectoryCache));

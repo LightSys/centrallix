@@ -8,6 +8,7 @@
 #include "mtsession.h"
 #include "obj.h"
 #include "expression.h"
+#include "xhandle.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.6 2003/04/24 19:28:11 gbeeley Exp $
+    $Id: obj_main.c,v 1.7 2003/04/25 02:43:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.7  2003/04/25 02:43:28  gbeeley
+    Fixed some object open nuances with node object caching where a cached
+    object might be open readonly but we would need read/write.  Added a
+    xhandle-based session identifier for future use by objdrivers.
+
     Revision 1.6  2003/04/24 19:28:11  gbeeley
     Moved the OSML open node object cache to the session level rather than
     global.  Otherwise, the open node objects could be accessed by the
@@ -232,6 +238,7 @@ objInitialize()
 	xaInit(&(OSYS.Drivers), 256);
 	xhInit(&(OSYS.Types), 257, 0);
 	xaInit(&(OSYS.TypeList), 256);
+	xhnInitContext(&(OSYS.SessionHandleCtx));
 
 	/** Setup the data type names list **/
 	for(i=0;i<OBJ_TYPE_NAMES_CNT;i++) obj_type_names[i] = "(unknown)";
