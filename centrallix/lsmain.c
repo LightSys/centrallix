@@ -2,6 +2,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "centrallix.h"
 #include "mtask.h"
 #include "obj.h"
@@ -10,6 +13,9 @@
 #include "xhash.h"
 #include "stparse.h"
 #include "mtlexer.h"
+#ifndef CENTRALLIX_CONFIG
+#define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.16 2002/05/02 01:14:56 gbeeley Exp $
+    $Id: lsmain.c,v 1.17 2002/06/13 15:21:04 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.17  2002/06/13 15:21:04  mattphillips
+    Adding autoconf support to centrallix
+
     Revision 1.16  2002/05/02 01:14:56  gbeeley
     Added dynamic module loading support in Centrallix, starting with the
     Sybase driver, using libdl.
@@ -155,7 +164,7 @@ main(int argc, char* argv[])
     int ch;
 
 	/** Default global values **/
-	strcpy(CxGlobals.ConfigFileName, "/usr/local/etc/centrallix.conf");
+	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;

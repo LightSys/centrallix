@@ -5,9 +5,23 @@
 #include "mtask.h"
 #include "mtlexer.h"
 #include "obj.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "centrallix.h"
+/* Some versions of readline get upset if HAVE_CONFIG_H is defined! */
+#ifdef HAVE_CONFIG_H
+#undef HAVE_CONFIG_H
 #include <readline/readline.h>
+#define HAVE_CONFIG_H
+#else
+#include <readline/readline.h>
+#endif
 #include <readline/history.h>
+#endif
+#ifndef CENTRALLIX_CONFIG
+#define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +57,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.1 2002/04/25 04:30:13 gbeeley Exp $
+    $Id: test_prt.c,v 1.2 2002/06/13 15:21:04 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.2  2002/06/13 15:21:04  mattphillips
+    Adding autoconf support to centrallix
+
     Revision 1.1  2002/04/25 04:30:13  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -61,19 +78,16 @@ void* my_ptr;
  ***/
 CxGlobals_t CxGlobals;
 
-
 void
 start(void* v)
     {
     pObjSession s;
-    char sbuf[1024];
     static char* inbuf = (char *)NULL;
     char prompt[1024];
     char* ptr;
     char cmdname[64];
-    int i;
     int is_where;
-    char user[32];
+    char* user;
     char* pwd;
     pFile StdOut;
     pLxSession ls = NULL;
@@ -140,11 +154,12 @@ start(void* v)
 	rl_bind_key ('\t', rl_insert);
 
 	/** Authenticate **/
-	printf("Username: "); gets(user);
+	user = readline("Username: ");
 	pwd = getpass("Password: ");
 	if (mssAuthenticate(user,pwd) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	StdOut = fdOpen("/dev/tty", O_RDWR, 0600);
+	free( user);
 
 	/** Open a session **/
 	s = objOpenSession("/");
@@ -202,7 +217,7 @@ main(int argc, char* argv[])
     int ch;
 
 	/** Default global values **/
-	strcpy(CxGlobals.ConfigFileName, "/usr/local/etc/centrallix.conf");
+	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
     

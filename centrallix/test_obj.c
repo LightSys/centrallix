@@ -5,9 +5,24 @@
 #include "mtask.h"
 #include "mtlexer.h"
 #include "obj.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "centrallix.h"
+#ifdef HAVE_READLINE
+/* Some versions of readline get upset if HAVE_CONFIG_H is defined! */
+#ifdef HAVE_CONFIG_H
+#undef HAVE_CONFIG_H
 #include <readline/readline.h>
+#define HAVE_CONFIG_H
+#else
+#include <readline/readline.h>
+#endif
 #include <readline/history.h>
+#endif
+#ifndef CENTRALLIX_CONFIG
+#define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -49,10 +64,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.9 2002/06/09 23:44:45 nehresma Exp $
+    $Id: test_obj.c,v 1.10 2002/06/13 15:21:04 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.10  2002/06/13 15:21:04  mattphillips
+    Adding autoconf support to centrallix
+
     Revision 1.9  2002/06/09 23:44:45  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -646,7 +664,7 @@ main(int argc, char* argv[])
     int ch;
 
 	/** Default global values **/
-	strcpy(CxGlobals.ConfigFileName, "/usr/local/etc/centrallix.conf");
+	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
