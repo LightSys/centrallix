@@ -1,6 +1,6 @@
 Centrallix Release Notes
 -------------------------------------------------------------------------------
-Version 0.7.4, 26-Feb-2005
+Version 0.7.4, 01-Mar-2005
 
 This is a major development release of Centrallix.  See the release notes for
 the previous versions for further details.
