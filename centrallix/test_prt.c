@@ -58,10 +58,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.13 2003/03/06 02:52:32 gbeeley Exp $
+    $Id: test_prt.c,v 1.14 2003/03/07 06:16:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.14  2003/03/07 06:16:12  gbeeley
+    Added border-drawing functionality, and converted the multi-column
+    layout manager to use that for column separators.  Added border
+    capability to textareas.  Reworked the deinit/init kludge in the
+    Reflow logic.
+
     Revision 1.13  2003/03/06 02:52:32  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -227,6 +233,7 @@ start(void* v)
     int is_balanced=0, is_unequal=0;
     double x,y,w,h;
     int color;
+    pPrtBorder bdr;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -476,7 +483,9 @@ start(void* v)
 		    }
 		else
 		    {
-		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 3.0, "balanced", is_balanced, "linewidth", 0.5, NULL);
+		    bdr = prtAllocBorder(2, 0.1, 0.1, 0x000000, 0.1, 0x000000);
+		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 3.0, "balanced", is_balanced, "separator", bdr, NULL);
+		    prtFreeBorder(bdr);
 		    }
 		printf("columns: prtAddObject(PRT_OBJ_T_SECTION) returned section handle %d\n", sectionhandle);
 		/*areahandle = prtAddObject(sectionhandle, PRT_OBJ_T_AREA, 0, 0, (80-2*(ncols-1))/ncols, 0, PRT_OBJ_U_ALLOWBREAK, NULL);*/
@@ -573,7 +582,7 @@ start(void* v)
 		{
 		if (mlxNextToken(ls) != MLX_TOK_STRING) 
 		    {
-		    printf("test_prt: usage: text <mime type> 'text'\n");
+		    printf("test_prt: usage: text <mime type> 'text' {border}\n");
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
@@ -589,10 +598,20 @@ start(void* v)
 		    prtCloseSession(prtsession);
 		    continue;
 		    }
-		ptr = mlxStringVal(ls,NULL);
+		ptr = nmSysStrdup(mlxStringVal(ls,NULL));
 		pagehandle = prtGetPageRef(prtsession);
 		printf("text: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, NULL);
+		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"border"))
+		    {
+		    bdr = prtAllocBorder(2,0.2,0.2,0x000000,0.05,0x000000);
+		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, "border", bdr, NULL);
+		    prtSetMargins(areahandle,1.0,1.0,1.0,1.0);
+		    prtFreeBorder(bdr);
+		    }
+		else
+		    {
+		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, NULL);
+		    }
 		printf("text: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		rval = prtWriteString(areahandle, ptr);

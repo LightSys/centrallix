@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.3 2003/03/06 02:52:35 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.4 2003/03/07 06:16:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.4  2003/03/07 06:16:12  gbeeley
+    Added border-drawing functionality, and converted the multi-column
+    layout manager to use that for column separators.  Added border
+    capability to textareas.  Reworked the deinit/init kludge in the
+    Reflow logic.
+
     Revision 1.3  2003/03/06 02:52:35  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -81,16 +87,10 @@
 
 #define PRT_TABLM_MAXCOLS		256	/* maximum columns in a table */
 
-#define PRT_TABLM_F_HEADER		1	/* table has a header that repeats */
-#define PRT_TABLM_F_FOOTER		2	/* table has a repeating footer */
+#define PRT_TABLM_F_ISHEADER		1	/* row is a header that repeats */
+#define PRT_TABLM_F_ISFOOTER		2	/* row is a repeating footer */
 
-#define PRT_TABLM_DEFAULT_FLAGS		(PRT_TABLM_F_HEADER)
-#define PRT_TABLM_DEFAULT_OUTER		0.1	/* width of outer border */
-#define PRT_TABLM_DEFAULT_OCOLOR	0x000000
-#define PRT_TABLM_DEFAULT_INNER		0.1	/* width of inner border */
-#define PRT_TABLM_DEFAULT_ICOLOR	0x000000
-#define PRT_TABLM_DEFAULT_SHADOW	1.0	/* width of table shadow */
-#define PRT_TABLM_DEFAULT_SCOLOR	0x808080
+#define PRT_TABLM_DEFAULT_FLAGS		(0)
 #define PRT_TABLM_DEFAULT_COLSEP	1.0	/* column separation */
 
 
@@ -105,12 +105,11 @@ typedef struct _PTB
     pPrtObjStream	HeaderRow;	/* row that is the table header */
     pPrtObjStream	FooterRow;	/* table footer row */
     int			Flags;
-    double		OuterBorderWidth; /* width of outer table border */
-    double		InnerBorderWidth; /* width of inner table border */
-    double		ShadowWidth;      /* width of inner table border */
-    int			OuterBorderColor; /* color of outer border */
-    int			InnerBorderColor; /* color of inner border */
-    int			ShadowColor;      /* color of table shadow */
+    PrtBorder		TopBorder;
+    PrtBorder		BottomBorder;
+    PrtBorder		LeftBorder;
+    PrtBorder		RightBorder;
+    PrtBorder		Shadow;		/* only valid on table as a whole */
     }
     PrtTabLMData, *pPrtTabLMData;
 
@@ -177,11 +176,11 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     }
 
 
-/*** prt_tablm_InitContainer() - initialize a newly created container that
- *** uses this layout manager.
+/*** prt_tablm_InitTable() - initializes a table container, which can contain
+ *** table row objects but nothing else.
  ***/
 int
-prt_tablm_InitContainer(pPrtObjStream this, va_list va)
+prt_tablm_InitTable(pPrtObjStream this, va_list va)
     {
     pPrtTabLMData lm_inf;
     int i;
@@ -192,6 +191,7 @@ prt_tablm_InitContainer(pPrtObjStream this, va_list va)
 	lm_inf = (pPrtTabLMData)nmMalloc(sizeof(PrtTabLMData));
 	if (!lm_inf) return -ENOMEM;
 	this->LMData = (void*)lm_inf;
+	memset(lm_inf, 0, sizeof(PrtTabLMData));
 
 	/** Set up the defaults **/
 	lm_inf->nColumns = 1;
@@ -199,17 +199,11 @@ prt_tablm_InitContainer(pPrtObjStream this, va_list va)
 	lm_inf->HeaderRow = NULL;
 	lm_inf->FooterRow = NULL;
 	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
-	lm_inf->OuterBorderWidth = PRT_TABLM_DEFAULT_OUTER;
-	lm_inf->InnerBorderWidth = PRT_TABLM_DEFAULT_INNER;
-	lm_inf->ShadowWidth = PRT_TABLM_DEFAULT_SHADOW;
-	lm_inf->OuterBorderColor = PRT_TABLM_DEFAULT_OCOLOR;
-	lm_inf->InnerBorderColor = PRT_TABLM_DEFAULT_ICOLOR;
-	lm_inf->ShadowColor = PRT_TABLM_DEFAULT_SCOLOR;
 	lm_inf->ColSep = PRT_TABLM_DEFAULT_COLSEP;
 	lm_inf->ColWidths[0] = -1.0;
 
 	/** Get params from the caller **/
-	while((attrname = va_arg(va, char*)) != NULL)
+	while(va && (attrname = va_arg(va, char*)) != NULL)
 	    {
 	    if (!strcmp(attrname, "numcols"))
 		{
@@ -286,6 +280,56 @@ prt_tablm_InitContainer(pPrtObjStream this, va_list va)
 	    lm_inf->ColX[i] = totalwidth;
 	    totalwidth += lm_inf->ColWidths[i];
 	    totalwidth += lm_inf->ColSep;
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_tablm_InitRow() - initialize a table row object, which can be contained
+ *** by a table, and can contain either cell objects or other types of objects
+ *** such as an area, or even another table.
+ ***/
+int
+prt_tablm_InitRow(pPrtObjStream row, va_list va)
+    {
+    return 0;
+    }
+
+
+/*** prt_tablm_InitCell() - initialize a table cell object, which can be contained
+ *** only by table row objects and which can contain most anything.
+ ***/
+int
+prt_tablm_InitCell(pPrtObjStream cell, va_list va)
+    {
+    return 0;
+    }
+
+
+/*** prt_tablm_InitContainer() - initialize a newly created container that
+ *** uses this layout manager.
+ ***/
+int
+prt_tablm_InitContainer(pPrtObjStream this, va_list va)
+    {
+
+	/** Init which kind of container? **/
+	switch (this->ObjType->TypeID)
+	    {
+	    case PRT_OBJ_T_TABLE:
+		return prt_tablm_InitTable(this, va);
+
+	    case PRT_OBJ_T_TABLEROW:
+		return prt_tablm_InitRow(this, va);
+
+	    case PRT_OBJ_T_TABLECELL:
+		return prt_tablm_InitCell(this, va);
+
+	    default:
+		mssError(1,"TABLM","Bark!  Object of type '%s' is not handled by this layout manager!", 
+			this->ObjType->TypeName);
+		return -EINVAL;
 	    }
 
     return 0;

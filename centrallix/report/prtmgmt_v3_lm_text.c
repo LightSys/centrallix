@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.16 2003/03/06 02:52:35 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.17 2003/03/07 06:16:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.17  2003/03/07 06:16:12  gbeeley
+    Added border-drawing functionality, and converted the multi-column
+    layout manager to use that for column separators.  Added border
+    capability to textareas.  Reworked the deinit/init kludge in the
+    Reflow logic.
+
     Revision 1.16  2003/03/06 02:52:35  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -170,6 +176,13 @@
 #define PRT_TEXTLM_F_RMSPACE	PRT_OBJ_F_LMFLAG1	/* space was removed at end */
 
 
+typedef struct _PTL
+    {
+    PrtBorder	AreaBorder;	/* optional border around the text area */
+    }
+    PrtTextLMData, *pPrtTextLMData;
+
+
 /*** prt_textlm_Break() - performs a break operation on this area, which 
  *** will pass the break operation on up to the parent container and so
  *** forth before creating an empty duplicate of this container in the new
@@ -206,6 +219,10 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    /** Update the handle so that later adds go to the correct place. **/
 	    prtUpdateHandleByPtr(this, new_object);
 
+	    /** Init the new object. **/
+	    new_object->LayoutMgr->InitContainer(new_object, NULL);
+	    memcpy(new_object->LMData, this->LMData, sizeof(pPrtTextLMData));
+
 	    /** Request break from parent, which may eject the page...
 	     ** (which is why we copied our data from 'this' ahead of time) 
 	     **/
@@ -213,13 +230,11 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 		{
 		/** Oops - put the handle back and get rid of new_object **/
 		prtUpdateHandleByPtr(new_object, this);
+		new_object->LayoutMgr->DeinitContainer(new_object);
 		prt_internal_FreeObj(new_object);
 
 		return -1;
 		}
-
-	    /** Init the new object. **/
-	    new_object->LayoutMgr->InitContainer(new_object);
 
 	    /** Add the new object to the new parent container, and set the linkages **/
 	    new_container->LayoutMgr->AddObject(new_container, new_object);
@@ -810,6 +825,33 @@ prt_textlm_GetSplitObj(pPrtObjStream* split_obj_list)
     return tmpobj;
     }
 
+/*** prt_textlm_Setup() - adds an empty object to a freshly created area
+ *** container to be the 'start' of the content.
+ ***/
+int
+prt_textlm_Setup(pPrtObjStream this)
+    {
+    pPrtObjStream first_obj;
+
+	/** Allocate the initial object **/
+	first_obj = prt_internal_AllocObj("string");
+	prt_internal_CopyAttrs(this, first_obj);
+	first_obj->Content = nmSysMalloc(2);
+	first_obj->Content[0] = '\0';
+	first_obj->X = 0.0;
+	first_obj->Y = 0.0;
+	first_obj->Width = 0.0;
+	first_obj->Session = this->Session;
+	first_obj->Height = this->LineHeight;
+	first_obj->YBase = prt_internal_GetFontBaseline(first_obj);
+	first_obj->Flags |= PRT_OBJ_F_PERMANENT;
+
+	/** Add the initial object **/
+	prt_internal_Add(this, first_obj);
+
+    return 0;
+    }
+
 
 /*** prt_textlm_AddObject() - used to add a new object to this one, using
  *** textflow layout semantics.  This can, in some cases, result in a
@@ -854,19 +896,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	objptr = new_child_obj;
 	while(objptr)
 	    {
-	    /** Ignore empty objects **/
-	    if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && !*(objptr->Content) &&
-		    !(objptr->Flags) && !memcmp(&(objptr->TextStyle), &(this->ContentTail->TextStyle), sizeof(PrtTextStyle)) &&
-		    objptr->LineHeight == this->ContentTail->LineHeight &&
-		    objptr->FGColor == this->ContentTail->FGColor &&
-		    objptr->BGColor == this->ContentTail->BGColor &&
-		    objptr->Justification == this->ContentTail->Justification)
-		{
-		prt_internal_FreeObj(objptr);
-		objptr = prt_textlm_GetSplitObj(&split_obj_list);
-		continue;
-		}
-
 	    /** Run any pending events.  We need to save the handle, because the
 	     ** actual object being written into may change as a result of
 	     ** a reflow occurring, and so 'this' might be different :)
@@ -1020,22 +1049,27 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 int
 prt_textlm_InitContainer(pPrtObjStream this, va_list va)
     {
-    pPrtObjStream first_obj;
+    pPrtTextLMData lm_inf;
+    char* attrname;
+    pPrtBorder b;
 
-	/** Allocate the initial object **/
-	first_obj = prt_internal_AllocObj("string");
-	prt_internal_CopyAttrs(this, first_obj);
-	first_obj->Content = nmSysMalloc(2);
-	first_obj->Content[0] = '\0';
-	first_obj->X = 0.0;
-	first_obj->Y = 0.0;
-	first_obj->Width = 0.0;
-	first_obj->Session = this->Session;
-	first_obj->Height = this->LineHeight;
-	first_obj->YBase = prt_internal_GetFontBaseline(first_obj);
+	/** Add our private data structure **/
+	lm_inf = (pPrtTextLMData)nmMalloc(sizeof(PrtTextLMData));
+	if (!lm_inf) return -1;
+	this->LMData = lm_inf;
+	memset(lm_inf, 0, sizeof(PrtTextLMData));
 
-	/** Add the initial object **/
-	prt_internal_Add(this, first_obj);
+	/** Params from the user? **/
+	while(va && (attrname = va_arg(va, char*)) != NULL)
+	    {
+	    if (!strcmp(attrname,"border"))
+		{
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->AreaBorder), b, sizeof(PrtBorder));
+		}
+	    }
+
+	prt_textlm_Setup(this);
 
     return 0;
     }
@@ -1047,6 +1081,41 @@ prt_textlm_InitContainer(pPrtObjStream this, va_list va)
 int
 prt_textlm_DeinitContainer(pPrtObjStream this)
     {
+    pPrtTextLMData lm_inf = (pPrtTextLMData)(this->LMData);
+
+	if (lm_inf)
+	    {
+	    nmFree(lm_inf, sizeof(PrtTextLMData));
+	    lm_inf = NULL;
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_textlm_Finalize() - this routine is run once the page is ready
+ *** to be generated and gives us a chance to make any final modifications
+ *** to the appearance of the container, but not its overall geometry.  If
+ *** the caller asked for a border, we do that here.
+ ***/
+int
+prt_textlm_Finalize(pPrtObjStream this)
+    {
+    pPrtTextLMData lm_inf = (pPrtTextLMData)(this->LMData);
+
+	/** Border? **/
+	if (lm_inf->AreaBorder.nLines > 0)
+	    {
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Width, PRT_MKBDR_F_TOP | PRT_MKBDR_F_MARGINRELEASE, 
+		    &(lm_inf->AreaBorder), &(lm_inf->AreaBorder), &(lm_inf->AreaBorder));
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Height, PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE, 
+		    &(lm_inf->AreaBorder), &(lm_inf->AreaBorder), &(lm_inf->AreaBorder));
+	    prt_internal_MakeBorder(this, 0.0, this->Height, this->Width, PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE, 
+		    &(lm_inf->AreaBorder), &(lm_inf->AreaBorder), &(lm_inf->AreaBorder));
+	    prt_internal_MakeBorder(this, this->Width, 0.0, this->Height, PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE, 
+		    &(lm_inf->AreaBorder), &(lm_inf->AreaBorder), &(lm_inf->AreaBorder));
+	    }
+
     return 0;
     }
 
@@ -1074,7 +1143,7 @@ prt_textlm_Initialize()
 	lm->Resize = prt_textlm_Resize;
 	lm->SetValue = NULL;
 	lm->Reflow = NULL;
-	lm->Finalize = NULL;
+	lm->Finalize = prt_textlm_Finalize;
 	strcpy(lm->Name, "textflow");
 
 	/** Register the layout manager **/

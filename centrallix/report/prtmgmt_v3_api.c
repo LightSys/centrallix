@@ -50,10 +50,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.11 2003/03/01 07:24:01 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.12 2003/03/07 06:16:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.12  2003/03/07 06:16:12  gbeeley
+    Added border-drawing functionality, and converted the multi-column
+    layout manager to use that for column separators.  Added border
+    capability to textareas.  Reworked the deinit/init kludge in the
+    Reflow logic.
+
     Revision 1.11  2003/03/01 07:24:01  gbeeley
     Ok.  Balanced columns now working pretty well.  Algorithm is currently
     somewhat O(N^2) however, and is thus a bit expensive, but still not
@@ -662,7 +668,7 @@ prtWriteString(int handle_id, char* str)
 	    strncpy(string_obj->Content, str, len);
 	    string_obj->Content[len] = 0;
 	    prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,string_obj);
-	    string_obj->Width = prt_internal_GetStringWidth(obj->ContentTail, string_obj->Content, -1);
+	    string_obj->Width = prt_internal_GetStringWidth((obj->ContentTail)?(obj->ContentTail):obj, string_obj->Content, -1);
 	    string_obj->ConfigWidth = string_obj->Width;
 	    string_obj->Height = prt_internal_GetFontHeight(string_obj);
 	    string_obj->ConfigHeight = string_obj->Height;
@@ -685,7 +691,10 @@ prtWriteString(int handle_id, char* str)
 		    }
 		else if (*special_char_ptr == '\t')
 		    {
-		    x = floor(floor((obj->ContentTail->X + obj->ContentTail->Width)/8.0 + 0.00000001)*8.0 + 8.00000001);
+		    if (obj->ContentTail)
+			x = floor(floor((obj->ContentTail->X + obj->ContentTail->Width)/8.0 + 0.00000001)*8.0 + 8.00000001);
+		    else
+			x = 8.0;
 		    rval = prtSetHPos(handle_id, x);
 		    if (rval < 0) rval = prtWriteNL(handle_id);
 		    if (rval < 0) break;
@@ -886,5 +895,73 @@ prtSetValue(int handle_id, char* attrname, ...)
 	va_end(va);
 
     return -1;
+    }
+
+
+/*** prtSetMargins - set the top/bottom/left/right margins for a container.
+ *** values may be negative to indicate that they should not be set.
+ ***/
+int
+prtSetMargins(int handle_id, double t, double b, double l, double r)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+
+	if (!obj) return -1;
+	ASSERTMAGIC(obj,MGK_PRTOBJSTRM);
+
+	/** Set the appropriate values. **/
+	if (t >= 0.0) obj->MarginTop = t;
+	if (b >= 0.0) obj->MarginBottom = b;
+	if (l >= 0.0) obj->MarginLeft = l;
+	if (r >= 0.0) obj->MarginRight = r;
+
+    return 0;
+    }
+
+
+/*** prtAllocBorder - this is a convenience function to allocate a new
+ *** border descriptor.
+ ***/
+pPrtBorder
+prtAllocBorder(int n_lines, double sep, ...)
+    {
+    va_list va;
+    pPrtBorder b;
+    int i;
+
+	/** Make sure caller didn't ask for too many border lines **/
+	if (n_lines > PRT_MAXBDR)
+	    {
+	    mssError(1,"PRT","Too many lines (%d) requested in border.  Max is %d.",
+		    n_lines, PRT_MAXBDR);
+	    return NULL;
+	    }
+
+	/** Allocate the thing **/
+	b = (pPrtBorder)nmMalloc(sizeof(PrtBorder));
+	if (!b) return NULL;
+	b->nLines = n_lines;
+	b->Sep = sep;
+
+	/** Get the params for each line **/
+	va_start(va, sep);
+	for(i=0; i<n_lines; i++)
+	    {
+	    b->Width[i] = va_arg(va, double);
+	    b->Color[i] = va_arg(va, int);
+	    }
+	va_end(va);
+
+    return b;
+    }
+
+
+/*** prtFreeBorder() - reverse of the above.
+ ***/
+int
+prtFreeBorder(pPrtBorder b)
+    {
+    nmFree(b, sizeof(PrtBorder));
+    return 0;
     }
 

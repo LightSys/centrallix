@@ -52,10 +52,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.7 2003/03/06 02:52:34 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.8 2003/03/07 06:16:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.8  2003/03/07 06:16:12  gbeeley
+    Added border-drawing functionality, and converted the multi-column
+    layout manager to use that for column separators.  Added border
+    capability to textareas.  Reworked the deinit/init kludge in the
+    Reflow logic.
+
     Revision 1.7  2003/03/06 02:52:34  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -107,9 +113,6 @@
 #define PRT_COLLM_DEFAULT_COLS	1	/* default is 1 column */
 #define PRT_COLLM_DEFAULT_SEP	1.0	/* default column separation = 1.0 unit or 0.1 inch */
 
-#define PRT_COLLM_DEFAULT_LINE	0.0	/* line sep. 0.1 unit = 0.01 inch = 0.72 point */
-#define PRT_COLLM_DEFAULT_LCOLOR 0x000000 /* default line color = black */
-
 #define PRT_COLLM_F_BALANCED	1	/* content balances between cols */
 #define PRT_COLLM_F_SOFTFLOW	2	/* content can flow from one col to next */
 
@@ -123,8 +126,7 @@ typedef struct _PMC
     int		nColumns;
     double	ColSep;
     double	ColWidths[PRT_COLLM_MAXCOLS];
-    double	LineWidth;
-    int		LineColor;
+    PrtBorder	Separator;		/* line separator between columns */
     pPrtObjStream CurrentCol;
     }
     PrtColLMData, *pPrtColLMData;
@@ -418,36 +420,6 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
     }
 
 
-/*** prt_collm_AddObject() - used to add a new object to the mcol section.  If the
- *** object is too big, it will end up being clipped by the formatting stage
- *** later on.  The hard work for the mcol module is mostly done in the ChildBreakReq
- *** and ChildResizeReq methods.
- ***/
-int
-prt_collm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
-    {
-    pPrtColLMData lm_inf = (pPrtColLMData)(this->LMData);
-
-	/** Called on child object? **/
-	if (this->ObjType->TypeID == PRT_OBJ_T_SECTCOL)
-	    lm_inf = this->Parent->LMData;
-
-	/** Just makin' sure... **/
-	if (!lm_inf) return -1;
-
-	/** Need to adjust the height/width if unspecified? **/
-	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = lm_inf->CurrentCol->Width - lm_inf->CurrentCol->MarginLeft - lm_inf->CurrentCol->MarginRight;
-	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = lm_inf->CurrentCol->Height - lm_inf->CurrentCol->MarginTop - lm_inf->CurrentCol->MarginBottom;
-
-	/** Just add it to the currently active column object **/
-	prt_internal_Add(lm_inf->CurrentCol, new_child_obj);
-
-    return 0;
-    }
-
-
 /*** prt_collm_CreateCols() - create the column objects within the section
  *** object, based on the LMData set up.
  ***/
@@ -472,6 +444,7 @@ prt_collm_CreateCols(pPrtObjStream this)
 	    col_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
 	    col_obj->LMData = NULL;
 	    col_obj->ObjID = i;
+	    col_obj->Flags |= PRT_OBJ_F_PERMANENT;
 	    totalwidth += (lm_inf->ColSep + lm_inf->ColWidths[i]);
 	    prt_internal_Add(this, col_obj);
 	    if (i > 0)
@@ -482,6 +455,40 @@ prt_collm_CreateCols(pPrtObjStream this)
 		}
 	    }
 	lm_inf->CurrentCol = this->ContentHead;
+
+    return 0;
+    }
+
+
+/*** prt_collm_AddObject() - used to add a new object to the mcol section.  If the
+ *** object is too big, it will end up being clipped by the formatting stage
+ *** later on.  The hard work for the mcol module is mostly done in the ChildBreakReq
+ *** and ChildResizeReq methods.
+ ***/
+int
+prt_collm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
+    {
+    pPrtColLMData lm_inf = (pPrtColLMData)(this->LMData);
+
+	/** Section not initialized? **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_SECTION && !this->ContentHead)
+	    prt_collm_CreateCols(this);
+
+	/** Called on child object? **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_SECTCOL)
+	    lm_inf = this->Parent->LMData;
+
+	/** Just makin' sure... **/
+	if (!lm_inf) return -1;
+
+	/** Need to adjust the height/width if unspecified? **/
+	if (new_child_obj->Width < 0)
+	    new_child_obj->Width = lm_inf->CurrentCol->Width - lm_inf->CurrentCol->MarginLeft - lm_inf->CurrentCol->MarginRight;
+	if (new_child_obj->Height < 0)
+	    new_child_obj->Height = lm_inf->CurrentCol->Height - lm_inf->CurrentCol->MarginTop - lm_inf->CurrentCol->MarginBottom;
+
+	/** Just add it to the currently active column object **/
+	prt_internal_Add(lm_inf->CurrentCol, new_child_obj);
 
     return 0;
     }
@@ -498,6 +505,7 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
     char* attrname;
     int i;
     double totalwidth;
+    pPrtBorder b;
 
 	/** section objects have a minimum height of one LineHeight. **/
 	if (this->Height < this->LineHeight + this->MarginTop + this->MarginBottom) 
@@ -515,11 +523,9 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 	lm_inf->ColWidths[0] = -1.0;
 	lm_inf->ColSep = PRT_COLLM_DEFAULT_SEP;
 	lm_inf->Flags = PRT_COLLM_DEFAULT_FLAGS;
-	lm_inf->LineWidth = PRT_COLLM_DEFAULT_LINE;
-	lm_inf->LineColor = PRT_COLLM_DEFAULT_LCOLOR;
 	
 	/** Look for layoutmanager-specific settings passed in. **/
-	while((attrname = va_arg(va, char*)) != NULL)
+	while(va && (attrname = va_arg(va, char*)) != NULL)
 	    {
 	    if (!strcmp(attrname, "numcols"))
 		{
@@ -576,15 +582,11 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 		else
 		    lm_inf->Flags &= ~PRT_COLLM_F_SOFTFLOW;
 		}
-	    else if (!strcmp(attrname, "linewidth"))
+	    else if (!strcmp(attrname, "separator"))
 		{
 		/** Width of separation line - 0.0 to turn it off **/
-		lm_inf->LineWidth = va_arg(va, double);
-		}
-	    else if (!strcmp(attrname, "linecolor"))
-		{
-		/** Color of separation line **/
-		lm_inf->LineColor = va_arg(va, int);
+		b = va_arg(va, pPrtBorder);
+		if (b) memcpy(&(lm_inf->Separator), b, sizeof(PrtBorder));
 		}
 	    }
 
@@ -626,9 +628,6 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 	    this->LMData = NULL;
 	    return -EINVAL;
 	    }
-
-	/** Create the column objects. **/
-	prt_collm_CreateCols(this);
 
     return 0;
     }
@@ -672,7 +671,6 @@ int
 prt_collm_Finalize(pPrtObjStream this)
     {
     pPrtColLMData lm_inf = (pPrtColLMData)(this->LMData);
-    pPrtObjStream rect_obj;
     pPrtObjStream col_obj;
     int i;
 
@@ -682,20 +680,15 @@ prt_collm_Finalize(pPrtObjStream this)
 	if (!lm_inf) return 0;
 
 	/** Do we need the separator? **/
-	if (lm_inf->LineWidth > 0.0)
+	if (lm_inf->Separator.nLines > 0)
 	    {
 	    col_obj = this->ContentHead;
 	    for(i=0;i<lm_inf->nColumns-1 && col_obj && col_obj->ObjType->TypeID == PRT_OBJ_T_SECTCOL;i++)
 		{
 		/** Allocate the rectangle and set it up **/
-		rect_obj = prt_internal_AllocObjByID(PRT_OBJ_T_RECT);
-		if (!rect_obj) return -1;
-		rect_obj->FGColor = lm_inf->LineColor;
-		rect_obj->Width = lm_inf->LineWidth;
-		rect_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
-		rect_obj->Y = 0.0;
-		rect_obj->X = col_obj->X + col_obj->Width + (lm_inf->ColSep*0.5) - (lm_inf->LineWidth*0.5);
-		prt_internal_Add(this, rect_obj);
+		prt_internal_MakeBorder(this, col_obj->X + col_obj->Width + lm_inf->ColSep*0.5, 0.0,
+			this->Height - this->MarginTop - this->MarginBottom, PRT_MKBDR_F_LEFT | PRT_MKBDR_F_RIGHT,
+			&(lm_inf->Separator), NULL, NULL);
 		col_obj = col_obj->Next;
 		}
 	    }

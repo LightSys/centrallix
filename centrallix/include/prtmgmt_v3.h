@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.11 2003/03/06 02:52:30 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.12 2003/03/07 06:16:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.12  2003/03/07 06:16:11  gbeeley
+    Added border-drawing functionality, and converted the multi-column
+    layout manager to use that for column separators.  Added border
+    capability to textareas.  Reworked the deinit/init kludge in the
+    Reflow logic.
+
     Revision 1.11  2003/03/06 02:52:30  gbeeley
     Added basic rectangular-area support (example - border lines for tables
     and separator lines for multicolumn areas).  Works on both PCL and
@@ -117,6 +123,9 @@
 
 #include "xarray.h"
 #include "xhash.h"
+
+
+#define PRT_XY_CORRECTION_FACTOR	(72.0/120.0)
 
 
 /*** Layout Manager Structure ***/
@@ -327,6 +336,19 @@ typedef struct _PHD
     PrtHandle, *pPrtHandle;
 
 
+#define PRT_MAXBDR	2
+
+/*** border line data, such as for tables, etc. ***/
+typedef struct _PBD
+    {
+    double		Width[PRT_MAXBDR]; /* width/thickness of border lines in X units (0.1in / 7.2pt) */
+    double		Sep;		   /* separation between border lines, if two */
+    int			nLines;		   /* number of border lines */
+    int			Color[PRT_MAXBDR]; /* color of border lines */
+    }
+    PrtBorder, *pPrtBorder;
+
+
 /*** Print management global structure ***/
 typedef struct _PG
     {
@@ -363,6 +385,8 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_F_LMFLAG1	    16384	/* layout-manager specific flag */
 #define PRT_OBJ_F_LMFLAG2	    32768	/* layout-manager specific flag */
 #define PRT_OBJ_F_LMFLAG3	    65536	/* layout-manager specific flag */
+#define PRT_OBJ_F_PERMANENT	    131072	/* object is permanent - don't remove it to reflow */
+#define PRT_OBJ_F_MARGINRELEASE	    262144	/* object is not subject to container's margins */
 
 /** these flags can be used by the api caller **/
 #define PRT_OBJ_U_FLOWAROUND	    PRT_OBJ_F_FLOWAROUND
@@ -410,6 +434,15 @@ extern PrtGlobals PRTMGMT;
 #define PRT_JUST_T_FULL		    3
 
 #define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */
+
+
+/*** MakeBorder flags ***/
+#define PRT_MKBDR_F_TOP		    1		/* border is 'top' */
+#define PRT_MKBDR_F_BOTTOM	    2
+#define PRT_MKBDR_F_LEFT	    4
+#define PRT_MKBDR_F_RIGHT	    8
+#define PRT_MKBDR_DIRFLAGS	    (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_RIGHT)
+#define PRT_MKBDR_F_MARGINRELEASE   16
 
 
 /*** System functions ***/
@@ -465,6 +498,7 @@ int prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment);
 int prt_internal_Reflow(pPrtObjStream obj);
 int prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, void* param);
 int prt_internal_DispatchEvents(pPrtSession s);
+int prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, int flags, pPrtBorder b, pPrtBorder sb, pPrtBorder eb);
 
 /** Strict-formatter to output-driver interfacing **/
 pPrtOutputDriver prt_strictfm_AllocDriver();
@@ -500,6 +534,9 @@ int prtGetColor(int handle_id);
 int prtSetHPos(int handle_id, double x);
 int prtSetVPos(int handle_id, double y);
 int prtSetValue(int handle_id, char* attrname, ...);
+int prtSetMargins(int handle_id, double t, double b, double l, double r);
+pPrtBorder prtAllocBorder(int n_lines, double sep, ...);
+int prtFreeBorder(pPrtBorder b);
 
 /*** Printing content functions ***/
 int prtWriteString(int handle_id, char* str);
