@@ -58,10 +58,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.6 2002/10/21 22:55:11 gbeeley Exp $
+    $Id: test_prt.c,v 1.7 2002/10/22 04:12:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.7  2002/10/22 04:12:55  gbeeley
+    Added justification (left/center/right) support.  Full justification
+    does not yet work.  Also, attempted a screen-based color text output
+    mechanism which needs to be refined but unfortunately will not work
+    on some/most/any pcl inkjets (tested: 870C) but may eventually work
+    on lasers (tested: hp4550).  I will probably force the use of a
+    postscript output driver if the user wants better color support; no
+    real need to spend more time on it in the pcl output driver.  Reverted
+    to palette-based color text support.
+
     Revision 1.6  2002/10/21 22:55:11  gbeeley
     Added font/size test in test_prt to test the alignment of different fonts
     and sizes on one line or on separate lines.  Fixed lots of bugs in the
@@ -490,6 +500,46 @@ start(void* v)
 		printf("fonts: prtEndObject(area) returned %d\n", rval);
 		rval = prtCloseSession(prtsession);
 		printf("fonts: prtCloseSession returned %d\n", rval);
+		}
+	    else if (!strcmp(cmdname,"justify"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: justify <mime type> 'text'\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		printf("justify: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (!prtsession)
+		    {
+		    continue;
+		    }
+		pagehandle = prtGetPageRef(prtsession);
+		printf("justify: prtGetPageRef returned page handle %d\n", pagehandle);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		printf("justify: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+		
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: justify <mime type> 'text'\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+
+		for(i=0;i<=3;i++)
+		    {
+		    rval = prtSetJustification(areahandle, i);
+		    printf("justify: prtSetJustification returned %d\n", rval);
+		    rval = prtWriteString(areahandle, ptr);
+		    printf("justify: prtWriteString returned %d\n", rval);
+		    }
+		rval = prtEndObject(areahandle);
+		printf("justify: prtEndObject(area) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("justify: prtCloseSession returned %d\n", rval);
 		}
 	    else
 		{

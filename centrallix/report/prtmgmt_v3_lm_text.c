@@ -52,10 +52,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.5 2002/10/21 22:55:11 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.6 2002/10/22 04:12:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.6  2002/10/22 04:12:56  gbeeley
+    Added justification (left/center/right) support.  Full justification
+    does not yet work.  Also, attempted a screen-based color text output
+    mechanism which needs to be refined but unfortunately will not work
+    on some/most/any pcl inkjets (tested: 870C) but may eventually work
+    on lasers (tested: hp4550).  I will probably force the use of a
+    postscript output driver if the user wants better color support; no
+    real need to spend more time on it in the pcl output driver.  Reverted
+    to palette-based color text support.
+
     Revision 1.5  2002/10/21 22:55:11  gbeeley
     Added font/size test in test_prt to test the alignment of different fonts
     and sizes on one line or on separate lines.  Fixed lots of bugs in the
@@ -268,6 +278,86 @@ prt_textlm_UpdateLineY(pPrtObjStream starting_point, double y_offset)
     }
 
 
+/*** prt_textlm_JustifyLine() - applies justification to a given line,
+ *** keeping anything pre-positioned with xset, but changing
+ *** the positioning of just about everything else.
+ ***/
+int
+prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
+    {
+    pPrtObjStream scan, start, end;
+    double slack_space, total_width, width_so_far;
+    int n_items;
+
+	/** Locate the beginning and end of the line **/
+	for(scan=starting_point; scan; scan=scan->Prev)
+	    {
+	    start = scan;
+	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_XSET)) break;
+	    }
+	end = scan;
+	for(scan=starting_point; scan; scan=scan->Next)
+	    {
+	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_XSET)) break;
+	    end = scan;
+	    }
+
+	/** Compute the amount of "slack space" in the region.  We need to count
+	 ** everything because we may be re-justifying the line or whatever...
+	 **/
+	slack_space=0.0;
+	n_items=0;
+	total_width = end->Parent->Width - end->Parent->MarginLeft - end->Parent->MarginRight;
+	for(scan=start; scan && scan->Next && scan != end; scan=scan->Next)
+	    {
+	    slack_space += (scan->Next->X - (scan->X + scan->Width));
+	    n_items++;
+	    }
+
+	/** add in the space in the margins? **/
+	if (!(start->Flags & PRT_OBJ_F_XSET))
+	    slack_space += (start->X);
+	if (!(end->Flags & PRT_OBJ_F_XSET))
+	    slack_space += (total_width - (end->X + end->Width));
+
+	/** Ok, apply the justification. **/
+	width_so_far = 0.0;
+	for(scan=start; scan; scan=scan->Next)
+	    {
+	    if (!(scan->Flags & PRT_OBJ_F_XSET)) 
+		{
+		switch(jtype)
+		    {
+		    case PRT_JUST_T_LEFT:
+			scan->X = width_so_far;
+			break;
+		    case PRT_JUST_T_RIGHT:
+			scan->X = slack_space + width_so_far;
+			break;
+		    case PRT_JUST_T_CENTER:
+			scan->X = (slack_space/2.0) + width_so_far;
+			break;
+		    case PRT_JUST_T_FULL:
+			/** not yet implemented; we need to chop the 
+			 ** pieces into components and get rid of the
+			 ** spaces (sort of).  yuck. 
+			 **/
+			scan->X = width_so_far;
+			break;
+		    }
+		width_so_far += scan->Width;
+		}
+	    else
+		{
+		width_so_far = scan->Width + scan->X;
+		}
+	    if (scan == end) break;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_textlm_ChildResizeReq() - this is called when a child object
  *** within this one is about to be resized.  This method gives this
  *** layout manager a chance to prevent the resize operation (return -1).  
@@ -335,6 +425,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** Determine X and Y for the new object. **/
 	    if (objptr->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE))
 		{
+		/** Justify previous line? **/
+		if (this->ContentTail)
+		    {
+		    prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
+		    }
 		objptr->X = 0.0;
 		objptr->Y = bottom;
 		}
@@ -405,7 +500,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 				else
 				    split_obj->Content = nmSysStrdup(objptr->Content+last_sep);
 				objptr->Content[last_sep] = '\0';
-				objptr->Width = ckw;
+				objptr->Width = lastw;
 				split_obj->Height = objptr->Height;
 				split_obj->YBase = objptr->YBase;
 				split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);
@@ -433,7 +528,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 				    prt_internal_CopyAttrs(objptr, split_obj);
 				    split_obj->Content = nmSysStrdup(objptr->Content+n);
 				    objptr->Content[n] = '\0';
-				    objptr->Width = ckw;
+				    objptr->Width = w;
 				    split_obj->Height = objptr->Height;
 				    split_obj->YBase = objptr->YBase;
 				    split_obj->Width = prt_internal_GetStringWidth(split_obj, split_obj->Content, -1);

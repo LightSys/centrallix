@@ -50,10 +50,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.6 2002/10/21 22:55:11 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.7 2002/10/22 04:12:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.7  2002/10/22 04:12:56  gbeeley
+    Added justification (left/center/right) support.  Full justification
+    does not yet work.  Also, attempted a screen-based color text output
+    mechanism which needs to be refined but unfortunately will not work
+    on some/most/any pcl inkjets (tested: 870C) but may eventually work
+    on lasers (tested: hp4550).  I will probably force the use of a
+    postscript output driver if the user wants better color support; no
+    real need to spend more time on it in the pcl output driver.  Reverted
+    to palette-based color text support.
+
     Revision 1.6  2002/10/21 22:55:11  gbeeley
     Added font/size test in test_prt to test the alignment of different fonts
     and sizes on one line or on separate lines.  Fixed lots of bugs in the
@@ -96,6 +106,12 @@
 
  **END-CVSDATA***********************************************************/
 
+
+/*** turn this on to use the simple color output (8-color) and off
+ *** to use the screened output.  Screened output doesn't work right
+ *** yet, and is nonfunctional on the 870C printer as well.
+ ***/
+#define PRT_PCLOD_STATICCOLOR
 
 /*** our list of resolutions ***/
 PrtResolution prt_pcl_resolutions[] =
@@ -393,6 +409,7 @@ prt_pclod_SetTextStyle(void* context_v, pPrtTextStyle style)
 	    prt_pclod_Output(context, pclbuf, -1);
 	    }
 
+#ifdef PRT_PCLOD_STATICCOLOR
 	/** Color change? **/
 	if (style->Color != context->SelectedStyle.Color)
 	    {
@@ -404,6 +421,7 @@ prt_pclod_SetTextStyle(void* context_v, pPrtTextStyle style)
 	    snprintf(pclbuf, 64, "\33*v%dS", 7-color);
 	    prt_pclod_Output(context, pclbuf, -1);
 	    }
+#endif
 
 	/** Record the newly selected style **/
 	memcpy(&(context->SelectedStyle), style, sizeof(PrtTextStyle));
@@ -445,6 +463,23 @@ prt_pclod_SetVPos(void* context_v, double y)
     }
 
 
+/*** prt_pclod_WriteScreen() - writes on screen (color plane) of text.
+ ***/
+int
+prt_pclod_WriteScreen(pPrtPclodInf context, int color_id, int intensity, char* text)
+    {
+    char pclbuf[64];
+
+	if (intensity == 0) return 0;
+	if (text[0] == '\0') return 0;
+	snprintf(pclbuf, 64, "\33&f0S\33*v%dS\33*c%dG\33*v2T", color_id, (int)(intensity/2.55));
+	prt_pclod_Output(context, pclbuf, -1);
+	prt_pclod_Output(context, text, -1);
+	prt_pclod_Output(context, "\33&f1S", -1);
+
+    return 0;
+    }
+
 /*** prt_pclod_WriteText() - sends a string of text to the printer.
  ***/
 int
@@ -453,14 +488,32 @@ prt_pclod_WriteText(void* context_v, char* str)
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[64];
     double bl;
+    unsigned long cmyk_color;
 
 	/** Temporarily move the cursor position to adjust for the baseline. **/
 	bl = prt_pclod_GetCharacterBaseline(context_v, NULL);
 	snprintf(pclbuf, 64, "\33&a+%.1fV", (bl)*120 + 0.000001);
 	prt_pclod_Output(context, pclbuf, -1);
 
+#ifndef PRT_PCLOD_STATICCOLOR
+	/** output each of the four color screens... **/
+	if (context->SelectedStyle.Color == 0x00000000)
+	    {
+	    prt_pclod_Output(context, str, -1);
+	    }
+	else
+	    {
+	    cmyk_color = prt_pclod_RGBtoCMYK(context->SelectedStyle.Color);
+	    prt_pclod_WriteScreen(context, 7, cmyk_color&0xFF, str);
+	    prt_pclod_WriteScreen(context, 4, (cmyk_color>>8)&0xFF, str);
+	    prt_pclod_WriteScreen(context, 2, (cmyk_color>>16)&0xFF, str);
+	    prt_pclod_WriteScreen(context, 1, (cmyk_color>>24)&0xFF, str);
+	    prt_pclod_Output(context, "\33*v7S\33*c100G", -1);
+	    }
+#else
 	/** output it. **/
 	prt_pclod_Output(context, str, -1);
+#endif
 
 	/** Put the cursor back **/
 	snprintf(pclbuf, 64, "\33&a-%.1fV", (bl)*120 + 0.000001);

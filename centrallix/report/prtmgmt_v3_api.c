@@ -49,10 +49,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.4 2002/10/21 22:55:11 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.5 2002/10/22 04:12:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.5  2002/10/22 04:12:56  gbeeley
+    Added justification (left/center/right) support.  Full justification
+    does not yet work.  Also, attempted a screen-based color text output
+    mechanism which needs to be refined but unfortunately will not work
+    on some/most/any pcl inkjets (tested: 870C) but may eventually work
+    on lasers (tested: hp4550).  I will probably force the use of a
+    postscript output driver if the user wants better color support; no
+    real need to spend more time on it in the pcl output driver.  Reverted
+    to palette-based color text support.
+
     Revision 1.4  2002/10/21 22:55:11  gbeeley
     Added font/size test in test_prt to test the alignment of different fonts
     and sizes on one line or on separate lines.  Fixed lots of bugs in the
@@ -503,6 +513,7 @@ prtSetHPos(int handle_id, double x)
 	if (x >= tgt_obj->X && x <= (obj->Width - obj->MarginRight - obj->MarginLeft))
 	    {
 	    tgt_obj->X = x;
+	    tgt_obj->Flags |= PRT_OBJ_F_XSET;
 	    }
 	else
 	    {
