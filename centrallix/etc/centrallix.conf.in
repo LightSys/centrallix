@@ -64,15 +64,15 @@ centrallix "system/config"
     // Loadable Modules
     modules "system/config"
 	{
-	sybd "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_sybase.so"; type="osdriver"; }
-	http "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_http.so"; type="osdriver"; }
-	xml "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_xml.so"; type="osdriver"; }
-	mime "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_mime.so"; type="osdriver"; }
-	gzip "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_gzip.so"; type="osdriver"; }
-	dbl "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_dbl.so"; type="osdriver"; }
-	mbox "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_mbox.so"; type="osdriver"; }
-	shell "system/config-module" { enable_module=no; path="##LIBDIR##/objdrv_shell.so"; type="osdriver"; }
-	nnfs "system/config-module" { enable_module=no; path="##LIBDIR##/net_nfs.so"; type="netdriver"; }
+	sybd "system/config-module" { enable_module=@ENABLE_SYBASE@; path="##LIBDIR##/objdrv_sybase.so"; type="osdriver"; }
+	http "system/config-module" { enable_module=@ENABLE_HTTP@; path="##LIBDIR##/objdrv_http.so"; type="osdriver"; }
+	xml "system/config-module" { enable_module=@ENABLE_XML@; path="##LIBDIR##/objdrv_xml.so"; type="osdriver"; }
+	mime "system/config-module" { enable_module=@ENABLE_MIME@; path="##LIBDIR##/objdrv_mime.so"; type="osdriver"; }
+	gzip "system/config-module" { enable_module=@ENABLE_GZIP@; path="##LIBDIR##/objdrv_gzip.so"; type="osdriver"; }
+	dbl "system/config-module" { enable_module=@ENABLE_DBL@; path="##LIBDIR##/objdrv_dbl.so"; type="osdriver"; }
+	mbox "system/config-module" { enable_module=@ENABLE_MBOX@; path="##LIBDIR##/objdrv_mbox.so"; type="osdriver"; }
+	shell "system/config-module" { enable_module=@ENABLE_SHELL@; path="##LIBDIR##/objdrv_shell.so"; type="osdriver"; }
+	nnfs "system/config-module" { enable_module=@ENABLE_NETNFS@; path="##LIBDIR##/net_nfs.so"; type="netdriver"; }
 	}
     }
 
