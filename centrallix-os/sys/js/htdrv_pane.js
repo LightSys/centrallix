@@ -18,9 +18,9 @@ function pn_init(l,ml)
 
     htr_init_layer(ml,ml,"pn");
     htr_init_layer(l,ml,"pn");
-
-    ml.maxheight = l.clip.height-2;
-    ml.maxwidth = l.clip.width-2;
+    
+    ml.maxheight = getClipHeight(l)-2;
+    ml.maxwidth = getClipWidth(l)-2;
 
     if(cx__capabilities.Dom0NS)
 	{

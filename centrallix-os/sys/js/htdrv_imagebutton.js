@@ -21,13 +21,17 @@ function ib_disable()
     pg_set(this.img,'src',this.dImage.src);
     }
 
-function ib_setenable(p,o,n)
+function ib_setenable(prop,oldval,newval)
     {
-    if (n)
-	pg_set(this.img,'src',this.nImage.src);
+    var e = window.event;    
+    var source = new Object();    
+    (cx__capabilities.Dom0IE)? source = e.srcElement : source = this;
+    
+    if (newval)
+	pg_set(source.img,'src',source.nImage.src);
     else
-	pg_set(this.img,'src',this.dImage.src);
-    return n;
+	pg_set(source.img,'src',source.dImage.src);
+    return newval;
     }
 
 function ib_init(l,n,p,c,d,w,h,po,nm,enable)
@@ -51,7 +55,8 @@ function ib_init(l,n,p,c,d,w,h,po,nm,enable)
     l.kind = 'ib';
     l.layer = l;
     l.mainlayer = l;
-    l.clip.width = w;
+    setClipWidth(l, w);
+
     l.buttonName = nm;
     if (h == -1) l.nImage = new Image();
     else l.nImage = new Image(w,h);
@@ -68,6 +73,13 @@ function ib_init(l,n,p,c,d,w,h,po,nm,enable)
     l.ActionEnable = ib_enable;
     l.ActionDisable = ib_disable;
     l.enabled = null;
-    l.watch("enabled",ib_setenable);
+    if (cx__capabilities.Dom0IE)
+    	{
+    	l.attachEvent("onpropertychange",ib_setenable);
+	}
+    else
+    	{
+	l.watch("enabled",ib_setenable);
+	}
     l.enabled = enable;
     }

@@ -14,7 +14,7 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     l.LSParent = p;
     l.nofocus = true;
     l2.nofocus = true;
-    if(!cx__capabilities.Dom2CSS)
+    if(!cx__capabilities.Dom2CSS && !cx__capabilities.Dom0IE)
 	{
 	top.nofocus = true;
 	rgt.nofocus = true;
@@ -50,16 +50,16 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     l.darkBorderColor = '#7A7A7A';
     if(!cx__capabilities.Dom2CSS)
 	{
-	l.clip.width = w;
-	if (h != -1) l.clip.height = h;
-	top.bgColor = l.lightBorderColor;
-	lft.bgColor = l.lightBorderColor;
-	btm.bgColor = l.darkBorderColor;
-	rgt.bgColor = l.darkBorderColor;
-	lft.clip.height = l.clip.height;
-	rgt.clip.height = l.clip.height;
-	rgt.pageX = l.pageX + l.clip.width - 2;
-	btm.pageY = l.pageY + l.clip.height - 2;
+	setClipWidth(l, w);
+	if (h != -1) setClipHeight(l, h);
+	pg_set_style(top,'bgColor',l.lightBorderColor);
+	pg_set_style(lft,'bgColor',l.lightBorderColor);
+	pg_set_style(btm,'bgColor',l.darkBorderColor);
+	pg_set_style(rgt,'bgColor',l.darkBorderColor);
+	setClipHeight(lft, getClipHeight(l));
+	setClipHeight(rgt, getClipHeight(l));
+	setPageX(rgt,getPageX(l)+getClipWidth(l)-2);
+	setPageY(btm,getPageY(l)+getClipHeight(l)-2);
 	}
     l.tristate = ts;
     l.mode = -1;
@@ -68,12 +68,36 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
 	l.enabled = false;
     else
 	l.enabled = true;
-    l.watch('enabled', tb_setenable);
+	
+    if (!cx__capabilities.Dom0IE)
+        l.watch('enabled', tb_setenable);
+    else
+    	{
+    	//alert("watch is not supported!");
+    	l.onpropertychange = tb_setenable;
+	}
     }
 
 function tb_setenable(prop, oldv, newv)
+    {    
+    
+    if (cx__capabilities.Dom0IE) 
+    	{
+    	var e = window.event;
+    	//alert(e.srcElement);
+    	if(e.propertyName.substr(0,6) == "style.")
+    	    {
+	    newv = e.srcElement.style[e.propertyName.substr(6)];
+	    }
+	else
+	    {
+	    newv = e.srcElement[e.propertyName];
+	    }
+	}
+    //status = 'tb_setenable -- ' + this.id + ' -- ' + prop + ', ' + oldv + ', ' + newv;
+    if (typeof newv == "boolean")
     {
-    //alert('tb_setenable -- ' + this.id + ' -- ' + prop + ', ' + oldv + ', ' + newv);
+    	//alert("here--" + newv);
     if (newv == true)
 	{
 	// make enabled
@@ -86,6 +110,7 @@ function tb_setenable(prop, oldv, newv)
 	pg_set_style_string(this.l2,'visibility','hidden');
 	pg_set_style_string(this.l3,'visibility','inherit');
 	}
+    }
     return newv;
     }
 
@@ -93,23 +118,31 @@ function tb_setmode(layer,mode)
     {
     if (mode != layer.mode)
 	{
+	//status = layer.id + " " + mode;
 	layer.mode = mode;
+	//status = "tristate " + layer.id + " " + layer.tristate;
 	if (layer.tristate == 0 && mode == 0) mode = 1;
 	switch(mode)
 	    {
 	    case 0: /* no point no click */
+	    
 		if(cx__capabilities.Dom2CSS)
 		    {
 		    layer.style.setProperty('border-width','0px',null);
 		    layer.style.setProperty('margin','1px',null);
 		    }
-		else
+		else if(!cx__capabilities.Dom0IE)
 		    {
 		    layer.rgt.visibility = 'hidden';
 		    layer.lft.visibility = 'hidden';
 		    layer.tp.visibility = 'hidden';
 		    layer.btm.visibility = 'hidden';
 		    }
+		else if(cx__capabilities.Dom0IE)
+		    {		    
+		    layer.style.borderWidth = '0px';
+		    layer.style.margin = '1px';		    	
+		    }		    
 		break;
 	    case 1: /* point, but no click */
 		if(cx__capabilities.Dom2CSS)
@@ -121,7 +154,7 @@ function tb_setmode(layer,mode)
 		    layer.style.setProperty('border-bottom-color',layer.darkBorderColor,null);
 		    layer.style.setProperty('border-right-color',layer.darkBorderColor,null);
 		    }
-		else
+		else if(!cx__capabilities.Dom0IE)
 		    {
 		    layer.rgt.visibility = 'inherit';
 		    layer.lft.visibility = 'inherit';
@@ -131,6 +164,16 @@ function tb_setmode(layer,mode)
 		    layer.lft.bgColor = layer.lightBorderColor;
 		    layer.btm.bgColor = layer.darkBorderColor;
 		    layer.rgt.bgColor = layer.darkBorderColor;
+		    }
+		else if(cx__capabilities.Dom0IE)
+		    {
+		    	
+		    layer.style.borderWidth = '1px';
+		    layer.style.margin = '0px';		    
+		    layer.style.borderTopColor = layer.lightBorderColor;
+		    layer.style.borderLeftColor = layer.lightBorderColor;
+		    layer.style.borderBottomColor = layer.darkBorderColor;
+		    layer.style.borderRightColor = layer.darkBorderColor;
 		    }
 		break;
 	    case 2: /* point and click */
@@ -143,7 +186,7 @@ function tb_setmode(layer,mode)
 		    layer.style.setProperty('border-bottom-color',layer.lightBorderColor,null);
 		    layer.style.setProperty('border-right-color',layer.lightBorderColor,null);
 		    }
-		else
+		else if(!cx__capabilities.Dom0IE)
 		    {
 		    layer.rgt.visibility = 'inherit';
 		    layer.lft.visibility = 'inherit';
@@ -153,6 +196,15 @@ function tb_setmode(layer,mode)
 		    layer.lft.bgColor = layer.darkBorderColor;
 		    layer.btm.bgColor = layer.lightBorderColor;
 		    layer.rgt.bgColor = layer.lightBorderColor;
+		    }
+		else if(cx__capabilities.Dom0IE)
+		    {
+		    layer.style.borderWidth = '1px';
+		    layer.style.margin = '0px';
+		    layer.style.borderTopColor = layer.darkBorderColor;
+		    layer.style.borderLeftColor = layer.darkBorderColor;
+		    layer.style.borderBottomColor = layer.lightBorderColor;
+		    layer.style.borderRightColor = layer.lightBorderColor;
 		    }
 		break;
 	    }

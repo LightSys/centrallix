@@ -46,7 +46,7 @@ function sb_init(l,tname,p,is_h,r)
     l.range = r;
     l.value = 0;
     l.is_horizontal = is_h;
-    l.controlsize = is_h?(l.clip.width - 18*3):(l.clip.height - 18*3);
+    l.controlsize = is_h?(getClipWidth(l) - 18*3):(getClipHeight(l) - 18*3);
     l.watch('range', sb_range_changed);
     l.ActionMoveTo = sb_action_move_to;
     l.SetThumb = sb_set_thumb;
