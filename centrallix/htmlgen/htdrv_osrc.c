@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.7 2002/03/14 03:29:51 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.8 2002/03/14 05:11:49 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.8  2002/03/14 05:11:49  jorupp
+     * bugfixes
+
     Revision 1.7  2002/03/14 03:29:51  jorupp
      * updated form to prepend a : to the fieldname when using for a query
      * updated osrc to take the query given it by the form, submit it to the server,
@@ -314,7 +317,7 @@ int htosrcVerify() {
    htrAddScriptFunction(s, "osrc_init", "\n"
       "function osrc_init(loader)\n"
       "    {\n"
-      "    loader.chilren = new Array();\n"
+      "    loader.children = new Array();\n"
       "    loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
       "    loader.ActionDelete=osrc_action_delete;\n"

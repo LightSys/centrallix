@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.14  2002/03/14 05:11:49  jorupp
+     * bugfixes
+
     Revision 1.13  2002/03/14 03:29:51  jorupp
      * updated form to prepend a : to the fieldname when using for a query
      * updated osrc to take the query given it by the form, submit it to the server,
@@ -753,13 +756,18 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    form = new Object();\n"
 		"    form.basequery = bq;\n"
-		"    form.currentquery = form_build_query(bq,bw);\n"
+		"    if(bw) form.currentquery = form_build_query(bq,bw);\n"
+		"    else form.currentquery = bq+\";\";\n"
 		"    form.elements = new Array();\n"
 		"    form.statuswidgets = new Array();\n"
 		"    form.mode = \"No Data\";\n"
 		"    form.cobj = null;\n" /* current 'object' (record) */
 		"    form.oldmode = null;\n"
-		"    form.osrc = osrc_current;\n"
+		"    if(osrc_current)\n"
+		"        {\n"
+		"        form.osrc = osrc_current;\n"
+		"        form.osrc.Register(form);\n"
+		"        }\n"
 		"    form.IsUnsaved = false;\n"
 		"    form.name = name;\n"
 		"    form.Pending = false;\n"
@@ -807,7 +815,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.DisableAll = form_disable_all;\n"
 		"    form.EnableAll = form_enable_all;\n"
 		"    form.ChangeMode = form_change_mode;\n"
-
 		"    return form;\n"
 		"    }\n",0);
 	//nmFree(sbuf3,800);
