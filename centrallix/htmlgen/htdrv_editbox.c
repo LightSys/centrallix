@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.15 2002/05/30 04:17:21 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.16 2002/05/30 04:22:18 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.16  2002/05/30 04:22:18  lkehresman
+    Changed where focus notify was getting called.
+
     Revision 1.15  2002/05/30 04:17:21  lkehresman
     * Modified editbox to take advantage of enablenew and enablemodify
     * Fixed ChangeStatus stuff in form
@@ -374,8 +377,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_select", "\n"
 		"function eb_select(x,y,l,c,n)\n"
 		"    {\n"
-		"    if(l.enabled != 'full') return 0;\n"
 		"    if(l.form) l.form.FocusNotify(l);\n"
+		"    if(l.enabled != 'full') return 0;\n"
 		"    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/eb_metric.charWidth);\n"
 		"    if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;\n"
 		"    if (eb_current) eb_current.cursorlayer = null;\n"
