@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.19 2002/06/19 21:22:45 lkehresman Exp $
+    $Id: htdrv_table.c,v 1.20 2002/06/24 17:28:25 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.20  2002/06/24 17:28:25  jorupp
+     * fix bug where records would stay hidden following a query that returned 1 record when the next one returned multiple records
+
     Revision 1.19  2002/06/19 21:22:45  lkehresman
     Added a losefocushandler to the table.  Not having this broke static tables.
 
@@ -302,6 +305,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		*/
 		"        this.rows[i].y=((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1));\n"
 		"        this.rows[i].fg.visibility='inherit';\n"
+		"        this.rows[i].visibility='inherit';\n"
 		"        if(!(this.rows[i].fg.recnum!=null && this.rows[i].fg.recnum==this.SlotToRecnum(i)))\n"
 		"            {\n"
 		"            this.rows[i].fg.recnum=this.SlotToRecnum(i);\n"
@@ -336,17 +340,13 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)\n"
 		"        {\n"
 		"        this.rows[i].y=((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1));\n"
+		"        this.rows[i].fg.recnum=null;\n"
 		"        if(this.gridinemptyrows)\n"
 		"            this.rows[i].visibility='inherit';\n"
 		"        else\n"
 		"            this.rows[i].visibility='hidden';\n"
 		"        }\n"
 		"    t.a++;\n"
-		"    for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)\n"
-		"        {\n"
-		"        this.rows[i].fg.recnum=null;\n"
-		"        this.rows[i].fg.visibility='hide';\n"
-		"        }\n"
 		"    }\n",0);
 
 	htrAddScriptFunction(s,"tbld_object_modified", "\n"
