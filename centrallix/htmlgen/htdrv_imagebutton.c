@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.7 2002/05/02 01:12:43 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.8 2002/05/31 01:26:41 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.8  2002/05/31 01:26:41  lkehresman
+    * modified the window header HTML to make it look nicer
+    * fixed a truncation problem with the image button
+
     Revision 1.7  2002/05/02 01:12:43  gbeeley
     Fixed some buggy initialization code where an XArray was not being
     setup prior to being used.  Was causing potential bad pointers to
@@ -220,11 +224,9 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    }\n" ,0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,160,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
-	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf,160,"    ib_init(%s,'%s','%s','%s',%d,%d,%s,'%s');\n",
-		nptr, n_img, p_img, c_img, w, h, parentobj,nptr);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
+	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s',%d,%d,%s,'%s');\n",
+	        nptr, n_img, p_img, c_img, w, h, parentobj,nptr);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h == -1)

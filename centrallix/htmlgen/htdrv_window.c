@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.10 2002/03/13 19:48:45 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.11 2002/05/31 01:26:41 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.11  2002/05/31 01:26:41  lkehresman
+    * modified the window header HTML to make it look nicer
+    * fixed a truncation problem with the image button
+
     Revision 1.10  2002/03/13 19:48:45  gbeeley
     Fixed a window-dragging issue with nested html windows.  Added the
     dropdown widget to lsmain.c.  Updated changelog.
@@ -442,7 +446,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    snprintf(sbuf,HT_SBUF_SIZE,"<TR><TD width=1><IMG SRC=/sys/images/white_1x1.png width=1 height=22></TD>\n");
 	    htrAddBodyItem(s, sbuf);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=%d %s colspan=%d><IMG SRC=/sys/images/01close.gif name=close align=left><FONT COLOR='%s'> %s</FONT></TD>\n",
+	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=%d %s colspan=%d><TABLE border=0><TR><TD><IMG SRC=/sys/images/01close.gif name=close align=left></TD><TD valign=\"middle\" nowrap><FONT COLOR='%s'> <b>%s</b></FONT></TD></TR></TABLE></TD>\n",
 	    	tbw,hdr_bgnd,is_dialog_style?1:3,txtcolor,title);
 	    htrAddBodyItem(s, sbuf);
 	    snprintf(sbuf,HT_SBUF_SIZE,"    <TD width=1><IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=22></TD></TR>\n");
