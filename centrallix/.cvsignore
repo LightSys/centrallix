@@ -10,10 +10,13 @@ gmon.out
 stamp-h
 stamp-h.in
 etc/centrallix.conf
+etc/centrallix.conf.mk
 etc/centrallix.init
 etc/rootnode
 test_obj
 sfedit
 test_prt
 autom4te-2.53.cache
+autom4te.cache
 config.h.in~
+configure.lineno
