@@ -38,12 +38,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_new.h,v 1.1 2001/08/13 18:00:53 gbeeley Exp $
+    $Id: prtmgmt_new.h,v 1.2 2001/09/25 18:03:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_new.h,v $
 
     $Log: prtmgmt_new.h,v $
-    Revision 1.1  2001/08/13 18:00:53  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/25 18:03:44  gbeeley
+    A few changes for the upcoming prtmgmt update.
+
+    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
     Centrallix Core Initial Import
@@ -55,7 +58,7 @@
 #include "barcode.h"
 
 
-#define PRT_SECTION_MAX_COLS	16
+#define PRT_SECTION_MAX_COLS	8
 #define PRT_TABLE_MAX_COLS	32
 #define PRT_MAX_HEADERS		4
 #define PRT_MAX_FOOTERS		4
@@ -72,7 +75,7 @@ typedef struct _PLD
     int			IsContainer;	/* 1 if container, 0 if not */
     int			(*Init)();
     int			(*Release)();
-    int			(*ContentChanged)();
+    int			(*Add)();
     }
     PrtLayoutDriver, *pPrtLayoutDriver;
 
@@ -96,6 +99,8 @@ typedef struct _POS
     unsigned char	Justification;	/* PRT_JST_xxx */
     unsigned short	Flags;		/* PRT_OS_F_xxx */
     double		LinesPerInch;
+    double		SetRelX;
+    double		SetRelY;
     double		RelativeX;
     double		RelativeY;
     double		AbsoluteX;
