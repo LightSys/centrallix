@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.67 2004/08/04 20:03:09 mmcgill Exp $
+    $Id: htdrv_page.c,v 1.68 2004/08/18 04:54:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.68  2004/08/18 04:54:25  gbeeley
+    - proper keyboard input in IE6 and Moz (including handling the keydown vs.
+      keypress event issue).
+    - editbox appearance/functionality now relatively consistent across IE6,
+      Moz, and NS4.
+
     Revision 1.67  2004/08/04 20:03:09  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -623,6 +629,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "pg_lastmodifiers", "null", 0);
 	htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0);
 	htrAddScriptGlobal(s, "pg_modallayer", "null", 0);
+	htrAddScriptGlobal(s, "pg_key_ie_shifted", "false", 0);
 	htrAddScriptGlobal(s, "pg_attract", "null", 0);
 	htrAddScriptGlobal(s, "pg_gshade", "null", 0);
 	htrAddScriptGlobal(s, "pg_closetype", "null", 0);
@@ -678,15 +685,15 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	if(s->Capabilities.HTML40)
 	    {
 	    /** Add focus box **/
-	    htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
 	    htrAddStylesheetItem(s,"\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:1px; Z-INDEX:0; }\n");
-	    htrAddStylesheetItem(s,"\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
 	    htrAddStylesheetItem(s,"\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:20px; Z-INDEX:20; }\n");
 	    htrAddStylesheetItem(s,"\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
 	    htrAddStylesheetItem(s,"\t#pgmsg { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
@@ -745,83 +752,11 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    }
 
 	/** Add event code to handle mouse in/out of the area.... **/
-	htrAddEventHandler(s, "document", "MOUSEMOVE","pg",
-		"    if (pg_modallayer)\n"
-		"        {\n"
-		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
-		"        }\n"
-		"    if (pg_curlayer != null)\n"
-		"        {\n"
-		"        pg_setmousefocus(pg_curlayer, e.x, e.y);\n"
-		"        }\n"
-		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
-		"        {\n"
-		"        pg_removemousefocus();\n"
-		"        }\n" );
-	htrAddEventHandler(s, "document", "MOUSEOUT", "pg",
-		"    if (pg_modallayer)\n"
-		"        {\n"
-		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
-		"        }\n"
-		"    if (ibeam_current && e.target == ibeam_current)\n"
-		"        {\n"
-		"        pg_curlayer = pg_curkbdlayer;\n"
-		"        pg_curarea = pg_curkbdarea;\n"
-		"        return false;\n"
-		"        }\n"
-		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
-		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
-		"        {\n"
-		"        pg_removemousefocus();\n"
-		"        }\n" );
-	htrAddEventHandler(s, "document", "MOUSEOVER", "pg",
-		"    if (pg_modallayer)\n"
-		"        {\n"
-		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
-		"        }\n"
-		"    if (ibeam_current && e.target == ibeam_current)\n"
-		"        {\n"
-		"        pg_curlayer = pg_curkbdlayer;\n"
-		"        pg_curarea = pg_curkbdarea;\n"
-		"        return false;\n"
-		"        }\n"
-		"    if (e.target != null && getPageX(e.target) != null)\n"
-		"        {\n"
-		"        pg_curlayer = e.target;\n"
-		"        if (pg_curlayer.mainlayer != null) pg_curlayer = pg_curlayer.mainlayer;\n"
-		"        }\n" );
-
-	/** CLICK event handler is for making mouse focus the keyboard focus **/
-	htrAddEventHandler(s, "document", "MOUSEDOWN", "pg",
-		"    if (pg_modallayer)\n"
-		"        {\n"
-		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
-		"        }\n"
-		//"    if (pg_curlayer) alert('cur layer kind = ' + ly.kind + ' ' + ly.id);\n"
-		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
-		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
-		"        {\n"
-		"        pg_removemousefocus();\n"
-		"        }\n"
-		"    if (pg_curarea != null)\n"
-		"        {\n"
-		"        if (pg_curlayer != pg_curkbdlayer)\n"
-		"            if (!pg_removekbdfocus()) return true;\n"
-		"        pg_setkbdfocus(pg_curlayer, pg_curarea, e.pageX - getPageX(pg_curarea.layer), e.pageY-getPageY(pg_curarea.layer));\n"
-		"        }\n"
-		"    else if (!ly.keep_kbd_focus)\n"
-		"        {\n"
-		"        if (!pg_removekbdfocus()) return true;\n"
-		"        pg_curkbdarea = null;\n"
-		"        pg_curkbdlayer = null;\n"
-		"        }\n");
-
-	/** This resets the keyboard focus. **/
-	htrAddEventHandler(s, "document", "MOUSEUP", "pg",
-		"    if (pg_modallayer)\n"
-		"        {\n"
-		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
-		"        }\n");
+	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "pg", "pg_mousemove");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "pg", "pg_mouseout");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "pg", "pg_mouseover");
+	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "pg", "pg_mousedown");
+	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "pg", "pg_mouseup");
 
 	/** W3C DOM Level 2 Event model doesn't require a textbox to get keystrokes **/
 	if(s->Capabilities.Dom0NS)
@@ -840,46 +775,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptInit(s, "    pg_togglecursor();\n");
 
 
-	if(!s->Capabilities.Dom0IE)
-	    {
-	    htrAddEventHandler(s, "document", "KEYDOWN", "pg",
-		"    k = e.which;\n"
-		"    if (k > 65280) k -= 65280;\n"
-		"    if (k >= 128) k -= 128;\n"
-		"    if (k == pg_lastkey) return false;\n"
-		"    pg_lastkey = k;\n"
-		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
-		"    pg_addsched(\"pg_keytimeoutid = setTimeout(pg_keytimeout, 200)\",window);\n"
-		"    return pg_keyhandler(k, e.modifiers, e);\n");
-
-	    htrAddEventHandler(s, "document", "KEYUP", "pg",
-		"    k = e.which;\n"
-		"    if (k > 65280) k -= 65280;\n"
-		"    if (k >= 128) k -= 128;\n"
-		"    if (k == pg_lastkey) pg_lastkey = -1;\n"
-		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
-		"    pg_keytimeoutid = null;\n");
-	    }
-	else
-	    {
-	    htrAddEventHandler(s, "document", "KEYDOWN", "pg",
-		"    k = e.keyCode;\n"
-		"    if (k > 65280) k -= 65280;\n"
-		"    if (k >= 128) k -= 128;\n"
-		"    if (k == pg_lastkey) return false;\n"
-		"    pg_lastkey = k;\n"
-		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
-		"    pg_addsched(\"pg_keytimeoutid = setTimeout(pg_keytimeout, 200)\",window);\n"
-		"    return pg_keyhandler(k, e.modifiers, e);\n");
-
-	    htrAddEventHandler(s, "document", "KEYUP", "pg",
-		"    k = e.keyCode;\n"
-		"    if (k > 65280) k -= 65280;\n"
-		"    if (k >= 128) k -= 128;\n"
-		"    if (k == pg_lastkey) pg_lastkey = -1;\n"
-		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
-		"    pg_keytimeoutid = null;\n");
-	    }
+	htrAddEventHandlerFunction(s, "document", "KEYDOWN", "pg", "pg_keydown");
+	htrAddEventHandlerFunction(s, "document", "KEYUP", "pg", "pg_keyup");
+	htrAddEventHandlerFunction(s, "document", "KEYPRESS", "pg", "pg_keypress");
 
 	/** create the root node of the wgtr **/
 

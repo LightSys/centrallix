@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.38 2004/08/04 20:03:08 mmcgill Exp $
+    $Id: htdrv_editbox.c,v 1.39 2004/08/18 04:54:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.39  2004/08/18 04:54:25  gbeeley
+    - proper keyboard input in IE6 and Moz (including handling the keydown vs.
+      keypress event issue).
+    - editbox appearance/functionality now relatively consistent across IE6,
+      Moz, and NS4.
+
     Revision 1.38  2004/08/04 20:03:08  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -344,10 +350,11 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
+    int box_offset;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
 	    {
-	    mssError(1,"HTEB","Netscape or Internet Explorer DOM support required");
+	    mssError(1,"HTEB","Netscape, IE, or Dom2Events support required");
 	    return -1;
 	    }
 
@@ -374,22 +381,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Readonly flag **/
 	if (wgtrGetPropertyValue(tree,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
 
-	/** Background color/image? **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if (!s->Capabilities.Dom0IE)
-	        {
-	        sprintf(main_bg,"bgColor='%.40s'",ptr);
-		}
-	    else
-	        {
-	        sprintf(main_bg,"%.40s",ptr);
-	        }
-	    }
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"background='%.110s'",ptr);
-	else
-	    strcpy(main_bg,"");
+	/** Background color/image **/
+	strcpy(main_bg,"");
+	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -418,9 +412,14 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    fieldname[0]='\0';
 	    }
 
+	if (s->Capabilities.CSSBox)
+	    box_offset = 1;
+	else
+	    box_offset = 0;
+
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom1HTML)
-	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; overflow:hidden }\n",id,x,y,w,z);
+	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 	else if (s->Capabilities.Dom0NS)
 	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
@@ -471,10 +470,10 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Script initialization call. **/
 	if (s->Capabilities.Dom1HTML)
 	    {
-	    htrAddScriptInit_va(s, "    %s = eb_init(%s.getElementById(\"eb%dbase\"), %s.getElementById(\"eb%dbase\").document.getElementById(\"eb%dcon1\"),%s.getElementById(\"eb%dbase\").document.getElementById(\"eb%dcon2\"),\"%s\", %d, \"%s\");\n",
-		nptr, parentname, id,
-		parentname, id, id,
-		parentname, id, id,
+	    htrAddScriptInit_va(s, "    %s = eb_init(document.getElementById(\"eb%dbase\"), document.getElementById(\"eb%dcon1\"), document.getElementById(\"eb%dcon2\"),\"%s\", %d, \"%s\");\n",
+		nptr, id,
+		id,
+		id,
 		fieldname, is_readonly, main_bg);
 	    }
 	else if (s->Capabilities.Dom0NS)
@@ -490,22 +489,37 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
 		nptr, nptr, parentobj);
 
-	htrGetBackground(tree, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);
-	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon2\"></DIV>\n",id);
+
+	/** Use CSS border or table for drawing? **/
+	if (s->Capabilities.CSS2)
+	    {
+	    if (is_raised)
+		htrAddStylesheetItem_va(s,"\t#eb%dbase { border-style:solid; border-width:1px; border-color: white gray gray white; %s }\n",id, main_bg);
+	    else
+		htrAddStylesheetItem_va(s,"\t#eb%dbase { border-style:solid; border-width:1px; border-color: gray white white gray; %s }\n",id, main_bg);
+	    if (h >= 0)
+		htrAddStylesheetItem_va(s,"\t#eb%dbase { height:%dpx; }\n", id, h-2*box_offset);
+	    htrAddBodyItem_va(s, "&nbsp;\n");
+	    }
+	else
+	    {
+	    htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
+	    htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	    }
+
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon1\">&nbsp;</DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon2\">&nbsp;</DIV>\n",id);
 
 	/** Check for objects within the editbox. **/
 	/** The editbox can have no subwidgets **/
