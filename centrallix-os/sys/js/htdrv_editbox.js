@@ -63,7 +63,7 @@ function eb_settext(l,txt)
     l.HiddenLayer.document.close();
     l.HiddenLayer.visibility = 'inherit';
     l.ContentLayer.visibility = 'hidden';
-    tmp = l.ContentLayer;
+    var tmp = l.ContentLayer;
     l.ContentLayer = l.HiddenLayer;
     l.HiddenLayer = tmp;
     l.content=txt;
@@ -74,41 +74,51 @@ function eb_keyhandler(l,e,k)
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
     if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) eb_current.form.DataNotify(eb_current);
-    adj = 0;
-    txt = l.content;
+    var adj = 0;
+    var txt = l.content;
+    var newtxt;
     var charClip = Math.ceil((l.pageX - l.ContentLayer.pageX) / text_metric.charWidth);
     var relPos = l.cursorCol - charClip;
     if (k == 9)
 	{
 	if(l.form) l.form.TabNotify(this);
+	cn_activate(l,'TabPressed');
 	}
     if (k == 10 || k == 13)
 	{
 	if(l.form) l.form.RetNotify(this);
+	cn_activate(l,'ReturnPressed');
 	}
     if (k == 27)
 	{
 	if (l.form) l.form.EscNotify(this);
+	cn_activate(l,'EscapePressed');
 	}
     if (k >= 32 && k < 127)
 	{
-	newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);
-	l.cursorCol++;
-	if (relPos >= l.charWidth) adj = -text_metric.charWidth; 
+	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length));
+	if (newtxt != txt)
+	    {
+	    l.cursorCol++;
+	    if (relPos >= l.charWidth) adj = -text_metric.charWidth; 
+	    }
 	}
     else if (k == 8 && l.cursorCol > 0)
 	{
-	newtxt = txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol,txt.length);
-	l.cursorCol--;
-	if (relPos <= 1 && charClip > 0)
+	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol,txt.length));
+	if (newtxt != txt)
 	    {
-	    if (charClip < l.charWidth) adj = charClip * text_metric.charWidth;
-	    else adj = l.charWidth * text_metric.charWidth;
+	    l.cursorCol--;
+	    if (relPos <= 1 && charClip > 0)
+		{
+		if (charClip < l.charWidth) adj = charClip * text_metric.charWidth;
+		else adj = l.charWidth * text_metric.charWidth;
+		}
 	    }
 	}
     else if (k == 127 && l.cursorCol < txt.length)
 	{
-	newtxt = txt.substr(0,l.cursorCol) + txt.substr(l.cursorCol+1,txt.length);
+	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + txt.substr(l.cursorCol+1,txt.length));
 	}
     else
 	{
@@ -127,8 +137,8 @@ function eb_keyhandler(l,e,k)
 
 function eb_select(x,y,l,c,n)
     {
-    if(l.form) l.form.FocusNotify(l);
     if(l.enabled != 'full') return 0;
+    if(l.form) l.form.FocusNotify(l);
     if (x == null && y == null)
 	l.cursorCol = l.content.length;
     else
