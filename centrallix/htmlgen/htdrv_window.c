@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.22 2002/07/20 20:16:52 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.23 2002/07/30 12:45:44 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.23  2002/07/30 12:45:44  lkehresman
+    * Added standard events to window
+    * Reworked the window layer properties a bit so they are standard
+        (x.document.layer points to itself, x.mainlayer points to top layer)
+    * Added a bugfix to the connector (it was missing brackets around a
+        conditional statement
+    * Changed the subwidget parsing to pass different parameters if the
+        subwidget is a connector.
+
     Revision 1.22  2002/07/20 20:16:52  lkehresman
     Added ToggleVisibility event connector to the window widget
 
@@ -175,6 +184,8 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char name[64];
     char sbuf[HT_SBUF_SIZE];
     char sbuf2[HT_SBUF_SIZE];
+    char sbuf3[HT_SBUF_SIZE];
+    char sbuf4[HT_SBUF_SIZE];
     pObject sub_w_obj;
     pObjQuery qy;
     int x,y,w,h;
@@ -325,6 +336,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"            wn_moved = 0;\n"
 		"            wn_windowshade(e.target.layer);\n"
 		"            }\n"
+		"        cn_activate(ly.mainlayer, 'MouseDown');\n"
 		"        }\n");
 
 	/** Mouse up event handler -- when user releases the button **/
@@ -342,10 +354,12 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        {\n"
 		"        if (wn_moved == 0) wn_bring_top(wn_current);\n"
 		"        }\n"
+		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseUp');\n"
 		"    wn_current = null;\n");
 
 	/** Mouse move event handler -- when user drags the window **/
 	htrAddEventHandler(s, "document","MOUSEMOVE","wn",
+		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseMove');\n"
 		"    if (wn_current != null)\n"
 		"        {\n"
 		"        wn_clicked = 0;\n"
@@ -366,6 +380,12 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		"        wn_msy = e.pageY;\n"
 		"        return false;\n"
 		"        }\n");
+
+	htrAddEventHandler(s, "document", "MOUSEOVER", "wn",
+		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOver');\n");
+
+	htrAddEventHandler(s, "document", "MOUSEOUT", "wn",
+		"    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain, %d);\n", 
@@ -448,13 +468,24 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	snprintf(sbuf,HT_SBUF_SIZE,"%s.mainLayer.document",name);
-	snprintf(sbuf2,HT_SBUF_SIZE,"%s.mainLayer",name);
+	snprintf(sbuf,HT_SBUF_SIZE,"%s.ml.document",name);
+	snprintf(sbuf2,HT_SBUF_SIZE,"%s.ml",name);
+
+	snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer.document",name);
+	snprintf(sbuf4,HT_SBUF_SIZE,"%s.mainlayer",name);
 	if (qy)
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		htrRenderWidget(s, sub_w_obj, z+2, sbuf, sbuf2);
+		objGetAttrValue(sub_w_obj,"outer_type",POD(&ptr));
+		if (!strcmp(ptr,"widget/connector"))
+		    {
+		    htrRenderWidget(s, sub_w_obj, z+2, sbuf3, sbuf4);
+		    }
+		else
+		    {
+		    htrRenderWidget(s, sub_w_obj, z+2, sbuf, sbuf2);
+		    }
 		objClose(sub_w_obj);
 		}
 	    objQueryClose(qy);
@@ -466,7 +497,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    htrAddScriptInit(s,
 		    "    for (var t in window_current.osrc)\n"
 		    "        setTimeout(window_current.osrc[t].osrcname+'.InitQuery();',1);\n"
-			    );
+		    );
 	htrAddScriptInit(s,"    window_current = window_current.oldwin;\n");
 
     return 0;
@@ -490,6 +521,13 @@ htwinInitialize()
 	drv->Render = htwinRender;
 	drv->Verify = htwinVerify;
 	strcpy(drv->Target, "Netscape47x:default");
+
+	/** Add the 'click' event **/
+	htrAddEvent(drv, "MouseUp");
+	htrAddEvent(drv, "MouseDown");
+	htrAddEvent(drv, "MouseOver");
+	htrAddEvent(drv, "MouseOut");
+	htrAddEvent(drv, "MouseMove");
 
 	/** Add the 'set visibility' action **/
 	htrAddAction(drv,"ToggleVisibility");

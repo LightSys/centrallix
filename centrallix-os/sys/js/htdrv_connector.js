@@ -26,8 +26,10 @@ function cn_activate(t,f,eparam)
 	return x;
 	}
     else
+	{
 	if(d) delete eparam;
 	return t['Event' + f](eparam);
+	}
     }
 
 function cn_add(w,e)

@@ -21,10 +21,13 @@ function wn_init(l,ml,h)
 	t=t.oldosrc;
 	}
     l.document.layer = l;
-    ml.document.Layer = ml;
+    l.mainlayer = l;
+    l.ml = ml;
+    ml.document.layer = ml;
+    ml.mainlayer = l;
     l.orig_height = h;
-    l.mainLayer = ml;
     l.kind = 'wn';
+    ml.kind = 'wn';
     for(i=0;i<l.document.images.length;i++)
 	{
 	l.document.images[i].layer = l;
