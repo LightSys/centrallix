@@ -577,6 +577,26 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
     ]
 )
 
+dnl check if gcc allows -fPIC and -pg at the same time
+AC_DEFUN(CHECK_PROFILE,
+    [
+    AC_MSG_CHECKING(if -fPIC and -pg can be used at the same time)
+    temp="$CFLAGS"
+    CFLAGS="-fPIC -pg -Werror"
+    dnl AC_TRY_COMPILE([int main(){return 0;}],
+    AC_TRY_COMPILE(,,
+	PROFILE="-pg",
+	PROFILE=""
+    )
+    if test "$PROFILE" = "-pg"; then
+	AC_MSG_RESULT(yes)
+    else
+	AC_MSG_RESULT(no)
+    fi
+    CFLAGS="$temp"
+    ]
+)
+
 dnl check if ld allows -export-dynamic
 AC_DEFUN(CHECK_EXPORT_DYNAMIC,
     [

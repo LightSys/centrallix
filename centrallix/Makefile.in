@@ -198,7 +198,7 @@ CONFFILES=centrallix.conf \
 
 # Some basic build parameters.
 MASTERHOST=greg
-PROFILE=-pg
+PROFILE=@PROFILE@
 BUILD=$(shell cat .build)
 BLDFILE=$(shell if [ "$$HOSTNAME" = "$(MASTERHOST)" ]; then echo ".build"; echo '1' >.subbuild; else echo ".subbuild"; if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; fi)
 SUBBUILD=$(shell if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; cat .subbuild)
