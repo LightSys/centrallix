@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.3 2002/03/09 19:21:20 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.4 2002/03/13 01:59:43 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.4  2002/03/13 01:59:43  jorupp
+     * Changed treeview to allow it to operate in javascript 'DomViewer' mode
+         check the sample file for an example and usage guidelines
+
     Revision 1.3  2002/03/09 19:21:20  gbeeley
     Basic security overhaul of the htmlgen subsystem.  Fixed many of my
     own bad sprintf habits that somehow worked their way into some other
@@ -94,7 +98,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
+    char sbuf[200];
     char src[128];
     pObject sub_w_obj;
     pObjQuery qy;
@@ -248,6 +252,22 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    return true;\n"
 		"    }\n", 0);
 	
+
+	htrAddScriptFunction(s, "tv_doalert", "\n"
+		"function tv_doalert()\n"
+		"    {\n"
+		"    alert(this);\n"
+		"    }\n", 0);
+
+	/***
+	 *** 3/12/2002 -- Jonathan Rupp
+	 ***   I added the ability for this widget to view the javascript DOM
+	 ***   Just start it with a source of javascript:object and it will show
+	 ***     the DOM instead of a server filesystem/database tree
+	 ***   note: functions will pop up in a new window, arrays and objects
+	 ***     expand and show off their properties
+	 ***/
+	
 	/** This runs when the hidden layer loads the directory **/
 	htrAddScriptFunction(s, "tv_loaded", "\n"
 		"function tv_loaded(e)\n"
@@ -255,8 +275,29 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    one_layer=null;\n"
 		"    cnt=0;\n"
 		"    nullcnt=0;\n"
-		"    last = tv_tgt_layer.ld.document.links.length - 1;\n"
-		"    linkcnt = tv_tgt_layer.ld.document.links.length-1;\n"
+		"    l=tv_tgt_layer;\n"
+		"    if(l.isjs)\n"
+		"        {\n"
+		"        if(typeof(l.obj)==\"function\")\n"
+		"            {\n"
+		"            var win=window.open();\n"
+		"            win.document.write(\"<PRE>\"+l.obj+\"</PRE>\");\n"
+		"            win.document.close();\n"
+		"            linkcnt=last=0;\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            last=0;\n"
+		"            for(var i in l.obj) last++;\n"
+		"            linkcnt=last;\n"
+		"            if(!l.obj) linkcnt=last=0;\n"
+		"            }\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        last = tv_tgt_layer.ld.document.links.length - 1;\n"
+		"        linkcnt = tv_tgt_layer.ld.document.links.length-1;\n"
+		"        }\n"
 		"    if (linkcnt < 0) linkcnt = 0;\n"
 		"    if (window != tv_tgt_layer.pdoc.tv_layer_tgt)\n"
 		"            tv_tgt_layer.pdoc.tv_layer_tgt.clip.height += 20*(linkcnt);\n"
@@ -270,16 +311,61 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    for (i=1;i<=linkcnt;i++)\n"
 		"        {\n"
-		"        link_txt = tv_tgt_layer.ld.document.links[i].text;\n"
-		"        link_href = tv_tgt_layer.ld.document.links[i].href;\n"
-		"        one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);\n"
-		"        if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);\n"
 		"        one_layer = tv_new_layer(tv_tgt_layer.clip.width,tv_tgt_layer.pdoc);\n"
-		"        im = '01';\n"
-		"        if (link_txt == '' || link_txt == null) link_txt = one_link;\n"
-		"        else link_txt = one_link + '&nbsp;-&nbsp;' + link_txt;\n"
-		"        if (one_link.lastIndexOf('/') > 0) im = '02';\n"
-		"        else one_link = one_link + '/';\n"
+		"        if(l.isjs)\n"
+		"            {\n"
+		"            k=0;\n"
+		"            for(m in l.obj)\n"
+		"                {\n"
+		"                if(k!=i) { k++; j=m; }\n"
+		"                }\n"
+		"            if(j==\"applets\" || j==\"embeds\")\n"
+		"                {\n"
+		"                o=null;\n"
+		"                t=\"object\";\n"
+		"                }\n"
+		"            else\n"
+		"                {\n"
+		"                var o=l.obj[j];\n"
+		"                t=typeof(o);\n"
+		"                }\n"
+		"            link_href=\"\";\n"
+		"            one_link=j;\n"
+		"            if(o && (t==\"object\" || t==\"array\" || t==\"function\"))\n"
+		"                {\n"
+		"                link_txt=j+\" (\"+t+\"): \"\n"
+		"                one_layer.obj=o;\n"
+		"                if(t==\"function\")\n"
+		"                    {\n"
+		"                    im='01';\n"
+		"                    }\n"
+		"                else\n"
+		"                    {\n"
+		"                    im = '02';\n"
+		"                    link_txt=\"<b>\"+link_txt+\"</b>\";\n"
+		"                    }\n"
+		"                }\n"
+		"            else\n"
+		"                {\n"
+		"                link_txt=j+\" (\"+t+\"): \"+o\n"
+		"                one_layer.obj=null;\n"
+		"                im = '01';\n"
+		"                }\n"
+		"            one_layer.isjs=true;\n"
+		"            one_layer.n=j;\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            link_txt = tv_tgt_layer.ld.document.links[i].text;\n"
+		"            link_href = tv_tgt_layer.ld.document.links[i].href;\n"
+		"            one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);\n"
+		"            if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);\n"
+		"            im = '01';\n"
+		"            if (link_txt == '' || link_txt == null) link_txt = one_link;\n"
+		"            else link_txt = one_link + '&nbsp;-&nbsp;' + link_txt;\n"
+		"            if (one_link.lastIndexOf('/') > 0) im = '02';\n"
+		"            else one_link = one_link + '/';\n"
+		"            }\n"
 		"        imgs = '';\n"
 
 		/*"        if (last == i)\n"
@@ -352,6 +438,18 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	     /*	"    l.nofocus = true;\n" */
 	        "    l.LSParent = p;\n"
 		"    l.fname = fname;\n"
+		"    if(t=(/javascript:(.*)/).exec(fname))\n"
+		"        {\n"
+		"        l.isjs=true;\n"
+		"        if(t[1])\n"
+		"            {\n"
+		"            l.obj=eval(t[1]);\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            l.obj=window;\n"
+		"            }\n"
+		"        }\n"
 		"    l.expanded = 0;\n"
 		"    l.type = '02';\n"
 		"    l.img = l.document.images[0];\n"
@@ -360,6 +458,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    l.kind = 'tv';\n"
 		"    l.pdoc = pdoc;\n"
 		"    l.ld = loader;\n"
+		"    //l.ld.parent = l;\n"
 		"    l.root = l;\n"
 		"    pdoc.tv_layer_cache = null;\n"
 		"    pdoc.tv_layer_tgt = l.parentLayer;\n"
@@ -370,7 +469,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Script initialization call. **/
 	snprintf(sbuf,160,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
 	htrAddScriptInit(s, sbuf);
-	snprintf(sbuf,160,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
+	snprintf(sbuf,200,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s);\n",
 		nptr, src, parentname, id, parentname, w, parentobj);
 	htrAddScriptInit(s, sbuf);
 
@@ -412,19 +511,27 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        if (l.img.realsrc != null) return false;\n"
 		"        l.img.realsrc=l.img.src;\n"
 		"        l.img.src='/sys/images/ico11c.gif';\n"
+		"        tv_tgt_layer = l;\n"
 		"        if (l.expanded == 0)\n"
 		"            {\n"
-		"            if (l.fname.substr(l.fname.length-1,1) == '/' && l.fname.length > 1)\n"
-		"                use_fname = l.fname.substr(0,l.fname.length-1);\n"
-		"            else\n"
-		"                use_fname = l.fname;\n"
-		"            if (use_fname.lastIndexOf('?') > use_fname.lastIndexOf('/', use_fname.length-2))\n"
-		"                l.ld.src = use_fname + '&ls__mode=list';\n"
-		"            else\n"
-		"                l.ld.src = use_fname + '?ls__mode=list';\n"
-		"            l.ld.onload = tv_loaded;\n"
-		"            tv_tgt_layer = l;\n"
 		"            l.expanded = 1;\n"
+		"            if(l.isjs)\n"
+		"                {\n"
+		"                l.ld.onload=tv_loaded\n"
+		"                l.ld.onload();\n"
+		"                }\n"
+		"            else\n"
+		"                {\n"
+		"                if (l.fname.substr(l.fname.length-1,1) == '/' && l.fname.length > 1)\n"
+		"                    use_fname = l.fname.substr(0,l.fname.length-1);\n"
+		"                else\n"
+		"                    use_fname = l.fname;\n"
+		"                if (use_fname.lastIndexOf('?') > use_fname.lastIndexOf('/', use_fname.length-2))\n"
+		"                    l.ld.src = use_fname + '&ls__mode=list';\n"
+		"                else\n"
+		"                    l.ld.src = use_fname + '?ls__mode=list';\n"
+		"                l.ld.onload = tv_loaded;\n"
+		"                }\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
