@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.3 2002/03/02 03:06:50 jorupp Exp $
+    $Id: htdrv_radiobutton.c,v 1.4 2002/03/05 00:31:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.4  2002/03/05 00:31:40  lkehresman
+    Implemented DataNotify form method in the radiobutton and checkbox widgets
+
     Revision 1.3  2002/03/02 03:06:50  jorupp
     * form now has basic QBF functionality
     * fixed function-building problem with radiobutton
@@ -296,6 +299,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	 "      parentPane.getvalue = rb_getvalue;\n"
 	 "      parentPane.kind = 'radiobutton';\n"
 	 "      parentPane.fieldname = fieldname;\n"
+	 "      parentPane.form = fm_current;\n"
 	 "      if (fm_current) fm_current.Register(parentPane);\n"
          "   }\n",0);
 
@@ -321,6 +325,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    htrAddScriptFunction(s, "radiobutton_toggle", "\n"
       "   function radiobutton_toggle(layer) {\n"
+      "      layer.optionPane.parentPane.form.DataNotify(layer);\n"
       "      if (layer.optionPane.parentPane.selectedOption) {\n"
       "          layer.optionPane.parentPane.selectedOption.unsetPane.visibility = 'inherit';\n"
       "          layer.optionPane.parentPane.selectedOption.setPane.visibility = 'hidden';\n"
@@ -413,7 +418,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddBodyItem(s, sbuf);
    sprintf(sbuf,"      </DIV>\n");
    htrAddBodyItem(s, sbuf);
-   sprintf(sbuf,"      <DIV ID=\"radiobuttonpanel%dtitlepane\" NOWRAP><TABLE><TR><TD><FONT COLOR=\"%s\">%s</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
+   sprintf(sbuf,"      <DIV ID=\"radiobuttonpanel%dtitlepane\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%s\">%s</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
    htrAddBodyItem(s, sbuf);
    sprintf(sbuf,"   </DIV>\n");
    htrAddBodyItem(s, sbuf);

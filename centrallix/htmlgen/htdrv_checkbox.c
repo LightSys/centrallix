@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.6 2002/03/02 03:06:50 jorupp Exp $
+    $Id: htdrv_checkbox.c,v 1.7 2002/03/05 00:31:40 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.7  2002/03/05 00:31:40  lkehresman
+    Implemented DataNotify form method in the radiobutton and checkbox widgets
+
     Revision 1.6  2002/03/02 03:06:50  jorupp
     * form now has basic QBF functionality
     * fixed function-building problem with radiobutton
@@ -155,7 +158,10 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	  "   l.kind = 'checkbox';\n"
 	  "   l.fieldname = fieldname;\n"
 	  "   l.is_checked = 0;\n"
+	  "   l.form = fm_current;\n"
 	  "   l.document.images[0].kind = 'checkbox';\n"
+	  "   l.document.images[0].form = l.form;\n"
+	  "   l.document.images[0].parentLayer = l;\n"
 	  "   l.document.images[0].is_checked = l.is_checked;\n"
 	  "   l.document.images[0].uncheckedImage = new Image();\n"
 	  "   l.document.images[0].uncheckedImage.kind = 'checkbox';\n"
@@ -173,6 +179,13 @@ int htcbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Checkbox toggle mode function **/
    htrAddScriptFunction(s, "checkbox_toggleMode", "\n"
       "function checkbox_toggleMode(layer) {\n"
+      "   if (layer.form) {\n"
+      "       if (layer.parentLayer) {\n"
+      "           layer.form.DataNotify(layer.parentLayer);\n"
+      "       } else {\n"
+      "           layer.form.DataNotify(layer);\n"
+      "       }\n"
+      "   }\n"
       "   if (layer.is_checked) {\n"
       "       layer.src = layer.uncheckedImage.src;\n"
       "       layer.is_checked = 0;\n"
