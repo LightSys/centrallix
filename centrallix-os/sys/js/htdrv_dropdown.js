@@ -272,7 +272,7 @@ function dd_scroll(t)
 
 function dd_create_pane(l)
     {
-    p = new Layer(1024);
+    var p = new Layer(1024);
     p.kind = 'dd_pn';
     p.visibility = 'hide';
     p.document.layer = p;
