@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.23 2003/03/30 22:49:24 jorupp Exp $
+    $Id: test_obj.c,v 1.24 2003/03/31 23:23:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.24  2003/03/31 23:23:39  gbeeley
+    Added facility to get additional data about an object, particularly
+    with regard to its ability to have subobjects.  Added the feature at
+    the driver level to objdrv_ux, and to the "show" command in test_obj.
+
     Revision 1.23  2003/03/30 22:49:24  jorupp
      * get rid of some compile warnings -- compiles with zero warnings under gcc 3.2.2
 
@@ -605,6 +610,7 @@ start(void* v)
     char mparam[256];
     char* mptr;
     int t;
+    pObjectInfo info;
 
 	/** Initialize. **/
 	cxInitialize();
@@ -855,6 +861,26 @@ start(void* v)
 		    {
 		    printf("show: could not open object '%s'\n",ptr);
 		    continue;
+		    }
+		info = objInfo(obj);
+		if (info)
+		    {
+		    if (info->Flags)
+			{
+			printf("Flags: ");
+			if (info->Flags & OBJ_INFO_F_NO_SUBOBJ) printf("no_subobjects ");
+			if (info->Flags & OBJ_INFO_F_HAS_SUBOBJ) printf("has_subobjects ");
+			if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ) printf("can_have_subobjects ");
+			if (info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ) printf("cant_have_subobjects ");
+			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) printf("subobject_cnt_known ");
+			if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) printf("can_add_attrs ");
+			if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) printf("cant_add_attrs ");
+			printf("\n");
+			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
+			    {
+			    printf("Subobject count: %d\n", info->nSubobjects);
+			    }
+			}
 		    }
 		puts("Attributes:");
 		testobj_show_attr(obj,"outer_type");

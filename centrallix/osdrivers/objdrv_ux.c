@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.6 2002/09/27 22:26:06 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.7 2003/03/31 23:23:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.7  2003/03/31 23:23:40  gbeeley
+    Added facility to get additional data about an object, particularly
+    with regard to its ability to have subobjects.  Added the feature at
+    the driver level to objdrv_ux, and to the "show" command in test_obj.
+
     Revision 1.6  2002/09/27 22:26:06  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -1353,6 +1358,32 @@ uxdExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
     }
 
 
+/*** uxdInfo - Find additional information about the object.  We won't
+ *** actually try to find out if files actually exist in a directory,
+ *** but we'll say that they *can* exist in it.
+ ***/
+int
+uxdInfo(void* inf_v, pObjectInfo info)
+    {
+    pUxdData inf = UXD(inf_v);
+
+	/** Basic settings for all uxd objects **/
+	info->Flags = OBJ_INFO_F_CANT_ADD_ATTR;
+
+	/** Is it a directory? **/
+	if (inf->Flags & UXD_F_ISDIR)
+	    {
+	    info->Flags |= (OBJ_INFO_F_CAN_HAVE_SUBOBJ);
+	    }
+	else
+	    {
+	    info->Flags |= (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ);
+	    }
+
+    return 0;
+    }
+
+
 /*** uxdInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
@@ -1404,6 +1435,7 @@ uxdInitialize()
 	drv->GetFirstMethod = uxdGetFirstMethod;
 	drv->GetNextMethod = uxdGetNextMethod;
 	drv->ExecuteMethod = uxdExecuteMethod;
+	drv->Info = uxdInfo;
 
 	nmRegister(sizeof(UxdData),"UxdData");
 	nmRegister(sizeof(UxdQuery),"UxdQuery");

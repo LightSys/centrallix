@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: obj_object.c,v 1.6 2003/03/31 23:23:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.6  2003/03/31 23:23:40  gbeeley
+    Added facility to get additional data about an object, particularly
+    with regard to its ability to have subobjects.  Added the feature at
+    the driver level to objdrv_ux, and to the "show" command in test_obj.
+
     Revision 1.5  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -322,6 +327,7 @@ obj_internal_AllocObj()
 	this->Flags = 0;
 	this->Data = NULL;
 	this->Type = NULL;
+	memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
 
     return this;
     }
@@ -1263,5 +1269,21 @@ objDelete(pObjSession session, char* path)
 	obj_internal_FreeObj(tmp);
 
     return 0;
+    }
+
+
+/*** objInfo - get additional information about an object.  The returned
+ *** structure should be considered readonly, valid only while the object
+ *** is still open, and need not be freed.  Its value will be overwritten
+ *** on subsequent calls to objInfo for the same object.  Returns NULL on
+ *** error.
+ ***/
+pObjectInfo
+objInfo(pObject this)
+    {
+    if (this->Driver->Info)
+	if (this->Driver->Info(this->Data, &(this->AdditionalInfo)) < 0)
+	    return NULL;
+    return &(this->AdditionalInfo);
     }
 

@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.13 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: obj.h,v 1.14 2003/03/31 23:23:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.14  2003/03/31 23:23:38  gbeeley
+    Added facility to get additional data about an object, particularly
+    with regard to its ability to have subobjects.  Added the feature at
+    the driver level to objdrv_ux, and to the "show" command in test_obj.
+
     Revision 1.13  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -278,6 +283,7 @@ typedef struct _OSD
     char*	(*GetNextMethod)();
     int		(*ExecuteMethod)();
     pObjPresentationHints (*PresentationHints)();
+    int		(*Info)();
     }
     ObjDriver, *pObjDriver;
 
@@ -353,6 +359,24 @@ typedef struct _CT
 #define CT_F_HASCHILDREN	2
 #define CT_F_TOPLEVEL		4
 
+/** object additional information / capabilities **/
+typedef struct _OA
+    {
+    int		Flags;		/* OBJ_INFO_F_xxx, below */
+    int		nSubobjects;	/* count of subobjects, if known */
+    }
+    ObjectInfo, *pObjectInfo;
+
+/** info flags **/
+#define	OBJ_INFO_F_NO_SUBOBJ		1   /* object has no subobjects */
+#define OBJ_INFO_F_HAS_SUBOBJ		2   /* object has at least one subobject */
+#define OBJ_INFO_F_CAN_HAVE_SUBOBJ	4   /* object *can* have subobjects */
+#define OBJ_INFO_F_CANT_HAVE_SUBOBJ	8   /* object *cannot* have subobjects */
+#define OBJ_INFO_F_SUBOBJ_CNT_KNOWN	16  /* number of subobjects is known */
+#define OBJ_INFO_F_CAN_ADD_ATTR		32  /* attributes can be added to object */
+#define OBJ_INFO_F_CANT_ADD_ATTR	64  /* attributes cannot be added to object */
+
+
 /** objectsystem open fd **/
 typedef struct _OF
     {
@@ -373,6 +397,7 @@ typedef struct _OF
     pXString	ContentPtr;	/* buffer for accessing obj:objcontent */
     struct _OF*	Prev;		/* open object for accessing the "node" */
     struct _OF*	Next;		/* next object for intermediate opens chain */
+    ObjectInfo	AdditionalInfo;	/* see ObjectInfo definition above */
     }
     Object, *pObject;
 
@@ -510,6 +535,7 @@ int objClose(pObject this);
 int objCreate(pObjSession session, char* path, int permission_mask, char* type);
 int objDelete(pObjSession session, char* path);
 int objLinkTo(pObject this);
+pObjectInfo objInfo(pObject this);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query);
