@@ -465,3 +465,15 @@ function htr_write_content(l,t)
     return;
     }
 
+function htr_set_parent(l,n,p)
+    {
+    l.WName = n;
+    l.WParent = p;
+    if (!l.WParent.WChildren) l.WParent.WChildren = new Array();
+    l.WParent.WChildren[n] = l;
+    while (p.nonvisual) p = p.WParent;
+    l.VParent = p;
+    if (!l.VParent.VChildren) l.VParent.VChildren = new Array();
+    l.VParent.VChildren[n] = l;
+    }
+
