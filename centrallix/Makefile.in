@@ -91,7 +91,7 @@ OBJDRIVERS=$(patsubst %,osdrivers/%,$(XOBJDRIVERS))
 XOBJDRIVERMODULES=@OBJDRIVERMODULES@
 OBJDRIVERMODULES=$(patsubst %,osdrivers/%,$(XOBJDRIVERMODULES))
 
-XV3OBJDRIVERS=$(XOBJDRIVERMODULES) \
+XV3OBJDRIVERS= \
 	      objdrv_ux.o \
 	      objdrv_unixuser.o \
 	      objdrv_struct.o \
