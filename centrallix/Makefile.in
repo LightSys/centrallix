@@ -209,7 +209,7 @@ VERSION=$(shell cat .version)
 CXLIBDIR=@CXLIBDIR@
 CFLAGS=$(PROFILE) -I./include -I. @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
-LIBS=@LIBS@ -lCentrallix @STATIC_LIBS@
+LIBS=@LIBS@ @STATIC_LIBS@
 
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
@@ -228,7 +228,7 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
 	@echo ''
 	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo
-	$(CC) centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl,-export-dynamic -o centrallix
+	$(CC) centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
 	#@rm centrallix.o
 	@echo ''
@@ -282,7 +282,7 @@ jsengine: $(JSVM)
 	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
 
 test_obj: test_obj.o centrallix.o $(LSOBJS)
-	$(CC) centrallix.o test_obj.o $(LSOBJS) $(LIBDIRS) $(PROFILE) -Wl,-export-dynamic -o test_obj $(LIBS)
+	$(CC) centrallix.o test_obj.o $(LSOBJS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
 test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
 	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)

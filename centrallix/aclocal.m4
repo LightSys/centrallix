@@ -521,3 +521,24 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 	AC_SUBST(XML_LIBS)
     ]
 )
+
+dnl check if ld allows -export-dynamic
+AC_DEFUN(CHECK_EXPORT_DYNAMIC,
+    [
+    AC_MSG_CHECKING(if -export-dynamic can be given to ld)
+    temp="$CFLAGS"
+    CFLAGS="-Wl,-export-dynamic"
+    AC_TRY_RUN([int main(){return 0;}],
+	EXPORT_DYNAMIC="-export-dynamic",
+	EXPORT_DYNAMIC="" 
+    )
+    if test "$EXPORT_DYNAMIC" = "-export-dynamic"; then
+	EXPORT_DYNAMIC=",$EXPORT_DYNAMIC"
+	AC_MSG_RESULT(yes)
+    else
+	AC_MSG_RESULT(no)
+    fi
+    CFLAGS="$temp"
+    AC_SUBST(EXPORT_DYNAMIC)
+    ]
+)

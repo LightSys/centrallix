@@ -15,6 +15,8 @@ AC_PATH_PROG([SED], [sed], [])
 AC_PROG_INSTALL
 AC_CACHE_SAVE
 
+CHECK_EXPORT_DYNAMIC
+
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lcrypt:
 AC_CHECK_LIB(crypt, main)
@@ -83,6 +85,7 @@ AC_SUBST(OBJDRIVERS)
 AC_SUBST(STATIC_CFLAGS)
 AC_SUBST(STATIC_LIBS)
 
+    
 dnl Define WITH_DYNAMIC_LOAD in config.h
 if test "$WITH_DYNAMIC_LOAD" = "yes"; then
     AC_DEFINE(WITH_DYNAMIC_LOAD,1,[Use dynamic loading])
