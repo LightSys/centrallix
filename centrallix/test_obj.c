@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.20 2003/02/26 01:32:59 jorupp Exp $
+    $Id: test_obj.c,v 1.21 2003/03/03 21:33:31 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.21  2003/03/03 21:33:31  lkehresman
+    Fixed a bug in test_obj that would segfault if no attributes were returned
+    from an object.
+
     Revision 1.20  2003/02/26 01:32:59  jorupp
      * added presentation hints support to test_obj
     	one little problem -- for some reason, asking about just one attribute doesn't work
@@ -595,6 +599,7 @@ start(void* v)
 	/** Authenticate **/
 	user = readline("Username: ");
 	pwd = getpass("Password: ");
+	
 	if (mssAuthenticate(user,pwd) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	free(user);
@@ -1059,7 +1064,10 @@ start(void* v)
 		    attrname = objGetFirstAttr(obj);
 		    do
 			{
-			testobj_show_hints(obj, attrname);
+			if (attrname != NULL)
+			    {
+			    testobj_show_hints(obj, attrname);
+			    }
 			}
 		    while ((attrname = objGetNextAttr(obj)));
 		    }
