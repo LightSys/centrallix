@@ -34,13 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.8 2004/02/24 20:23:00 gbeeley Exp $
+    $Id: expression.h,v 1.9 2004/02/24 20:28:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.9  2004/02/24 20:28:09  gbeeley
+    - OOPS!  my commit log message messed up the comment structure in
+      this file!
+
     Revision 1.8  2004/02/24 20:23:00  gbeeley
     - external reference coverage-mask support to go along with changes to
-      expression/*.c files
+      expression/{star}.c files
 
     Revision 1.7  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
