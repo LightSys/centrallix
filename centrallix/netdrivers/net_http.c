@@ -63,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.50 2004/08/29 17:32:32 pfinley Exp $
+    $Id: net_http.c,v 1.51 2004/08/29 19:32:53 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.51  2004/08/29 19:32:53  pfinley
+    fixing last commit... put the paren in the wrong place
+
     Revision 1.50  2004/08/29 17:32:32  pfinley
     Textarea widget crossbrowser support... I have tested on Mozilla 1.7rc1,
     Firefox 0.9.3, and Netscape 4.79.  Also fixed a JS syntax error with
@@ -2281,7 +2284,7 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 			 "        {\n"
 			 "        loc = loc.replace(re2,'');\n"
 			 "        }\n"
-			 "    loc = loc.replace(new RegExp('[?&]*$',''));\n"
+			 "    loc = loc.replace(new RegExp('[?&]*$'),'');\n"
 			 "    if (loc.indexOf('?') >= 0)\n"
 			 "        loc += '&';\n"
 			 "    else\n"
