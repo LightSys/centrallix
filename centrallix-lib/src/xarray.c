@@ -29,10 +29,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xarray.c,v 1.4 2003/06/27 21:18:35 gbeeley Exp $
+    $Id: xarray.c,v 1.5 2004/07/22 00:20:52 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xarray.c,v $
 
     $Log: xarray.c,v $
+    Revision 1.5  2004/07/22 00:20:52  mmcgill
+    Added a magic number define for WgtrNode, and added xaInsertBefore and
+    xaInsertAfter functions to the XArray module.
+
     Revision 1.4  2003/06/27 21:18:35  gbeeley
     Added xarray xaSetItem() method
 
@@ -291,4 +295,64 @@ xaSetItem(pXArray this, int index, void* item)
 
     return index;
     }
+
+/*** xaInsertBefore - insert item before index
+ ***/
+int
+xaInsertBefore(pXArray this, int index, void* item)
+    {
+    void* ptr;
+    int i;
+
+	/** sanity check on args **/
+	if (index < 0 || index >= this->nItems) return -1;
+
+	/** Need more memory? **/
+	if (this->nItems + 1 > this->nAlloc)
+	    {
+	    this->nAlloc += BLK_INCR;
+	    ptr = (void**)nmSysRealloc(this->Items, this->nAlloc*sizeof(void*));
+	    if (!ptr) return -1;
+	    this->Items = ptr;
+	    memset(ptr+this->nItems, 0, BLK_INCR*sizeof(void*));
+	    }
+	/** Move from index on inclusive ahead one slot **/
+	for (i=this->nItems-1;i>=index;i--) this->Items[i+1] = this->Items[i];
+
+	/** Insert item in the spot that opened up **/
+	this->Items[index] = item;
+	this->nItems++;
+
+	return index;
+    }
+
+/*** xaInsertAfter - insert after index
+ ***/
+int xaInsertAfter(pXArray this, int index, void* item)
+    {
+    void* ptr;
+    int i;
+
+	/** sanity check on args **/
+	if (index < 0 || index >= this->nItems) return -1;
+
+	/** Need more memory? **/
+	if (this->nItems + 1 > this->nAlloc)
+	    {
+	    this->nAlloc += BLK_INCR;
+	    ptr = (void**)nmSysRealloc(this->Items, this->nAlloc*sizeof(void*));
+	    if (!ptr) return -1;
+	    this->Items = ptr;
+	    memset(ptr+this->nItems, 0, BLK_INCR*sizeof(void*));
+	    }
+	/** Move from index on inclusive ahead one slot **/
+	for (i=this->nItems-1;i>index;i--) this->Items[i+1] = this->Items[i];
+
+	/** Insert item in the spot that opened up **/
+	this->Items[index+1] = item;
+	this->nItems++;
+
+	return index+1;
+    }
+
 

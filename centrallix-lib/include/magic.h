@@ -26,10 +26,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.9 2003/05/30 17:40:42 gbeeley Exp $
+    $Id: magic.h,v 1.10 2004/07/22 00:20:52 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.10  2004/07/22 00:20:52  mmcgill
+    Added a magic number define for WgtrNode, and added xaInsertBefore and
+    xaInsertAfter functions to the XArray module.
+
     Revision 1.9  2003/05/30 17:40:42  gbeeley
     - make magic number assertion tell us the bad pointer address
 
@@ -126,5 +130,5 @@ typedef struct
 #define MGK_XSTRING	0x12340Ab8	/* xstring.h::XString */
 #define MGK_NNFS	0x12340b01	/* net_nfs.c */
 
-
+#define MGK_WGTR	0x12340c32	/* wgtr.c::WgtrNode */
 #endif /* not defined _MAGIC_H */

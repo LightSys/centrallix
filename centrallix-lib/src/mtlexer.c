@@ -32,10 +32,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.6 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: mtlexer.c,v 1.7 2004/07/22 00:20:52 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.7  2004/07/22 00:20:52  mmcgill
+    Added a magic number define for WgtrNode, and added xaInsertBefore and
+    xaInsertAfter functions to the XArray module.
+
     Revision 1.6  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -159,7 +163,14 @@ mlxStringSession(char* str, int flags)
 
 	/** Read the first line. **/
         this->BufCnt = mlxReadLine(this, this->Buffer, 2047);
-	if (this->BufCnt <= 0)
+	if (this->BufCnt == 0)
+	    {
+	    if (!(this->Flags & MLX_F_EOF))
+		{
+		this->TokType = MLX_TOK_EOF;
+		}
+	    }
+	else if (this->BufCnt < 0)
 	    {
 	    this->TokType = MLX_TOK_ERROR;
 	    }

@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xarray.h,v 1.3 2003/06/27 21:18:34 gbeeley Exp $
+    $Id: xarray.h,v 1.4 2004/07/22 00:20:52 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xarray.h,v $
 
     $Log: xarray.h,v $
+    Revision 1.4  2004/07/22 00:20:52  mmcgill
+    Added a magic number define for WgtrNode, and added xaInsertBefore and
+    xaInsertAfter functions to the XArray module.
+
     Revision 1.3  2003/06/27 21:18:34  gbeeley
     Added xarray xaSetItem() method
 
@@ -67,6 +71,8 @@ int xaRemoveItem(pXArray this, int index);
 int xaClear(pXArray this);
 int xaCount(pXArray this);
 int xaSetItem(pXArray this, int index, void* item);
+int xaInsertBefore(pXArray this, int index, void* item);
+int xaInsertAfter(pXArray this, int index, void* item);
 
 #define CLD(x,y,z) ((x)((y)->Children.Items[(z)]))
 
