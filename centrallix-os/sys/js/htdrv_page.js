@@ -230,16 +230,6 @@ function pg_keytimeout()
 	}
     }
 
-    k = e.which;
-    if (k > 65280) k -= 65280;
-    if (k >= 128) k -= 128;
-    if (k == pg_lastkey) return false;
-    pg_lastkey = k;
-    /*pg_togglecursor();*/
-    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-    pg_keytimeoutid = setTimeout(pg_keytimeout, 200);
-    return pg_keyhandler(k, e.modifiers, e);
-
 function pg_keyhandler(k,m,e)
     {
     pg_lastmodifiers = m;
