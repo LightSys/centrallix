@@ -1,0 +1,9 @@
+IE Port Notes
+********************************************************************
+Affected file: ht_utils_cursor.js
+Author: Jason Yip
+Date: 2/27/2004
+*********************************************************************
+
+The majority of the code is good, we just need to change the array indexing of s in htutil_encode to s.charAt(i) instead of s[i].
+

@@ -1,0 +1,17 @@
+IE Port Notes
+********************************************************************
+Affected file: htdrv_textbutton.js
+Author: Jason Yip
+Date: 2/27/2004
+*********************************************************************
+
+tb_init
+-The original code will pass null into the initializer in non-NS browser. By using the geometry library, it is possible to make the code originally written for NS works in IE.
+-IE doesn't support watch method, onpropertychange is used for IE support.
+
+tb_setenable
+-It is not possible to pass the arguments to the handler function in IE. prop, oldv and newv are NULL when onpropertychange is fired. In order to work around this, one need to use window.event.propertyName and window.event.srcElement to get the properties and the new value. There is still no way to get the old value yet. Note that we cannot specify the property in onpropertychange, say there is no way to watch the enabled attribute like NS does with "l.watch('enabled', tb_setenable)".
+-One important thing is on the new value in this particular handler function that sometimes gets 1px or 0px in newv that will eventually be evaluated to be boolean true or false. We need to make sure that the type of newv is boolean.
+
+tb_setmode
+-Since IE doesn't support DOM2 CSS, we need to access the style attributes in a layer.

@@ -1,0 +1,72 @@
+IE Port Notes
+********************************************************************
+Affected file: htdrv_page.js
+Author: Jason Yip
+Date: 2/27/2004
+*********************************************************************
+
+Since IE doesn't support DOM2 CSS, neither does it supports the NS-specific javascript, a lot of changes are made in the page widget:
+
+pg_get_style
+-To minimize the necessary changes to the code, it is OK to call pg_get_style with "pg_get_style(layer, 'clip.width)", etc.
+ They clip values are handled in the block if (cx__capabilities.Dom0IE).
+-Other attributes are also added, they include:
+ width, height, top, visibility, zIndex.
+-Whenever you see an alert box saying "attr xxx needs to be implemented in pg_get_style in htdrv_page.js" in IE, you will have to handle this new attribute in the function. Since there are numerous attributes for a layer, the alert message makes sure that the future developer will know where the problem is.
+
+pg_set_style
+-Again, DOM2 CSS is not supported by IE at the time of writing, we have decided to use if-else statements to handle all possible cases in IE
+-It is OK to call pg_set_style with "pg_set_style(layer, 'clip.width', 10)", etc
+-Other attributes supported are:
+ visibility, left, top, pageX, pageY, zIndex, bgColor, position.
+-Whenever you see an alert box saying "attr xxx needs to be implemented in pg_set_style in htdrv_page.js." in IE, you will have to add the attribute to this function.
+
+pg_set_style_string
+-I am not sure why this function is here and what is this function different from pg_set_style. Hence, very limited functions are added. 
+-The supported attributes are:
+ visibility, position, width
+
+pg_ping_init
+-Since one cannot pass an argument to IE with setInterval, pg_ping_send won't work in IE. The solution is either hard code the layer reference in pg_ping_send (this is what I am doing now) or wait for the completion of the interval widget.
+
+pg_ping_send
+-As mentioned above, the argument p becomes NULL in IE, I have to hard code the layer reference, pgping, to the function.
+
+pg_get_computed_clip
+-To get the clip values in IE, we have to access the runtimeStyle attribute.
+
+pg_get_clip
+-I am not sure the difference between pg_get_clip and pg_get_computed clip because there is no difference in the NS code. So I am returning runtimeStyle.clip again.
+-I still don't see these two functions are used, just make sure that what you wanted to get when you are using this function.
+
+pg_mkbox
+-I have changed the set attribute functions to use pg_set_style.
+-I have also used the geometry library here to support cross-browser.
+
+pg_hidebox
+-Since IE is using DOM1 HTML to get the layer reference, I used an if-else statement to make the hidbox happen
+
+pg_resize_area
+-Once again, geometry library functions are used here for cross-browser support
+
+pg_addarea
+-After creating a new pg_area object, 'a' has attributes looks very similar to Netscape, just to remember that they don't need to use the geometry library, otherwise the code won't work.
+
+pg_resize
+-Again, geometry libraries are used to handle the clipping values. Use getClipHeight(layer) instead of layer.clip.height!! (width, top, right, bottom, left as well!)
+-Otherwise, IE will gives an error
+
+pg_togglecursor
+-Try to use the cross-browser functions pg_set_style/pg_set_style all the time.
+
+pg_mvpginput
+-Check out the geometry library
+
+pg_removemousefocus
+-DOM1 HTML support
+
+pg_setmousefocus
+-Check out the geometry library
+-DOM1 HTML support
+
+There are many places used the geometry library in for the rest of the functions in this widget. They are not listed here. Probably there are other places need to be changed as well. Make sure that we are using pg_set_style/pg_get_style and the geometry library.
