@@ -48,10 +48,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.6 2003/03/10 15:41:42 lkehresman Exp $
+    $Id: obj_attr.c,v 1.7 2003/08/01 18:51:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.7  2003/08/01 18:51:30  gbeeley
+    Move a little bit of work out of the osdrivers in GetAttrType.
+
     Revision 1.6  2003/03/10 15:41:42  lkehresman
     The CSV objectsystem driver (objdrv_datafile.c) now presents the presentation
     hints to the OSML.  To do this I had to:
@@ -125,6 +128,13 @@ objGetAttrType(pObject this, char* attrname)
 
     	/** Builtin attribute 'objcontent' is always a string **/
 	if (!strcmp(attrname, "objcontent")) return DATA_T_STRING;
+
+	/** These 'system' attributes are also always strings **/
+	if (!strcmp(attrname,"name")) return DATA_T_STRING;
+	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
+		!strcmp(attrname,"outer_type")) return DATA_T_STRING;
+	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
+
 
     return this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
     }
