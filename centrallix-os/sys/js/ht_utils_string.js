@@ -16,3 +16,17 @@ function htutil_strpad(str, pad, len) {
 		tmp = pad+tmp;
 	return tmp+str;
 }
+
+function htutil_encode(s) {
+	rs = '';
+	for(i=0;i<s.length;i++) {
+		if (s[i] == '<') rs += '&lt;';
+		else if (s[i] == '>') rs += '&gt;';
+		else if (s[i] == '&') rs += '&amp;';
+		else if (s[i] == ' ') rs += '&nbsp;';
+		else rs += s[i];
+	}
+	return rs;
+}
+
+// vim: set ts=4 :
