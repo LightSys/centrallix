@@ -57,10 +57,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report.c,v 1.6 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_report.c,v 1.7 2003/07/09 18:13:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report.c,v $
 
     $Log: objdrv_report.c,v $
+    Revision 1.7  2003/07/09 18:13:20  gbeeley
+    Further polishing/work on the table output in the report writer.  Re-
+    enabled uxprint OSD once its dependence on prtmgmt was removed.
+
     Revision 1.6  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -3110,7 +3114,10 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Obj = obj;
 	inf->Mask = mask;
 	inf->AttrOverride = stCreateStruct(NULL,NULL);
-	memccpy(inf->ContentType, usrtype, 0, 63);
+	if (!usrtype)
+	    memccpy(inf->ContentType, "text/plain");
+	else
+	    memccpy(inf->ContentType, usrtype, 0, 63);
 	inf->ContentType[63] = 0;
 
 	/** Content type must be application/octet-stream or more specific. **/

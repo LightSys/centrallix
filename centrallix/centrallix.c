@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.19 2003/06/27 21:19:47 gbeeley Exp $
+    $Id: centrallix.c,v 1.20 2003/07/09 18:13:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.20  2003/07/09 18:13:20  gbeeley
+    Further polishing/work on the table output in the report writer.  Re-
+    enabled uxprint OSD once its dependence on prtmgmt was removed.
+
     Revision 1.19  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -420,7 +424,7 @@ cxInitialize(void* v)
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
 	rptInitialize();			/* report writer driver */
-	/*uxpInitialize();*/			/* UNIX printer access driver */
+	uxpInitialize();			/* UNIX printer access driver */
 	datInitialize();			/* flat ascii datafile (CSV, etc) */
 	uxuInitialize();			/* UNIX users list driver */
 	audInitialize();			/* Audio file player driver */

@@ -96,6 +96,7 @@ XV3OBJDRIVERS=$(XOBJDRIVERMODULES) \
 	      objdrv_unixuser.o \
 	      objdrv_struct.o \
 	      objdrv_report_v3.o \
+	      objdrv_uxprint_v3.o \
 	      objdrv_qytree.o \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \

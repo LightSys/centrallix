@@ -57,10 +57,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.5 2003/06/27 21:19:47 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.6 2003/07/09 18:13:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.6  2003/07/09 18:13:20  gbeeley
+    Further polishing/work on the table output in the report writer.  Re-
+    enabled uxprint OSD once its dependence on prtmgmt was removed.
+
     Revision 1.5  2003/06/27 21:19:47  gbeeley
     Okay, breaking the reporting system for the time being while I am porting
     it to the new prtmgmt subsystem.  Some things will not work for a while...
@@ -143,12 +147,12 @@ typedef struct
 
 
 /*** Structure for precompiled expressions, etc. ***/
-/*typedef struct
+typedef struct
     {
-    pExpression		DataExp;
-    pExpression		CondExp;
+    pExpression		Exp;
+    pExpression		LastValue;
     }
-    RptUserData, *pRptUserData;*/
+    RptUserData, *pRptUserData;
 
 
 /*** Structure used by this driver internally. ***/
@@ -1424,6 +1428,165 @@ rpt_internal_Deactivate(pRptData inf, pRptActiveQueries ac)
     return 0;
     }
 
+
+/*** rpt_internal_DoTableRow - process a single row object in a table.
+ ***/
+int
+rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int numcols, int table_handle)
+    {
+    int tablerow_handle, tablecell_handle, area_handle;
+    int i;
+    pStructInf subinf;
+    int is_header, is_footer, flags;
+    int is_cellrow, is_generalrow;
+    int rval;
+    pPrtBorder tb,bb,lb,rb,ib,ob;
+    double dbl;
+    char oldmfmt[32],olddfmt[32],oldnfmt[32];
+
+	rval = rpt_internal_CheckCondition(inf,tablerow);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+	/** Get table row object flags **/
+	is_header = rpt_internal_GetBool(tablerow,"header",0,0);
+	is_footer = rpt_internal_GetBool(tablerow,"footer",0,0);
+	flags = 0;
+	if (rpt_internal_GetBool(tablerow, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(tablerow, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+
+	/** Border settings? **/
+	tb=bb=lb=rb=ib=ob=NULL;
+	if (rpt_internal_GetDouble(tablerow, "outerborder", &dbl, 0) == 0)
+	    ob = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(tablerow, "innerborder", &dbl, 0) == 0)
+	    ib = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(tablerow, "topborder", &dbl, 0) == 0)
+	    tb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(tablerow, "bottomborder", &dbl, 0) == 0)
+	    bb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(tablerow, "leftborder", &dbl, 0) == 0)
+	    lb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(tablerow, "rightborder", &dbl, 0) == 0)
+	    rb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+
+	/** Create the table row **/
+	tablerow_handle = prtAddObject(table_handle, PRT_OBJ_T_TABLEROW, -1,-1,-1,-1, flags, "header", is_header, "footer", is_footer, 
+		"outerborder", ob, "innerborder", ib, "topborder", tb, "bottomborder", bb, "leftborder", lb, "rightborder", rb, NULL);
+	if (tablerow_handle < 0)
+	    {
+	    mssError(0,"RPT","could not build table row object '%s'", tablerow->Name);
+	    return -1;
+	    }
+
+	/** Set the style for the table **/
+	rpt_internal_SetStyle(inf, tablerow, rs, tablerow_handle);
+	rpt_internal_SetMargins(tablerow, tablerow_handle);
+
+	/** Output data formats **/
+	rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 0);
+
+	/** Loop through subobjects **/
+	is_cellrow = is_generalrow = 0;
+	for(i=0;i<tablerow->nSubInf;i++) if (stStructType(tablerow->SubInf[i]) == ST_T_SUBGROUP)
+	    {
+	    subinf = tablerow->SubInf[i];
+
+	    /** Is this a cell object, or do we have a general-purpose row here? **/
+	    if (!strcmp(subinf->UsrType,"report/table-cell"))
+		{
+		if (is_generalrow)
+		    {
+		    mssError(1,"RPT","cannot mix a general purpose row (%s) contents with a cell (%s)", tablerow->Name, subinf->Name);
+		    prtEndObject(tablerow_handle);
+		    rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+		    return -1;
+		    }
+		is_cellrow = 1;
+
+		/** Init the cell **/
+		tablecell_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_TABLECELL, -1,-1,-1,-1, flags, NULL);
+		if (tablecell_handle < 0)
+		    {
+		    mssError(0,"RPT","could not build table cell object '%s'", subinf->Name);
+		    prtEndObject(tablerow_handle);
+		    rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+		    return -1;
+		    }
+
+		/** Does cell have a builtin value?  If so, don't treat the cell as a general
+		 ** purpose container, but instead put an Area in the cell and treat the cell's
+		 ** config as a report/data element.
+		 **/
+		if (stLookup(subinf, "value"))
+		    {
+		    area_handle = prtAddObject(tablecell_handle, PRT_OBJ_T_AREA, 0,0,-1,-1, flags, NULL);
+		    if (area_handle < 0)
+			{
+			mssError(0,"RPT","problem constructing cell object '%s' (error adding area object)", subinf->Name);
+			prtEndObject(tablecell_handle);
+			prtEndObject(tablerow_handle);
+			rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+			return -1;
+			}
+		    /*rpt_internal_SetStyle(inf, subinf, rs, area_handle);*/
+		    rpt_internal_SetMargins(subinf, area_handle);
+		    if (rpt_internal_DoData(inf, subinf, rs, area_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing cell object '%s' (error doing area content)", subinf->Name);
+			prtEndObject(area_handle);
+			prtEndObject(tablecell_handle);
+			prtEndObject(tablerow_handle);
+			rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+			return -1;
+			}
+		    prtEndObject(area_handle);
+		    }
+		else
+		    {
+		    /** general purpose container here. **/
+		    if (rpt_internal_DoContainer(inf, subinf, rs, tablecell_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing cell object '%s' (error doing content)", subinf->Name);
+			prtEndObject(tablecell_handle);
+			prtEndObject(tablerow_handle);
+			rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+			return -1;
+			}
+		    }
+
+		/** End the cell **/
+		prtEndObject(tablecell_handle);
+		}
+	    else
+		{
+		if (is_cellrow)
+		    {
+		    mssError(1,"RPT","cannot mix a cell row (%s) contents with a general purpose object (%s)", tablerow->Name, subinf->Name);
+		    prtEndObject(tablerow_handle);
+		    rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+		    return -1;
+		    }
+		is_generalrow = 1;
+		if (rpt_internal_DoContainer(inf, tablerow, rs, tablerow_handle) < 0)
+		    {
+		    mssError(0,"RPT","problem constructing row object '%s' (error doing content)", tablerow->Name);
+		    prtEndObject(tablerow_handle);
+		    rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+		    return -1;
+		    }
+		break; /* did all objects in DoContainer */
+		}
+	    }
+
+	/** Finish the row **/
+	prtEndObject(tablerow_handle);
+	rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 1);
+
+    return 0;
+    }
+
+
 /*** rpt_internal_DoTable - process tabular data from the database and
  *** output using the print driver's table feature.
  ***/
@@ -1464,6 +1627,9 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
     double x,y,w,h;
     int numcols;
     pPrtBorder outerborder=NULL, innerborder=NULL, shadow=NULL;
+    pStructInf rowinf, summarize_for_inf;
+    pRptUserData ud;
+    int changed;
 
 	rval = rpt_internal_CheckCondition(inf,table);
 	if (rval < 0) return rval;
@@ -1480,6 +1646,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
 	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
 	if (rpt_internal_GetBool(table, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(table, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
 
 	/** Get column count and widths. **/
 	numcols = 0;
@@ -1499,7 +1666,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    }
 
 	/** Check for column separation amount **/
-	if (rpt_internal_GetDouble(table, "widths", &colsep, 0) != 0) colsep = 1.0;
+	if (rpt_internal_GetDouble(table, "colsep", &colsep, 0) != 0) colsep = 1.0;
 
 	/** Check for borders / shadow **/
 	if (rpt_internal_GetDouble(table, "outerborder", &dbl, 0) == 0)
@@ -1510,7 +1677,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    shadow = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 
 	/** Create the table **/
-	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags, "numcols", numcols, "widths", cwidths, "colsep", colsep, "outerborder", outerborder, "innerborder", innerborder, "shadow", shadow, NULL);
+	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags, "numcols", numcols, "colwidths", cwidths, "colsep", colsep, "outerborder", outerborder, "innerborder", innerborder, "shadow", shadow, NULL);
 	if (table_handle < 0)
 	    {
 	    mssError(0, "RPT", "Could not create table '%s'", table->Name);
@@ -1579,10 +1746,10 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		}*/
 	    ac = NULL;
 	    }
-
+#if 00
 	/** Decide which columns of the result set to use **/
 	colmask = 0x7FFFFFFF;
-	if (!table->UserData)
+	if (ac)
 	    {
 	    /** Determine which source to use. **/
 	    if (ac->MultiMode == RPT_MM_MULTINESTED)
@@ -1606,89 +1773,20 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		    }
 		}
 	    }
-#if 00
-	/** Now build the table header if need be. **/
-	if (1)
+#endif
+
+	/** First, scan for any header rows in the table **/
+	for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
 	    {
-	    cnt=0;
-	    if (!table->UserData)
-	        {
-		/** Scan the columns **/
-	        for(v=0,cname=objGetFirstAttr(qy->QueryItem);cname;v++,cname=objGetNextAttr(qy->QueryItem)) 
-	          if (colmask & (1<<v))
+	    rowinf = table->SubInf[i];
+	    if (!strcmp(rowinf->UsrType,"report/table-row"))
+		{
+		if (rpt_internal_GetBool(rowinf,"header",0,0))
 		    {
-		    ptr=NULL;
-		    if (stAttrValue(stLookup(table,"widths"),&len,NULL,cnt) < 0 || len==0)
-		    	{
-		    	len = strlen(cname)+2;
-		    	}
-		    cwidths[cnt] = len;
-		    cflagslist[cnt] = 0;
-		    ptr=NULL;
-		    stAttrValue(stLookup(table,"colnames"),NULL,&ptr,cnt);
-		    if (ptr) cname = ptr;
-		    ptr=NULL;
-		    if (stAttrValue(stLookup(table,"align"),NULL,&ptr,cnt) >= 0)
-		        {
-		        if (ptr && !strcmp(ptr,"right"))
-		    	    cflagslist[cnt] = RS_COL_RIGHTJUSTIFY;
-		        else if (ptr && !strcmp(ptr,"center"))
-		            cflagslist[cnt] = RS_COL_CENTER;
-			}
-		    hflagslist[cnt] = 0;
-		    if (stAttrValue(stLookup(table,"headeralign"),NULL,&ptr,cnt) >= 0)
-		        {
-		        if (ptr && !strcmp(ptr,"right"))
-		    	    hflagslist[cnt] = RS_COL_RIGHTJUSTIFY;
-		        else if (ptr && !strcmp(ptr,"center"))
-		            hflagslist[cnt] = RS_COL_CENTER;
-			}
-		    if (titlebar)
-		        {
-		        prtDoColHdr(rs->PSession,cnt==0,len,hflagslist[cnt]);
-		        prtWriteString(rs->PSession,cname,-1);
-			}
-		    cnt++;
-		    }
-		}
-	    else
-	        {
-		/** Loop through the expressions/colnames **/
-		for(v=0;v<xa->nItems;v++)
-		    {
-		    cflagslist[v] = 0;
-		    ptr = cname = NULL;
-		    stAttrValue(stLookup(table,"colnames"),NULL,&cname,v);
-		    if (!cname)
-		        {
-			sprintf(nbuf,"[%d]",v+1);
-			cname = nbuf;
-			}
-		    if (stAttrValue(stLookup(table,"widths"),&len,NULL,v) < 0 || len==0)
-		    	{
-		    	len = strlen(cname)+2;
-		    	}
-		    cwidths[v] = len;
-		    ptr=NULL;
-		    if (stAttrValue(stLookup(table,"align"),NULL,&ptr,v) >= 0)
-		        {
-		        if (ptr && !strcmp(ptr,"right"))
-		    	    cflagslist[v] = RS_COL_RIGHTJUSTIFY;
-		        else if (ptr && !strcmp(ptr,"center"))
-		            cflagslist[v] = RS_COL_CENTER;
-			}
-		    hflagslist[v] = 0;
-		    if (stAttrValue(stLookup(table,"headeralign"),NULL,&ptr,v) >= 0)
-		        {
-		        if (ptr && !strcmp(ptr,"right"))
-		    	    hflagslist[v] = RS_COL_RIGHTJUSTIFY;
-		        else if (ptr && !strcmp(ptr,"center"))
-		            hflagslist[v] = RS_COL_CENTER;
-			}
-		    if (titlebar)
-		        {
-		        prtDoColHdr(rs->PSession,v==0,len,hflagslist[v]);
-		        prtWriteString(rs->PSession,cname,-1);
+		    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+			{
+			err = 1;
+			break;
 			}
 		    }
 		}
@@ -1696,7 +1794,8 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 
 	/** Read the result set and build the table **/
 	reccnt = 0;
-	do  {
+	if (!err) do  
+	    {
 	    if (ac) for(i=0;i<ac->Count;i++) if (ac->Queries[i]) qy = ac->Queries[i];
 	    if (reclimit != -1 && reccnt >= reclimit) break;
 	    if (ac && rpt_internal_UseRecord(ac) < 0)
@@ -1704,150 +1803,117 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		err = 1;
 		break;
 		}
-	    cnt=0;
-	    if (xa)
-	        {
-		for(v=0;v<xa->nItems;v++)
-		    {
-		    exp = (pExpression)(xa->Items[v]);
-		    if (expEvalTree(exp, inf->ObjList) < 0)
-		        {
-			err = 1;
-			mssError(0,"RPT","Could not evaluate table '%s' expression #%d",table->Name,v);
-			break;
-			}
-                    prtDoColumn(rs->PSession,v==0,cwidths[v],1,cflagslist[v]);
-	            rpt_internal_WriteExpResult(rs, exp);
-		    }
-		}
-	    else
-		{
-                for(v=0,cname=objGetFirstAttr(qy->QueryItem);cname;v++,cname=objGetNextAttr(qy->QueryItem)) 
-                  if (colmask & (1<<v))
-                    {
-                    ptr=NULL;
-                    t = objGetAttrType(qy->QueryItem, cname);
-                    if (t < 0)
-                        {
-                        mssError(0,"RPT","Table '%s' column '%s' is invalid", table->Name, cname);
-                        err = 1;
-                        break;
-                        }
-                    switch(t)
-                        {
-                        case DATA_T_STRING:
-                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_STRING, POD(&ptr)) == 1) ptr=NULL;
-                            break;
-    
-                        case DATA_T_INTEGER:
-                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_STRING, POD(&n)) == 1)
-                                {
-                                ptr = NULL;
-                                }
-                            else
-                                {
-                                sprintf(nbuf,"%d",n);
-                                ptr = nbuf;
-                                }
-                            break;
-    
-                        case DATA_T_DATETIME:
-                        case DATA_T_MONEY:
-                            if (objGetAttrValue(qy->QueryItem, cname, t, POD(&p)) == 1 || p == NULL)
-                                ptr = NULL;
-                            else
-                                ptr = objDataToStringTmp(t, p, 0);
-                            break;
-    
-                        case DATA_T_DOUBLE:
-                            if (objGetAttrValue(qy->QueryItem, cname, DATA_T_DOUBLE, POD(&dbl)) == 1)
-                                {
-                                ptr = NULL;
-                                }
-                            else
-                                {
-                                sprintf(nbuf,"%f",dbl);
-                                ptr = nbuf;
-                                }
-                            break;
-    
-                        default:
-                            ptr = "";
-                            break;
-                        }
-                    if (ptr == NULL) ptr = rpt_internal_GetNULLstr();
-                    prtDoColumn(rs->PSession,cnt==0,cwidths[cnt],1,cflagslist[cnt]);
-                    prtWriteString(rs->PSession,ptr,-1);
-                    cnt++;
-                    }
-		}
 
-	    /** Do sub-elements within the table. **/
-	    for(v=i=0;i<table->nSubInf && !v;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP) v = 1;
-	    if (v > 0)
-	        {
-		prtDisengageTable(rs->PSession);
-	        for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
+	    /** Search for 'normal' rows **/
+	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
+		{
+		rowinf = table->SubInf[i];
+		if (!strcmp(rowinf->UsrType,"report/table-row"))
 		    {
-		    if (!strcmp("report/column",table->SubInf[i]->UsrType))
-		        {
-		        if (rpt_internal_DoField(inf, table->SubInf[i],rs,qy) <0) 
-		            {
+		    if (!rpt_internal_GetBool(rowinf,"header",0,0) && !rpt_internal_GetBool(rowinf,"summary",0,0))
+			{
+			if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+			    {
 			    err = 1;
 			    break;
 			    }
-		        }
-		    else if (!strcmp("report/form",table->SubInf[i]->UsrType))
-		        {
-		        if (rpt_internal_DoForm(inf, table->SubInf[i],rs) <0)
-		            {
-			    err = 1;
-			    break;
-			    }
-		        }
-		    else if (!strcmp("report/comment",table->SubInf[i]->UsrType))
-		        {
-		        if (rpt_internal_DoComment(inf, table->SubInf[i],rs) <0)
-		            {
-			    err = 1;
-			    break;
-			    }
-		        }
-		    else if (!strcmp("report/data",table->SubInf[i]->UsrType))
-		        {
-		        if (rpt_internal_DoData(inf, table->SubInf[i],rs) <0)
-		            {
-			    err = 1;
-			    break;
-			    }
-		        }
-		    else if (!strcmp("report/table",table->SubInf[i]->UsrType))
-		        {
-		        if (rpt_internal_DoTable(inf, table->SubInf[i],rs) <0)
-		            {
-			    err = 1;
-			    break;
-			    }
-		        }
-                    else if (!strcmp("report/section",table->SubInf[i]->UsrType))
-                        {
-                        if (rpt_internal_DoSection(inf, table->SubInf[i],rs,qy) <0)
-                            {
-                            err = 1;
-                            break;
-                            }
-                        }
+			}
 		    }
-		/*prtDoTable(rs->PSession,(is_rel_cols?PRT_T_F_RELCOLWIDTH:0) | (lower_sep?PRT_T_F_LOWERSEP:0),colsep);*/
-		prtEngageTable(rs->PSession);
 		}
 
 	    if (err) break;
 	    if (ac) rval = rpt_internal_NextRecord(ac, inf, table, rs, 0);
 	    else rval = 1;
+
+	    /** Emit summary rows? **/
+	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
+		{
+		rowinf = table->SubInf[i];
+		if (!strcmp(rowinf->UsrType,"report/table-row"))
+		    {
+		    if (rpt_internal_GetBool(rowinf,"summary",0,0))
+			{
+			if (rval != 0) 
+			    {
+			    /** End of table.  do the final summary. **/
+			    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+				{
+				err = 1;
+				break;
+				}
+			    }
+			else
+			    {
+			    /** Not end of table; check to see if we need the summary record **/
+			    summarize_for_inf = stLookup(rowinf, "summarize_for");
+			    if (summarize_for_inf)
+				{
+				ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(summarize_for_inf->UserData));
+				if (expEvalTree(ud->Exp, inf->ObjList) < 0)
+				    {
+				    mssError(0,"RPT","Could not evaluate report/table-row '%s' summarize_for expression", rowinf->Name);
+				    err = 1;
+				    break;
+				    }
+				if (!ud->LastValue)
+				    {
+				    /** First record; not initialized.  don't issue summary **/
+				    ud->LastValue = expAllocExpression();
+				    ud->LastValue->NodeType = expDataTypeToNodeType(ud->Exp->DataType);
+				    expCopyValue(ud->Exp, ud->LastValue, 1);
+				    }
+				else if (ud->LastValue->DataType != ud->Exp->DataType)
+				    {
+				    /** Data type changed.  Issue summary. **/
+				    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+					{
+					err = 1;
+					break;
+					}
+				    ud->LastValue->NodeType = expDataTypeToNodeType(ud->Exp->DataType);
+				    expCopyValue(ud->Exp, ud->LastValue, 1);
+				    }
+				else
+				    {
+				    /** See if value changed. **/
+				    changed = 0;
+				    switch(ud->LastValue->DataType)
+					{
+					case DATA_T_INTEGER:
+					    changed = ud->LastValue->Integer != ud->Exp->Integer;
+					    break;
+					case DATA_T_STRING:
+					    changed = strcmp(ud->LastValue->String, ud->Exp->String);
+					    break;
+					case DATA_T_MONEY:
+					    changed = memcmp(&(ud->LastValue->Types.Money), &(ud->Exp->Types.Money), sizeof(MoneyType));
+					    break;
+					case DATA_T_DATETIME:
+					    changed = memcmp(&(ud->LastValue->Types.Date), &(ud->Exp->Types.Date), sizeof(DateTime));
+					    break;
+					case DATA_T_DOUBLE:
+					    changed = ud->LastValue->Types.Double != ud->Exp->Types.Double;
+					    break;
+					}
+				    if (changed)
+					{
+					/** Value changed.  Issue summary. **/
+					if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+					    {
+					    err = 1;
+					    break;
+					    }
+					expCopyValue(ud->Exp, ud->LastValue, 1);
+					}
+				    }
+				}
+			    }
+			}
+		    }
+		}
+
 	    reccnt++;
 	    } while(rval == 0);
-#endif
 
 	/** Finish off the table object **/
 	prtEndObject(table_handle);
@@ -1968,12 +2034,12 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
     char* ptr = NULL;
     char oldmfmt[32],olddfmt[32],oldnfmt[32];
     int nl = 0;
-    pExpression exp;
     PrtTextStyle oldstyle;
     pPrtTextStyle oldstyleptr = &oldstyle;
     int t,rval;
     ObjData od;
     pStructInf value_inf;
+    pRptUserData ud;
 
 	rval = rpt_internal_CheckCondition(inf,data);
 	if (rval < 0) return rval;
@@ -1996,7 +2062,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	value_inf = stLookup(data,"value");
 	if (!value_inf)
 	    {
-	    mssError(0,"RPT","report/data '%s' must have a value expression", data->Name);
+	    mssError(0,"RPT","%s '%s' must have a value expression", data->UsrType, data->Name);
 	    prtSetTextStyle(container_handle, &oldstyle);
 	    rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 1);
 	    return -1;
@@ -2004,21 +2070,21 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	t = stGetAttrType(value_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    exp = (pExpression)xaGetItem(&(inf->UserDataSlots), (int)(data->UserData));
-	    if (exp)
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(value_inf->UserData));
+	    if (ud)
 		{
 		/** Evaluate the expression **/
-		rval = expEvalTree(exp, inf->ObjList);
+		rval = expEvalTree(ud->Exp, inf->ObjList);
 		if (rval < 0)
 		    {
-		    mssError(0,"RPT","Could not evaluate report/data '%s' value expression", data->Name);
+		    mssError(0,"RPT","Could not evaluate %s '%s' value expression", data->UsrType, data->Name);
 		    prtSetTextStyle(container_handle, &oldstyle);
 		    rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 1);
 		    return -1;
 		    }
 
 		/** Output the result **/
-		rpt_internal_WriteExpResult(rs, exp, container_handle);
+		rpt_internal_WriteExpResult(rs, ud->Exp, container_handle);
 		}
 	    else
 		{
@@ -2033,7 +2099,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	    }
 	else
 	    {
-	    mssError(1,"RPT","Unknown data value for report/data '%s' element", data->Name);
+	    mssError(1,"RPT","Unknown data value for %s '%s' element", data->UsrType, data->Name);
 	    prtSetTextStyle(container_handle, &oldstyle);
 	    rpt_internal_CheckFormats(data, oldmfmt, olddfmt, oldnfmt, 1);
 	    return -1;
@@ -2400,6 +2466,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		err = 1;
 		}
 	    if (ffsep) prtWriteFF(container_handle);
+	    expModifyParam(inf->ObjList, "this", inf->Obj); /* page no changed, force re-eval */
 	    /*if (rulesep) prtWriteLine(rs->PSession);*/
 	    rval = rpt_internal_NextRecord(ac, inf, form, rs, 0);
 	    reccnt++;
@@ -2466,8 +2533,8 @@ rpt_internal_CheckCondition(pRptData inf, pStructInf config)
     {
     pStructInf condition_inf;
     int t;
-    pExpression exp;
     int rval;
+    pRptUserData ud;
 
 	/** Does this object have a condition statement? **/
 	condition_inf = stLookup(config,"condition");
@@ -2477,19 +2544,19 @@ rpt_internal_CheckCondition(pRptData inf, pStructInf config)
 	t = stGetAttrType(condition_inf, 0);
 	if (t == DATA_T_CODE)
 	    {
-	    exp = (pExpression)xaGetItem(&(inf->UserDataSlots), (int)(condition_inf->UserData));
-	    if (exp)
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (int)(condition_inf->UserData));
+	    if (ud)
 		{
 		/** Evaluate the expression **/
-		rval = expEvalTree(exp, inf->ObjList);
+		rval = expEvalTree(ud->Exp, inf->ObjList);
 		if (rval < 0)
 		    {
 		    mssError(0,"RPT","Could not evaluate '%s' condition expression", config->Name);
 		    return -1;
 		    }
-		if (exp->DataType == DATA_T_INTEGER)
+		if (ud->Exp->DataType == DATA_T_INTEGER)
 		    {
-		    if (exp->Integer == 0) return 0;
+		    if (ud->Exp->Integer == 0) return 0;
 		    else return 1;
 		    }
 		return 0;
@@ -2670,19 +2737,24 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
 		    rval = rpt_internal_DoArea(inf, subobj, rs, NULL, container_handle);
 		    if (rval < 0) break;
 		    }
-		if (!strcmp(subobj->UsrType, "report/image"))
+		else if (!strcmp(subobj->UsrType, "report/image"))
 		    {
 		    rval = rpt_internal_DoImage(inf, subobj, rs, NULL, container_handle);
 		    if (rval < 0) break;
 		    }
-		if (!strcmp(subobj->UsrType, "report/data"))
+		else if (!strcmp(subobj->UsrType, "report/data"))
 		    {
 		    rval = rpt_internal_DoData(inf, subobj, rs, container_handle);
 		    if (rval < 0) break;
 		    }
-		if (!strcmp(subobj->UsrType, "report/form"))
+		else if (!strcmp(subobj->UsrType, "report/form"))
 		    {
 		    rval = rpt_internal_DoForm(inf, subobj, rs, container_handle);
+		    if (rval < 0) break;
+		    }
+		else if (!strcmp(subobj->UsrType, "report/table"))
+		    {
+		    rval = rpt_internal_DoTable(inf, subobj, rs, container_handle);
 		    if (rval < 0) break;
 		    }
 		}
@@ -2760,6 +2832,7 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn th
 	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
 	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
 	if (rpt_internal_GetBool(area, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(area, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
 
 	/** Check for border **/
 	if (stGetAttrValue(stLookup(area, "border"), DATA_T_DOUBLE, POD(&bw), 0) == 0)
@@ -2790,6 +2863,58 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn th
 
 
 
+/*** rpt_internal_PreBuildExp - gets on individual expression during the pre-
+ *** processing part of running a report.  Returns 0 on success and -1 on
+ *** failure.  'obj' is the report attribute containing the expression, and
+ *** is the object whose UserData part will be set up.  If the value of the
+ *** 'obj' attribute is not an expression, returns 0 but does not set up
+ *** the UserData and its expression.
+ ***/
+int
+rpt_internal_PreBuildExp(pRptData inf, pStructInf obj, pParamObjects objlist)
+    {
+    int t, rval;
+    pRptUserData ud;
+    pExpression exp;
+
+	/** See if we have a real expression here **/
+	t = stGetAttrType(obj, 0);
+	if (t == DATA_T_CODE)
+	    {
+	    rval = stGetAttrValue(obj, t, POD(&exp), 0);
+	    if (rval == 0)
+		{
+		/** Okay, got an expression.  Bind it to the current objlist **/
+		ud = (pRptUserData)nmMalloc(sizeof(RptUserData));
+		if (!ud) return -1;
+		ud->LastValue = NULL;
+		ud->Exp = expDuplicateExpression(exp);
+		expBindExpression(ud->Exp, objlist, EXPR_F_RUNSERVER);
+
+		/** ... and set it up in our user data slots structure **/
+		if (!(obj->UserData)) 
+		    obj->UserData = (void*)(inf->NextUserDataSlot++);
+		else if ((int)(obj->UserData) >= inf->NextUserDataSlot)
+		    inf->NextUserDataSlot = ((int)(obj->UserData))+1;
+		xaSetItem(&(inf->UserDataSlots), (int)(obj->UserData), (void*)ud);
+		}
+	    else
+		{
+		/** Fail if couldn't get the expression **/
+		return -1;
+		}
+	    }
+	else if (t < 0)
+	    {
+	    /** Fail if couldn't determine type, or obj is invalid **/
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+
 /*** rpt_internal_PreProcess - compiles all expressions in the report prior
  *** to the report's execution, including report/table expressions as well 
  *** as report/data expressions.
@@ -2805,6 +2930,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
     pExpression exp;
     int err = 0;
     pXString subst_value;
+    pStructInf expr_inf;
 
     	/** Need to allocate an object list? **/
 	if (!objlist)
@@ -2820,106 +2946,22 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	/** Default userdata is NULL **/
 	object->UserData = NULL;
 
-	/** Check for new objects to be added to list? **/
-#if 00
-	src_inf = stLookup(object,"source");
-	if (src_inf && (!strcmp(object->UsrType,"report/table") || !strcmp(object->UsrType,"report/form")))
-	    {
-	    /** Search through the source= attribute, if it exists **/
-	    for(i=0;stAttrValue(src_inf,NULL,&(new_objs[n_new_objs]),i) >= 0;i++) 
-	        {
-		/** Don't add a source that's already active. **/
-		found = 0;
-		for(j=0;j<use_objlist->nObjects;j++) if (!strcmp(new_objs[n_new_objs], use_objlist->Names[j]))
-		    {
-		    found = 1;
-		    break;
-		    }
-		if (found) continue;
-		expAddParamToList(use_objlist, new_objs[n_new_objs], NULL, EXPR_O_CURRENT);
-	        expSetParamFunctions(use_objlist, new_objs[n_new_objs], rpt_internal_QyGetAttrType, rpt_internal_QyGetAttrValue, NULL);
-		n_new_objs++;
-		}
-	    }
-#endif
-
-	/** If this is a report/table item, compile its expressions **/
-	if (!strcmp(object->UsrType,"report/table"))
-	    {
-	    if (stAttrValue(stLookup(object,"expressions"),NULL,&ptr,0) >= 0 && !strcmp(ptr,"yes"))
-	        {
-		ck_inf = stLookup(object,"columns");
-		if (ck_inf)
-		    {
-		    xa = (pXArray)nmMalloc(sizeof(XArray));
-		    xaInit(xa,16);
-		    for(i=0;stAttrValue(ck_inf,NULL,&ptr,i) >= 0;i++)
-		        {
-	    	        subst_value = rpt_internal_SubstParam(inf, ptr);
-	    	        exp = expCompileExpression(subst_value->String, use_objlist, MLX_F_ICASER | MLX_F_FILENAMES, 0);
-			if (!exp)
-			    {
-			    mssError(0,"RPT","Error in '%s' columns= expression <%s>", object->Name, ptr);
-			    err = 1;
-			    }
-			xsDeInit(subst_value);
-			nmFree(subst_value,sizeof(XString));
-			xaAddItem(xa, (void*)exp);
-			}
-		    }
-		else
-		    {
-		    mssError(1,"RPT","Missing '%s' columns= expression list", object->Name);
-		    err = 1;
-		    }
-
-	        /** If errors, free the XArray and its expressions **/
-	        if (err)
-	            {
-	            object->UserData = NULL;
-		    if (xa)
-			{
-			for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
-			xaDeInit(xa);
-			nmFree(xa,sizeof(XArray));
-			xa = NULL;
-			}
-	            }
-	        else
-	            {
-		    object->UserData = (void*)xa;
-		    }
-		}
-	    }
-
-	/** IF this is a report/data, compile its one expression **/
-	if (!strcmp(object->UsrType,"report/data"))
+	/** IF this is a report/data or report/table-cell, compile its one expression **/
+	if (!strcmp(object->UsrType,"report/data") || !strcmp(object->UsrType,"report/table-cell"))
 	    {
 	    /** Get the expression itself **/
-	    t = stGetAttrType(stLookup(object,"value"), 0);
-	    if (t == DATA_T_CODE)
+	    expr_inf = stLookup(object,"value");
+	    if (expr_inf && rpt_internal_PreBuildExp(inf, expr_inf, use_objlist) < 0)
 		{
-		rval = stGetAttrValue(stLookup(object,"value"), t, POD(&exp), 0);
-		if (rval == 0)
-		    {
-		    exp = expDuplicateExpression(exp);
-		    expBindExpression(exp, use_objlist, EXPR_F_RUNSERVER);
-		    if (!(object->UserData)) 
-			object->UserData = (void*)(inf->NextUserDataSlot++);
-		    else if ((int)(object->UserData) >= inf->NextUserDataSlot)
-			inf->NextUserDataSlot = ((int)(object->UserData))+1;
-		    xaSetItem(&(inf->UserDataSlots), (int)(object->UserData), (void*)exp);
-		    }
-		else
+		if (!strcmp(object->UsrType,"report/data"))
 		    {
 		    err = 1;
 		    mssError(1,"RPT","report/data '%s' must have a value expression.", object->Name);
 		    }
-		}
-	    else if (t < 0)
-		{
-		err = 1;
-		mssError(1,"RPT","report/data '%s' must have a value expression.", object->Name);
+		else
+		    {
+		    expr_inf->UserData = NULL;
+		    }
 		}
 	    }
 
@@ -2939,32 +2981,13 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 		else
 		    {
 		    /** Attribute, condition exp.? **/
-		    if (!strcmp(object->SubInf[i]->Name, "condition"))
+		    if (!strcmp(object->SubInf[i]->Name, "condition") || (!strcmp(object->UsrType,"report/table-row") && !strcmp(object->SubInf[i]->Name, "summarize_for")))
 			{
-			t = stGetAttrType(object->SubInf[i], 0);
-			if (t == DATA_T_CODE)
-			    {
-			    rval = stGetAttrValue(object->SubInf[i], t, POD(&exp), 0);
-			    if (rval == 0)
-				{
-				exp = expDuplicateExpression(exp);
-				expBindExpression(exp, use_objlist, EXPR_F_RUNSERVER);
-				if (!(object->SubInf[i]->UserData)) 
-				    object->SubInf[i]->UserData = (void*)(inf->NextUserDataSlot++);
-				else if ((int)(object->SubInf[i]->UserData) >= inf->NextUserDataSlot)
-				    inf->NextUserDataSlot = ((int)(object->SubInf[i]->UserData))+1;
-				xaSetItem(&(inf->UserDataSlots), (int)(object->SubInf[i]->UserData), (void*)exp);
-				}
-			    else
-				{
-				err = 1;
-				mssError(1,"RPT","condition on '%s' must have an expression.", object->Name);
-				}
-			    }
-			else if (t < 0)
+			expr_inf = object->SubInf[i];
+			if (rpt_internal_PreBuildExp(inf, expr_inf, use_objlist) < 0)
 			    {
 			    err = 1;
-			    mssError(1,"RPT","condition on '%s' must have an expression.", object->Name);
+			    mssError(1,"RPT","%s on '%s' must have an expression.", object->SubInf[i]->Name, object->Name);
 			    }
 			}
 		    }
@@ -2992,17 +3015,6 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 		}
 	    }
 
-#if 00
-	/** Remove any new objects added. **/
-	for(i=n_new_objs-1;i>=0;i--)
-	    {
-	    expRemoveParamFromList(use_objlist, new_objs[i]);
-	    }
-
-	/** Release the param object list **/
-	if (!objlist) expFreeParamList(use_objlist);
-#endif
-
     return err?-1:0;
     }
 
@@ -3015,6 +3027,7 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
     {
     int i;
     pXArray xa;
+    pRptUserData ud;
 
 	/** Visit all sub-inf structures that are groups **/
 	for(i=0;i<object->nSubInf;i++) if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
@@ -3042,8 +3055,10 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
 
 	for(i=1;i<inf->UserDataSlots.nItems;i++) if (inf->UserDataSlots.Items[i])
 	    {
-	    expFreeExpression((pExpression)(inf->UserDataSlots.Items[i]));
+	    ud = (pRptUserData)(inf->UserDataSlots.Items[i]);
+	    expFreeExpression(ud->Exp);
 	    inf->UserDataSlots.Items[i] = NULL;
+	    nmFree(ud, sizeof(RptUserData));
 	    }
 
     return 0;
@@ -3103,6 +3118,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
     pExpression exp;
     char oldmfmt[32],olddfmt[32], oldnfmt[32];
     int resolution;
+    double pagewidth, pageheight;
 
     	/** Report has no titlebar header? **/
 	stAttrValue(rpt_internal_GetParam(inf,"titlebar"),NULL,&ptr,0);
@@ -3126,6 +3142,24 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    {
 	    prtSetResolution(ps, resolution);
 	    }
+
+	/** Units of measure? **/
+	ptr = NULL;
+	stAttrValue(stLookup(req,"units"), NULL, &ptr, 0);
+	if (ptr) 
+	    {
+	    if (prtSetUnits(ps, ptr) < 0)
+		{
+		mssError(1,"RPT","Invalid units-of-measure '%s' specified", ptr);
+		err = 1;
+		}
+	    }
+
+	/** Page geometry? **/
+	prtGetPageGeometry(ps, &pagewidth, &pageheight);
+	rpt_internal_GetDouble(req,"pagewidth",&pagewidth,0);
+	rpt_internal_GetDouble(req,"pageheight",&pageheight,0);
+	prtSetPageGeometry(ps, pagewidth, pageheight);
 
 	/** Output the title, unless instructed otherwise. **/
 	/*if (!no_title_bar)
@@ -3320,14 +3354,6 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 			break;
 			}
 		    }
-		else if (!strcmp(subreq->UsrType,"report/table"))
-		    {
-		    if (rpt_internal_DoTable(inf, subreq,rs) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
                 else if (!strcmp(subreq->UsrType,"report/section"))
                     {
                     if (rpt_internal_DoSection(inf, subreq, rs, NULL) <0)
@@ -3337,6 +3363,14 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
                         }
                     }
 #endif
+		else if (!strcmp(subreq->UsrType,"report/table"))
+		    {
+		    if (rpt_internal_DoTable(inf, subreq,rs,rs->PageHandle) <0)
+		        {
+			err = 1;
+			break;
+			}
+		    }
 		else if (!strcmp(subreq->UsrType,"report/area"))
 		    {
 		    if (rpt_internal_DoArea(inf, subreq, rs, NULL, rs->PageHandle) < 0)
@@ -3421,10 +3455,10 @@ rpt_internal_Generator(void* v)
 	thSetName(NULL,"Report Generator");
 
 	/** Open a print session **/
-	ps = prtOpenSession(inf->ContentType, fdWrite, inf->SlaveFD, 0);
+	ps = prtOpenSession(inf->ContentType, fdWrite, inf->SlaveFD, PRT_OBJ_U_ALLOWBREAK);
 	if (!ps) 
 	    {
-	    ps = prtOpenSession("text/html", fdWrite, inf->SlaveFD, 0);
+	    ps = prtOpenSession("text/html", fdWrite, inf->SlaveFD, PRT_OBJ_U_ALLOWBREAK);
 	    if (ps) strcpy(inf->ContentType, "text/html");
 	    }
 	if (!ps)
@@ -3542,13 +3576,16 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Obj = obj;
 	inf->Mask = mask;
 	inf->AttrOverride = stCreateStruct(NULL,NULL);
-	memccpy(inf->ContentType, usrtype, 0, 63);
+	if (usrtype)
+	    memccpy(inf->ContentType, usrtype, 0, 63);
+	else
+	    strcpy(inf->ContentType, "text/plain");
 	inf->ContentType[63] = 0;
 	xaInit(&(inf->UserDataSlots), 16);
 	inf->NextUserDataSlot = 1;
 
 	/** Content type must be application/octet-stream or more specific. **/
-	rval = obj_internal_IsA(usrtype, "application/octet-stream");
+	rval = obj_internal_IsA(inf->ContentType, "application/octet-stream");
 	if (rval == OBJSYS_NOT_ISA)
 	    {
 	    mssError(1,"RPT","Requested content type must be at least application/octet-stream");
