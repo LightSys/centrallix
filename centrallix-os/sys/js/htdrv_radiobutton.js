@@ -48,64 +48,51 @@ function rb_resetvalue() {
 }
 
 function rb_enable() {
-	this.enabled = true;
+	this.mainlayer.enabled = true;
 	for (i=0;i<this.buttonList.length;i++) {
-		this.buttonList[i].enabled = this.enabled;;
-		this.buttonList[i].setPane.enabled = this.enabled;
-		this.buttonList[i].unsetPane.enabled = this.enabled;
-		this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;
 		this.buttonList[i].setPane.document.images[0].src = '/sys/images/radiobutton_set.gif';
 		this.buttonList[i].unsetPane.document.images[0].src = '/sys/images/radiobutton_unset.gif';
 	}
 }
 
 function rb_readonly() {
-	this.enabled = false;
+	this.mainlayer.enabled = false;
 	for (i=0;i<this.buttonList.length;i++) {
-		this.buttonList[i].enabled = this.enabled;
-		this.buttonList[i].setPane.enabled = this.enabled;
-		this.buttonList[i].unsetPane.enabled = this.enabled;
-		this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;
 	}
 }
 
 function rb_disable() {
-	this.enabled = false;
+	this.mainlayer.enabled = false;
 	for (i=0;i<this.buttonList.length;i++) {
-		this.buttonList[i].enabled = this.enabled;
-		this.buttonList[i].setPane.enabled = this.enabled;
-		this.buttonList[i].unsetPane.enabled = this.enabled;
-		this.buttonList[i].layers.radiobuttonpanellabelpane.enabled = this.enabled;
 		this.buttonList[i].setPane.document.images[0].src = '/sys/images/radiobutton_set_dis.gif';
 		this.buttonList[i].unsetPane.document.images[0].src = '/sys/images/radiobutton_unset_dis.gif';
 	}
 }
 
-function add_radiobutton(optionPane, parentPane, selected) {
+function add_radiobutton(optionPane, parentPane, selected, ml) {
 	optionPane.kind = 'radiobutton';
-	optionPane.enabled = true;
-	optionPane.parentPane = parentPane;
+	optionPane.document.layer = optionPane;
+	optionPane.mainlayer = ml;
 	optionPane.optionPane = optionPane;
 	optionPane.setPane = optionPane.layers.radiobuttonpanelbuttonsetpane;
 	optionPane.unsetPane = optionPane.layers.radiobuttonpanelbuttonunsetpane;
-	optionPane.document.layer = optionPane;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.kind = 'radiobutton';
+	optionPane.layers.radiobuttonpanelbuttonsetpane.mainlayer = ml;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.optionPane = optionPane;
-	optionPane.layers.radiobuttonpanelbuttonsetpane.enabled = optionPane.enabled;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonsetpane;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].kind = 'radiobutton';
+	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].mainlayer = ml;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonsetpane;
-	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].enabled = optionPane.enabled;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.kind = 'radiobutton';
+	optionPane.layers.radiobuttonpanelbuttonunsetpane.mainlayer = ml;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.optionPane = optionPane;
-	optionPane.layers.radiobuttonpanelbuttonunsetpane.enabled = optionPane.enabled;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].kind = 'radiobutton';
+	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].mainlayer = ml;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;
-	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].enabled = optionPane.enabled;
 	optionPane.layers.radiobuttonpanellabelpane.kind = 'radiobutton';
 	optionPane.layers.radiobuttonpanellabelpane.optionPane = optionPane;
-	optionPane.layers.radiobuttonpanellabelpane.enabled = optionPane.enabled;
+	optionPane.layers.radiobuttonpanellabelpane.mainlayer = ml;
 	optionPane.layers.radiobuttonpanellabelpane.document.layer = optionPane.layers.radiobuttonpanellabelpane;
 	parentPane.buttonList.push(optionPane);
 	if (selected) {
@@ -137,25 +124,41 @@ function radiobuttonpanel_init(parentPane,fieldname,flag,borderpane,coverpane,ti
 	parentPane.getvalue = rb_getvalue;
 	parentPane.clearvalue = rb_clearvalue;
 	parentPane.resetvalue = rb_resetvalue;
+	parentPane.enabled = true;
 	parentPane.enable = rb_enable;
 	parentPane.disable = rb_disable;
 	parentPane.readonly = rb_readonly;
-	parentPane.kind = 'radiobutton';
 	parentPane.fieldname = fieldname;
 	parentPane.form = fm_current;
+	parentPane.document.layer = parentPane;
+	parentPane.mainlayer = parentPane;
+	parentPane.kind = 'radiobutton';
+	borderpane.document.layer = borderpane;
+	borderpane.mainlayer = parentPane;
+	borderpane.kind = 'radiobutton';
+	coverpane.document.layer = coverpane;
+	coverpane.mainlayer = parentPane;
+	coverpane.kind = 'radiobutton';
+	titlepane.document.layer = titlepane;
+	titlepane.mainlayer = parentPane;
+	titlepane.kind = 'radiobutton';
 	if (fm_current) fm_current.Register(parentPane);
 	return parentPane;
 }
 
 function radiobutton_toggle(layer) {
 	if(!layer) return;
-	if(layer.optionPane.parentPane.form)
-		layer.optionPane.parentPane.form.DataNotify(layer.optionPane.parentPane);
-	if (layer.optionPane.parentPane.selectedOption) {
-		layer.optionPane.parentPane.selectedOption.unsetPane.visibility = 'inherit';
-		layer.optionPane.parentPane.selectedOption.setPane.visibility = 'hidden';
+	if(layer.mainlayer.name);
+	if (layer.mainlayer.selectedOption != layer.optionPane) {
+		if(layer.mainlayer.form)
+			layer.mainlayer.form.DataNotify(layer.mainlayer);
+		if (layer.mainlayer.selectedOption) {
+			layer.mainlayer.selectedOption.unsetPane.visibility = 'inherit';
+			layer.mainlayer.selectedOption.setPane.visibility = 'hidden';
+		}
+		layer.optionPane.setPane.visibility = 'inherit';
+		layer.optionPane.unsetPane.visibility = 'hidden';
+		layer.mainlayer.selectedOption = layer.optionPane;
+		cn_activate(layer.mainlayer, 'DataChange');
 	}
-	layer.optionPane.setPane.visibility = 'inherit';
-	layer.optionPane.unsetPane.visibility = 'hidden';
-	layer.optionPane.parentPane.selectedOption = layer.optionPane;
 }

@@ -42,10 +42,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.16 2002/07/20 19:44:25 lkehresman Exp $
+    $Id: htdrv_radiobutton.c,v 1.17 2002/07/30 16:09:05 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.17  2002/07/30 16:09:05  pfinley
+    Added Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove events to the
+    radiobutton widget.
+
+    Note: MouseOut does not use the MOUSEOUT event.  It had to be done manually
+          since MouseOut's on the whole widget can not be distingushed if a widget
+          has more than one layer visible at one time. For this I added a global
+          variable: util_cur_mainlayer which is set to the mainlayer of the widget
+          (the layer that the event connector functions are attached to) on a
+          MouseOver event.  In order to use this in other widgets, each layer in
+          the widget must:  1) have a .kind property, 2) have a .mainlayer property,
+          3) set util_cur_mainlayer to the mainlayer upon a MouseOver event on the
+          widget, and 4) set util_cur_mainlayer back to null upon a "MouseOut"
+          event. (See code for example)
+
+    I also:
+    - changed the enabled/disabled to be properties of the mainlayer rather
+      than of each layer in the widget.
+    - changed toggle function to only toggle if selecting a new option (eliminated
+      flicker and was needed for DataChange event).
+    - removed the .parentPane pointer and replaced it with mainlayer.
+    [ how about that for a log message :) ]
+
     Revision 1.16  2002/07/20 19:44:25  lkehresman
     Event handlers now have the variable "ly" defined as the target layer
     and it will be global for all the events.  We were finding that nearly
@@ -153,6 +176,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char main_bgcolor[32];
    char main_background[128];
    char outline_bg[64];
+   pObject sub_w_obj;
    pObject radiobutton_obj;
    pObjQuery qy;
    int x=-1,y=-1,w,h;
@@ -241,6 +265,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    nptr = (char*)nmMalloc(strlen(name)+1);
    strcpy(nptr,name);
    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+   htrAddScriptGlobal(s, "radiobutton", "null", 0);
 
    /*
       Now lets loop through and create a style sheet for each optionpane on the
@@ -270,49 +295,79 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
-	    \"%s\",\"%s\");", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
+	    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
    } else if (strlen(main_background) > 0) {
       htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(
             %s.layers.radiobuttonpanel%dparentpane,\"%s\",2,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,
             %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,
-	    \"%s\",\"%s\");", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
+	    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
    } else {
       htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", nptr, parentname, id,fieldname);
    }
 
    htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"
       "   if (ly != null && ly.kind == 'radiobutton') {\n"
-      "      if(ly.optionPane.parentPane.form)\n"
-      "          ly.optionPane.parentPane.form.FocusNotify(ly.optionPane.parentPane);\n"
-      "      if (ly.enabled) {\n"
-      "         radiobutton_toggle(ly);\n"
+      "      if (ly.mainlayer.enabled) {\n"
+      "          if(ly.optionPane) {\n"
+      "             if (ly.mainlayer.form) ly.mainlayer.form.FocusNotify(ly.mainlayer);\n"
+      "             radiobutton_toggle(ly);\n"
+      "          }\n"
+      "          cn_activate(ly.mainlayer, 'Click');\n"
+      "          cn_activate(ly.mainlayer, 'MouseUp');\n"
       "      }\n"
       "   }\n");
 
+   htrAddEventHandler(s, "document", "MOUSEDOWN", "radiobutton", "\n"
+      "   if (ly != null && ly.kind == 'radiobutton') {\n"
+      "      if (ly.mainlayer.enabled) cn_activate(ly.mainlayer, 'MouseDown');\n"
+      "   }\n");
+   
+   htrAddEventHandler(s, "document", "MOUSEOVER", "radiobutton", "\n"
+      "   if (ly != null && ly.kind == 'radiobutton') {\n"
+      "      if (ly.mainlayer.enabled && !util_cur_mainlayer) {\n"
+      "          cn_activate(ly.mainlayer, 'MouseOver');\n"
+      "          util_cur_mainlayer = ly.mainlayer;\n"
+      "      }\n"
+      "   }\n");
 
+//   htrAddEventHandler(s, "document", "MOUSEOUT", "radiobutton", "\n"
+//      "   }\n");
+   
+   htrAddEventHandler(s, "document", "MOUSEMOVE", "radiobutton", "\n"
+      "   if (util_cur_mainlayer && ly.kind != 'radiobutton') {\n"						// 
+      "      if (util_cur_mainlayer.mainlayer.enabled) cn_activate(util_cur_mainlayer.mainlayer, 'MouseOut');\n"	// This is MouseOut Detection!
+      "      util_cur_mainlayer = null;\n"									// 
+      "   }\n"												// 
+      "   if (ly != null && ly.kind == 'radiobutton') {\n"
+      "      if (ly.mainlayer.enabled) cn_activate(ly.mainlayer, 'MouseMove');\n"
+      "   }\n");
+   
    /*
       Now lets loop through and add each radiobutton
    */
    qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
    if (qy) {
       int i = 1;
-      while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(radiobutton_obj,"outer_type",POD(&ptr));
+      while((sub_w_obj = objQueryFetch(qy, O_RDONLY))) {
+         objGetAttrValue(sub_w_obj,"outer_type",POD(&ptr));
          if (!strcmp(ptr,"widget/radiobutton")) {
-            if (objGetAttrValue(radiobutton_obj,"selected",POD(&ptr)) != 0)
+            if (objGetAttrValue(sub_w_obj,"selected",POD(&ptr)) != 0)
                strcpy(sbuf2,"false");
             else {
                memccpy(sbuf2,ptr,0,199);
 	       sbuf2[199] = 0;
 	    }
 
-            htrAddScriptInit_va(s,"    add_radiobutton(%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.layers.radiobuttonpanel%doption%dpane, %s.layers.radiobuttonpanel%dparentpane, %s);\n",
-               parentname, id, id, id, id, i, parentname, id, sbuf2);
+            htrAddScriptInit_va(s,"    add_radiobutton(%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.layers.radiobuttonpanel%doption%dpane, %s.layers.radiobuttonpanel%dparentpane, %s, %s);\n",
+               parentname, id, id, id, id, i, parentname, id, sbuf2, nptr);
             i++;
          }
-         objClose(radiobutton_obj);
+	 else {
+	    htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
+	 }
+         objClose(sub_w_obj);
       }
    }
    objQueryClose(qy);
@@ -394,6 +449,15 @@ int htrbInitialize() {
    xaAddItem(&action->Parameters,(void*)param);
    xaAddItem(&drv->Actions,(void*)action);
 #endif
+
+   /** Events **/ 
+   htrAddEvent(drv,"Click");
+   htrAddEvent(drv,"MouseUp");
+   htrAddEvent(drv,"MouseDown");
+   htrAddEvent(drv,"MouseOver");
+   htrAddEvent(drv,"MouseOut");
+   htrAddEvent(drv,"MouseMove");
+   htrAddEvent(drv,"DataChange");
 
    /** Register. **/
    htrRegisterDriver(drv);

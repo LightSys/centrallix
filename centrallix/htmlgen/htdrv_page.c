@@ -42,10 +42,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.39 2002/07/30 12:56:29 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.40 2002/07/30 16:09:05 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.40  2002/07/30 16:09:05  pfinley
+    Added Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove events to the
+    radiobutton widget.
+
+    Note: MouseOut does not use the MOUSEOUT event.  It had to be done manually
+          since MouseOut's on the whole widget can not be distingushed if a widget
+          has more than one layer visible at one time. For this I added a global
+          variable: util_cur_mainlayer which is set to the mainlayer of the widget
+          (the layer that the event connector functions are attached to) on a
+          MouseOver event.  In order to use this in other widgets, each layer in
+          the widget must:  1) have a .kind property, 2) have a .mainlayer property,
+          3) set util_cur_mainlayer to the mainlayer upon a MouseOver event on the
+          widget, and 4) set util_cur_mainlayer back to null upon a "MouseOut"
+          event. (See code for example)
+
+    I also:
+    - changed the enabled/disabled to be properties of the mainlayer rather
+      than of each layer in the widget.
+    - changed toggle function to only toggle if selecting a new option (eliminated
+      flicker and was needed for DataChange event).
+    - removed the .parentPane pointer and replaced it with mainlayer.
+    [ how about that for a log message :) ]
+
     Revision 1.39  2002/07/30 12:56:29  lkehresman
     Renamed the "Load" action and the "Page" parameter to be "LoadPage" and
     "Source", which is what is used in the "html" widget.  We should probably
@@ -370,6 +393,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
+	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
 
 	/** Add script include to get function declarations **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
