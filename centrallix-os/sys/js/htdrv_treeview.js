@@ -266,9 +266,9 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	if (l.tvtext != tvtext)
 	    {
 	    l.tvtext = tvtext;
-	    //l.document.writeln(l.tvtext);
-	    //l.document.close();
-	    pg_serialized_write(l, l.tvtext, null);
+	    l.document.writeln(l.tvtext);
+	    l.document.close();
+	    //pg_serialized_write(l, l.tvtext, null);
 	    }
 	}
     else if(cx__capabilities.Dom1HTML)
