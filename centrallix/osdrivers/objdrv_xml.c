@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.3 2002/08/01 00:32:01 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.4 2002/08/01 05:10:48 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.4  2002/08/01 05:10:48  jorupp
+     * XML driver maps outer_type to content_type (outer type is what seems to
+         need to be set for acting like a structure file)
+     * XML attributes are always strings (as near as I can tell) -- added
+         automatic type casting to integer when the cast works -- this means an XML file
+         can _almost_ completely emulate a .app file....
+
     Revision 1.3  2002/08/01 00:32:01  jorupp
      * fixed a memory leak.  Had forgotten to free() the memory allocated when retrieving the text of the node
      * added checking for a valid name before adding a subnode to the hash table of child nodes
@@ -150,6 +157,7 @@
 
 #define XML_DEBUG 0
 
+
 /*** Structure used by this driver internally. ***/
 typedef struct 
     {
@@ -198,6 +206,8 @@ struct
     }
     XML_INF;
 
+/** Forward declaration **/
+void xml_internal_BuildSubNodeHashTable(pXmlData inf);
 
 /*** xml_internal_GetChildren - obtains a reference to the children/childs
  *** object in an XML tree structure.  libxml 1.x called it "childs" [sic]
@@ -412,6 +422,7 @@ xmlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 #ifndef USE_LIBXML1
 	xmlKeepBlanksDefault (0);
+	xmlLineNumbersDefault(1);
 #endif
 	/** parse the document **/
 	ptr=malloc(XML_BLOCK_SIZE);
@@ -462,6 +473,10 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	    }
     	/** Write the node first, if need be. **/
 	//snWriteNode(inf->Node);
+	
+	//xmlFreeDoc(inf->CurrNode);
+	if(XML_DEBUG) printf("objdrv_xml.c closing: (%i,%i,%i) %s\n",inf->Obj->SubPtr,
+		inf->Obj->SubCnt,inf->Obj->Pathname->nElements,obj_internal_PathPart(inf->Obj->Pathname,0,0));
 	
 	/** Release the memory **/
 	//inf->Node->OpenCnt --;
@@ -773,6 +788,9 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pXmlData inf = XML(inf_v);
     int i;
     pStructInf find_inf;
+    char* ptr;
+    char *ptr2;
+    int* pHE;
 
     	/** If name, it's a string **/
 	if (!strcmp(attrname,"name")) return DATA_T_STRING;
@@ -783,6 +801,48 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"inner_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"last_modification")) return DATA_T_DATETIME;
+
+
+	/** see if the XML doc has it **/
+	ptr2=xmlGetProp(inf->CurNode,attrname);
+	if(ptr2)
+	    {
+	    (void)strtol(ptr2,&ptr,10);
+	    if(ptr && !*ptr)
+		{
+		free(ptr2);
+		return DATA_T_INTEGER;
+		}
+	    free(ptr2);
+	    return DATA_T_STRING;
+	    }
+	
+	/** needed in case this isn't a GetFirstAttribute-style request **/
+	xml_internal_BuildSubNodeHashTable(inf);
+
+	/** see if a subnode has it **/
+	if(inf->Elements && (pHE=(int*)xhLookup(inf->Elements,attrname)) && *pHE==1)
+	    {
+	    xmlNodePtr p;
+	    p=xml_internal_GetChildren(inf->CurNode);
+	    while(p && strcmp(p->name,attrname)) p=p->next;
+	    if(p)
+		{
+		ptr2=xmlNodeListGetString(p->doc,xml_internal_GetChildren(p),1);
+		if(ptr2)
+		    {
+		    (void)strtol(ptr2,&ptr,10);
+		    if(ptr && !*ptr)
+			{
+			free(ptr2);
+			return DATA_T_INTEGER;
+			}
+		    free(ptr2);
+		    return DATA_T_STRING;
+		    }
+		}
+	    }
+	
 
 	/** everything else is a string **/
 	return DATA_T_STRING;
@@ -822,7 +882,11 @@ xml_internal_BuildSubNodeHashTable(pXmlData inf)
 		}
 	    else
 		{
+#ifdef USE_LIBXML1
 		mssError(0,"HTTP","Node with no name!");
+#else
+		mssError(0,"HTTP","Node with no name at line %s!",XML_GET_LINE(p));
+#endif
 		}
 	    p=p->next;
 	    }
@@ -862,10 +926,16 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	if(!strcmp(attrname,"inner_type"))
 	    return xmlGetAttrValue(inf_v,"content_type",val,oxt);
     
+	/** inner_type is an alias for content_type **/
+	if(!strcmp(attrname,"outer_type"))
+	    return xmlGetAttrValue(inf_v,"content_type",val,oxt);
+
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    *((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    //*((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    strncpy(inf->AttrValue,inf->CurNode->name,XML_ATTR_SIZE);
+	    *((char**)val) = inf->AttrValue;
 	    //printf("returning %s\n",*((char**)val));
 	    return 0;
 	    }
@@ -876,6 +946,9 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    {
 	    strncpy(inf->AttrValue,ptr,XML_ATTR_SIZE);
 	    free(ptr);
+	    *(int*)val = strtol(inf->AttrValue,&ptr,10);
+	    if(ptr && !*ptr)
+		return 0;
 	    *((char**)val) = inf->AttrValue;
 	    return 0;
 	    }
@@ -896,6 +969,9 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 		    {
 		    strncpy(inf->AttrValue,ptr,XML_ATTR_SIZE);
 		    free(ptr);
+		    *(int*)val = strtol(inf->AttrValue,&ptr,10);
+		    if(ptr && !*ptr)
+			return 0;
 		    *((char**)val) = inf->AttrValue;
 		    return 0;
 		    }
@@ -922,7 +998,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
 	    return 0;
 	    }
 
-	mssError(1,"XML","Could not locate requested attribute: %s",attrname);
+	if(XML_DEBUG) mssError(1,"XML","Could not locate requested attribute: %s",attrname);
 
     return -1;
     }
