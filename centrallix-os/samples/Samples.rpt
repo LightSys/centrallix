@@ -1,0 +1,41 @@
+///////////////////////////////////////////////////////////////////////////////
+// Sample report, which lists all the sample files in a report table.
+///////////////////////////////////////////////////////////////////////////////
+
+Samples "system/report"
+    {
+    // Some report parameters
+    title = "List of Sample Files in the /sample Directory"
+    annotation = "List of Sample Files in the /sample Directory"
+    version = 1
+
+    // The first thing we'll do here is declare a query.  This gives a SQL
+    // statement which is used to access the data, as well as some aggregate
+    // counters which provide summary information while the query runs.
+    samples_query "report/query"
+        {
+	sql = "select :name, :size, :last_modification from /samples"
+	sizetotal "report/aggregate" { compute = "sum(:size)" }
+	filecount "report/aggregate" { compute = "count(:name)" }
+	}
+
+    // Now for the report body.  We'll just use a simple report table.
+    samples_table "report/table"
+        {
+	dateformat = "MMMM ddd, yyyy"
+	colnames = "Name", "Last Modified", "Size"
+	expressions=yes
+	columns = ":samples_query:name", ":samples_query:last_modification", ":samples_query:size"
+	align = left,left,right
+	headeralign = left,left,left
+	source = samples_query
+	widths = 44,24,10
+	lowersep=yes
+	}
+    
+    // Summary data...
+    report_total1 "report/comment" { text="TOTAL BYTES = " autonewline=no }
+    report_total2 "report/data" { xpos=68 value="ralign(convert(string,:samples_query:sizetotal),9)" autonewline=yes }
+    report_total3 "report/comment" { text="\nTOTAL FILES =" autonewline=no }
+    report_total4 "report/data" { xpos=68 value="ralign(convert(string,:samples_query:filecount),9)" autonewline=yes }
+    }

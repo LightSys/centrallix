@@ -1,0 +1,8 @@
+// See LICENSE.txt for licensing information.
+// Copyright (C) 2001 LightSys Technology Services, Inc.
+//
+rootnode "system/uxfile"
+    {
+    path = "/home/centrallix/os"
+    //path = "/var/centrallix/os"
+    }
