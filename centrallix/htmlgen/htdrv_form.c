@@ -43,12 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
-    Revision 1.12  2002/03/09 19:21:20  gbeeley
-    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
-    own bad sprintf habits that somehow worked their way into some other
-    folks' code as well ;)  Textbutton widget had an inadequate buffer for
-    the tb_init() call, causing various problems, including incorrect labels,
-    and more recently, javascript errors.
+    Revision 1.13  2002/03/14 03:29:51  jorupp
+     * updated form to prepend a : to the fieldname when using for a query
+     * updated osrc to take the query given it by the form, submit it to the server,
+        iterate through the results, and store them in the replica
+     * bug fixes to treeview (DOMviewer mode) -- added ability to change scaler values
 
     Revision 1.11  2002/03/09 02:38:48  jheth
     Make OSRC work with Form - Query at least
@@ -175,19 +174,18 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***/
 
 	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
-	    snprintf(basequery,300,"%.299s",ptr);
+	    sprintf(basequery,"%.300s",ptr);
 	else
 	    strcpy(basequery,"");
 	
 	if (objGetAttrValue(w_obj,"basewhere",POD(&ptr)) == 0)
-	    snprintf(basewhere,300,"%.299s",ptr);
+	    sprintf(basewhere,"%.300s",ptr);
 	else
 	    strcpy(basewhere,"");
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63]=0;
+	strcpy(name,ptr);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -248,14 +246,13 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_data_available", "\n"
 		"function form_cb_data_available(aparam)\n"
 		"    {\n"
-		"    form_cb_helper(this,\"DataAvailable\",1);\n"
+		"    this.cb[\"DataAvailable\"].run();\n"
 		"    }\n", 0);
 
 	/** Objectsource wants us to dump our data **/
 	htrAddScriptFunction(s, "form_cb_is_discard_ready", "\n"
 		"function form_cb_is_discard_ready()\n"
 		"    {\n"
-		"    return 0;\n"	/* FIXME -- not ready yet */
 		"    if(!this.IsUnsaved)\n"
 		"        {\n"
 		"        this.osrc.QueryContinue(this);\n"
@@ -473,6 +470,14 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    //cn_activate(this, 'StatusChange', event);\n" doesn't work -- FIXME
 		"    delete event;\n"
 		*/
+		"    if(this.mode==\"New\")\n"
+		"        {\n"
+		"        this.DisableAll();\n"
+		"        }\n"
+		"    if(this.oldmode==\"New\")\n"
+		"        {\n"
+		"        this.EnableAll();\n"
+		"        }\n"
 		"    for(var i in this.statuswidgets)\n"
 		"        {\n"
 		"        this.statuswidgets[i].setvalue(this.mode);\n"
@@ -584,21 +589,21 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                                };\n"
 		"                            if(res2[1]==\"<=>\")\n"
 		"                                {\n"
-		"                                where+=ele.fieldname+\" LIKE \\\"\"+res2[2]+\"\\\"\";\n"
+		"                                where+=\":\"+ele.fieldname+\" LIKE \\\"\"+res2[2]+\"\\\"\";\n"
 		"                                }\n"
 		"                            else\n"
 		"                                {\n"
-		"                                where+=ele.fieldname+res2[1]+\"\\\"\"+res2[2]+\"\\\"\";\n"
+		"                                where+=\":\"+ele.fieldname+res2[1]+\"\\\"\"+res2[2]+\"\\\"\";\n"
 		"                                }\n"
 		"                            }\n"
 		"                        }\n"
 		"                    else\n"
 		"                        {\n"
-		"                        where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
+		"                        where+=\":\"+ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
 		"                        }\n"
 		"                    break;\n"
 		"                case \"radiobutton\":\n"
-		"                    where+=ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
+		"                    where+=\":\"+ele.fieldname+\"=\\\"\"+ele.getvalue()+\"\\\"\";\n"
 		"                    break;\n"
 		"                default:\n"
 		"                    confirm(\"don't know what to do with \\\"\"+ele.kind+\"\\\"\");\n"
@@ -630,13 +635,13 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"function form_action_save()\n"
 		"    {\n"
 		"    if(!this.IsUnsaved)\n"
-		"    	{\n"
-		"    	alert(\"There isn't any reason to save.\");\n"
-		"    	return 0;\n"
-		"    	}\n"
-		"       this.cb[\"OperationCompleteSuccess\"].add(this,\n"
+		"    	 {\n"
+		"    	 alert(\"There isn't any reason to save.\");\n"
+		"    	 return 0;\n"
+		"        }\n"
+		"    this.cb[\"OperationCompleteSuccess\"].add(this,\n"
 		"           new Function(\"this.Unsaved=false;this.Pending=false;this.EnableAll();this.cb[\\\"OperationCompleteFail\\\"].clear();\"),1);\n"
-		"       this.cb[\"OperationCompleteFail\"].add(this,\n"
+		"     this.cb[\"OperationCompleteFail\"].add(this,\n"
 		"           new Function(\"confirm(\\\"Data Save Failed\\\");this.cb[\\\"OperationCompleteSuccess\\\"].clear();\"),1);\n"
 /***	OLD WAY
 		"    if(cbsuc==undefined)\n"

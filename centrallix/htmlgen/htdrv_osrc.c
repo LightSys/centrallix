@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.6 2002/03/13 01:35:02 jheth Exp $
+    $Id: htdrv_osrc.c,v 1.7 2002/03/14 03:29:51 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.7  2002/03/14 03:29:51  jorupp
+     * updated form to prepend a : to the fieldname when using for a query
+     * updated osrc to take the query given it by the form, submit it to the server,
+        iterate through the results, and store them in the replica
+     * bug fixes to treeview (DOMviewer mode) -- added ability to change scaler values
+
     Revision 1.6  2002/03/13 01:35:02  jheth
     Re-commit of Object Source - No Alerts
 
@@ -118,7 +124,7 @@ int htosrcVerify() {
   /** Ok, write the style header items. **/
   snprintf(sbuf3, 200, "    <STYLE TYPE=\"text/css\">\n");
   htrAddHeaderItem(s,sbuf3);
-  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:visible; LEFT:0; TOP:300;  WIDTH:500; HEIGHT:500; Z-INDEX:20; }\n",id);
+  snprintf(sbuf3, 200, "\t#osrc%dloader { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:300;  WIDTH:500; HEIGHT:500; Z-INDEX:20; }\n",id);
   htrAddHeaderItem(s,sbuf3);
   snprintf(sbuf3, 200, "    </STYLE>\n");
   htrAddHeaderItem(s,sbuf3);
@@ -144,8 +150,12 @@ int htosrcVerify() {
       "    //Is discard ready\n"
       "    //Send query as GET request\n"
       "    this.query = escape(q);\n"
-      "    this.query = 'select%20%3Aid%2C%20%3Afull_name%2C%20%3Anum_days%20from%20Months.csv'\n"
+      "    //this.query = 'select%20%3Aid%2C%20%3Afull_name%2C%20%3Anum_days%20from%20Months.csv'\n"
+      "    //this.query = escape(\"select :full_name, :num_days from /samples/Months.csv/rows\");\n"
+      "    //this.query = escape(\"SELECT :full_name, :num_days FROM /Months.csv/rows\");\n"
+      "    this.query=String(this.query).replace(\"/\",\"%2F\",\"g\");\n"
       "    //alert(this.query);\n"
+      "    this.replica=new Array();\n"
       "    this.OpenSession();\n"
       "    }\n",0);
       
@@ -234,21 +244,53 @@ int htosrcVerify() {
       "    {\n"
       "    //Open Query\n"
       "    //confirm(this.document.anchors.length);\n"
-      "    //this.src = '/?ls__mode=osml&ls__req=multiquery&ls__sid=01234567&ls__sql=' + this.query;\n"
-      "    this.onLoad = osrc_close_query;\n"
-      "    this.src = '/escape.html';\n"
+      "    this.sid=this.document.links[0].target;\n"
+      "    this.onLoad = osrc_get_qid;\n"
+      "    this.src=\"/?ls__mode=osml&ls__req=multiquery&ls__sid=\"+this.sid+\"&ls__sql=\" + this.query;\n"
+      "    //this.src = '/escape.html';\n"
       "    //confirm(this.document.anchors.length);\n"
       "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_get_qid", "\n"
+      "function osrc_get_qid()\n"
+      "    {\n"
+      "    this.qid=this.document.links[0].target;\n"
+      "    this.onLoad = osrc_fetch_next;\n"
+      "    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
+      "    //alert(this.src);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_fetch_next", "\n"
+      "function osrc_fetch_next()\n"
+      "    {\n"
+      "    //return 0;\n"
+      "    var lnk=this.document.links;\n"
+      "    var lc=lnk.length;\n"
+      "    if(lc<2)\n"
+      "        {\n"	// query over
+      "        this.onLoad=osrc_close_query;\n"	//don't need to trap this...
+      "        this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "        return 0;\n"
+      "        }\n"
+      "    var dataobj=new Array();\n"
+      "    var row=lnk[1].target;\n"
+      "    for (var l=1;l<lc;l++)\n"
+      "        {\n"
+      "        dataobj[lnk[l].host]=new Array();\n"
+      "        dataobj[lnk[l].host][\"value\"]=lnk[l].text\n"
+      "        dataobj[lnk[l].host][\"type\"]=lnk[l].hash.substr(1);\n"
+      "        }\n"
+      "    this.replica[row]=dataobj;\n"
+      "    this.onLoad = osrc_fetch_next;\n"
+      "    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
+      "    }\n",0);
+      
    htrAddScriptFunction(s, "osrc_close_query", "\n"
       "function osrc_close_query()\n"
       "    {\n"
-      "    //confirm(this.document.anchors.length);\n"
-      "    //confirm('close');\n"
-      "    return 0;\n"
-      "    //Close Query\n"
-      "    this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=12345678';\n"
-      "    this.onLoad = osrc_close_object;\n"
+      "    this.qid=null;\n"
+      "    this.sid=null;\n"
+      "    this.onLoad=null;\n"
       "    }\n",0);
  
    htrAddScriptFunction(s, "osrc_close_object", "\n"
@@ -273,7 +315,6 @@ int htosrcVerify() {
       "function osrc_init(loader)\n"
       "    {\n"
       "    loader.chilren = new Array();\n"
-      "    loader.form = fm_current;\n"
       "    loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
       "    loader.ActionDelete=osrc_action_delete;\n"

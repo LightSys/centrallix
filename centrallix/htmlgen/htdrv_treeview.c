@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.4 2002/03/13 01:59:43 jorupp Exp $
+    $Id: htdrv_treeview.c,v 1.5 2002/03/14 03:29:51 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.5  2002/03/14 03:29:51  jorupp
+     * updated form to prepend a : to the fieldname when using for a query
+     * updated osrc to take the query given it by the form, submit it to the server,
+        iterate through the results, and store them in the replica
+     * bug fixes to treeview (DOMviewer mode) -- added ability to change scaler values
+
     Revision 1.4  2002/03/13 01:59:43  jorupp
      * Changed treeview to allow it to operate in javascript 'DomViewer' mode
          check the sample file for an example and usage guidelines
@@ -290,7 +296,23 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            last=0;\n"
 		"            for(var i in l.obj) last++;\n"
 		"            linkcnt=last;\n"
-		"            if(!l.obj) linkcnt=last=0;\n"
+		"            if(!l.obj)\n"
+		"                {\n"
+		"                linkcnt=last=0;\n"
+		"                o=l.parent.obj[l.objn]=prompt(l.objn,l.parent.obj[l.objn]);\n"
+		"                link_txt=l.objn+\" (\"+typeof(o)+\"): \"+o;\n"
+		"                tvtext = \"<IMG SRC=/sys/images/ico01b.gif align=left>&nbsp;<A HREF=''>\" + link_txt + \"</A>\";\n"
+		"                if (l.tvtext != tvtext)\n"
+		"                    {\n"
+		"                    l.tvtext = tvtext;\n"
+		"                    l.document.writeln(l.tvtext);\n"
+		"                    l.document.close();\n"
+		"                    }\n"
+		"                tv_tgt_layer.img.src = tv_tgt_layer.img.realsrc;\n"
+		"                tv_tgt_layer.img.src = subst_last(tv_tgt_layer.img.src,'b.gif');\n"
+		"                tv_tgt_layer.img.realsrc = null;\n"
+		"                return false;\n"
+		"                }\n"
 		"            }\n"
 		"        }\n"
 		"    else\n"
@@ -329,12 +351,13 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                var o=l.obj[j];\n"
 		"                t=typeof(o);\n"
 		"                }\n"
+		"            one_layer.parent=l;\n"
 		"            link_href=\"\";\n"
 		"            one_link=j;\n"
 		"            if(o && (t==\"object\" || t==\"array\" || t==\"function\"))\n"
 		"                {\n"
-		"                link_txt=j+\" (\"+t+\"): \"\n"
 		"                one_layer.obj=o;\n"
+		"                link_txt=j+\" (\"+t+\"): \"\n"
 		"                if(t==\"function\")\n"
 		"                    {\n"
 		"                    im='01';\n"
@@ -352,7 +375,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                im = '01';\n"
 		"                }\n"
 		"            one_layer.isjs=true;\n"
-		"            one_layer.n=j;\n"
+		"            one_layer.objn=j;\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
