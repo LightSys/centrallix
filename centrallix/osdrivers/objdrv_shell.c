@@ -51,7 +51,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.2 2002/11/12 00:28:51 gbeeley Exp $
+    $Id: objdrv_shell.c,v 1.3 2002/11/18 13:23:50 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -70,8 +70,9 @@ typedef struct
     char	program[80];
     char**	args;
     int		nArgs;
-    pFile	shell_in;
-    pFile	shell_out;
+    pFile	shell_fd;
+    int		curRead;
+    int		curWrite;
     pid_t	shell_pid;
     }
     ShlData, *pShlData;
@@ -96,10 +97,8 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     char* node_path;
     pSnNode node = NULL;
     char* ptr;
-    int fdesin[2];
-    int fdesout[2];
-    //int waitret;
-    //int childretval;
+    char tty_name[32];
+    int pty;
     pStructInf argStruct;
     char **args;
 
@@ -125,7 +124,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    node = snNewNode(obj->Prev, usrtype);
 	    if (!node)
-	        {
+		{
 		nmFree(inf,sizeof(ShlData));
 		mssError(0,"SHL","Could not create new node object");
 		return NULL;
@@ -201,23 +200,37 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		}
 	    }
 	
-#if 0
-	/** the correct way is to build an array of the ones named arg.. **/
-	if(stAttrValue(stLookup(node->Data,"arg1"),NULL,&inf->arg1,0)<0) inf->arg1=NULL;
-	if(stAttrValue(stLookup(node->Data,"arg2"),NULL,&inf->arg2,0)<0) inf->arg2=NULL;
-#endif
+	pty=getpt();
+	if(pty<0)
+	    {
+	    mssError(0,"SHL","getpy() failed");
+	    shlClose(inf);
+	    return NULL;
+	    }
+	if(grantpt(pty)<0 || unlockpt(pty)<0)
+	    {
+	    mssError(0,"SHL","granpt() or unlockpt() failed");
+	    shlClose(inf);
+	    return NULL;
+	    }
 
+	if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
+	    printf("shell got tty: %s\n",(const char*)ptsname(pty));
 
-	pipe(fdesin);
-	pipe(fdesout);
+	strncpy(tty_name,(const char*)ptsname(pty),32);
+	tty_name[31]='\0';
+	
 	inf->shell_pid=fork();
 	if(inf->shell_pid==-1)
 	    {
 	    mssError(0,"SHL","Unable to fork");
+	    inf->shell_pid=0;
+	    shlClose(inf);
 	    return NULL;
 	    }
 	if(inf->shell_pid==0)
 	    {
+	    int fd;
 	    /** child -- shell **/
 	    if(SHELL_DEBUG & SHELL_DEBUG_FORK)
 		printf("in child\n");
@@ -225,29 +238,21 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    if(SHELL_DEBUG * SHELL_DEBUG_EXEC)
 		printf("exec: %s %p\n",inf->program,inf->args);
 
-	    /** close unneeded parts of pipes **/
-	    close(fdesin[1]);
-	    close(fdesout[0]);
-
-	    /** switch to pipe as stdin **/
-	    dup2(fdesin[0],0);
-	    close(fdesin[0]);
-
-	    /** switch to pipe as stdout **/
-	    dup2(fdesout[1],1);
-	    close(fdesout[1]);
-
 	    /** security issue: when centrallix runs as root with system
 	     ** authentication, the threads run with ruid=root, euid=user,
 	     ** and we need to get rid of the ruid=root here so that the
 	     ** command's privs are more appropriate.  Same for group id.
 	     **/
+	    /** Removed mssError() calls to attempt to make this a bit safer,
+	     **   as mssError() modifies the error stack.  _Nothing_ called in the child
+	     **   part of the fork() should call anything else in centrallix or centrallix-lib
+	     **   -- at least that's my opinion.... -- Jonathan Rupp 11/18/2002 **/
 	    if (getuid() != geteuid())
 		{
 		if (setreuid(geteuid(),-1) < 0)
 		    {
 		    /** Rats!  we couldn't do it! **/
-		    mssError(1,"SHL","Could not drop privileges!");
+		    fprintf(stderr,"Could not drop privileges!\n");
 		    _exit(1);
 		    }
 		}
@@ -256,13 +261,28 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		if (setregid(getegid(),-1) < 0)
 		    {
 		    /** Rats!  we couldn't do it! **/
-		    mssError(1,"SHL","Could not drop group privileges!");
+		    fprintf(stderr,"Could not drop group privileges!\n");
 		    _exit(1);
 		    }
 		}
 
+	    /** close all open fds (except for 0-2 -- std{in,out,err}) **/
+	    for(fd=3;fd<64;fd++)
+		close(fd);
+	    
+	    /** open the terminal **/
+	    fd = open(tty_name,O_RDWR);
+	    
+	    /** switch to terminal as stdout **/
+	    dup2(fd,0);
+
+	    /** switch to terminal as stdin **/
+	    dup2(fd,1);
+
+	    /** close old copy of FD **/
+	    close(fd);
+
 	    /** make the exec() call **/
-	    //execlp(inf->program,inf->progname,inf->arg1,inf->arg2,NULL);
 	    execvp(inf->program,inf->args);
 
 	    /** if exec() is successfull, this is never reached **/
@@ -272,12 +292,8 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if(SHELL_DEBUG & SHELL_DEBUG_FORK)
 	    printf("still in parent :)\n");
 
-	/** close unneeded parts of pipes **/
-	close(fdesin[0]);
-	close(fdesout[1]);
-
-	inf->shell_in=fdOpenFD(fdesin[1],O_WRONLY);
-	inf->shell_out=fdOpenFD(fdesout[0],O_RDONLY);
+	/** open up the terminal that we'll use for comm with the child process **/
+	inf->shell_fd=fdOpenFD(pty,O_RDWR);
 
 	if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
 	    printf("SHELL: returning object: %p\n",inf);
@@ -325,14 +341,20 @@ shlClose(void* inf_v, pObjTrxTree* oxt)
 		printf("child (%i) returned: %i\n",inf->shell_pid,childstat);
 	    }
 
-	/** free memory for argument array **/
-	nmFree(inf->args,(inf->nArgs+1)*sizeof(char*));
+	if(inf->args)
+	    {
+	    /** free memory for argument array **/
+	    nmFree(inf->args,(inf->nArgs+1)*sizeof(char*));
+	    }
 
-    	/** Write the node first, if need be. **/
-	snWriteNode(inf->Obj->Prev,inf->Node);
-	
-	/** Release the memory **/
-	inf->Node->OpenCnt --;
+	if(inf->Node)
+	    {
+	    /** Write the node first, if need be. **/
+	    snWriteNode(inf->Obj->Prev,inf->Node);
+	    
+	    /** Release the memory **/
+	    inf->Node->OpenCnt --;
+	    }	
 
 	nmFree(inf,sizeof(ShlData));
 
@@ -382,7 +404,7 @@ shlDelete(pObject obj, pObjTrxTree* oxt)
 	if (obj->Pathname->nElements == obj->SubPtr)
 	    {
 	    if (inf->Node->OpenCnt > 1) 
-	        {
+		{
 		shlClose(inf, oxt);
 		mssError(1,"SHL","Cannot delete structure file: object in use");
 		return -1;
@@ -392,7 +414,7 @@ shlDelete(pObject obj, pObjTrxTree* oxt)
 	    /** YOU WILL NEED TO REPLACE THIS CODE WITH YOUR OWN. **/
 	    is_empty = 0;
 	    if (!is_empty)
-	        {
+		{
 		shlClose(inf, oxt);
 		mssError(1,"SHL","Cannot delete: object not empty");
 		return -1;
@@ -424,12 +446,34 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     int i=-1;
     int waitret;
     int retval;
-    /** seek is _not_ allowed (obviously) **/
-    if(flags & FD_U_SEEK && offset!=0)
-	return -1;
+    
+    /** can't seek backwards on a stream :) **/
+    if(flags & FD_U_SEEK)
+	{
+	if(offset>inf->curRead)
+	    {
+	    /** scroll forward to point in the stream to read from **/
+	    while(offset>inf->curRead)
+		{
+		char buf[1024];
+		int i;
+		int readlen = offset-inf->curRead>1024?1024:offset-inf->curRead;
+		/** call shlRead instead of fdRead directly, as it has extra protection and this
+		 **   will only ever go to one level of recursion **/
+		i=shlRead(inf,buf,readlen,0,flags & ~FD_U_SEEK,oxt);
+		if(i==-1)
+		    return -1;
+		inf->curRead+=i;
+		}
+	}
+	/** this'll also catch if we scroll too far forward... **/
+	if(offset<inf->curRead)
+	    return -1;
+	}
+
     while(i==-1)
 	{
-	i=fdRead(inf->shell_out,buffer,maxcnt,0,flags & ~FD_U_SEEK);
+	i=fdRead(inf->shell_fd,buffer,maxcnt,0,flags & ~FD_U_SEEK);
 	if(i==-1)
 	    {
 	    /** user doesn't want us to block **/
@@ -449,11 +493,8 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 		}
 	    else if(waitret>0)
 		{
-		/** child died :( **/
+		/** child died :( -- mark it as dead and retry the read */
 		inf->shell_pid=0;
-		
-		/** if this doesn't return -1, it means that the child spit out some data, then died **/
-		return fdRead(inf->shell_out,buffer,maxcnt,0,flags & ~FD_U_SEEK);
 		}
 	    else
 		{
@@ -463,6 +504,7 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 		}
 	    }
 	}
+    inf->curRead+=i;
     return i;
     }
 
@@ -478,7 +520,7 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
     int retval;
 
     /** seek is _not_ allowed (obviously) **/
-    if(flags & FD_U_SEEK && offset!=0)
+    if(flags & FD_U_SEEK && offset!=inf->curWrite)
 	return -1;
 
     /** can't write to a dead child :) **/
@@ -487,7 +529,7 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 
     while(i==-1)
 	{
-	i=fdWrite(inf->shell_out,buffer,cnt,0,flags & ~FD_U_SEEK);
+	i=fdWrite(inf->shell_fd,buffer,cnt,0,flags & ~FD_U_SEEK);
 	if(i==-1)
 	    {
 	    /** user doesn;t want us to block **/
@@ -498,7 +540,7 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 	    waitret=waitpid(inf->shell_pid,&retval,WNOHANG);
 	    if(waitret==0)
 		{
-		/** child is alive, it just doesn't have any data yet -- wait for some **/
+		/** child is alive, it just isn't ready for data yet -- wait a bit **/
 		thSleep(200);
 		}
 	    else if(waitret>0)
@@ -516,6 +558,7 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 		}
 	    }
 	}
+    inf->curWrite+=i;
     return i;
     }
 
@@ -674,23 +717,23 @@ shlSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	if (!strcmp(attrname,"name"))
 	    {
 	    if (inf->Obj->Pathname->nElements == inf->Obj->SubPtr)
-	        {
-	        if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
-	        if (strlen(inf->Obj->Pathname->Pathbuf) - 
-	            strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
+		{
+		if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
+		if (strlen(inf->Obj->Pathname->Pathbuf) - 
+		    strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
 		    strlen(*(char**)(val)) + 1 > 255)
 		    {
 		    mssError(1,"SHL","SetAttr 'name': name too large for internal representation");
 		    return -1;
 		    }
-	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
-	        strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
-	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
+		strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
+		strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
+		if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
 		    mssError(1,"SHL","SetAttr 'name': could not rename structure file node object");
 		    return -1;
 		    }
-	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
+		strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
 	    return 0;
 	    }
