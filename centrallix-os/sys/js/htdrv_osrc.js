@@ -164,11 +164,32 @@ function osrc_action_query(q, formobj)
     this.QueryContinue(this.children[0]);
     }
 
-function osrc_action_delete()
+function osrc_action_delete(up,formobj)
     {
     //Delete an object through OSML
-    this.formobj.ObjectDeleted();
-    this.formobj.OperationComplete();
+    var src = this.baseobj + '?ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
+    this.formobj = formobj;
+    this.deleteddata=up;
+    this.onload = osrc_action_delete_cb;
+    pg_set(this,'src',src);
+    //this.formobj.ObjectDeleted();
+    //this.formobj.OperationComplete();
+    return 0;
+    }
+
+function osrc_action_delete_cb()
+    {
+    var links = pg_links(this);
+    if(links[0].target != 'ERR')
+	{
+	var recnum=this.CurrentRecord;
+	var cr=this.replica[this.CurrentRecord];
+	if(cr)
+	    {
+	    }
+	}
+    this.formobj=null;
+    delete this.createddata;
     return 0;
     }
 
@@ -975,7 +996,7 @@ function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name)
     //   window_current.RegisterOSRC(loader);
     //else
     //   loader.InitQuery();
-    pg_addsched(name + ".InitQuery()");
+    pg_addsched("InitQuery()", loader);
 
     return loader;
     }
