@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.14 2002/05/30 03:55:21 lkehresman Exp $
+    $Id: htdrv_editbox.c,v 1.15 2002/05/30 04:17:21 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.15  2002/05/30 04:17:21  lkehresman
+    * Modified editbox to take advantage of enablenew and enablemodify
+    * Fixed ChangeStatus stuff in form
+
     Revision 1.14  2002/05/30 03:55:21  lkehresman
     editbox:  * added readonly flag so the editbox is always only readonly
               * made disabled appear visually
@@ -443,16 +447,17 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.setvalue = eb_setvalue;\n"
 		"    l.clearvalue = eb_clearvalue;\n"
 		"    l.setoptions = null;\n"
+		"    l.enablenew = eb_enable;\n"  // We have added enablenew and enablemodify.  See docs
 		"    l.disable = eb_disable;\n"
 		"    l.readonly = eb_readonly;\n"
 		"    if (is_readonly)\n"
 		"        {\n"
-		"        l.enable = eb_disable;\n"
+		"        l.enablemodify = eb_disable;\n"
 		"        l.enabled = 'disable';\n"
 		"        }\n"
 		"    else\n"
 		"        {\n"
-		"        l.enable = eb_enable;\n"
+		"        l.enablemodify = eb_enable;\n"
 		"        l.enabled = 'full';\n"
 		"        }\n"
 		"    l.isFormStatusWidget = false;\n"

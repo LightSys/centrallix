@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.35  2002/05/30 04:17:21  lkehresman
+    * Modified editbox to take advantage of enablenew and enablemodify
+    * Fixed ChangeStatus stuff in form
+
     Revision 1.34  2002/05/30 04:10:49  jorupp
      * this looks better.....
 
@@ -719,11 +723,11 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		*/
 		"    if(this.mode=='No Data' || this.mode=='View')\n"
 		"        {\n"
-		"        this.ReadOnlyAll();\n"
-		"        }\n"
-		"    if(this.oldmode=='No Data' || this.oldmode=='View')\n"
-		"        {\n"
 		"        this.EnableModifyAll();\n"
+		"        }\n"
+		"    if(this.mode=='Query' || this.mode=='New')\n"
+		"        {\n"
+		"        this.EnableNewAll();\n"
 		"        }\n"
 		"    for(var i in this.statuswidgets)\n"
 		"        {\n"
