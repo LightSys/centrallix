@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.18 2002/07/16 18:23:20 lkehresman Exp $
+    $Id: ht_render.c,v 1.19 2002/07/18 14:26:13 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.19  2002/07/18 14:26:13  lkehresman
+    Added a work-around for the Netscape resizing bug.  Instead of leaving
+    the page totally messed up on a resize, it will now completely reload the
+    page whenever the window is resized.
+
     Revision 1.18  2002/07/16 18:23:20  lkehresman
     Added htrAddStylesheetItem() function to help consolidate the output of
     the html generator.  Now, all stylesheet definitions are included in the
@@ -557,7 +562,7 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     }
 
 /*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a 
- *** formatted string to startup function of the document.
+ *** formatted string to cleanup function of the document.
  ***/
 int
 htrAddScriptCleanup_va(pHtSession s, char* fmt, ... )
@@ -1045,7 +1050,7 @@ htrRender(pFile output, pObject appstruct)
 	        n = *(int*)ptr;
 	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	        }
-	    fdWrite(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n", 43,0,FD_U_PACKET);
+	    fdWrite(output, " onResize=\"location.href=location.href\" onLoad=\"startup();\" onUnload=\"cleanup();\">\n", 73,0,FD_U_PACKET);
 	    }
 	else
 	    {
