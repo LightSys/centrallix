@@ -1,11 +1,10 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/mtlexer.c)
 AC_CONFIG_HEADERS(config.h)
-AC_PREFIX_DEFAULT(/usr/local)
 
 dnl Checks for programs.
 AC_PROG_CC
-CFLAGS=`echo $CFLAGS | sed -e "s/-O2//"`
+CFLAGS=${CFLAGS/-O2}
 AC_PROG_MAKE_SET
 AC_PROG_AWK
 AC_PATH_PROG([STRIP], [strip], [])
