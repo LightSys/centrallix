@@ -65,10 +65,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.23 2003/04/16 06:42:26 jorupp Exp $
+    $Id: net_nfs.c,v 1.24 2003/04/30 02:17:40 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.24  2003/04/30 02:17:40  jorupp
+     * implimented rename and remove, added an internal function to close all objects for an inode
+       -- remove works, but we can't figure out how to test rename -- but it _should_ work....
+
     Revision 1.23  2003/04/16 06:42:26  jorupp
      * make sure we return some kind of error message for the ops we don't impliment
 
@@ -266,6 +270,7 @@ struct
 pObject nnfs_internal_open_inode(fhandle f, int flags);
 pObject nnfs_internal_reopen_inode(fhandle f, int flags);
 int nnfs_internal_close_inode(fhandle fh, int flags);
+int nnfs_internal_close_all_inode(fhandle fh);
 fattr nnfs_internal_get_attributes(pObject, fhandle);
 
 /** typedef for the functions that impliment the individual RPC calls **/
@@ -798,6 +803,7 @@ diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
 
     printf("got fhandle\n");
 
+    nnfs_internal_close_inode(retval->diropres_u.diropok.file,O_RDWR);
     obj = nnfs_internal_open_inode(retval->diropres_u.diropok.file,O_RDWR);
     if(!obj)
 	{
@@ -994,26 +1000,147 @@ diropres* nnfs_internal_nfsproc_create(createargs* param)
 
 nfsstat* nnfs_internal_nfsproc_remove(diropargs* param)
     {
-    CXSEC_ENTRY(NFS_FN_KEY);
     nfsstat* retval = NULL;
+    dirpath parentPath;
+    XString path;
+    fhandle fh;
+    CXSEC_ENTRY(NFS_FN_KEY);
+
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
-    /** do work here **/
     memset(retval,0,sizeof(nfsstat));
-    *retval = NFSERR_IO;
-    
+
+    xsInit(&path);
+
+    /** get path for parent directory **/
+    if(nnfs_internal_get_path(&parentPath,param->dir)<0)
+	{
+	*retval = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    xsCopy(&path,parentPath,-1);
+    if(*(xsStringEnd(&path)-1)!='/')
+	xsConcatenate(&path,"/",-1);
+    xsConcatenate(&path,param->name,-1);
+
+    if(nnfs_internal_get_fhandle(fh,path.String)<0)
+	{
+	*retval = NFSERR_NOENT;
+	xsDeInit(&path);
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    nnfs_internal_close_all_inode(fh);
+    if(objDelete(NNFS.objSess,path.String) >= 0)
+	{
+	*retval = NFS_OK;
+	}
+    else
+	{
+	*retval = NFSERR_NOENT;
+	}
+
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
 
 nfsstat* nnfs_internal_nfsproc_rename(renameargs* param)
     {
-    CXSEC_ENTRY(NFS_FN_KEY);
     nfsstat* retval = NULL;
+    dirpath oldParentPath;
+    dirpath newParentPath;
+    XString oldPath;
+    XString newPath;
+    fhandle oldFh;
+    fhandle newFh;
+    pObject oldObj;
+    pObject newObj;
+    char *buf;
+    int i;
+
+    CXSEC_ENTRY(NFS_FN_KEY);
+
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
-    /** do work here **/
     memset(retval,0,sizeof(nfsstat));
-    *retval = NFSERR_IO;
-    
+
+    xsInit(&oldPath);
+
+    /** get path for parent directory **/
+    if(nnfs_internal_get_path(&oldParentPath,param->from.dir)<0)
+	{
+	*retval = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    xsCopy(&oldPath,oldParentPath,-1);
+    if(*(xsStringEnd(&oldPath)-1)!='/')
+	xsConcatenate(&oldPath,"/",-1);
+    xsConcatenate(&oldPath,param->from.name,-1);
+
+    if(nnfs_internal_get_fhandle(oldFh,oldPath.String)<0)
+	{
+	*retval = NFSERR_NOENT;
+	xsDeInit(&oldPath);
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    nnfs_internal_close_all_inode(oldFh);
+    if(!(oldObj = nnfs_internal_open_inode(oldFh,0)))
+	{
+	*retval = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    xsInit(&newPath);
+
+    /** get path for parent directory **/
+    if(nnfs_internal_get_path(&newParentPath,param->to.dir)<0)
+	{
+	*retval = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    xsCopy(&newPath,newParentPath,-1);
+    if(*(xsStringEnd(&newPath)-1)!='/')
+	xsConcatenate(&newPath,"/",-1);
+    xsConcatenate(&newPath,param->to.name,-1);
+
+    if(nnfs_internal_get_fhandle(newFh,newPath.String)<0)
+	{
+	*retval = NFSERR_NOENT;
+	xsDeInit(&newPath);
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    nnfs_internal_close_all_inode(newFh);
+    if(!(newObj = nnfs_internal_open_inode(newFh,O_RDWR | O_CREAT | O_EXCL)))
+	{
+	*retval = NFSERR_NOENT;
+	CXSEC_EXIT(NFS_FN_KEY);
+	return retval;
+	}
+
+    buf = (char*)nmMalloc(1024);
+    objRead(oldObj,NULL,0,0,FD_U_SEEK);
+    while((i=objRead(oldObj,buf,1024,0,0))>0)
+	{
+	if(objWrite(newObj,buf,i,0,0)!=i)
+	    {
+	    printf("problem copying file!");
+	    }
+	printf("wrote %i bytes\n",i);
+	}
+    nnfs_internal_close_all_inode(oldFh);
+    objDelete(NNFS.objSess,oldPath.String);
+    *retval = NFS_OK;
+
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
     }
@@ -2124,6 +2251,7 @@ fattr nnfs_internal_get_attributes(pObject obj, fhandle fh)
     int isdir = 0;
     int size;
     fattr attributes;
+    int i;
 
     info = objInfo(obj);
     if(info)
@@ -2145,8 +2273,10 @@ fattr nnfs_internal_get_attributes(pObject obj, fhandle fh)
 	attributes.mode = 0100777;
 	}
 
-    if(objGetAttrValue(obj,"size",DATA_T_INTEGER,POD(&size)) < 0)
+    if((i=objGetAttrValue(obj,"size",DATA_T_INTEGER,POD(&size))) < 0)
+	{
 	size = 0;
+	}
     
     attributes.nlink = 1;
     attributes.uid = 0;
@@ -2280,6 +2410,38 @@ int nnfs_internal_close_inode(fhandle fh, int flags)
 	{
 	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
 	if(obj->inode == fhandle_c.fhi && (obj->flags & ~ignoreflags) == (flags & ~ignoreflags))
+	    {
+	    xaRemoveItem(NNFS.openObjects,i);
+	    objClose(obj->obj);
+	    nmFree(obj,sizeof(ObjectUse));
+	    CXSEC_EXIT(NFS_FN_KEY);
+	    return 0;
+	    }
+	}
+    CXSEC_EXIT(NFS_FN_KEY);
+    return -1;
+    }
+
+/***
+ *** Usually you should let an object expire from the cache, but this function
+ *** is provided just in case.
+ ***/
+int nnfs_internal_close_all_inode(fhandle fh)
+    {
+    CXSEC_ENTRY(NFS_FN_KEY);
+    pObjectUse obj;
+    int i;
+    union
+	{
+	int fhi;
+	fhandle fhc;
+	} fhandle_c;
+
+    strncpy(fhandle_c.fhc,fh,FHSIZE);
+    for(i=0;i<xaCount(NNFS.openObjects);i++)
+	{
+	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
+	if(obj->inode == fhandle_c.fhi)
 	    {
 	    xaRemoveItem(NNFS.openObjects,i);
 	    objClose(obj->obj);
