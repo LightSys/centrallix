@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.12 2003/02/27 22:02:22 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.13 2003/02/28 16:36:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.13  2003/02/28 16:36:48  gbeeley
+    Fixed most problems with balanced mode multi-column sections.  Still
+    a couple of them remain and require some restructuring, so doing a
+    commit first to be able to rollback in the event of trouble ;)
+
     Revision 1.12  2003/02/27 22:02:22  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -141,6 +146,7 @@
 
 
 #define PRT_TEXTLM_F_RMSPACE	PRT_OBJ_F_LMFLAG1	/* space was removed */
+#define PRT_TEXTLM_F_NLBREAK	PRT_OBJ_F_LMFLAG2	/* NL caused Break */
 
 
 /*** prt_textlm_Break() - performs a break operation on this area, which 
@@ -621,8 +627,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** Get geometries for current line. **/
 	    prt_textlm_LineGeom(this->ContentTail, &bottom, &top);
 
-	    /** Determine X and Y for the new object. **/
-	    if (objptr->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE))
+	    /** Determine X and Y for the new object.  Skip to next line if newline
+	     ** is indicated BUT the newline wasn't a 'break' from a previous
+	     ** linked part of this area.
+	     **/
+	    if ((objptr->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)))
 		{
 		/** Justify previous line? **/
 		if (this->ContentTail)
@@ -630,7 +639,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
 		    }
 		objptr->X = 0.0;
-		objptr->Y = bottom;
+		if (objptr->Flags & PRT_TEXTLM_F_NLBREAK)
+		    objptr->Y = 0.0;
+		else
+		    objptr->Y = bottom;
 		}
 	    else
 		{
@@ -662,6 +674,9 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    objptr->Y = y;
 		    }
 		}
+
+	    /** Make sure this flag doesn't "stick around" in case of later reflow. **/
+	    objptr->Flags &= ~PRT_TEXTLM_F_NLBREAK;
 
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width > this->Width - this->MarginLeft - this->MarginRight)
@@ -783,6 +798,8 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Bumped to a new container? **/
 		if (new_parent && this != new_parent)
 		    {
+		    if (objptr->Flags & PRT_OBJ_F_NEWLINE)
+			objptr->Flags |= PRT_TEXTLM_F_NLBREAK;
 		    this = new_parent;
 		    objptr->X = 0.0;
 		    objptr->Y = 0.0;

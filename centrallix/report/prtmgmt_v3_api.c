@@ -50,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.9 2003/02/27 22:02:19 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.10 2003/02/28 16:36:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.10  2003/02/28 16:36:46  gbeeley
+    Fixed most problems with balanced mode multi-column sections.  Still
+    a couple of them remain and require some restructuring, so doing a
+    commit first to be able to rollback in the event of trouble ;)
+
     Revision 1.9  2003/02/27 22:02:19  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -644,6 +649,7 @@ prtWriteString(int handle_id, char* str)
 
 	    /** Handle might have changed - check it **/
 	    obj = prtHandlePtr(handle_id);
+	    prt_internal_DispatchEvents(PRTSESSION(obj));
 
 	    /** Skipping over a special char? **/
 	    if (special_char_ptr)

@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.3 2003/02/27 22:02:21 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.4 2003/02/28 16:36:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.4  2003/02/28 16:36:48  gbeeley
+    Fixed most problems with balanced mode multi-column sections.  Still
+    a couple of them remain and require some restructuring, so doing a
+    commit first to be able to rollback in the event of trouble ;)
+
     Revision 1.3  2003/02/27 22:02:21  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -329,16 +334,22 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
     int rval;
     double oh, ow;
     pPrtObjStream col_obj;
+    double npw, nph;
 
 	/** Being called on a column rather than the section as a whole? If so,
 	 ** reflect the call to the parent section object instead.
 	 **/
 	if (this->ObjType->TypeID == PRT_OBJ_T_SECTCOL)
 	    {
+	    rval = 0;
 	    ow = this->Width;
-	    rval = this->Parent->LayoutMgr->Resize(this->Parent,
-		    new_width - this->Width + this->Parent->Width,
-		    new_height - this->Height + this->Parent->Height);
+	    npw = new_width - this->Width + this->Parent->Width;
+	    nph = new_height + this->Y + this->Parent->MarginTop + this->Parent->MarginBottom;
+	    if (nph < this->Parent->Height) nph = this->Parent->Height;
+	    if (npw != this->Parent->Width || nph != this->Parent->Height)
+		{
+		rval = this->Parent->LayoutMgr->Resize(this->Parent, npw, nph);
+		}
 
 	    /** If width changed, we need to apply that here. **/
 	    if (rval >= 0 && new_width != ow)
