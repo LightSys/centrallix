@@ -12,7 +12,7 @@ Centrallix ChangeLog
 	    are referenced in the generated pages as needed.
 	4.  GZip content encoding now supported to reduce bandwidth needed to
 	    load the generated pages, depending on browser support.
-	5.  Calendar (date/time) widget added.
+	5.  Several new widgets added: Calendar (date/time), Text Area
 
 
 -------------------------------------------------------------------------------
