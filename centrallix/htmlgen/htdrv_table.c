@@ -59,10 +59,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.27 2002/07/25 18:08:36 mcancel Exp $
+    $Id: htdrv_table.c,v 1.28 2002/07/25 20:05:15 mcancel Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.28  2002/07/25 20:05:15  mcancel
+    Adding the function htrAddScriptInclude to the static table render
+    function so the javascript code will be seen...
+
     Revision 1.27  2002/07/25 18:08:36  mcancel
     Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
 
@@ -482,6 +486,8 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
     int colid;
     int n;
     char tmpbuf[64];
+
+	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
 	if (t.w != -1) snprintf(tmpbuf,64,"width=%d",t.w - (t.outer_border + (t.outer_border?1:0))*2); else tmpbuf[0] = 0;
 	htrAddBodyItem_va(s,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, t.outer_border, t.tbl_bgnd);
