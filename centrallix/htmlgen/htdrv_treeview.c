@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.9 2002/03/16 01:56:14 jorupp Exp $
+    $Id: htdrv_treeview.c,v 1.10 2002/03/17 03:51:03 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.10  2002/03/17 03:51:03  jorupp
+    * treeview now returns value on function call (in alert window)
+    * implimented basics of 3-button confirm window on the form side
+        still need to update several functions to use it
+
     Revision 1.9  2002/03/16 01:56:14  jorupp
      * code cleanup
      * added right/middle click functionality on text -- allows you to run code on an object
@@ -247,8 +252,8 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"                    if(confirm(\"Run Function?\"))\n"
 		"                        {\n"
 		"                        r=prompt(\"Parameters (fill in array)?\",\"new Array(\\\"p1\\\")\");\n"
-		"                        if(r==undefined) l.parent.obj[l.objn].apply(l.parent.obj);\n"
-		"                        else l.parent.obj[l.objn].apply(l.parent.obj,eval(r));\n"
+		"                        if(r==undefined) confirm('Return value:'+l.parent.obj[l.objn].apply(l.parent.obj));\n"
+		"                        else confirm('Return value:'+l.parent.obj[l.objn].apply(l.parent.obj,eval(r)));\n"
 		"                        }\n"
 		"                    break;\n"
 		"                case \"object\":\n"

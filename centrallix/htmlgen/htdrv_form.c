@@ -34,7 +34,7 @@
 /* distribution in the file "COPYING".					*/
 /* 									*/
 /* Module: 	htdrv_form.c      					*/
-/* Author:	Jonathan Rupp (JDR) and Aaron Williams 			*/
+/* Author:	Jonathan Rupp (JDR)					*/
 /* Creation:	February 20, 2002 					*/
 /* Description:	This is the non-visual widget that interfaces the 	*/
 /*		objectsource widget and the visual sub-widgets		*/
@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.16  2002/03/17 03:51:03  jorupp
+    * treeview now returns value on function call (in alert window)
+    * implimented basics of 3-button confirm window on the form side
+        still need to update several functions to use it
+
     Revision 1.15  2002/03/16 02:04:05  jheth
     osrc widget queries and passes data back to form widget
 
@@ -135,6 +140,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char basequery[300];
     char basewhere[300];
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
+    char _3bconfirmwindow[30];
     
     	/** Get an id for this. **/
 	id = (HTFORM.idcnt++);
@@ -157,6 +163,26 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) 
 	    tabmode[0]='\0';
 
+	/*** 03/16/02 Jonathan Rupp
+	 ***   added _3bconfirmwindow, the name of a window that has 
+	 ***     three button objects, _3bConfirmCancel, 
+	 ***     _3bConfirmCancel, and _3bConfirmCancel.  There can
+	 ***     be no connectors attached to these buttons.
+	 ***     this window should be set to hidden -- the form
+	 ***     will make it visible when needed, and hide it again
+	 ***     afterwards.
+	 ***   There is a Action to test this new functionality:
+	 ***     .Actiontest3bconfirm()
+	 ***     -- once this is used elsewhere, this function will
+	 ***        be removed
+	 ***/
+	
+	if (objGetAttrValue(w_obj,"_3bconfirmwindow",POD(&ptr)) == 0)
+	    snprintf(_3bconfirmwindow,30,"%s",ptr);
+	else
+	    strcpy(_3bconfirmwindow,"null");
+
+	
 	/*** 
 	 *** (03/01/02) Jonathan Rupp -- added two new paramters
 	 ***      basequery -- the part of the SQL statement that is never
@@ -180,12 +206,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***/
 
 	if (objGetAttrValue(w_obj,"basequery",POD(&ptr)) == 0)
-	    sprintf(basequery,"%.300s",ptr);
+	    snprintf(basequery,300,"%s",ptr);
 	else
 	    strcpy(basequery,"");
 	
 	if (objGetAttrValue(w_obj,"basewhere",POD(&ptr)) == 0)
-	    sprintf(basewhere,"%.300s",ptr);
+	    snprintf(basewhere,300,"%s",ptr);
 	else
 	    strcpy(basewhere,"");
 
@@ -218,14 +244,18 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_data_notify", "\n"
 		"function form_cb_data_notify(control)\n"
 		"    {\n"
-		"	this.IsUnsaved=true;\n"
-		"       control._form_IsChanged=true;\n"
+		"    control._form_IsChanged=true;\n"
+		"    if(this.mode=='New' || this.mode=='Modify')\n"
+		"        {\n"
+		"        this.IsUnsaved=true;\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** A child 'control' got or lost focus **/
 	htrAddScriptFunction(s, "form_cb_focus_notify", "\n"
 		"function form_cb_focus_notify(control)\n"
 		"    {\n"
+		"    \n"
 		"    }\n", 0);
 
 	/** the tab key was pressed in child 'control' **/
@@ -252,10 +282,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_data_available", "\n"
 		"function form_cb_data_available(aparam)\n"
 		"    {\n"
-		"    //alert('data available');\n"
-		"    //alert(aparam['full_name']['value']);\n"
-		"    //alert(aparam['num_days']['value']);\n"
-		"    this.cb[\"DataAvailable\"].run();\n"
+		"    this.dataincoming=true;\n"
+		"    //this.cb[\"DataAvailable\"].run();\n"
 		"    }\n", 0);
 
 	/** Objectsource wants us to dump our data **/
@@ -288,16 +316,27 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Objectsource says our object is available **/
 	htrAddScriptFunction(s, "form_cb_object_available", "\n"
-		"function form_cb_object_available(aparam)\n"
+		"function form_cb_object_available(data)\n"
 		"    {\n"
-		"    form_cb_helper(this,\"ObjectAvailable\",1);\n"
+		"    this.data=data;\n"
+		"    this.ClearAll();\n"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        for(var j in this.data)\n"
+		"            {\n"
+		"            if(this.elements[i].fieldname && this.elements[i].fieldname==j)\n"
+		"                {\n"
+		"                this.elements[i].setvalue(this.data[j].value);\n"
+		"                }\n"
+		"            }\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** Objectsource says the operation is complete **/
 	htrAddScriptFunction(s, "form_cb_operation_complete", "\n"
-		"function form_cb_operation_complete(aparam)\n"
+		"function form_cb_operation_complete(r)\n"
 		"    {\n"
-		"    if(aparam)\n"
+		"    if(r)\n"
 		"        form_cb_helper(this,\"OperationCompleteSuccess\",1);\n"
 		"    else\n"
 		"        form_cb_helper(this,\"OperationCompleteFail\",1);\n"
@@ -305,21 +344,21 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Objectsource says the object was deleted **/
 	htrAddScriptFunction(s, "form_cb_object_deleted", "\n"
-		"function form_cb_object_deleted(aparam)\n"
+		"function form_cb_object_deleted()\n"
 		"    {\n"
 		"    form_cb_helper(this,\"ObjectDeleted\",1);\n"
 		"    }\n", 0);
 
 	/** Objectsource says the object was created **/
 	htrAddScriptFunction(s, "form_cb_object_created", "\n"
-		"function form_cb_object_created(aparam)\n"
+		"function form_cb_object_created()\n"
 		"    {\n"
 		"    form_cb_helper(this,\"ObjectCreated\",1);\n"
 		"    }\n", 0);
 
 	/** Objectsource says the object was modified **/
 	htrAddScriptFunction(s, "form_cb_object_modified", "\n"
-		"function form_cb_object_modified(aparam)\n"
+		"function form_cb_object_modified()\n"
 		"    {\n"
 		"    form_cb_helper(this,\"ObjectModified\",1);\n"
 		"    }\n", 0);
@@ -332,21 +371,25 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    if(this.mode==\"No Data\")\n"
 		"        return;\n"	/* Already in No Data Mode */
-		"    if(this.mode==\"New\" || this.mode==\"Modify\")\n"
+		"    if(this.IsUnsaved && (this.mode==\"New\" || this.mode==\"Modify\"))\n"
 		"        {\n"
 		"        if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
 		"            {\n"
 		"            if(confirm(\"OK to save changes, CANCEL to discard them.\"))\n"
 		"                {\n" /* save */
 		"                this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.ActionClear();\"));\n"
-		"                this.ActionSave;\n"
+		"                this.ActionSave();\n"
 		"                return 0;\n"
 		"                }\n"	
 		"            else\n"
-		"                {\n"
-		"                return 0;\n"	/* don't go anywhere */
+		"                {\n" /* discard is ok */
+		"                this.ClearAll();\n"
 		"                }\n"
-		"            }\n" /* if discard is ok, just let it fall through */
+		"            }\n"
+		"        else\n"
+		"            {\n" /* user wants to stay here */
+		"            return 0;\n"
+		"            }\n"
 		"        }\n"
 		"    this.ClearAll();\n"
 		"    }\n", 0);
@@ -423,6 +466,87 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.osrc.Last();\n"
 		"    }\n", 0);
 
+	htrAddScriptFunction(s, "form_show_3bconfirm", "\n"
+		"function form_show_3bconfirm()\n"
+		"    {\n"
+		"    var discard,save,cancel;\n"
+		"    var lay=this._3bconfirmwindow.mainLayer.layers;\n"
+		"    for(var i in lay)\n"
+		"        {\n"
+		"        if(lay[i] && lay[i].buttonName)\n"
+		"            {\n"
+		"            switch(lay[i].buttonName)\n"
+		"                {\n"
+		"                case '_3bConfirmCancel':\n"
+		"                    cancel=lay[i];\n"
+		"                    break;\n"
+		"                case '_3bConfirmSave':\n"
+		"                    save=lay[i];\n"
+		"                    break;\n"
+		"                case '_3bConfirmDiscard':\n"
+		"                    discard=lay[i];\n"
+		"                    break;\n"
+		"                }\n"
+		"            }\n"
+		"        }\n"
+		"    if(!(save && discard && cancel))\n"
+		"        {\n"
+		"        alert(\"You didn't use all the buttons, or you named them wrong.\");\n"
+		"        return 0;\n"
+		"        }\n"
+		"    save._form_form=this;\n"
+		"    discard._form_form=this;\n"
+		"    cancel._form_form=this;\n"
+		"    save.EventClick=this._3bconfirm_save;\n"
+		"    discard.EventClick=this._3bconfirm_discard;\n"
+		"    cancel.EventClick=this._3bconfirm_cancel;\n"
+		"    \n"
+		"    var funclate=new Function(\"this.cb['_3bConfirmCancel'].clear();this.cb['_3bConfirmDiscard'].clear();this.cb['_3bConfirmSave'].clear();\");\n"
+		"    var func=new Function(\"pg_setmodal(null);var v=new Object();v.IsVisible=0;this._3bconfirmwindow.ActionSetVisibility(v);\");\n"
+		"    \n"
+		"    this.cb['_3bConfirmCancel'].add(this,funclate,null,1000);\n"
+		"    this.cb['_3bConfirmDiscard'].add(this,funclate,null,1000);\n"
+		"    this.cb['_3bConfirmSave'].add(this,funclate,null,1000);\n"
+		"    \n"
+		"    this.cb['_3bConfirmCancel'].add(this,func,null,-1000);\n"
+		"    this.cb['_3bConfirmDiscard'].add(this,func,null,-1000);\n"
+		"    this.cb['_3bConfirmSave'].add(this,func,null,-1000);\n"
+		"    \n"
+		"    this._3bconfirmwindow.ActionSetVisibility(1);\n"
+		"    pg_setmodal(this._3bconfirmwindow.mainLayer)\n"
+		"    \n"
+		"    }\n", 0);
+	
+	htrAddScriptFunction(s, "form_3bconfirm_cancel", "\n"
+		"function form_3bconfirm_cancel()\n"
+		"    {\n"
+		"    if(this._form_form)\n"
+		"        this._form_form.cb['_3bConfirmCancel'].run();\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "form_3bconfirm_discard", "\n"
+		"function form_3bconfirm_discard()\n"
+		"    {\n"
+		"    if(this._form_form)\n"
+		"        this._form_form.cb['_3bConfirmDiscard'].run();\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "form_3bconfirm_save", "\n"
+		"function form_3bconfirm_save()\n"
+		"    {\n"
+		"    if(this._form_form)\n"
+		"        this._form_form.cb['_3bConfirmSave'].run();\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "form_test_3bconfirm", "\n"
+		"function form_test_3bconfirm()\n"
+		"    {\n"
+		"    this.cb['_3bConfirmCancel'].add(this,new Function(\"alert('cancel was clicked');\"))\n"
+		"    this.cb['_3bConfirmDiscard'].add(this,new Function(\"alert('discard was clicked');\"))\n"
+		"    this.cb['_3bConfirmSave'].add(this,new Function(\"alert('save was clicked');\"))\n"
+		"    this.show3bconfirm();\n"
+		"    }\n", 0);
+
 	/** in View, Query, or No Data, clear, move to New **/
 	/** in Modify, give save/discard/cancel prompt **/
 	/** (if from No Data or View mode after query, auto-fill criteria) **/
@@ -440,19 +564,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        case \"Modify\":\n"
 		"            if(this.Unsaved)\n"
 		"                {\n"
-		"                if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
-		"                    {\n"
-		"                    if(confirm(\"OK to save changes, CANCEL to discard them.\"))\n"
-		"                        {\n" /* save */
-		"                        this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.ActionNew();\"))\n"
-		"                        }\n"
-		"                    else\n"
-		"                        {\n" /* cancel (discard) */
-		"                        this.ChangeMode(\"New\");\n"
-		"                        }\n"
-		"                    }\n"
-		                 /* cancel (don't allow new query) */
-		"                }\n" 
+		"                var savefunc=new Function(\"this.cb['OperationCompleteSuccess'].add(this,new Function('this.ActionNew();'));this.ActionSave();\")\n"
+		"                var discardfunc=new Function(\"this.Unsaved=false;this.ChangeMode('New');\")\n"
+		"                this.cb['_3bConfirmDiscard'].add(this,discardfunc);\n"
+		"                this.cb['_3bConfirmSave'].add(this,savefunc);\n"
+		"                this.show3bconfirm();\n"
+		"                }\n"
 		"            break;\n"
 		"        }\n"
 		"    }\n", 0);
@@ -461,8 +578,16 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_action_next", "\n"
 		"function form_action_next(aparam)\n"
 		"    {\n"
-		"    objsource.next();\n"
 		"    if(this.IsUnsaved) this.ActionSave();\n"
+		"    objsource.next();\n"
+		"    }\n", 0);
+
+	/** Save changed data, move the osrc **/
+	htrAddScriptFunction(s, "form_action_prev", "\n"
+		"function form_action_prev(aparam)\n"
+		"    {\n"
+		"    if(this.IsUnsaved) this.ActionSave();\n"
+		"    objsource.prev();\n"
 		"    }\n", 0);
 
 	/** Helper function -- called from other mode change functions **/
@@ -472,7 +597,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    alert(\"Form is going from \"+this.mode+\" to \"+newmode+\" mode.\");\n"
 		"    this.oldmode = this.mode;\n"
 		"    this.mode = newmode;\n"
-		"    this.changed = false;\n"
+		"    this.IsUnsaved = false;\n"
 		/*
 		"    var event = new Object();\n"
 		"    event.Caller = this;\n"
@@ -504,6 +629,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        this.elements[i]._form_IsChanged=false;\n"
 		"        }\n"
 		"    this.IsUnsaved=false;\n"
+		"    //this.osrc.ActionClear();\n"
 		"    }\n", 0);
 
 	/** Disables all children **/
@@ -649,23 +775,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    	 return 0;\n"
 		"        }\n"
 		"    this.cb[\"OperationCompleteSuccess\"].add(this,\n"
-		"           new Function(\"this.Unsaved=false;this.Pending=false;this.EnableAll();this.cb[\\\"OperationCompleteFail\\\"].clear();\"),1);\n"
+		"           new Function(\"this.Unsaved=false;this.Pending=false;this.EnableAll();this.cb[\\\"OperationCompleteFail\\\"].clear();\"));\n"
 		"     this.cb[\"OperationCompleteFail\"].add(this,\n"
-		"           new Function(\"confirm(\\\"Data Save Failed\\\");this.cb[\\\"OperationCompleteSuccess\\\"].clear();\"),1);\n"
-/***	OLD WAY
-		"    if(cbsuc==undefined)\n"
-		"        this.cb[\"OperationCompleteSuccess\"]=form_fill_cb_array(\n"
-		"            new Array(),this,new Function(\"this.Unsaved=false;\n"
-		"                this.Pending=false;this.EnableAll();\"));\n"
-		"    else\n"
-		"        this.cb[\"OperationCompleteSuccess\"]=cbsuc;\n"
-		"    if(cbfail==undefined)\n"
-		"        this.cb[\"OperationCompleteFail\"]=form_fill_cb_array(\n"
-		"            new Array(),this,new Function(\"this.Pending=false;\n"
-		"                confirm(\\\"Save failed\\\");this.EnableAll();\"));\n"
-		"    else\n"
-		"        this.cb[\"OperationCompleteFail\"]=cbfail;\n"
-***/
+		"           new Function(\"this.Pending=false;this.EnableAll();confirm(\\\"Data Save Failed\\\");this.cb[\\\"OperationCompleteSuccess\\\"].clear();\"));\n"
 	    
 		/** build the object to pass to objectsource **/
 		"    var dataobj=new Object();\n"
@@ -699,66 +811,69 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Callback object init **/
 	htrAddScriptFunction(s, "form_cbobj", "\n"
-		"function form_cbobj()\n"
+		"function form_cbobj(n)\n" //FIXME FIXME
 		"    {\n"
 		"    this.arr=new Array();\n"
 		"    this.add=form_cbobj_add;\n"
 		"    this.run=form_cbobj_run;\n"
 		"    this.clear=form_cbobj_clear;\n"
+		"    this.name=n;\n"
 		"    }\n", 0);
 
 	/** Calls all registered functions **/
 	htrAddScriptFunction(s, "form_cbobj_run", "\n"
 		"function form_cbobj_run()\n"
 		"    {\n"
+		"    if(this.arr.length<1)\n"
+		"        {\n"
+		"        confirm(\"There are no callbacks registered for \"+this.name+\".  This is a problem\");\n"
+		"        return false;\n"
+		"        }\n"
 		"    this.arr.sort(form_cbobj_compare);\n"
 		"    for(var i in this.arr)\n"
 		"        {\n"
 		"        var j=this.arr[i];\n"
-		"        if(j[3])\n"
-		"            j[2](j[1],j[3]);\n"
-		"        else\n"
-		"            j[2](j[1]);\n"
+		"        if(j)\n"
+		"            if(j[3])\n"
+		"                j[2].apply(j[1],j[3]);\n"
+		"            else\n"
+		"                j[2].apply(j[1]);\n"
 		"        }\n"
-		"    for(var i in this.arr)\n"
-		"        if(!this.arr[i][4])\n"
-		"            delete this.arr[i];\n"
+		"    this.clear();\n"
 		"    }\n", 0);
 
 	/** Adds a new registered function **/
 	htrAddScriptFunction(s, "form_cbobj_add", "\n"
-		"function form_cbobj_add(obj,func,param,key,multi)\n"
+		"function form_cbobj_add(obj,func,param,key)\n"
 		"    {\n"
 		"    if(obj==undefined) { obj = null; }\n"
 		"    if(func==undefined) { func = null; }\n"
 		"    if(param==undefined) { param = null; }\n"
-		"    if(key==undefined) { key=100; }\n"
-		"    this.arr.push(new Array(key,obj,func,param,multi));\n"
+		"    if(key==undefined) { key=0; }\n"
+		"    this.arr.push(new Array(key,obj,func,param));\n"
 		"    }\n", 0);
 	
-	/** Clears all (non-multi) registered callbacks **/
+	/** Clears all registered callbacks **/
 	htrAddScriptFunction(s, "form_cbobj_clear", "\n"
 		"function form_cbobj_clear()\n"
 		"    {\n"
 		"    for(var i in this.arr)\n"
-		"        if(!this.arr[i][4])\n"
-		"            delete this.arr[i];\n"
+		"        delete this.arr[i];\n"
 		"    }\n", 0);
 
 	/** Compares two arrays based on the first element **/
 	htrAddScriptFunction(s, "form_cbobj_compare", "\n"
 		"function form_cbobj_compare(a,b)\n"
-		"    {\n"
-		"    if(a[0]>b[0]) return -1;\n"
+		"    {\n" /* sort in order based on keys (element 0) */
+		"    if(!a || !b) return 0;\n"
+		"    if(a[0]>b[0]) return 1;\n"
 		"    if(a[0]==b[0]) return 0;\n"
-		"    if(a[0]<b[0]) return 1;\n"
+		"    if(a[0]<b[0]) return -1;\n"
 		"    }\n", 0);
-
-
 
 	/** Form initializer **/
 	htrAddScriptFunction(s, "form_init", "\n"
-		"function form_init(aq,an,am,av,and,me,name,bq,bw)\n"
+		"function form_init(aq,an,am,av,and,me,name,bq,bw,_3b)\n"
 		"    {\n"
 		"    form = new Object();\n" 
 		"    form.basequery = bq;\n"
@@ -779,13 +894,16 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.Pending = false;\n"
 		/** remember what to do after callbacks.... **/
 		"    form.cb = new Array();\n"
-		"    form.cb[\"DataAvailable\"] = new form_cbobj();\n"
-		"    form.cb[\"ObjectAvailable\"] = new form_cbobj();\n"
-		"    form.cb[\"OperationCompleteSuccess\"] = new form_cbobj();\n"
-		"    form.cb[\"OperationCompleteFail\"] = new form_cbobj();\n"
-		"    form.cb[\"ObjectDeleted\"] = new form_cbobj();\n"
-		"    form.cb[\"ObjectCreated\"] = new form_cbobj();\n"
-		"    form.cb[\"ObjectModified\"] = new form_cbobj();\n"
+		"    form.cb[\"DataAvailable\"] = new form_cbobj(\"DataAvailable\");\n"
+		"    form.cb[\"ObjectAvailable\"] = new form_cbobj(\"ObjectAvailable\");\n"
+		"    form.cb[\"OperationCompleteSuccess\"] = new form_cbobj(\"OperationCompelteSuccess\");\n"
+		"    form.cb[\"OperationCompleteFail\"] = new form_cbobj(\"OperationCompleteFail\");\n"
+		"    form.cb[\"ObjectDeleted\"] = new form_cbobj(\"ObjectDeleted\");\n"
+		"    form.cb[\"ObjectCreated\"] = new form_cbobj(\"ObjectCreated\");\n"
+		"    form.cb[\"ObjectModified\"] = new form_cbobj(\"ObjectModified\");\n"
+		"    form.cb[\"_3bConfirmCancel\"] = new form_cbobj(\"_3bConfirmCancel\");\n"
+		"    form.cb[\"_3bConfirmSave\"] = new form_cbobj(\"_3bConfirmSave\");\n"
+		"    form.cb[\"_3bConfirmDiscard\"] = new form_cbobj(\"_3bConfirmDiscard\");\n"
 		/** initialize params from .app file **/
 		"    form.allowquery = aq;\n"
 		"    form.allownew = an;\n"
@@ -794,6 +912,12 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.allownodata = and;\n"
 		"    form.multienter = me;\n"
 		/** initialize actions and callbacks **/
+		"    form._3bconfirmwindow = _3b;\n"
+		"    form._3bconfirm_discard = form_3bconfirm_discard;\n"
+		"    form._3bconfirm_cancel = form_3bconfirm_cancel;\n"
+		"    form._3bconfirm_save = form_3bconfirm_save;\n"
+		"    form.show3bconfirm = form_show_3bconfirm;\n"
+		"    form.Actiontest3bconfirm = form_test_3bconfirm;\n"
 		"    form.ActionClear = form_action_clear;\n"
 		"    form.ActionDelete = form_action_delete;\n"
 		"    form.ActionDiscard = form_action_discard;\n"
@@ -801,7 +925,8 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.ActionFirst = form_action_first;\n"
 		"    form.ActionLast = form_action_last;\n"
 		"    form.ActionNew = form_action_new;\n"
-		"    form.ActionPrev = form_action_next;\n"
+		"    form.ActionPrev = form_action_prev;\n"
+		"    form.ActionNext = form_action_next;\n"
 		"    form.ActionQuery = form_action_query;\n"
 		"    form.ActionQueryExec = form_action_queryexec;\n"
 		"    form.ActionSave = form_action_save;\n"
@@ -830,8 +955,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
 	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,\"%s\",\"%s\",\"%s\");\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,basequery,basewhere);
+	snprintf(sbuf3,200,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s','%s','%s',%s);\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
+		basequery,basewhere,_3bconfirmwindow);
 	htrAddScriptInit(s,sbuf3);
 	nmFree(sbuf3,200);
 
