@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.31  2002/05/30 00:03:07  jorupp
+     * this ^should^ allow nesting of the osrc and form, but who knows.....
+
     Revision 1.30  2002/04/30 18:08:43  jorupp
      * more additions to the table -- now it can scroll~
      * made the osrc and form play nice with the table
@@ -1123,17 +1126,17 @@ old query code
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,'%s',%s,%i);\n",
+	htrAddScriptInit_va(s,"\n    %s=form_init(%i,%i,%i,%i,%i,%i,'%s',%s,%i);\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
 		_3bconfirmwindow,readonly);
+	htrAddScriptInit_va(s,"    %s.oldform=fm_current;\n",name);
+	htrAddScriptInit_va(s,"    fm_current=%s;\n",name);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/
 	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
 	
-
-	/** Make sure we don't claim orphans **/
-	htrAddScriptInit(s,"    fm_current = null;\n\n");
+	htrAddScriptInit_va(s,"    fm_current=%s.oldform;\n",name);
 
     return 0;
     }

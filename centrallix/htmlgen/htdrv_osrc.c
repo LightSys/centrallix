@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.23 2002/05/06 22:29:36 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.24 2002/05/30 00:03:07 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.24  2002/05/30 00:03:07  jorupp
+     * this ^should^ allow nesting of the osrc and form, but who knows.....
+
     Revision 1.23  2002/05/06 22:29:36  jorupp
      * minor bug fixes that I found while documenting the OSRC
 
@@ -1051,9 +1054,12 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_current=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,'%s','%s');\n",
-	 parentname, id,readahead,scrollahead,replicasize,sql,filter);
+   htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,'%s','%s');\n",
+	 name,parentname, id,readahead,scrollahead,replicasize,sql,filter);
    htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
+
+   htrAddScriptInit_va(s,"    %s.oldosrc=osrc_current;\n",name);
+   htrAddScriptInit_va(s,"    osrc_current=%s;\n",name);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItem_va(s,"    <DIV ID=\"osrc%dloader\"></DIV>\n",id);
@@ -1061,8 +1067,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);
    
    /** We set osrc_current=null so that orphans can't find us  **/
-   htrAddScriptInit(s, "    osrc_current.InitQuery();\n\n");
-   htrAddScriptInit(s, "    osrc_current=null;\n\n");
+   htrAddScriptInit(s, "    osrc_current.InitQuery();\n");
+   htrAddScriptInit_va(s,"    osrc_current=%s.oldosrc;\n\n",name);
+
 
    return 0;
 }
