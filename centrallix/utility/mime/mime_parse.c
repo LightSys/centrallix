@@ -387,7 +387,6 @@ libmime_SetContentDisp(pMimeHeader msg, char *buf)
     char *ptr, *cptr;
 
     /** get the display main type **/
-    if (!(ptr=strtok_r(buf, ": ", &buf))) return 0;
     if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
 
     strncpy(msg->ContentDisp, ptr, 79);
