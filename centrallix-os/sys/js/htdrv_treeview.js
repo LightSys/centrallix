@@ -152,11 +152,13 @@ function tv_click(e)
 	}
     else
 	{
-	if (e.target.href != null)
+	if (e.target.layer && e.target.layer.link_href)
 	    {
 	    eparam = new Object();
-	    eparam.Pathname = e.target.pathname;
-	    eparam.HRef = e.target.href;
+	    eparam.Pathname = e.target.layer.fname;
+	    if (eparam.Pathname.lastIndexOf('/') == eparam.Pathname.length-1)
+		eparam.Pathname = eparam.Pathname.substring(0,eparam.Pathname.length-1);
+	    eparam.HRef = e.target.layer.link_href;
 	    eparam.Caller = e.target.layer.root;
 	    if (e.target.layer.root.EventClickItem != null)
 		cn_activate(e.target.layer.root,'ClickItem', eparam);
@@ -295,6 +297,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	/** the link **/
 	var a = document.createElement('a');
 	a.setAttribute('href',link_href);
+	a.layer = l;
 	if(link_bold)
 	    {
 	    var bold = document.createElement('b');
@@ -497,8 +500,10 @@ function tv_BuildNewLayers(l, linkcnt)
 
 	one_layer.tree_depth = one_layer.parent.tree_depth+1;
 	tv_build_layer(one_layer,"/sys/images/ico" + im + "b.gif",link_href,link_txt, link_bold, i == linkcnt, can_expand);
+	one_layer.link_href = link_href;
 	one_layer.fname = tv_tgt_layer.fname + one_link;
 	one_layer.type = im;
+	one_layer.layer = one_layer;
 	/*if (cx__capabilities.Dom0NS)
 	    {*/
 	    if (l.mainlayer.show_branches)

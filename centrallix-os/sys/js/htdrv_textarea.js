@@ -65,7 +65,7 @@ function tx_clearvalue()
         {
         this.cursorRow = 0;
         this.cursorCol = 0;
-        moveToAbsolute(ibeam_current, getPageX(this.rows[this.cursorRow].contentLayer) + this.cursorCol*text_metric.charWidth, getPageY(this.rows[this.cursorRow].contentLayer));
+        moveToAbsolute(ibeam_current, getPageX(this.rows[this.cursorRow].contentLayer) + tx_xpos(this,this.cursorRow,this.cursorCol), getPageY(this.rows[this.cursorRow].contentLayer));
 	htr_setvisibility(ibeam_current, 'inherit');
         }
     }
@@ -132,13 +132,17 @@ function tx_insertRow(l, index, txt)
     {
     if (index > l.rows.length) index = l.rows.length;
     r = new Object();
-    r.content = txt;
     r.contentLayer = htr_new_layer(getClipWidth(l)-2, l);
     r.hiddenLayer = htr_new_layer(getClipWidth(l)-2, l);
+    r.charWidths = new Array();
+    r.contentLayer.row = r;
+    r.hiddenLayer.row = r;
+    r.textarea = l;
     htr_init_layer(r.hiddenLayer, l, 'tx');
     htr_init_layer(r.contentLayer, l, 'tx');
     htr_setvisibility(r.hiddenLayer, 'hidden');
     htr_setvisibility(r.contentLayer, 'hidden');
+    r.content = null;
     tx_write(r.contentLayer, txt);
     r.changed = 1;
     l.rows.splice(index,0,r);
@@ -152,9 +156,76 @@ function tx_insertRow(l, index, txt)
         }
     }
 
+
+/** get the x pos of a given (row,col) in the text **/
+function tx_xpos(l, row, col)
+    {
+    if (l.mode == 0) // text
+	return col*text_metric.charWidth;
+    var xpos = 0;
+    for (var i =0; i<l.rows[row].content.length && i < col; i++)
+	xpos += l.rows[row].charWidths[i];
+    return xpos;
+    }
+
+/** get the y pos of a given (row,col) in the text */
+function tx_ypos(l, row, col)
+    {
+    if (l.mode == 0) // text
+	return row*text_metric.charHeight;
+    var ypos = 0;
+    for (var i =0; i<l.rows.length && i < row; i++)
+	ypos += l.rows[i].charHeight;
+    return ypos;
+    }
+
+/** change a row's content, html style **/
+/** nonoptimized! **/
+function tx_html_write(l, c)
+    {
+    l.row.charWidths = new Array();
+    if (cx__capabilities.Dom0NS) 
+	{
+	l.document.write('');
+	l.document.close();
+	}
+    else
+	l.innerHTML = '<pre style="padding:0px; margin:0px;">';
+    var totalwidth = 0;
+    for(var i = 0; i < c.length; i++)
+	{
+	if (cx__capabilities.Dom0NS)
+	    {
+	    l.document.write(htutil_encode(c.substr(0,i+1)));
+	    l.document.close();
+	    }
+	else
+	    l.innerHTML += htutil_encode(c.charAt(i));
+	l.row.charWidths[i] = getClipWidth(l) - totalwidth;
+	totalwidth += l.row.charWidths[i];
+	}
+    if (cx__capabilities.Dom0NS) 
+	{
+	/*l.document.write('');
+	l.document.close();*/
+	}
+    else
+	l.innerHTML += '</pre>';
+    var str = '';
+    for(var i = 0; i<l.row.charWidths.length; i++)
+	{
+	str += ' ' + l.row.charWidths[i] + ',';
+	}
+    l.row.charHeight = getClipHeight(l);
+    l.row.content = c;
+    //confirm(str);
+    }
+
 /** Changes a row's (layer) content **/
 function tx_write(l, c)
     {
+    if (l.row.content == c) return;
+    if (l.row.textarea.mode != 0) return tx_html_write(l, c);
     if (cx__capabilities.Dom0NS)
         {
         l.document.write('<PRE>' + htutil_encode(c) + '</PRE> ');
@@ -164,6 +235,9 @@ function tx_write(l, c)
         {        
         l.innerHTML = '<PRE style="padding:0px; margin:0px;">' + htutil_encode(c) + '</PRE> ';
         }
+    for(var i = 0; i < c.length; i++) l.row.charWidths[i] = text_metric.charWidth;
+    l.row.charHeight = text_metric.charHeight;
+    l.row.content = c;
     }
 
 /** Deletes an editable row from the textarea **/
@@ -187,11 +261,11 @@ function tx_updateRow(l, index, txt)
     {
     if (index > l.rows.length) index = l.rows.length-1;
     r = l.rows[index];
+    if (r.content == txt) return;
     tx_write(r.hiddenLayer, txt);
     tmp = r.contentLayer;
     r.contentLayer = r.hiddenLayer;
     r.hiddenLayer = tmp;
-    r.content = txt;
     r.changed = 1;
     }
 
@@ -427,7 +501,7 @@ function tx_keyhandler(l,e,k)
             l.rows[i].changed = 0;
             }
         }
-    moveToAbsolute(ibeam_current, getPageX(l.rows[l.cursorRow].contentLayer) + l.cursorCol*text_metric.charWidth, getPageY(l.rows[l.cursorRow].contentLayer));
+    moveToAbsolute(ibeam_current, getPageX(l.rows[l.cursorRow].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[l.cursorRow].contentLayer));
     htr_setvisibility(ibeam_current, 'inherit');
     cn_activate(l, 'DataChange');
     return false;
@@ -439,8 +513,23 @@ function tx_select(x,y,l,c,n)
     {
     if (l.form) l.form.FocusNotify(l);
     if (l.enabled != 'full') return 0;
-    l.cursorRow = Math.floor(y/text_metric.charHeight);
-    l.cursorCol = Math.round(x/text_metric.charWidth);
+    var cheight = 0;
+    l.cursorRow = 0;
+    for (var i = 0; i<l.rows.length;i++)
+	{
+	if (y >= cheight) l.cursorRow = i;
+	cheight += l.rows[i].charHeight;
+	}
+    var cwidth = 0;
+    l.cursorCol = 0;
+    for (var i = 0; i<l.rows[l.cursorRow].content.length; i++)
+	{
+	if (x >= cwidth) l.cursorCol = i;
+	cwidth += l.rows[l.cursorRow].charWidths[i];
+	}
+    if (x >= cwidth) l.cursorCol = i;
+    /*l.cursorRow = Math.floor(y/text_metric.charHeight);
+    l.cursorCol = Math.round(x/text_metric.charWidth);*/
     if (l.cursorRow >= l.rows.length)
         {
 	l.cursorRow = l.rows.length - 1;
@@ -454,7 +543,7 @@ function tx_select(x,y,l,c,n)
     if (cx__capabilities.Dom1HTML)
 	l.appendChild(ibeam_current);
     moveAbove(ibeam_current,l);
-    moveToAbsolute(ibeam_current,l.rows[0].contentLayer.pageX + l.cursorCol*text_metric.charWidth, l.rows[0].contentLayer.pageY + l.cursorRow*text_metric.charHeight);
+    moveToAbsolute(ibeam_current,l.rows[0].contentLayer.pageX + tx_xpos(l,l.cursorRow,l.cursorCol), l.rows[0].contentLayer.pageY + tx_ypos(l,l.cursorRow,l.cursorCol));
     htr_setzindex(ibeam_current, htr_getzindex(l)+2);
     pg_set_style(ibeam_current,'visibility','inherit');
     cn_activate(l, 'GetFocus');
@@ -472,7 +561,7 @@ function tx_deselect()
     }
 
 /** Textarea initializer **/
-function tx_init(l,fieldname,is_readonly,main_bg)
+function tx_init(l,fieldname,is_readonly,mode,main_bg)
     {
     if (!main_bg)
 	{
@@ -517,6 +606,7 @@ function tx_init(l,fieldname,is_readonly,main_bg)
         l.enablemodify = tx_enable;
         l.enabled = 'full';
         }
+    l.mode = mode; // 0=text, 1=html, 2=wiki
     l.isFormStatusWidget = false;
     if (cx__capabilities.CSSBox)
 	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'tbox', 'tbox', is_readonly?0:3);

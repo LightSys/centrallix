@@ -211,7 +211,7 @@ function htr_unwatch(obj, attr, func)
 function htr_watchchanged(prop,oldval,newval)
     {
     var setprop = newval;
-    
+   
     for (var i=0;i<this.htr_watchlist.length;i++)
 	{
 	if (this.htr_watchlist[i].attr == prop)
@@ -490,7 +490,7 @@ function htr_write_content(l,t)
 	    }
 	else if (cx__capabilities.Dom0IE || cx__capabilities.Dom1HTML)
 	    {
-	    l.innerHtml = t;
+	    l.innerHTML = t;
 	    }
 
     return;

@@ -84,7 +84,10 @@ function ht_dosourcechange(l)
     l.curLayer = l.altLayer;
     l.altLayer = tmpl;
     htr_setbgcolor(l.curLayer, null);
-    pg_serialized_load(l.curLayer, l.newsrc, ht_reloaded);
+    if (cx__capabilities.Dom0NS)
+	pg_serialized_load(l.curLayer, l.newsrc, ht_reloaded);
+    else
+	pg_serialized_load(l.loader, l.newsrc, ht_reloaded);
     //l.curLayer.onload = ht_reloaded;
     //l.curLayer.load(l.newsrc,l.clip.width);
     }
@@ -125,15 +128,18 @@ function ht_startfade(l,ftype,inout,fn)
 
 function ht_reloaded(e)
     {
-    //this.mainlayer.watch('source',ht_sourcechanged);
+    if (this.mainlayer.loader)
+	{
+	setClipHeight(this.mainlayer.curLayer, 0);
+	htr_write_content(this.mainlayer.curLayer, this.mainlayer.loader.contentDocument.body.innerHTML);
+	}
     htr_watch(this.mainlayer, 'source', 'ht_sourcechanged');
-    //this.clip.height = this.document.height;
-    setClipHeight(this, getdocHeight(this));
-    moveAbove(this.mainlayer.faderLayer, this);
-    htr_setvisibility(this, 'inherit');
+    setClipHeight(this.mainlayer.curLayer, getdocHeight(this.mainlayer.curLayer));
+    moveAbove(this.mainlayer.faderLayer, this.mainlayer.curLayer);
+    htr_setvisibility(this.mainlayer.curLayer, 'inherit');
     if (htutil_url_cmp(this.mainlayer.source, document.location.href))
 	{
-	var lnks = pg_links(this);
+	var lnks = pg_links(this.mainlayer.curLayer);
 	for(var i=0;i<lnks.length;i++)
 	    {
 	    lnks[i].layer = this.mainlayer;
@@ -152,11 +158,14 @@ function ht_click(e)
     return false;
     }
 
-function ht_init(l,l2,fl,source,pdoc,w,h,p)
+function ht_init(l,l2,fl,source,pdoc,w,h,p,ld)
     {
     htr_init_layer(l,l,'ht');
     htr_init_layer(l2,l,'ht');
     htr_init_layer(fl,l,'ht');
+    if (ld) htr_init_layer(ld, l, 'ht');
+    l.loader = ld;
+    l2.loader = ld;
     l.pdoc = pdoc;
     l2.pdoc = pdoc;
     l.curLayer = l;
