@@ -20,12 +20,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.h,v 1.1 2001/08/13 18:04:20 gbeeley Exp $
+    $Id: newmalloc.h,v 1.2 2003/03/04 06:28:22 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/newmalloc.h,v $
 
     $Log: newmalloc.h,v $
-    Revision 1.1  2001/08/13 18:04:20  gbeeley
-    Initial revision
+    Revision 1.2  2003/03/04 06:28:22  jorupp
+     * added buffer overflow checking to newmalloc
+    	-- define BUFFER_OVERFLOW_CHECKING in newmalloc.c to enable
+
+    Revision 1.1.1.1  2001/08/13 18:04:20  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:03:01  gbeeley
     Initial checkin of centrallix-lib
@@ -37,6 +41,7 @@
 void nmInitialize();
 void nmSetErrFunction(int (*error_fn)());
 void nmClear();
+void nmCheckAll(); // checks for buffer overflows
 void* nmMalloc(int size);
 void nmFree(void* ptr,int size);
 void nmStats();

@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.3 2002/04/27 01:42:34 gbeeley Exp $
+    $Id: newmalloc.c,v 1.4 2003/03/04 06:28:22 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
+    Revision 1.4  2003/03/04 06:28:22  jorupp
+     * added buffer overflow checking to newmalloc
+    	-- define BUFFER_OVERFLOW_CHECKING in newmalloc.c to enable
+
     Revision 1.3  2002/04/27 01:42:34  gbeeley
     Fixed a nmSysRealloc() problem - newly allocated buffer would be four
     bytes too short....
@@ -62,6 +66,37 @@ typedef struct _ov
     struct _ov 	*Next;
     }
     Overlay,*pOverlay;
+
+/** define BUFFER_OVERFLOW_CHECKING for buffer overflow checking
+***   this works off of magic numbers in the 4 bytes on either end
+***   of the buffer that is returned to the user, at the cost of
+***   16 bytes of memory per buffer, and a full scan of the list
+***   of allocated memory twice per nmMalloc() or nmFree() call
+***
+*** the check can be made at any time from normal code by calling:
+***   nmCheckAll()
+***     -- this functions is still defined if BUFFER_OVERFLOW_CHECKING is
+***        not defined, but it becomes a NOOP
+**/
+#ifdef BUFFER_OVERFLOW_CHECKING
+typedef struct _mem
+    {
+    int size;
+    struct _mem *next;
+    int magic_start;
+    /** not 'really' here **/
+    //char data[size];
+    //int magic_end;
+    }
+    MemStruct, *pMemStruct;
+#define EXTRA_MEM (3*sizeof(int)+sizeof(void*))
+#define MEMSTRUCT(x) ((pMemStruct)(x))
+#define MEMDATA(x) ((void*)((char*)(x)+(sizeof(int)*2+sizeof(void*))))
+#define ENDMAGIC(x) (*((int*)((char*)(MEMDATA(x))+MEMSTRUCT(x)->size)))
+#define MEMDATATOSTRUCT(x) ((pMemStruct)((char*)(x)-(sizeof(int)*2+sizeof(void*))))
+pMemStruct startMemList;
+#endif
+
 
 #define OVERLAY(x) ((pOverlay)(x))
 #define MAX_SIZE (8192)
@@ -114,12 +149,115 @@ nmInitialize()
 	nmMallocHits=0;
 	nmMallocTooBig=0;
 	nmMallocLargest=0;
-
+#ifdef BUFFER_OVERFLOW_CHECKING
+	startMemList=NULL;
+#endif
 	isinit = 1;
 
     return;
     }
 
+#ifdef BUFFER_OVERFLOW_CHECKING
+int
+nmCheckItem(pMemStruct mem)
+    {
+    int ret=0;
+    if(mem->magic_start!=MGK_MEMSTART)
+	{
+	printf("bad magic_start at %p (%p) -- 0x%08x != 0x%08x\n",MEMDATA(mem),mem,mem->magic_start,MGK_MEMSTART);
+	ret = -1;
+	}
+    if(ENDMAGIC(mem)!=MGK_MEMEND)
+	{
+	printf("bad magic_end at %p (%p) -- 0x%08x != 0x%08x\n",MEMDATA(mem),mem,ENDMAGIC(mem),MGK_MEMEND);
+	ret = -1;
+	}
+    return ret;
+    }
+#endif
+
+void
+nmCheckAll()
+    {
+#ifdef BUFFER_OVERFLOW_CHECKING
+    pMemStruct mem;
+    int ret=0;
+    mem=startMemList;
+    while(mem)
+	{
+	if(nmCheckItem(mem)==-1)
+	    ret=-1;
+	mem=mem->next;
+	}
+    if(ret==-1)
+	{
+	printf("causing segfault to halt.......\n");
+	*(int*)NULL=0;
+	}
+#endif
+    }
+
+#ifdef BUFFER_OVERFLOW_CHECKING
+void*
+nmDebugMalloc(int size)
+    {
+    pMemStruct tmp;
+
+    tmp = (pMemStruct)malloc(size+EXTRA_MEM);
+    if(!tmp)
+	return NULL;
+    tmp->next = startMemList;
+    startMemList=tmp;
+    tmp->size=size;
+    tmp->magic_start=MGK_MEMSTART;
+    ENDMAGIC(tmp)=MGK_MEMEND;
+
+    return (void*)MEMDATA(tmp);
+    }
+
+void
+nmDebugFree(void *ptr)
+    {
+    pMemStruct tmp;
+    pMemStruct prev;
+
+    tmp = MEMDATATOSTRUCT(ptr);
+    nmCheckItem(tmp);
+    if(tmp==startMemList)
+	{
+	startMemList=tmp->next;
+	}
+    else
+	{
+	prev = startMemList;
+	while(prev->next != tmp)
+	    prev=prev->next;
+	prev->next=tmp->next;
+	}
+    free(tmp);
+    }
+
+void* 
+nmDebugRealloc(void *ptr,int newsize)
+    {
+    void *newptr;
+    int oldsize;
+
+    if(!ptr)
+	return nmDebugMalloc(newsize);
+    newptr=(void*)nmDebugMalloc(newsize);
+    if(!newptr)
+	return NULL;
+    oldsize=MEMDATATOSTRUCT(ptr)->size;
+    memmove(newptr,ptr,oldsize);
+    nmDebugFree(ptr);
+    return newptr;
+    }
+#else
+#define nmDebugMalloc(size) malloc(size)
+#define nmDebugFree(ptr) free(ptr)
+#define nmDebugRealloc(ptr,size) realloc(ptr,size)
+#endif
 
 void
 nmSetErrFunction(int (*error_fn)())
@@ -143,7 +281,7 @@ nmClear()
 	        {
 		del = ov;
 		ov = ov->Next;
-		free(del);
+		nmDebugFree(del);
 		}
 	    lists[i] = NULL;
 	    }
@@ -161,13 +299,15 @@ nmMalloc(size)
 
 	nmMallocCnt++;
 
+	nmCheckAll();
+
     	if (size <= MAX_SIZE && size >= MIN_SIZE)
 	    {
 	    outcnt[size]++;
 	    usagecnt[size]++;
 	    if (lists[size] == NULL)
 		{
-		tmp = (void*)malloc(size);
+		tmp = (void*)nmDebugMalloc(size);
 		}
 	    else
 		{
@@ -182,11 +322,13 @@ nmMalloc(size)
 	    {
 	    nmMallocTooBig++;
 	    if (size > nmMallocLargest) nmMallocLargest = size;
-	    tmp = (void*)malloc(size);
+	    tmp = (void*)nmDebugMalloc(size);
 	    }
 
 	if (!tmp && err_fn) err_fn("Insufficient system memory for operation.");
 	else OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
+
+	nmCheckAll();
 	
     return tmp;
     }
@@ -207,20 +349,22 @@ nmFree(ptr,size)
 
 	nmFreeCnt++;
 
+	nmCheckAll();
+
     	if (size <= MAX_SIZE && size >= MIN_SIZE)
 	    {
 #ifdef DUP_FREE_CHECK
 	    tmp = lists[size];
 	    while(tmp)
 	        {
-		ASSERTMAGIC(tmp,MGK_FREEMEM);
-		if (tmp == OVERLAY(ptr))
+		ASSERTMAGIC(OVERLAY(tmp),MGK_FREEMEM);
+		if (OVERLAY(tmp) == OVERLAY(ptr))
 		    {
 		    printf("Duplicate nmFree()!!!  Size = %d, Address = %8.8x\n",size,(unsigned int)ptr);
 		    if (err_fn) err_fn("Internal error - duplicate nmFree() occurred.");
 		    return;
 		    }
-		tmp = tmp->Next;
+		tmp = OVERLAY(tmp)->Next;
 		}
 #endif
 	    outcnt[size]--;
@@ -231,8 +375,10 @@ nmFree(ptr,size)
 	    }
 	else
 	    {
-	    free(ptr);
+	    nmDebugFree(ptr);
 	    }
+
+	nmCheckAll();
 
     return;
     }
@@ -353,13 +499,13 @@ nmSysMalloc(int size)
     {
 #ifdef NM_USE_SYSMALLOC
     char* ptr;
-    ptr = (char*)malloc(size+4);
+    ptr = (char*)nmDebugMalloc(size+4);
     if (!ptr) return NULL;
     *(int*)ptr = size;
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]++;
     return (void*)(ptr+4);
 #else
-    return (void*)malloc(size);
+    return (void*)nmMallocDebug(size);
 #endif
     }
 
@@ -370,9 +516,9 @@ nmSysFree(void* ptr)
     int size;
     size = *(int*)(((char*)ptr)-4);
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
-    free(((char*)ptr)-4);
+    nmDebugFree(((char*)ptr)-4);
 #else
-    free(ptr);
+    nmDebugFree(ptr);
 #endif
     return;
     }
@@ -385,14 +531,14 @@ nmSysRealloc(void* ptr, int newsize)
     char* newptr;
     if (!ptr) return nmSysMalloc(newsize);
     size = *(int*)(((char*)ptr)-4);
-    newptr = (char*)realloc((((char*)ptr)-4), newsize+4);
+    newptr = (char*)nmDebugRealloc((((char*)ptr)-4), newsize+4);
     if (!newptr) return NULL;
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
     *(int*)newptr = newsize;
     if (newsize > 0 && newsize <= MAX_SIZE) nmsys_outcnt[newsize]++;
     return (void*)(newptr+4);
 #else
-    return (void*)realloc(ptr,newsize);
+    return (void*)nmDebugRealloc(ptr,newsize);
 #endif
     }
 

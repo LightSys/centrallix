@@ -26,10 +26,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.5 2002/04/25 17:56:54 gbeeley Exp $
+    $Id: magic.h,v 1.6 2003/03/04 06:28:22 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.6  2003/03/04 06:28:22  jorupp
+     * added buffer overflow checking to newmalloc
+    	-- define BUFFER_OVERFLOW_CHECKING in newmalloc.c to enable
+
     Revision 1.5  2002/04/25 17:56:54  gbeeley
     Added Handle support (xhandle module, XHN).  This is used to provide a
     more flexible abstraction between API return values (handles vs. ptrs)
@@ -100,6 +104,9 @@ typedef struct
 #define MGK_PRTOUTDRV 	0x123405a4	/* prtmgmt_v3.h::PrtHandle */
 #define MGK_STRUCTINF	0x123406fd	/* stparse_new.h::StructInf */
 #define MGK_HANDLE	0x12340707	/* xhandle.h::HandleData */
+
+#define MGK_MEMSTART	0x12340809	/* newmalloc.c::MemStruct */
+#define MGK_MEMEND	0x12340908	/* newmalloc.c::MemStruct */
 
 
 #endif /* not defined _MAGIC_H */
