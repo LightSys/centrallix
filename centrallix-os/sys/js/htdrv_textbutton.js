@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts,nm)
+function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     {
     l.LSParent = p;
     l.nofocus = true;
@@ -22,9 +22,14 @@ function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts,nm)
     l2.document.kind = 'tb';
     l.document.layer = l;
     l2.document.layer = l;
+    if (l3.visibility == 'inherit')
+	l.enabled = false;
+    else
+	l.enabled = true;
     l.buttonName = nm;
     l.mainlayer = l;
     l.l2 = l2;
+    l.l3 = l3;
     l.tp = top;
     l.btm = btm;
     l.lft = lft;
@@ -42,6 +47,27 @@ function tb_init(l,l2,top,btm,rgt,lft,w,h,p,ts,nm)
     btm.pageY = l.pageY + l.clip.height - 2;
     l.mode = 0;
     l.tristate = ts;
+    l.watch('enabled', tb_setenable);
+    }
+
+function tb_setenable(prop, oldv, newv)
+    {
+    if (oldv != newv)
+	{
+	if (newv == true)
+	    {
+	    // make enabled
+	    this.l2.visibility = 'inherit';
+	    this.l3.visibility = 'hidden';
+	    }
+	else
+	    {
+	    // make disabled
+	    this.l3.visibility = 'inherit';
+	    this.l2.visibility = 'hidden';
+	    }
+	}
+    return newv;
     }
 
 function tb_setmode(layer,mode)

@@ -15,16 +15,16 @@ function osrc_init_query()
     if(this.init==true)
 	return;
     this.init=true;
-    this.ActionQueryObject(null,null);
+    this.ActionQueryObject(null,null,this.readonly);
     }
 
 function osrc_action_order_object(order)
     {
     this.pendingorderobject=order;
-    this.ActionQueryObject(this.queryobject);
+    this.ActionQueryObject(this.queryobject,null,this.readonly);
     }
 
-function osrc_action_query_object(q, formobj)
+function osrc_action_query_object(q, formobj, readonly)
     {
     if(this.pending)
 	{
@@ -66,6 +66,8 @@ function osrc_action_query_object(q, formobj)
 		statement+=', '+this.pendingorderobject[i];
 		}
 	    }
+    if (!readonly)
+	statement += ' FOR UPDATE'
     //statement+=';';
     this.ActionQuery(statement,formobj);
     
@@ -105,8 +107,8 @@ function osrc_make_filter(q)
 			    str=':'+q[i].oid+' > '+val.substring(1);
 			else if(val.substring(0,1)=='<')
 			    str=':'+q[i].oid+' < '+val.substring(1);
-			else if((/\\*/).test(val))
-			    str=':'+q[i].oid+' LIKE "'+val+'"';
+			//else if((/\\*/).test(val))
+			//    str=':'+q[i].oid+' LIKE "'+val+'"';
 			else
 			    str=':'+q[i].oid+'='+'"'+val+'"';
 			break;
@@ -173,13 +175,49 @@ function osrc_action_delete()
     return 0;
     }
 
-function osrc_action_create()
+function osrc_action_create(up,formobj)
     {
     //Create an object through OSML
-    //?ls__mode=osml&ls__req=setattrs'
-    this.formobj.ObjectCreated();
-    this.formobj.OperationComplete();
-    return 0;
+    var src = this.baseobj + '/*?ls__mode=osml&ls__req=create&ls__sid=' + this.sid;
+    for(var i in up) if(i!='oid')
+	{
+	src+='&'+escape(up[i]['oid'])+'='+escape(up[i]['value']);
+	}
+    this.formobj=formobj;
+    this.createddata=up;
+    this.onload=osrc_action_create_cb;
+    this.src = src;
+
+    //this.formobj.ObjectCreated();
+    //this.formobj.OperationComplete();
+    //return 0;
+    }
+
+function osrc_action_create_cb()
+    {
+    if(this.document.links[0].target != 'ERR')
+	{
+	var recnum=this.CurrentRecord;
+	var cr=this.replica[this.CurrentRecord];
+	if(cr)
+	    {
+	    for(var i in this.createddata) // update replica
+		for(var j in cr)
+		    if(cr[j].oid==this.createddata[i].oid)
+			cr[j].value=this.createddata[i].value;
+	    cr.oid = this.document.links[0].target;
+	    }
+	
+	this.formobj.OperationComplete(true);
+	for(var i in this.children)
+	    this.children[i].ObjectCreated(recnum);
+	}
+    else
+	{
+	this.formobj.OperationComplete(false);
+	}
+    this.formobj=null;
+    delete this.createddata;
     }
 
 function osrc_action_modify(up,formobj)
@@ -391,6 +429,7 @@ function osrc_fetch_next()
 	    this.OSMLRecord++; /* this holds the last record we got, so now will hold current record number */
 	    this.replica[this.OSMLRecord]=new Array();
 	    this.replica[this.OSMLRecord].oid=row;
+	    this.replica[this.OSMLRecord].id = this.OSMLRecord;
 	    if(this.LastRecord<this.OSMLRecord)
 		{
 		this.LastRecord=this.OSMLRecord;
@@ -406,8 +445,11 @@ function osrc_fetch_next()
 		this.FirstRecord=this.OSMLRecord;
 		while(this.LastRecord-this.FirstRecord>=this.replicasize)
 		    { /* clean up replica */
-		    this.oldoids.push(this.replica[this.LastRecord].oid);
-		    delete this.replica[this.LastRecord];
+		    if (this.replica[this.LastRecord])
+			{
+			this.oldoids.push(this.replica[this.LastRecord].oid);
+			delete this.replica[this.LastRecord];
+			}
 		    this.LastRecord--;
 		    }
 		}
@@ -531,7 +573,7 @@ function osrc_move_to_record(recnum)
     {
     if(recnum<1)
 	{
-	alert("Can't move past beginning.");
+	//alert("Can't move past beginning.");
 	return 0;
 	}
     if(this.pending)
@@ -568,7 +610,7 @@ function osrc_move_to_record_cb(recnum)
     this.moveop=true;
     if(recnum<1)
 	{
-	alert("Can't move past beginning.");
+	//alert("Can't move past beginning.");
 	return 0;
 	}
     this.RecordToMoveTo=recnum;
@@ -790,7 +832,7 @@ function osrc_action_sync(param)
 		}
 	    }
 	}
-    this.ActionQueryObject(query,null);
+    this.ActionQueryObject(query,null,this.readonly);
     }
 
 function osrc_action_double_sync(param)
@@ -829,7 +871,7 @@ function osrc_action_double_sync(param)
 		}
 	    }
 	}
-    this.ActionQueryObject(query,null);
+    this.ActionQueryObject(query,null,this.readonly);
     }
 
 function osrc_action_double_sync_cb()
@@ -871,11 +913,11 @@ function osrc_action_double_sync_cb()
 	}
     
     this.doublesync=false;
-    this.childosrc.ActionQueryObject(query,null);
+    this.childosrc.ActionQueryObject(query,null,this.readonly);
     }
 
 /**  OSRC Initializer **/
-function osrc_init(loader,ra,sa,rs,sql,filter,name)
+function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name)
     {
     loader.osrcname=name;
     loader.readahead=ra;
@@ -883,6 +925,8 @@ function osrc_init(loader,ra,sa,rs,sql,filter,name)
     loader.replicasize=rs;
     loader.sql=sql;
     loader.filter=filter;
+    loader.baseobj=baseobj;
+    loader.readonly = false;
     
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
     loader.MoveToRecord=osrc_move_to_record;
@@ -928,10 +972,11 @@ function osrc_init(loader,ra,sa,rs,sql,filter,name)
     loader.InitQuery = osrc_init_query;
     loader.cleanup = osrc_cleanup;
 
-    if(window_current)
-       window_current.RegisterOSRC(loader);
-    else
-       loader.InitQuery();
+    //if(window_current)
+    //   window_current.RegisterOSRC(loader);
+    //else
+    //   loader.InitQuery();
+    pg_addsched(name + ".InitQuery()");
 
     return loader;
     }

@@ -73,14 +73,22 @@ function eb_keyhandler(l,e,k)
     {
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
-    if(eb_current.form) eb_current.form.DataNotify(eb_current);
+    if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) eb_current.form.DataNotify(eb_current);
     adj = 0;
     txt = l.content;
     var charClip = Math.ceil((l.pageX - l.ContentLayer.pageX) / text_metric.charWidth);
     var relPos = l.cursorCol - charClip;
     if (k == 9)
 	{
-	if(l.form) l.form.TabNotify(this)
+	if(l.form) l.form.TabNotify(this);
+	}
+    if (k == 10 || k == 13)
+	{
+	if(l.form) l.form.RetNotify(this);
+	}
+    if (k == 27)
+	{
+	if (l.form) l.form.EscNotify(this);
 	}
     if (k >= 32 && k < 127)
 	{
@@ -121,7 +129,10 @@ function eb_select(x,y,l,c,n)
     {
     if(l.form) l.form.FocusNotify(l);
     if(l.enabled != 'full') return 0;
-    l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/text_metric.charWidth);
+    if (x == null && y == null)
+	l.cursorCol = l.content.length;
+    else
+	l.cursorCol = Math.round((x + l.pageX - l.ContentLayer.pageX)/text_metric.charWidth);
     if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;
     if (eb_current) eb_current.cursorlayer = null;
     eb_current = l;

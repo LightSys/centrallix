@@ -30,6 +30,40 @@ function pg_ping_send(p)
     p.src='/INTERNAL/ping';
     }
 
+
+/** Function to emulate getElementByID **/
+function pg_getelementbyid(nm)
+    {
+    if (this.layers)
+	return this.layers[nm];
+    else if (this.all)
+	return this.all[nm];
+    else
+	return null;
+    }
+
+/** Function to walk the DOM and set up getElementByID emulation **/
+function pg_set_emulation(d)
+    {
+    var a = null;
+    var i = 0;
+    if (d.document) d = d.document;
+    d.getElementByID = pg_getelementbyid;
+    if (this.layers)
+	a = this.layers;
+    else if (this.all)
+	a = this.all;
+    else
+	a = null;
+    if (a)
+	{
+	for(i=0;i<a.length;i++)
+	    {
+	    pg_set_emulation(a[i]);
+	    }
+	}
+    }
+
 /** Function to set modal mode to a layer. **/
 function pg_setmodal(l)
     {
@@ -286,6 +320,7 @@ function pg_status_init()
 	return false;
     pg_status.zIndex = 1000000;
     pg_status.visibility = 'visible';
+    pg_set_emulation(document);
     }
  
 function pg_status_close()
@@ -314,3 +349,158 @@ function pg_mvpginpt(ly)
     ly.moveTo(window.innerWidth-a+window.pageXOffset, window.innerHeight-b+window.pageYOffset);
     if (a>1||b>5) setTimeout(pg_mvpginpt, 500, ly);
     }
+
+
+function pg_addsched(e)
+    {
+    pg_schedtimeoutlist.push(e);
+    if(!pg_schedtimeout) pg_schedtimeout = setTimeout(pg_dosched, 0);
+    }
+
+function pg_expchange(p,o,n)
+    {
+    if (o==n) return n;
+    for(var i=0;i<pg_explist.length;i++)
+	{
+	var exp = pg_explist[i];
+	for(var j=0;j<exp.ParamList.length;j++)
+	    {
+	    var item = exp.ParamList[j];
+	    if (this == item[2] && p == item[1])
+		{
+		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
+		pg_addsched(exp.Objname + "." + exp.Propname + " = " + exp.Expression);
+		}
+	    }
+	}
+    return n;
+    }
+
+
+function pg_dosched()
+    {
+    var p = null;
+    while(pg_schedtimeoutlist.length > 0)
+	{
+	p = pg_schedtimeoutlist.pop();
+	eval(p);
+	}
+    pg_schedtimeout = null;
+    }
+
+function pg_expression(o,p,e,l)
+    {
+    var expobj = new Object();
+    expobj.Objname = o;
+    expobj.Propname = p;
+    expobj.Expression = e;
+    expobj.ParamList = l;
+    eval(expobj.Objname + "." + expobj.Propname + " = " + expobj.Expression);
+    pg_explist.push(expobj);
+    for(var i=0; i<l.length; i++)
+	{
+	var item = l[i];
+	item[2] = eval(item[0]); // get obj reference
+	item[2].watch(item[1], pg_expchange);
+	}
+    }
+
+
+function pg_removemousefocus()
+    {
+    if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);
+    pg_curarea = null;
+    return true;
+    }
+
+function pg_findfocusarea(l, xo, yo)
+    {
+    for(var i=0;i<pg_arealist.length;i++) 
+	{
+	if (l == pg_arealist[i].layer && ((xo == null && yo == null) || (xo >= pg_arealist[i].x &&
+	    yo >= pg_arealist[i].y && xo < pg_arealist[i].x+pg_arealist[i].width &&
+	    yo < pg_arealist[i].y+pg_arealist[i].height && l != pg_arealist[i])))
+	    {
+	    if (l == pg_arealist[i]) break;
+	    return pg_arealist[i];
+	    }
+	}
+    return null;
+    }
+
+function pg_setmousefocus(l, xo, yo)
+    {
+    var a = pg_findfocusarea(l, xo, yo);
+    if (a && a != pg_curarea)
+	{
+	pg_curarea = a;
+	if (pg_curarea.flags & 1)
+	    {
+	    // wants mouse focus
+	    var x = pg_curarea.layer.pageX+pg_curarea.x;
+	    var y = pg_curarea.layer.pageY+pg_curarea.y;
+	    var w = pg_curarea.width;
+	    var h = pg_curarea.height;
+	    pg_mkbox(l, x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
+	    }
+	}
+    }
+
+function pg_removekbdfocus()
+    {
+    if (pg_curkbdlayer)
+	{
+	if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return false;
+	pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	}
+    return true;
+    }
+
+function pg_setkbdfocus(l, a, xo, yo)
+    {
+    if (!a)
+	{
+	a = pg_findfocusarea(l, xo, yo);
+	}
+    var x = a.layer.pageX+a.x;
+    var y = a.layer.pageY+a.y;
+    var w = a.width;
+    var h = a.height;
+    var prevLayer = pg_curkbdlayer;
+    var prevArea = pg_curkbdarea;
+    pg_curkbdarea = a;
+    pg_curkbdlayer = l;
+
+    if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
+	{
+	var v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a);
+	if (v & 1)
+	    {
+	    // mk box for kbd focus
+	    if (prevArea != a)
+		{
+		pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+		}
+	    }
+	if (v & 2)
+	    {
+	    // mk box for data focus
+	    if (l.pg_dttop != null)
+		{
+		// data focus moving within a control - remove old one
+		pg_hidebox(l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft);
+		}
+	    else
+		{
+		// mk new data focus box for this control.
+		l.pg_dttop = new Layer(1152);
+		l.pg_dtbtm = new Layer(1152);
+		l.pg_dtrgt = new Layer(2);
+		l.pg_dtlft = new Layer(2);
+		}
+	    pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);
+	    }
+	}
+    return true;
+    }
+

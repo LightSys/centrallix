@@ -21,9 +21,17 @@ function ib_disable()
     this.img.src=this.dImage.src;
     }
 
+function ib_setenable(p,o,n)
+    {
+    if (n)
+	this.img.src=this.nImage.src;
+    else
+	this.img.src=this.dImage.src;
+    return n;
+    }
+
 function ib_init(l,n,p,c,d,w,h,po,nm,enable)
     {
-    l.enabled = enable;
     l.LSParent = po;
     l.nofocus = true;
     l.img = l.document.images[0];
@@ -47,8 +55,7 @@ function ib_init(l,n,p,c,d,w,h,po,nm,enable)
     l.dImage.src = d;
     l.ActionEnable = ib_enable;
     l.ActionDisable = ib_disable;
-    if(enable)
-	l.ActionEnable();
-    else
-	l.ActionDisable();
+    l.enabled = null;
+    l.watch("enabled",ib_setenable);
+    l.enabled = enable;
     }
