@@ -4,7 +4,13 @@
 //  "T02-Combined2.app"
 //  By Luke Ehresman - August 23, 2002
 //
-//  Description Here
+//  This app is designed to test the querying capabilites of the
+//  form widget and its interaction with the objectsource widget.
+//  The data is read from States.csv.
+//
+//  Widgets used:
+//    page, textbutton, osrc, connector, form, dropdown,
+//    editbox, formstatus, label
 //
 
 $Version=2$
