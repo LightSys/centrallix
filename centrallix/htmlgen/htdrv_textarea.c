@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.6 2002/07/12 19:46:22 pfinley Exp $
+    $Id: htdrv_textarea.c,v 1.7 2002/07/12 20:16:13 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.7  2002/07/12 20:16:13  pfinley
+    Undid previous change :)
+
     Revision 1.6  2002/07/12 19:46:22  pfinley
     added cvs logging to file.
 
@@ -202,7 +205,7 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        var para = RegExp.$1;\n"
 		"        var newL = RegExp.$2;\n"
 		"        txt = txt.substr(para.length+newL.length);\n"
-		"        tx_wordWrapDown(this,0,para,0);\n"
+		"        tx_wordWrapDown(this,this.rows.length-1,para,0);\n"
 		"        if (newL)\n"
 		"            {\n"
 		"            for(var i=0;i<newL.length;i++)\n"
@@ -431,8 +434,8 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"function tx_keyhandler(l,e,k)\n"
 		"    {\n"
 		"    if (!tx_current) return true;\n"
-                "    if (tx_current.enabled!='full') return 1;\n"
-                "    if (tx_current.form) tx_current.form.DataNotify(tx_current);\n"
+		"    if (tx_current.enabled!='full') return 1;\n"
+		"    if (tx_current.form) tx_current.form.DataNotify(tx_current);\n"
 		"    if (k >= 32 && k < 127)\n"
 		"        {\n"
 		"        txt = l.rows[l.cursorRow].content;\n"
