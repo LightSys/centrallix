@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include "xstring.h"
 #include "newmalloc.h"
 
@@ -24,12 +26,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.1 2001/08/13 18:04:23 gbeeley Exp $
+    $Id: xstring.c,v 1.2 2001/10/03 15:31:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
-    Revision 1.1  2001/08/13 18:04:23  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/03 15:31:32  gbeeley
+    Added xsPrintf and xsConcatPrintf functions to the xstring library.
+    They currently support %s and %d with field width and precision.
+
+    Revision 1.1.1.1  2001/08/13 18:04:23  gbeeley
+    Centrallix Library initial import
 
     Revision 1.1.1.1  2001/07/03 01:02:57  gbeeley
     Initial checkin of centrallix-lib
@@ -155,6 +161,179 @@ char*
 xsStringEnd(pXString this)
     {
     return this->String + this->Length;
+    }
+
+
+int
+xs_internal_Printf(pXString this, char* fmt, va_list vl)
+    {
+    char* cur_pos;
+    char* ptr;
+    int n;
+    char* str;
+    char nbuf[32];
+    int i;
+    int field_width= -999;
+    int precision= -999;
+    char* nptr;
+    int found_field_width=0;
+
+	/** Go through the format string one snippet at a time **/
+	cur_pos = fmt;
+	ptr = strchr(cur_pos, '%');
+	if (ptr)
+	    {
+	    n = ptr - cur_pos;
+	    xsConcatenate(this, cur_pos, n);
+	    }
+	while(ptr)
+	    {
+	    switch(ptr[1])
+	        {
+		case '\0':
+		    xsCheckAlloc(this,1);
+		    this->String[this->Length++] = '%';
+		    cur_pos = ptr+1;
+		    break;
+		case '*':
+		    if (field_width == -999 && !found_field_width)
+			{
+			field_width = va_arg(vl, int);
+			found_field_width = 1;
+			}
+		    else
+			precision = va_arg(vl, int);
+		    ptr++;
+		    continue; /* loop continue */
+		case '.':
+		    ptr++;
+		    found_field_width=1;
+		    continue;
+		case '-':
+		case '+':
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+		    if (field_width == -999 && !found_field_width)
+			{
+			field_width = strtol(ptr+1,&nptr,10);
+			found_field_width=1;
+			}
+		    else
+			precision = strtol(ptr+1,&nptr,10);
+		    ptr = nptr-1;
+		    continue;
+		case '%':
+		    xsCheckAlloc(this,1);
+		    this->String[this->Length++] = '%';
+		    cur_pos = ptr+2;
+		    break;
+		case 's':
+		    /** Get the string value **/
+		    str = va_arg(vl, char*);
+		    if (!str) str = "(null)";
+
+		  do_as_string:	    /* from int handler, below */
+		    n = strlen(str);
+
+		    /** Need to pad beginning of string with spaces? **/
+		    if (field_width > precision && precision >= 0)
+			field_width = precision;
+		    if (field_width > 0 && field_width > n)
+			{
+			xsCheckAlloc(this,field_width-n);
+			memset(this->String+this->Length,' ',field_width-n);
+			this->Length += (field_width-n);
+			}
+
+		    /** Add the string.  Need to make it less than given length? **/
+		    if (n > precision && precision >= 0)
+			n = precision;
+		    xsConcatenate(this, str, n);
+
+		    /** Add trailing blanks? **/
+		    if (field_width < 0 && field_width != -999 && (-field_width) > n)
+			{
+			xsCheckAlloc(this,(-field_width)-n);
+			memset(this->String+this->Length,' ',(-field_width)-n);
+			this->Length += ((-field_width)-n);
+			}
+		    cur_pos = ptr+2;
+		    found_field_width=0;
+		    field_width = -999;
+		    precision = -999;
+		    break;
+		case 'd':
+		    i = va_arg(vl, int);
+		    if (precision > 0)
+			{
+			if (precision >= 31) precision=30;
+			sprintf(nbuf,"%.*d",precision,i);
+			precision=-999;
+			}
+		    else
+			{
+			sprintf(nbuf,"%d",i);
+			}
+		    str = nbuf;
+		    goto do_as_string; /* next section up */
+		default:
+		    cur_pos = ptr+2;
+		    break;
+		}
+	    ptr = strchr(cur_pos, '%');
+	    if (ptr)
+		{
+		n = ptr - cur_pos;
+		xsConcatenate(this, cur_pos, n);
+		}
+	    }
+	if (*cur_pos) xsConcatenate(this, cur_pos, -1);
+	this->String[this->Length] = '\0';
+
+    return 0;
+    }
+
+
+/*** xsConcatPrintf - prints to an XString using a printf-style format string,
+ *** though the format string only allows %s and %d, no field widths or
+ *** anything of that sort.
+ ***/
+int
+xsConcatPrintf(pXString this, char* fmt, ...)
+    {
+    va_list vl;
+
+	va_start(vl, fmt);
+	xs_internal_Printf(this, fmt, vl);
+	va_end(vl);
+
+    return 0;
+    }
+
+
+/*** xsPrintf - prints to an XString using a printf-style format string,
+ *** though the format string only allows %s and %d, no field widths or
+ *** anything of that sort.
+ ***/
+int
+xsPrintf(pXString this, char* fmt, ...)
+    {
+    va_list vl;
+
+	va_start(vl, fmt);
+	this->Length = 0;
+	xs_internal_Printf(this, fmt, vl);
+	va_end(vl);
+
+    return 0;
     }
 
 
