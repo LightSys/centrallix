@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.16 2003/11/22 16:37:18 jorupp Exp $
+    $Id: ht_render.h,v 1.17 2004/02/24 20:23:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.17  2004/02/24 20:23:38  gbeeley
+    - adding htrGetBoolean and htrParamValue to header file
+
     Revision 1.16  2003/11/22 16:37:18  jorupp
      * add support for moving event handler scripts to the .js code
      	note: the underlying implimentation in ht_render.c_will_ change, this was
@@ -306,6 +309,7 @@ typedef struct
     int		TmpbufSize;
     HtCapabilities Capabilities;	/* the capabilities supported by the browser */
     pHtClass	Class;			/* the widget class to use **/
+    pStruct	Params;			/* params from the user */
     }
     HtSession, *pHtSession;
 
@@ -345,6 +349,7 @@ int htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* l
 
 /** Utility routines **/
 int htrGetBackground(pObject obj, char* prefix, int as_style, char* buf, int buflen);
+int htrGetBoolean(pObject obj, char* attr, int default_value);
 
 /** Content-intelligent (useragent-sensitive) rendering engine functions **/
 int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...);
@@ -354,12 +359,13 @@ int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
-int htrRender(pFile output, pObject appstruct);
+int htrRender(pFile output, pObject appstruct, pStruct params);
 int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
 pHtDriver htrAllocDriver();
 int htrAddSupport(pHtDriver drv, char* className);
+char* htrParamValue(pHtSession s, char* paramname);
 
 
 #endif /* _HT_RENDER_H */
