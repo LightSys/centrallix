@@ -78,18 +78,18 @@ function ht_startfade(l,ftype,inout,fn)
 
 function ht_reloaded(e)
     {
-    e.target.mainLayer.watch('source',ht_sourcechanged);
+    e.target.mainlayer.watch('source',ht_sourcechanged);
     e.target.clip.height = e.target.document.height;
-    e.target.mainLayer.faderLayer.moveAbove(e.target);
+    e.target.mainlayer.faderLayer.moveAbove(e.target);
     e.target.visibility = 'inherit';
     for(i=0;i<e.target.document.links.length;i++)
 	{
-	e.target.document.links[i].layer = e.target.mainLayer;
+	e.target.document.links[i].layer = e.target.mainlayer;
 	e.target.document.links[i].kind = 'ht';
 	}
-    pg_resize(e.target.mainLayer.parentLayer);
-    if (e.target.mainLayer.transition && e.target.mainLayer.transition != 'normal')
-	ht_startfade(e.target.mainLayer,e.target.mainLayer.transition,'in',null);
+    pg_resize(e.target.mainlayer.parentLayer);
+    if (e.target.mainlayer.transition && e.target.mainlayer.transition != 'normal')
+	ht_startfade(e.target.mainlayer,e.target.mainlayer.transition,'in',null);
     }
 
 function ht_click(e)
@@ -100,18 +100,21 @@ function ht_click(e)
 
 function ht_init(l,l2,fl,source,pdoc,w,h,p)
     {
-    l.faderLayer = fl;
-    l.mainLayer = l;
-    l2.mainLayer = l;
-    fl.mainLayer = l;
-    l.curLayer = l;
-    l.altLayer = l2;
-    l.LSParent = p;
+    l.mainlayer = l;
+    l2.mainlayer = l;
+    fl.mainlayer = l;
     l.kind = 'ht';
     l2.kind = 'ht';
     fl.kind = 'ht';
     l.pdoc = pdoc;
     l2.pdoc = pdoc;
+    l.document.layer = l;
+    l2.document.layer = l2;
+    fl.document.layer = fl;
+    l.curLayer = l;
+    l.altLayer = l2;
+    l.faderLayer = fl;
+    l.LSParent = p;
     if (h != -1)
 	{
 	l.clip.height = h;
@@ -130,6 +133,4 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p)
     l.source = source;
     l.ActionLoadPage = ht_loadpage;
     l.watch('source', ht_sourcechanged);
-    l.document.Layer = l;
-    l2.document.Layer = l2;
     }

@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.10 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_html.c,v 1.11 2002/07/30 13:59:17 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.11  2002/07/30 13:59:17  lkehresman
+    * Added standard events to the html widget
+    * Standardized the layer references (x.document.layer is itself, x.mainlayer
+         is the top layer)
+
     Revision 1.10  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -196,7 +201,13 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		    "        {\n"
 		    "        return ht_click(e);\n"
 		    "        }\n");
-    
+
+	    htrAddEventHandler(s,"document","MOUSEOVER","ht", "    if (ly.kind == 'ht') cn_activate(ly.mainlayer,'MouseOver');\n");
+	    htrAddEventHandler(s,"document","MOUSEOUT", "ht", "    if (ly.kind == 'ht') cn_activate(ly.mainlayer,'MouseOut');\n");
+	    htrAddEventHandler(s,"document","MOUSEMOVE","ht", "    if (ly.kind == 'ht') cn_activate(ly.mainlayer,'MouseMove');\n");
+	    htrAddEventHandler(s,"document","MOUSEDOWN","ht", "    if (ly.kind == 'ht') cn_activate(ly.mainlayer,'MouseDown');\n");
+	    htrAddEventHandler(s,"document","MOUSEUP",  "ht", "    if (ly.kind == 'ht') cn_activate(ly.mainlayer,'MouseUp');\n");
+
             /** Script initialization call. **/
             htrAddScriptInit_va(s,"    ht_init(%s.layers.ht%dpane,%s.layers.ht%dpane2,%s.layers.ht%dfader,\"%s\",%s,%d,%d,%s);\n",
                     parentname, id, parentname, id, parentname, id, src, parentname, w,h, parentobj);
@@ -286,6 +297,12 @@ hthtmlInitialize()
         drv->Render = hthtmlRender;
         drv->Verify = hthtmlVerify;
 	strcpy(drv->Target, "Netscape47x:default");
+
+	htrAddEvent(drv, "MouseUp");
+	htrAddEvent(drv, "MouseDown");
+	htrAddEvent(drv, "MouseOver");
+	htrAddEvent(drv, "MouseOut");
+	htrAddEvent(drv, "MouseMove");
 
         /** Add the 'load page' action **/
 	htrAddAction(drv,"LoadPage");
