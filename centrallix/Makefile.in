@@ -225,7 +225,7 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
 	@echo
 	$(CC) centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl,-export-dynamic -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
-	#@rm centrallix.o
+	@rm centrallix.o
 	@echo ''
 
 install: all config_install modules_install
