@@ -43,12 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.1 2001/08/13 18:00:46 gbeeley Exp $
+    $Id: lsmain.c,v 1.2 2001/10/02 20:45:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
-    Revision 1.1  2001/08/13 18:00:46  gbeeley
-    Initial revision
+    Revision 1.2  2001/10/02 20:45:03  gbeeley
+    New build/subbuild system; fixed Makefile to work better with it...
+
+    Revision 1.1.1.1  2001/08/13 18:00:46  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:52  gbeeley
     Turned on warnings, did some code cleanup...
@@ -66,6 +69,7 @@
  ***/
 char* cx__version = VERSION;
 int cx__build = BUILD;
+int cx__subbuild = SUBBUILD;
 char* cx__stability = STABILITY;
 char* cx__years = YEARS;
 
@@ -83,7 +87,7 @@ start(void* v)
 #ifndef LS_QUIET_INIT
 	/** Startup message **/
 	printf("\n");
-	printf("Centrallix/%s build #%4.4d [%s]\n\n", cx__version, cx__build, cx__stability);
+	printf("Centrallix/%s build #%4.4d-%d [%s]\n\n", cx__version, cx__build, cx__subbuild, cx__stability);
 	printf("Copyright (C) %s LightSys Technology Services, Inc.\n", cx__years);
 	printf("An open source community developed project.  Provided with\n");
 	printf("ABSOLUTELY NO WARRANTY.  See the file 'COPYING' for details.\n");

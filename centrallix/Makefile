@@ -67,9 +67,9 @@ MASTERHOST=greg
 PROFILE=-pg
 SYBASE=/opt/sybase
 BUILD=$(shell cat .build)
-SUBBUILD=$(shell cat .subbuild)
-PREVBUILD=$(shell expr $(BUILD) - 1)
 BLDFILE=$(shell if [ "$$HOSTNAME" = "$(MASTERHOST)" ]; then echo ".build"; echo '1' >.subbuild; else echo ".subbuild"; if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; fi)
+SUBBUILD=$(shell if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; cat .subbuild)
+PREVBUILD=$(shell expr $(BUILD) - 1)
 #YEARS=$(shell YR=1998; while [ $$YR != `date +%Y` ]; do /bin/echo -n $$YR,; YR=`expr $$YR + 1`; done; /bin/echo -n $$YR)
 YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
 VERSION=$(shell cat .version)
