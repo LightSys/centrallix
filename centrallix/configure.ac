@@ -58,6 +58,7 @@ CENTRALLIX_CHECK_SYBASE
 
 dnl XML osdriver support.
 AH_TEMPLATE([USE_XML], [Define for XML support])
+AH_TEMPLATE([USE_LIBXML1], [Define for backward compatibility with libxml1])
 CENTRALLIX_CHECK_XML_OS
 
 AC_SUBST(OBJDRIVERMODULES)

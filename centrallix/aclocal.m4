@@ -52,6 +52,7 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 	    centrallix_libdir="$withval",
 	    centrallix_libdir="$prefix/lib"
 	)
+	centrallix_libdir="`echo $centrallix_libdir | sed 's|/+|/|g'`"
 
 	temp=$LIBS
  	LIBS="$LIBS -L$centrallix_libdir"
@@ -238,48 +239,106 @@ AC_DEFUN(CENTRALLIX_CHECK_XML_OS,
 	    WITH_XML="yes"
 	)
 
-	AC_ARG_WITH(libxml,
-	    AC_HELP_STRING([--with-libxml=PATH],
-		[library path for xml library (default is /usr/lib)]
-	    ),
-	    libxml_libdir="$withval",
-	    libxml_libdir="`xml2-config --libs | cut -f1 | cut -b 3-`"
-	)
-
-	AC_ARG_WITH(libxml-inc,
-	    AC_HELP_STRING([--with-libxml-inc=PATH],
-		[include path for libxml headers (default is /usr/include)]
-	    ),
-	    libxml_incdir="$withval",
-	    libxml_incdir="`xml2-config --cflags | cut -f1 | cut -b 3-`"
-	)
- 
 	if test "$WITH_XML" = "no"; then
 	    AC_MSG_RESULT(no)
 	else
 	    AC_MSG_RESULT(yes)
-	    temp=$CPPFLAGS
-	    CPPFLAGS="$CPPFLAGS -I$libxml_incdir"
-	    tempC=$CFLAGS
-	    CFLAGS="$CFLAGS -I$libxml_incdir"
-	    AC_CHECK_HEADER(libxml/parser.h, 
-		WITH_XML="yes",
-		WITH_XML="no"
-	    )
-	    CPPFLAGS="$temp"
-	    CFLAGS="$tempC"
 
-	    if test "$WITH_XML" = "yes"; then
-		XML_CFLAGS="-I$libxml_incdir"
-		temp=$LIBS
-		LIBS="$LIBS -L$libxml_libdir"
-		AC_CHECK_LIB(xml2, xmlParseFile, WITH_XML_XML="yes", WITH_XML_XML="no", -lxml2)
-		if test "$WITH_XML_XML" = "no"; then
-		    WITH_XML="no"
+	    AC_CHECK_PROGS(xmlconfig, 
+		xml2-config xml-config,
+		neither
+	    )
+
+	    if test "$xmlconfig" = "no"; then
+		WITH_XML="neither"
+	    else
+		if test "$xmlconfig" = "xml2-config"; then
+
+		    AC_ARG_WITH(libxml,
+			AC_HELP_STRING([--with-libxml=PATH],
+			    [library path for xml library (default is /usr/lib)]
+			),
+			libxml_libdir="$withval",
+			libxml_libdir="/usr/lib",
+		    )
+
+		    libxml_lib="`xml2-config --libs 2>/dev/null`"
+
+		    AC_ARG_WITH(libxml-inc,
+			AC_HELP_STRING([--with-libxml-inc=PATH],
+			    [include path for libxml headers (default is /usr/include)]
+			),
+			libxml_incdir="-I$withval",
+			libxml_incdir="`xml2-config --cflags 2>/dev/null`"
+		    )
+ 
+		    temp=$CPPFLAGS
+		    CPPFLAGS="$CPPFLAGS $libxml_incdir"
+		    tempC=$CFLAGS
+		    CFLAGS="$CFLAGS $libxml_incdir"
+		    AC_CHECK_HEADER(libxml/parser.h, 
+			WITH_XML="yes",
+			WITH_XML="no"
+		    )
+		    CPPFLAGS="$temp"
+		    CFLAGS="$tempC"
+
+		    if test "$WITH_XML" = "yes"; then
+			XML_CFLAGS="$libxml_incdir"
+			temp=$LIBS
+			LIBS="$LIBS -L$libxml_libdir $libxml_lib"
+			AC_CHECK_LIB(xml2, xmlParseFile, WITH_XML_XML="yes", WITH_XML_XML="no", $libxml_lib)
+			if test "$WITH_XML_XML" = "no"; then
+			    WITH_XML="no"
+			else
+			    XML_LIBS="-L$libxml_libdir $libxml_lib"
+			fi
+			LIBS="$temp"
+		    fi
 		else
-		    XML_LIBS="-L$libxml_libdir -lxml2"
+		    AC_ARG_WITH(libxml,
+			AC_HELP_STRING([--with-libxml=PATH],
+			    [library path for xml library (default is /usr/lib)]
+			),
+			libxml_libdir="$withval",
+			libxml_libdir="/usr/lib"
+		    )
+
+		    libxml_lib="`xml-config --libs 2>/dev/null`"
+
+		    AC_ARG_WITH(libxml-inc,
+			AC_HELP_STRING([--with-libxml-inc=PATH],
+			    [include path for libxml headers (default is /usr/include/gnome-xml)]
+			),
+			libxml_incdir="-I$withval",
+			libxml_incdir="`xml-config --cflags 2>/dev/null`"
+		    )
+ 
+		    temp=$CPPFLAGS
+		    CPPFLAGS="$CPPFLAGS $libxml_incdir"
+		    tempC=$CFLAGS
+		    CFLAGS="$CFLAGS $libxml_incdir"
+		    AC_CHECK_HEADER(parser.h, 
+			WITH_XML="yes",
+			WITH_XML="no"
+		    )
+		    CPPFLAGS="$temp"
+		    CFLAGS="$tempC"
+
+		    if test "$WITH_XML" = "yes"; then
+			XML_CFLAGS="$libxml_incdir"
+			temp=$LIBS
+			LIBS="$LIBS -L$libxml_libdir $libxml_lib"
+			AC_CHECK_LIB(xml, xmlParseFile, WITH_XML_XML="yes", WITH_XML_XML="no", $libxml_lib)
+			if test "$WITH_XML_XML" = "no"; then
+			    WITH_XML="no"
+			else
+			    XML_LIBS="-L$libxml_libdir $libxml_lib"
+			fi
+			LIBS="$temp"
+		    fi
+		    AC_DEFINE(USE_LIBXML1) 
 		fi
-		LIBS="$temp"
 	    fi
 	fi
 

@@ -129,6 +129,9 @@
 /* Define for HTTP support */
 #undef USE_HTTP
 
+/* Define for backward compatibility with libxml1 */
+#undef USE_LIBXML1
+
 /* Define for Sybase support */
 #undef USE_SYBASE
 

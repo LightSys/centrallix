@@ -12,7 +12,7 @@
 /** module definintions **/
 #include "centrallix.h"
 #ifdef USE_LIBXML1
-#include <gnome-xml/parser.h>
+#include <parser.h>
 #else
 #include <libxml/parser.h>
 #endif
@@ -50,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.4 2002/08/01 05:10:48 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.5 2002/08/01 08:47:28 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.5  2002/08/01 08:47:28  mattphillips
+    Compile against libxml2 or libxml.  This expects to find xml2-config or
+    xml-config in the PATH.  Also defines USE_LIBXML1 to tell the xml os driver to
+    be compatible with libxml1.
+
     Revision 1.4  2002/08/01 05:10:48  jorupp
      * XML driver maps outer_type to content_type (outer type is what seems to
          need to be set for acting like a structure file)
