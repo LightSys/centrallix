@@ -55,7 +55,8 @@ three sections outlined below.
     "./configure --help" for a list of the available options.  The following
     example assumes you want to install to "/usr/local";
 
-      $ ./configure --prefix=/usr/local
+      $ ./configure --prefix=/usr/local \
+             --with-centrallix-os=/var/centrallix/os
       $ make
       $ make install
 
@@ -78,11 +79,14 @@ three sections outlined below.
 3.  CONFIGURE CENTRALLIX
 ========================
     Now that you have successfully installed Centrallix, you will neet to
-    make copies of the configuration scripts and customize them based on
-    your installation environment.  The first thing to do is to copy the
-    files located in [CVSROOT]/centrallix/etc to /usr/local/etc (assuming
-    that you set the --prefix option to "/usr/local" in step 2).  This
-    should copy three files:  centrallix.conf, rootnode, and types.cfg. 
+    verify that "make install" copied the configuration files to their 
+    proper location and modify them accordingly.  The configure script 
+    should have detected many of the settings in the centrallix.conf file,
+    but there are several others that you will want to tweak by hand.
+
+    The "make install" should have coppied three files (centrallix.conf,
+    rootnode, and types.cfg) to /usr/local/etc (assuming that you set the
+    --prefix option to "/usr/local" in step 2).  
 
     Load the centrallix.conf file in your favorite editor (you might need to
     set the tabstop to 8 characters to make it display correctly).  Be sure
