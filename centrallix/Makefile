@@ -129,7 +129,9 @@ LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS)
 
 .PHONY:	modules
 .PHONY:	modules_install
+.PHONY:	mods
 .PHONY:	depend
+.PHONY: all
 
 centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
 	@echo ''
@@ -138,14 +140,24 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(LSOBJS)
 	cc centrallix.o lsmain.o $(LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl,-export-dynamic -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
 	@rm centrallix.o
+	@echo ''
 
 
-modules: $(MODULES)
+# You can call "make mods" directly to avoid getting the warning about
+# make modules_install.  However, we recommend avoiding that habit if
+# possible :)  make modules is the standard way to do it if you aren't
+# going to install em immediately (otherwise, use make modules_install).
+#
+mods: $(MODULES)
 
-modules_install: modules
+modules: mods
+	@echo "*** Be sure to do a 'make modules_install'"
+
+modules_install: mods
 	-@mkdir /usr/local/lib/centrallix/ 2>/dev/null; exit 0
 	@/bin/cp $(MODULES) /usr/local/lib/centrallix/
-	@echo "*** Be sure to do a 'make modules_install'"
+
+all:	centrallix mods modules_install
 
 osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
 	cc $(CFLAGS) $(LIBDIRS) -DMODULE -Wno-unused -shared -fPIC $< -lct -lcomn -lintl -lsybtcl -lcs -linsck -o $@
