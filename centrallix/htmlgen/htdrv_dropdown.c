@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.3 2002/03/11 14:10:16 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.4 2002/03/13 00:38:23 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.4  2002/03/13 00:38:23  lkehresman
+    Layer improvements for dropdown widget.  You can now click anywhere on the
+    layer and get the dropdown to appear.
+
     Revision 1.3  2002/03/11 14:10:16  lkehresman
     Added basic functionality for the dropdown widget.
 
@@ -164,20 +168,17 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"function dd_disable() {\n"
 	"}\n", 0);
    
-   /** Disable function **/
-   htrAddScriptFunction(s, "dd_clickitem", "\n"
-	"function dd_clickitem(e) {\n"
-	"   alert(e);\n"
-	"}\n", 0);
-   
-   /** Disable function **/
+   /** Adds an item to the dropdown layer l **/
    htrAddScriptFunction(s, "dd_additem", "\n"
 	"function dd_additem(l, label, value) {\n"
 	"   l.labels.push(label);\n"
 	"   l.values.push(value);\n"
-	"   tmpLayer = new Layer(1024, l.fullLayer);"
+	"   tmpLayer = new Layer(1024, l.document.fullLayer);"
+	"   tmpLayer.name = 'value';\n"
+	"   tmpLayer.value = value;\n"
 	"   tmpLayer.kind = 'dropdown';"
 	"   tmpLayer.document.write(label);\n"
+	"   tmpLayer.document.layer = l.document.layer;\n"
 	"   tmpLayer.document.close();\n"
 	"   tmpLayer.clip.width = l.defaultWidth - l.defaultHeight;\n"
 	"   tmpLayer.clip.height = l.defaultHeight - 5;\n"
@@ -185,16 +186,15 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   tmpLayer.left = 5;\n"
 	"   tmpLayer.bgColor = l.bgColor;\n"
 	"   tmpLayer.visibility = 'inherit';\n"
-	"   tmpLayer.captureEvents(Event.MOUSEDOWN);\n"
-	"   tmpLayer.onMouseDown = dd_clickitem;\n"
 	"   l.itemLayers.push(tmpLayer);\n"
-	"   l.fullLayer.clip.height += l.defaultHeight;\n"
+	"   l.document.fullLayer.clip.height += l.defaultHeight;\n"
 	"}\n", 0);
    
 
    /** Form Status initializer **/
    htrAddScriptFunction(s, "dd_init", "\n"
 	"function dd_init(l,w,h) {\n"
+	"   l.document.layer = l;\n"
 	"   l.width = w;\n"
 	"   l.height = h;\n"
 	"   l.kind = 'dropdown';\n"
@@ -204,17 +204,20 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.itemLayers = new Array();\n"
 	"   l.defaultWidth = w;\n"
 	"   l.defaultHeight = h;\n"
-	"   l.fullLayer = new Layer(1024);\n"
-	"   l.fullLayer.bgColor = '#ffffff';\n"
-	"   l.fullLayer.clip.width = w;\n"
-	"   l.fullLayer.visibility = 'hidden';\n"
-	"   l.fullLayer.pageX = l.pageX;\n"
-	"   l.fullLayer.pageY = l.pageY + h;\n"
-	"   l.fullLayer.kind = 'dropdown'\n"
+	"   l.name='mainLayer';\n"
+	"   l.document.fullLayer = new Layer(1024);\n"
+	"   l.document.fullLayer.name='fullLayer';\n"
+	"   l.document.fullLayer.bgColor = '#ffffff';\n"
+	"   l.document.fullLayer.clip.width = w;\n"
+	"   l.document.fullLayer.visibility = 'hidden';\n"
+	"   l.document.fullLayer.pageX = l.pageX;\n"
+	"   l.document.fullLayer.pageY = l.pageY + h;\n"
+	"   l.document.fullLayer.kind = 'dropdownItemlist'\n"
+	"   l.document.fullLayer.document.layer = l.document.fullLayer;\n"
 	"   for (i=0; i < l.document.images.length; i++) {\n"
 	"      l.document.images[i].kind = 'dropdown';\n"
 	"      l.document.images[i].enabled = true;\n"
-	"      l.document.images[i].parentLayer = l;\n"
+	"      l.document.images[i].layer = l;\n"
 	"   }\n"
 	"   if (fm_current) fm_current.Register(l);\n"
 	"}\n", 0);
@@ -222,21 +225,17 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddEventHandler(s, "document","MOUSEDOWN", "dropdown", 
 	"\n"
 	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null) {\n"
-	"      dd_current.fullLayer.visibility = 'hide';\n"
+	"   if (dd_current != null && targetLayer != dd_current) {\n"
+	"      dd_current.document.fullLayer.visibility = 'hide';\n"
 	"      dd_current = null;\n"
 	"   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
-	"      if (targetLayer.parentLayer != null)\n"
-	"         layer = targetLayer.parentLayer;\n"
-	"      else\n"
-	"         layer = targetLayer;\n"
-	"      if (layer.enabled) {\n"
-	"         if (layer.fullLayer.visibility != 'hide') {\n"
-	"            layer.fullLayer.visibility = 'hide';\n"
+	"      if (targetLayer.enabled) {\n"
+	"         if (targetLayer.document.fullLayer.visibility != 'hide') {\n"
+	"            targetLayer.document.fullLayer.visibility = 'hide';\n"
 	"         } else {\n"
-	"            layer.fullLayer.visibility = 'inherit';\n"
+	"            targetLayer.document.fullLayer.visibility = 'inherit';\n"
 	"         }\n"
-	"         dd_current = layer;\n"
+	"         dd_current = targetLayer;\n"
 	"      }\n"
 	"   }\n"
 	"\n");
