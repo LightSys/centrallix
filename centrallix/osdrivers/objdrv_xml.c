@@ -19,6 +19,9 @@
 #else
 #include <libxml/parser.h>
 #endif
+/** regular expressions **/
+#include <sys/types.h>
+#include <regex.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -53,10 +56,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.6 2002/08/01 08:52:59 mattphillips Exp $
+    $Id: objdrv_xml.c,v 1.7 2002/08/04 20:16:13 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.7  2002/08/04 20:16:13  jorupp
+     * changed from name/0, name/1 style naming to name|0, name|1 -- hopefully the documentation explains it
+     * removed the code that makes outer_type return content_type
+
     Revision 1.6  2002/08/01 08:52:59  mattphillips
     This needs to include config.h in order to know if USE_LIBXML1 is defined.
 
@@ -116,9 +123,12 @@
     1. It does not work off a structure file telling it the location of the
 	document.  It uses objRead to get it from the underlying object
     2. If there are multiple nodes of the same name at a level, they are
-	accessible as name/0, name/1, etc. (a diagram follows)
+	accessible as name|0, name|1, etc. (a diagram follows)
     3. XML Attributes are mapped to Centrallix attributes
-    4. XML subnodes are mapped to Centrallix subobjects
+    4. XML subnodes are mapped to Centrallix subobjects (except if the XML
+        subnode's name is unique and it has no attributes or element subnodes
+	-- in this case, it is available as an object referenced directly, but
+	not as the result of a QueryFetch().)
     5. If a node has subnodes (such that there is only one subnode with each
 	name), those subnodes are also mapped to Centrallix attributes
     
@@ -132,24 +142,31 @@
 	</tagA>
 	<tagA prop="house" propF="thekid">
 	</tagA>
+	<tagB>Harry</tagB>
+	<tagC propQ="Quincy">Tom</tagC>
     </roottag>
 
     Centrallix view of above (file is /file.xml):
 	(/'s are the path separator, :'s are the property separator)
-    /file.xml/tagA=Object
-    /file.xml/tagA/0=Object
-    /file.xml/tagA/0:prop="bob"
-    /file.xml/tagA/0:propF="billy"
-    /file.xml/tagA/0:tagB="Hello there"
-    /file.xml/tagA/0:tagC="Harry"
-    /file.xml/tagA/0/tagB=Object (content="Hello there")
-    /file.xml/tagA/0/tagB/0=Object (content="Hello there")
-    /file.xml/tagA/0/tagC=Object (content="Harry")
-    /file.xml/tagA/0/tagC:propC="bob"
-    /file.xml/tagA/0/tagC/0=Object (content="Harry")
-    /file.xml/tagA/0/tagC/0:propC="bob"
-    /file.xml/tagA/1:prop="house"
-    /file.xml/tagA/1:propF="thekid"
+    /file.xml/tagA (invalid reference)
+    /file.xml/tagA|0=Object
+    /file.xml/tagA|0:prop="bob"
+    /file.xml/tagA|0:propF="billy"
+    /file.xml/tagA|0:tagB="Hello there"
+    /file.xml/tagA|0:tagC="Harry"
+    /file.xml/tagA|0/tagB=Object (content="Hello there")
+    /file.xml/tagA|0/tagB|0=Object (content="Hello there") <-- not returned by a query
+    /file.xml/tagA|0/tagC=Object (content="Harry")
+    /file.xml/tagA|0/tagC:propC="bob"
+    /file.xml/tagA|0/tagC|0=Object (content="Harry") <-- not returned by a query
+    /file.xml/tagA|0/tagC|0:propC="bob"
+    /file.xml/tagA|1:prop="house"
+    /file.xml/tagA|1:propF="thekid"
+    /file.xml/tagB=Object (content="Harry") <-- not returned by a query
+    /file.xml/tagB|0=Object (content="Harry") <-- not returned by a query
+    /file.xml/tagC=Object (content="Tom") <-- _would_ be returned by a query
+    /file.xml/tagC|0=Object (content="Tom") <-- not returned by a query
+    /file.xml/tagC:propQ="Quincy"
 
     If you ran the query:
 	select :name,:prop,:propF from /file.xml/tagA
@@ -168,6 +185,25 @@
 
 #define XML_DEBUG 0
 
+#define XML_ATTR 1
+#define XML_SUBOBJ 2
+
+/** the element of the inf->Attributes hash **/
+typedef struct
+    {
+    int type;
+    int count;
+    void* ptr;
+    }
+    XmlAttrObj, *pXmlAttrObj;
+
+/** the element of the query->Types hash **/
+typedef struct
+    {
+    int current;
+    int total;
+    }
+    XmlCountObj, *pXmlCountObj;
 
 /*** Structure used by this driver internally. ***/
 typedef struct 
@@ -177,28 +213,20 @@ typedef struct
     pObject	Obj;
     int		Mask;
     xmlNodePtr	CurNode;
-    char	Element[XML_ELEMENT_SIZE];
+    //char	Element[XML_ELEMENT_SIZE];
     int		Offset;
     int		CurAttr;
     xmlAttrPtr	CurXmlAttr;
     xmlNodePtr	CurSubNode;
     /** GetAttrValue has to return a refence to memory that won't be free()ed **/
     char	AttrValue[XML_ATTR_SIZE];
-    pXHashTable	Elements;
+    pXHashTable	Attributes;
     }
     XmlData, *pXmlData;
 
 
 #define XML(x) ((pXmlData)(x))
 
-/** The element for the HashTable in the Query structure **/
-typedef struct
-    {
-    int		count;
-    char	processed;
-    }
-    XmlQueryHE, *pXmlQueryHE;
-    
 /*** Structure used by queries for this driver. ***/
 typedef struct
     {
@@ -206,7 +234,7 @@ typedef struct
     //char	NameBuf[256];
     int		ItemCnt;
     xmlNodePtr	NextNode;
-    pXHashTable	Elements;
+    pXHashTable	Types;
     }
     XmlQuery, *pXmlQuery;
 
@@ -218,13 +246,19 @@ struct
     XML_INF;
 
 /** Forward declaration **/
-void xml_internal_BuildSubNodeHashTable(pXmlData inf);
+void xml_internal_BuildAttributeHashTable(pXmlData inf);
 
 /*** xml_internal_GetChildren - obtains a reference to the children/childs
  *** object in an XML tree structure.  libxml 1.x called it "childs" [sic]
  *** while libxml 2.x calls it "children".
  ***/
-xmlNodePtr
+#ifdef USE_LIBXML1
+#define xml_internal_GetChildren(p) p->childs
+#else
+#define xml_internal_GetChildren(p) p->children
+#endif
+#if 0
+    xmlNodePtr
 xml_internal_GetChildren(xmlNodePtr parent)
     {
 #ifdef USE_LIBXML1
@@ -233,67 +267,43 @@ xml_internal_GetChildren(xmlNodePtr parent)
     return parent->children;
 #endif
     }
-
-
-#if 0
-/*** xml_internal_DetermineType - determine the object type being opened and
- *** setup the table, row, etc. pointers. 
- ***/
-int
-xml_internal_DetermineType(pObject obj, pDatData inf)
-    {
-    int i;
-
-	/** Determine object type (depth) and get pointers set up **/
-	obj_internal_CopyPath(&(inf->Pathname),obj->Pathname);
-	for(i=1;i<inf->Pathname.nElements;i++) *(inf->Pathname.Elements[i]-1) = 0;
-	inf->TablePtr = NULL;
-	inf->TableSubPtr = NULL;
-	inf->RowColPtr = NULL;
-
-	inf->TablePtr = inf->Pathname.Elements[obj->SubPtr-1];
-
-	/** Set up pointers based on number of elements past the node object **/
-	inf->Type = DAT_T_TABLE;
-	obj->SubCnt = 1;
-	if (inf->Pathname.nElements - 1 >= obj->SubPtr)
-	    {
-	    obj->SubCnt = 2;
-	    inf->TableSubPtr = inf->Pathname.Elements[obj->SubPtr];
-	    if (!strncmp(inf->TableSubPtr,"rows",4)) inf->Type = DAT_T_ROWSOBJ;
-	    else if (!strncmp(inf->TableSubPtr,"columns",7)) inf->Type = DAT_T_COLSOBJ;
-	    else 
-		{
-		mssError(1,"DAT","Only two child objects of a table are 'rows' and 'columns'");
-		if (inf->Pathname.OpenCtlBuf) nmSysFree(inf->Pathname.OpenCtlBuf);
-		inf->Pathname.OpenCtlBuf = NULL;
-		return -1;
-		}
-	    }
-	if (inf->Pathname.nElements - 2 >= obj->SubPtr)
-	    {
-	    obj->SubCnt = 3;
-	    inf->RowColPtr = inf->Pathname.Elements[obj->SubPtr+1];
-	    if (inf->Type == DAT_T_ROWSOBJ) inf->Type = DAT_T_ROW;
-	    else if (inf->Type == DAT_T_COLSOBJ) inf->Type = DAT_T_COLUMN;
-	    }
-	}
-
-    return 0;
-    }
 #endif
 
-/*** xml_internal_GetNode - given an inf->CurNode as root, 
- ***   heads down the path in obj to find the node referened to
+/*** xml_internal_IsObject
+ ***   decides if an XML node will be a centrallix object
+ ***   criteria (must meet one):
+ ***     has at least 1 attribute
+ **      has at least 1 child whose type = XML_ELEMENT_NODE
+ *** returns 0 if not an object, -1 if it is
+ ***
+ *** NOTE: this only applies to objects that have unique names
  ***/
-void
+int
+xml_internal_IsObject(xmlNodePtr p)
+{
+    if(p->properties) return -1;
+    p=p->children;
+    if(!p) return 0;
+    while(p)
+    {
+	if(p->type==XML_ELEMENT_NODE) return -1;
+	p=p->next;
+    }
+    return 0;
+}
+
+/*** xml_internal_GetNode - given an inf->CurNode as root, 
+ ***   heads down the path in obj to find the node refered to
+ *** returns 0 on success, -1 on failure -- fails only on regex failure
+ ***/
+int
 xml_internal_GetNode(pXmlData inf,pObject obj)
     {
     xmlNodePtr p;
 
     /** don't want to go wandering off farther than we need **/
     if(obj->Pathname->nElements<obj->SubPtr+obj->SubCnt)
-	return;
+	return 0;
     
     p= xml_internal_GetChildren(inf->CurNode);
     if(p)
@@ -303,27 +313,42 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	int target=-1; /* the element number we're looking for */
 	int flag=0; /* did we find the target? */
 	char searchElement[XML_ELEMENT_SIZE];
-	strncpy(searchElement,obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt-1,1),XML_ELEMENT_SIZE);
-	
-	if(XML_DEBUG) printf("looking for %s\n",searchElement);
-	if(obj->Pathname->nElements>obj->SubPtr+obj->SubCnt)
+	regex_t namematch;
+	regmatch_t pmatch[3];
+
+	ptr=obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt-1,1);
+	if((i=regcomp(&namematch,"^(.*)|([0123456789]*)$",REG_EXTENDED)))
 	    {
-	    char* p1;
-	    p1=obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt,1);
-	    if(XML_DEBUG) printf("subtarget: %s\n",p1);
-	    target=strtol(p1,&ptr,10);
-	    //target=atoi(p1);
-	    /** if valid number was not grabbed, set target negative so it won't match **/
-	    if(ptr[0]=='\0')
-		{
-		if(XML_DEBUG) printf("we've got a target: %i\n",target);
-		}
-	    else 
-		{
-		target=-1;
-		if(XML_DEBUG) printf("unable to resolve target: %i\n",target);
-		}
+	    /** this is a critical failure -- this regex should compile just fine **/
+	    mssError(0,"XML","Error while building namematch");
+	    return -1;
 	    }
+	if(regexec(&namematch,ptr,3,pmatch,0)!=0)
+	    {
+	    /** be optimistic: maybe this is for another driver **/
+	    mssError(0,"XML","Warning: pattern didn't match!");
+	    return 0;
+	    }
+	if(pmatch[1].rm_so==-1 || pmatch[1].rm_so==pmatch[1].rm_eo)
+	    {
+	    /** be optimistic: maybe this is for another driver **/
+	    mssError(0,"XML","Warning: there was no base text matched!");
+	    return 0;
+	    }
+	i=pmatch[1].rm_eo-pmatch[1].rm_so; /* length of the string we're going to copy */
+	i=i>XML_ELEMENT_SIZE-1?XML_ELEMENT_SIZE-1:i;
+	memset(searchElement,0,i+1);
+	memcpy(searchElement,ptr+pmatch[1].rm_so,i);
+
+	if(pmatch[2].rm_so!=-1 && pmatch[2].rm_so!=pmatch[2].rm_eo)
+	    {
+	    if(XML_DEBUG) printf("there appears to be a numeric offset -- reading it\n");
+	    /** this will find a number there -- the regexec matched **/
+	    target=atoi(ptr+pmatch[2].rm_so);
+	    }
+	
+	if(XML_DEBUG) printf("looking for %s -- %i\n",searchElement,target);
+	i=0; /** 'i' was a temp variable above -- reset to 0 **/
 	do
 	    {
 	    if(!strcmp(p->name,searchElement))
@@ -335,6 +360,12 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 		    break;
 		    }
 		i++;
+		/** if we had no target and we've seen two matches -- early abort **/
+		if(target==-1 && i==2) 
+		    {
+		    if(XML_DEBUG) printf("performing early abort with %i,%i\n",target,i);
+		    break;
+		    }
 		}
 	    } while  ((p=p->next)!=NULL);
 	if( (flag==0) && (i==0 || target>=i) )
@@ -343,7 +374,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	     **   Maybe there's some content here for another osdriver
 	     **/
 	    if(XML_DEBUG) printf("There were children, but couldn't find any nodes, or a high enough one (%i < %i)\n",i-1,target);
-	    return;
+	    return 0;
 	    }
 	else
 	    {
@@ -353,10 +384,8 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 		if(XML_DEBUG) printf("found matches, and exact target: %i\n",target);
 		obj->SubCnt+=2;
 		inf->CurNode=p;
-		//inf->NumElements=0;
-		inf->Element[0]='\0';
 		/** maybe there are more **/
-		xml_internal_GetNode(inf,obj);
+		return xml_internal_GetNode(inf,obj);
 		}
 	    else
 		{
@@ -379,20 +408,16 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 		    if(XML_DEBUG) printf("found matches, and assumed target\n");
 		    obj->SubCnt+=1;
 		    inf->CurNode=p;
-		    //inf->NumElements=0;
-		    inf->Element[0]='\0';
 		    /** maybe there are more **/
-		    xml_internal_GetNode(inf,obj);
+		    return xml_internal_GetNode(inf,obj);
 		    }
 		else
 		    {
-		    /** multiple matches w/ no target -- this node will have no content or attributes.
-		     **   since it doesn't _really_ exist in the tree.  It will only have queries run on it
+		    /** multiple matches w/ no target -- this is an _invalid_ node reference 
+		     **   assume the best -- that it's going to be matched by another osdriver
 		     **/
-		    if(XML_DEBUG) printf("found multiple matches, but had no target.\n");
-		    strncpy(inf->Element,obj->Pathname->Elements[obj->SubPtr+obj->SubCnt-1],XML_ELEMENT_SIZE);
-		    //inf->NumElements=i;
-		    obj->SubCnt++;
+		    if(XML_DEBUG) printf("There were too many choices\n");
+		    return 0;
 		    }
 		}
 	    }
@@ -403,8 +428,10 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	 **   Maybe there's some content here for another osdriver
 	 **/
 	if(XML_DEBUG) printf("no children found...\n");
-	return;
+	return 0;
 	}
+    /** should _never_ get here **/
+    return -1;
     }
 
 /*** xmlOpen - open an object.
@@ -445,6 +472,7 @@ xmlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    xmlParseChunk(ctxt,ptr,bytes,0);
 	    if(XML_DEBUG) printf("parser done with the chunk\n");
 	}
+	free(ptr);
 	xmlParseChunk(ctxt,NULL,0,1);
 	/** get the document reference **/
 	if(!ctxt->myDoc)
@@ -459,11 +487,15 @@ xmlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if(XML_DEBUG) printf("objdrv_xml.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
 		obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
 	
-	xml_internal_GetNode(inf,obj);
+	if(xml_internal_GetNode(inf,obj)==-1)
+	    {
+	    nmFree(inf,sizeof(XmlData));
+	    mssError(0,"XML","Unable to find correct XML node!");
+	    return NULL;
+	    }
 	
 	if(XML_DEBUG) printf("objdrv_xml.c took: (%i,%i,%i) %s\n",obj->SubPtr,
 		obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
-	free(ptr);
 
     return (void*)inf;
     }
@@ -476,11 +508,14 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
     {
     pXmlData inf = XML(inf_v);
 
-	if(inf->Elements)
+	if(inf->Attributes)
 	    {
 	    /** this structure might not have been allocated **/
-	    xhDeInit(inf->Elements);
-	    nmFree(inf->Elements,sizeof(XHashTable));
+	    if(XML_DEBUG) printf("Clearing Attributes hash\n");
+	    xhClear(inf->Attributes,(int*)free,NULL);
+	    if(XML_DEBUG) printf("Done Clearing Attributes hash\n");
+	    xhDeInit(inf->Attributes);
+	    nmFree(inf->Attributes,sizeof(XHashTable));
 	    }
     	/** Write the node first, if need be. **/
 	//snWriteNode(inf->Node);
@@ -632,6 +667,8 @@ xmlOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pXmlData inf = XML(inf_v);
     pXmlQuery qy;
+    xmlNodePtr p;
+    pXmlCountObj pHE;
 
 	/** Allocate the query structure **/
 	qy = (pXmlQuery)nmMalloc(sizeof(XmlQuery));
@@ -640,32 +677,29 @@ xmlOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->Data = inf;
 	qy->ItemCnt = 0;
 	qy->NextNode = NULL;
-	if(inf->Element[0]=='\0')
+
+	p=xml_internal_GetChildren(inf->CurNode);
+	qy->Types=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	memset(qy->Types, 0, sizeof(XHashTable));
+	xhInit(qy->Types,17,0);
+
+	p=xml_internal_GetChildren(inf->CurNode);
+	do
 	    {
-	    /** we're returning element names, not individual elements **/
-	    xmlNodePtr p;
-	    p=xml_internal_GetChildren(inf->CurNode);
-	    qy->Elements=(pXHashTable)nmMalloc(sizeof(XHashTable));
-	    memset(qy->Elements, 0, sizeof(XHashTable));
-	    xhInit(qy->Elements,17,0);
-	    while(p)
+	    if(p->name && p->name[0])
 		{
-		pXmlQueryHE pHE;
-		if((pHE=(pXmlQueryHE)xhLookup(qy->Elements,(char*)p->name)))
+		if(!(pHE=(pXmlCountObj)xhLookup(qy->Types,(char*)p->name)))
 		    {
-		    pHE->count++;
+		    pHE=malloc(sizeof(XmlCountObj));
+		    if(!pHE) return NULL;
+		    pHE->current=-1; /* this will be incremented for the first record */
+		    pHE->total=0;
+		    xhAdd(qy->Types,(char*)p->name,(char*)pHE);
 		    }
-		else
-		    {
-		    pHE=(pXmlQueryHE)nmSysMalloc(sizeof(XmlQueryHE));
-		    pHE->count=1;
-		    pHE->processed=0;
-		    xhAdd(qy->Elements,(char*)p->name,(char*)pHE);
-		    }
-		p=p->next;
+		pHE->total++;
 		}
-	    }
-    
+	    } while((p=p->next));
+
     return (void*)qy;
     }
 
@@ -681,6 +715,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     int flag=0;
     char name[256];
     char *ptr;
+    pXmlCountObj pHE;
 
 	/** I _think_ these should be this way... **/
 	obj->SubPtr=qy->Data->Obj->SubPtr;
@@ -694,7 +729,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (!inf) return NULL;
 	memset(inf,0,sizeof(XmlData));
 
-	do
+	while(flag==0)
 	    {
 	    if(!qy->NextNode)
 		qy->NextNode=xml_internal_GetChildren(qy->Data->CurNode);
@@ -705,45 +740,40 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		nmFree(inf,sizeof(XmlData));
 		return NULL;
 		}
-	    if(qy->Data->Element[0]!='\0')
+
+	    /** figure out which number the one we're returning now is **/
+	    if((pHE=(pXmlCountObj)xhLookup(qy->Types,(char*)qy->NextNode->name)))
 		{
-		/** we're filtering on the element name (because of a non-specific open) **/
-		if(!strcmp(qy->Data->Element,qy->NextNode->name))
-		    flag=1;
-		cnt = snprintf(name,256,"%i",qy->ItemCnt);
+		pHE->current++;
 		}
 	    else
 		{
-		/** we only want to return each unique element name once **/
-		pXmlQueryHE pHE;
-		if((pHE=(pXmlQueryHE)xhLookup(qy->Elements,(char*)qy->NextNode->name)))
+		mssError(0,"XML","Node not found in qy->Types");
+		nmFree(inf,sizeof(XmlData));
+		return NULL;
+		}
+	    if(pHE->total==1 && pHE->current==0) 
+		{
+		if(xml_internal_IsObject(qy->NextNode))
 		    {
-		    if(pHE->processed==1)
-			flag=0;
-		    else
-			{
-			pHE->processed=1;
-			flag=1;
-			cnt = snprintf(name,256,"%s",qy->NextNode->name);
-			if(pHE->count>1)
-			    strncpy(inf->Element,qy->NextNode->name,XML_ELEMENT_SIZE);
-			}
-		    }
-		else
-		    {
-		    /** An element that wasn't here during the preload, but is now..
-		     **  I guess we'll ignore it
-		     **/
-		    flag=0;
+		    flag=1;
+		    cnt = snprintf(name,256,"%s",qy->NextNode->name);
 		    }
 		}
-	    } while (flag==0);
+	    else
+		{
+		flag=1;
+		cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
+		}
+
+	    }
 
 
 	/** make sure we didn't overflow on the path copy **/
 	if (cnt<0 || cnt>=256 ) 
 	    {
 	    mssError(1,"XML","Query result pathname exceeds internal representation");
+	    nmFree(inf,sizeof(XmlData));
 	    return NULL;
 	    }
 
@@ -778,11 +808,14 @@ xmlQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pXmlQuery qy = ((pXmlQuery)(qy_v));
 
-	if(qy->Elements)
+	/** this structure should have been allocated **/
+	if(qy->Types)
 	    {
-	    /** this structure might not have been allocated **/
-	    xhDeInit(qy->Elements);
-	    nmFree(qy->Elements,sizeof(XHashTable));
+	    if(XML_DEBUG) printf("Clearing Types hash\n");
+	    xhClear(qy->Types,(int*)free,NULL);
+	    if(XML_DEBUG) printf("Done Clearing Types hash\n");
+	    xhDeInit(qy->Types);
+	    nmFree(qy->Types,sizeof(XHashTable));
 	    }
 	/** Free the structure **/
 	nmFree(qy,sizeof(XmlQuery));
@@ -801,10 +834,13 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pStructInf find_inf;
     char* ptr;
     char *ptr2;
-    int* pHE;
+    pXmlAttrObj pHE;
+    xmlAttrPtr ap;
+    xmlNodePtr np;
 
-    	/** If name, it's a string **/
+    	/** If name or type, it's a string **/
 	if (!strcmp(attrname,"name")) return DATA_T_STRING;
+	if (!strcmp(attrname,"internal_type")) return DATA_T_STRING;
 
 	/** If 'content-type', it's also a string. **/
 	if (!strcmp(attrname,"content_type")) return DATA_T_STRING;
@@ -813,33 +849,31 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"last_modification")) return DATA_T_DATETIME;
 
-
-	/** see if the XML doc has it **/
-	ptr2=xmlGetProp(inf->CurNode,attrname);
-	if(ptr2)
-	    {
-	    (void)strtol(ptr2,&ptr,10);
-	    if(ptr && !*ptr)
-		{
-		free(ptr2);
-		return DATA_T_INTEGER;
-		}
-	    free(ptr2);
-	    return DATA_T_STRING;
-	    }
-	
 	/** needed in case this isn't a GetFirstAttribute-style request **/
-	xml_internal_BuildSubNodeHashTable(inf);
+	xml_internal_BuildAttributeHashTable(inf);
 
-	/** see if a subnode has it **/
-	if(inf->Elements && (pHE=(int*)xhLookup(inf->Elements,attrname)) && *pHE==1)
+	/** see if the XML doc has it and only has one possibility **/
+	if((pHE=(pXmlAttrObj)xhLookup(inf->Attributes,attrname)) && pHE->count==1)
 	    {
-	    xmlNodePtr p;
-	    p=xml_internal_GetChildren(inf->CurNode);
-	    while(p && strcmp(p->name,attrname)) p=p->next;
-	    if(p)
+	    /** it does **/
+	    if(pHE->type==XML_ATTR)
 		{
-		ptr2=xmlNodeListGetString(p->doc,xml_internal_GetChildren(p),1);
+		ap=(xmlAttrPtr)pHE->ptr;
+		ptr2=(char*)xml_internal_GetChildren(ap);
+		if(ptr2)
+		    {
+		    (void)strtol(ptr2,&ptr,10);
+		    if(ptr && !*ptr)
+			{
+			return DATA_T_INTEGER;
+			}
+		    return DATA_T_STRING;
+		    }
+		}
+	    if(pHE->type==XML_SUBOBJ)
+		{
+		np=(xmlNodePtr)pHE->ptr;
+		ptr2=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
 		if(ptr2)
 		    {
 		    (void)strtol(ptr2,&ptr,10);
@@ -853,7 +887,6 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    }
 		}
 	    }
-	
 
 	/** everything else is a string **/
 	return DATA_T_STRING;
@@ -862,63 +895,63 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     }
 
 void
-xml_internal_BuildSubNodeHashTable(pXmlData inf)
+xml_internal_BuildAttributeHashTable(pXmlData inf)
     {
-    xmlNodePtr p;
-    int* pHE;
+    xmlNodePtr np;
+    xmlAttrPtr ap;
+    pXmlAttrObj pHE;
+    char* p;
 
-    if(!inf->Elements && inf->Element[0]=='\0')
+    if(!inf->Attributes)
 	{
+	inf->Attributes=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	memset(inf->Attributes, 0, sizeof(XHashTable));
+	xhInit(inf->Attributes,17,0);
 	/** if we've built this once already, there's no need to build it all over again... **/
-	/**   we're noting element names, not individual elements **/
 	/**   in GetNextAttr, we'll only use records from here where the count was 1 **/
-	p=xml_internal_GetChildren(inf->CurNode);
-	inf->Elements=(pXHashTable)nmMalloc(sizeof(XHashTable));
-	memset(inf->Elements, 0, sizeof(XHashTable));
-	xhInit(inf->Elements,17,sizeof(int*));
-
-	if(XML_DEBUG) printf("walking children to set up hash table\n");
-	while(p)
+	ap=inf->CurNode->properties;
+	if(XML_DEBUG) printf("walking attributes to set up hash table\n");
+	while(ap)
 	    {
-	    if(p->name)
+	    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+	    if(!pHE)
 		{
-		if((pHE=(int*)xhLookup(inf->Elements,(char*)p->name)))
-		    *pHE++;
+		mssError(0,"XML","nmMalloc failed!");
+		return;
+		}
+	    pHE->type=XML_ATTR;
+	    pHE->count=1;
+	    pHE->ptr=ap;
+	    xhAdd(inf->Attributes,(char*)ap->name,(char*)pHE);
+	    ap=ap->next;
+	    }
+
+	np=xml_internal_GetChildren(inf->CurNode);
+	if(XML_DEBUG) printf("walking children to set up hash table\n");
+	while(np)
+	    {
+	    /** see if there's text there **/
+	    p=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
+	    if(np->name && p)
+		{
+		if((pHE=(pXmlAttrObj)xhLookup(inf->Attributes,(char*)np->name)))
+		    {
+		    if(pHE->type==XML_SUBOBJ)
+			pHE->count++;
+		    }
 		else
 		    {
-		    pHE=(int*)nmSysMalloc(sizeof(int*));
-		    *pHE=1;
-		    xhAdd(inf->Elements,(char*)p->name,(char*)pHE);
+		    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+		    pHE->type=XML_SUBOBJ;
+		    pHE->count=1;
+		    pHE->ptr=np;
+		    xhAdd(inf->Attributes,(char*)np->name,(char*)pHE);
 		    }
 		}
-	    else
-		{
-#ifdef USE_LIBXML1
-		mssError(0,"HTTP","Node with no name!");
-#else
-		mssError(0,"HTTP","Node with no name at line %s!",XML_GET_LINE(p));
-#endif
-		}
-	    p=p->next;
+	    if(p) free(p);
+	    np=np->next;
 	    }
-#if 0
-	else
-	    {
-	    /** we're returing individual elements, so we need a count of how many are under each **/
-	    while(p)
-		{
-		if(!strcmp(p->name,inf->Element))
-		    {
-		    /** this is a candidate to be returned **/
-
-		    }
-		p=p->next;
-		}
-	    
-	    }
-#endif
 	}
-
     }
 
 /*** xmlGetAttrValue - get the value of an attribute by name.  The 'val'
@@ -930,70 +963,99 @@ xmlGetAttrValue(void* inf_v, char* attrname, void* val, pObjTrxTree* oxt)
     pXmlData inf = XML(inf_v);
     pStructInf find_inf;
     char* ptr;
+    char* ptr2;
     int i;
-    int* pHE;
+    XmlAttrObj* pHE;
+    xmlNodePtr np;
+    xmlAttrPtr ap;
 
 	/** inner_type is an alias for content_type **/
 	if(!strcmp(attrname,"inner_type"))
 	    return xmlGetAttrValue(inf_v,"content_type",val,oxt);
     
-	/** inner_type is an alias for content_type **/
-	if(!strcmp(attrname,"outer_type"))
-	    return xmlGetAttrValue(inf_v,"content_type",val,oxt);
-
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
 	    {
-	    //*((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
-	    strncpy(inf->AttrValue,inf->CurNode->name,XML_ATTR_SIZE);
-	    *((char**)val) = inf->AttrValue;
-	    //printf("returning %s\n",*((char**)val));
+	    /** for the top level one -- return the inner name, not the outer one **/
+	    if(inf->Obj->SubCnt==1)
+		*((char**)val) = inf->CurNode->name;
+	    else
+		*((char**)val) = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+	    return 0;
+	    }
+	/** Choose the type **/
+	if (!strcmp(attrname,"internal_type"))
+	    {
+	    *((char**)val) = (char*)inf->CurNode->name;
 	    return 0;
 	    }
 
-	/** see if the XML doc has it **/
-	ptr=xmlGetProp(inf->CurNode,attrname);
-	if(ptr)
-	    {
-	    strncpy(inf->AttrValue,ptr,XML_ATTR_SIZE);
-	    free(ptr);
-	    *(int*)val = strtol(inf->AttrValue,&ptr,10);
-	    if(ptr && !*ptr)
-		return 0;
-	    *((char**)val) = inf->AttrValue;
-	    return 0;
-	    }
-	
 	/** needed in case this isn't a GetFirstAttribute-style request **/
-	xml_internal_BuildSubNodeHashTable(inf);
+	xml_internal_BuildAttributeHashTable(inf);
 
-	/** see if a subnode has it **/
-	if(inf->Elements && (pHE=(int*)xhLookup(inf->Elements,attrname)) && *pHE==1)
+	/** see if the XML doc has it and only has one possibility **/
+	if((pHE=(pXmlAttrObj)xhLookup(inf->Attributes,attrname)) && pHE->count==1)
 	    {
-	    xmlNodePtr p;
-	    p=xml_internal_GetChildren(inf->CurNode);
-	    while(p && strcmp(p->name,attrname)) p=p->next;
-	    if(p)
+	    /** it does **/
+	    if(pHE->type==XML_ATTR)
 		{
-		ptr=xmlNodeListGetString(p->doc,xml_internal_GetChildren(p),1);
-		if(ptr)
+		ap=(xmlAttrPtr)pHE->ptr;
+		/*ptr2=(char*)xml_internal_GetChildren(ap);*/
+		/* I consider this a hack -- I can't figure out where to get the text! */
+		ptr2=xmlGetProp(ap->parent,ap->name);
+		if(ptr2)
 		    {
-		    strncpy(inf->AttrValue,ptr,XML_ATTR_SIZE);
-		    free(ptr);
-		    *(int*)val = strtol(inf->AttrValue,&ptr,10);
+		    *(int*)val=strtol(ptr2,&ptr,10);
 		    if(ptr && !*ptr)
+			{
+			free(ptr2);
 			return 0;
+			}
+		    strncpy(inf->AttrValue,ptr2,XML_ATTR_SIZE);
+		    inf->AttrValue[XML_ATTR_SIZE-1]='\0';
+		    free(ptr2);
 		    *((char**)val) = inf->AttrValue;
 		    return 0;
 		    }
 		}
+	    else if(pHE->type==XML_SUBOBJ)
+		{
+		np=(xmlNodePtr)pHE->ptr;
+		ptr2=xmlNodeListGetString(np->doc,xml_internal_GetChildren(np),1);
+		if(ptr2)
+		    {
+		    *(int*)val=strtol(ptr2,&ptr,10);
+		    if(ptr && !*ptr)
+			{
+			free(ptr2);
+			return 0;
+			}
+		    strncpy(inf->AttrValue,ptr2,XML_ATTR_SIZE);
+		    inf->AttrValue[XML_ATTR_SIZE-1]='\0';
+		    free(ptr2);
+		    *((char**)val) = inf->AttrValue;
+		    return 0;
+		    }
+		else
+		    printf("ptr2 wasn't valid\n");
+		}
+	    else
+		{
+		printf("type wasn't == to one of the choices....\n");
+		}
 	    }
-	
 
-	/** If content-type or outer type, and it wasn't specified in the XML **/
-	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"outer_type"))
+	/** If content-type, and it wasn't specified in the XML **/
+	if (!strcmp(attrname,"content_type"))
 	    {
 	    *((char**)val) = "text/plain";
+	    return 0;
+	    }
+
+	/** If outer type, and it wasn't specified in the XML **/
+	if (!strcmp(attrname,"outer_type"))
+	    {
+	    *((char**)val) = "text/xml-node";
 	    return 0;
 	    }
 
@@ -1030,28 +1092,39 @@ xmlGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	case 2: return "annotation";
 	case 3: return "inner_type";
 	case 4: return "outer_type";
-	case 5: 
+	case 5: return "internal_type";
+	case 6: 
 	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",((void*)p))==0)
 		return "last_modification";
 	}
+
+    /** just for safety's sake -- really shouldn't be needed **/
+    xml_internal_BuildAttributeHashTable(inf);
+    
+    /** all XML attributes are Centrallix attributes **/
     if(inf->CurXmlAttr)
 	{
 	p=(char *)inf->CurXmlAttr->name;
 	inf->CurXmlAttr=inf->CurXmlAttr->next;
 	return p;
 	}
-
-    /** just for safety's sake -- really shouldn't be needed **/
-    xml_internal_BuildSubNodeHashTable(inf);
-
-    if(inf->CurSubNode && inf->Elements)
+    
+    /** only subobjects of a unique type are attributes **/
+    if(inf->CurSubNode && inf->Attributes)
 	{
-	int *pHE;
-	if((pHE=(int*)xhLookup(inf->Elements,(char*)inf->CurSubNode->name)) && *pHE==1)
+	pXmlAttrObj pHE;
+	while(inf->CurSubNode)
 	    {
-	    p=(char *)inf->CurSubNode->name;
-	    inf->CurSubNode=inf->CurSubNode->next;
-	    return p;
+	    if(inf->CurSubNode->name && inf->CurSubNode->name[0] && /** verify a valid name **/
+		(pHE=(pXmlAttrObj)xhLookup(inf->Attributes,(char*)inf->CurSubNode->name)) && /** get AttrObj **/
+		pHE->count==1) /** only one subobject of this type **/
+		{
+		p=(char *)inf->CurSubNode->name;
+		inf->CurSubNode=inf->CurSubNode->next;
+		return p;
+		}
+	    else
+		inf->CurSubNode=inf->CurSubNode->next;
 	    }
 	}
 
@@ -1066,7 +1139,7 @@ xmlGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     pXmlData inf = XML(inf_v);
     char* ptr;
 
-	xml_internal_BuildSubNodeHashTable(inf);
+	xml_internal_BuildAttributeHashTable(inf);
 
 	/** Set the current attribute. **/
 	inf->CurAttr = 0;
