@@ -48,7 +48,7 @@ ors "widget/page"
 
     win1btn "widget/textbutton"
 	{
-	x=10;y=10;width=60;height=250;
+	x=10;y=10;width=60;height=120;
 	text='Win1';
 	tristate=no;
 	bgcolor='#e0e0e0';
@@ -56,9 +56,19 @@ ors "widget/page"
 	fgcolor2='white';
 	cn1 "widget/connector" { event=Click; target=win1; action=SetVisibility; }
 	}
+    win2btn "widget/textbutton"
+	{
+	x=10;y=140;width=60;height=120;
+	text='Win2';
+	tristate=no;
+	bgcolor='#e0e0e0';
+	fgcolor1='black';
+	fgcolor2='white';
+	cn2 "widget/connector" { event=Click; target=win2; action=SetVisibility; }
+	}
     win1 "widget/htmlwindow"
 	{
-	x=80;y=10;width=500;height=250;
+	x=80;y=10;width=350;height=250;
 	hdr_bgcolor='#e0e0e0';
 	bgcolor='#c0c0c0';
 	style=dialog;
@@ -297,9 +307,40 @@ ors "widget/page"
 	    }
 	}
 
+    tabtextbtn1 "widget/textbutton"
+	{
+	x=10;y=300;width=60;height=40;
+	bgcolor='#e0e0e0';
+	tristate=no;
+	text='Tab 1';
+	fgcolor1=black;
+	fgcolor2=white;
+	cnt1 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageOne'"; }
+	}
+    tabtextbtn2 "widget/textbutton"
+	{
+	x=10;y=357;width=60;height=40;
+	bgcolor='#e0e0e0';
+	tristate=no;
+	text='Tab 2';
+	fgcolor1=black;
+	fgcolor2=white;
+	cnt2 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageTwo'"; }
+	}
+    tabtextbtn3 "widget/textbutton"
+	{
+	x=10;y=414;width=60;height=40;
+	bgcolor='#e0e0e0';
+	tristate=no;
+	text='Tab 3';
+	fgcolor1=black;
+	fgcolor2=white;
+	cnt3 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageThree'"; }
+	}
+
     tab1 "widget/tab"
 	{
-	x=80;y=300;width=500;height=250;
+	x=80;y=300;width=350;height=130;
 	bgcolor='#c0c0c0';
 	PageOne "widget/tabpage"
 	    {
@@ -341,6 +382,43 @@ ors "widget/page"
 	    }
 	PageThree "widget/tabpage"
 	    {
+	    }
+	}
+
+    win2 "widget/htmlwindow"
+	{
+	x=440;y=10;width=320;height=250;
+	hdr_bgcolor='#e0e0e0';
+	bgcolor='#c0c0c0';
+	style=dialog;
+
+	tab2 "widget/tab"
+	    {
+	    x=10;y=10;width=298;height=180;
+	    bgcolor="#a0a0a0";
+
+	    tab2p1 "widget/tabpage"
+		{
+		osrc4 "widget/osrc"
+		    {
+		    sql = "SELECT :fileid, :computer_name, :parentid, :file_name FROM /samples/files.csv/rows";
+		    baseobj = "/samples/files.csv/rows";
+		    readahead=1;
+		    replicasize=4;
+		    autoquery = oneachreveal;
+
+		    form4 "widget/form"
+			{
+			_3bconfirmwindow = ConfirmWindow;
+			form4status "widget/formstatus" { x=5;y=5; style=largeflat; }
+			filename_label "widget/label" { x=5;y=40;width=70; height=20; text="File Name:"; align=right; }
+			filename "widget/editbox" { style=lowered; bgcolor=white; x=80;y=40;width=100;height=20; fieldname="file_name"; }
+			}
+		    }
+		}
+	    tab2p2 "widget/tabpage"
+		{
+		}
 	    }
 	}
 

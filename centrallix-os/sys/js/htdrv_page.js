@@ -962,6 +962,7 @@ function pg_reveal_register_triggerer(l)
 // down to listeners on this triggerer.
 function pg_reveal_internal(e)
     {
+    pg_debug('reveal_internal: ' + this.name + ' ' + e.eventName + ' from ' + e.triggerer.name + '\n');
     // Parent telling us something we already know?  (this is just a sanity check)
     if ((this.__pg_reveal_parent_visible) && e.eventName == 'RevealCheck') return pg_reveal_check_ok(e);
     if ((!this.__pg_reveal_parent_visible) && e.eventName == 'ObscureCheck') return pg_reveal_check_ok(e);
@@ -981,8 +982,11 @@ function pg_reveal_internal(e)
 	}
 
     // For RevealCheck and ObscureCheck, start the notification process.
-    if (vis_changing && (e.eventName == 'RevealCheck' || e.eventName == 'ObscureCheck'))
+    if ((e.eventName == 'RevealCheck' || e.eventName == 'ObscureCheck'))
 	{
+	pg_debug('reveal_internal: checking visibility\n');
+	if (!vis_changing) return pg_reveal_check_ok(e);
+	pg_debug('reveal_internal: checking child cnt\n');
 	if (this.__pg_reveal.length == 0) return pg_reveal_check_ok(e);
 	this.__pg_reveal_busy = true;
 	var our_e = new Object();
@@ -992,7 +996,8 @@ function pg_reveal_internal(e)
 	our_e.listener_num = 0;
 	our_e.origName = null;   // not needed
 	our_e.triggerer_c = null;   // not needed
-	pg_addsched_fn(this.__pg_reveal[0], "Reveal", new Array(e));
+	pg_debug('reveal_internal: passing it on down to ' + this.__pg_reveal[0].name + '\n');
+	pg_addsched_fn(this.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(our_e));
 	}
     return true;
     }
@@ -1001,6 +1006,7 @@ function pg_reveal_internal(e)
 // desires to initiate an event.
 function pg_reveal_event(l,c,e_name)	
     {
+    pg_debug('reveal_event: ' + l.name + ' ' + e_name + '\n');
     if (l.__pg_reveal_busy) return false;
 
     // not a check event
@@ -1008,7 +1014,7 @@ function pg_reveal_event(l,c,e_name)
 	{
 	if (l.__pg_reveal_visible == (e_name == 'Reveal')) return true; // already set
 	l.__pg_reveal_visible = (e_name == 'Reveal');
-	pg_reveal_send_events(l.__pg_reveal, e_name);
+	pg_reveal_send_events(l, e_name);
 	return true;
 	}
 
@@ -1037,7 +1043,7 @@ function pg_reveal_event(l,c,e_name)
     e.parent_e = null;   // not needed
     e.triggerer_c = c;
     e.listener_num = 0;
-    pg_addsched_fn(l.__pg_reveal[0], "Reveal", new Array(e));
+    pg_addsched_fn(l.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(e));
 
     return true;
     }
@@ -1045,13 +1051,16 @@ function pg_reveal_event(l,c,e_name)
 // pg_reveal_check_ok() - called when the listener approves the check event.
 function pg_reveal_check_ok(e)
     {
+    pg_debug('reveal_check_ok: ' + e.triggerer.__pg_reveal[e.listener_num].name + ' said OK\n');
     e.listener_num++;
     if (e.triggerer.__pg_reveal.length > e.listener_num)
 	{
-	pg_addsched_fn(__pg_reveal[e.listener_num], "Reveal", new Array(e));
+	pg_debug('    -- passing it on down to ' + e.triggerer.__pg_reveal[e.listener_num].name + '\n');
+	pg_addsched_fn(e.triggerer.__pg_reveal[e.listener_num], "__pg_reveal_listener_fn", new Array(e));
 	}
     else
 	{
+	pg_debug('reveal_check_ok: OK to ' + e.eventName + ' ' + e.triggerer.name + '\n');
 	if (e.parent_e)
 	    {
 	    e.triggerer.__pg_reveal_busy = false;
@@ -1101,13 +1110,15 @@ function pg_reveal_check_veto(e)
     }
 
 // pg_reveal_send_events() - send an event to all listeners
-function pg_reveal_send_events(a, e)
+function pg_reveal_send_events(t, e)
     {
     var listener_e = new Object();
     listener_e.eventName = e;
-    for (var i=0; i<a.length; i++)
+    listener_e.triggerer = t;
+    for (var i=0; i<t.__pg_reveal.length; i++)
 	{
-	pg_addsched_fn(a[i], "Reveal", new Array(listener_e));
+	pg_debug('    -- sending ' + e + ' to ' + t.__pg_reveal[i].name + '\n');
+	pg_addsched_fn(t.__pg_reveal[i], "__pg_reveal_listener_fn", new Array(listener_e));
 	}
     return true;
     }

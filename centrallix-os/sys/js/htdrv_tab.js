@@ -156,6 +156,12 @@ function tc_selection_changed(prop,o,n)
     return n;
     }
 
+function tc_action_set_tab(aparam)
+    {
+    if (aparam.Tab) this.selected = aparam.Tab;
+    else if (aparam.TabIndex) this.selected_index = parseInt(aparam.TabIndex);
+    }
+
 function tc_init(l,tloc,mb,ib)
     {
     // Basic stuff...
@@ -181,6 +187,8 @@ function tc_init(l,tloc,mb,ib)
     htr_watch(l,"selected", "tc_selection_changed");
     htr_watch(l,"selected_index", "tc_selection_changed");
     l.tc_selection_changed = tc_selection_changed;
+
+    l.ActionSetTab = tc_action_set_tab;
 
     // Reveal/Obscure mechanism
     l.ChangeSelection1 = tc_changeselection_1;
