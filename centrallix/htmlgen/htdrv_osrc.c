@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.17 2002/04/25 23:02:52 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.18 2002/04/26 22:12:27 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.18  2002/04/26 22:12:27  jheth
+    Added nextPage() prevPage() functions to OSRC - Didn't test it though - something is broken. I can't make depend.
+
     Revision 1.17  2002/04/25 23:02:52  jorupp
      * added alternate alignment for labels (right or center should work)
      * fixed osrc/form bug
@@ -688,6 +691,17 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    //alert(\"do YOU know where the end is? I sure don't.\");\n"
       "    }\n",0);
 
+   htrAddScriptFunction(s, "osrc_move_next_page", "\n"
+      "function osrc_move_next_page(formobj)\n"
+      "    {\n"
+      "    this.MoveToRecord(this.CurrentRecord+replicasize);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_move_prev_page", "\n"
+      "function osrc_move_prev_page(formobj)\n"
+      "    {\n"
+      "    this.MoveToRecord(this.CurrentRecord-replicasize);\n"
+      "    }\n",0);
 
 /**  OSRC Initializer **/
    htrAddScriptFunction(s, "osrc_init", "\n"
@@ -720,6 +734,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    loader.ActionNext = osrc_move_next;\n"
       "    loader.ActionPrev = osrc_move_prev;\n"
       "    loader.ActionLast = osrc_move_last;\n"
+      "    loader.ActionPrevPage = osrc_move_prev_page;\n"
+      "    loader.ActionNextPage = osrc_move_next_page;\n"
       
       "    return loader;\n"
       "    }\n", 0);
