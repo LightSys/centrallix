@@ -25,8 +25,8 @@ function htr_event(e)
 
 	cx__event.target = t;
 
-	cx__event.pageX = e.clientX;
-	cx__event.pageY = e.clientY;
+	cx__event.pageX = e.clientX + window.pageXOffset;
+	cx__event.pageY = e.clientY + window.pageYOffset;
 	}
     else if(cx__capabilities.Dom0NS)
 	{

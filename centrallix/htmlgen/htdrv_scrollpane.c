@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.17 2003/08/02 22:12:06 jorupp Exp $
+    $Id: htdrv_scrollpane.c,v 1.18 2003/08/04 01:01:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.18  2003/08/04 01:01:45  jorupp
+     * scrollpane and treeview now work in Mozilla
+     * restructured some of the scrollpane code to keep my debugging sanity
+
     Revision 1.17  2003/08/02 22:12:06  jorupp
      * got treeview pretty much working (a bit slow though)
     	* I split up several of the functions so that the Mozilla debugger's profiler could help me out more
@@ -307,18 +311,21 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 
 	htrAddEventHandler(s, "document","MOUSEDOWN","sp",
 		"    sp_target_img=e.target;\n"
+		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseDown');\n"
 		"    if (sp_target_img != null && sp_target_img.kind=='sp' && (sp_target_img.name=='u' || sp_target_img.name=='d'))\n"
 		"        {\n"
 		"        if (sp_target_img.name=='u') sp_mv_incr=-10; else sp_mv_incr=+10;\n"
 		"        pg_set(sp_target_img,'src',htutil_subst_last(sp_target_img.src,\"c.gif\"));\n"
 		"        do_mv();\n"
 		"        sp_mv_timeout = setTimeout(tm_mv,300);\n"
+		"        return false;\n"
 		"        }\n"
 		"    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='t')\n"
 		"        {\n"
 		"        sp_click_x = e.pageX;\n"
 		"        sp_click_y = e.pageY;\n"
 		"        sp_thum_y = sp_target_img.thum.pageY;\n"
+		"        return false;\n"
 		"        }\n"
 		"    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='b')\n"
 		"        {\n"
@@ -326,10 +333,17 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        if (e.pageY < sp_target_img.thum.pageY+9) sp_mv_incr = -sp_mv_incr;\n"
 		"        do_mv();\n"
 		"        sp_mv_timeout = setTimeout(tm_mv,300);\n"
+		"        return false;\n"
 		"        }\n"
 		"    else sp_target_img = null;\n"
-		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseDown');");
+		"");
 	htrAddEventHandler(s, "document","MOUSEMOVE","sp",
+		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseMove');\n"
+		"    if (sp_cur_mainlayer && ly.kind != 'sp')\n"
+		"        {\n"
+		"        cn_activate(sp_cur_mainlayer, 'MouseOut');\n"
+		"        sp_cur_mainlayer = null;\n"
+		"        }\n"
 		"    ti=sp_target_img;\n"
 		"    if (ti != null && ti.kind=='sp' && ti.name=='t')\n"
 		"        {\n"
@@ -342,17 +356,10 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        d=h-ti.pane.clip.height;\n"
 		"        if (d<0) d=0;\n"
 		"        yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;\n"
-		"        var layers = pg_layers(ti.pane);\n"
-		"        for(i=0;i<layers.length;i++) if (layers[i] != ti.thum)\n"
-		"            layers[i].y+=yincr;\n"
+		"        ti.area.y+=yincr;\n"
 		"        return false;\n"
 		"        }\n"
-		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseMove');\n"
-		"    if (sp_cur_mainlayer && ly.kind != 'sp')\n"
-		"        {\n"
-		"        cn_activate(sp_cur_mainlayer, 'MouseOut');\n"
-		"        sp_cur_mainlayer = null;\n"
-		"        }\n");
+		"");
 	htrAddEventHandler(s, "document","MOUSEUP","sp",
 		"    if (sp_mv_timeout != null)\n"
 		"        {\n"

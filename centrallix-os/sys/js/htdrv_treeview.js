@@ -38,6 +38,9 @@ function tv_new_layer(width,pdoc,l)
 	    {
 	    nl = document.createElement('DIV');
 	    nl.style.setProperty('width',width + 'px','');
+	    nl.style.setProperty('height','20px','');
+	    nl.style.setProperty('clip','rect(0px,' + width + 'px, 20px, 0px)','');
+	    nl.style.setProperty('overflow','hidden','');
 	    pdoc.tv_layer_tgt.appendChild(nl);
 	    }
 	else

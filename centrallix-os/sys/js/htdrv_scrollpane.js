@@ -86,38 +86,38 @@ function sp_init(l,aname,tname,p)
 function do_mv()
     {
     var ti=sp_target_img;
-    //alert('moving : ' + ti.kind + ' -- ' + sp_mv_incr);
-    if (ti.kind=='sp' && sp_mv_incr > 0)
+    /** not sure why, but it's getting called with a null sp_target_img sometimes... **/
+    if(!ti)
 	{
-	h=ti.area.clip.height;
-	d=h-ti.pane.clip.height;
-	//alert(h + ' -- ' + d);
-	incr=sp_mv_incr;
-	if(d<0) incr=0; else if (d+ti.area.y<incr) incr=d+ti.area.y;
-	var layers = pg_layers(ti.pane);
-	for(i=0;i<layers.length;i++) if (layers[i] != ti.thum)
-	    layers[i].y-=incr;
-	v=ti.pane.clip.height-(3*18);
-	if (d<=0) ti.thum.y=18;
-	else ti.thum.y=18+v*(-ti.area.y/d);
+	return;
 	}
-    else if (ti.kind=='sp' && sp_mv_incr < 0)
+    var h=ti.area.clip.height; // height of content
+    var d=h-ti.pane.clip.height; // height of non-visible content (max scrollable distance)
+    var incr=sp_mv_incr;
+    if(d<0)
+	incr=0;
+    if (ti.kind=='sp')
 	{
-	h=ti.area.clip.height;
-	d=h-ti.pane.clip.height;
-	incr = -sp_mv_incr;
-	if(d<0)incr=0; else if (ti.area.y>-incr) incr=-ti.area.y;
-	var layers = pg_layers(ti.pane);
-	for(i=0;i<layers.length;i++) if (layers[i] != ti.thum)
-	    layers[i].y+=incr;
-	v=ti.pane.clip.height-(3*18);
-	if(d<=0) ti.thum.y=18;
-	else ti.thum.y=18+v*(-ti.area.y/d);
+	var scrolled = -ti.area.y; // distance scrolled already
+	if(incr > 0 && scrolled+incr>d)
+	    incr=d-scrolled;
+
+	/** if we've scrolled down less than we want to go up, go up the distance we went down **/
+	if(incr < 0 && scrolled<-incr) 
+	    incr=-scrolled;
+
+	/** actually move the displayed content **/
+	ti.area.y-=incr;
 	}
     else
 	{
 	alert(ti + ' -- ' + ti.id + ' is not known');
 	}
+    var v=ti.pane.clip.height-(3*18);
+    if(d<=0) 
+	ti.thum.y=18;
+    else 
+	ti.thum.y=18+v*(-ti.area.y/d);
     return true;
     }
 

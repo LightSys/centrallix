@@ -415,42 +415,74 @@ function pg_removearea(a)
 function pg_resize(l)
     {
     /** I think the height/width stuff is updated automatically under a DOM browser **/
+    /*
     if(cx__capabilities.Dom1HTML)
 	{
 	return;
 	}
-    maxheight=0;
-    maxwidth=0;
+    */
+    var maxheight=0;
+    var maxwidth=0;
     var layers = pg_layers(l);
     if(!layers)
 	{
-	alert(l);
+	alert("Cannot resize " + l.id + l.name + "(" + l + ") -- no child layers");
+	return;
 	}
     for(i=0;i<layers.length;i++)
 	{
-	cl = layers[i];
-	if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.y + cl.clip.height > maxheight)
-	    maxheight = cl.y + cl.clip.height;
-	if ((cl.visibility == 'show' || cl.visibility == 'inherit') && cl.x + cl.clip.width > maxwidth)
-	    maxwidth = cl.x + cl.clip.width;
+	var cl = layers[i];
+	var visibility = pg_get_style(cl,'visibility');
+	if (visibility == 'show' || visibility == 'visible' || visibility == 'inherit') 
+	    {
+	    var clh = cl.y + cl.clip.height;
+	    var clw = cl.x + cl.clip.width;
+	    if(clh > maxheight)
+		maxheight = clh;
+	    if(clw > maxwidth)
+		maxwidth = clw;
+	    }
 	}
+
     if (l.maxheight && maxheight > l.maxheight) maxheight = l.maxheight;
     if (l.minheight && maxheight < l.minheight) maxheight = l.minheight;
-    if (l!=window) l.clip.height = maxheight;
-    else l.document.height = maxheight;
     if (l.maxwidth && maxwidth > l.maxwidth) maxwidth = l.maxwidth;
     if (l.minwidth && maxwidth < l.minwidth) maxwidth = l.minwidth;
-    if (l!=window) l.clip.width = maxwidth;
-    else l.document.width = maxwidth;
+
+    if (l!=window) 
+	{
+	l.clip.height = maxheight;
+	l.clip.width = maxwidth;
+	}
+    else 
+	{
+	if(cx__capabilities.Dom0NS)
+	    {
+	    l.document.height = maxheight;
+	    l.document.width = maxwidth;
+	    }
+	else
+	    {
+	    alert("Cannot call pg_resize on a window on a non-NS4 browser");
+	    }
+	}
     }
 
 /** Add a universal "is visible" function that handles inherited visibility. **/
 function pg_isvisible(l)
     {
-    if (l.visibility == 'show') return 1;
-    else if (l.visibility == 'hidden') return 0;
-    else if (l == window || l.parentLayer == null) return 1;
-    else return pg_isvisible(l.parentLayer);
+    var visibility = pg_get_style(l,'visibility');
+    if (visibility == 'show') return 1;
+    if (visibility == 'visible') return 1;
+    else if (visibility == 'hidden') return 0;
+    else if (l == window || l.parentLayer == null || l.parentNode == null) return 1;
+    else 
+	{
+	if(l.parentLayer)
+	    return pg_isvisible(l.parentLayer);
+	else
+	    return pg_isvisible(l.parentNode);
+	}
     }
 
 /** Cursor flash **/
@@ -458,10 +490,11 @@ function pg_togglecursor()
     {
     if (pg_curkbdlayer != null && pg_curkbdlayer.cursorlayer != null)
 	{
-	if (pg_curkbdlayer.cursorlayer.visibility != 'inherit')
-	    pg_curkbdlayer.cursorlayer.visibility = 'inherit';
+	var cl = pg_curkbdlayer.cursorlayer;
+	if (pg_get_style(cl,'visibility') != 'inherit')
+	    pg_set_style(cl,'visibility','inherit');
 	else
-	    pg_curkbdlayer.cursorlayer.visibility = 'hidden';
+	    pg_set_style(cl,'visibility','hidden');
 	}
     setTimeout(pg_togglecursor,333);
     }
