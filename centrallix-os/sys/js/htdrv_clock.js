@@ -1,4 +1,4 @@
-function cl_init(l,c1,c2,f,bg,s,fg1,fg2,fs,m,b,sox,soy) {
+function cl_init(l,c1,c2,f,bg,s,fg1,fg2,fs,m,b,sox,soy,sf,apf,mt) {
 	c1.document.layer = c1;
 	c2.document.layer = c2;
 	c1.mainlayer=l;
@@ -15,6 +15,9 @@ function cl_init(l,c1,c2,f,bg,s,fg1,fg2,fs,m,b,sox,soy) {
 	l.fgColor1 = fg1;
 	l.fgColor2 = fg2;
 	l.fontSize = fs;
+	l.showSecs = sf;
+	l.showAmPm = apf;
+	l.milTime = mt;
 	if (s==1) {
 		l.contentLayer.shadowLayer = new Layer(l.document.width-sox,l);
 		l.contentLayer.shadowLayer.moveTo(sox,soy);
@@ -29,26 +32,23 @@ function cl_init(l,c1,c2,f,bg,s,fg1,fg2,fs,m,b,sox,soy) {
 	return l;
 }
 
-function cl_get_time() {
+function cl_get_time(l) {
 	var t = new Date();
 	var time = new Object();
 	time.hrs = t.getHours();
-	time.mins = htutil_strpad(t.getMinutes(),0,2);
-	time.secs = htutil_strpad(t.getSeconds(),0,2);
-	if (time.hrs >= 12) {
-		time.ampm = "pm";
-		if (time.hrs > 12) time.hrs = time.hrs - 12;
-	}
-	else time.ampm = "am";
+	time.mins = t.getMinutes();
+	time.secs = t.getSeconds();
+	time.msecs = t.getMilliseconds();
+	time.formated = cl_format_time(l,time);
 	return time;
 }
 
 function cl_update_time(l) {
-	var time = cl_get_time();
-	l.hiddenLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font face='fixed' size='+"+l.fontSize+"' color='"+l.fgColor1+"'>"+((l.bold)?'<b>':'')+time.hrs+":"+time.mins+":"+time.secs+" "+time.ampm+((l.bold)?'</b>':'')+"</font></td></tr></table>");
+	var time = cl_get_time(l);
+	l.hiddenLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font face='fixed' size='+"+l.fontSize+"' color='"+l.fgColor1+"'>"+((l.bold)?'<b>':'')+time.formated+((l.bold)?'</b>':'')+"</font></td></tr></table>");
 	l.hiddenLayer.document.close();
 	if (l.shadowed) {
-		l.hiddenLayer.shadowLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font face='fixed' size='+"+l.fontSize+"' color='"+l.fgColor2+"'>"+((l.bold)?'<b>':'')+time.hrs+":"+time.mins+":"+time.secs+" "+time.ampm+((l.bold)?'</b>':'')+"</font></td></tr></table>");
+		l.hiddenLayer.shadowLayer.document.write("<table width="+l.document.width+" height="+l.document.height+" border=0><tr><td valign='center' align='center' nowrap><font face='fixed' size='+"+l.fontSize+"' color='"+l.fgColor2+"'>"+((l.bold)?'<b>':'')+time.formated+((l.bold)?'</b>':'')+"</font></td></tr></table>");
 		l.hiddenLayer.shadowLayer.document.close();
 		l.contentLayer.shadowLayer.visibility = 'hidden';
 		l.hiddenLayer.shadowLayer.visibility = 'inherit';
@@ -64,9 +64,18 @@ function cl_update_time(l) {
 		l.contentLayer.shadowLayer = l.hiddenLayer.shadowLayer;
 		l.hiddenLayer.shadowLayer = tmp;
 	}
-	setTimeout(cl_update_time,1000,l);
+	if (l.showSecs) setTimeout(cl_update_time,1000-time.msecs,l);
+	else setTimeout(cl_update_time,(60-time.secs)*1000-time.msecs,l);
 }
 
-function cl_domove(l,x,y) {
-	l.moveToAbsolute(x,y);
+function cl_format_time(l,t) {
+	if (t.mins<10) t.mins = htutil_strpad(t.mins,0,2);
+	if (t.secs<10) t.secs = htutil_strpad(t.secs,0,2);
+	if (t.hrs >= 12 && !l.milTime) {
+		t.ampm = "pm";
+		if (t.hrs > 12) t.hrs = t.hrs - 12;
+	}
+	else t.ampm = "am";
+	var timef = t.hrs+":"+t.mins+((l.showSecs)?":"+t.secs:"")+((l.showAmPm)?(" "+t.ampm):"");
+	return timef;
 }

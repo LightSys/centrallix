@@ -42,7 +42,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.1 2002/08/08 21:57:46 pfinley Exp $
+    $Id: htdrv_clock.c,v 1.2 2002/08/09 19:18:42 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
 
@@ -81,6 +81,9 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     int size = 2;
     int moveable = 0;
     int bold = 0;
+    int showsecs = 1;
+    int showampm = 1;
+    int miltime = 0;
     int x=-1,y=-1,w,h;
     int id;
     char* nptr;
@@ -112,6 +115,17 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
+
+	/** Military Time? **/
+	if (objGetAttrValue(w_obj,"hrtype",POD(&ptr)) == 0 && (int)ptr == 24)
+	    {
+	    miltime = 1;
+	    showampm = 0;
+	    }
+	else if (objGetAttrValue(w_obj,"ampm",POD(&ptr)) == 0 && !strcmp(ptr,"false"))
+	    {
+	    showampm = 0;
+	    }
 
 	/** Get text color **/
 	if (objGetAttrValue(w_obj,"fgcolor1",POD(&ptr)) == 0)
@@ -145,8 +159,13 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	if (objGetAttrValue(w_obj,"size",POD(&ptr)) == 0)
 	    size = (int)ptr;
 
+	/** Movable? **/
 	if (objGetAttrValue(w_obj,"moveable",POD(&ptr)) == 0 && !strcmp(ptr,"true"))
 	    moveable = 1;
+
+	/** Show Seconds **/
+	if (objGetAttrValue(w_obj,"seconds",POD(&ptr)) == 0 && !strcmp(ptr,"false"))
+	    showsecs = 0;
 
 	/** Get name **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
@@ -222,14 +241,15 @@ htclRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    "\n");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = cl_init(%s.layers.cl%dbase, %s.layers.cl%dbase.document.layers.cl%dcon1, %s.layers.cl%dbase.document.layers.cl%dcon2,\"%s\",\"%s\",%d,\"%s\",\"%s\",%d,%d,%d,%d,%d);\n",
+	htrAddScriptInit_va(s, "    %s = cl_init(%s.layers.cl%dbase, %s.layers.cl%dbase.document.layers.cl%dcon1, %s.layers.cl%dbase.document.layers.cl%dcon2,\"%s\",\"%s\",%d,\"%s\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d);\n",
 		nptr, parentname, id,
 		parentname, id, id,
 		parentname, id, id,
 		fieldname, main_bg, shadowed,
 		fgcolor1, fgcolor2,
 		size, moveable, bold,
-		shadowx, shadowy);
+		shadowx, shadowy,
+		showsecs, showampm, miltime);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"cl%dbase\">\n",id);
