@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.8 2003/04/25 04:09:29 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.9 2003/04/25 04:31:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.9  2003/04/25 04:31:22  gbeeley
+    When creating new row with autokey, release the insert semaphore as
+    soon as row has been inserted.
+
     Revision 1.8  2003/04/25 04:09:29  gbeeley
     Adding insert and autokeying support to OSML and to CSV datafile
     driver on a limited basis (in rowidkey mode only, which is the only
@@ -2193,7 +2197,8 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
 	dat_internal_UpdateRowIDPtrCache(node,ri,rowid);
 	nmFree(ri,sizeof(DatRowInfo));
 	node->nRows++;
-	if (!(context->Flags & DAT_F_HOLDINSERTSEM)) syPostSem(node->InsertSem, 1, 0);
+	syPostSem(node->InsertSem, 1, 0);
+	context->Flags &= ~DAT_F_HOLDINSERTSEM;
 
     return 0;
     }
