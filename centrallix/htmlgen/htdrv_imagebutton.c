@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.5 2002/03/20 21:13:12 jorupp Exp $
+    $Id: htdrv_imagebutton.c,v 1.6 2002/04/10 00:36:20 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.6  2002/04/10 00:36:20  jorupp
+     * fixed 'visible' bug in imagebutton
+     * removed some old code in form, and changed the order of some callbacks
+     * code cleanup in the OSRC, added some documentation with the code
+     * OSRC now can scroll to the last record
+     * multiple forms (or tables?) hitting the same osrc now _shouldn't_ be a problem.  Not extensively tested however.
+
     Revision 1.5  2002/03/20 21:13:12  jorupp
      * fixed problem in imagebutton point and click handlers
      * hard-coded some values to get a partially working osrc for the form
@@ -173,7 +180,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Ok, write the style header items. **/
 	snprintf(sbuf,160,"    <STYLE TYPE=\"text/css\">\n");
 	htrAddHeaderItem(s,sbuf);
-	snprintf(sbuf,160,"\t#ib%dpane { POSITION:absolute; VISIBILITY:visible; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	snprintf(sbuf,160,"\t#ib%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 	htrAddHeaderItem(s,sbuf);
 	snprintf(sbuf,160,"    </STYLE>\n");
 	htrAddHeaderItem(s,sbuf);

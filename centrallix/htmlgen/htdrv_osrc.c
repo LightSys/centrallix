@@ -1,3 +1,5 @@
+/* vim: set sw=3: */
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -41,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.14 2002/03/28 05:21:23 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.15 2002/04/10 00:36:20 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.15  2002/04/10 00:36:20  jorupp
+     * fixed 'visible' bug in imagebutton
+     * removed some old code in form, and changed the order of some callbacks
+     * code cleanup in the OSRC, added some documentation with the code
+     * OSRC now can scroll to the last record
+     * multiple forms (or tables?) hitting the same osrc now _shouldn't_ be a problem.  Not extensively tested however.
+
     Revision 1.14  2002/03/28 05:21:23  jorupp
      * form no longer does some redundant status checking
      * cleaned up some unneeded stuff in form
@@ -127,7 +136,9 @@ int htosrcVerify() {
    
    Don't know what this is, but we're keeping it for now - JJP, JDH
 */
-   int htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj) {
+int
+htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
+   {
    int id;
    char name[40];
    char *ptr;
@@ -151,14 +162,14 @@ int htosrcVerify() {
    if (objGetAttrValue(w_obj,"readahead",POD(&readahead)) != 0)
       readahead=replicasize/2;
 
-	/** try to catch mistakes that would probably make Netscape REALLY buggy... **/
-	if(replicasize==1 && readahead==0) readahead=1;
-	if(readahead>replicasize) replicasize=readahead;
-	if(replicasize<1 || readahead<1)
-		{
-		mssError(1,"HTOSRC","You must give positive values for replicasize and readahead");
-		return -1;
-		}
+   /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
+   if(replicasize==1 && readahead==0) readahead=1;
+   if(readahead>replicasize) replicasize=readahead;
+   if(replicasize<1 || readahead<1)
+      {
+      mssError(1,"HTOSRC","You must give positive values for replicasize and readahead");
+      return -1;
+      }
 
 
    /** Write named global **/
@@ -206,6 +217,7 @@ int htosrcVerify() {
       "    this.pendingquery=String(escape(q)).replace(\"/\",\"%2F\",\"g\");\n"
       "    this.pending=true;\n"
       "    var someunsaved=false;\n"
+      /** Check if any children are modified and call IsDiscardReady if they are **/
       "    for(var i in this.children)\n"
       "         {\n"
       "         if(this.children[i].IsUnsaved)\n"
@@ -221,10 +233,12 @@ int htosrcVerify() {
       "         }\n"
       "    //if someunsaved is false, there were no unsaved forms, so no callbacks\n"
       "    //  so, we'll just fake one using the first form....\n"
+      "    if(someunsaved) return 0;\n"
       "    this.QueryContinue(this.children[0]);\n"
       "    }\n",0);
 
-      
+#if 0
+   /** JDR - I don't think this function is used anywhere.... **/
    htrAddScriptFunction(s, "osrc_store_replica", "\n"
       "function osrc_store_replica()\n"
       "    {\n"
@@ -254,7 +268,8 @@ int htosrcVerify() {
       "        }\n" 
       "    //formobj.DataAvailable();\n"
       "    }\n",0);
-   
+#endif   
+
    htrAddScriptFunction(s, "osrc_action_delete", "\n"
       "function osrc_action_delete()\n"
       "    {\n"
@@ -341,15 +356,21 @@ int htosrcVerify() {
       "             {\n"
       "             this.children[i]._osrc_ready=false;\n"
       "             }\n"
+
+      "        this.CurrentRecord=0;\n" /* the current record */
+      "        this.OSMLRecord=0;\n" /* the last record we got from the OSML */
+
+      /** Clear replica **/
       "        if(this.replica) delete this.replica;\n"
-      "        this.CurrentRecord=this.LastRecord=this.FirstRecord=0;\n"
-      "        this.OSMLRecord=0;\n"
       "        this.replica=new Array();\n"
+      "        this.LastRecord=0;\n"
+      "        this.FirstRecord=0;\n"
+
       "        this.OpenSession();\n"
       "        }\n"
       "    else\n"
       "        { // movement\n"
-      "        this.MoveToRecord(this.RecordToMoveTo);\n"
+      "        this.MoveToRecordCB(this.RecordToMoveTo);\n"
       "        this.RecordToMoveTo=null;\n"
       "        }\n"
       "    this.pending=false;\n"
@@ -384,7 +405,7 @@ int htosrcVerify() {
       "    {\n"
       "    //Open Session\n"
       "    //alert('open');\n"
-      "    this.onLoad = osrc_open_query;\n"
+      "    this.onload = osrc_open_query;\n"
       "    this.src = '/?ls__mode=osml&ls__req=opensession'\n"
       "    }\n",0);
 
@@ -394,7 +415,7 @@ int htosrcVerify() {
       "    //Open Query\n"
       "    //alert('sid' + this.document.links[0].target);\n"
       "    this.sid=this.document.links[0].target;\n"
-      "    this.onLoad = osrc_get_qid;\n"
+      "    this.onload = osrc_get_qid;\n"
       "    this.src=\"/?ls__mode=osml&ls__req=multiquery&ls__sid=\"+this.sid+\"&ls__sql=\" + this.query;\n"
       "    //this.src = '/escape.html';\n"
       "    }\n",0);
@@ -407,7 +428,7 @@ int htosrcVerify() {
       "    for(var i in this.children)\n"
       "        this.children[i].DataAvailable();\n"
       /** Don't actually load the data...just let children know that the data is available **/
-      "    //this.onLoad = osrc_fetch_next;\n"
+      "    //this.onload = osrc_fetch_next;\n"
       "    //this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
       "    }\n",0);
 
@@ -419,13 +440,16 @@ int htosrcVerify() {
       "    var lc=lnk.length;\n"
       "    if(lc < 2)\n"
       "        {\n"	// query over
-      "        //alert('query over '+this.LastRecord+' '+this.CurrentRecord);\n"
-      "        \n"
       "        //this.formobj.OperationComplete();\n" /* don't need this...I think....*/
       "        this.CurrentRecord=this.LastRecord;\n" /* return the last record as the current one */
       "        this.GiveAllCurrentRecord();\n"
-      "        //this.onLoad=osrc_close_query;\n"	//don't need to trap this...
-      "        //this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "        this.pending=false;\n"
+      "        if(this.qid)\n"
+      "            {\n"
+      "            this.onload=osrc_close_query;\n"
+      "            this.src=\"/?ls__mode=osml&ls__req=closequery&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid;\n"
+      "            }\n"
+      "        this.pending=false;\n"
       "        return 0;\n"
       "        }\n"
       "    var row='';\n"
@@ -435,7 +459,7 @@ int htosrcVerify() {
       "        if(row!=lnk[i].target)\n"
       "            {\n"	/** This is a different (or 1st) row of the result set **/
       "            row=lnk[i].target;\n"
-      "            this.OSMLRecord++;\n"
+      "            this.OSMLRecord++;\n" /* this holds the last record we got, so now will hold current record number */
       "            this.replica[this.OSMLRecord]=new Array();\n"
       "            this.replica[this.OSMLRecord].oid=row;\n"
       "            if(this.LastRecord<this.OSMLRecord)\n"
@@ -466,13 +490,14 @@ int htosrcVerify() {
       "        this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;\n"
       "        }\n"
       "    if(this.LastRecord<this.CurrentRecord)\n"
-      "        {\n"
-      "        this.onLoad = osrc_fetch_next;\n"
+      "        {\n" /* We're going farther down this... */
+      "        this.onload = osrc_fetch_next;\n"
       "        this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
       "        }\n"
       "    else\n"
-      "        {\n"
+      "        {\n" /* we've got the one we need */
       "        this.GiveAllCurrentRecord();\n"
+      "        this.pending=false;\n"
       "        }\n"
       "    }\n",0);
       
@@ -480,16 +505,17 @@ int htosrcVerify() {
       "function osrc_close_query()\n"
       "    {\n"
       "    //Close Query\n"
-      "    //alert('Query closed');\n"
-      "    this.onLoad = osrc_close_session;\n"
-      "    this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid;\n"
+      "    this.qid=null;\n"
+      "    this.onload=null;\n"
+      "    //this.onload = osrc_close_session;\n"
+      "    //this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid;\n"
       "    }\n",0);
  
    htrAddScriptFunction(s, "osrc_close_object", "\n"
       "function osrc_close_object()\n"
       "    {\n"
       "    //Close Object\n"
-      "    this.onLoad = osrc_close_session;\n"
+      "    this.onload = osrc_close_session;\n"
       "    this.src = '/?ls__mode=osml&ls__req=close&ls__oid=' + this.oid;\n"
       "    }\n",0);
  
@@ -497,7 +523,7 @@ int htosrcVerify() {
       "function osrc_close_session()\n"
       "    {\n"
       "    //Close Session\n"
-      "    this.onLoad = osrc_store_replica;\n"
+      "    this.onload = null;\n"
       "    this.src = '/?ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid;\n"
       "    this.qid=null;\n"
       "    this.sid=null;\n"
@@ -508,9 +534,6 @@ int htosrcVerify() {
       "function osrc_move_first(formobj)\n"
       "    {\n"
       "    this.MoveToRecord(1);\n"
-      "    //formobj.ObjectAvailable(this.replica[this.currentRecord]);\n"
-      "    //formobj.ObjectAvailable(data.attributes[this.num][1]);\n"
-      "    //formobj.ObjectAvailable(data.attributes[this.num][2]);\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_give_all_current_record", "\n"
@@ -523,9 +546,15 @@ int htosrcVerify() {
    htrAddScriptFunction(s, "osrc_move_to_record", "\n"
       "function osrc_move_to_record(recnum)\n"
       "    {\n"
+      "    //confirm(recnum);\n"
       "    if(recnum<1)\n"
       "        {\n"
       "        alert(\"Can't move past beginning.\");\n"
+      "        return 0;\n"
+      "        }\n"
+      "    if(this.pending)\n"
+      "        {\n"
+      "        //alert('you got ahead');\n"
       "        return 0;\n"
       "        }\n"
       "    this.pending=true;\n"
@@ -535,6 +564,7 @@ int htosrcVerify() {
       "         {\n"
       "         if(this.children[i].IsUnsaved)\n"
       "             {\n"
+      "             //alert('child: '+i+' : '+this.children[i].IsUnsaved+' isn\\'t saved...IsDiscardReady');\n"
       "             this.children[i]._osrc_ready=false;\n"
       "             this.children[i].IsDiscardReady();\n"
       "             someunsaved=true;\n"
@@ -547,11 +577,34 @@ int htosrcVerify() {
       "    //if someunsaved is false, there were no unsaved forms, so no callbacks\n"
       "    //  we can just continue\n"
       "    if(someunsaved) return 0;\n"
-      "    this.pending=false;\n"
+      "    this.MoveToRecordCB(recnum);\n"
+      "    }\n",0);
+
+   htrAddScriptFunction(s, "osrc_move_to_record_cb", "\n"
+      "function osrc_move_to_record_cb(recnum)\n"
+      "    {\n"
+      "    //confirm(recnum);\n"
+      "    if(recnum<1)\n"
+      "        {\n"
+      "        alert(\"Can't move past beginning.\");\n"
+      "        return 0;\n"
+      "        }\n"
+      "    this.RecordToMoveTo=recnum;\n" 
+      "    for(var i in this.children)\n"
+      "         {\n"
+      "         if(this.children[i].IsUnsaved)\n"
+      "             {\n"
+      "             //confirm('child: '+i+' : '+this.children[i].IsUnsaved+' isn\\'t saved...');\n"
+      "             return 0;\n"
+      "             }\n"
+      "         }\n"
+/* If we're here, we're ready to go */
       "    this.CurrentRecord=recnum;\n"
+      "    //alert(this.CurrentRecord);\n"
       "    if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)\n"
       "        {\n"
       "        this.GiveAllCurrentRecord();\n"
+      "        this.pending=false;\n"
       "        return 1;\n"
       "        }\n"
       "    else\n"
@@ -572,8 +625,16 @@ int htosrcVerify() {
       "            }\n"
       "        else\n"
       "            {\n" /* data is farther on, act normal */
-      "            this.onload=osrc_fetch_next;\n"
-      "            this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
+      "            if(this.qid)\n"
+      "                {\n"
+      "                this.onload=osrc_fetch_next;\n"
+      "                if(this.CurrentRecord == Number.MAX_VALUE)\n"
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0\";\n" /* rowcount defaults to a really high number if not set */
+      "                else\n"
+      "                    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=\"+this.readahead;\n"
+      "                }\n"
+      "            else\n"
+      "                this.CurrentRecord=this.LastRecord;\n"
       "            return 0;\n"
       "            }\n"
       "        }\n"
@@ -612,7 +673,8 @@ int htosrcVerify() {
    htrAddScriptFunction(s, "osrc_move_last", "\n"
       "function osrc_move_last(formobj)\n"
       "    {\n"
-      "    alert(\"do YOU know where the end is? I sure don't.\");\n"
+      "    this.MoveToRecord(Number.MAX_VALUE);\n" /* FIXME */
+      "    //alert(\"do YOU know where the end is? I sure don't.\");\n"
       "    }\n",0);
 
 
@@ -624,6 +686,7 @@ int htosrcVerify() {
       "    loader.replicasize=rs;\n"
       "    loader.GiveAllCurrentRecord=osrc_give_all_current_record;\n"
       "    loader.MoveToRecord=osrc_move_to_record;\n"
+      "    loader.MoveToRecordCB=osrc_move_to_record_cb;\n"
       "    loader.children = new Array();\n"
       "    loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
@@ -636,8 +699,7 @@ int htosrcVerify() {
       "    loader.CloseQuery=osrc_close_query;\n"
       "    loader.CloseObject=osrc_close_object;\n"
       "    loader.CloseSession=osrc_close_session;\n"
-      "    loader.StoreReplica=osrc_store_replica;\n"
-            
+      /**"    loader.StoreReplica=osrc_store_replica;\n"**/
       "    loader.QueryContinue = osrc_cb_query_continue;\n"
       "    loader.QueryCancel = osrc_cb_query_cancel;\n"
       "    loader.RequestObject = osrc_cb_request_object;\n"

@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.23  2002/04/10 00:36:20  jorupp
+     * fixed 'visible' bug in imagebutton
+     * removed some old code in form, and changed the order of some callbacks
+     * code cleanup in the OSRC, added some documentation with the code
+     * OSRC now can scroll to the last record
+     * multiple forms (or tables?) hitting the same osrc now _shouldn't_ be a problem.  Not extensively tested however.
+
     Revision 1.22  2002/04/05 06:39:12  jorupp
      * Added ReadOnly parameter to form
      * If ReadOnly is not present, updates will now work properly!
@@ -345,9 +352,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.QueryContinue(this);'));\n"
 		"    this.cb['_3bConfirmCancel'].add(this,new Function('this.osrc.QueryCancel(this);'));\n"
 		"    this.show3bconfirm();\n"
-		"    \n"
-		"    \n"
 		"    return 0;\n"
+		"    \n"
+		"    \n"
 		"    if(confirm(\"OK to save or discard changes, CANCEL to stay here\"))\n"
 		"        {\n"
 		"        if(confirm(\"OK to save changes, CANCEL to discard them.\"))\n"
@@ -629,16 +636,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    this.osrc.ActionFirst();\n"
 		"    return 0;\n"
-		"    if(this.IsUnsaved)\n"
-		"        {\n"
-		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionFirst(this);'))\n"
-		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionFirst(this);\"));'))\n"
-		"        this.show3bconfirm();\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        this.osrc.ActionFirst(this);\n"
-		"        }\n"
 		"    }\n", 0);
 
 	/** tell osrc to go to last record **/
@@ -647,16 +644,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    this.osrc.ActionLast();\n"
 		"    return 0;\n"
-		"    if(this.IsUnsaved)\n"
-		"        {\n"
-		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionLast(this);'))\n"
-		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionLast(this);\"));'))\n"
-		"        this.show3bconfirm();\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        this.osrc.ActionLast(this);\n"
-		"        }\n"
 		"    }\n", 0);
 
 	/** Save changed data, move the osrc **/
@@ -665,16 +652,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    this.osrc.ActionNext();\n"
 		"    return 0;\n"
-		"    if(this.IsUnsaved)\n"
-		"        {\n"
-		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionNext(this);'))\n"
-		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionNext(this);\"));'))\n"
-		"        this.show3bconfirm();\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        this.osrc.ActionNext(this);\n"
-		"        }\n"
 		"    }\n", 0);
 
 	/** Save changed data, move the osrc **/
@@ -683,16 +660,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    this.osrc.ActionPrev();\n"
 		"    return 0;\n"
-		"    if(this.IsUnsaved)\n"
-		"        {\n"
-		"        this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.ActionPrev(this);'))\n"
-		"        this.cb['_3bConfirmSave'].add(this,new Function('this.osrc.ActionSave();this.cb[\"OperationCompleteSuccess\"].add(this,new Function(\"this.osrc.ActionPrev(this);\"));'))\n"
-		"        this.show3bconfirm();\n"
-		"        }\n"
-		"    else\n"
-		"        {\n"
-		"        this.osrc.ActionPrev(this);\n"
-		"        }\n"
 		"    }\n", 0);
 
 	/** Helper function -- called from other mode change functions **/
@@ -891,9 +858,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    	 return 0;\n"
 		"        }\n"
 		"    this.cb['OperationCompleteSuccess'].add(this,\n"
-		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableAll();this.cb['OperationCompleteFail'].clear();\"));\n"
+		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableAll();this.cb['OperationCompleteFail'].clear();\"),null,-100);\n"
 		"     this.cb['OperationCompleteFail'].add(this,\n"
-		"           new Function(\"this.Pending=false;this.EnableAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();\"));\n"
+		"           new Function(\"this.Pending=false;this.EnableAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();\"),null,-100);\n"
 	    
 		/** build the object to pass to objectsource **/
 		"    var dataobj=new Object();\n"
@@ -972,6 +939,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    for(var i in this.arr)\n"
 		"        {\n"
 		"        var j=this.arr[i];\n"
+		"        //if(j && confirm(j))\n"
 		"        if(j)\n"
 		"            if(j[3])\n"
 		"                j[2].apply(j[1],j[3]);\n"
