@@ -44,8 +44,7 @@ AC_DEFUN(CHECK_PROFILE,
     CFLAGS="$temp"
     ]
 )
-	    
-	    
+
 AC_DEFUN(CHECK_MTASK_DEBUG,
     [
 	AC_MSG_CHECKING(if mTask debugging is desired)
@@ -65,3 +64,54 @@ AC_DEFUN(CHECK_MTASK_DEBUG,
     ]
 )
 
+AC_DEFUN(CHECK_HARDENING,
+    [
+	AC_MSG_CHECKING(if application-level hardening desired)
+	AC_ARG_ENABLE(hardening,
+	    AC_HELP_STRING([--enable-hardening],
+		[enable support for application-level security hardening; large performance hit]
+	    ),
+	    WITH_HARDENING="$enableval",
+	    WITH_HARDENING="no"
+	)
+	if test "$WITH_HARDENING" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+	    DEFS="$DEFS -DCXLIB_SECH"
+	    AC_DEFINE(CXLIB_SECURITY_HARDENING,1,[defined to 1 if -DCXLIB_SECH is being passed to the compiler])
+	fi
+    ]
+)
+
+dnl check if optimization should be done
+dnl this check must follow the hardening check in configure.ac.
+dnl The USING_blahblah defines are to force a recompile if those options
+dnl are changed.  They are not otherwise used in practice.
+AC_DEFUN(CHECK_OPTIMIZE,
+    [
+    AC_MSG_CHECKING(if this build should be optimized)
+    AC_ARG_ENABLE(optimization,
+	AC_HELP_STRING([--enable-optimization],
+	    [turn on build optimization; incompatible with the --enable-hardening option]
+	),
+	WITH_OPTIMIZATION="$enableval",
+	WITH_OPTIMIZATION="no"
+    )
+    if test "$WITH_OPTIMIZATION" = "no"; then
+	AC_MSG_RESULT(no)
+	DEFS="$DEFS -DDBMAGIC"
+	AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless optimization is in use])
+    else
+	if test "$WITH_HARDENING" = "yes"; then
+	    AC_MSG_ERROR([Optimization and security hardening are mutually exclusive; please at most specify one or the other but not both])
+	else
+	    AC_MSG_RESULT(yes)
+	    CFLAGS="$CFLAGS -O2"
+	    AC_DEFINE(USING_OPTIMIZATION,1,[defined to 1 if -On is being passed to the compiler])
+	fi
+    fi
+    ]
+)
+	    
+	    

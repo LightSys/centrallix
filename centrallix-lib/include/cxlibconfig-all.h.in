@@ -1,5 +1,8 @@
 /* include/cxlibconfig-all.h.in.  Generated from configure.ac by autoheader.  */
 
+/* defined to 1 if -DCXLIB_SECH is being passed to the compiler */
+#undef CXLIB_SECURITY_HARDENING
+
 /* Define to 1 if you have the `endservent' function. */
 #undef HAVE_ENDSERVENT
 
@@ -104,6 +107,13 @@
 
 /* Define for profiling */
 #undef USE_PROFILE
+
+/* defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless
+   optimization is in use */
+#undef USING_DBMAGIC
+
+/* defined to 1 if -On is being passed to the compiler */
+#undef USING_OPTIMIZATION
 
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const

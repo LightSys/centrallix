@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -26,10 +29,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhash.c,v 1.3 2002/08/03 02:35:33 gbeeley Exp $
+    $Id: xhash.c,v 1.4 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xhash.c,v $
 
     $Log: xhash.c,v $
+    Revision 1.4  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.3  2002/08/03 02:35:33  gbeeley
     Attempt to improve the hash function's speed and distribution
     characteristics by using a lookup table of random primes instead

@@ -26,10 +26,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.6 2003/03/04 06:28:22 jorupp Exp $
+    $Id: magic.h,v 1.7 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.7  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.6  2003/03/04 06:28:22  jorupp
      * added buffer overflow checking to newmalloc
     	-- define BUFFER_OVERFLOW_CHECKING in newmalloc.c to enable
@@ -66,23 +75,23 @@
 
 #define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y)),(*((int*)(8)) = *((int*)(0)))))
 #define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(8)) = *((int*)(0)))))
-#define ISMAGIC(x,y) (((pMagicHdr)(x))->Magic == (y))
-#define ISNTMAGIC(x,y) (((pMagicHdr)(x))->Magic != (y))
-#define SETMAGIC(x,y) (((pMagicHdr)(x))->Magic = (y))
 
 #else	/* defined DBMAGIC */
 
 #define ASSERTMAGIC(x,y) (y)
 #define ASSERTNOTMAGIC(x,y) (y)
-#define ISMAGIC(x,y) (1)
-#define ISNTMAGIC(x,y) (1)
-#define SETMAGIC(x,y) (y)
 
 #endif	/* defined DBMAGIC */
 
+#define ISMAGIC(x,y) (((pMagicHdr)(x))->Magic == (y))
+#define ISNTMAGIC(x,y) (((pMagicHdr)(x))->Magic != (y))
+#define SETMAGIC(x,y) (((pMagicHdr)(x))->Magic = (y))
+
+typedef int Magic_t;
+
 typedef struct
     {
-    int	Magic;
+    Magic_t	Magic;
     }
     MagicHdr, *pMagicHdr;
 
@@ -107,6 +116,8 @@ typedef struct
 
 #define MGK_MEMSTART	0x12340809	/* newmalloc.c::MemStruct */
 #define MGK_MEMEND	0x12340908	/* newmalloc.c::MemStruct */
+
+#define MGK_XSTRING	0x12340Ab8	/* xstring.h::XString */
 
 
 #endif /* not defined _MAGIC_H */

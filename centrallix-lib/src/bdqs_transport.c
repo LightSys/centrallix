@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -30,10 +33,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: bdqs_transport.c,v 1.1 2002/03/23 06:25:09 gbeeley Exp $
+    $Id: bdqs_transport.c,v 1.2 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/bdqs_transport.c,v $
 
     $Log: bdqs_transport.c,v $
+    Revision 1.2  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.1  2002/03/23 06:25:09  gbeeley
     Updated MSS to have a larger error string buffer, as a lot of errors
     were getting chopped off.  Added BDQS protocol files with some very

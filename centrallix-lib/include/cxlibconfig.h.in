@@ -90,5 +90,15 @@
 /* Define for profiling */
 #undef USE_PROFILE
 
+/* defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless
+   optimization is in use */
+#undef USING_DBMAGIC
+
+/* defined to 1 if -On is being passed to the compiler */
+#undef USING_OPTIMIZATION
+
+/* defined to 1 if -DCXLIB_SECH is being passed to the compiler */
+#undef CXLIB_SECURITY_HARDENING
+
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const

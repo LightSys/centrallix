@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -30,10 +33,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhandle.c,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
+    $Id: xhandle.c,v 1.3 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xhandle.c,v $
 
     $Log: xhandle.c,v $
+    Revision 1.3  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.2  2002/05/03 03:46:29  gbeeley
     Modifications to xhandle to support clearing the handle list.  Added
     a param to xhClear to provide support for xhnClearHandles.  Added a

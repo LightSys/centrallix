@@ -1,6 +1,9 @@
 #ifndef _XSTRING_H
 #define _XSTRING_H
 
+#include "cxsec.h"
+#include "magic.h"
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -20,10 +23,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.7 2002/11/22 20:56:57 gbeeley Exp $
+    $Id: xstring.h,v 1.8 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.8  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.7  2002/11/22 20:56:57  gbeeley
     Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
     basically allow printf() style functionality on top of any xxxWrite()
@@ -66,10 +78,13 @@
 
 typedef struct _XS
     {
+    Magic_t	Magic;
+    CXSEC_DS_BEGIN;
     char	InitBuf[XS_BLK_SIZ];
     char*	String;
     int		Length;
     int		AllocLen;
+    CXSEC_DS_END;
     }
     XString, *pXString;
 

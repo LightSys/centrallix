@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.11 2003/03/30 22:41:20 jorupp Exp $
+## $Id: Makefile.in,v 1.12 2003/04/03 04:32:37 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -50,13 +50,13 @@ LIBS = @LIBS@
 ## stop working!!!
 ##
 PROFILE=@PROFILE@
-CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
-MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DDBMAGIC -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
+CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
+MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g -O0
 
-XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o
+XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
 
-XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.o
+XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.lo cxsec.lo
 DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
 
 INCLUDEFILES:=$(wildcard include/*.h)
@@ -69,12 +69,26 @@ INCLUDEFILES:=$(patsubst include/cxlibconfig-all.h,,$(INCLUDEFILES))
 FINAL_TARGETS = @FINAL_TARGETS@
 all:	${FINAL_TARGETS}
 
+## By default highly optimize cxsec; it is the optimization of
+## things that use cxsec that will degrade its usefulness a lot,
+## but it is good for cxsec itself to be optimized.
+src/cxsec.o: src/cxsec.c
+	$(CC) $(CFLAGS) -c $< -o $@ -O4
+
+src/cxsec.lo: src/cxsec.c
+	$(CC) $(CFLAGS) -shared -fPIC -c $< -o $@ -O4
+
+## MTask uses its own cflags because there are things we can't
+## do to mtask or it will malfunction.
 src/mtask.o: src/mtask.c
 	$(CC) $(MTCFLAGS) -c $< -o $@
 
 src/mtask.lo: src/mtask.c
 	$(CC) $(MTCFLAGS) -shared -fPIC -c $< -o $@
 
+
+## Normal rules for generating normal .o as well as relocatable
+## objects (.lo) for .so libraries.
 .c.lo:	$<
 	$(CC) $(CFLAGS) -shared -fPIC -c $< -o $@
 
@@ -91,9 +105,9 @@ libCentrallix.a:	$(STATICFILES)
 
 install: all
 	mkdir -p $(includedir)
-	$(INSTALL) $(INCLUDEFILES) $(includedir)
+	$(INSTALL) -p $(INCLUDEFILES) $(includedir)
 	mkdir -p $(libdir)
-	$(INSTALL) ${FINAL_TARGETS} $(libdir)
+	$(INSTALL) -p ${FINAL_TARGETS} $(libdir)
 	@echo ""
 	@echo "***************************************************************"
 	@echo "Libraries have been installed in $(libdir)"
@@ -130,6 +144,7 @@ depend: .depend
 
 .depend: */*.[ch]
 	@echo "Rebuilding dependencies..."
-	@makedepend -I include -f - src/*.c >.depend 2>/dev/null
+	@makedepend @DEFS@ -o.o -I include -f - src/*.c >.depend 2>/dev/null
+	@makedepend @DEFS@ -o.lo -I include -f - src/*.c >>.depend 2>/dev/null
 
 include .depend

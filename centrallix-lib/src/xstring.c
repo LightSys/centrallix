@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -28,10 +31,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.9 2002/11/22 20:56:59 gbeeley Exp $
+    $Id: xstring.c,v 1.10 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.10  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.9  2002/11/22 20:56:59  gbeeley
     Added xsGenPrintf(), fdPrintf(), and supporting logic.  These routines
     basically allow printf() style functionality on top of any xxxWrite()
@@ -89,6 +101,8 @@ xsInit(pXString this)
 	this->String[0] = '\0';
 	this->AllocLen = XS_BLK_SIZ;
 	this->Length = 0;
+	SETMAGIC(this, MGK_XSTRING);
+	CXSEC_INIT(*this);
 
     return 0;
     }
@@ -100,6 +114,9 @@ xsInit(pXString this)
 int 
 xsDeInit(pXString this)
     {
+
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
 
     	/** If AllocLen > XS_BLK_SIZ, we allocated the memory. **/
 	if (this->AllocLen > XS_BLK_SIZ) nmSysFree(this->String);
@@ -120,6 +137,9 @@ xsCheckAlloc(pXString this, int addl_needed)
     int	new_cnt = 0;
     char* ptr;
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
     	/** See if more memory is needed. **/
 	if (addl_needed > 0 && this->AllocLen < this->Length + addl_needed + 1)
 	    {
@@ -130,16 +150,20 @@ xsCheckAlloc(pXString this, int addl_needed)
 	        {
 		ptr = (char*)nmSysMalloc(new_cnt);
 		if (!ptr) return -1;
+		memcpy(ptr,this->InitBuf,XS_BLK_SIZ);
+		CXSEC_VERIFY(*this);
 		this->String = ptr;
-		memcpy(this->String,this->InitBuf,XS_BLK_SIZ);
 		this->AllocLen = new_cnt;
+		CXSEC_UPDATE(*this);
 		}
 	    else
 	        {
 		ptr = (char*)nmSysRealloc(this->String, new_cnt);
 		if (!ptr) return -1;
+		CXSEC_VERIFY(*this);
 		this->String = ptr;
 		this->AllocLen = new_cnt;
+		CXSEC_UPDATE(*this);
 		}
 	    }
 
@@ -155,6 +179,9 @@ int
 xsConcatenate(pXString this, char* text, int len)
     {
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
     	/** Determine length. **/
 	if (len == -1) len = strlen(text);
 
@@ -162,9 +189,11 @@ xsConcatenate(pXString this, char* text, int len)
 	if (xsCheckAlloc(this,len) < 0) return -1;
 
 	/** Copy to end of string. **/
+	CXSEC_VERIFY(*this);
 	memcpy(this->String + this->Length, text, len);
 	this->Length += len;
 	this->String[this->Length] = '\0';
+	CXSEC_UPDATE(*this);
 
     return 0;
     }
@@ -178,8 +207,12 @@ int
 xsCopy(pXString this, char* text, int len)
     {
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
 	/** Reset length to 0 and concatenate. **/
 	this->Length = 0;
+	CXSEC_UPDATE(*this);
 	if (xsConcatenate(this,text,len) < 0) return -1;
 
     return 0;
@@ -193,6 +226,8 @@ xsCopy(pXString this, char* text, int len)
 char* 
 xsStringEnd(pXString this)
     {
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
     return this->String + this->Length;
     }
 
@@ -211,6 +246,9 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
     char* nptr;
     int found_field_width=0;
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
 	/** Go through the format string one snippet at a time **/
 	cur_pos = fmt;
 	ptr = strchr(cur_pos, '%');
@@ -225,7 +263,9 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 	        {
 		case '\0':
 		    xsCheckAlloc(this,1);
+		    CXSEC_VERIFY(*this);
 		    this->String[this->Length++] = '%';
+		    CXSEC_UPDATE(*this);
 		    cur_pos = ptr+1;
 		    break;
 		case '*':
@@ -265,7 +305,9 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		    continue;
 		case '%':
 		    xsCheckAlloc(this,1);
+		    CXSEC_VERIFY(*this);
 		    this->String[this->Length++] = '%';
+		    CXSEC_UPDATE(*this);
 		    cur_pos = ptr+2;
 		    break;
 		case 's':
@@ -282,8 +324,10 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		    if (field_width > 0 && field_width > n)
 			{
 			xsCheckAlloc(this,field_width-n);
+			CXSEC_VERIFY(*this);
 			memset(this->String+this->Length,' ',field_width-n);
 			this->Length += (field_width-n);
+			CXSEC_UPDATE(*this);
 			}
 
 		    /** Add the string.  Need to make it less than given length? **/
@@ -294,9 +338,11 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		    /** Add trailing blanks? **/
 		    if (field_width < 0 && field_width != -999 && (-field_width) > n)
 			{
+			CXSEC_VERIFY(*this);
 			xsCheckAlloc(this,(-field_width)-n);
 			memset(this->String+this->Length,' ',(-field_width)-n);
 			this->Length += ((-field_width)-n);
+			CXSEC_UPDATE(*this);
 			}
 		    cur_pos = ptr+2;
 		    found_field_width=0;
@@ -329,7 +375,9 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		}
 	    }
 	if (*cur_pos) xsConcatenate(this, cur_pos, -1);
+	CXSEC_VERIFY(*this);
 	this->String[this->Length] = '\0';
+	CXSEC_UPDATE(*this);
 
     return 0;
     }
@@ -343,6 +391,9 @@ int
 xsConcatPrintf(pXString this, char* fmt, ...)
     {
     va_list vl;
+
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
 
 	va_start(vl, fmt);
 	xs_internal_Printf(this, fmt, vl);
@@ -361,8 +412,12 @@ xsPrintf(pXString this, char* fmt, ...)
     {
     va_list vl;
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
 	va_start(vl, fmt);
 	this->Length = 0;
+	CXSEC_UPDATE(*this);
 	xs_internal_Printf(this, fmt, vl);
 	va_end(vl);
 
@@ -381,6 +436,9 @@ int
 xsWrite(pXString this, char* buf, int len, int offset, int flags)
     {
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
 	/** If offset not specified, just a simple concat. **/
 	if (!(flags & XS_U_SEEK))
 	    {
@@ -398,6 +456,7 @@ xsWrite(pXString this, char* buf, int len, int offset, int flags)
 	    
 	    /** Copy the data to the appropriate string position **/
 	    memcpy(this->String + offset, buf, len);
+	    CXSEC_UPDATE(*this);
 	    }
 
     return len;
@@ -412,6 +471,9 @@ xsRTrim(pXString this)
     {
     int i;
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
 	for (i=this->Length-1; i >= 0 && 
 		   (this->String[i] == '\r' ||
 		    this->String[i] == '\n' ||
@@ -419,6 +481,7 @@ xsRTrim(pXString this)
 		    this->String[i] == ' '); i--);
 	this->String[i+1] = '\0';
 	this->Length = i+1;
+	CXSEC_UPDATE(*this);
 
     return 0;
     }
@@ -431,6 +494,9 @@ xsLTrim(pXString this)
     {
     int i;
 
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
 	for (i=0; i < this->Length && 
 		   (this->String[i] == '\r' ||
 		    this->String[i] == '\n' ||
@@ -439,6 +505,7 @@ xsLTrim(pXString this)
 	memmove(this->String, this->String+i, this->Length-i);
 	this->Length -= i;
 	this->String[this->Length] = '\0';
+	CXSEC_UPDATE(*this);
 
     return 0;
     }
@@ -448,6 +515,9 @@ xsLTrim(pXString this)
 int
 xsTrim(pXString this)
     {
+
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
 
 	xsLTrim(this);
 	xsRTrim(this);
@@ -461,6 +531,8 @@ xsTrim(pXString this)
 int
 xsFind(pXString this,char* find,int findlen, int offset)
     {
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
     if(findlen==-1) findlen=strlen(find);
     for(;offset<this->Length;offset++)
 	{
@@ -485,6 +557,8 @@ xsFind(pXString this,char* find,int findlen, int offset)
 int
 xsFindRev(pXString this,char* find,int findlen, int offset)
     {
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
     if(findlen==-1) findlen=strlen(find);
     offset=this->Length-offset-1;
     for(;offset>=0;offset--)
@@ -510,6 +584,8 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
 int
 xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen)
     {
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
     if(findlen==-1) findlen=strlen(find);
     if(replen==-1) replen=strlen(rep);
     offset=xsFind(this,find,findlen,offset);
@@ -532,6 +608,7 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
 	this->Length+=replen-findlen;
 	}
     this->String[this->Length] = '\0';
+    CXSEC_UPDATE(*this);
     return offset;
     }
 
@@ -540,11 +617,14 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
 int
 xsInsertAfter(pXString this, char* ins, int inslen, int offset)
     {
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
     if(inslen==-1) inslen=strlen(ins);
     if(xsCheckAlloc(this,inslen)==-1) return -1;
     memmove(this->String+offset+inslen,this->String+offset,this->Length-offset+1);
     memcpy(this->String+offset,ins,inslen);
     this->Length+=inslen;
+    CXSEC_UPDATE(*this);
     return offset+inslen;
     }
 

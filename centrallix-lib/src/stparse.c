@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -30,10 +33,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.3 2002/06/20 15:57:05 gbeeley Exp $
+    $Id: stparse.c,v 1.4 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.4  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.3  2002/06/20 15:57:05  gbeeley
     Fixed some compiler warnings.  Repaired improper buffer handling in
     mtlexer's mlxReadLine() function.

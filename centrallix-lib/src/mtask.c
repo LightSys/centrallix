@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -47,10 +50,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.20 2003/03/29 08:32:47 jorupp Exp $
+    $Id: mtask.c,v 1.21 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.21  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.20  2003/03/29 08:32:47  jorupp
      * fixed a bug regarding possibly not delaying long enough in a select() call
      * redid some of the actual values for debugging -- the bit groups make a bit more sense now
@@ -363,7 +375,7 @@ pEventReq
 evRemoveIdx(int idx)
     {
     pEventReq event;
-    int i;
+    register int i;
 
     	event = MTASK.EventWaitTable[idx];
 	MTASK.nEvents--;
@@ -384,7 +396,7 @@ evRemoveIdx(int idx)
 int
 evRemove(pEventReq event)
     {
-    int i, j, k = -1;
+    register int i, j, k = -1;
 
     	for(i=0;i<MTASK.nEvents;i++) if (MTASK.EventWaitTable[i] == event)
 	    {
@@ -513,7 +525,7 @@ mtFdMax(int cur_max, int new_fd)
 pThread
 mtInitialize(int flags, void (*start_fn)())
     {
-    int i;
+    register int i;
     gid_t grouplist[1];
 
     	/** Initialize the thread table. **/
@@ -669,7 +681,8 @@ mtSched()
     fd_set writefds;
     fd_set exceptfds;
     struct timeval tmout;
-    int cnt,i,rval;
+    register int cnt,i;
+    int rval;
     int n_runnable, lowest_cntdn, highest_cntdn, lowest_runnable;
     int n_timerblock;
     pThread lowest_run_thr, locked_thr = NULL;
@@ -1194,7 +1207,7 @@ thYield()
 int
 thExit()
     {
-    int i;
+    register int i;
 
 	dbg_write(0,"E",1);
 
@@ -1245,7 +1258,7 @@ thExit()
 int
 thKill(pThread thr)
     {
-    int i;
+    register int i;
 
     	/** Param check **/
 	if (!thr) thr = MTASK.CurrentThread;
@@ -1376,7 +1389,8 @@ thWait(pMTObject obj, int obj_type, int event_type, int arg_count)
 int
 thMultiWait(int event_cnt, pEventReq event_req[])
     {
-    int i,code = 0;
+    register int i;
+    int code = 0;
     int sched_called = 0;
 
     	/** Check the thing first to see if we need to block **/
@@ -1511,7 +1525,7 @@ thSetName(pThread thr, const char* name)
 int
 thGetThreadList(int max_cnt, char* names[], int stati[], int flags[])
     {
-    int i,cnt;
+    register int i,cnt;
 
 	/** Don't return any more than is in the table. Silly. **/
     	if (max_cnt > MTASK.nThreads) max_cnt = MTASK.nThreads;
@@ -1536,7 +1550,7 @@ pThread
 thGetByName(const char* name)
     {
     pThread thr = NULL;
-    int i,cnt;
+    register int i,cnt;
 
     	/** Search for the thread. **/
 	for(i=cnt=0;cnt<MTASK.nThreads;i++) if (MTASK.ThreadTable[i])
@@ -2373,7 +2387,7 @@ fdPrintf(pFile filedesc, const char* fmt, ...)
 int
 fdClose(pFile filedesc, int flags)
     {
-    int i,were_entries;
+    register int i,were_entries;
     pEventReq event = NULL;
 
 #ifdef MTASK_DEBUG
@@ -3396,7 +3410,7 @@ syCreateSem(int init_count, int flags)
 int
 syDestroySem(pSemaphore sem, int flags)
     {
-    int i,cnt;
+    register int i,cnt;
 
     	/** Immediate?  If so, error all events on this **/
 	for(cnt=i=0;i<MTASK.nEvents;i++)
@@ -3433,7 +3447,7 @@ int
 syPostSem(pSemaphore sem, int cnt, int flags)
     {
     int totalcnt;
-    int i,activate_cnt;
+    register int i,activate_cnt;
 
     	/** So how many total counts do we have to give away? **/
 	totalcnt = cnt + sem->Count;

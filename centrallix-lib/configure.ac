@@ -42,6 +42,12 @@ CHECK_PROFILE
 dnl Enable mTask debugging
 CHECK_MTASK_DEBUG
 
+dnl Check security hardening facilities
+CHECK_HARDENING
+
+dnl Check optimization
+CHECK_OPTIMIZE
+
 dnl Build shared libCentrallix
 SHARED_LIBCENTRALLIX
 

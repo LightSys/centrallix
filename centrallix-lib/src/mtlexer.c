@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -29,10 +32,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.5 2002/08/05 20:54:29 gbeeley Exp $
+    $Id: mtlexer.c,v 1.6 2003/04/03 04:32:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.6  2003/04/03 04:32:39  gbeeley
+    Added new cxsec module which implements some optional-use security
+    hardening measures designed to protect data structures and stack
+    return addresses.  Updated build process to have hardening and
+    optimization options.  Fixed some build-related dependency checking
+    problems.  Updated mtask to put some variables in registers even
+    when not optimizing with -O.  Added some security hardening features
+    to xstring as an example.
+
     Revision 1.5  2002/08/05 20:54:29  gbeeley
     This fix should allow multiple mlxCopyToken()s if the string size is
     larger than the buffer, to allow incremental retrievals of parts of the
