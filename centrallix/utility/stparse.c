@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.4 2002/06/19 23:29:34 gbeeley Exp $
+    $Id: stparse.c,v 1.5 2003/03/11 02:19:06 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.5  2003/03/11 02:19:06  jorupp
+     * fix stGenerateMsg so it actually _writes_ to the file instead of reads from it :)
+
     Revision 1.4  2002/06/19 23:29:34  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -1218,7 +1221,7 @@ stGenerateMsgGeneric(void* dst, int (*write_fn)(), pStructInf info, int flags)
 int
 stGenerateMsg(pFile fd, pStructInf info, int flags)
     {
-    return stGenerateMsgGeneric((void*)fd, fdRead, info, flags);
+    return stGenerateMsgGeneric((void*)fd, fdWrite, info, flags);
     }
 
 #if 00
