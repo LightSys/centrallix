@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.12 2002/07/20 16:30:21 lkehresman Exp $
+    $Id: htdrv_textbutton.c,v 1.13 2002/07/20 20:00:25 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.13  2002/07/20 20:00:25  lkehresman
+    Added a mousemove event connector to textbutton
+
     Revision 1.12  2002/07/20 16:30:21  lkehresman
     Added four new standard event connectors to the textbutton (MouseUp,
     MouseDown, MouseOver, MouseOut)
@@ -240,10 +243,8 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tb",
 		"    //alert(show_obj(e.target));\n"
-		"    if (e.target != null && e.target.kind=='tb')\n"
+		"    if (ly.kind == 'tb')\n"
 		"        {\n"
-		"        if (e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        ly.moveBy(1,1);\n"
 		"        tb_setmode(ly,2);\n"
 		"        if (ly.EventMouseDown != null)\n"
@@ -256,10 +257,8 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","tb",
-		"    if (e.target != null && e.target.kind == 'tb')\n"
+		"    if (ly.kind == 'tb')\n"
 		"        {\n"
-		"        if (e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        ly.moveBy(-1,-1);\n"
 		"        if (e.pageX >= ly.pageX &&\n"
 		"            e.pageX < ly.pageX + ly.clip.width &&\n"
@@ -282,11 +281,9 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n" );
 
 	htrAddEventHandler(s, "document","MOUSEOVER","tb",
-		"    if (e.target != null && e.target.kind == 'tb')\n"
+		"    if (ly.kind == 'tb')\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,1);\n"
-		"        if (e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        if (ly.EventMouseOver != null)\n"
 		"            {\n"
 		"            eparam = new Object();\n"
@@ -297,16 +294,26 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","tb",
-		"    if (e.target != null && e.target.kind == 'tb')\n"
+		"    if (ly.kind == 'tb')\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,0);\n"
-		"        if (e.target.layer != null) ly = e.target.layer;\n"
-		"        else ly = e.target;\n"
 		"        if (ly.EventMouseOut != null)\n"
 		"            {\n"
 		"            eparam = new Object();\n"
 		"            eparam.Caller = ly;\n"
 		"            cn_activate(ly, 'MouseOut', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
+		"        }\n");
+
+	htrAddEventHandler(s, "document","MOUSEMOVE","tb",
+		"    if (ly.kind == 'tb')\n"
+		"        {\n"
+		"        if (ly.EventMouseMove != null)\n"
+		"            {\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
+		"            cn_activate(ly, 'MouseMove', eparam);\n"
 		"            delete eparam;\n"
 		"            }\n"
 		"        }\n");
@@ -351,6 +358,7 @@ httbtnInitialize()
 	htrAddEvent(drv, "MouseDown");
 	htrAddEvent(drv, "MouseOver");
 	htrAddEvent(drv, "MouseOut");
+	htrAddEvent(drv, "MouseMove");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
