@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.44  2002/06/24 17:29:44  jorupp
+     * clarified an error message
+     * added a potential feature, but commented it out do to implimentation difficulties
+
     Revision 1.43  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -760,7 +764,21 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.IsUnsaved = false;\n"
 		"    \n"
 		"    if(this.mode=='Query')\n"
+		"        {\n"
 		"        this.ClearAll();\n"
+#if 0
+		/** This would auto-fill the form boxes with the last query, but has
+		 **   other issues -- how do you tell what fields to query on?
+		 **   -- you can't go on what fields were changed, can't use true value, etc.
+		 **   ---- disabled for now -- Jonathan Rupp 6/23/2002
+		 **/
+		"        for(var j in this.osrc.queryobject)\n"
+		"            if(j!='oid' && j!='joinstring')\n"
+		"                for(var i in this.elements)\n"
+		"                    if(this.elements[i].fieldname==this.osrc.queryobject[j].oid)\n"
+		"                        this.elements[i].setvalue(this.osrc.queryobject[j].value);\n"
+#endif
+		"        }\n"
 		"    \n"
 		//"    alert(newmode + ' - ' + this.oldmode);\n"
 		"    if(this.mode=='NoData' || this.mode=='View')\n"
@@ -967,7 +985,7 @@ old query code
 		"function form_action_queryexec()\n"
 		"    {\n"
 		"    if(!this.allowquery) {alert('Query not allowed');return 0;}\n"
-		"    if(!(this.mode=='Query')) {alert('Must be in QBF mode');return 0;}\n"
+		"    if(!(this.mode=='Query')) {alert(\"You can't execute a query if you're not in Query mode.\");return 0;}\n"
 		"    var where = new String;\n"
 		"    var firstone = true;\n"
 		/** build an query object to give the osrc **/
