@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.15 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_page.c,v 1.16 2002/06/19 18:35:25 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.16  2002/06/19 18:35:25  pfinley
+    fixed bug in edit box which didn't remove the focus border when clicking a place other than another edit box.
+
     Revision 1.15  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -358,6 +361,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        if (pg_curkbdlayer && pg_curkbdlayer.losefocushandler)\n"
 		"            {\n"
 		"            if (!pg_curkbdlayer.losefocushandler()) return true;\n"
+		"            pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);\n"
 		"            }\n"
 		"        pg_curkbdarea = pg_curarea;\n"
 		"        pg_curkbdlayer = pg_curlayer;\n"
@@ -395,6 +399,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    else if (pg_curkbdlayer != null)\n"
 		"        {\n"
+		"        pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+2);"
 		"        if (!pg_curkbdlayer.losefocushandler()) return true;\n"
 		"        pg_curkbdarea = null;\n"
 		"        pg_curkbdlayer = null;\n"
