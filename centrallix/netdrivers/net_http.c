@@ -16,6 +16,8 @@
 #include "stparse_ne.h"
 #include "stparse.h"
 #include "htmlparse.h"
+#include "xhandle.h"
+#include "magic.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -50,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.12 2002/03/23 05:34:26 gbeeley Exp $
+    $Id: net_http.c,v 1.13 2002/04/25 18:01:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.13  2002/04/25 18:01:15  gbeeley
+    Started adding Handle abstraction in net_http.c.  Testing first with
+    just handlized ObjSession structures.
+
     Revision 1.12  2002/03/23 05:34:26  gbeeley
     Added "pragma: no-cache" headers to the "osml" mode responses to help
     avoid browser caching of that dynamic data.
@@ -157,6 +163,7 @@ typedef struct
     pSemaphore	Errors;
     XArray	ErrorList;	/* xarray of xstring */
     XArray	Triggers;	/* xarray of pNhtConnTrigger */
+    HandleContext Hctx;
     }
     NhtSessionData, *pNhtSessionData;
 
@@ -648,7 +655,7 @@ nht_internal_WriteAttrs(pObject obj, pFile conn, int tgt, int put_meta)
  *** DHTML document.
  ***/
 int
-nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf)
+nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* request, pStruct req_inf)
     {
     char* ptr;
     pObjSession objsess;
@@ -666,16 +673,21 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
     double dbl;
     char* where;
     char* orderby;
+    handle_t session_handle;
 
     	/** Choose the request to perform **/
 	if (!strcmp(request,"opensession"))
 	    {
 	    ptr = (char*)objOpenSession(req_inf->StrVal);
+	    if (!ptr) 
+		session_handle = XHN_INVALID_HANDLE;
+	    else
+		session_handle = xhnAllocHandle(&(sess->Hctx), ptr);
 	    snprintf(sbuf,256,"Content-Type: text/html\r\n"
 			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-		    (unsigned int)ptr);
+			 "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
+		    session_handle);
 	    fdWrite(conn, sbuf, strlen(sbuf), 0,0);
 	    }
 	else 
@@ -683,11 +695,23 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 	    /** Get the session data **/
 	    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
 	    if (!sid) return -1;
-	    objsess = (pObjSession)strtol(sid+1,NULL,16);
+	    session_handle = xhnStringToHandle(sid+1,NULL,16);
+	    objsess = (pObjSession)xhnHandlePtr(&(sess->Hctx), session_handle);
+	    if (!objsess || !ISMAGIC(objsess, MGK_OBJSESSION))
+		{
+	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			 "Pragma: no-cache\r\n"
+	    		 "\r\n"
+			 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+		mssError(1,"NHT","Invalid Session ID in OSML request");
+		return -1;
+		}
 
 	    /** Again check the request... **/
 	    if (!strcmp(request,"closesession"))
 	        {
+		xhnFreeHandle(&(sess->Hctx), session_handle);
 	        objCloseSession(objsess);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 			 "Pragma: no-cache\r\n"
@@ -1184,7 +1208,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	else if (!strcmp(find_inf->StrVal,"osml"))
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__req");
-	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
+	    nht_internal_OSML(nsess,conn,target_obj, find_inf->StrVal, url_inf);
 	    }
 
 	/** Exec method mode **/
@@ -1661,6 +1685,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    xaInit(&nsess->Triggers,16);
 	    xaInit(&nsess->ErrorList,16);
 	    nht_internal_CreateCookie(nsess->Cookie);
+	    xhnInitContext(&(nsess->Hctx));
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
 	    xaAddItem(&(NHT.Sessions), (void*)nsess);
 	    }

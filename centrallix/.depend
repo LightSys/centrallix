@@ -65,6 +65,40 @@ test_obj.o: include/expression.h /usr/include/readline/readline.h
 test_obj.o: /usr/include/readline/keymaps.h /usr/include/readline/chardefs.h
 test_obj.o: /usr/include/ctype.h /usr/include/readline/tilde.h
 test_obj.o: /usr/include/readline/history.h
+test_prt.o: /usr/include/stdio.h /usr/include/features.h
+test_prt.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+test_prt.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+test_prt.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+test_prt.o: /usr/include/bits/types.h /usr/include/libio.h
+test_prt.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+test_prt.o: /usr/include/string.h /usr/include/unistd.h
+test_prt.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+test_prt.o: /usr/include/getopt.h /usr/include/fcntl.h
+test_prt.o: /usr/include/bits/fcntl.h /usr/include/sys/types.h
+test_prt.o: /usr/include/time.h /usr/include/endian.h
+test_prt.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+test_prt.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+test_prt.o: /usr/include/sys/sysmacros.h ../centrallix-lib/include/mtask.h
+test_prt.o: /usr/include/setjmp.h /usr/include/bits/setjmp.h
+test_prt.o: /usr/include/sys/socket.h /usr/include/bits/socket.h
+test_prt.o: /usr/include/limits.h /usr/include/bits/posix1_lim.h
+test_prt.o: /usr/include/bits/local_lim.h /usr/include/linux/limits.h
+test_prt.o: /usr/include/bits/posix2_lim.h /usr/include/bits/sockaddr.h
+test_prt.o: /usr/include/asm/socket.h /usr/include/asm/sockios.h
+test_prt.o: /usr/include/netinet/in.h /usr/include/stdint.h
+test_prt.o: /usr/include/bits/wordsize.h /usr/include/bits/in.h
+test_prt.o: /usr/include/bits/byteswap.h ../centrallix-lib/include/mtlexer.h
+test_prt.o: include/obj.h ../centrallix-lib/include/xarray.h
+test_prt.o: ../centrallix-lib/include/xhash.h
+test_prt.o: ../centrallix-lib/include/xstring.h
+test_prt.o: ../centrallix-lib/include/xhashqueue.h
+test_prt.o: ../centrallix-lib/include/datatypes.h include/stparse_ne.h
+test_prt.o: ../centrallix-lib/include/newmalloc.h /usr/include/sys/stat.h
+test_prt.o: /usr/include/bits/stat.h include/centrallix.h include/stparse.h
+test_prt.o: include/expression.h /usr/include/readline/readline.h
+test_prt.o: /usr/include/readline/keymaps.h /usr/include/readline/chardefs.h
+test_prt.o: /usr/include/ctype.h /usr/include/readline/tilde.h
+test_prt.o: /usr/include/readline/history.h
 expression/exp_compiler.o: /usr/include/stdio.h /usr/include/features.h
 expression/exp_compiler.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 expression/exp_compiler.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -786,6 +820,42 @@ htmlgen/htdrv_imagebutton.o: ../centrallix-lib/include/mtlexer.h
 htmlgen/htdrv_imagebutton.o: ../centrallix-lib/include/newmalloc.h
 htmlgen/htdrv_imagebutton.o: /usr/include/sys/stat.h /usr/include/bits/stat.h
 htmlgen/htdrv_imagebutton.o: ../centrallix-lib/include/mtsession.h
+htmlgen/htdrv_label.o: /usr/include/stdio.h /usr/include/features.h
+htmlgen/htdrv_label.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+htmlgen/htdrv_label.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+htmlgen/htdrv_label.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+htmlgen/htdrv_label.o: /usr/include/bits/types.h /usr/include/libio.h
+htmlgen/htdrv_label.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+htmlgen/htdrv_label.o: /usr/include/string.h /usr/include/unistd.h
+htmlgen/htdrv_label.o: /usr/include/bits/posix_opt.h
+htmlgen/htdrv_label.o: /usr/include/bits/confname.h /usr/include/getopt.h
+htmlgen/htdrv_label.o: /usr/include/fcntl.h /usr/include/bits/fcntl.h
+htmlgen/htdrv_label.o: /usr/include/sys/types.h /usr/include/time.h
+htmlgen/htdrv_label.o: /usr/include/endian.h /usr/include/bits/endian.h
+htmlgen/htdrv_label.o: /usr/include/sys/select.h /usr/include/bits/select.h
+htmlgen/htdrv_label.o: /usr/include/bits/sigset.h
+htmlgen/htdrv_label.o: /usr/include/sys/sysmacros.h include/ht_render.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/mtask.h
+htmlgen/htdrv_label.o: /usr/include/setjmp.h /usr/include/bits/setjmp.h
+htmlgen/htdrv_label.o: /usr/include/sys/socket.h /usr/include/bits/socket.h
+htmlgen/htdrv_label.o: /usr/include/limits.h /usr/include/bits/posix1_lim.h
+htmlgen/htdrv_label.o: /usr/include/bits/local_lim.h
+htmlgen/htdrv_label.o: /usr/include/linux/limits.h
+htmlgen/htdrv_label.o: /usr/include/bits/posix2_lim.h
+htmlgen/htdrv_label.o: /usr/include/bits/sockaddr.h /usr/include/asm/socket.h
+htmlgen/htdrv_label.o: /usr/include/asm/sockios.h /usr/include/netinet/in.h
+htmlgen/htdrv_label.o: /usr/include/stdint.h /usr/include/bits/wordsize.h
+htmlgen/htdrv_label.o: /usr/include/bits/in.h /usr/include/bits/byteswap.h
+htmlgen/htdrv_label.o: include/obj.h ../centrallix-lib/include/xarray.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/xhash.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/xstring.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/xhashqueue.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/datatypes.h
+htmlgen/htdrv_label.o: include/stparse_ne.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/mtlexer.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/newmalloc.h
+htmlgen/htdrv_label.o: /usr/include/sys/stat.h /usr/include/bits/stat.h
+htmlgen/htdrv_label.o: ../centrallix-lib/include/mtsession.h
 htmlgen/htdrv_menu.o: /usr/include/stdio.h /usr/include/features.h
 htmlgen/htdrv_menu.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 htmlgen/htdrv_menu.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -1663,6 +1733,47 @@ multiquery/multiquery.o: ../centrallix-lib/include/newmalloc.h
 multiquery/multiquery.o: /usr/include/sys/stat.h /usr/include/bits/stat.h
 multiquery/multiquery.o: include/expression.h include/multiquery.h
 multiquery/multiquery.o: ../centrallix-lib/include/mtsession.h
+netdrivers/net_bdqs.o: /usr/include/stdio.h /usr/include/features.h
+netdrivers/net_bdqs.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+netdrivers/net_bdqs.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+netdrivers/net_bdqs.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+netdrivers/net_bdqs.o: /usr/include/bits/types.h /usr/include/libio.h
+netdrivers/net_bdqs.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+netdrivers/net_bdqs.o: /usr/include/string.h /usr/include/fcntl.h
+netdrivers/net_bdqs.o: /usr/include/bits/fcntl.h /usr/include/sys/types.h
+netdrivers/net_bdqs.o: /usr/include/time.h /usr/include/endian.h
+netdrivers/net_bdqs.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+netdrivers/net_bdqs.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+netdrivers/net_bdqs.o: /usr/include/sys/sysmacros.h /usr/include/unistd.h
+netdrivers/net_bdqs.o: /usr/include/bits/posix_opt.h
+netdrivers/net_bdqs.o: /usr/include/bits/confname.h /usr/include/getopt.h
+netdrivers/net_bdqs.o: /usr/include/errno.h /usr/include/bits/errno.h
+netdrivers/net_bdqs.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+netdrivers/net_bdqs.o: /usr/include/stdlib.h /usr/include/alloca.h
+netdrivers/net_bdqs.o: include/centrallix.h include/stparse.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/mtask.h
+netdrivers/net_bdqs.o: /usr/include/setjmp.h /usr/include/bits/setjmp.h
+netdrivers/net_bdqs.o: /usr/include/sys/socket.h /usr/include/bits/socket.h
+netdrivers/net_bdqs.o: /usr/include/limits.h /usr/include/bits/posix1_lim.h
+netdrivers/net_bdqs.o: /usr/include/bits/local_lim.h
+netdrivers/net_bdqs.o: /usr/include/linux/limits.h
+netdrivers/net_bdqs.o: /usr/include/bits/posix2_lim.h
+netdrivers/net_bdqs.o: /usr/include/bits/sockaddr.h /usr/include/asm/socket.h
+netdrivers/net_bdqs.o: /usr/include/asm/sockios.h /usr/include/netinet/in.h
+netdrivers/net_bdqs.o: /usr/include/stdint.h /usr/include/bits/wordsize.h
+netdrivers/net_bdqs.o: /usr/include/bits/in.h /usr/include/bits/byteswap.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/mtlexer.h include/obj.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/xarray.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/xhash.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/xstring.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/xhashqueue.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/datatypes.h
+netdrivers/net_bdqs.o: include/stparse_ne.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/newmalloc.h
+netdrivers/net_bdqs.o: /usr/include/sys/stat.h /usr/include/bits/stat.h
+netdrivers/net_bdqs.o: include/expression.h ../centrallix-lib/include/bdqs.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/mtsession.h
+netdrivers/net_bdqs.o: ../centrallix-lib/include/exception.h
 netdrivers/net_cgi.o: /usr/include/stdio.h /usr/include/features.h
 netdrivers/net_cgi.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 netdrivers/net_cgi.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -1744,6 +1855,8 @@ netdrivers/net_http.o: include/expression.h
 netdrivers/net_http.o: ../centrallix-lib/include/mtsession.h
 netdrivers/net_http.o: ../centrallix-lib/include/exception.h
 netdrivers/net_http.o: include/htmlparse.h
+netdrivers/net_http.o: ../centrallix-lib/include/xhandle.h
+netdrivers/net_http.o: ../centrallix-lib/include/magic.h
 netdrivers/net_raw.o: /usr/include/stdio.h /usr/include/features.h
 netdrivers/net_raw.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 netdrivers/net_raw.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -1823,6 +1936,7 @@ objectsystem/obj_attr.o: ../centrallix-lib/include/newmalloc.h
 objectsystem/obj_attr.o: /usr/include/sys/stat.h /usr/include/bits/stat.h
 objectsystem/obj_attr.o: ../centrallix-lib/include/mtsession.h
 objectsystem/obj_attr.o: include/stparse.h include/expression.h
+objectsystem/obj_attr.o: ../centrallix-lib/include/magic.h
 objectsystem/obj_content.o: /usr/include/stdio.h /usr/include/features.h
 objectsystem/obj_content.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 objectsystem/obj_content.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -1865,6 +1979,7 @@ objectsystem/obj_content.o: include/stparse_ne.h
 objectsystem/obj_content.o: ../centrallix-lib/include/mtlexer.h
 objectsystem/obj_content.o: ../centrallix-lib/include/newmalloc.h
 objectsystem/obj_content.o: /usr/include/sys/stat.h /usr/include/bits/stat.h
+objectsystem/obj_content.o: ../centrallix-lib/include/magic.h
 objectsystem/obj_datatypes.o: /usr/include/stdio.h /usr/include/features.h
 objectsystem/obj_datatypes.o: /usr/include/sys/cdefs.h
 objectsystem/obj_datatypes.o: /usr/include/gnu/stubs.h
@@ -2216,6 +2331,7 @@ objectsystem/obj_session.o: include/stparse_ne.h
 objectsystem/obj_session.o: ../centrallix-lib/include/mtlexer.h
 objectsystem/obj_session.o: ../centrallix-lib/include/newmalloc.h
 objectsystem/obj_session.o: /usr/include/sys/stat.h /usr/include/bits/stat.h
+objectsystem/obj_session.o: ../centrallix-lib/include/magic.h
 objectsystem/obj_trx.o: /usr/include/stdio.h /usr/include/features.h
 objectsystem/obj_trx.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 objectsystem/obj_trx.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -2888,6 +3004,61 @@ osdrivers/objdrv_report.o: include/stparse.h include/expression.h
 osdrivers/objdrv_report.o: include/st_node.h include/report.h
 osdrivers/objdrv_report.o: include/prtmgmt.h include/barcode.h
 osdrivers/objdrv_report.o: ../centrallix-lib/include/mtsession.h
+osdrivers/objdrv_report_v3.o: /usr/include/stdio.h /usr/include/features.h
+osdrivers/objdrv_report_v3.o: /usr/include/sys/cdefs.h
+osdrivers/objdrv_report_v3.o: /usr/include/gnu/stubs.h
+osdrivers/objdrv_report_v3.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+osdrivers/objdrv_report_v3.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/types.h /usr/include/libio.h
+osdrivers/objdrv_report_v3.o: /usr/include/_G_config.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/stdio_lim.h
+osdrivers/objdrv_report_v3.o: /usr/include/string.h /usr/include/unistd.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/posix_opt.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/confname.h
+osdrivers/objdrv_report_v3.o: /usr/include/getopt.h /usr/include/fcntl.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/fcntl.h
+osdrivers/objdrv_report_v3.o: /usr/include/sys/types.h /usr/include/time.h
+osdrivers/objdrv_report_v3.o: /usr/include/endian.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/endian.h
+osdrivers/objdrv_report_v3.o: /usr/include/sys/select.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/select.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/sigset.h
+osdrivers/objdrv_report_v3.o: /usr/include/sys/sysmacros.h
+osdrivers/objdrv_report_v3.o: /usr/include/stdlib.h /usr/include/alloca.h
+osdrivers/objdrv_report_v3.o: /usr/include/sys/stat.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/stat.h
+osdrivers/objdrv_report_v3.o: /usr/include/sys/socket.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/socket.h
+osdrivers/objdrv_report_v3.o: /usr/include/limits.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/posix1_lim.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/local_lim.h
+osdrivers/objdrv_report_v3.o: /usr/include/linux/limits.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/posix2_lim.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/sockaddr.h
+osdrivers/objdrv_report_v3.o: /usr/include/asm/socket.h
+osdrivers/objdrv_report_v3.o: /usr/include/asm/sockios.h
+osdrivers/objdrv_report_v3.o: /usr/include/dirent.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/dirent.h /usr/include/pwd.h
+osdrivers/objdrv_report_v3.o: /usr/include/grp.h include/obj.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/xarray.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/xhash.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/xstring.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/xhashqueue.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/mtask.h
+osdrivers/objdrv_report_v3.o: /usr/include/setjmp.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/setjmp.h
+osdrivers/objdrv_report_v3.o: /usr/include/netinet/in.h /usr/include/stdint.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/wordsize.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/in.h
+osdrivers/objdrv_report_v3.o: /usr/include/bits/byteswap.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/datatypes.h
+osdrivers/objdrv_report_v3.o: include/stparse_ne.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/mtlexer.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/newmalloc.h
+osdrivers/objdrv_report_v3.o: include/stparse.h include/expression.h
+osdrivers/objdrv_report_v3.o: include/st_node.h include/report.h
+osdrivers/objdrv_report_v3.o: include/prtmgmt_v3.h
+osdrivers/objdrv_report_v3.o: ../centrallix-lib/include/mtsession.h
 osdrivers/objdrv_struct.o: /usr/include/stdio.h /usr/include/features.h
 osdrivers/objdrv_struct.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 osdrivers/objdrv_struct.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -2985,6 +3156,7 @@ osdrivers/objdrv_sybase.o: ../centrallix-lib/include/newmalloc.h
 osdrivers/objdrv_sybase.o: ../centrallix-lib/include/mtsession.h
 osdrivers/objdrv_sybase.o: include/expression.h include/stparse.h
 osdrivers/objdrv_sybase.o: include/st_node.h include/multiquery.h
+osdrivers/objdrv_sybase.o: ../centrallix-lib/include/magic.h
 osdrivers/objdrv_unixuser.o: /usr/include/stdio.h /usr/include/features.h
 osdrivers/objdrv_unixuser.o: /usr/include/sys/cdefs.h
 osdrivers/objdrv_unixuser.o: /usr/include/gnu/stubs.h
@@ -3131,6 +3303,71 @@ osdrivers/objdrv_uxprint.o: include/st_node.h include/stparse.h
 osdrivers/objdrv_uxprint.o: include/expression.h include/prtmgmt.h
 osdrivers/objdrv_uxprint.o: include/report.h include/barcode.h
 osdrivers/objdrv_uxprint.o: ../centrallix-lib/include/mtsession.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/stdio.h /usr/include/features.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/sys/cdefs.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/gnu/stubs.h
+osdrivers/objdrv_uxprint_v3.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
+osdrivers/objdrv_uxprint_v3.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/types.h /usr/include/libio.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/_G_config.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/stdio_lim.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/string.h /usr/include/unistd.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/posix_opt.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/confname.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/getopt.h /usr/include/fcntl.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/fcntl.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/sys/types.h /usr/include/time.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/endian.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/endian.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/sys/select.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/select.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/sigset.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/sys/sysmacros.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/stdlib.h /usr/include/alloca.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/sys/stat.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/stat.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/sys/wait.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/waitflags.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/waitstatus.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/siginfo.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/dirent.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/dirent.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/posix1_lim.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/local_lim.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/linux/limits.h /usr/include/pwd.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/grp.h /usr/include/signal.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/signum.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/sigaction.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/sigcontext.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/asm/sigcontext.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/sigstack.h include/obj.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/xarray.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/xhash.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/xstring.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/xhashqueue.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/mtask.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/setjmp.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/setjmp.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/sys/socket.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/socket.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/limits.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/posix2_lim.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/sockaddr.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/asm/socket.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/asm/sockios.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/netinet/in.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/stdint.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/wordsize.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/in.h
+osdrivers/objdrv_uxprint_v3.o: /usr/include/bits/byteswap.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/datatypes.h
+osdrivers/objdrv_uxprint_v3.o: include/stparse_ne.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/mtlexer.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/newmalloc.h
+osdrivers/objdrv_uxprint_v3.o: include/st_node.h include/stparse.h
+osdrivers/objdrv_uxprint_v3.o: include/expression.h include/prtmgmt.h
+osdrivers/objdrv_uxprint_v3.o: include/report.h include/barcode.h
+osdrivers/objdrv_uxprint_v3.o: ../centrallix-lib/include/mtsession.h
 report/barcode.o: /usr/include/stdio.h /usr/include/features.h
 report/barcode.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
 report/barcode.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h
@@ -3711,8 +3948,13 @@ report/prtmgmt_v3_api.o: /usr/include/endian.h /usr/include/bits/endian.h
 report/prtmgmt_v3_api.o: /usr/include/sys/select.h /usr/include/bits/select.h
 report/prtmgmt_v3_api.o: /usr/include/bits/sigset.h
 report/prtmgmt_v3_api.o: /usr/include/sys/sysmacros.h /usr/include/stdlib.h
-report/prtmgmt_v3_api.o: /usr/include/alloca.h include/barcode.h
-report/prtmgmt_v3_api.o: include/report.h ../centrallix-lib/include/mtask.h
+report/prtmgmt_v3_api.o: /usr/include/alloca.h /usr/include/math.h
+report/prtmgmt_v3_api.o: /usr/include/bits/huge_val.h
+report/prtmgmt_v3_api.o: /usr/include/bits/mathdef.h
+report/prtmgmt_v3_api.o: /usr/include/bits/mathcalls.h
+report/prtmgmt_v3_api.o: /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/float.h
+report/prtmgmt_v3_api.o: include/barcode.h include/report.h
+report/prtmgmt_v3_api.o: ../centrallix-lib/include/mtask.h
 report/prtmgmt_v3_api.o: /usr/include/setjmp.h /usr/include/bits/setjmp.h
 report/prtmgmt_v3_api.o: /usr/include/sys/socket.h /usr/include/bits/socket.h
 report/prtmgmt_v3_api.o: /usr/include/limits.h /usr/include/bits/posix1_lim.h
@@ -3727,8 +3969,9 @@ report/prtmgmt_v3_api.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_api.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_api.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_api.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_api.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_api.o: include/obj.h ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_api.o: include/prtmgmt_v3.h
+report/prtmgmt_v3_api.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_api.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_api.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_api.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_api.o: include/stparse_ne.h
@@ -3779,9 +4022,9 @@ report/prtmgmt_v3_fm_strict.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_fm_strict.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_fm_strict.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_fm_strict.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_fm_strict.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_fm_strict.o: include/obj.h
+report/prtmgmt_v3_fm_strict.o: include/prtmgmt_v3.h
 report/prtmgmt_v3_fm_strict.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_fm_strict.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_fm_strict.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_fm_strict.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_fm_strict.o: include/stparse_ne.h
@@ -3832,8 +4075,9 @@ report/prtmgmt_v3_internal.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_internal.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_internal.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_internal.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_internal.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_internal.o: include/obj.h ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_internal.o: include/prtmgmt_v3.h
+report/prtmgmt_v3_internal.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_internal.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_internal.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_internal.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_internal.o: include/stparse_ne.h
@@ -3881,8 +4125,9 @@ report/prtmgmt_v3_lm_page.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_lm_page.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_lm_page.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_lm_page.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_lm_page.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_lm_page.o: include/obj.h ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_lm_page.o: include/prtmgmt_v3.h
+report/prtmgmt_v3_lm_page.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_lm_page.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_lm_page.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_lm_page.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_lm_page.o: include/stparse_ne.h
@@ -3929,8 +4174,9 @@ report/prtmgmt_v3_lm_text.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_lm_text.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_lm_text.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_lm_text.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_lm_text.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_lm_text.o: include/obj.h ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_lm_text.o: include/prtmgmt_v3.h
+report/prtmgmt_v3_lm_text.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_lm_text.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_lm_text.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_lm_text.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_lm_text.o: include/stparse_ne.h
@@ -3972,8 +4218,9 @@ report/prtmgmt_v3_main.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_main.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_main.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_main.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_main.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_main.o: include/obj.h ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_main.o: include/prtmgmt_v3.h
+report/prtmgmt_v3_main.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_main.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_main.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_main.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_main.o: include/stparse_ne.h
@@ -4019,8 +4266,9 @@ report/prtmgmt_v3_od_pcl.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_od_pcl.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_od_pcl.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_od_pcl.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_od_pcl.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_od_pcl.o: include/obj.h ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_od_pcl.o: include/prtmgmt_v3.h
+report/prtmgmt_v3_od_pcl.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_od_pcl.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_od_pcl.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_od_pcl.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_od_pcl.o: include/stparse_ne.h
@@ -4068,8 +4316,9 @@ report/prtmgmt_v3_session.o: /usr/include/bits/byteswap.h
 report/prtmgmt_v3_session.o: ../centrallix-lib/include/magic.h
 report/prtmgmt_v3_session.o: ../centrallix-lib/include/xarray.h
 report/prtmgmt_v3_session.o: ../centrallix-lib/include/xstring.h
-report/prtmgmt_v3_session.o: include/prtmgmt_v3.h include/htmlparse.h
-report/prtmgmt_v3_session.o: include/obj.h ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_session.o: include/prtmgmt_v3.h
+report/prtmgmt_v3_session.o: ../centrallix-lib/include/xhash.h
+report/prtmgmt_v3_session.o: include/htmlparse.h include/obj.h
 report/prtmgmt_v3_session.o: ../centrallix-lib/include/xhashqueue.h
 report/prtmgmt_v3_session.o: ../centrallix-lib/include/datatypes.h
 report/prtmgmt_v3_session.o: include/stparse_ne.h
