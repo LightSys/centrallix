@@ -15,18 +15,18 @@
 #endif
 
 #include "centrallix.h"
-#include "mtask.h"
-#include "mtsession.h"
-#include "xarray.h"
-#include "xhash.h"
-#include "mtlexer.h"
-#include "exception.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/exception.h"
 #include "obj.h"
 #include "stparse_ne.h"
 #include "stparse.h"
 #include "htmlparse.h"
-#include "xhandle.h"
-#include "magic.h"
+#include "cxlib/xhandle.h"
+#include "cxlib/magic.h"
 #include "wgtr.h"
 #include "iface.h"
 
@@ -63,10 +63,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.53 2004/12/31 04:37:26 gbeeley Exp $
+    $Id: net_http.c,v 1.54 2005/02/26 06:35:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.54  2005/02/26 06:35:53  gbeeley
+    - pass URL params in the OpenCtl parameters.
+
     Revision 1.53  2004/12/31 04:37:26  gbeeley
     - oops - need a pragma no-cache on the execmethod call
     - pass error and null information on attributes to the client
@@ -1064,35 +1067,44 @@ nht_internal_ITimeout(void* sess_v)
 int
 nht_internal_ConstructPathname(pStruct url_inf)
     {
-    pStruct lstype_inf;
+    pStruct param_inf;
     char* oldpath;
     char* newpath;
-    char* old_lstype;
-    char* new_lstype;
+    char* old_param;
+    char* new_param;
     char* ptr;
     int len;
+    int i;
+    int first_param = 1;
 
     	/** Does it have ls__type? **/
-	if ((lstype_inf = stLookup_ne(url_inf,"ls__type")) != NULL)
+	for(i=0;i<url_inf->nSubInf;i++)
 	    {
+	    param_inf = url_inf->SubInf[i];
+	    if (param_inf->Type != ST_T_ATTRIB) continue;
+	    if ((!strncmp(param_inf->Name, "ls__", 4) || !strncmp(param_inf->Name, "cx__",4)) && strcmp(param_inf->Name, "ls__type"))
+		continue;
 	    oldpath = url_inf->StrVal;
-	    stAttrValue_ne(lstype_inf,&old_lstype);
+	    stAttrValue_ne(param_inf,&old_param);
 
-	    /** Get an encoded lstype **/
-	    len = strlen(old_lstype)*3+1;
-	    new_lstype = (char*)nmSysMalloc(len);
-	    ptr = new_lstype;
-	    while(*old_lstype) nht_internal_UnConvertChar(*(old_lstype++), &ptr, len - (ptr - new_lstype));
+	    /** Get an encoded param **/
+	    len = strlen(old_param)*3+1;
+	    new_param = (char*)nmSysMalloc(len);
+	    ptr = new_param;
+	    while(*old_param) nht_internal_UnConvertChar(*(old_param++), &ptr, len - (ptr - new_param));
 	    *ptr = '\0';
 
 	    /** Build the new pathname **/
-	    newpath = (char*)nmSysMalloc(strlen(oldpath) + 10 + strlen(new_lstype) + 1);
-	    sprintf(newpath,"%s?ls__type=%s",oldpath,new_lstype);
+	    newpath = (char*)nmSysMalloc(strlen(oldpath) + strlen(param_inf->Name) + 
+		    strlen(new_param) + 4);
+	    sprintf(newpath, "%s%c%s=%s", oldpath, first_param?'?':'&', 
+		    param_inf->Name, new_param);
 
 	    /** set the new path and remove the old one **/
 	    if (url_inf->StrAlloc) nmSysFree(url_inf->StrVal);
 	    url_inf->StrVal = newpath;
 	    url_inf->StrAlloc = 1;
+	    first_param=0;
 	    }
 
     return 0;
@@ -1446,11 +1458,8 @@ nht_internal_UnConvertChar(int ch, char** bufptr, int maxlen)
     	/** Room for at least one char? **/
 	if (maxlen == 0) return -1;
 
-	/** If space, convert to plus **/
-	if (ch == ' ') *((*bufptr)++) = '+';
-
 	/** Else if special char, convert to %xx **/
-	else if (ch == '/' || ch == '.' || ch == '?' || ch == '%' || ch == '&' || ch == '=')
+	if (ch == '/' || ch == '.' || ch == '?' || ch == '%' || ch == '&' || ch == '=' || ch == '+' || ch == ' ')
 	    {
 	    if (maxlen < 3) return -1;
 	    *((*bufptr)++) = '%';
