@@ -331,8 +331,8 @@ htmltest: htmltest.o $(SUPPORT)
 etc/rootnode: etc/rootnode.in
 	@$(SED) -e "s|##OSDIR##|@CXOSDIR@|g" etc/rootnode.in > etc/rootnode
 
-etc/centrallix.conf: etc/centrallix.conf.in
-	@$(SED) -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LIBDIR##|$(libdir)|g" etc/centrallix.conf.in > etc/centrallix.conf
+etc/centrallix.conf: etc/centrallix.conf.mk
+	@$(SED) -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LIBDIR##|$(libdir)|g" etc/centrallix.conf.mk > etc/centrallix.conf
 
 etc/centrallix.init: etc/centrallix.init.in
 	@$(SED) -e "s|##SBINDIR##|$(sbindir)|g" -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LOCALSTATEDIR##|$(localstatedir)|g" -e "s|##LIBDIR##|$(libdir)|g" -e "s|##CXLIBDIR##|$(CXLIBDIR)|g" etc/centrallix.init.in > etc/centrallix.init
