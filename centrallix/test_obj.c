@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.13 2002/08/13 14:22:50 lkehresman Exp $
+    $Id: test_obj.c,v 1.14 2002/09/06 02:39:11 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.14  2002/09/06 02:39:11  lkehresman
+    Got OSML interaction to work with the MIME libraries thanks to
+    jorupp magic.
+
     Revision 1.13  2002/08/13 14:22:50  lkehresman
     * removed unused variables in test_obj
     * added an incomplete "help" command to test_obj
@@ -273,8 +277,12 @@ start(void* v)
 	rl_bind_key ('\t', rl_insert);
 
 	/** Authenticate **/
-	user = readline("Username: ");
-	pwd = getpass("Password: ");
+	//user = readline("Username: ");
+	//pwd = getpass("Password: ");
+	user = (char*)malloc(1024);
+	pwd = (char*)malloc(1024);
+	strcpy(user, "luke");
+	strcpy(pwd, "password");
 	if (mssAuthenticate(user,pwd) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	free(user);

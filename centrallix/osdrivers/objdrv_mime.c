@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.20 2002/08/29 19:24:59 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.21 2002/09/06 02:39:12 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.21  2002/09/06 02:39:12  lkehresman
+    Got OSML interaction to work with the MIME libraries thanks to
+    jorupp magic.
+
     Revision 1.20  2002/08/29 19:24:59  lkehresman
     standardized the function headers a bit, and removed some unnecessary
     parameters.
@@ -202,8 +206,19 @@ typedef struct
     pMimeData	MimeDat;
     int		NextAttr;
     int		InternalSeek;
+    int		InternalType;
     }
     MimeInfo, *pMimeInfo;
+
+typedef struct
+    {
+    pMimeInfo	Data;
+    int		ItemCnt;
+    }
+    MimeQuery, *pMimeQuery;
+
+#define MIME_INTERNAL_MESSAGE    1
+#define MIME_INTERNAL_ATTACHMENT 2
 
 #define MIME(x) ((pMimeInfo)(x))
 
@@ -223,6 +238,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pMimeHeader tmp;
     char *node_path;
     char *buffer;
+    char *ptr;
     int i,size;
 
     if (MIME_DEBUG) fprintf(stderr, "\n");
@@ -250,6 +266,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     inf->Obj = obj;
     inf->Mask = mask;
     inf->InternalSeek = 0;
+    inf->InternalType = MIME_INTERNAL_MESSAGE;
     lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
     if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
 	{
@@ -271,7 +288,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
 	    fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
 	    buffer = (char*)nmMalloc(1024);
-	    size = libmime_PartRead(inf->MimeDat, tmp, buffer, 1023, 500, FD_U_SEEK);
+	    size = libmime_PartRead(inf->MimeDat, tmp, buffer, 1023, 0, FD_U_SEEK);
 	    buffer[size] = 0;
 	    printf("--%d--%s--\n", size,buffer);
 	    nmFree(buffer, 1024);
@@ -282,6 +299,30 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;
+    if (!(obj->Pathname->nElements < obj->SubPtr+obj->SubCnt))
+	{
+	int i;
+
+	/* at least one more element of path to worry about */
+	ptr = obj_internal_PathPart(obj->Pathname, obj->SubPtr+obj->SubCnt-1, 1);
+	for (i=0; i < xaCount(&(inf->Header->Parts)); i++)
+	    {
+	    pMimeHeader phdr;
+
+	    phdr = xaGetItem(&(inf->Header->Parts), i);
+	    if (!strcmp(phdr->Filename, ptr))
+		{
+		/** FIXME FIXME FIXME FIXME
+		 **  Memory lost, where did it go?  Nobody knows, and nobody can find out
+		 ** FIXME FIXME FIXME FIXME
+		 **/
+		inf->Header = phdr;
+		inf->InternalType = MIME_INTERNAL_MESSAGE;
+		break;
+		}
+	    }
+	}
+
     if(MIME_DEBUG) printf("objdrv_mime.c is taking: (%i,%i,%i) %s\n",obj->SubPtr,
 	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
     return (void*)inf;
@@ -335,14 +376,20 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     int size;
     pMimeInfo inf = (pMimeInfo)inf_v;
 
-    if (!offset && !inf->InternalSeek)
-	inf->InternalSeek = 0;
-    else if (offset)
-	inf->InternalSeek = offset;
-    size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
-    inf->InternalSeek += size;
-
-    return size;
+    if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART)
+	{
+	return -1;
+	}
+    else
+	{
+	if (!offset && !inf->InternalSeek)
+	    inf->InternalSeek = 0;
+	else if (offset)
+	    inf->InternalSeek = offset;
+	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
+	inf->InternalSeek += size;
+	return size;
+	}
     }
 
 
@@ -362,7 +409,18 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 void*
 mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
-    return 0;
+    pMimeQuery qy;
+    pMimeInfo inf;
+
+    inf = (pMimeInfo)inf_v;
+    qy = (pMimeQuery)nmMalloc(sizeof(MimeQuery));
+    if (!qy) return NULL;
+    memset(qy,0,sizeof(MimeQuery));
+
+    qy->Data = inf;
+    qy->ItemCnt = 0;
+
+    return (void*)qy;
     }
 
 
@@ -372,7 +430,33 @@ mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 void*
 mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
-    return 0;
+    pMimeInfo inf;
+    pMimeQuery qy;
+
+    qy = (pMimeQuery)qy_v;
+    if (xaCount(&(qy->Data->Header->Parts))-1 < qy->ItemCnt)
+	{
+	return NULL;
+	}
+
+    /** Shouldn't this be taken care of by OSML??? **/
+    obj->SubPtr = qy->Data->Obj->SubPtr;
+    obj->SubCnt = qy->Data->Obj->SubCnt;
+
+    inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
+    if (!inf) return NULL;
+    memset(inf,0,sizeof(MimeInfo));
+    inf->MimeDat = qy->Data->MimeDat;
+    inf->Obj = obj;
+    inf->Mask = mode;
+    inf->Header = NULL;
+    inf->InternalSeek = 0;
+    inf->InternalType = MIME_INTERNAL_MESSAGE;
+
+    inf->Header = xaGetItem(&(qy->Data->Header->Parts), qy->ItemCnt);
+    qy->ItemCnt++;
+
+    return (void*)inf;
     }
 
 
@@ -382,6 +466,7 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 int
 mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
+    nmFree(qy_v, sizeof(MimeQuery));
     return 0;
     }
 
@@ -432,7 +517,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTr
 	}
     if (!strcmp(attrname, "name"))
 	{
-	*(char**)val = "";
+	*(char**)val = inf->Header->Filename;
 	return 0;
 	}
     if (!strcmp(attrname, "outer_type"))

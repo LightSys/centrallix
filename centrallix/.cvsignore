@@ -1,3 +1,4 @@
+.cvsignore
 .depend
 .subbuild
 Makefile
@@ -12,3 +13,4 @@ test_obj
 etc/centrallix.conf
 etc/centrallix.init
 etc/rootnode
+test_obj
