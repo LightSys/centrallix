@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.6 2002/04/05 04:42:43 gbeeley Exp $
+    $Id: multiquery.c,v 1.7 2002/04/05 06:10:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.7  2002/04/05 06:10:11  gbeeley
+    Updating works through a multiquery when "FOR UPDATE" is specified at
+    the end of the query.  Fixed a reverse-eval bug in the expression
+    subsystem.  Updated form so queries are not terminated by a semicolon.
+    The DAT module was accepting it as a part of the pathname, but that was
+    a fluke :)  After "for update" the semicolon caused all sorts of
+    squawkage...
+
     Revision 1.6  2002/04/05 04:42:43  gbeeley
     Fixed a bug involving inconsistent serial numbers and objlist states
     for a multiquery if the user skips back to a previous fetched object
@@ -98,7 +106,7 @@ struct
     }
     MQINF;
 
-int mqSetAttrValue(void* inf_v, char* attrname, void* value, pObjTrxTree* oxt);
+int mqSetAttrValue(void* inf_v, char* attrname, pObjData value, pObjTrxTree* oxt);
 int mqGetAttrValue(void* inf_v, char* attrname, void* value, pObjTrxTree* oxt);
 int mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt);
 int mqQueryClose(void* qy_v, pObjTrxTree* oxt);
@@ -536,7 +544,7 @@ mq_internal_SyntaxParse(pLxSession lxs)
     char* ptr;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
-				   "values","with","limit", NULL};
+				   "values","with","limit","for", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -556,8 +564,13 @@ mq_internal_SyntaxParse(pLxSession lxs)
 		    break;
 
 	        case LookForClause:
-		    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
+		    if ((t=mlxNextToken(lxs)) != MLX_TOK_RESERVEDWD)
 		        {
+			if (t == MLX_TOK_EOF && select_cls)
+			    {
+			    next_state = ParseDone;
+			    break;
+			    }
 			next_state = ParseError;
 			mssError(1,"MQ","Query must begin with SELECT");
 			mlxNoteError(lxs);
@@ -840,6 +853,36 @@ mq_internal_SyntaxParse(pLxSession lxs)
 			    }
 			else if (!strcmp("update",ptr))
 			    {
+			    }
+			else if (!strcmp("for",ptr))
+			    {
+			    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Expected UPDATE after FOR");
+				mlxNoteError(lxs);
+				break;
+				}
+			    ptr = mlxStringVal(lxs,NULL);
+			    if (ptr && !strcmp(ptr,"update"))
+				{
+				if (!select_cls)
+				    {
+				    next_state = ParseError;
+				    mssError(1,"MQ","FOR UPDATE allowed only with SELECT");
+				    mlxNoteError(lxs);
+				    break;
+				    }
+				select_cls->Flags |= MQ_SF_FORUPDATE;
+				next_state = LookForClause;
+				}
+			    else
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Expected UPDATE after FOR");
+				mlxNoteError(lxs);
+				break;
+				}
 			    }
 			else
 			    {
@@ -1346,6 +1389,11 @@ mqStartQuery(pObjSession session, char* query_text)
 	    }
 	/*mq_internal_DumpQS(this->QTree,0);*/
 
+	/** Are we doing this "for update"? **/
+	qs = mq_internal_FindItem(this->QTree, MQ_T_SELECTCLAUSE, NULL);
+	if (qs && qs->Flags & MQ_SF_FORUPDATE)
+	    this->Flags |= MQ_F_ALLOWUPDATE;
+
 	/** Ok, got syntax.  Find the where clause. **/
 	qs = mq_internal_FindItem(this->QTree, MQ_T_WHERECLAUSE, NULL);
 	if (!qs)
@@ -1733,10 +1781,77 @@ mqGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** the query must have been opened FOR UPDATE.
  ***/
 int
-mqSetAttrValue(void* inf_v, char* attrname, void* value, pObjTrxTree* oxt)
+mqSetAttrValue(void* inf_v, char* attrname, pObjData value, pObjTrxTree* oxt)
     {
-    /*pPseudoObject p = (pPseudoObject)inf_v;*/
-    return -1; /* not yet impl. */
+    pPseudoObject p = (pPseudoObject)inf_v;
+    int i, id;
+    pExpression exp;
+
+    	/** Check to see whether we're on current object. **/
+	mq_internal_CkSetObjList(p->Query, p);
+
+	/** Figure out which attribute needs updating... **/
+	id = -1;
+	for(i=0;i<p->Query->Tree->AttrNames.nItems;i++)
+	    {
+	    if (!strcmp(attrname,p->Query->Tree->AttrNames.Items[i]))
+	        {
+		id = i;
+		break;
+		}
+	    }
+	if (id == -1)
+	    {
+	    mssError(1,"MQ","setattr: unknown attribute '%s' for multiquery result set", attrname);
+	    return -1;
+	    }
+
+	/** Evaluate the expr first to find the data type.  This isn't
+	 ** ideal, but it'll work for now.
+	 **/
+	exp = (pExpression)p->Query->Tree->AttrCompiledExpr.Items[id];
+	p->Query->QTree->ObjList->Session = p->Query->SessionID;
+	if (expEvalTree(exp,p->Query->QTree->ObjList) < 0) return -1;
+	if (exp->DataType == DATA_T_UNAVAILABLE) return -1;
+
+	/** Set the expression result to the given value. **/
+	switch(exp->DataType)
+	    {
+	    case DATA_T_INTEGER: 
+		exp->Integer = value->Integer; 
+		break;
+	    case DATA_T_STRING: 
+		if (exp->Alloc && exp->String)
+		    {
+		    nmSysFree(exp->String);
+		    exp->Alloc = 0;
+		    }
+		if (strlen(value->String) > 63)
+		    {
+		    exp->Alloc = 1;
+		    exp->String = nmSysMalloc(strlen(value->String)+1);
+		    }
+		else
+		    {
+		    exp->String = exp->Types.StringBuf;
+		    }
+		strcpy(exp->String, value->String);
+		break;
+	    case DATA_T_DOUBLE: 
+		exp->Types.Double = value->Double; 
+		break;
+	    case DATA_T_MONEY: 
+		memcpy(&(exp->Types.Money), value->Money, sizeof(MoneyType));
+		break;
+	    case DATA_T_DATETIME: 
+		memcpy(&(exp->Types.Date), value->DateTime, sizeof(DateTime));
+		break;
+	    }
+
+	/** Evaluate the expression in reverse to set the value!! **/
+	if (expReverseEvalTree(exp, p->Query->QTree->ObjList) < 0) return -1;
+
+    return 0;
     }
 
 

@@ -43,12 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.1 2001/08/13 18:00:54 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.2 2002/04/05 06:10:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
-    Revision 1.1  2001/08/13 18:00:54  gbeeley
-    Initial revision
+    Revision 1.2  2002/04/05 06:10:11  gbeeley
+    Updating works through a multiquery when "FOR UPDATE" is specified at
+    the end of the query.  Fixed a reverse-eval bug in the expression
+    subsystem.  Updated form so queries are not terminated by a semicolon.
+    The DAT module was accepting it as a part of the pathname, but that was
+    a fluke :)  After "for update" the semicolon caused all sorts of
+    squawkage...
+
+    Revision 1.1.1.1  2001/08/13 18:00:54  gbeeley
+    Centrallix Core initial import
 
     Revision 1.2  2001/08/07 19:31:53  gbeeley
     Turned on warnings, did some code cleanup...
@@ -246,7 +254,10 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
     pExpression new_exp;
 
     	/** Open the data source in the objectsystem **/
-	qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDONLY, 0600, "system/directory");
+	if (mq->Flags & MQ_F_ALLOWUPDATE)
+	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDWR, 0600, "system/directory");
+	else
+	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDONLY, 0600, "system/directory");
 	if (!qe->LLSource) 
 	    {
 	    mssError(0,"MQP","Could not open source object for SQL projection");

@@ -66,10 +66,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.4 2001/10/16 23:53:01 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.5 2002/04/05 06:10:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.5  2002/04/05 06:10:11  gbeeley
+    Updating works through a multiquery when "FOR UPDATE" is specified at
+    the end of the query.  Fixed a reverse-eval bug in the expression
+    subsystem.  Updated form so queries are not terminated by a semicolon.
+    The DAT module was accepting it as a part of the pathname, but that was
+    a fluke :)  After "for update" the semicolon caused all sorts of
+    squawkage...
+
     Revision 1.4  2001/10/16 23:53:01  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -1102,7 +1110,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
 	mptr = &(tree->Types.Money);
-	attr_type = objlist->GetAttrFn[id](obj,tree->Name);
+	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
 	if (tree->DataType != attr_type)
 	    {
 	    if (tree->DataType == DATA_T_STRING && attr_type == DATA_T_DATETIME)

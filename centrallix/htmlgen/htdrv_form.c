@@ -43,6 +43,14 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.21  2002/04/05 06:10:11  gbeeley
+    Updating works through a multiquery when "FOR UPDATE" is specified at
+    the end of the query.  Fixed a reverse-eval bug in the expression
+    subsystem.  Updated form so queries are not terminated by a semicolon.
+    The DAT module was accepting it as a part of the pathname, but that was
+    a fluke :)  After "for update" the semicolon caused all sorts of
+    squawkage...
+
     Revision 1.20  2002/03/28 05:21:22  jorupp
      * form no longer does some redundant status checking
      * cleaned up some unneeded stuff in form
@@ -849,7 +857,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    var query;\n"
 		"    if(where=='')\n"
 		"        {\n"
-		"        query=this.basequery+';';\n"
+		"        query=this.basequery;\n"
 		"        }\n"
 		"    else\n"
 		"        {\n"
@@ -909,9 +917,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    {\n"
 		"    re=/where/i;\n"
 		"    if(re.test(base))\n"
-		"        return base+' AND '+where+';';\n"
+		"        return base+' AND '+where;\n"
 		"    else\n"
-		"        return base+' WHERE '+where+';';\n"
+		"        return base+' WHERE '+where;\n"
 		"    }\n", 0);
 
 
@@ -990,7 +998,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form = new Object();\n" 
 		"    form.basequery = bq;\n"
 		"    if(bw) form.currentquery = form_build_query(bq,bw);\n"
-		"    else form.currentquery = bq+';';\n"
+		"    else form.currentquery = bq;\n"
 		"    form.elements = new Array();\n"
 		"    form.statuswidgets = new Array();\n"
 		"    form.mode = 'No Data';\n"

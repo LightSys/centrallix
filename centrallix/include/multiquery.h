@@ -35,10 +35,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.3 2002/04/05 04:42:42 gbeeley Exp $
+    $Id: multiquery.h,v 1.4 2002/04/05 06:10:11 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.4  2002/04/05 06:10:11  gbeeley
+    Updating works through a multiquery when "FOR UPDATE" is specified at
+    the end of the query.  Fixed a reverse-eval bug in the expression
+    subsystem.  Updated form so queries are not terminated by a semicolon.
+    The DAT module was accepting it as a part of the pathname, but that was
+    a fluke :)  After "for update" the semicolon caused all sorts of
+    squawkage...
+
     Revision 1.3  2002/04/05 04:42:42  gbeeley
     Fixed a bug involving inconsistent serial numbers and objlist states
     for a multiquery if the user skips back to a previous fetched object
@@ -139,6 +147,7 @@ typedef struct _QS
     QueryStructure, *pQueryStructure;
 
 #define MQ_SF_USED		1		/* QS has been used by another q-drv. */
+#define MQ_SF_FORUPDATE		2		/* SELECT query results can be updated */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
