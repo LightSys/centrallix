@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.20 2002/07/31 22:03:44 lkehresman Exp $
+    $Id: htdrv_imagebutton.c,v 1.21 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.21  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.20  2002/07/31 22:03:44  lkehresman
     Fixed mouseup issues when mouseup occurred outside the image for:
       * dropdown scroll images
@@ -192,37 +197,37 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTIBTN.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0)
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0)
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) h = -1;
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
 	/** Get normal, point, and click images **/
-	if (objGetAttrValue(w_obj,"image",POD(&ptr)) != 0) 
+	if (objGetAttrValue(w_obj,"image",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have an 'image' property");
 	    return -1;
 	    }
 	memccpy(n_img,ptr,'\0',127);
 	n_img[127]=0;
-	if (objGetAttrValue(w_obj,"pointimage",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"pointimage",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(p_img,ptr,'\0',127);
 	    p_img[127]=0;
@@ -231,7 +236,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    strcpy(p_img, n_img);
 	    }
-	if (objGetAttrValue(w_obj,"clickimage",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"clickimage",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(c_img,ptr,'\0',127);
 	    c_img[127]=0;
@@ -240,7 +245,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    strcpy(c_img, p_img);
 	    }
-	if (objGetAttrValue(w_obj,"disabledimage",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"disabledimage",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(d_img,ptr,'\0',127);
 	    d_img[127]=0;
@@ -250,7 +255,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    strcpy(d_img, n_img);
 	    }
 
-	if (objGetAttrValue(w_obj,"enabled",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"enabled",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(enabled,ptr,'\0',10);
 	    enabled[10]=0;

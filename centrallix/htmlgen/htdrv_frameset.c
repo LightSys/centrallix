@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.5 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_frameset.c,v 1.6 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
+    Revision 1.6  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.5  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -99,7 +104,7 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char nbuf[16];
 
     	/** Check for a title. **/
-	if (objGetAttrValue(w_obj,"title",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddHeaderItem_va(s,"    <TITLE>%s</TITLE>\n",ptr);
 	    }
@@ -118,12 +123,12 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    }
 		else if (t == DATA_T_INTEGER)
 		    {
-		    objGetAttrValue(sub_w_obj, "framesize", POD(&n));
+		    objGetAttrValue(sub_w_obj, "framesize", DATA_T_INTEGER,POD(&n));
 		    snprintf(nbuf,16,"%d",n);
 		    }
 		else if (t == DATA_T_STRING)
 		    {
-		    objGetAttrValue(sub_w_obj, "framesize", POD(&ptr));
+		    objGetAttrValue(sub_w_obj, "framesize", DATA_T_STRING,POD(&ptr));
 		    memccpy(nbuf, ptr, 0, 15);
 		    nbuf[15] = 0;
 		    }
@@ -138,12 +143,12 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Check for some optional params **/
-	if (objGetAttrValue(w_obj,"direction",POD(&ptr)) != 0)
+	if (objGetAttrValue(w_obj,"direction",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    if (!strcmp(ptr,"rows")) direc=1;
 	    else if (!strcmp(ptr,"columns")) direc=0;
 	    }
-	if (objGetAttrValue(w_obj,"borderwidth",POD(&n)) != 0)
+	if (objGetAttrValue(w_obj,"borderwidth",DATA_T_INTEGER,POD(&n)) != 0)
 	    { 
 	    bdr = n;
 	    }
@@ -157,8 +162,8 @@ htsetRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(sub_w_obj,"name",POD(&ptr));
-		if (objGetAttrValue(sub_w_obj,"marginwidth",POD(&n)) != 0)
+		objGetAttrValue(sub_w_obj,"name",DATA_T_STRING,POD(&ptr));
+		if (objGetAttrValue(sub_w_obj,"marginwidth",DATA_T_INTEGER,POD(&n)) != 0)
 		    htrAddBodyItem_va(s,"    <FRAME SRC=./%s>\n",ptr);
 		else
 		    htrAddBodyItem_va(s,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);

@@ -59,10 +59,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.32 2002/08/26 20:49:33 lkehresman Exp $
+    $Id: htdrv_table.c,v 1.33 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.33  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.32  2002/08/26 20:49:33  lkehresman
     Added DblClick event to the table rows taht does essentially thte same
     thing that the Click event does.
@@ -324,7 +329,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+		objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
 		if (strcmp(ptr,"widget/table-column") != 0) //got columns earlier
 		    htrRenderWidget(s, sub_w_obj, z+3, "", t->name);
 		objClose(sub_w_obj);
@@ -547,7 +552,7 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 	htrAddBodyItem_va(s,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, t->outer_border, t->tbl_bgnd);
 	if (t->w != -1) snprintf(tmpbuf,64,"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
 	htrAddBodyItem_va(s,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%d cellpadding=%d %s>\n", t->inner_border, t->inner_padding, tmpbuf);
-	if (objGetAttrValue(w_obj,"sql",POD(&sql)) != 0)
+	if (objGetAttrValue(w_obj,"sql",DATA_T_STRING,POD(&sql)) != 0)
 	    {
 	    mssError(1,"HTTBL","Static datatable must have SQL property");
 	    return -1;
@@ -630,7 +635,7 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 		    htrAddBodyItem(s,"<TD nowrap>");
 		    }
 		type = objGetAttrType(qy_obj,attr);
-		rval = objGetAttrValue(qy_obj,attr,&od);
+		rval = objGetAttrValue(qy_obj,attr,type,&od);
 		if (rval == 0)
 		    {
 		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
@@ -719,21 +724,21 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	t->id = (HTTBL.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&(t->x))) != 0) t->x = -1;
-	if (objGetAttrValue(w_obj,"y",POD(&(t->y))) != 0) t->y = -1;
-	if (objGetAttrValue(w_obj,"width",POD(&(t->w))) != 0) t->w = -1;
-	if (objGetAttrValue(w_obj,"height",POD(&(t->h))) != 0) t->h = -1;
-	if (objGetAttrValue(w_obj,"windowsize",POD(&(t->windowsize))) != 0) t->windowsize = -1;
-	if (objGetAttrValue(w_obj,"rowheight",POD(&(t->rowheight))) != 0) t->rowheight = 15;
-	if (objGetAttrValue(w_obj,"cellhspacing",POD(&(t->cellhspacing))) != 0) t->cellhspacing = 1;
-	if (objGetAttrValue(w_obj,"cellvspacing",POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&(t->x))) != 0) t->x = -1;
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&(t->y))) != 0) t->y = -1;
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&(t->w))) != 0) t->w = -1;
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&(t->h))) != 0) t->h = -1;
+	if (objGetAttrValue(w_obj,"windowsize",DATA_T_INTEGER,POD(&(t->windowsize))) != 0) t->windowsize = -1;
+	if (objGetAttrValue(w_obj,"rowheight",DATA_T_INTEGER,POD(&(t->rowheight))) != 0) t->rowheight = 15;
+	if (objGetAttrValue(w_obj,"cellhspacing",DATA_T_INTEGER,POD(&(t->cellhspacing))) != 0) t->cellhspacing = 1;
+	if (objGetAttrValue(w_obj,"cellvspacing",DATA_T_INTEGER,POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
 
-	if (objGetAttrValue(w_obj,"dragcols",POD(&(t->dragcols))) != 0) t->dragcols = 1;
-	if (objGetAttrValue(w_obj,"colsep",POD(&(t->colsep))) != 0) t->colsep = 1;
-	if (objGetAttrValue(w_obj,"gridinemptyrows",POD(&(t->gridinemptyrows))) != 0) t->gridinemptyrows = 1;
+	if (objGetAttrValue(w_obj,"dragcols",DATA_T_INTEGER,POD(&(t->dragcols))) != 0) t->dragcols = 1;
+	if (objGetAttrValue(w_obj,"colsep",DATA_T_INTEGER,POD(&(t->colsep))) != 0) t->colsep = 1;
+	if (objGetAttrValue(w_obj,"gridinemptyrows",DATA_T_INTEGER,POD(&(t->gridinemptyrows))) != 0) t->gridinemptyrows = 1;
 
 	/** Should we follow the current record around? **/
-	if (objGetAttrValue(w_obj,"followcurrent",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"followcurrent",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"false")) t->followcurrent = 0;
 	    }
@@ -741,7 +746,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) 
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    nmFree(t, sizeof(httbl_struct));
 	    return -1;
@@ -755,7 +760,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Mode of table operation.  Defaults to 0 (static) **/
-	if (objGetAttrValue(w_obj,"mode",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"mode",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"static")) t->mode = 0;
 	    else if (!strcmp(ptr,"dynamicpage")) t->mode = 1;
@@ -769,48 +774,48 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Get background color/image for table header **/
-	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->tbl_bgnd,"background='%.110s'",ptr);
-	else if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->tbl_bgnd,"bgColor='%.40s'",ptr);
 
 	/** Get background color/image for header row **/
-	if (objGetAttrValue(w_obj,"hdr_background",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"hdr_background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->hdr_bgnd,"background='%.110s'",ptr);
-	else if (objGetAttrValue(w_obj,"hdr_bgcolor",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"hdr_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->hdr_bgnd,"bgColor='%.40s'",ptr);
 
 	/** Get background color/image for rows **/
-	if (objGetAttrValue(w_obj,"row_background1",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"row_background1",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->row_bgnd1,"background='%.110s'",ptr);
-	else if (objGetAttrValue(w_obj,"row_bgcolor1",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"row_bgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->row_bgnd1,"bgColor='%.40s'",ptr);
 
-	if (objGetAttrValue(w_obj,"row_background2",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"row_background2",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->row_bgnd2,"background='%.110s'",ptr);
-	else if (objGetAttrValue(w_obj,"row_bgcolor2",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"row_bgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->row_bgnd2,"bgColor='%.40s'",ptr);
 
-	if (objGetAttrValue(w_obj,"row_backgroundhighlight",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"row_backgroundhighlight",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->row_bgndhigh,"background='%.110s'",ptr);
-	else if (objGetAttrValue(w_obj,"row_bgcolorhighlight",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"row_bgcolorhighlight",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->row_bgndhigh,"bgColor='%.40s'",ptr);
 
 	/** Get borders and padding information **/
-	objGetAttrValue(w_obj,"outer_border",POD(&(t->outer_border)));
-	objGetAttrValue(w_obj,"inner_border",POD(&(t->inner_border)));
-	objGetAttrValue(w_obj,"inner_padding",POD(&(t->inner_padding)));
+	objGetAttrValue(w_obj,"outer_border",DATA_T_INTEGER,POD(&(t->outer_border)));
+	objGetAttrValue(w_obj,"inner_border",DATA_T_INTEGER,POD(&(t->inner_border)));
+	objGetAttrValue(w_obj,"inner_padding",DATA_T_INTEGER,POD(&(t->inner_padding)));
 
 	/** Text color information **/
-	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->textcolor,"%.63s",ptr);
 
 	/** Text color information **/
-	if (objGetAttrValue(w_obj,"textcolorhighlight",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"textcolorhighlight",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->textcolorhighlight,"%.63s",ptr);
 
 	/** Title text color information **/
-	if (objGetAttrValue(w_obj,"titlecolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"titlecolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(t->titlecolor,"%.63s",ptr);
 	if (!*t->titlecolor) strcpy(t->titlecolor,t->textcolor);
 
@@ -822,18 +827,18 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+		objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/table-column") != 0)
 		    {
-		    objGetAttrValue(sub_w_obj, "name", POD(&ptr));
+		    objGetAttrValue(sub_w_obj, "name", DATA_T_STRING,POD(&ptr));
 		    t->col_infs[t->ncols] = stCreateStruct(ptr, "widget/table-column");
 		    attr_inf = stAddAttr(t->col_infs[t->ncols], "width");
-		    if (objGetAttrValue(sub_w_obj, "width", POD(&n)) == 0)
+		    if (objGetAttrValue(sub_w_obj, "width", DATA_T_INTEGER,POD(&n)) == 0)
 		        stAddValue(attr_inf, NULL, n);
 		    else
 		        stAddValue(attr_inf, NULL, -1);
 		    attr_inf = stAddAttr(t->col_infs[t->ncols], "title");
-		    if (objGetAttrValue(sub_w_obj, "title", POD(&ptr)) == 0)
+		    if (objGetAttrValue(sub_w_obj, "title", DATA_T_STRING,POD(&ptr)) == 0)
 		        {
 			str = nmSysStrdup(ptr);
 		        stAddValue(attr_inf, str, 0);
@@ -863,7 +868,7 @@ httblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+		objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING, POD(&ptr));
 		if (strcmp(ptr,"widget/table-column") != 0)
 		    htrRenderWidget(s, sub_w_obj, z+1, parentname, parentobj);
 		objClose(sub_w_obj);

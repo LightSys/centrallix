@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.4 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_variable.c,v 1.5 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
+    Revision 1.5  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.4  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -110,7 +115,7 @@ htvblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTVBL.idcnt++);
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -124,14 +129,14 @@ htvblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 	else if (t == DATA_T_STRING)
 	    {
-	    objGetAttrValue(w_obj,"value",POD(&vptr));
+	    objGetAttrValue(w_obj,"value",DATA_T_STRING,POD(&vptr));
 	    avptr = (char*)nmMalloc(strlen(vptr)+3);
 	    sprintf(avptr, "\"%s\"",vptr);
 	    htrAddScriptGlobal(s, nptr, avptr, HTR_F_NAMEALLOC | HTR_F_VALUEALLOC);
 	    }
 	else if (t == DATA_T_INTEGER)
 	    {
-	    objGetAttrValue(w_obj,"value",POD(&t));
+	    objGetAttrValue(w_obj,"value",DATA_T_INTEGER,POD(&t));
 	    snprintf(sbuf, HT_SBUF_SIZE, "%d", t);
 	    avptr = (char*)nmMalloc(strlen(sbuf)+1);
 	    strcpy(avptr,sbuf);

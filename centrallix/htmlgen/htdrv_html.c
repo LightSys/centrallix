@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.11 2002/07/30 13:59:17 lkehresman Exp $
+    $Id: htdrv_html.c,v 1.12 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.12  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.11  2002/07/30 13:59:17  lkehresman
     * Added standard events to the html widget
     * Standardized the layer references (x.document.layer is itself, x.mainlayer
@@ -146,27 +151,27 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTHTML.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=-1;
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=-1;
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=-1;
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=-1;
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTHTML","HTML widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) h = -1;
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 
 	/** Get source html objectsystem entry. **/
-	if (objGetAttrValue(w_obj,"source",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"source",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(src,ptr,0,127);
 	    src[127] = 0;
 	    }
 
 	/** Check for a 'mode' - dynamic or static.  Default is static. **/
-	if (objGetAttrValue(w_obj,"mode",POD(&ptr)) == 0 && !strcmp(ptr,"dynamic")) mode = 1;
+	if (objGetAttrValue(w_obj,"mode",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dynamic")) mode = 1;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63]=0;
 
@@ -218,13 +223,13 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    }
 
         /** If prefix text given, put it. **/
-        if (objGetAttrValue(w_obj, "prologue", POD(&ptr)) == 0)
+        if (objGetAttrValue(w_obj, "prologue", DATA_T_STRING,POD(&ptr)) == 0)
             {
             htrAddBodyItem(s, ptr);
             }
 
         /** If full text given, put it. **/
-        if (objGetAttrValue(w_obj, "content", POD(&ptr)) == 0)
+        if (objGetAttrValue(w_obj, "content", DATA_T_STRING,POD(&ptr)) == 0)
             {
             htrAddBodyItem(s, ptr);
             }
@@ -245,7 +250,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
             }
 
         /** If post text given, put it. **/
-        if (objGetAttrValue(w_obj, "epilogue", POD(&ptr)) == 0)
+        if (objGetAttrValue(w_obj, "epilogue", DATA_T_STRING, POD(&ptr)) == 0)
             {
             htrAddBodyItem(s, ptr);
             }

@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.12 2002/08/13 04:17:35 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.13 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.13  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.12  2002/08/13 04:17:35  gbeeley
     Fixed problem with the scrollpane that caused it to shift static content
     down an amount equal to the entire inner dimensions of the scrollpane
@@ -153,46 +158,46 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	id = (HTSPANE.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTSPANE","ScrollPane widget must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0)
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTSPANE","ScrollPane widget must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0)
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTSPANE","ScrollPane widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0)
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTSPANE","ScrollPane widget must have a 'height' property");
 	    return -1;
 	    }
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,'\0',63);
 	name[63]=0;
 
 	/** Check background color **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(bcolor,ptr,'\0',63);
 	    bcolor[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(bimage,ptr,'\0',63);
 	    bimage[63]=0;
 	    }
 
 	/** Marked not visible? **/
-	if (objGetAttrValue(w_obj,"visible",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"visible",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"false")) visible = 0;
 	    }

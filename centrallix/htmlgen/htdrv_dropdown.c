@@ -79,38 +79,38 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    id = (HTDD.idcnt++);
 
    /** Get x,y of this object **/
-   if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) h=20;
-   if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) {
+   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h=20;
+   if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) {
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	return -1;
    }
 
-   if (objGetAttrValue(w_obj,"numdisplay",POD(&num_disp)) != 0) num_disp=3;
+   if (objGetAttrValue(w_obj,"numdisplay",DATA_T_INTEGER,POD(&num_disp)) != 0) num_disp=3;
 
-   if (objGetAttrValue(w_obj,"hilight",POD(&ptr)) == 0) {
+   if (objGetAttrValue(w_obj,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
 	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
 	return -1;
    }
 
-   if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0) {
+   if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
 	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'bgcolor' property");
 	return -1;
    }
 
-   if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) {
+   if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) {
 	strncpy(fieldname,ptr,30);
    } else {
 	fieldname[0]='\0';
    }
 
     /** Get name **/
-    if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+    if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
     memccpy(name,ptr,0,63);
     name[63] = 0;
     nptr = (char*)nmMalloc(strlen(name)+1);
@@ -270,7 +270,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     /** Get the mode (default to 1, dynamicpage) **/
     mode = 0;
-    if (objGetAttrValue(w_obj,"mode",POD(&ptr)) == 0) {
+    if (objGetAttrValue(w_obj,"mode",DATA_T_STRING,POD(&ptr)) == 0) {
 	if (!strcmp(ptr,"static")) mode = 0;
 	else if (!strcmp(ptr,"dynamic_server")) mode = 1;
 	else if (!strcmp(ptr,"dynamic")) mode = 2;
@@ -282,7 +282,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     }
 
     sql = 0;
-    if (objGetAttrValue(w_obj,"sql",POD(&sql)) != 0 && mode != 0) {
+    if (objGetAttrValue(w_obj,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != 0) {
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
     }
@@ -319,7 +319,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 		    return -1;
 		}
 		type = objGetAttrType(qy_obj, attr);
-		rval = objGetAttrValue(qy_obj, attr, &od);
+		rval = objGetAttrValue(qy_obj, attr, type,&od);
 		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
 		    str = objDataToStringTmp(type, (void*)(&od), 0);
 		} else {
@@ -335,7 +335,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 		}
 
 		type = objGetAttrType(qy_obj, attr);
-		rval = objGetAttrValue(qy_obj, attr, &od);
+		rval = objGetAttrValue(qy_obj, attr, type,&od);
 		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
 		    str = objDataToStringTmp(type, (void*)(&od), 0);
 		} else {
@@ -352,7 +352,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
 	flag=0;
 	while((w_obj = objQueryFetch(qy, O_RDONLY))) {
-	   objGetAttrValue(w_obj,"outer_type",POD(&ptr));
+	   objGetAttrValue(w_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 	   if (!strcmp(ptr,"widget/dropdownitem") && mode == 0) {
 		if (objGetAttrValue(w_obj,"label",DATA_T_STRING,POD(&ptr)) != 0) {
 		  mssError(1,"HTDD","Drop Down widget must have a 'width' property");
@@ -428,10 +428,15 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.36 2002/08/21 02:14:15 jorupp Exp $
+    $Id: htdrv_dropdown.c,v 1.37 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.37  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.36  2002/08/21 02:14:15  jorupp
      * updated a couple GetAttrValue calls to explicitly specify the data type, as the code was assuming a certain type anyway
      * fixed a wrong error message

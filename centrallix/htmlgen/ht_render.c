@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.27 2002/09/11 00:57:08 jorupp Exp $
+    $Id: ht_render.c,v 1.28 2002/09/27 22:26:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.28  2002/09/27 22:26:04  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.27  2002/09/11 00:57:08  jorupp
      * added check for Mozilla 1.1
 
@@ -395,7 +400,7 @@ htrRenderWidget(pHtSession session, pObject widget_obj, int z, char* parentname,
 	    }
 
 	/** Get the name of the widget.. **/
-	objGetAttrValue(widget_obj, "outer_type", POD(&w_name));
+	objGetAttrValue(widget_obj, "outer_type", DATA_T_STRING, POD(&w_name));
 	if (strncmp(w_name,"widget/",7)) 
 	    {
 	    mssError(1,"HTR","Invalid content type for widget - must be widget/xxx");

@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.5 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.6 2002/09/27 22:26:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.6  2002/09/27 22:26:06  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.5  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -131,8 +136,11 @@ typedef struct
     unsigned int LastSerialID;
     char	OSPath[OBJSYS_MAX_PATH];
     char	UXPath[OBJSYS_MAX_PATH];
+    int		Flags;
     }
     UxdNode, *pUxdNode;
+
+#define UXD_NODE_F_READONLY	1
 
 
 /*** Structure used by this driver internally. ***/
@@ -231,7 +239,7 @@ uxd_internal_DirType(char* filepath)
 	*slashptr = '\0';
 
 	/** Check for the file **/
-	sprintf(tmpbuf,"%s/%s",filepath,".type");
+	snprintf(tmpbuf,OBJSYS_MAX_PATH+70,"%s/%s",filepath,".type");
 	if (stat(tmpbuf,&fileinfo) <0) no_file = 1;
 
     	/** Lookup in hash table first **/
@@ -250,7 +258,7 @@ uxd_internal_DirType(char* filepath)
 	else if (!no_file)
 	    {
 	    dt = (pUxdDirTypes)nmMalloc(sizeof(UxdDirTypes));
-	    strcpy(dt->DirName,filepath);
+	    snprintf(dt->DirName,OBJSYS_MAX_PATH+64,"%s",filepath);
 	    }
 	else
 	    {
@@ -294,7 +302,7 @@ uxd_internal_LoadAnnot(char* dirpath)
     pFile fd;
 
     	/** Build the pathname to the annotations file **/
-	sprintf(sbuf,"%s/.annotation",dirpath);
+	snprintf(sbuf,256,"%s/.annotation",dirpath);
 
 	/** Make sure it isn't already loaded. **/
 	ua = (pUxdAnnotation)xhLookup(&UXD_INF.LoadedAnnot, sbuf);
@@ -320,7 +328,7 @@ uxd_internal_LoadAnnot(char* dirpath)
 
 	/** Now add an entry for this directory. **/
 	/** The way that loop worked, we have a leftover unused 'ua' struct **/
-	strcpy(ua->Filename, sbuf);
+	snprintf(ua->Filename, 256, "%s", sbuf);
 	strcpy(ua->Annotation, "");
 	xhAdd(&UXD_INF.LoadedAnnot, ua->Filename, (void*)ua);
 
@@ -362,8 +370,10 @@ uxd_internal_ModifyAnnot(pUxdData inf, char* new_annotation)
 	    memccpy(ua->Annotation, new_annotation, '\0', 255);
 	    ua->Annotation[255] = 0;
 
-	    /** Now write out to file.  Seek & find. **/
-	    strcpy(sbuf,ua->Filename);
+	    /** Now write out to file.  Seek & find.  We only allow 300 chars in sbuf
+	     ** so that we can tack on the .annotation to the end.
+	     **/
+	    snprintf(sbuf,300,"%s",ua->Filename);
 	    strcpy(strrchr(sbuf,'/'),"/.annotation");
 	    cnt = 0;
 	    ptr = strrchr(inf->RealPathname,'/')+1;
@@ -489,7 +499,15 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    path = obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
 	    strcpy(node->OSPath, path);
 	    node->LastSerialID = snGetSerial(snnode);
+	    node->Flags = 0;
 	    is_new_node = 1;
+
+	    /** Is this a readonly node? **/
+	    ptr = NULL;
+	    if (!(stAttrValue(stLookup(snnode->Data, "readonly"), NULL, &ptr, 0) < 0) && ptr)
+		{
+		if (!strcasecmp(ptr,"yes")) node->Flags |= UXD_NODE_F_READONLY;
+		}
 
 	    /** Lookup 'path' in the open params so we know where in the unix fs to point the node. **/
 	    ptr = NULL;
@@ -535,7 +553,17 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    path = obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
 	    strcpy(node->OSPath, path);
 	    node->LastSerialID = snGetSerial(snnode);
-	    if (stAttrValue(stLookup(snnode->Data, "path"), NULL, &ptr, 0) < 0)
+	    node->Flags = 0;
+
+	    /** Is this a readonly node? **/
+	    ptr = NULL;
+	    if (!(stAttrValue(stLookup(snnode->Data, "readonly"), NULL, &ptr, 0) < 0) && ptr)
+		{
+		if (!strcasecmp(ptr,"yes")) node->Flags |= UXD_NODE_F_READONLY;
+		}
+
+	    ptr = NULL;
+	    if (stAttrValue(stLookup(snnode->Data, "path"), NULL, &ptr, 0) < 0 || !ptr)
 	        {
 		mssError(1,"UXD","Node file must contain path= attribute");
 		nmFree(inf, sizeof(UxdData));
@@ -545,6 +573,15 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    memccpy(node->UXPath, ptr, 0, OBJSYS_MAX_PATH - 1);
 	    node->UXPath[OBJSYS_MAX_PATH - 1] = 0;
 	    is_new_node = 1;
+	    }
+
+	/** If node shows readonly access, deny any read/write access **/
+	if ((obj->Mode & (O_RDONLY | O_RDWR | O_WRONLY)) != O_RDONLY && (node->Flags & UXD_NODE_F_READONLY))
+	    {
+	    mssError(1,"UXD","Permission denied: node for this subtree is set to readonly");
+	    nmFree(inf, sizeof(UxdData));
+	    if (is_new_node) nmFree(node, sizeof(UxdNode));
+	    return NULL;
 	    }
 
 	/** Figure out the real requested UNIX pathname. **/
@@ -883,7 +920,7 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    }
 	inf = (pUxdData)nmMalloc(sizeof(UxdData));
 	memset(inf,0,sizeof(UxdData));
-	sprintf(inf->RealPathname, "%s/%s",qy->File->RealPathname,d->d_name);
+	snprintf(inf->RealPathname, OBJSYS_MAX_PATH, "%s/%s",qy->File->RealPathname,d->d_name);
 	stat(inf->RealPathname, &(inf->Fileinfo));
 	if (S_ISDIR(inf->Fileinfo.st_mode)) inf->Flags |= UXD_F_ISDIR;
 	inf->Node = qy->File->Node;
@@ -1025,8 +1062,8 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    if (!(inf->UsrName[0]))
 		{
 		pw = getpwuid(inf->Fileinfo.st_uid);
-		if (!pw) sprintf(inf->UsrName,"%d",inf->Fileinfo.st_uid);
-		else strcpy(inf->UsrName,pw->pw_name);
+		if (!pw) snprintf(inf->UsrName,16,"%d",inf->Fileinfo.st_uid);
+		else snprintf(inf->UsrName,16,"%s",pw->pw_name);
 		}
 	    *((char**)val) = inf->UsrName;
 	    }
@@ -1040,8 +1077,8 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    if (!(inf->GrpName[0]))
 		{
 		gr = getgrgid(inf->Fileinfo.st_gid);
-		if (!gr) sprintf(inf->GrpName,"%d",inf->Fileinfo.st_gid);
-		else strcpy(inf->GrpName,gr->gr_name);
+		if (!gr) snprintf(inf->GrpName,16,"%d",inf->Fileinfo.st_gid);
+		else snprintf(inf->GrpName,16,"%s",gr->gr_name);
 		}
 	    *((char**)val) = inf->GrpName;
 	    }

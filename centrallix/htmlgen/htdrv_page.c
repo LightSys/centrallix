@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.49 2002/08/23 17:31:05 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.50 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.50  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.49  2002/08/23 17:31:05  lkehresman
     moved window_current global to the page widget so it is always defined
     even if it is null.  This prevents javascript errors from the objectsource
@@ -369,75 +374,75 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	if (z != 10) return 0;
 
     	/** Check for a title. **/
-	if (objGetAttrValue(w_obj,"title",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddHeaderItem_va(s, "    <TITLE>%s</TITLE>\n",ptr);
 	    }
 
     	/** Check for page load status **/
 	htPageStatus.show = 0;
-	if (objGetAttrValue(w_obj,"loadstatus",POD(&ptr)) == 0 && (!strcmp(ptr,"yes") || !strcmp(ptr,"true")))
+	if (objGetAttrValue(w_obj,"loadstatus",DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"yes") || !strcmp(ptr,"true")))
 	    {
 	    htPageStatus.show = 1;
 	    }
 
 	strcpy(htPageStatus.bgstr, "");
 	/** Check for bgcolor. **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    snprintf(htPageStatus.bgstr, 128, " BGCOLOR=%s", ptr);
 	    htrAddBodyParam_va(s, " BGCOLOR=%s",ptr);
 	    }
-	if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    snprintf(htPageStatus.bgstr, 128, " BACKGROUND=%s", ptr);
 	    htrAddBodyParam_va(s, " BACKGROUND=%s",ptr);
 	    }
 
 	/** Check for text color **/
-	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddBodyParam_va(s, " TEXT=%s",ptr);
 	    }
 
 	/** Keyboard Focus Indicator colors 1 and 2 **/
-	if (objGetAttrValue(w_obj,"kbdfocus1",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"kbdfocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(t->kbfocus1,ptr,0,63);
 	    t->kbfocus1[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"kbdfocus2",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"kbdfocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(t->kbfocus2,ptr,0,63);
 	    t->kbfocus2[63]=0;
 	    }
 
 	/** Mouse Focus Indicator colors 1 and 2 **/
-	if (objGetAttrValue(w_obj,"mousefocus1",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"mousefocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(t->msfocus1,ptr,0,63);
 	    t->msfocus1[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"mousefocus2",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"mousefocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(t->msfocus2,ptr,0,63);
 	    t->msfocus2[63]=0;
 	    }
 
 	/** Data Focus Indicator colors 1 and 2 **/
-	if (objGetAttrValue(w_obj,"datafocus1",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"datafocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(t->dtfocus1,ptr,0,63);
 	    t->dtfocus1[63]=0;
 	    }
-	if (objGetAttrValue(w_obj,"datafocus2",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"datafocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(t->dtfocus2,ptr,0,63);
 	    t->dtfocus2[63]=0;
 	    }
    
 	/** Cx windows attract to browser edges? if so, by how much **/
-	if (objGetAttrValue(w_obj,"attract",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"attract",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    attract = (int)ptr;
 
 	/** Add global for page metadata **/
@@ -470,7 +475,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 
 	/** Write named global **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,'\0',63);
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
@@ -608,6 +613,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        {\n"
 		"        if (!pg_isinlayer(pg_modallayer, ly)) return false;\n"
 		"        }\n"
+		//"    if (pg_curlayer) alert('cur layer kind = ' + ly.kind + ' ' + ly.id);\n"
 		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"

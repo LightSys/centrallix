@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.22 2002/07/26 04:13:28 pfinley Exp $
+    $Id: htdrv_checkbox.c,v 1.23 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.23  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.22  2002/07/26 04:13:28  pfinley
     oops, that shouldn't have been there.
 
@@ -176,19 +181,19 @@ int htcbNs47DefRender(pHtSession s, pObject w_obj, int z, char* parentname, char
    id = (HTCB.idcnt++);
 
    /** Get name **/
-   if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+   if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(name,ptr,0,63);
    name[63] = 0;
 
    /** Get x,y of this object **/
-   if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
       strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
    else 
       fieldname[0]='\0';
 
-   if (objGetAttrValue(w_obj,"checked",POD(&ptr)) != 0)
+   if (objGetAttrValue(w_obj,"checked",DATA_T_STRING,POD(&ptr)) != 0)
       checked = 0;
    else
       checked = 1;

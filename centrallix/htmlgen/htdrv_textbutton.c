@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.16 2002/07/25 18:45:40 lkehresman Exp $
+    $Id: htdrv_textbutton.c,v 1.17 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.17  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.16  2002/07/25 18:45:40  lkehresman
     Standardized event connectors for imagebutton and textbutton, and took
     advantage of the checking done in the cn_activate function so it isn't
@@ -168,33 +173,33 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTTBTN.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTTBTN","TextButton widget must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0)
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTTBTN","TextButton widget must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0)
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTTBTN","TextButton widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) h = -1;
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
 	/** Threestate button or twostate? **/
-	if (objGetAttrValue(w_obj,"tristate",POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
+	if (objGetAttrValue(w_obj,"tristate",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
 
 	/** Get normal, point, and click images **/
-	if (objGetAttrValue(w_obj,"text",POD(&ptr)) != 0)
+	if (objGetAttrValue(w_obj,"text",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTTBTN","TextButton widget must have a 'text' property");
 	    return -1;
@@ -203,17 +208,17 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	text[63]=0;
 
 	/** Get fgnd colors 1,2, and background color **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(bgcolor,"bgcolor=%.100s",ptr);
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(bgcolor,"background='%.90s'",ptr);
 	else
 	    strcpy(bgcolor,"");
-	if (objGetAttrValue(w_obj,"fgcolor1",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(fgcolor1,"%.63s",ptr);
 	else
 	    strcpy(fgcolor1,"white");
-	if (objGetAttrValue(w_obj,"fgcolor2",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(fgcolor2,"%.63s",ptr);
 	else
 	    strcpy(fgcolor2,"black");

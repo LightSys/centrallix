@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.17 2002/07/30 16:09:05 pfinley Exp $
+    $Id: htdrv_radiobutton.c,v 1.18 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.18  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.17  2002/07/30 16:09:05  pfinley
     Added Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove events to the
     radiobutton widget.
@@ -187,52 +192,52 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    id = (HTRB.idcnt++);
 
    /** Get x,y,w,h of this object **/
-   if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) {
+   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) {
       mssError(1,"HTRB","RadioButtonPanel widget must have a 'width' property");
       return -1;
    }
-   if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) {
+   if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) {
       mssError(1,"HTRB","RadioButtonPanel widget must have a 'height' property");
       return -1;
    }
 
    /** Background color/image? **/
-   if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+   if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
       strncpy(main_bgcolor,ptr,31);
    else 
       strcpy(main_bgcolor,"");
 
-   if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+   if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
       strncpy(main_background,ptr,127);
    else
       strcpy(main_background,"");
 
    /** Text color? **/
-   if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
+   if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
       snprintf(textcolor,32,"%s",ptr);
    else
       strcpy(textcolor,"black");
 
    /** Outline color? **/
-   if (objGetAttrValue(w_obj,"outlinecolor",POD(&ptr)) == 0)
+   if (objGetAttrValue(w_obj,"outlinecolor",DATA_T_STRING,POD(&ptr)) == 0)
       snprintf(outline_bg,64,"%s",ptr);
    else
       strcpy(outline_bg,"black");
 
    /** Get name **/
-   if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+   if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(name,ptr,0,63);
    name[63]=0;
 
    /** Get title **/
-   if (objGetAttrValue(w_obj,"title",POD(&ptr)) != 0) return -1;
+   if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(title,ptr,0,63);
    title[63] = 0;
 
    /** Get fieldname **/
-   if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+   if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
       {
       strncpy(fieldname,ptr,30);
       }
@@ -275,7 +280,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (qy) {
       int i = 1;
       while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(radiobutton_obj,"outer_type",POD(&ptr));
+         objGetAttrValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
          if (!strcmp(ptr,"widget/radiobutton")) {
             htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
                     id,i,7,10+((i-1)*25)+3,w-(2*3 +2+7),25,z+2,w-(2*3 +2+7),25);
@@ -351,9 +356,9 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (qy) {
       int i = 1;
       while((sub_w_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(sub_w_obj,"outer_type",POD(&ptr));
+         objGetAttrValue(sub_w_obj,"outer_type",DATA_T_STRING,POD(&ptr));
          if (!strcmp(ptr,"widget/radiobutton")) {
-            if (objGetAttrValue(sub_w_obj,"selected",POD(&ptr)) != 0)
+            if (objGetAttrValue(sub_w_obj,"selected",DATA_T_STRING,POD(&ptr)) != 0)
                strcpy(sbuf2,"false");
             else {
                memccpy(sbuf2,ptr,0,199);
@@ -384,20 +389,20 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (qy) {
       int i = 1;
       while((radiobutton_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(radiobutton_obj,"outer_type",POD(&ptr));
+         objGetAttrValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
          if (!strcmp(ptr,"widget/radiobutton")) {
             htrAddBodyItem_va(s,"            <DIV ID=\"radiobuttonpanel%doption%dpane\">\n", id, i);
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelbuttonsetpane\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n");
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
 
 	    
-            objGetAttrValue(radiobutton_obj,"label",POD(&ptr));
+            objGetAttrValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
             memccpy(sbuf2,ptr,0,199);
 	    sbuf2[199]=0;
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
 
 	    /* use label (from above) as default value if no value given */
-	    if(objGetAttrValue(radiobutton_obj,"value",POD(&ptr))==0)
+	    if(objGetAttrValue(radiobutton_obj,"value",DATA_T_STRING,POD(&ptr))==0)
 		{
 		memccpy(sbuf2,ptr,0,199);
 		sbuf2[199] = 0;

@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_node.c,v 1.2 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: st_node.c,v 1.3 2002/09/27 22:26:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/st_node.c,v $
 
     $Log: st_node.c,v $
+    Revision 1.3  2002/09/27 22:26:06  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.2  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -106,7 +111,7 @@ snReadNode(pObject obj)
 	/** If found node, quickly verify the file's timestamp. **/
 	if (node) 
 	    {
-	    if (objGetAttrValue(obj,"last_modification",&pod) == 0)
+	    if (objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,&pod) == 0)
 	        {
 		if (memcmp(pod.DateTime, &(node->LastModification), sizeof(DateTime)) != 0)
 		    {
@@ -142,7 +147,7 @@ snReadNode(pObject obj)
 	node->Status = SN_NS_CLEAN;
 	xaInit(&(node->Opens),16);
 	node->Data = inf;
-	if (objGetAttrValue(obj,"last_modification",&pod) == 0)
+	if (objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,&pod) == 0)
 	    {
 	    memcpy(&(node->LastModification), pod.DateTime, sizeof(DateTime));
 	    }
@@ -152,7 +157,7 @@ snReadNode(pObject obj)
 	    }
 	node->RevisionCnt = (SN_INF.MasterRevCnt++);
 	obj_internal_PathPart(obj->Pathname,0,0);
-	if (objGetAttrValue(obj,"outer_type",&pod) != 0) objGetAttrValue(obj,"content_type",&pod);
+	if (objGetAttrValue(obj,"outer_type",DATA_T_STRING,&pod) != 0) objGetAttrValue(obj,"content_type",DATA_T_STRING,&pod);
 	memccpy(node->OpenType, pod.String, 0, 63);
 	node->OpenType[63] = 0;
 
@@ -175,7 +180,7 @@ snWriteNode(pObject obj, pSnNode node)
     char* openas_path;
 
     	/** Make sure that the date/time hasn't changed. **/
-	if (objGetAttrValue(obj,"last_modification",&pod) == 0)
+	if (objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,&pod) == 0)
 	    {
 	    if (memcmp(pod.DateTime, &(node->LastModification), sizeof(DateTime)) != 0)
 		{
@@ -217,7 +222,7 @@ snWriteNode(pObject obj, pSnNode node)
 	/** Close up and read the timestamp. **/
 	objClose(new_obj);
 	nmSysFree(openas_path);
-	if (objGetAttrValue(obj,"last_modification",&pod) == 0)
+	if (objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,&pod) == 0)
 	    {
 	    memcpy(&(node->LastModification), pod.DateTime, sizeof(DateTime));
 	    } 

@@ -57,10 +57,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_dbl.c,v 1.2 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_dbl.c,v 1.3 2002/09/27 22:26:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_dbl.c,v $
 
     $Log: objdrv_dbl.c,v $
+    Revision 1.3  2002/09/27 22:26:06  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.2  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -156,6 +161,31 @@ typedef struct
     char*		SearchRegex;
     }
     DblSearchPathItem, *pDblSearchPathItem;
+
+
+/*** DBL .IS1 file header structure.  LSB byte order.  1024 bytes.
+ ***/
+typedef struct
+    {
+    CXUINT16		Magic;		/* 0x5cb5 */
+    CXINT8		Pad1[8];
+    CXUINT16		KeyLen;		/* length of index key */
+    CXUINT16		RecLen;		/* logical record length */
+    CXINT8		Pad2[18];
+    CXUINT16		DataOffset;	/* offset to data area of file */
+    CXINT8		Pad3[18];
+    CXUINT16		KeyLen2;	/* length of index key */
+    CXINT8		Pad4[14];
+    CXUINT16		KeyLen3;	/* length of index key... not sure why there are 3... */
+    CXINT8		Pad5[2];
+    CXCHAR		KeyName[15];	/* name of index key */
+    CXCHAR		Pad6[1];
+    CXINT8		Pad7[420];
+    CXUINT16		PhysLen;	/* physical record length */
+    CXINT8		Pad8[508];
+    CXCHAR		Version[6];	/* " 51000" Hmm... not sure this is a version... */
+    }
+    DblHeader, *pDblHeader;
 
 
 

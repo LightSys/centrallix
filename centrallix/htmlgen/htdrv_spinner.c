@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.8 2002/07/25 18:08:36 mcancel Exp $
+    $Id: htdrv_spinner.c,v 1.9 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.9  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.8  2002/07/25 18:08:36  mcancel
     Taking out the htrAddScriptFunctions out... moving the javascript code out of the c file into the js files and a little cleaning up... taking out whole deleted functions in a few and found another htrAddHeaderItem that needed to be htrAddStylesheetItem.
 
@@ -137,37 +142,37 @@ htspnrRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTSPNR.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTSPNR","Spinner widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0)
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTSPNR","Spinner widget must have a 'height' property");
 	    return -1;
 	    }
 	
 	/** Maximum characters to accept from the user **/
-	if (objGetAttrValue(w_obj,"maxchars",POD(&maxchars)) != 0) maxchars=255;
+	if (objGetAttrValue(w_obj,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
 
 	/** Background color/image? **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    snprintf(main_bg,128,"bgcolor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    snprintf(main_bg,128,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63]=0;
 
 	/** Style of editbox - raised/lowered **/
-	if (objGetAttrValue(w_obj,"style",POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
+	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
 	if (is_raised)
 	    {
 	    c1 = "white_1x1.png";

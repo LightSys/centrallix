@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.12 2002/08/01 15:14:38 lkehresman Exp $
+    $Id: htdrv_textarea.c,v 1.13 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.13  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.12  2002/08/01 15:14:38  lkehresman
     Tagged textarea images with .kind, .layer, and .mainlayer
 
@@ -116,40 +121,40 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTTX.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTTX","Textarea widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0)
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTTX","Textarea widget must have a 'height' property");
 	    return -1;
 	    }
 	
 	/** Maximum characters to accept from the user **/
-	if (objGetAttrValue(w_obj,"maxchars",POD(&maxchars)) != 0) maxchars=255;
+	if (objGetAttrValue(w_obj,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
 
 	/** Readonly flag **/
-	if (objGetAttrValue(w_obj,"readonly",POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
+	if (objGetAttrValue(w_obj,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
 
 	/** Background color/image? **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"bgColor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
 	/** Style of Textarea - raised/lowered **/
-	if (objGetAttrValue(w_obj,"style",POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
+	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
 	if (is_raised)
 	    {
 	    c1 = "white_1x1.png";
@@ -161,7 +166,7 @@ httxRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    c2 = "white_1x1.png";
 	    }
 
-	if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+	if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
 	    {
 	    strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
 	    }

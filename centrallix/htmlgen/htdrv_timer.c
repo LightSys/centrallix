@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.5 2002/07/16 17:52:01 lkehresman Exp $
+    $Id: htdrv_timer.c,v 1.6 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.6  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.5  2002/07/16 17:52:01  lkehresman
     Updated widget drivers to use include files
 
@@ -112,18 +117,18 @@ httmRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTTM.idcnt++);
 
 	/** Get msec for timer countdown **/
-	if (objGetAttrValue(w_obj,"msec",POD(&msec)) != 0)
+	if (objGetAttrValue(w_obj,"msec",DATA_T_INTEGER,POD(&msec)) != 0)
 	    {
 	    mssError(1,"HTTM","Timer widget must have 'msec' time specified");
 	    return -1;
 	    }
 
 	/** Get auto reset and auto start settings **/
-	if (objGetAttrValue(w_obj,"auto_reset",POD(&auto_reset)) != 0) auto_reset = 0;
-	if (objGetAttrValue(w_obj,"auto_start",POD(&auto_start)) != 0) auto_start = 1;
+	if (objGetAttrValue(w_obj,"auto_reset",DATA_T_INTEGER,POD(&auto_reset)) != 0) auto_reset = 0;
+	if (objGetAttrValue(w_obj,"auto_start",DATA_T_INTEGER,POD(&auto_start)) != 0) auto_start = 1;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63]=0;
 

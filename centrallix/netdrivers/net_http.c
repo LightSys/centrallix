@@ -61,10 +61,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.27 2002/07/31 18:36:20 mattphillips Exp $
+    $Id: net_http.c,v 1.28 2002/09/27 22:26:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.28  2002/09/27 22:26:06  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.27  2002/07/31 18:36:20  mattphillips
     Let's make use of the HAVE_LIBZ defined by ./configure...  We asked autoconf
     to test for libz, but we didn't do anything with the results of its test.
@@ -1065,7 +1070,7 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	xsInit(&xs);
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) return -1;
-	rval = objGetAttrValue(obj,attrname,&od);
+	rval = objGetAttrValue(obj,attrname,type,&od);
 	if (rval != 0) 
 	    dptr = "";
 	else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) 
@@ -1480,28 +1485,28 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 			    {
 			    case DATA_T_INTEGER:
 			        n = objDataToInteger(DATA_T_STRING, subinf->StrVal, NULL);
-				retval=objSetAttrValue(obj,subinf->Name,POD(&n));
+				retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
 				break;
 
 			    case DATA_T_DOUBLE:
 			        dbl = objDataToDouble(DATA_T_STRING, subinf->StrVal);
-				retval=objSetAttrValue(obj,subinf->Name,POD(&dbl));
+				retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
 				break;
 
 			    case DATA_T_STRING:
-			        retval=objSetAttrValue(obj,subinf->Name,POD(&(subinf->StrVal)));
+			        retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&(subinf->StrVal)));
 				break;
 
 			    case DATA_T_DATETIME:
 			        objDataToDateTime(DATA_T_STRING, subinf->StrVal, &dt, NULL);
 				pdt = &dt;
-				retval=objSetAttrValue(obj,subinf->Name,POD(&pdt));
+				retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
 				break;
 
 			    case DATA_T_MONEY:
 				pm = &m;
 			        objDataToMoney(DATA_T_STRING, subinf->StrVal, &m);
-				retval=objSetAttrValue(obj,subinf->Name,POD(&pm));
+				retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
 				break;
 
 			    case DATA_T_STRINGVEC:
@@ -1561,14 +1566,14 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 		            n = search_inf->IntVal[0];
 		        else*/
 		            n = strtol(search_inf->StrVal, NULL, 10);
-		        objSetAttrValue(obj, search_inf->Name, POD(&n));
+		        objSetAttrValue(obj, search_inf->Name, DATA_T_INTEGER,POD(&n));
 			break;
 
 		    case DATA_T_STRING:
 		        if (search_inf->StrVal != NULL)
 		    	    {
 		    	    ptr = search_inf->StrVal;
-		    	    objSetAttrValue(obj, search_inf->Name, POD(&ptr));
+		    	    objSetAttrValue(obj, search_inf->Name, DATA_T_STRING,POD(&ptr));
 			    }
 			break;
 		    
@@ -1577,7 +1582,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 		            dbl = search_inf->IntVal[0];
 		        else*/
 		            dbl = strtod(search_inf->StrVal, NULL);
-			objSetAttrValue(obj, search_inf->Name, POD(&dbl));
+			objSetAttrValue(obj, search_inf->Name, DATA_T_DOUBLE,POD(&dbl));
 			break;
 
 		    case DATA_T_MONEY:
@@ -1591,7 +1596,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 			    objDataToMoney(DATA_T_STRING, search_inf->StrVal, &m);
 			    /*}*/
 			mptr = &m;
-			objSetAttrValue(obj, search_inf->Name, POD(&mptr));
+			objSetAttrValue(obj, search_inf->Name, DATA_T_MONEY,POD(&mptr));
 			break;
 		
 		    case DATA_T_DATETIME:
@@ -1599,7 +1604,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 			    {
 			    objDataToDateTime(DATA_T_STRING, search_inf->StrVal, &dt,NULL);
 			    dtptr = &dt;
-			    objSetAttrValue(obj, search_inf->Name, POD(&dtptr));
+			    objSetAttrValue(obj, search_inf->Name, DATA_T_DATETIME,POD(&dtptr));
 			    }
 			break;
 		    }
@@ -1702,7 +1707,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	if (!find_inf || !strcmp(find_inf->StrVal, "content"))
 	    {
 	    /** Check the object type. **/
-	    objGetAttrValue(target_obj, "outer_type", POD(&ptr));
+	    objGetAttrValue(target_obj, "outer_type", DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset"))
 	        {
 		int gzip=0;
@@ -1729,7 +1734,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 
 		browser=(char*)mssGetParam("User-Agent");
 
-		objGetAttrValue(target_obj,"inner_type", POD(&ptr));
+		objGetAttrValue(target_obj,"inner_type", DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"text/plain")) 
 		    {
 		    ptr = "text/html";
@@ -1788,8 +1793,8 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		while(*dptr && *dptr == '/' && dptr[1] == '/') dptr++;
 		while((sub_obj = objQueryFetch(query,O_RDONLY)))
 		    {
-		    objGetAttrValue(sub_obj, "name", POD(&ptr));
-		    objGetAttrValue(sub_obj, "annotation", POD(&aptr));
+		    objGetAttrValue(sub_obj, "name", DATA_T_STRING,POD(&ptr));
+		    objGetAttrValue(sub_obj, "annotation", DATA_T_STRING,POD(&aptr));
 		    snprintf(sbuf,256,"<A HREF=%s%s%s TARGET='%s'>%s</A><BR>\n",dptr,
 		    	(dptr[0]=='/' && dptr[1]=='\0')?"":"/",ptr,ptr,aptr);
 		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -1925,7 +1930,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);*/
 
 	/** If size specified, set the size. **/
-	if (size != -1) objSetAttrValue(target_obj, "size", POD(&size));
+	if (size != -1) objSetAttrValue(target_obj, "size", DATA_T_INTEGER,POD(&size));
 
 	/** Set any attributes specified in the url inf **/
 	for(i=0;i<url_inf->nSubInf;i++)
@@ -1935,11 +1940,11 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    if (type == DATA_T_INTEGER)
 	        {
 		v = strtol(sub_inf->StrVal,NULL,10);
-		objSetAttrValue(target_obj, sub_inf->Name, POD(&v));
+		objSetAttrValue(target_obj, sub_inf->Name, DATA_T_INTEGER,POD(&v));
 		}
 	    else if (type == DATA_T_STRING)
 	        {
-		objSetAttrValue(target_obj, sub_inf->Name, POD(&(sub_inf->StrVal)));
+		objSetAttrValue(target_obj, sub_inf->Name, DATA_T_STRING, POD(&(sub_inf->StrVal)));
 		}
 	    }
 
@@ -2049,7 +2054,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	nht_internal_CkParams(url_inf, source_obj);
 
 	/** Get the size of the original object, if possible **/
-	if (objGetAttrValue(source_obj,"size",POD(&size)) != 0) size = -1;
+	if (objGetAttrValue(source_obj,"size",DATA_T_INTEGER,POD(&size)) != 0) size = -1;
 
 	/** Try to open the new object read-only to see if it exists... **/
 	target_obj = objOpen(nsess->ObjSess, dest, O_RDONLY, 0600, "text/html");
@@ -2074,7 +2079,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    }
 
 	/** Set the size of the new document... **/
-	if (size >= 0) objSetAttrValue(target_obj, "size", POD(&size));
+	if (size >= 0) objSetAttrValue(target_obj, "size", DATA_T_INTEGER,POD(&size));
 
 	/** Do the copy operation. **/
 	while((rcnt = objRead(source_obj, sbuf, 256, 0,0)) > 0)

@@ -57,10 +57,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.18 2002/08/24 00:44:18 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.19 2002/09/27 22:26:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.19  2002/09/27 22:26:06  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.18  2002/08/24 00:44:18  jorupp
      * incorporated changes that dman sent me to fix the bad typing problems with passing free() to xhClear
 
@@ -530,8 +535,7 @@ xml_internal_ReadDoc(pObject obj)
 	    {
 	    if(XML_DEBUG) printf("found %s in cache\n",path);
 	    /** found match in cache -- check modification time **/
-	    if(objGetAttrType(obj,"last_modification")==DATA_T_INTEGER && 
-		objGetAttrValue(obj,"last_modification",POD(&pDT))==0)
+	    if(objGetAttrValue(obj,"last_modification",DATA_T_DATETIME,POD(&pDT))==0)
 	    if(pDT && pDT->Value!=pCache->lastmod.Value)
 		{
 		/** modification time changed -- update **/
@@ -1242,7 +1246,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 
 	/** take last_modification from underlying object if it has one **/
 	if(!strcmp(attrname,"last_modification"))
-	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",val)==0)
+	    if(objGetAttrValue(inf->Obj->Prev,"last_modification",DATA_T_DATETIME,val)==0)
 		return 0;
 
 	/** If annotation, and not found, return "" **/

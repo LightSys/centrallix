@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.22 2002/08/16 03:09:44 jorupp Exp $
+    $Id: lsmain.c,v 1.23 2002/09/27 22:26:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.23  2002/09/27 22:26:03  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.22  2002/08/16 03:09:44  jorupp
      * added the ability to disable the dynamic loading modules -- needed under cygwin
        -- centrallix now compiles and runs under cygwin (without dynamic loading modules)
@@ -275,7 +280,7 @@ main(int argc, char* argv[])
 
 	/** Check for config file options on the command line **/
 #ifdef HAVE_BASENAME
-	name = basename(argv[0]);
+	name = (char*)basename(argv[0]);
 #else
 	name = argv[0];
 #endif

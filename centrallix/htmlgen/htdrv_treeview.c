@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.17 2002/07/31 14:45:58 lkehresman Exp $
+    $Id: htdrv_treeview.c,v 1.18 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.18  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.17  2002/07/31 14:45:58  lkehresman
     * Added standard events to treeview
     * Standardized x.document.layer and x.mainlayer to point to the rigth layers
@@ -170,29 +175,29 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTTREE.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0)
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0)
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have a 'width' property");
 	    return -1;
 	    }
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
 	/** Get source directory tree **/
-	if (objGetAttrValue(w_obj,"source",POD(&ptr)) != 0)
+	if (objGetAttrValue(w_obj,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have a 'source' property");
 	    return -1;

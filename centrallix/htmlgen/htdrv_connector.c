@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.7 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_connector.c,v 1.8 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.8  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.7  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -132,21 +137,21 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTCONN.idcnt++);
 
 	/** Get the event linkage information **/
-	if (objGetAttrValue(w_obj,"event",POD(&ptr)) != 0) 
+	if (objGetAttrValue(w_obj,"event",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'event' property");
 	    return -1;
 	    }
 	memccpy(event,ptr,0,31);
 	event[31]=0;
-	if (objGetAttrValue(w_obj,"target",POD(&ptr)) != 0)
+	if (objGetAttrValue(w_obj,"target",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have a 'target' property");
 	    return -1;
 	    }
 	memccpy(target,ptr,0,31);
 	target[31]=0;
-	if (objGetAttrValue(w_obj,"action",POD(&ptr)) != 0)
+	if (objGetAttrValue(w_obj,"action",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'action' property");
 	    return -1;
@@ -155,7 +160,7 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	action[31]=0;
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -186,17 +191,17 @@ htconnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    switch(objGetAttrType(w_obj, ptr))
 	        {
 		case DATA_T_INTEGER:
-	    	    objGetAttrValue(w_obj, ptr, POD(&vint));
+	    	    objGetAttrValue(w_obj, ptr, DATA_T_INTEGER,POD(&vint));
 		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %d;\n",ptr,vint);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_DOUBLE:
-		    objGetAttrValue(w_obj, ptr, POD(&vdbl));
+		    objGetAttrValue(w_obj, ptr, DATA_T_DOUBLE,POD(&vdbl));
 		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %f;\n",ptr,vdbl);
 		    xsConcatenate(&xs,sbuf,-1);
 		    break;
 		case DATA_T_STRING:
-	    	    objGetAttrValue(w_obj, ptr, POD(&vstr));
+	    	    objGetAttrValue(w_obj, ptr, DATA_T_STRING,POD(&vstr));
 		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
 		        {
 			snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = eparam.%s\n", ptr, vstr);

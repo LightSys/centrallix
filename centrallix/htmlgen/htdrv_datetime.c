@@ -82,41 +82,41 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTDT.idcnt++);
 
 	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have an 'x' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0)
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have a 'y' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0)
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) 
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) 
 	    {
 	    mssError(1,"HTDT","Date/Time widget must have a 'height' property");
 	    return -1;
 	    }
 
-	if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+	if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
 	    strncpy(fieldname,ptr,30);
 	else 
 	    fieldname[0]='\0';
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 
 	/** Get initial date **/
-	if (objGetAttrValue(w_obj, "sql", POD(&sql)) == 0) 
+	if (objGetAttrValue(w_obj, "sql", DATA_T_STRING,POD(&sql)) == 0) 
 	    {
 	    if ((qy = objMultiQuery(w_obj->Session, sql))) 
 		{
@@ -129,7 +129,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 			return -1;
 			}
 		    type = objGetAttrType(qy_obj, attr);
-		    rval = objGetAttrValue(qy_obj, attr, &od);
+		    rval = objGetAttrValue(qy_obj, attr, type,&od);
 		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
 			str = objDataToStringTmp(type, (void*)(&od), 0);
 		    else
@@ -140,7 +140,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		objQueryClose(qy);
 		}
 	    }
-	else if (objGetAttrValue(w_obj,"initialdate",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"initialdate",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    memccpy(initialdate, ptr, '\0', 63);
 	    }
@@ -161,13 +161,13 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	
 
 	/** Get colors **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(bgcolor,"bgcolor=%.100s",ptr);
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(bgcolor,"background='%.90s'",ptr);
 	else
 	    strcpy(bgcolor,"bgcolor=#c0c0c0");
-	if (objGetAttrValue(w_obj,"fgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(fgcolor,"%.63s",ptr);
 	else
 	    strcpy(fgcolor,"black");
@@ -300,10 +300,15 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.20 2002/07/31 14:06:05 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.21 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.21  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.20  2002/07/31 14:06:05  lkehresman
     Moved CVS log messages to bottom
 

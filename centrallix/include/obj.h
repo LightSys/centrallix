@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.12 2002/08/10 02:09:44 gbeeley Exp $
+    $Id: obj.h,v 1.13 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.13  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.12  2002/08/10 02:09:44  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -519,7 +524,7 @@ int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
 
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);
-#if 0
+#if 1
 int objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
 int objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
 #else

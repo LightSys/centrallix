@@ -12,9 +12,9 @@ int htcbMozDefRender(pHtSession s, pObject w_obj, int z, char* parentname, char*
    id = (HTCB.idcnt++);
 
    /** Get x,y of this object **/
-   if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-   if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) 
+   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
       {
       strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
       }
@@ -23,7 +23,7 @@ int htcbMozDefRender(pHtSession s, pObject w_obj, int z, char* parentname, char*
       fieldname[0]='\0';
       } 
 
-   if (objGetAttrValue(w_obj,"checked",POD(&ptr)) != 0)
+   if (objGetAttrValue(w_obj,"checked",DATA_T_STRING,POD(&ptr)) != 0)
       { 
       checked = 0;
       } 

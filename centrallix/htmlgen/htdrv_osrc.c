@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.45 2002/08/18 18:43:44 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.46 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.46  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.45  2002/08/18 18:43:44  jorupp
      * osrc now uses double quotes to enclose the parameters passed to init -- it's safer
 
@@ -284,15 +289,15 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    id = (HTOSRC.idcnt++);
 
    /** Get name **/
-   if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+   if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(name,ptr,0,39);
    name[39] = 0;
 
-   if (objGetAttrValue(w_obj,"replicasize",POD(&replicasize)) != 0)
+   if (objGetAttrValue(w_obj,"replicasize",DATA_T_INTEGER,POD(&replicasize)) != 0)
       replicasize=6;
-   if (objGetAttrValue(w_obj,"readahead",POD(&readahead)) != 0)
+   if (objGetAttrValue(w_obj,"readahead",DATA_T_INTEGER,POD(&readahead)) != 0)
       readahead=replicasize/2;
-   if (objGetAttrValue(w_obj,"scrollahead",POD(&scrollahead)) != 0)
+   if (objGetAttrValue(w_obj,"scrollahead",DATA_T_INTEGER,POD(&scrollahead)) != 0)
       scrollahead=readahead;
 
    /** try to catch mistakes that would probably make Netscape REALLY buggy... **/
@@ -307,7 +312,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       return -1;
       }
 
-   if (objGetAttrValue(w_obj,"sql",POD(&ptr)) == 0)
+   if (objGetAttrValue(w_obj,"sql",DATA_T_STRING,POD(&ptr)) == 0)
       {
       sql=nmMalloc(strlen(ptr)+1);
       strcpy(sql,ptr);
@@ -318,7 +323,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       return -1;
       }
 
-   if (objGetAttrValue(w_obj,"filter",POD(&ptr)) == 0)
+   if (objGetAttrValue(w_obj,"filter",DATA_T_STRING,POD(&ptr)) == 0)
       {
       filter=nmMalloc(strlen(ptr)+1);
       strcpy(filter,ptr);
@@ -360,7 +365,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    {
    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
        {
-       objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+       objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
        if (strcmp(ptr,"widget/connector") == 0)
 	   htrRenderWidget(s, sub_w_obj, z, "", name);
        else

@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.47  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.46  2002/07/16 17:52:00  lkehresman
     Updated widget drivers to use include files
 
@@ -273,23 +278,23 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	id = (HTFORM.idcnt++);
 
 	/** Get params. **/
-	if (objGetAttrValue(w_obj,"AllowQuery",POD(&allowquery)) != 0) 
+	if (objGetAttrValue(w_obj,"AllowQuery",DATA_T_INTEGER,POD(&allowquery)) != 0) 
 	    allowquery=1;
-	if (objGetAttrValue(w_obj,"AllowNew",POD(&allownew)) != 0) 
+	if (objGetAttrValue(w_obj,"AllowNew",DATA_T_INTEGER,POD(&allownew)) != 0) 
 	    allownew=1;
-	if (objGetAttrValue(w_obj,"AllowModify",POD(&allowmodify)) != 0) 
+	if (objGetAttrValue(w_obj,"AllowModify",DATA_T_INTEGER,POD(&allowmodify)) != 0) 
 	    allowmodify=1;
-	if (objGetAttrValue(w_obj,"AllowView",POD(&allowview)) != 0) 
+	if (objGetAttrValue(w_obj,"AllowView",DATA_T_INTEGER,POD(&allowview)) != 0) 
 	    allowview=1;
-	if (objGetAttrValue(w_obj,"AllowNoData",POD(&allownodata)) != 0) 
+	if (objGetAttrValue(w_obj,"AllowNoData",DATA_T_INTEGER,POD(&allownodata)) != 0) 
 	    allownodata=1;
 	/** The way I read the specs -- overriding this resides in 
 	 **   the code, not here -- JDR **/
-	if (objGetAttrValue(w_obj,"MultiEnter",POD(&multienter)) != 0) 
+	if (objGetAttrValue(w_obj,"MultiEnter",DATA_T_INTEGER,POD(&multienter)) != 0) 
 	    multienter=0;
-	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) 
+	if (objGetAttrValue(w_obj,"TabMode",DATA_T_STRING,POD(tabmode)) != 0) 
 	    tabmode[0]='\0';
-	if (objGetAttrValue(w_obj,"ReadOnly",POD(&readonly)) != 0) 
+	if (objGetAttrValue(w_obj,"ReadOnly",DATA_T_INTEGER,POD(&readonly)) != 0) 
 	    readonly=0;
 
 	/*** 03/16/02 Jonathan Rupp
@@ -306,7 +311,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***        be removed
 	 ***/
 	
-	if (objGetAttrValue(w_obj,"_3bconfirmwindow",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"_3bconfirmwindow",DATA_T_STRING,POD(&ptr)) == 0)
 	    snprintf(_3bconfirmwindow,30,"%s",ptr);
 	else
 	    strcpy(_3bconfirmwindow,"null");
@@ -335,7 +340,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	 ***/
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
@@ -368,7 +373,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(sub_w_obj, "outer_type", POD(&ptr));
+		objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
 		if (strcmp(ptr,"widget/connector") == 0)
 		    htrRenderWidget(s, sub_w_obj, z, "", name);
 		else

@@ -47,7 +47,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_gzip.c,v 1.1 2002/08/19 04:32:21 jorupp Exp $
+    $Id: objdrv_gzip.c,v 1.2 2002/09/27 22:26:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_gzip.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -294,7 +294,7 @@ gzip_internal_ParseHeaders(pGzipData inf)
     /** use parent last_modification attribute if it exists,
      **  otherwise use the one from the gzip header
      **/
-    i=objGetAttrValue(inf->Obj->Prev,"last_modification",DATA_T_DATETIME,&dt,NULL);
+    i=objGetAttrValue(inf->Obj->Prev,"last_modification",DATA_T_DATETIME,POD(&dt));
     if(i==0)
 	{
 	memcpy(&(inf->lastmod),dt,sizeof(DateTime));

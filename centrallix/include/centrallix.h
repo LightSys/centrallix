@@ -4,6 +4,21 @@
 #include "stparse.h"
 
 
+/*** Platform-independent types definition ***/
+typedef long long CXINT64;
+typedef int CXINT32;
+typedef unsigned int CXUINT32;
+typedef short CXINT16;
+typedef unsigned short CXUINT16;
+typedef char CXINT8;
+typedef unsigned char CXUINT8;
+typedef char CXCHAR;
+#define CX_CONV8(x)	(x)
+#define CX_CONV16(x)	((CX_CONV8((x)&0xff)<<8)|CX_CONV8(((x)>>8)&0xff))
+#define CX_CONV32(x)	((CX_CONV16((x)&0xffff)<<16)|CX_CONV16(((x)>>16)&0xffff))
+#define CX_CONV64(x)	((CX_CONV32((x)&0xffffffffLL)<<32)|CX_CONV32(((x)>>32)&0xffffffffLL))
+
+
 /*** Loaded module info ***/
 typedef struct _CXM
     {

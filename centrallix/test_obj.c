@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.16 2002/09/06 02:47:30 jorupp Exp $
+    $Id: test_obj.c,v 1.17 2002/09/27 22:26:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.17  2002/09/27 22:26:03  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.16  2002/09/06 02:47:30  jorupp
      * removed luke's username and password hack
 
@@ -172,21 +177,21 @@ testobj_show_attr(pObject obj, char* attrname)
 	switch(type)
 	    {
 	    case DATA_T_INTEGER:
-		if (objGetAttrValue(obj,attrname,POD(&intval)) == 1)
+		if (objGetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval)) == 1)
 		    printf("  %20.20s: NULL\n",attrname);
 		else
 		    printf("  %20.20s: %d\n",attrname, intval);
 		break;
 
 	    case DATA_T_STRING:
-		if (objGetAttrValue(obj,attrname,POD(&stringval)) == 1)
+		if (objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval)) == 1)
 		    printf("  %20.20s: NULL\n",attrname);
 		else
 		    printf("  %20.20s: \"%s\"\n",attrname, stringval);
 		break;
 
 	    case DATA_T_DATETIME:
-		if (objGetAttrValue(obj,attrname,POD(&dt)) == 1 || dt==NULL)
+		if (objGetAttrValue(obj,attrname,DATA_T_DATETIME,POD(&dt)) == 1 || dt==NULL)
 		    printf("  %20.20s: NULL\n",attrname);
 		else
 		    printf("  %20.20s: %2.2d-%2.2d-%4.4d %2.2d:%2.2d:%2.2d\n", 
@@ -195,21 +200,21 @@ testobj_show_attr(pObject obj, char* attrname)
 		break;
 	    
 	    case DATA_T_DOUBLE:
-		if (objGetAttrValue(obj,attrname,POD(&dblval)) == 1)
+		if (objGetAttrValue(obj,attrname,DATA_T_DOUBLE,POD(&dblval)) == 1)
 		    printf("  %20.20s: NULL\n",attrname);
 		else
 		    printf("  %20.20s: %g\n", attrname, dblval);
 		break;
 
 	    case DATA_T_MONEY:
-		if (objGetAttrValue(obj,attrname,POD(&m)) == 1 || m == NULL)
+		if (objGetAttrValue(obj,attrname,DATA_T_MONEY,POD(&m)) == 1 || m == NULL)
 		    printf("  %20.20s: NULL\n", attrname);
 		else
 		    printf("  %20.20s: %s\n", attrname, objDataToStringTmp(DATA_T_MONEY, m, 0));
 		break;
 
 	    case DATA_T_INTVEC:
-		if (objGetAttrValue(obj,attrname,POD(&iv)) == 1 || iv == NULL)
+		if (objGetAttrValue(obj,attrname,DATA_T_INTVEC,POD(&iv)) == 1 || iv == NULL)
 		    {
 		    printf("  %20.20s: NULL\n",attrname);
 		    }
@@ -223,7 +228,7 @@ testobj_show_attr(pObject obj, char* attrname)
 		break;
 
 	    case DATA_T_STRINGVEC:
-		if (objGetAttrValue(obj,attrname,POD(&sv)) == 1 || sv == NULL)
+		if (objGetAttrValue(obj,attrname,DATA_T_STRINGVEC,POD(&sv)) == 1 || sv == NULL)
 		    {
 		    printf("  %20.20s: NULL\n",attrname);
 		    }
@@ -282,6 +287,7 @@ start(void* v)
     char mname[64];
     char mparam[256];
     char* mptr;
+    int t;
 
 	/** Initialize. **/
 	cxInitialize();
@@ -328,13 +334,13 @@ start(void* v)
 		}
 
 	    if (ls) mlxCloseSession(ls);
-	    ls = mlxStringSession(inbuf,MLX_F_ICASE);
+	    ls = mlxStringSession(inbuf,MLX_F_ICASE | MLX_F_EOF);
 	    if (mlxNextToken(ls) != MLX_TOK_KEYWORD) continue;
 	    ptr = mlxStringVal(ls,NULL);
 	    if (!ptr) continue;
 	    strcpy(cmdname,ptr);
 	    mlxSetOptions(ls,MLX_F_IFSONLY);
-	    if (mlxNextToken(ls) != MLX_TOK_STRING) ptr = NULL;
+	    if ((t=mlxNextToken(ls)) != MLX_TOK_STRING) ptr = NULL;
 	    else ptr = mlxStringVal(ls,NULL);
 	    mlxUnsetOptions(ls,MLX_F_IFSONLY);
 	    if (!strcmp(cmdname,"cd"))
@@ -374,31 +380,31 @@ start(void* v)
 			switch(type)
 			    {
 			    case DATA_T_INTEGER:
-			        if (objGetAttrValue(obj,attrname,POD(&intval)) == 1)
+			        if (objGetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval)) == 1)
 			            printf("Attribute: [%s]  INTEGER  NULL\n", attrname);
 				else
 			            printf("Attribute: [%s]  INTEGER  %d\n", attrname,intval);
 				break;
 			    case DATA_T_STRING:
-			        if (objGetAttrValue(obj,attrname,POD(&stringval)) == 1)
+			        if (objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval)) == 1)
 			            printf("Attribute: [%s]  STRING  NULL\n", attrname);
 				else
 			            printf("Attribute: [%s]  STRING  \"%s\"\n", attrname,stringval);
 			        break;
 			    case DATA_T_DOUBLE:
-			        if (objGetAttrValue(obj,attrname,POD(&dblval)) == 1)
+			        if (objGetAttrValue(obj,attrname,DATA_T_DOUBLE,POD(&dblval)) == 1)
 				    printf("Attribute: [%s]  DOUBLE  NULL\n", attrname);
 				else
 				    printf("Attribute: [%s]  DOUBLE  %g\n", attrname, dblval);
 				break;
 			    case DATA_T_DATETIME:
-			        if (objGetAttrValue(obj,attrname,POD(&dt)) == 1)
+			        if (objGetAttrValue(obj,attrname,DATA_T_DATETIME,POD(&dt)) == 1)
 				    printf("Attribute: [%s]  DATETIME  NULL\n", attrname);
 				else
 				    printf("Attribute: [%s]  DATETIME  %s\n", attrname, objDataToStringTmp(type, dt, 0));
 				break;
 			    case DATA_T_MONEY:
-			        if (objGetAttrValue(obj,attrname,POD(&m)) == 1)
+			        if (objGetAttrValue(obj,attrname,DATA_T_MONEY,POD(&m)) == 1)
 				    printf("Attribute: [%s]  MONEY  NULL\n", attrname);
 				else
 				    printf("Attribute: [%s]  MONEY  %s\n", attrname, objDataToStringTmp(type, m, 0));
@@ -428,7 +434,7 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		objSetAttrValue(obj, "annotation", POD(&ptr));
+		objSetAttrValue(obj, "annotation", DATA_T_STRING,POD(&ptr));
 		objClose(obj);
 		}
 	    else if (!strcmp(cmdname,"list") || !strcmp(cmdname, "ls"))
@@ -454,21 +460,23 @@ start(void* v)
 		    }
 		if (!is_where && !is_orderby)
 		    {
-		    if (mlxNextToken(ls) != MLX_TOK_KEYWORD) ptr = NULL;
+		    if (t != MLX_TOK_EOF && (t=mlxNextToken(ls)) != MLX_TOK_KEYWORD) ptr = NULL;
 		    else ptr = mlxStringVal(ls,NULL);
 		    if (ptr && !strcmp(ptr,"where")) is_where = 1;
 		    if (ptr && !strcmp(ptr,"orderby")) is_orderby = 1;
 		    }
 		if (is_where)
 		    {
-		    if (mlxNextToken(ls) != MLX_TOK_STRING) ptr = NULL;
+		    if (t != MLX_TOK_EOF && (t=mlxNextToken(ls)) != MLX_TOK_STRING) ptr = NULL;
 		    else ptr = mlxStringVal(ls,NULL);
 		    printf("where: '%s'\n",ptr);
 		    strcpy(where,ptr);
-		    if (mlxNextToken(ls) == MLX_TOK_STRING && !strcmp("orderby",mlxStringVal(ls,NULL)))
+		    if (((t=mlxNextToken(ls)) == MLX_TOK_KEYWORD) && !strcmp("orderby",mlxStringVal(ls,NULL)))
 		        {
-			mlxNextToken(ls);
-			strcpy(orderby, mlxStringVal(ls,NULL));
+			if ((t=mlxNextToken(ls)) == MLX_TOK_STRING)
+			    strcpy(orderby, mlxStringVal(ls,NULL));
+			else
+			    orderby[0] = 0;
 			}
 		    else
 		        {
@@ -478,7 +486,12 @@ start(void* v)
 		    }
 		else if (is_orderby)
 		    {
-		    mlxNextToken(ls);
+		    t = mlxNextToken(ls);
+		    if (t != MLX_TOK_STRING) 
+			{
+			objClose(obj);
+			continue;
+			}
 		    strcpy(orderby, mlxStringVal(ls,NULL));
 		    qy = objOpenQuery(obj,NULL,orderby,NULL,NULL);
 		    }
@@ -494,10 +507,10 @@ start(void* v)
 		    }
 		while(NULL != (child_obj = objQueryFetch(qy,O_RDONLY)))
 		    {
-		    if (objGetAttrValue(child_obj,"name",POD(&filename)) >= 0)
+		    if (objGetAttrValue(child_obj,"name",DATA_T_STRING,POD(&filename)) >= 0)
 			{
-			objGetAttrValue(child_obj,"outer_type",POD(&filetype));
-			objGetAttrValue(child_obj,"annotation",POD(&fileannot));
+			objGetAttrValue(child_obj,"outer_type",DATA_T_STRING,POD(&filetype));
+			objGetAttrValue(child_obj,"annotation",DATA_T_STRING,POD(&fileannot));
 			printf("%-32.32s  %-32.32s    %s\n",filename,fileannot,filetype);
 			}
 		    objClose(child_obj);
@@ -584,7 +597,7 @@ start(void* v)
 		    {
 		    obj = objOpen(s, sbuf, O_RDONLY, 0600, "application/octet-stream");
 		    if (!obj) continue;
-		    objGetAttrValue(obj, "inner_type", POD(&stringval));
+		    objGetAttrValue(obj, "inner_type", DATA_T_STRING,POD(&stringval));
 		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, stringval);
 		    if (!to_obj)
 		        {
@@ -596,7 +609,7 @@ start(void* v)
 		    {
 		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, "application/octet-stream");
 		    if (!to_obj) continue;
-		    objGetAttrValue(to_obj, "inner_type", POD(&stringval));
+		    objGetAttrValue(to_obj, "inner_type", DATA_T_STRING,POD(&stringval));
 		    obj = objOpen(s, sbuf, O_RDONLY, 0600, stringval);
 		    if (!obj)
 		        {
@@ -655,11 +668,11 @@ start(void* v)
 		        if (*stringval >= '0' && *stringval <= '9')
 		            {
 			    intval = strtol(stringval,NULL,10);
-			    objSetAttrValue(obj,attrname,POD(&intval));
+			    objSetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval));
 			    }
 		        else
 		            {
-			    objSetAttrValue(obj,attrname,POD(&stringval));
+			    objSetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval));
 			    }
 			}
 		    else
@@ -676,7 +689,7 @@ start(void* v)
 				pod = NULL;
 				break;
 			    }
-			if (pod) objSetAttrValue(obj,attrname,pod);
+			if (pod) objSetAttrValue(obj,attrname,type,pod);
 			}
 		    }
 		if (objClose(obj) < 0) mssPrintError(StdOut);

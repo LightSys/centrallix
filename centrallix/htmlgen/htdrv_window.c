@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.29 2002/08/23 17:31:05 lkehresman Exp $
+    $Id: htdrv_window.c,v 1.30 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.30  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.29  2002/08/23 17:31:05  lkehresman
     moved window_current global to the page widget so it is always defined
     even if it is null.  This prevents javascript errors from the objectsource
@@ -238,72 +243,72 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTWIN.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x = 0;
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y = 0;
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x = 0;
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTWIN","HTMLWindow widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0) 
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0) 
 	    {
 	    mssError(1,"HTWIN","HTMLWindow widget must have a 'height' property");
 	    return -1;
 	    }
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,'\0',63);
 	name[63]=0;
 
 	/** Check background color **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0) {
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
 	    sprintf(bgnd,"bgcolor='%.40s'",ptr);
 	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
 	}
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0) {
+	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0) {
 	    sprintf(bgnd,"background='%.110s'",ptr);
 	    sprintf(hdr_bgnd,"background='%.110s'",ptr);
 	}
 
 	/** Check header background color/image **/
-	if (objGetAttrValue(w_obj,"hdr_bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"hdr_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"hdr_background",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"hdr_background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(hdr_bgnd,"background='%.110s'",ptr);
 
 	/** Check title text color. **/
-	if (objGetAttrValue(w_obj,"textcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(txtcolor,"%.63s",ptr);
 	else
 	    strcpy(txtcolor,"black");
 
 	/** Check window title. **/
-	if (objGetAttrValue(w_obj,"title",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(title,"%.127s",ptr);
 	else
 	    strcpy(title,name);
 
 	/** Marked not visible? **/
-	if (objGetAttrValue(w_obj,"visible",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"visible",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"false")) visible = 0;
 	    }
 
 	/** No titlebar? **/
-	if (objGetAttrValue(w_obj,"titlebar",POD(&ptr)) == 0 && !strcmp(ptr,"no"))
+	if (objGetAttrValue(w_obj,"titlebar",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no"))
 	    has_titlebar = 0;
 
 	/** Dialog or window style? **/
-	if (objGetAttrValue(w_obj,"style",POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
+	if (objGetAttrValue(w_obj,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
 	    is_dialog_style = 1;
 
 	/** Graphical window shading? **/
-	if (objGetAttrValue(w_obj,"gshade",POD(&ptr)) == 0 && !strcmp(ptr,"true"))
+	if (objGetAttrValue(w_obj,"gshade",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
 	    gshade = 1;
 
 	/** Graphical window close? **/
-	if (objGetAttrValue(w_obj,"closetype",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"closetype",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    if (!strcmp(ptr,"shrink1")) closetype = 1;
 	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
@@ -521,7 +526,7 @@ htwinRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    {
 	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
 	        {
-		objGetAttrValue(sub_w_obj,"outer_type",POD(&ptr));
+		objGetAttrValue(sub_w_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/connector"))
 		    {
 		    htrRenderWidget(s, sub_w_obj, z+2, sbuf3, sbuf4);

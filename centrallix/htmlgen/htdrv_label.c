@@ -42,6 +42,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.13  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.12  2002/07/26 16:12:04  pfinley
     Standardized event connectors for editbox widget.  It now has:
       Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove
@@ -137,20 +142,20 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	id = (HTLBL.idcnt++);
 
     	/** Get x,y,w,h of this object **/
-	if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-	if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTLBL","Label widget must have a 'width' property");
 	    return -1;
 	    }
-	if (objGetAttrValue(w_obj,"height",POD(&h)) != 0)
+	if (objGetAttrValue(w_obj,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTLBL","Label widget must have a 'height' property");
 	    return -1;
 	    }
 
-	if(objGetAttrValue(w_obj,"text",POD(&ptr)) == 0)
+	if(objGetAttrValue(w_obj,"text",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    text=nmMalloc(strlen(ptr)+1);
 	    strcpy(text,ptr);
@@ -162,9 +167,10 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	align[0]='\0';
-	if(objGetAttrValue(w_obj,"align",POD(&ptr)) == 0)
+	if(objGetAttrValue(w_obj,"align",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    strcpy(align,ptr);
+	    memccpy(align,ptr,0,63);
+	    align[63] = '\0';
 	    }
 	else
 	    {
@@ -172,15 +178,15 @@ htlblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 	
 	/** Background color/image? **/
-	if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0)
+	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"bgcolor='%.40s'",ptr);
-	else if (objGetAttrValue(w_obj,"background",POD(&ptr)) == 0)
+	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 

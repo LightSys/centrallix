@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.10 2002/07/29 19:13:38 lkehresman Exp $
+    $Id: htdrv_formstatus.c,v 1.11 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.11  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.10  2002/07/29 19:13:38  lkehresman
     * Added standard events to formstatus widget (why would you ever want them?!)
     * Made formstatus a named widget
@@ -122,11 +127,11 @@ int htfsRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    id = (HTFS.idcnt++);
 
    /** Get x,y of this object **/
-   if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
-   if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
+   if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+   if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 
    /** Write named global **/
-   if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+   if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    memccpy(name,ptr,0,63);
    name[63] = 0;
    nptr = (char*)nmMalloc(strlen(name)+1);

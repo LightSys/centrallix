@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.8 2002/08/02 13:01:52 lkehresman Exp $
+    $Id: htdrv_execmethod.c,v 1.9 2002/09/27 22:26:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.9  2002/09/27 22:26:05  gbeeley
+    Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
+    my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
+    mnodse...
+
     Revision 1.8  2002/08/02 13:01:52  lkehresman
     Removed unused variables (to make the compile stop squalking!)
 
@@ -126,12 +131,12 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	id = (HTEX.idcnt++);
 
 	/** Get params. **/
-	if (objGetAttrValue(w_obj,"object",POD(&objname)) != 0) objname="";
-	if (objGetAttrValue(w_obj,"method",POD(&methodname)) != 0) methodname="";
-	if (objGetAttrValue(w_obj,"parameter",POD(&methodparam)) != 0) methodparam="";
+	if (objGetAttrValue(w_obj,"object",DATA_T_STRING,POD(&objname)) != 0) objname="";
+	if (objGetAttrValue(w_obj,"method",DATA_T_STRING,POD(&methodname)) != 0) methodname="";
+	if (objGetAttrValue(w_obj,"parameter",DATA_T_STRING,POD(&methodparam)) != 0) methodparam="";
 
 	/** Get name **/
-	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
+	if (objGetAttrValue(w_obj,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
 	name[63] = 0;
 
