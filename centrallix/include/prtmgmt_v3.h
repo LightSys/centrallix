@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.6 2003/02/19 22:53:53 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.7 2003/02/25 03:57:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.7  2003/02/25 03:57:48  gbeeley
+    Added incremental reflow capability and test in test_prt.  Added stub
+    multi-column layout manager.  Reflow is horribly inefficient, but not
+    worried about that at this point.
+
     Revision 1.6  2003/02/19 22:53:53  gbeeley
     Page break now somewhat operational, both with hard breaks (form feeds)
     and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
@@ -100,6 +105,10 @@ typedef struct _PLM
     int			(*Break)();		/* request a break on this container (e.g., pagebreak) */
     int			(*ChildBreakReq)();	/* child object is requesting this container to break */
     int			(*Resize)();		/* request a resize on this container */
+    int			(*SetValue)();		/* set a layout manager specific setting on the object */
+    int			(*Reflow)();		/* called by parent object's layout mgr to indicate that
+						   child geom or overlays have changed, and child should
+						   reflow the layout, including LinkNext'd layout areas */
     }
     PrtLayoutMgr, *pPrtLayoutMgr;
 
@@ -142,6 +151,7 @@ typedef struct _POS
     pPrtObjType		ObjType;
     pPrtLayoutMgr	LayoutMgr;
     void*		Session;		/* pPrtObjSession */
+    void*		LMData;			/* layout manager instance-specific data */
     int			nOpens;			/* total open subcontainers + container */
     int			Flags;			/* PRT_OBJ_F_xxx */
     int			BGColor;		/* 0x00RRGGBB */
@@ -398,6 +408,7 @@ pPrtObjStream prt_internal_CreateEmptyObj(pPrtObjStream container);
 int prt_internal_Dump(pPrtObjStream obj);
 pPrtObjStream prt_internal_Duplicate(pPrtObjStream obj, int with_content);
 int prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment);
+int prt_internal_Reflow(pPrtObjStream obj);
 
 /** Strict-formatter to output-driver interfacing **/
 pPrtOutputDriver prt_strictfm_AllocDriver();
@@ -432,6 +443,7 @@ int prtSetColor(int handle_id, int font_color);
 int prtGetColor(int handle_id);
 int prtSetHPos(int handle_id, double x);
 int prtSetVPos(int handle_id, double y);
+int prtSetValue(int handle_id, char* attrname, ...);
 
 /*** Printing content functions ***/
 int prtWriteString(int handle_id, char* str);
@@ -439,7 +451,7 @@ int prtWriteNL(int handle_id);
 int prtWriteFF(int handle_id);
 
 /*** Print object creation functions ***/
-int prtAddObject(int handle_id, int obj_type, double x, double y, double width, double height, int flags);
+int prtAddObject(int handle_id, int obj_type, double x, double y, double width, double height, int flags, ...);
 int prtSetObjectCallback(int handle_id, void* (*callback_fn)(), int is_pre);
 int prtEndObject(int handle_id);
 

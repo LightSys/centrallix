@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdarg.h>
 #include "barcode.h"
 #include "report.h"
 #include "mtask.h"
@@ -49,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.6 2003/02/19 22:53:53 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.7 2003/02/25 03:57:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.7  2003/02/25 03:57:50  gbeeley
+    Added incremental reflow capability and test in test_prt.  Added stub
+    multi-column layout manager.  Reflow is horribly inefficient, but not
+    worried about that at this point.
+
     Revision 1.6  2003/02/19 22:53:53  gbeeley
     Page break now somewhat operational, both with hard breaks (form feeds)
     and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
@@ -705,8 +711,9 @@ prtWriteFF(int handle_id)
  *** Returns a handle id for the object.
  ***/
 int
-prtAddObject(int handle_id, int obj_type, double x, double y, double width, double height, int flags)
+prtAddObject(int handle_id, int obj_type, double x, double y, double width, double height, int flags, ...)
     {
+    va_list va;
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream new_obj;
     int new_handle_id; 
@@ -719,10 +726,12 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	new_obj = prt_internal_AllocObjByID(obj_type);
 	if (!new_obj) return -1;
 
-	/** Init container... **/
+	/** Init container... including optional params **/
 	prt_internal_CopyAttrs(obj, new_obj);
 	new_obj->Session = obj->Session;
-	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj);
+	va_start(va, flags);
+	if (new_obj->LayoutMgr) new_obj->LayoutMgr->InitContainer(new_obj, va);
+	va_end(va);
 
 	/** Set the object's position, flags, etc. **/
 	new_obj->Flags |= (flags & PRT_OBJ_UFLAGMASK);
@@ -780,5 +789,27 @@ prtEndObject(int handle_id)
 	obj->nOpens--;
 
     return 0;
+    }
+
+
+/*** prtSetValue - sets a special setting on an object.  Used currently
+ *** for layout manager specific settings.
+ ***/
+int
+prtSetValue(int handle_id, char* attrname, ...)
+    {
+    va_list va;
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+
+	if (!obj) return -1;
+	ASSERTMAGIC(obj,MGK_PRTOBJSTRM);
+
+	/** Check with the layout manager **/
+	va_start(va, attrname);
+	if (obj->LayoutMgr->SetValue)
+	    return obj->LayoutMgr->SetValue(obj, attrname, va);
+	va_end(va);
+
+    return -1;
     }
 

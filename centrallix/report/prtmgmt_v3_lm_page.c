@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.2 2003/02/19 22:53:54 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.3 2003/02/25 03:57:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.3  2003/02/25 03:57:50  gbeeley
+    Added incremental reflow capability and test in test_prt.  Added stub
+    multi-column layout manager.  Reflow is horribly inefficient, but not
+    worried about that at this point.
+
     Revision 1.2  2003/02/19 22:53:54  gbeeley
     Page break now somewhat operational, both with hard breaks (form feeds)
     and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
@@ -208,7 +213,7 @@ prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
  *** to it.
  ***/
 int
-prt_pagelm_InitContainer(pPrtObjStream this)
+prt_pagelm_InitContainer(pPrtObjStream this, va_list va)
     {
     pPrtObjStream page_obj;
 
@@ -265,6 +270,8 @@ prt_pagelm_Initialize()
 	lm->ChildBreakReq = prt_pagelm_ChildBreakReq;
 	lm->Break = prt_pagelm_Break;
 	lm->Resize = prt_pagelm_Resize;
+	lm->SetValue = NULL;
+	lm->Reflow = NULL;
 	strcpy(lm->Name, "paged");
 
 	/** Register the layout manager **/

@@ -48,10 +48,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.6 2003/02/19 22:53:54 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.7 2003/02/25 03:57:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.7  2003/02/25 03:57:50  gbeeley
+    Added incremental reflow capability and test in test_prt.  Added stub
+    multi-column layout manager.  Reflow is horribly inefficient, but not
+    worried about that at this point.
+
     Revision 1.6  2003/02/19 22:53:54  gbeeley
     Page break now somewhat operational, both with hard breaks (form feeds)
     and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
@@ -640,6 +645,42 @@ prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment)
 	    obj->nOpens += adjustment;
 	    assert(obj->nOpens >= 0);
 	    obj = obj->Parent;
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_internal_Reflow() - does a reflow operation on a given
+ *** container.  If the layout manager has a Reflow method, then
+ *** we use that exclusively, otherwise we use our default method,
+ *** which simply removes all content from the container and then
+ *** does AddObject calls to put them all back.
+ ***/
+int
+prt_internal_Reflow(pPrtObjStream container)
+    {
+    pPrtObjStream contentlist = NULL;
+    pPrtObjStream childobj;
+
+	/** First, remove the content. **/
+	contentlist = container->ContentHead;
+
+	/** Deinit and reinit the container **/
+	container->ContentHead = NULL;
+	container->ContentTail = NULL;
+	container->LayoutMgr->DeinitContainer(container);
+	container->LayoutMgr->InitContainer(container);
+
+	/** Next, loop through the objects and re-add them **/
+	while(contentlist)
+	    {
+	    childobj = contentlist;
+	    contentlist = contentlist->Next;
+	    childobj->Parent = NULL;
+	    childobj->Prev = NULL;
+	    childobj->Next = NULL;
+	    container->LayoutMgr->AddObject(container, childobj);
 	    }
 
     return 0;

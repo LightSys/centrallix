@@ -58,10 +58,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.8 2003/02/19 22:53:52 gbeeley Exp $
+    $Id: test_prt.c,v 1.9 2003/02/25 03:57:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.9  2003/02/25 03:57:50  gbeeley
+    Added incremental reflow capability and test in test_prt.  Added stub
+    multi-column layout manager.  Reflow is horribly inefficient, but not
+    worried about that at this point.
+
     Revision 1.8  2003/02/19 22:53:52  gbeeley
     Page break now somewhat operational, both with hard breaks (form feeds)
     and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
@@ -191,6 +196,7 @@ start(void* v)
     int r,g,b;
     int i,j;
     char* fontnames[] = {"courier","helvetica","times"};
+    pPrtObjStream prtobj;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -345,7 +351,7 @@ start(void* v)
 		    }
 		pagehandle = prtGetPageRef(prtsession);
 		printf("printfile: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, PRT_OBJ_U_ALLOWBREAK);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, PRT_OBJ_U_ALLOWBREAK, NULL);
 		printf("printfile: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		while((rcnt = fdRead(fd, sbuf, 255, 0, 0)) > 0)
@@ -355,6 +361,17 @@ start(void* v)
 		    printf("printfile: prtWriteString returned %d\n", rval);
 		    }
 		fdClose(fd, 0);
+		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"reflow"))
+		    {
+		    /** Do NOT do this in "real life".  These functions are *internal* to the
+		     ** printing system and should only be used in testing code like this outside
+		     ** the printing subsystem.
+		     **/
+		    prtobj = (pPrtObjStream)prtHandlePtr(areahandle);
+		    prtobj->Width = 50;
+		    rval = prt_internal_Reflow(prtobj);
+		    printf("printfile: prt_internal_Reflow() returned %d\n", rval);
+		    }
 		rval = prtEndObject(areahandle);
 		printf("printfile: prtEndObject(area) returned %d\n", rval);
 		rval = prtCloseSession(prtsession);
@@ -383,7 +400,7 @@ start(void* v)
 		ptr = mlxStringVal(ls,NULL);
 		pagehandle = prtGetPageRef(prtsession);
 		printf("text: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, NULL);
 		printf("text: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		rval = prtWriteString(areahandle, ptr);
@@ -435,7 +452,7 @@ start(void* v)
 		    }
 		pagehandle = prtGetPageRef(prtsession);
 		printf("colors: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, NULL);
 		printf("colors: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 
@@ -478,7 +495,7 @@ start(void* v)
 		    }
 		pagehandle = prtGetPageRef(prtsession);
 		printf("fonts: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, NULL);
 		printf("fonts: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		
@@ -524,7 +541,7 @@ start(void* v)
 		    }
 		pagehandle = prtGetPageRef(prtsession);
 		printf("justify: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, 0, NULL);
 		printf("justify: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		

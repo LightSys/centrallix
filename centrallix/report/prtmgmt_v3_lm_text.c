@@ -52,10 +52,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.9 2003/02/20 03:25:22 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.10 2003/02/25 03:57:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.10  2003/02/25 03:57:50  gbeeley
+    Added incremental reflow capability and test in test_prt.  Added stub
+    multi-column layout manager.  Reflow is horribly inefficient, but not
+    worried about that at this point.
+
     Revision 1.9  2003/02/20 03:25:22  gbeeley
     Fixed a problem which inserted a blank line at the beginning of pages
     when soft page breaks would occur.
@@ -537,12 +542,32 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
     double top,bottom,maxw,sepw,newsepw;
     /*double oldheight;*/
-    int sep,newsep,rval;
+    int sep,newsep,rval,n;
     pPrtObjStream objptr;
     pPrtObjStream split_obj = NULL;
     /*unsigned char* spaceptr;*/
     pPrtObjStream new_parent;
     double x,y;
+    char* newptr;
+
+	/** Undo soft newline (wrap) stuff if this is a reflow **/
+	if (new_child_obj->Flags & PRT_OBJ_F_SOFTNEWLINE && new_child_obj->ObjType->TypeID == PRT_OBJ_T_STRING && new_child_obj->Content)
+	    {
+	    if (this->ContentTail && this->ContentTail->Content && this->ContentTail->ObjType->TypeID == PRT_OBJ_T_STRING)
+		{
+		n = strlen(this->ContentTail->Content);
+		if (n >= 1 && this->ContentTail->Content[n-1] != '-')
+		    {
+		    newptr = nmSysMalloc(strlen(new_child_obj->Content)+2);
+		    strcpy(newptr+1, new_child_obj->Content);
+		    newptr[0] = ' ';
+		    nmSysFree(new_child_obj->Content);
+		    new_child_obj->Content = newptr;
+		    new_child_obj->Width = prt_internal_GetStringWidth(new_child_obj, new_child_obj->Content, -1);
+		    }
+		}
+	    new_child_obj->Flags &= ~PRT_OBJ_F_SOFTNEWLINE;
+	    }
 
 	/** Loop, adding one piece of the string at a time if it is wrappable **/
 	new_child_obj->Justification = this->Justification;
@@ -744,7 +769,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
  *** font settings, line height, and so forth.
  ***/
 int
-prt_textlm_InitContainer(pPrtObjStream this)
+prt_textlm_InitContainer(pPrtObjStream this, va_list va)
     {
     pPrtObjStream first_obj;
 
@@ -797,6 +822,8 @@ prt_textlm_Initialize()
 	lm->ChildBreakReq = prt_textlm_ChildBreakReq;
 	lm->Break = prt_textlm_Break;
 	lm->Resize = prt_textlm_Resize;
+	lm->SetValue = NULL;
+	lm->Reflow = NULL;
 	strcpy(lm->Name, "textflow");
 
 	/** Register the layout manager **/
