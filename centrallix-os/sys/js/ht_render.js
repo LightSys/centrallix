@@ -16,6 +16,17 @@ var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
 var EVENT_PREVENT_DEFAULT_ACTION = 2;
 
+function user_name()
+    {
+    return pg_username;
+    }
+function getdate()
+    {
+    var dt = new Date();
+    var dtstr = '' + (dt.getMonth()+1) + '/' + (dt.getDate()) + '/' + (dt.getFullYear()) + ' ' + (dt.getHours()) + ':' + (dt.getMinutes()) + ':' + (dt.getSeconds());
+    return dtstr;
+    }
+
 function htr_event(e)
     {
     var cx__event = new Object();
@@ -200,7 +211,10 @@ function htr_extract_bgcolor(s)
     else if (s.substr(0,8) == "bgcolor=")
 	{
 	var qp = s.indexOf("'");
-	return s.substr(qp+1,s.length-qp-2);
+	if (qp < 1)
+	    return s.substr(8);
+	else
+	    return s.substr(qp+1,s.length-qp-2);
 	}
     return null;
     }
