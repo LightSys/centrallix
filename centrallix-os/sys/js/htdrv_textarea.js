@@ -451,6 +451,8 @@ function tx_select(x,y,l,c,n)
     l.cursorlayer = ibeam_current;
     tx_current = l;
     pg_set_style(ibeam_current,'visibility', 'hidden');
+    if (cx__capabilities.Dom1HTML)
+	l.appendChild(ibeam_current);
     moveAbove(ibeam_current,l);
     moveToAbsolute(ibeam_current,l.rows[0].contentLayer.pageX + l.cursorCol*text_metric.charWidth, l.rows[0].contentLayer.pageY + l.cursorRow*text_metric.charHeight);
     htr_setzindex(ibeam_current, htr_getzindex(l)+2);

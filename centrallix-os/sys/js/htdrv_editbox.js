@@ -170,6 +170,8 @@ function eb_select(x,y,l,c,n)
     setPageX(eb_current.ContentLayer, getPageX(eb_current)+1);
     setPageX(eb_current.HiddenLayer, getPageX(eb_current)+1);
     htr_setvisibility(ibeam_current, 'hidden');
+    if (cx__capabilities.Dom1HTML)
+	l.appendChild(ibeam_current);
     moveAbove(ibeam_current,eb_current);
     moveToAbsolute(ibeam_current, getPageX(eb_current.ContentLayer) + eb_current.cursorCol*text_metric.charWidth, getPageY(eb_current.ContentLayer));    
     htr_setzindex(ibeam_current, htr_getzindex(eb_current) + 2);
