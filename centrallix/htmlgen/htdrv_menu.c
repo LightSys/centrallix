@@ -276,13 +276,7 @@ int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pa
     htrAddBodyItem_va(s,"</TABLE>\n");
     htrAddBodyItem_va(s,"</BODY></DIV>\n");
    
-    htrAddScriptWgtr(s, "    // htdrv_menu.c\n");
-    /** Add this node to the widget tree **/
-    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, nptr);
-    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
 
-    /** make ourself the current node for our children **/
-    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
 
 
     /* Read and initialize the menu items */
@@ -293,6 +287,7 @@ int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pa
 	wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	if (!strcmp(ptr,"widget/menuitem")) 
 	    {
+	    sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 	    if (wgtrGetPropertyValue(sub_tree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
 		mssError(1,"HTMN","Menu Item  widget must have a 'label' property");
@@ -340,8 +335,6 @@ int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pa
 	    xsDeInit(&xs);
 	    }
     
-    /** make our parent the current node again **/
-    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
     return 0;
 }

@@ -47,6 +47,7 @@ typedef struct
     int		Magic;
     void*	reserved;
     int		Flags;
+    int		RenderFlags;			/** Flags reserved for the rendering process **/
     char	Type[64];			/** widget type - editbox, etc. **/
     char	Name[64];			/** widget name **/
     int		r_x, r_y, r_width, r_height;	/** Requested geometry **/

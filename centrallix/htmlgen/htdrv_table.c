@@ -59,10 +59,34 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.42 2004/08/04 01:58:57 mmcgill Exp $
+    $Id: htdrv_table.c,v 1.43 2004/08/04 20:03:10 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.43  2004/08/04 20:03:10  mmcgill
+    Major change in the way the client-side widget tree works/is built.
+    Instead of overlaying a tree structure on top of the global widget objects,
+    the tree is built *out of* those objects.
+    *   Removed the now-unnecessary tree-building code in the ht drivers
+    *   added htr_internal_BuildClientTree(), which keeps just about all the
+        client-side tree-building code in one spot
+    *   Added RenderFlags to the WgtrNode struct, for use by any rendering
+        module in whatever way that module sees fit
+    *   Added the HT_WGTF_NOOBJECT flag in ht_render, which is set by ht
+        drivers that deal with widgets for which a corresponding DHTML object
+        is not created - for example, a radiobuttonpanel widget has
+        radiobutton child widgets - but in the client-side code there are no
+        corresponding DHTML objects for those child widgets. So the
+        radiobuttonpanel ht driver sets the HT_WGTF_NOOBJECT RenderFlag on
+        each of those child nodes, and when the client-side widget tree is
+        being built, no attempt is made to add them to the client-side tree.
+    *   Tweaked the connector widget a bit - it doesn't appear that the Add
+        member function needs to take an object as a parameter, since each
+        connector is associated with its parent object in cn_init.
+    *   *cough* Er, fixed the, um....giant unclosable unmovable textarea that
+        I had been using for debug messages, so that it doesn't appear unless
+        WGTR_DBG_WINDOW is defined in ht_render.c. Heh heh. Sorry about that.
+
     Revision 1.42  2004/08/04 01:58:57  mmcgill
     Added code to ht_render and the ht drivers to build a representation of
     the widget tree on the client-side, linking each node to its corresponding
@@ -459,13 +483,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 
 	htrAddScriptInit(s,"null));\n");
 
-    htrAddScriptWgtr(s, "    // htdrv_table.c\n");
-    /** Add this node to the widget tree **/
-    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, t->name);
-    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
 
-    /** make ourself the current node for our children **/
-    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
 
 
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -476,8 +494,6 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 		htrRenderWidget(s, sub_tree, z+3, "", t->name);
 	    }
 
-    /** make our parent the current node again **/
-    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
 	htrAddEventHandler(s,"document","MOUSEOVER","tabledynamic",
 		"\n"
@@ -826,17 +842,9 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* p
 	/** Call init function **/
  	htrAddScriptInit_va(s,"    tbls_init(%s.layer,\"%s\",%d,%d,%d);\n",parentname,t->name,t->w,t->inner_padding,t->inner_border);
 
-    htrAddScriptWgtr(s, "    // htdrv_table.c\n");
-    /** Add this node to the widget tree **/
-    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, true)\n", tree->Name, tree->Type, t->name);
-    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
-
-    /** make ourself the current node for our children **/
-    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
 
 
-    /** make our parent the current node again **/
-    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
+
  
     return 0;
     }
@@ -982,6 +990,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/table-column") != 0)
 		{
+		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&ptr));
 		t->col_infs[t->ncols] = stCreateStruct(ptr, "widget/table-column");
 		attr_inf = stAddAttr(t->col_infs[t->ncols], "width");

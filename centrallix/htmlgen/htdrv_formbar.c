@@ -65,6 +65,9 @@ int htfbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
        return -1;
        }
 
+    /** mark this node as not being associated with a DHTML object **/
+    tree->RenderFlags |= HT_WGTF_NOOBJECT;
+
     for (i=0;i<xaCount(&(tree->Children));i++)
 	htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, parentname, parentobj);
 

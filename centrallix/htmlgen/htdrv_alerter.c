@@ -43,6 +43,30 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.17  2004/08/04 20:03:07  mmcgill
+    Major change in the way the client-side widget tree works/is built.
+    Instead of overlaying a tree structure on top of the global widget objects,
+    the tree is built *out of* those objects.
+    *   Removed the now-unnecessary tree-building code in the ht drivers
+    *   added htr_internal_BuildClientTree(), which keeps just about all the
+        client-side tree-building code in one spot
+    *   Added RenderFlags to the WgtrNode struct, for use by any rendering
+        module in whatever way that module sees fit
+    *   Added the HT_WGTF_NOOBJECT flag in ht_render, which is set by ht
+        drivers that deal with widgets for which a corresponding DHTML object
+        is not created - for example, a radiobuttonpanel widget has
+        radiobutton child widgets - but in the client-side code there are no
+        corresponding DHTML objects for those child widgets. So the
+        radiobuttonpanel ht driver sets the HT_WGTF_NOOBJECT RenderFlag on
+        each of those child nodes, and when the client-side widget tree is
+        being built, no attempt is made to add them to the client-side tree.
+    *   Tweaked the connector widget a bit - it doesn't appear that the Add
+        member function needs to take an object as a parameter, since each
+        connector is associated with its parent object in cn_init.
+    *   *cough* Er, fixed the, um....giant unclosable unmovable textarea that
+        I had been using for debug messages, so that it doesn't appear unless
+        WGTR_DBG_WINDOW is defined in ht_render.c. Heh heh. Sorry about that.
+
     Revision 1.16  2004/08/04 01:58:56  mmcgill
     Added code to ht_render and the ht drivers to build a representation of
     the widget tree on the client-side, linking each node to its corresponding
@@ -253,16 +277,8 @@ htalrtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	htrAddScriptInit_va(s,"    %s=alrt_init();\n",name);
 
-    htrAddScriptWgtr(s, "    // htdrv_alerter.c\n");
-    /** Add this node to the widget tree **/
-    htrAddScriptWgtr_va(s, "    child_node = new WgtrNode('%s', '%s', %s, false)\n", tree->Name, tree->Type, nptr);
-    htrAddScriptWgtr_va(s, "    wgtrAddChild(curr_node[0], child_node);\n");
 
-    /** make ourself the current node for our children **/
-    htrAddScriptWgtr(s, "    curr_node.unshift(child_node);\n\n");
 
-    /** make our parent the current node again **/
-    htrAddScriptWgtr(s, "    curr_node.shift();\n\n");
 
     return 0;
     }

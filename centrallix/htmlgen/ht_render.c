@@ -51,10 +51,34 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.49 2004/08/04 01:58:56 mmcgill Exp $
+    $Id: ht_render.c,v 1.50 2004/08/04 20:03:07 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.50  2004/08/04 20:03:07  mmcgill
+    Major change in the way the client-side widget tree works/is built.
+    Instead of overlaying a tree structure on top of the global widget objects,
+    the tree is built *out of* those objects.
+    *   Removed the now-unnecessary tree-building code in the ht drivers
+    *   added htr_internal_BuildClientTree(), which keeps just about all the
+        client-side tree-building code in one spot
+    *   Added RenderFlags to the WgtrNode struct, for use by any rendering
+        module in whatever way that module sees fit
+    *   Added the HT_WGTF_NOOBJECT flag in ht_render, which is set by ht
+        drivers that deal with widgets for which a corresponding DHTML object
+        is not created - for example, a radiobuttonpanel widget has
+        radiobutton child widgets - but in the client-side code there are no
+        corresponding DHTML objects for those child widgets. So the
+        radiobuttonpanel ht driver sets the HT_WGTF_NOOBJECT RenderFlag on
+        each of those child nodes, and when the client-side widget tree is
+        being built, no attempt is made to add them to the client-side tree.
+    *   Tweaked the connector widget a bit - it doesn't appear that the Add
+        member function needs to take an object as a parameter, since each
+        connector is associated with its parent object in cn_init.
+    *   *cough* Er, fixed the, um....giant unclosable unmovable textarea that
+        I had been using for debug messages, so that it doesn't appear unless
+        WGTR_DBG_WINDOW is defined in ht_render.c. Heh heh. Sorry about that.
+
     Revision 1.49  2004/08/04 01:58:56  mmcgill
     Added code to ht_render and the ht drivers to build a representation of
     the widget tree on the client-side, linking each node to its corresponding
@@ -1530,14 +1554,39 @@ htr_internal_GetGeom(pFile output)
     }
 
 
+/*** htr_internal_BuildClientWgtr_r - the recursive part of client-side wgtr generation
+ ***/
+int
+htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree)
+    {
+    int i;
+  
+	if (!(tree->RenderFlags & HT_WGTF_NOOBJECT))
+	    {
+	    htrAddScriptWgtr_va(s, "    wgtrAddToTree(%s, '%s', '%s', curr_node[0], true);\n", 
+		tree->Name, tree->Name, tree->Type);
+	    }
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    {
+	    if (!(tree->RenderFlags & HT_WGTF_NOOBJECT)) 
+		htrAddScriptWgtr_va(s, "    curr_node.unshift(%s);\n", tree->Name, tree->Name);
+	    htr_internal_BuildClientWgtr_r(s, xaGetItem(&(tree->Children), i));		
+	    if (!(tree->RenderFlags & HT_WGTF_NOOBJECT)) 
+		htrAddScriptWgtr_va(s, "    curr_node.shift();\n", tree->Name);
+	    }
+    }
+
 /*** htr_internal_BuildClientWgtr - responsible for generating the DHTML to build
  *** a client-side representation of the widget tree.
  ***/
 int
 htr_internal_BuildClientWgtr(pHtSession s, pWgtrNode tree)
     {
-	htrAddScriptInclude(s, "/sys/js/tst/ht_utils_wgtr.js", 0);
-	
+	htrAddScriptWgtr(s, "    var client_node;\n");
+	htrAddScriptWgtr(s, "    var curr_node = new Array(0)\n");
+	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
+
+	return htr_internal_BuildClientWgtr_r(s, tree);
     }
 
 
@@ -1689,19 +1738,20 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	s->DisableBody = 0;
 
 	
-	/** init some things that the widget drivers will need to build the wgt tree client-side **/
-	htrAddScriptWgtr(s, "    var client_node;\n");
-	htrAddScriptWgtr(s, "    var curr_node = new Array(0)\n");
-	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
-
 	/** Render the top-level widget. **/
 	rval = htrRenderWidget(s, tree, 10, "document", "document");
 
+	/** Assemble the various objects into a widget tree **/
+	htr_internal_BuildClientWgtr(s, tree);
+
 	/** Add wgtr debug window **/
+#ifdef WGTR_DBG_WINDOW
+	htrAddScriptWgtr_va(s, "    wgtrWalk(%s);\n", tree->Name);
 	htrAddStylesheetItem(s, "\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
 	htrAddBodyItem(s,   "<div id=\"dbgwnd\"><form name=\"dbgform\">"
 			    "<textarea name=\"dbgtxt\" cols=\"30\" rows=\"10\"></textarea>"
 			    "</form></div>\n");
+#endif
 
 	/** last thing in the startup() function should be calling build_wgtr **/
 	htrAddScriptInit(s, "    build_wgtr();\n");
