@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.10 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.11 2005/03/01 07:12:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.11  2005/03/01 07:12:32  gbeeley
+    - rudimentary top-to-bottom layout flow for the page layout manager if
+      x and/or y aren't supplied on an object.
+
     Revision 1.10  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -209,7 +213,7 @@ prt_pagelm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wi
     {
 
 	/** Is the resize still within the bounds of the page?  Allow if so. **/
-	if (req_height - PRT_FP_FUDGE <= prtInnerHeight(this)) return 0;
+	if (child->Y + req_height - PRT_FP_FUDGE <= prtInnerHeight(this)) return 0;
 
     return -1;
     }
@@ -256,6 +260,19 @@ prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    new_child_obj->Width = prtInnerWidth(this);
 	if (new_child_obj->Height < 0)
 	    new_child_obj->Height = prtInnerHeight(this);
+
+	/** Sequence the objects on the page if Y not specified **/
+	if (!(new_child_obj->Flags & PRT_OBJ_F_YSET))
+	    {
+	    new_child_obj->X = 0;
+	    }
+	if (!(new_child_obj->Flags & PRT_OBJ_F_YSET))
+	    {
+	    if (!this->ContentTail)
+		new_child_obj->Y = 0;
+	    else
+		new_child_obj->Y = this->ContentTail->Y + this->ContentTail->Height;
+	    }
 
 	/** Just add it... **/
 	prt_internal_Add(this, new_child_obj);
