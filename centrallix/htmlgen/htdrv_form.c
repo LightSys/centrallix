@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.15  2002/03/16 02:04:05  jheth
+    osrc widget queries and passes data back to form widget
+
     Revision 1.14  2002/03/14 05:11:49  jorupp
      * bugfixes
 
@@ -249,6 +252,9 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_data_available", "\n"
 		"function form_cb_data_available(aparam)\n"
 		"    {\n"
+		"    //alert('data available');\n"
+		"    //alert(aparam['full_name']['value']);\n"
+		"    //alert(aparam['num_days']['value']);\n"
 		"    this.cb[\"DataAvailable\"].run();\n"
 		"    }\n", 0);
 
@@ -629,7 +635,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		"        form.Pending=true;\n"
 		"        form.IsUnsaved=false;\n"
-		"        this.osrc.ActionQuery(query);\n"
+		"        this.osrc.ActionQuery(query, this);\n"
 		"        }\n"
 		"    delete query;\n"
 		"    }\n", 0);
@@ -754,7 +760,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_init", "\n"
 		"function form_init(aq,an,am,av,and,me,name,bq,bw)\n"
 		"    {\n"
-		"    form = new Object();\n"
+		"    form = new Object();\n" 
 		"    form.basequery = bq;\n"
 		"    if(bw) form.currentquery = form_build_query(bq,bw);\n"
 		"    else form.currentquery = bq+\";\";\n"

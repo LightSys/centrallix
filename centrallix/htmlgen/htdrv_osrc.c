@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.8 2002/03/14 05:11:49 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.9 2002/03/16 02:04:05 jheth Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.9  2002/03/16 02:04:05  jheth
+    osrc widget queries and passes data back to form widget
+
     Revision 1.8  2002/03/14 05:11:49  jorupp
      * bugfixes
 
@@ -148,16 +151,16 @@ int htosrcVerify() {
 
 
    htrAddScriptFunction(s, "osrc_action_query", "\n"
-      "function osrc_action_query(q)\n"
+      "function osrc_action_query(q, formobj)\n"
       "    {\n"
       "    //Is discard ready\n"
       "    //Send query as GET request\n"
       "    this.query = escape(q);\n"
+      "    this.formobj = formobj;\n"
       "    //this.query = 'select%20%3Aid%2C%20%3Afull_name%2C%20%3Anum_days%20from%20Months.csv'\n"
-      "    //this.query = escape(\"select :full_name, :num_days from /samples/Months.csv/rows\");\n"
       "    //this.query = escape(\"SELECT :full_name, :num_days FROM /Months.csv/rows\");\n"
+      "    this.query = escape(\"select :full_name, :num_days from /samples/Months.csv/rows\");\n"
       "    this.query=String(this.query).replace(\"/\",\"%2F\",\"g\");\n"
-      "    //alert(this.query);\n"
       "    this.replica=new Array();\n"
       "    this.OpenSession();\n"
       "    }\n",0);
@@ -165,11 +168,10 @@ int htosrcVerify() {
    htrAddScriptFunction(s, "osrc_store_replica", "\n"
       "function osrc_store_replica()\n"
       "    {\n"
-      "    alert(this.document.links[0].target);\n"
-      "    if (this.document.links.length > 0)\n"
+      "    if (this.document.links.length > 1)\n"
       "        {\n"
       "        //Store Links\n"
-      "        //alert('Store Links');\n"
+      "        alert('Store Links');\n"
       "        data = new Object();\n"
       "        data.name = \"data\";\n"
       "        data.annotation = \"Data\";\n"
@@ -182,50 +184,56 @@ int htosrcVerify() {
       "             //Attr Value\n"
       "             data.Attributes[i][i+1] = this.document.links[i].text;\n"
       "             }\n"
-      "        form.DataReady(data);\n"
+      "        this.form.DataAvailable(data);\n"
       "        }\n"
       "    else\n"
       "        {\n"
-      "        //Clear Method - No Anchors Returned\n"
-      "        //alert('Clear');\n"
+      "        //Clear Method - No Links Returned\n"
+      "        alert('Clear');\n"
       "        }\n" 
-      "    this.form.IsDiscardReady();\n"
+      "    this.formobj.IsDiscardReady();\n"
       "    }\n",0);
    
    htrAddScriptFunction(s, "osrc_action_delete", "\n"
       "function osrc_action_delete()\n"
       "    {\n"
       "    //Delete an object\n"
+      "    return 0;\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_action_create", "\n"
       "function osrc_action_create()\n"
       "    {\n"
       "    //Create an object\n"
+      "    return 0;\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_action_modify", "\n"
       "function osrc_action_modify()\n"
       "    {\n"
       "    //Modify an object\n"
+      "    return 0;\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_cb_query_continue", "\n"
-      "function osrc_cb_query_continue()\n"
+      "function osrc_cb_query_continue(o)\n"
       "    {\n"
       "    //Is Form Ready - Return\n"
-      "    this.form.ready = TRUE;\n"
+      "    o._osrc_ready = TRUE;\n"
+      "    //IF all forms are ready then go\n"
       "    return 0;\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_cb_query_cancel", "\n"
       "function osrc_cb_query_cancel()\n"
       "    {\n"
+      "    return 0;\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_cb_request_object", "\n"
       "function osrc_cb_request_object()\n"
       "    {\n"
+      "    return 0;\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_cb_register", "\n"
@@ -238,37 +246,39 @@ int htosrcVerify() {
       "function osrc_open_session()\n"
       "    {\n"
       "    //Open Session\n"
-      "    this.src = '/?ls__mode=osml&ls__req=opensession'\n"
       "    this.onLoad = osrc_open_query;\n"
+      "    this.src = '/?ls__mode=osml&ls__req=opensession'\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_open_query", "\n"
       "function osrc_open_query()\n"
       "    {\n"
       "    //Open Query\n"
-      "    //confirm(this.document.anchors.length);\n"
+      "    //alert('sid' + this.document.links[0].target);\n"
       "    this.sid=this.document.links[0].target;\n"
       "    this.onLoad = osrc_get_qid;\n"
       "    this.src=\"/?ls__mode=osml&ls__req=multiquery&ls__sid=\"+this.sid+\"&ls__sql=\" + this.query;\n"
       "    //this.src = '/escape.html';\n"
-      "    //confirm(this.document.anchors.length);\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_get_qid", "\n"
       "function osrc_get_qid()\n"
       "    {\n"
+      "    //alert('qid ' + this.document.links[0].target);\n"
       "    this.qid=this.document.links[0].target;\n"
       "    this.onLoad = osrc_fetch_next;\n"
       "    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
-      "    //alert(this.src);\n"
       "    }\n",0);
 
    htrAddScriptFunction(s, "osrc_fetch_next", "\n"
       "function osrc_fetch_next()\n"
       "    {\n"
-      "    //return 0;\n"
       "    var lnk=this.document.links;\n"
       "    var lc=lnk.length;\n"
+      "    //alert('fetch-next ' + this.document.links[1].target);\n"
+      "    //alert('fetch-next ' + this.document.links[1].text);\n"
+      "    //alert('fetch-next ' + this.document.links[2].target);\n"
+      "    //alert('fetch-next ' + this.document.links[2].text);\n"
       "    if(lc<2)\n"
       "        {\n"	// query over
       "        this.onLoad=osrc_close_query;\n"	//don't need to trap this...
@@ -283,14 +293,18 @@ int htosrcVerify() {
       "        dataobj[lnk[l].host][\"value\"]=lnk[l].text\n"
       "        dataobj[lnk[l].host][\"type\"]=lnk[l].hash.substr(1);\n"
       "        }\n"
-      "    this.replica[row]=dataobj;\n"
+      "    //this.replica[row]=dataobj;\n"
+      "    this.formobj.DataAvailable(dataobj);\n"
       "    this.onLoad = osrc_fetch_next;\n"
-      "    this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
+      "    //this.src=\"/?ls__mode=osml&ls__req=queryfetch&ls__sid=\"+this.sid+\"&ls__qid=\"+this.qid+\"&ls__objmode=0&ls__rowcount=1\";\n"
       "    }\n",0);
       
    htrAddScriptFunction(s, "osrc_close_query", "\n"
       "function osrc_close_query()\n"
       "    {\n"
+      "    //Close Query\n"
+      "    this.onLoad = osrc_close_object;\n"
+      "    this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid;\n"
       "    this.qid=null;\n"
       "    this.sid=null;\n"
       "    this.onLoad=null;\n"
@@ -300,16 +314,16 @@ int htosrcVerify() {
       "function osrc_close_object()\n"
       "    {\n"
       "    //Close Object\n"
-      "    this.src = '/?ls__mode=osml&ls__req=close&ls__oid=23456789';\n"
       "    this.onLoad = osrc_close_session;\n"
+      "    this.src = '/?ls__mode=osml&ls__req=close&ls__oid=' + this.oid;\n"
       "    }\n",0);
  
    htrAddScriptFunction(s, "osrc_close_session", "\n"
       "function osrc_close_session()\n"
       "    {\n"
       "    //Close Session\n"
-      "    this.src = '/?ls__mode=osml&ls__req=closesession&ls__sid=01234567';\n"
       "    this.onLoad = osrc_store_replica;\n"
+      "    this.src = '/?ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid;\n"
       "    }\n",0);
 
       
