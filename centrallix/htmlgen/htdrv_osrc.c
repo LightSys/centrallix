@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.52 2004/02/24 20:21:57 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.53 2004/06/12 03:56:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.53  2004/06/12 03:56:05  gbeeley
+    - adding preliminary support for client notification of changes to an open
+      object.
+
     Revision 1.52  2004/02/24 20:21:57  gbeeley
     - hints .js file inclusion on form, osrc, and editbox
     - htrParamValue and htrGetBoolean utility functions
@@ -336,6 +340,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    pObject sub_w_obj;
    pObjQuery qy;
    enum htosrc_autoquery_types aq;
+   int receive_updates;
 
    if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
@@ -388,6 +393,9 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       aq = OnFirstReveal;
       }
 
+   /** Get replication updates from server? **/
+   receive_updates = htrGetBoolean(w_obj, "receive_updates", 0);
+
    if (objGetAttrValue(w_obj,"sql",DATA_T_STRING,POD(&ptr)) == 0)
       {
       sql=nmMalloc(strlen(ptr)+1);
@@ -435,13 +443,13 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    /** Script initialization call. **/
    if(s->Capabilities.Dom0NS)
       {
-      htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d);\n",
-	    name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq);
+      htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d,%d);\n",
+	    name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq,receive_updates);
       }
    else if(s->Capabilities.Dom1HTML)
       {
-      htrAddScriptInit_va(s,"    %s=osrc_init(document.getElementById('osrc%dloader'),%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d);\n",
-	    name, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq);
+      htrAddScriptInit_va(s,"    %s=osrc_init(document.getElementById('osrc%dloader'),%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d,%d);\n",
+	    name, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq,receive_updates);
       }
    else
       {
