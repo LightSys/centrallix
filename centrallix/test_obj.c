@@ -64,10 +64,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.15 2002/09/06 02:43:35 lkehresman Exp $
+    $Id: test_obj.c,v 1.16 2002/09/06 02:47:30 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.16  2002/09/06 02:47:30  jorupp
+     * removed luke's username and password hack
+
     Revision 1.15  2002/09/06 02:43:35  lkehresman
     Hmm.. probably shouldn't have committed my username and password with
     test_obj.
@@ -289,10 +292,6 @@ start(void* v)
 	/** Authenticate **/
 	user = readline("Username: ");
 	pwd = getpass("Password: ");
-	user = (char*)malloc(1024);
-	pwd = (char*)malloc(1024);
-	strcpy(user, "luke");
-	strcpy(pwd, "password");
 	if (mssAuthenticate(user,pwd) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	free(user);
