@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.17 2002/06/19 19:08:55 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.18 2002/06/24 15:33:09 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.18  2002/06/24 15:33:09  lkehresman
+    Improvements and bugfixes to the dropdown widget:
+     * Uses pg_addarea() function so mouseovers work
+     * Handles mouse clicks better for showing/hiding the dropdown
+
     Revision 1.17  2002/06/19 19:08:55  lkehresman
     Changed all snprintf to use the *_va functions
 
@@ -237,14 +242,20 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   this.topLayer.document.images[8].src = '/sys/images/ico15a.gif';\n"
 	"   this.enabled = 'disabled';\n"
 	"}\n", 0);
+
+   /** Lose Keyboard Focus Handler function **/
+   htrAddScriptFunction(s, "dd_losefocus", "\n"
+	"function dd_losefocus() {\n"
+	"    return true;\n"
+	"}\n", 0);
    
-   /** Disable function **/
+   /** Write Item function **/
    htrAddScriptFunction(s, "dd_write_item", "\n"
 	"function dd_write_item(itemLayer, label, value) {\n"
 	"   itemLayer.document.write('<table cellpadding=2 cellspacing=0 height=16 border=0><tr><td valign=middle>'+label+'</td></tr></table>');\n"
+	"   itemLayer.document.close();\n"
 	"   itemLayer.label = label;\n"
 	"   itemLayer.value = value;\n"
-	"   itemLayer.document.close();\n"
 	"   itemLayer.kind = 'dropdown';\n"
 	"}\n", 0);
 
@@ -302,7 +313,6 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    /** Form Status initializer **/
    htrAddScriptFunction(s, "dd_init", "\n"
 	"function dd_init(l, clr_b, clr_h, fn, disp) {\n"
-	"   //alert('dd init start');\n"
 	"   l.numItems = 0;\n"
 	"   l.numDispElements = disp;\n"
 	"   l.fieldname = fn;\n"
@@ -334,13 +344,14 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.ddLayer.bgColor = '#ffffff';\n"
 
 	"   l.labelLayer = new Layer(1024, l);\n"
+	"   l.labelLayer.document.layer = l;\n"
 	"   l.labelLayer.kind = 'dropdown';\n"
 	"   l.labelLayer.topLayer = l;\n"
-	"   l.labelLayer.layer = l.labelLayer;\n"
+	"   l.labelLayer.mainlayer = l;\n"
 	"   l.labelLayer.clip.width = l.clip.width - 20;\n"
 	"   l.labelLayer.clip.height = 16;\n"
 	"   l.labelLayer.x = 1;\n"
-	"   l.labelLayer.y = 0;\n"
+	"   l.labelLayer.y = 1;\n"
 	"   l.labelLayer.visibility = 'inherit';\n"
 
 	"   l.bg1Layer = new Layer(1024, l.ddLayer);\n"
@@ -351,7 +362,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.bg1Layer.top = 1;\n"
 	"   l.bg1Layer.x = 1;\n"
 	"   l.bg1Layer.clip.width = l.ddLayer.clip.width;\n"
-	
+
 	"   l.setvalue = dd_setvalue;\n"
 	"   l.getvalue = dd_getvalue;\n"
 	"   l.enable = dd_enable;\n"
@@ -359,13 +370,14 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"   l.disable = dd_disable;\n"
 	"   l.clearvalue = dd_clearvalue;\n"
 	"   l.resetvalue = dd_resetvalue;\n"
-	"   //alert('dd init end');\n"
+	"   l.losefocushandler = dd_losefocus;\n"
+	"   pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dropdown', 'dropdown', 0);\n"
 	"   if (fm_current) fm_current.Register(l);\n"
 	"}\n", 0);
 
    htrAddEventHandler(s, "document","MOUSEOVER", "dropdown", 
 	"\n"
-	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
 	"   if (dd_current != null && dd_current == targetLayer.topLayer && targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
 	"      targetLayer.bgColor = dd_current.colorHilight;\n"
 	"   }\n"
@@ -385,7 +397,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    htrAddEventHandler(s, "document","MOUSEOUT", "dropdown", 
 	"\n"
-	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
 	"   if (dd_current != null && dd_current == targetLayer.topLayer && targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
 	"      targetLayer.bgColor = dd_current.colorBack;\n"
 	"   }\n"
@@ -393,7 +405,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "dropdown", 
 	"\n"
-	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+	"   var targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
 	"   if (dd_current != null && (targetLayer != dd_current || targetLayer.kind != 'dropdown')) {\n"
 	"      if (targetLayer.subkind == 'dropdown_scroll' || targetLayer.subkind == 'dropdown_thumb') {\n"
 	"          il = dd_current.itemLayers;\n"
