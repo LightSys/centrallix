@@ -17,6 +17,12 @@ I   OVERVIEW
     purposes, including report (.rpt) files, query tree (.qyt) files, and 
     Centrallix application definition (.app) files.
 
+    Structure files now support full expressions in their attributes; to do
+    this you have to put the key phrase "$Version=2$" as the first line in
+    the structure file.  The only immediate change needed in an existing 
+    file if Version 2 is enabled this way, is to add a semicolon after each
+    attribute line.
+
 
 II  DEFINITION
 
@@ -42,6 +48,10 @@ II  DEFINITION
 
     <attr-name> = <attr-value>
 
+    Or, for Version-2 structure files,
+
+    <attr-name> = <attr-value-expression> ;
+
     Where attr-value can be a keyword (string not in quotes), a string, an
     integer, or a comma-separated list of strings/keywords/integers.  White-
     space surrounding the equals sign is optional.  Strings may span multiple
@@ -57,6 +67,11 @@ II  DEFINITION
     element is 64.  The maximum length of a keyword name or content type is
     64 characters, but there is no maximum length for strings.  Integers are
     32-bit, and so can range from -(2^31) to +(2^31) - 1.
+
+    Starting with the 0.7.1 release, there is no limit the number of comma-
+    separated values in an attributes' list.  Also, starting with version
+    0.7.1, the limit on the number of attributes/subgroups within a group has
+    been raised from 64 to 65535.
 
     The first element in a structure file must be a group element, and normally
     has a content type the same as that of the file itself.

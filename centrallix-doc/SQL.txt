@@ -180,6 +180,10 @@ VII FUNCTION SUPPORT
     isnull(v1,v2)	If v1 is null, return v2 else return v1.
     ltrim(string)	Trims spaces off of the left side of string and returns
     			the result.
+    replicate(str,n)	Creates a string composed of <n> copies of <str>
+			concatenated back-to-back.  Maximum length of the result
+			is 255 characters (this is to prevent denial-of-service,
+			not because of limitations of internal data structures).
     rtrim(string)	Trims spaces off of the right side of string and
     			returns the result.
     substring(s,p,[l])	Returns the substring of string starting at position p
