@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.29  2002/04/28 06:28:29  jorupp
+     * add a hair of speed to the form repopulation by caching column ids
+
     Revision 1.28  2002/04/27 22:47:45  jorupp
      * re-wrote form and osrc interaction -- more happens now in the form
      * lots of fun stuff in the table....check form.app for an example (not completely working yet)
@@ -391,21 +394,28 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    this.ClearAll();\n"
 		"    for(var i in this.elements)\n"
 		"        {\n"
-		"        for(var j in this.data)\n"
+		"        if(this.elements[i]._form_fieldid==undefined)\n"
 		"            {\n"
-		"            if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)\n"
+		"            for(var j in this.data)\n"
 		"                {\n"
-		"                this.elements[i]._form_type=data[j].type;\n"
-		"                if(this.data[j].value)\n"
+		"                if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)\n"
 		"                    {\n"
-		"                    this.elements[i].setvalue(this.data[j].value);\n"
-		"                    }\n"
-		"                else\n"
-		"                    {\n"
-		"                    this.elements[i].setvalue('');\n"
+		"                    this.elements[i]._form_type=data[j].type;\n"
+		"                    this.elements[i]._form_fieldid=j;\n"
 		"                    }\n"
 		"                }\n"
+		"            if(this.elements[i]._form_fieldid==undefined)\n"
+		"                this.elements[i]._form_fieldid=null;\n"
 		"            }\n"
+		"        if(this.elements[i]._form_fieldid!=null && this.data[this.elements[i]._form_fieldid].value)\n"
+		"            {\n"
+		"            this.elements[i].setvalue(this.data[this.elements[i]._form_fieldid].value);\n"
+		"            }\n"
+		"        else\n"
+		"            {\n"
+		"            this.elements[i].clearvalue();\n"
+		"            }\n"
+
 		"        }\n"
 		"    }\n", 0);
 
