@@ -62,10 +62,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.14 2002/12/24 09:51:56 jorupp Exp $
+    $Id: centrallix.c,v 1.15 2003/01/08 18:01:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.15  2003/01/08 18:01:33  gbeeley
+    Oops!  Where'd that one go?  Evidently I left out an init call when I
+    created this file.
+
     Revision 1.14  2002/12/24 09:51:56  jorupp
      * yep, this is what it looks like -- inital commit of the terminal widget :)
        -- the first Mozilla-only widget
@@ -378,6 +382,7 @@ cxInitialize(void* v)
 	pclInitialize();			/* PCL report generator */
 	htpInitialize();			/* HTML report generator */
 	fxpInitialize();			/* Epson FX report generator */
+	txtInitialize();			/* text only report gen */
 
 #ifndef WITH_DYNAMIC_LOAD
 	/** Init the modules being used if dynamic loading is disabled **/
