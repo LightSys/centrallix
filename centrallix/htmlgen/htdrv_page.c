@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.34 2002/07/23 13:45:32 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.35 2002/07/24 21:26:35 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.35  2002/07/24 21:26:35  pfinley
+    this is needed incase a page does not have any connectors.
+
     Revision 1.34  2002/07/23 13:45:32  lkehresman
     Added the "Load" action with the "Page" parameter to the page widget.  This
     enables us to load different applications with button clicks or other events.
@@ -353,6 +356,7 @@ htpageRenderCommon(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 
 	/** Add script include to get function declarations **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 
 	/** Write named global **/
 	if (objGetAttrValue(w_obj,"name",POD(&ptr)) != 0) return -1;
