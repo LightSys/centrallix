@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.10 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_radiobutton.c,v 1.11 2002/06/19 14:57:52 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.11  2002/06/19 14:57:52  lkehresman
+    Fixed the bug that broke radio buttons.  It was just a simple typo.
+
     Revision 1.10  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -446,7 +449,7 @@ int htrbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"
       "   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
       "   if (targetLayer != null && targetLayer.kind == 'radiobutton') {\n"
-      "      if(layer.optionPane.parentPane.form)\n"
+      "      if(targetLayer.optionPane.parentPane.form)\n"
       "          targetLayer.optionPane.parentPane.form.FocusNotify(targetLayer.optionPane.parentPane);\n"
       "      if (targetLayer.enabled) {\n"
       "         radiobutton_toggle(targetLayer);\n"
