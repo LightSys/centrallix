@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.4 2002/03/16 04:26:25 gbeeley Exp $
+    $Id: multiquery.c,v 1.5 2002/03/23 01:30:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.5  2002/03/23 01:30:44  gbeeley
+    Added ls__startat option to the osml "queryfetch" mechanism, in the
+    net_http.c driver.  Set ls__startat to the number of the first object
+    you want returned, where 1 is the first object (in other words,
+    ls__startat-1 objects will be skipped over).  Started to add a LIMIT
+    clause to the multiquery module, but thought this would be easier and
+    just as effective for now.
+
     Revision 1.4  2002/03/16 04:26:25  gbeeley
     Added functionality in net_http's object access routines so that it,
     when appropriate, sends the metadata attributes also, including the
@@ -514,13 +522,14 @@ mq_internal_SyntaxParse(pLxSession lxs)
     pQueryStructure qs, new_qs, select_cls=NULL, from_cls=NULL, where_cls=NULL, orderby_cls=NULL, groupby_cls=NULL, crosstab_cls=NULL, having_cls=NULL;
     pQueryStructure insert_cls=NULL;
     /* pQueryStructure delete_cls=NULL, update_cls=NULL;*/
+    pQueryStructure limit_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state;
     int t,parenlevel;
     char* ptr;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
-				   "values","with",NULL};
+				   "values","with","limit", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -617,6 +626,39 @@ mq_internal_SyntaxParse(pLxSession lxs)
 				new_qs->Parent = qs;
 				mlxCopyToken(lxs,new_qs->Name,31);
 				next_state = LookForClause;
+				}
+			    }
+			else if (!strcmp("limit",ptr))
+			    {
+			    if (limit_cls)
+				{
+			        mssError(1,"MQ","Duplicate LIMIT clause found");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				}
+			    else if (mlxNextToken(lxs) != MLX_TOK_INTEGER)
+				{
+			        mssError(1,"MQ","Expected number after LIMIT");
+				mlxNoteError(lxs);
+				next_state = ParseError;
+				}
+			    else
+				{
+				limit_cls = mq_internal_AllocQS(MQ_T_LIMITCLAUSE);
+				xaAddItem(&qs->Children, (void*)limit_cls);
+				limit_cls->Parent = qs;
+				limit_cls->IntVals[0] = mlxIntVal(lxs);
+				if (mlxNextToken(lxs) != MLX_TOK_COMMA || mlxNextToken(lxs) != MLX_TOK_INTEGER)
+				    {
+				    mssError(1,"MQ","Expected numeric START,CNT after LIMIT");
+				    mlxNoteError(lxs);
+				    next_state = ParseError;
+				    }
+				else
+				    {
+				    limit_cls->IntVals[1] = mlxIntVal(lxs);
+				    next_state = LookForClause;
+				    }
 				}
 			    }
 			else if (!strcmp("crosstab",ptr))

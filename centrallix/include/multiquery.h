@@ -35,12 +35,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.1 2001/08/13 18:00:53 gbeeley Exp $
+    $Id: multiquery.h,v 1.2 2002/03/23 01:30:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
-    Revision 1.1  2001/08/13 18:00:53  gbeeley
-    Initial revision
+    Revision 1.2  2002/03/23 01:30:44  gbeeley
+    Added ls__startat option to the osml "queryfetch" mechanism, in the
+    net_http.c driver.  Set ls__startat to the number of the first object
+    you want returned, where 1 is the first object (in other words,
+    ls__startat-1 objects will be skipped over).  Started to add a LIMIT
+    clause to the multiquery module, but thought this would be easier and
+    just as effective for now.
+
+    Revision 1.1.1.1  2001/08/13 18:00:53  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:31:20  gbeeley
     Centrallix Core Initial Import
@@ -82,6 +90,7 @@ typedef struct _QE
     XArray		AttrCompiledExpr;	/* pExpression ptrs for each attr */
     pQueryDriver	Driver;			/* driver handling this qe */
     int 		Flags;			/* bitmask MQ_EF_xxx */
+    int			PreCnt;
     int			IterCnt;
     int			SlaveIterCnt;
     int			SrcIndex;
@@ -118,6 +127,7 @@ typedef struct _QS
     pQueryElement	QELinkage;
     int			Specificity;		/* source specificity */
     int			Flags;
+    int			IntVals[2];		/* used by LIMIT clause */
     }
     QueryStructure, *pQueryStructure;
 
@@ -144,6 +154,7 @@ typedef struct _QS
 #define MQ_T_UPDATECLAUSE	18
 #define MQ_T_UPDATEITEM		19
 #define MQ_T_WITHCLAUSE		20
+#define MQ_T_LIMITCLAUSE	21
 
 
 /*** Structure for managing the multiquery. ***/

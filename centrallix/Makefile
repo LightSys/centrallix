@@ -170,7 +170,7 @@ obj_trx.o:		obj.h mtlexer.h mtask.h xarray.h
 obj_datatypes.o:	obj.h mtask.h
 objdrv_ux.o:		obj.h mtask.h xarray.h xhash.h
 objdrv_uxprint.o:	obj.h mtask.h xarray.h xhash.h stparse.h st_node.h
-objdrv_sybase.o:	obj.h mtask.h xarray.h xhash.h mtsession.h expression.h
+objdrv_sybase.o:	obj.h mtask.h xarray.h xhash.h mtsession.h expression.h multiquery.h
 objdrv_struct.o: 	obj.h mtask.h xarray.h xhash.h stparse.h
 objdrv_qytree.o: 	obj.h mtask.h xarray.h xhash.h xstring.h st_node.h stparse.h expression.h
 objdrv_report.o:	obj.h mtask.h xarray.h xhash.h report.h st_node.h stparse.h xstring.h expression.h

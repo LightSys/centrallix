@@ -50,10 +50,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.7 2002/03/16 06:50:20 gbeeley Exp $
+    $Id: net_http.c,v 1.8 2002/03/23 01:30:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.8  2002/03/23 01:30:44  gbeeley
+    Added ls__startat option to the osml "queryfetch" mechanism, in the
+    net_http.c driver.  Set ls__startat to the number of the first object
+    you want returned, where 1 is the first object (in other words,
+    ls__startat-1 objects will be skipped over).  Started to add a LIMIT
+    clause to the multiquery module, but thought this would be easier and
+    just as effective for now.
+
     Revision 1.7  2002/03/16 06:50:20  gbeeley
     Changed some sprintfs to snprintfs, just for safety's sake.
 
@@ -635,7 +643,7 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
     char hexbuf[3];
     int mode,mask;
     char* usrtype;
-    int i,t,n,o,cnt;
+    int i,t,n,o,cnt,start;
     pStruct subinf;
     MoneyType m;
     DateTime dt;
@@ -734,11 +742,21 @@ nht_internal_OSML(pFile conn, pObject target_obj, char* request, pStruct req_inf
 		    n = 0x7FFFFFFF;
 		else
 		    n = strtol(ptr,NULL,0);
+		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__startat"),&ptr) < 0)
+		    start = strtol(ptr,NULL,0) - 1;
+		else
+		    start = 0;
+		if (start < 0) start = 0;
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 	    		 "\r\n"
 			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
 		         0);
 	        fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+		while(start > 0 && (obj = objQueryFetch(qy,mode)))
+		    {
+		    objClose(obj);
+		    start--;
+		    }
 		while(n > 0 && (obj = objQueryFetch(qy,mode)))
 		    {
 		    nht_internal_WriteAttrs(obj,conn,(int)obj,1);
