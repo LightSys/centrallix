@@ -39,92 +39,6 @@
 /* Description:	HTML driver for a 'date time' widget			*/
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_datetime.c,v 1.19 2002/07/25 20:26:57 lkehresman Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
-
-    $Log: htdrv_datetime.c,v $
-    Revision 1.19  2002/07/25 20:26:57  lkehresman
-    Changed the "Change" event to our standardized "DataChange" event, and
-    actually added the connector call for it (forgot to do that earlier).
-
-    Revision 1.18  2002/07/25 18:46:35  lkehresman
-    Standardized event connectors for datetime widget.  It now has:
-    MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,Change,GetFocus,LoseFocus
-
-    Revision 1.17  2002/07/25 17:06:45  lkehresman
-    Added the width parameter to datetime drawing function.
-
-    Revision 1.16  2002/07/22 15:24:54  lkehresman
-    Fixed datetime widget so the dropdown calendar wouldn't be hidden by window
-    borders.  The dropdown calendar now is just a floating layer that is always
-    above the other layers so it can extend beyond a window border.
-
-    Revision 1.15  2002/07/20 19:44:25  lkehresman
-    Event handlers now have the variable "ly" defined as the target layer
-    and it will be global for all the events.  We were finding that nearly
-    every widget defined this themselves, so I just made it global to save
-    some variables and a lot of lines of duplicate code.
-
-    Revision 1.14  2002/07/19 21:17:49  mcancel
-    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
-
-    Revision 1.13  2002/07/17 20:20:43  lkehresman
-    Overhaul of the datetime widget (c file)
-
-    Revision 1.12  2002/07/16 18:23:20  lkehresman
-    Added htrAddStylesheetItem() function to help consolidate the output of
-    the html generator.  Now, all stylesheet definitions are included in the
-    same <style></style> tags rather than each widget having their own.  I
-    have modified the current widgets to take advantage of this.  In the
-    future, do not use htrAddHeaderItem(), but use this new function.
-
-    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
-
-    Revision 1.11  2002/07/16 17:52:00  lkehresman
-    Updated widget drivers to use include files
-
-    Revision 1.10  2002/07/15 22:24:15  lkehresman
-    Updated datetime widget to include generic date manipulation script
-
-    Revision 1.9  2002/07/15 21:20:21  lkehresman
-    Stripped out all functions and added htrAddScriptInclude() function
-    calls to include the .js files.
-
-    Revision 1.8  2002/07/15 20:36:32  lkehresman
-    Added another check for blank or invalid dates
-
-    Revision 1.7  2002/07/15 18:16:39  lkehresman
-    * Removed some flickering
-    * Fixed a couple minor bugs with invalid dates
-
-    Revision 1.6  2002/07/12 14:56:27  lkehresman
-    Added a *simple* fix for invalid dates stored in the database.  This needs
-    to be expanded in the future, but now it at least doesn't throw javascript
-    errors any more.
-
-    Revision 1.5  2002/07/12 14:24:54  lkehresman
-    Added form interaction with the datetime widget.  Works with the Kardia demo!!
-
-    Revision 1.4  2002/07/10 20:54:29  lkehresman
-    Corrected the leapyear detection
-
-    Revision 1.3  2002/07/10 20:18:01  lkehresman
-    Added time controls
-
-    Revision 1.2  2002/07/09 18:58:49  lkehresman
-    Added double buffering to the datetime widget to reduse flickering
-
-    Revision 1.1  2002/07/09 14:09:04  lkehresman
-    Added first revision of the datetime widget.  No form interatction, and no
-    time setting functionality, only date.  This has been on my laptop for a
-    while and I wanted to get it into CVS for backup purposes.  More functionality
-    to come soon.
-
-
- **END-CVSDATA***********************************************************/
-
 /** globals **/
 static struct 
     {
@@ -383,3 +297,42 @@ htdtInitialize()
 
     return 0;
     }
+
+/**CVSDATA***************************************************************
+
+    $Id: htdrv_datetime.c,v 1.20 2002/07/31 14:06:05 lkehresman Exp $
+    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
+
+    $Log: htdrv_datetime.c,v $
+    Revision 1.20  2002/07/31 14:06:05  lkehresman
+    Moved CVS log messages to bottom
+
+    Revision 1.19  2002/07/25 20:26:57  lkehresman
+    Changed the "Change" event to our standardized "DataChange" event, and
+    actually added the connector call for it (forgot to do that earlier).
+
+    Revision 1.18  2002/07/25 18:46:35  lkehresman
+    Standardized event connectors for datetime widget.  It now has:
+    MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,Change,GetFocus,LoseFocus
+
+    Revision 1.17  2002/07/25 17:06:45  lkehresman
+    Added the width parameter to datetime drawing function.
+
+    Revision 1.16  2002/07/22 15:24:54  lkehresman
+    Fixed datetime widget so the dropdown calendar wouldn't be hidden by window
+    borders.  The dropdown calendar now is just a floating layer that is always
+    above the other layers so it can extend beyond a window border.
+
+    Revision 1.15  2002/07/20 19:44:25  lkehresman
+    Event handlers now have the variable "ly" defined as the target layer
+    and it will be global for all the events.  We were finding that nearly
+    every widget defined this themselves, so I just made it global to save
+    some variables and a lot of lines of duplicate code.
+
+    Revision 1.14  2002/07/19 21:17:49  mcancel
+    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
+
+    Revision 1.13  2002/07/17 20:20:43  lkehresman
+    Overhaul of the datetime widget (c file)
+
+ **END-CVSDATA***********************************************************/
