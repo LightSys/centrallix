@@ -61,10 +61,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.34 2003/05/30 17:39:51 gbeeley Exp $
+    $Id: net_http.c,v 1.35 2003/05/30 17:58:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.35  2003/05/30 17:58:27  gbeeley
+    - turned off OSML API debugging
+    - fixed bug in WriteOneAttr() that was truncating a string
+
     Revision 1.34  2003/05/30 17:39:51  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -1097,7 +1101,7 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
     ObjData od;
     char* dptr;
     int type,rval;
-    char sbuf[100];
+    char sbuf[128];
     XString xs, hints;
     pObjPresentationHints ph;
     static char* coltypenames[] = {"unknown","integer","string","double","datetime","intvec","stringvec","money",""};
@@ -1147,7 +1151,7 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	    xsConcatPrintf(&hints, "%sFriendlyName=%s", (strlen(hints.String)?"&":""), ph->FriendlyName);
 
 	/** Write the HTML output. **/
-	snprintf(sbuf,100,"<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>",tgt,attrname,hints.String,coltypenames[type]);
+	snprintf(sbuf,sizeof(sbuf),"<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>",tgt,attrname,hints.String,coltypenames[type]);
 	xsCopy(&xs,sbuf,-1);
 	if (encode)
 	    nht_internal_Escape(&xs, dptr);

@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.21 2003/05/30 17:39:50 gbeeley Exp $
+    $Id: obj.h,v 1.22 2003/05/30 17:58:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.22  2003/05/30 17:58:26  gbeeley
+    - turned off OSML API debugging
+    - fixed bug in WriteOneAttr() that was truncating a string
+
     Revision 1.21  2003/05/30 17:39:50  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -566,7 +570,8 @@ extern OSYS_t OSYS;
 #define OBJ_DEBUG_F_APITRACE	1
 
 /*** Debugging control ***/
-#define OBJ_DEBUG		(OBJ_DEBUG_F_APITRACE)
+/*#define OBJ_DEBUG		(OBJ_DEBUG_F_APITRACE)*/
+#define OBJ_DEBUG		(0)
 
 /*** Debugging output macro ***/
 #define OSMLDEBUG(f,p ...) if (OBJ_DEBUG & (f)) printf(p);
