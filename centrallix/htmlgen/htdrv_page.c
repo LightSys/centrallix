@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.45 2002/08/12 17:51:16 pfinley Exp $
+    $Id: htdrv_page.c,v 1.46 2002/08/13 05:23:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.46  2002/08/13 05:23:25  gbeeley
+    I should have documented this one from the beginning.  The sense of the
+    'flags' parameter ended up being changed, breaking the static mode table.
+    Changed the implementation back to using the original sense of this
+    param (bitmask 1 = allow mouse focus, 2 = allow kbd focus).  Tested on
+    static table, dropdown, datetime, textarea, editbox.
+
     Revision 1.45  2002/08/12 17:51:16  pfinley
     - added an attract option to the page widget. if this is set, centrallix
       windows will attract to the edges of the browser window. set to how many
@@ -524,7 +531,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"            {\n"
 		"            if (pg_curarea == pg_arealist[i]) break;\n"
 		"            pg_curarea = pg_arealist[i];\n"
-		"            if (pg_curarea.flags == 0)\n"
+		"            if (pg_curarea.flags & 1)\n"
 		"                {\n"
 		"                var x = pg_curarea.layer.pageX+pg_curarea.x;\n"
 		"                var y = pg_curarea.layer.pageY+pg_curarea.y;\n"
@@ -537,7 +544,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        }\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
-		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
+		"        if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOUT", "pg",
@@ -555,7 +562,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
-		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
+		"        if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
 		"        }\n" );
 	htrAddEventHandler(s, "document", "MOUSEOVER", "pg",
@@ -586,7 +593,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"    if (ibeam_current && e.target.layer == ibeam_current) return false;\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
-		"        if (pg_curarea.flags == 0) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
+		"        if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);\n"
 		"        pg_curarea = null;\n"
 		"        }\n"
 		"    if (pg_curarea != null)\n"
