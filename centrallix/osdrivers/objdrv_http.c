@@ -1068,13 +1068,26 @@ httpGetNextMethod(void* inf_v, pObjTrxTree oxt)
 
 
 /*** httpExecuteMethod - No methods to execute, so this fails.
- ***/
+ ***/ 
 int
 httpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }
 
+/*** httpInfo - Return the capabilities of the object
+ ***/
+int
+httpInfo(void* inf_v, pObjectInfo info)
+    {
+    pHttpData inf = HTTP(inf_v);
+
+	info->Flags |= ( OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CAN_SEEK_REWIND | OBJ_INFO_F_CAN_HAVE_CONTENT | 
+	    OBJ_INFO_F_HAS_CONTENT );
+	if (inf->AllowSubDirs) info->Flags |= OBJ_INFO_F_CAN_HAVE_SUBOBJ;
+	else info->Flags |= OBJ_INFO_F_CANT_HAVE_SUBOBJ;
+	return 0;
+    }
 
 /*** httpInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
@@ -1134,6 +1147,7 @@ httpInitialize()
 	drv->GetNextMethod = httpGetNextMethod;
 	drv->ExecuteMethod = httpExecuteMethod;
 	drv->PresentationHints = NULL;
+	drv->Info = httpInfo;
 
 	nmRegister(sizeof(HttpData),"HttpData");
 	nmRegister(sizeof(HttpQuery),"HttpQuery");

@@ -45,10 +45,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.9 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: obj_trx.c,v 1.10 2004/06/23 21:33:54 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.10  2004/06/23 21:33:54  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.9  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -966,6 +974,15 @@ oxtPresentationHints(void* this_v, char* attrname, pObjTrxTree* oxt)
     return this->Obj->TLowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);
     }
 
+/*** oxtInfo - Return the capabilities of the object. Passthrough.
+ ***/
+int
+oxtInfo(void* this_v, pObjectInfo info)
+    {
+    pObjTrxPtr this = (pObjTrxPtr)(this_v);
+    if (!(this->Obj->TLowLevelDriver->Info)) return -1;
+    return this->Obj->TLowLevelDriver->Info(this->LLParam,info);
+    }
 
 /*** oxtInitialize - initialize the transaction layer and cause it to register
  *** itself with the ObjectSystem.  The objectsystem will locate this driver
@@ -1012,6 +1029,7 @@ oxtInitialize()
 	drv->ExecuteMethod = oxtExecuteMethod;
 	drv->PresentationHints = oxtPresentationHints;
 	drv->Commit = oxtCommit;
+	drv->Info = oxtInfo;
 
 	nmRegister(sizeof(ObjTrxPtr),"ObjTrxPtr");
 	nmRegister(sizeof(ObjTrxQuery),"ObjTrxQuery");

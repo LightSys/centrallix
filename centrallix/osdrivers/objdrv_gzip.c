@@ -47,7 +47,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_gzip.c,v 1.3 2004/06/11 21:06:57 mmcgill Exp $
+    $Id: objdrv_gzip.c,v 1.4 2004/06/23 21:33:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_gzip.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -704,6 +704,18 @@ gzipExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
     return -1;
     }
 
+/*** gzipInfo - Return the capabilities of the object
+ ***/
+int
+gzipInfo(void* inf_v, pObjectInfo info)
+    {
+    pGzipData inf = GZIP(inf_v);
+
+	info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CANT_ADD_ATTR |
+		OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT | OBJ_INFO_F_HAS_CONTENT );
+	return 0;
+    }
+
 
 /*** gzipInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
@@ -746,6 +758,7 @@ gzipInitialize()
 	drv->GetNextMethod = gzipGetNextMethod;
 	drv->ExecuteMethod = gzipExecuteMethod;
 	drv->PresentationHints = NULL;
+	drv->Info = gzipInfo;
 
 	nmRegister(sizeof(GzipData),"GzipData");
 

@@ -55,10 +55,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.14 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.15 2004/06/23 21:33:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.15  2004/06/23 21:33:55  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.14  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -3504,7 +3512,6 @@ datGetNextMethod(void* inf_v, pObjTrxTree* oxt)
     return NULL;
     }
 
-
 /*** datExecuteMethod - No methods to execute, so this fails.
  ***/
 int
@@ -3548,6 +3555,35 @@ datPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	}
 
     return NULL;
+    }
+
+/*** datInfo - Return the capabilities of the object
+ ***/
+int
+datInfo(void* inf_v, pObjectInfo info)
+    {
+	pDatData inf = DAT(inf_v);
+	pDatRowInfo ri;
+
+	info->Flags |= (OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | 
+	    OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT );
+	switch (inf->Type)
+	    {
+	    case DAT_T_TABLE:
+	    case DAT_T_COLSOBJ:
+		info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ );
+		break;
+	    case DAT_T_ROWSOBJ:
+		info->Flags |= ( OBJ_INFO_F_CAN_HAVE_SUBOBJ );
+		break;
+	    case DAT_T_COLUMN:
+	    case DAT_T_ROW:
+	    case DAT_T_FILESPEC:
+	    case DAT_T_FILESPECCOL:
+		info->Flags |= ( OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ );
+		break;
+	    }
+	return 0;
     }
 
 /*** datInitialize - initialize this driver, which also causes it to 
@@ -3606,6 +3642,7 @@ datInitialize()
 	drv->ExecuteMethod = datExecuteMethod;
 	drv->PresentationHints = datPresentationHints;
 	drv->Commit = datCommit;
+	drv->Info = datInfo;
 
 	nmRegister(sizeof(DatTableInf),"DatTableInf");
 	nmRegister(sizeof(DatData),"DatData");

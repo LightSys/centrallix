@@ -53,10 +53,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.8 2004/06/12 00:10:15 mmcgill Exp $
+    $Id: objdrv_qytree.c,v 1.9 2004/06/23 21:33:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.9  2004/06/23 21:33:55  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.8  2004/06/12 00:10:15  mmcgill
     Chalk one up under 'didn't understand the build process'. The remaining
     os drivers have been updated, and the prototype for objExecuteMethod
@@ -1391,6 +1399,19 @@ qytExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     return -1;
     }
 
+/*** qytInfo - Return the capabilities of the object.
+ ***/
+int
+qytInfo(void* inf_v, pObjectInfo info)
+    {
+	pQytData inf = QYT(inf);
+	if (inf->LLObj) 
+	    {
+	    info = objInfo(inf->LLObj);
+	    return 0;
+	    }
+	return -1;
+    }
 
 /*** qytInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
@@ -1437,6 +1458,7 @@ qytInitialize()
 	drv->GetFirstMethod = qytGetFirstMethod;
 	drv->GetNextMethod = qytGetNextMethod;
 	drv->ExecuteMethod = qytExecuteMethod;
+	drv->Info = qytInfo;
 
 	/** Register some structures **/
 	nmRegister(sizeof(QytData),"QytData");

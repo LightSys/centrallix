@@ -69,10 +69,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.17 2004/06/12 00:10:15 mmcgill Exp $
+    $Id: objdrv_sybase.c,v 1.18 2004/06/23 21:33:56 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.18  2004/06/23 21:33:56  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.17  2004/06/12 00:10:15  mmcgill
     Chalk one up under 'didn't understand the build process'. The remaining
     os drivers have been updated, and the prototype for objExecuteMethod
@@ -2742,7 +2750,6 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		qy->TableInf = qy->ObjInf->TData;
 		qy->RowCnt = 0;
 		break;
-
 	    case SYBD_T_ROWSOBJ:
 	        /** Query the rows within a table -- traditional sql query here. **/
 		qy->SessionID = inf->SessionID;
@@ -3969,6 +3976,33 @@ mqsybRelease(pQueryElement qe, pMultiQuery mq)
     return 0;
     }
 
+/*** sybdInfo - Return the capabilities of the object
+ ***/
+int
+sybdInfo(void* inf_v, pObjectInfo info)
+    {
+    pSybdData inf = SYBD(inf_v);
+
+	info->Flags |= ( OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK );
+	switch (inf->Type)
+	    {
+	    case SYBD_T_DATABASE:
+	    case SYBD_T_TABLE:
+	    case SYBD_T_COLSOBJ:
+	    case SYBD_T_ROWSOBJ:
+		info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
+		    OBJ_INFO_F_NO_CONTENT );
+		break;
+	    case SYBD_T_COLUMN:
+		info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
+		    OBJ_INFO_F_NO_CONTENT );
+		break;
+	    case SYBD_T_ROW:
+		info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CAN_HAVE_CONTENT );
+		break;
+	    }
+	return 0;
+    }
 
 /*** sybdInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
@@ -4027,6 +4061,7 @@ sybdInitialize()
 	drv->GetNextMethod = sybdGetNextMethod;
 	drv->ExecuteMethod = sybdExecuteMethod;
 	drv->Commit = sybdCommit;
+	drv->Info = sybdInfo;
 
 	/** Initialize CT Library **/
 	if (cs_ctx_alloc(CS_VERSION_100, &SYBD_INF.Context) != CS_SUCCEED) return -1;

@@ -57,10 +57,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_audio.c,v 1.3 2004/06/11 21:06:57 mmcgill Exp $
+    $Id: objdrv_audio.c,v 1.4 2004/06/23 21:33:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_audio.c,v $
 
     $Log: objdrv_audio.c,v $
+    Revision 1.4  2004/06/23 21:33:55  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.3  2004/06/11 21:06:57  mmcgill
     Did some code tree scrubbing.
 
@@ -648,6 +656,21 @@ audExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree *oxt
     }
 
 
+/*** audInfo - Find additional information about the object.  We won't
+ *** actually try to find out if files actually exist in a directory,
+ *** but we'll say that they *can* exist in it.
+ ***/
+int
+audInfo(void* inf_v, pObjectInfo info)
+    {
+    pAudData inf = AUD(inf_v);
+
+	info->Flags |= (OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | 
+		OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT | 
+		OBJ_INFO_F_NO_CONTENT | OBJ_INFO_F_SUPPORTS_INHERITANCE);
+	return 0;
+    }
+
 /*** audInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem management layer.
  ***/
@@ -691,6 +714,7 @@ audInitialize()
 	drv->GetFirstMethod = audGetFirstMethod;
 	drv->GetNextMethod = audGetNextMethod;
 	drv->ExecuteMethod = audExecuteMethod;
+	drv->Info = audInfo;
 	/*drv->PresentationHints = audPresentationHints*/;
 
 	nmRegister(sizeof(AudData),"AudData");

@@ -53,10 +53,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.26 2004/06/11 21:06:57 mmcgill Exp $
+    $Id: objdrv_mime.c,v 1.27 2004/06/23 21:33:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.27  2004/06/23 21:33:55  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.26  2004/06/11 21:06:57  mmcgill
     Did some code tree scrubbing.
 
@@ -699,6 +707,29 @@ mimeExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt
     return -1;
     }
 
+/*** mimeInfo - Return the capabilities of the object
+ ***/
+int
+mimeInfo(void* inf_v, pObjectInfo info)
+    {
+    pMimeInfo inf = MIME(inf_v);
+	
+	info->Flags |= ( OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK );
+	if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART)
+	    {
+	    info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN | 
+		OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT );
+	    info->nSubobjects = xaCount(&(inf->Header->Parts));
+	    }
+	else
+	    {
+	    info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CAN_HAVE_CONTENT |
+		OBJ_INFO_F_HAS_CONTENT );
+	    }
+	    
+	return 0;
+    }
+
 
 /*
 **  mimeInitialize
@@ -733,6 +764,7 @@ mimeInitialize()
     drv->GetFirstMethod = mimeGetFirstMethod;
     drv->GetNextMethod = mimeGetNextMethod;
     drv->ExecuteMethod = mimeExecuteMethod;
+    drv->Info = mimeInfo;
 
     strcpy(drv->Name, "MIME - MIME Parsing Driver");
     drv->Capabilities = 0;

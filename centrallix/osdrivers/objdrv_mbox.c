@@ -54,10 +54,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mbox.c,v 1.5 2004/06/12 04:02:29 gbeeley Exp $
+    $Id: objdrv_mbox.c,v 1.6 2004/06/23 21:33:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mbox.c,v $
 
     $Log: objdrv_mbox.c,v $
+    Revision 1.6  2004/06/23 21:33:55  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.5  2004/06/12 04:02:29  gbeeley
     - preliminary support for client notification when an object is modified.
       This is a part of a "replication to the client" test-of-technology.
@@ -736,22 +744,20 @@ mboxInfo(void* inf_v, pObjectInfo info)
     {
     pMboxData inf = MBOX(inf_v);
 
-	/** Basic settings for all of these objects **/
-	info->Flags = 0; /*OBJ_INFO_F_CANT_ADD_ATTR;*/
-
-	/** Is it a directory? **/
-	/*if (inf->Flags & UXD_F_ISDIR)
+	if (inf->mnum==-1)
 	    {
-	    info->Flags |= (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
-		    OBJ_INFO_F_NO_CONTENT);
+	    info->Flags |= ( OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN | OBJ_INFO_F_CANT_SEEK |
+		OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT );
+	    if (inf->arr.nItems == 0) info->Flags |= OBJ_INFO_F_NO_SUBOBJ;
+	    else info->Flags |= OBJ_INFO_F_HAS_SUBOBJ;
+	    info->nSubobjects = inf->arr.nItems;
 	    }
 	else
 	    {
-	    info->Flags |= (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ | 
-		    OBJ_INFO_F_CAN_SEEK_FULL | OBJ_INFO_F_CAN_HAVE_CONTENT | 
-		    OBJ_INFO_F_HAS_CONTENT);
-	    }*/
-
+	    info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CANT_ADD_ATTR |
+		OBJ_INFO_F_CAN_SEEK_FULL | OBJ_INFO_F_CAN_SEEK_REWIND | OBJ_INFO_F_CAN_HAVE_CONTENT |
+		OBJ_INFO_F_HAS_CONTENT );
+	    }
     return 0;
     }
 

@@ -58,10 +58,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.9 2004/06/12 00:10:15 mmcgill Exp $
+    $Id: objdrv_report_v3.c,v 1.10 2004/06/23 21:33:56 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.10  2004/06/23 21:33:56  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.9  2004/06/12 00:10:15  mmcgill
     Chalk one up under 'didn't understand the build process'. The remaining
     os drivers have been updated, and the prototype for objExecuteMethod
@@ -4286,6 +4294,16 @@ rptExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree *oxt
     return -1;
     }
 
+int
+rptInfo(void* inf_v, pObjectInfo info)
+    {
+    pRptData inf = RPT(inf);
+
+	info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | 
+	    OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT | 
+	    OBJ_INFO_F_HAS_CONTENT );
+	return 0;
+    }
 
 /*** rptInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem management layer.
@@ -4311,7 +4329,7 @@ rptInitialize()
 	xaAddItem(&(drv->RootContentTypes),"system/report");
 
 	/** Setup the function references. **/
-	drv->Open = rptOpen;
+	drv->Open = rptOpen; 
 	drv->Close = rptClose;
 	drv->Create = rptCreate;
 	drv->Delete = rptDelete;
@@ -4331,6 +4349,7 @@ rptInitialize()
 	drv->GetFirstMethod = rptGetFirstMethod;
 	drv->GetNextMethod = rptGetNextMethod;
 	drv->ExecuteMethod = rptExecuteMethod;
+	drv->Info = rptInfo;
 	/*drv->PresentationHints = rptPresentationHints*/;
 
 	nmRegister(sizeof(RptData),"RptData");

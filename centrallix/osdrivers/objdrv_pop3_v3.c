@@ -37,28 +37,29 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	<driver filename goes here>				*/
-/* Author:	<author name goes here>					*/
-/* Creation:	<create data goes here>					*/
-/* Description:	<replace this> This file is a prototype objectsystem	*/
-/*		driver skeleton.  It is used for 'getting started' on	*/
-/*		a new objectsystem driver.				*/
+/* Module: 	POP3 Object System Driver  				*/
+/* Author:	Matt McGill <matt_mcgill@tayloru.edu>                   */
+/* Creation:	June 14                					*/
+/* Description:	     Allows the integeration of multiple POP mail   	*/
+/*		     servers, with selected maildrops and their      	*/
+/*		     messages, to be accessed by Centrallix.            */
 /*									*/
-/*		To use, some global search/replace must be done.	*/
-/*		Replace all occurrenced of pop, POP, and Pop with your	*/
-/*		driver's prefix in the same capitalization.  In vi,	*/
-/*									*/
-/*			:1,$s/Pop/Pop/g					*/
-/*			:1,$s/POP/POP/g					*/
-/*			:1,$s/pop/pop/g					*/
 /************************************************************************/
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_pop3_v3.c,v 1.1 2004/06/22 19:53:18 mmcgill Exp $
+    $Id: objdrv_pop3_v3.c,v 1.2 2004/06/23 21:33:55 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_pop3_v3.c,v $
 
     $Log: objdrv_pop3_v3.c,v $
+    Revision 1.2  2004/06/23 21:33:55  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.1  2004/06/22 19:53:18  mmcgill
     Added a new POP3 driver. The driver is responsible for three types of
     objects: the POP server object, the POP maildrop object, and the POP
@@ -1221,9 +1222,11 @@ popRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	/** is there anything else to read? **/
 	if (inf->Pos == inf->ContentSize) return 0; 
 	
+	/** is this even a valid read? **/
+	if (inf->Pos < 0 || inf->Pos >= inf->ContentSize) return -1;
+
 	/** Now worry about transferring stuff to the caller's buffer **/
 	start = inf->Content + inf->Pos;
-	
 
 	/** figure out how many bytes to read **/
 	if (inf->Pos + maxcnt > inf->ContentSize) bytes_to_read = inf->ContentSize - inf->Pos;
@@ -1642,17 +1645,16 @@ popInfo(void* inf_v, pObjectInfo info)
 	    case POP_T_SERVER:
 		info->Flags = (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_ADD_ATTR |
 			OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT |
-			OBJ_INFO_F_NO_CONTENT | OBJ_INFO_F_SUPPORTS_INHERITANCE);
+			OBJ_INFO_F_NO_CONTENT);
 		break;
 	    case POP_T_MAILDROP:
 		info->Flags = (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_ADD_ATTR |
 			OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT |
-			OBJ_INFO_F_NO_CONTENT | OBJ_INFO_F_SUPPORTS_INHERITANCE);
+			OBJ_INFO_F_NO_CONTENT);
 		break;
 	    case POP_T_MSG:
-		info->Flags = (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_ADD_ATTR |
-			OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CAN_HAVE_CONTENT |
-			OBJ_INFO_F_SUPPORTS_INHERITANCE);
+		info->Flags = (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CANT_ADD_ATTR |
+			OBJ_INFO_F_CAN_SEEK_REWIND | OBJ_INFO_F_CAN_SEEK_FULL | OBJ_INFO_F_CAN_HAVE_CONTENT);
 		break;
 	    }
 		
@@ -1704,6 +1706,7 @@ popInitialize()
 	drv->GetFirstMethod = popGetFirstMethod;
 	drv->GetNextMethod = popGetNextMethod;
 	drv->ExecuteMethod = popExecuteMethod;
+	drv->Info = popInfo;
 	drv->PresentationHints = NULL;
 
 	nmRegister(sizeof(PopData),"PopData");

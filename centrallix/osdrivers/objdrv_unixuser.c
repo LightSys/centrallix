@@ -54,10 +54,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_unixuser.c,v 1.4 2004/06/12 00:10:15 mmcgill Exp $
+    $Id: objdrv_unixuser.c,v 1.5 2004/06/23 21:33:56 mmcgill Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_unixuser.c,v $
 
     $Log: objdrv_unixuser.c,v $
+    Revision 1.5  2004/06/23 21:33:56  mmcgill
+    Implemented the ObjInfo interface for all the drivers that are currently
+    a part of the project (in the Makefile, in other words). Authors of the
+    various drivers might want to check to be sure that I didn't botch any-
+    thing, and where applicable see if there's a neat way to keep track of
+    whether or not an object actually has subobjects (I did not set this flag
+    unless it was immediately obvious how to test for the condition).
+
     Revision 1.4  2004/06/12 00:10:15  mmcgill
     Chalk one up under 'didn't understand the build process'. The remaining
     os drivers have been updated, and the prototype for objExecuteMethod
@@ -798,8 +806,8 @@ uxuGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** uxuGetNextMethod -- same as above.  Always fails. 
- ***/
+/*** uxuGetNextMethod -- same as above.  Always fails.  
+***/
 char*
 uxuGetNextMethod(void* inf_v, pObjTrxTree oxt)
     {
@@ -813,6 +821,21 @@ int
 uxuExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
+    }
+
+
+/*** uxuInfo - Return the capabilities of the object
+ ***/
+int
+uxuInfo(void* inf_v, pObjectInfo info)
+    {
+    pUxuData inf = UXU(inf_v);
+
+	info->Flags |= ( OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT |
+	    OBJ_INFO_F_NO_CONTENT );
+	if (inf->Type == UXU_T_USERLIST) info->Flags |= OBJ_INFO_F_CAN_HAVE_SUBOBJ;
+	else info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ );
+	return 0;
     }
 
 
@@ -861,6 +884,7 @@ uxuInitialize()
 	drv->GetNextMethod = uxuGetNextMethod;
 	drv->ExecuteMethod = uxuExecuteMethod;
 	drv->PresentationHints = NULL;
+	drv->Info = uxuInfo;
 
 	nmRegister(sizeof(UxuData),"UxuData");
 	nmRegister(sizeof(UxuQuery),"UxuQuery");
