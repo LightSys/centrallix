@@ -46,3 +46,22 @@ AC_DEFUN(CHECK_PROFILE,
 )
 	    
 	    
+AC_DEFUN(CHECK_MTASK_DEBUG,
+    [
+	AC_MSG_CHECKING(if mTask debugging is desired)
+	AC_ARG_ENABLE(mtask-debug,
+	    AC_HELP_STRING([--enable-mtask-debug],
+		[enable mTask debugging support]
+	    ),
+	    WITH_MTASK_DEBUG="$enableval",
+	    WITH_MTASK_DEBUG="no"
+	)
+	if test "$WITH_MTASK_DEBUG" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+	    AC_DEFINE(MTASK_DEBUG,1,[enable mTask debugging])
+	fi
+    ]
+)
+

@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.15 2003/02/20 22:57:42 jorupp Exp $
+    $Id: mtask.c,v 1.16 2003/02/20 23:16:44 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.16  2003/02/20 23:16:44  jorupp
+     * mtask debugging is not enabled by default
+     * added configure option to turn it on
+
     Revision 1.15  2003/02/20 22:57:42  jorupp
      * added quite a bit of debugging to mTask
      	* call mtSetDebug() to set debugging level
@@ -175,8 +179,6 @@ typedef struct _MTS
     MTSystem, *pMTSystem;
 
 static MTSystem MTASK;
-
-#define MTASK_DEBUG
 
 #ifdef MTASK_DEBUG
 #define MTASK_DEBUG_SHOW_READ_SELECTABLE 0x01
@@ -2356,10 +2358,12 @@ fdClose(pFile filedesc, int flags)
 		    MTASK.EventWaitTable[i]->Thr->Status = THR_S_RUNNABLE;
 		    }
 		else
+		    {
 #ifdef MTASK_DEBUG
 		    if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
 			printf("\t\t(Object,ObjType,EventType,Status)\nfdClose %p(%i) -- WT entry: %p,%i,%i,%i\n",filedesc,filedesc->FD,MTASK.EventWaitTable[i]->Object,MTASK.EventWaitTable[i]->ObjType,MTASK.EventWaitTable[i]->EventType,MTASK.EventWaitTable[i]->Status);
 #endif
+		    }
     	        }
     	    }
 

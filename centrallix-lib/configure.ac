@@ -39,6 +39,9 @@ dnl Check if -pg is allowed with -fPIC
 AH_TEMPLATE([USE_PROFILE], [Define for profiling])
 CHECK_PROFILE
 
+dnl Enable mTask debugging
+CHECK_MTASK_DEBUG
+
 dnl Build shared libCentrallix
 SHARED_LIBCENTRALLIX
 
