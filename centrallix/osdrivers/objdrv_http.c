@@ -549,7 +549,7 @@ http_internal_GetPageStream(pHttpData inf)
 		   
 		    if(status/100==2)
 			{
-			inf->Annotation=(char*)nmMalloc(strlen(inf->Server)+strlen(inf->Port)+strlen(inf->Path)+10);
+			inf->Annotation=(char*)malloc(strlen(inf->Server)+strlen(inf->Port)+strlen(inf->Path)+10);
 			if(!inf->Annotation) http_internal_Cleanup(inf,"malloc failed");
 			if(inf->Port[0])
 			    sprintf(inf->Annotation,"http://%s:%s/%s",inf->Server,inf->Port,inf->Path);
@@ -563,7 +563,7 @@ http_internal_GetPageStream(pHttpData inf)
 			    {//don't need to check AllowSubDirs here -- SubCnt==1 if !AllowSubDirs
 			    if(alloc) nmSysFree(ptr);
 			    mlxCloseSession(lex);
-			    return 0;   //failure
+			    return (int)http_internal_Cleanup(inf,"object not accessible on server");   //failure
 			    }
 			else
 			    {
@@ -660,8 +660,10 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    {
 	    if(HTTP_OS_DEBUG) printf("trying again...(redirected: %i)\n",inf->Redirected);
 	    }
+	/** getpagestream already did cleanup if rval was 0!! **/
 	if(rval==0)
-	    return http_internal_Cleanup(inf,"failed to load target");
+	    return NULL;
+	    /*return http_internal_Cleanup(inf,"failed to load target");*/
 
     return (void*)inf;
     }
