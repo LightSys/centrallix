@@ -65,10 +65,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.13 2003/03/29 08:55:44 jorupp Exp $
+    $Id: net_nfs.c,v 1.14 2003/03/30 20:03:35 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.14  2003/03/30 20:03:35  nehresma
+    added open object caching for 30 seconds
+        NOTES:
+        - when opening the object I used "system/object" for the type, I had no
+          idea what type to use
+        - currently scans the list every second for objects that have been open
+          longer than 30 seconds.  (should make configurable??)
+        - the caller should not close the pObjects he receives, letting the
+          monitor handle that.
+
     Revision 1.13  2003/03/29 08:55:44  jorupp
      * switched to an XRingQueue for internal queueing
      * added (experimental) code to (recursively) decode what fhandle a request needs
@@ -178,6 +188,13 @@ typedef struct
     char *path;
     } Mount, *pMount;
 
+typedef struct
+    {
+    pObject obj;
+    struct timeval lastused;
+    int inode;
+    } ObjectUse, *pObjectUse;
+
 #include "xarray.h"
 #include "mtask.h"
 
@@ -195,10 +212,13 @@ struct
     pXHashTable pathToFh;
     int nextFileHandle;
     char *inodeFile;
+    pXArray openObjects;
+    pObjSession objSess;
     pThreadInfo threads;
     }
     NNFS;
 
+pObject nnfs_internal_open_inode(int inode);
 
 void
 nnfs_internal_dump_buffer(unsigned char* buf, int len)
@@ -1082,6 +1102,7 @@ nnfs_internal_request_handler(void* v)
 	    }
 	cThread->lockedInode = 0;
 	}
+    
     }
 
 /*** nnfs_internal_nfs_listener - listens for and processes nfs requests
@@ -1581,13 +1602,112 @@ nnfs_internal_mount_listener(void* v)
     thExit();
     }
 
+/*** nnfs_internal_monitor_objects - keep objects open for 30 seconds unless
+ *** they are being used.
+ ***/
+void nnfs_internal_monitor_objects()
+    {
+    int i;
+    pObjectUse obj;
+    struct timeval cur_time;
+
+    NNFS.openObjects=(pXArray)nmMalloc(sizeof(XArray));
+    xaInit(NNFS.openObjects, 8);
+    while (1)
+    	{
+	thSleep(1000);
+	gettimeofday(&cur_time, NULL);
+	for (i=0;i<xaCount(NNFS.openObjects);i++)
+	    {
+	    /** examine time on each object **/
+	    obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
+	    if ((cur_time.tv_sec - obj->lastused.tv_sec) >= 30)
+	    	{
+		/** close the object, remove from cache, free memory **/
+		objClose(obj->obj);
+		xaRemoveItem(NNFS.openObjects,i);
+		nmFree(obj,sizeof(ObjectUse));
+		}
+	    }
+	}
+    }
+
+/***  Get a pObject for a specific inode from the cache, or open one up
+ ***  if there isn't one already open.  Do _NOT_ close the returned pObject,
+ ***  but let the monitor thread handle the closes.
+ ***/
+pObject nnfs_internal_open_inode(int inode)
+    {
+    int i;
+    pObjectUse obj;
+    int found=0;
+    char *path;
+    union 
+	{
+	int fhi;
+	fhandle fhc;
+	} fhandle_c;
+
+    /* look through the open objects for this inode */
+    for (i=0;i<xaCount(NNFS.openObjects);i++)
+    	{
+	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
+	if(obj->inode == inode)
+	    {
+    	    gettimeofday(&(obj->lastused), NULL);
+	    return obj->obj;
+	    }
+	}
+
+    /* grab a path for the inode */
+    memset(fhandle_c.fhc,0,FHSIZE);
+    fhandle_c.fhi=inode;
+    path = xhLookup(NNFS.fhToPath, fhandle_c.fhc);
+    if (!path)
+    	{
+	nmFree(obj,sizeof(ObjectUse));
+	return NULL;
+	}
+
+    /* set the inode and lastused on the ObjectUse */
+    obj=(pObjectUse)nmMalloc(sizeof(ObjectUse));
+    obj->inode=inode;
+    gettimeofday(&(obj->lastused), NULL);
+
+    /** set the pObject 
+     ** FIXME: is system/object the right type to use?
+     **/
+    obj->obj = objOpen(NNFS.objSess,path,O_RDWR|O_CREAT,0600,"system/object");
+    if (!obj->obj)
+    	{
+	nmFree(obj,sizeof(ObjectUse));
+	return NULL;
+	}
+    xaAddItem(NNFS.openObjects,(char*)obj);
+
+    return obj->obj;
+    }
+
+
 /*** nnfsShutdownHandler - shutdown the NFS driver
 ***/
 void
 nnfsShutdownHandler()
     {
+    int i;
+    pObjectUse obj;
+
     mssError(0,"NNFS","NFS netdriver is shutting down");
     nnfs_internal_dump_inode_map();
+
+    /** close the open objects **/
+    for (i=0;i<xaCount(NNFS.openObjects);i++)
+	{
+	obj=(pObjectUse)xaGetItem(NNFS.openObjects,i);
+	objClose(obj->obj);
+	nmFree(obj,sizeof(ObjectUse));
+	}
+    objCloseSession(NNFS.objSess);
     }
 
 
@@ -1671,6 +1791,10 @@ nnfsInitialize()
 	    NNFS.threads[i].thread=thCreate(nnfs_internal_request_handler, 0, j);
 	    }
 
+	NNFS.objSess=objOpenSession("/");
+
+	/** Start the open object monitoring thread **/
+	thCreate(nnfs_internal_monitor_objects, 0, NULL);
     return 0;
     }
 
