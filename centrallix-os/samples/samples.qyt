@@ -1,0 +1,58 @@
+$Version=2$
+samples "system/querytree"
+    {
+    Applications "system/querytree"
+	{
+	text = "Applications";
+	Apps_List "system/querytree"
+	    {
+	    source="/samples";
+	    where="right(:name,4) == '.app'";
+	    }
+	}
+    Components "system/querytree"
+	{
+	text = "Components";
+	Cmps_List "system/querytree"
+	    {
+	    source="/samples";
+	    where="right(:name,4) == '.cmp'";
+	    }
+	}
+    Reports "system/querytree"
+	{
+	text = "Reports";
+	Rpt_List "system/querytree"
+	    {
+	    source="/samples";
+	    where="right(:name,4) == '.rpt'";
+	    }
+	}
+    DataSources "system/querytree"
+	{
+	text = "DataSources";
+	DS_List "system/querytree"
+	    {
+	    source="/samples";
+	    where="right(:name,4) == '.csv' or right(:name,5) == '.spec'";
+	    }
+	}
+    Notes "system/querytree"
+	{
+	text = "Notes";
+	Notes_List "system/querytree"
+	    {
+	    source="/samples";
+	    where="right(:name,4) == '.txt'";
+	    }
+	}
+    MoreStuff "system/querytree"
+	{
+	text = "MoreStuff";
+	MS_List "system/querytree"
+	    {
+	    source="/samples";
+	    where="right(:name,4) != '.csv' and right(:name,5) != '.spec' and right(:name,4) != '.app' and right(:name,4) != '.rpt' and right(:name,4) != '.cmp' and right(:name,4) != '.txt'";
+	    }
+	}
+    }
