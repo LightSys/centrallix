@@ -141,6 +141,9 @@ function tc_addtab(l_tab, l_page, l, nm)
     pg_reveal_register_triggerer(l_page);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
 
+    // Show Container API
+    l_page.showcontainer = tc_showcontainer;
+
     return l_tab;
     }
 
@@ -172,6 +175,13 @@ function tc_action_set_tab(aparam)
     {
     if (aparam.Tab) this.selected = aparam.Tab;
     else if (aparam.TabIndex) this.selected_index = parseInt(aparam.TabIndex);
+    }
+
+function tc_showcontainer()
+    {
+    if (htr_getvisibility(this) != 'inherit')
+	this.tabctl.ChangeSelection1(this);
+    return true;
     }
 
 function tc_init(l,tloc,mb,ib)

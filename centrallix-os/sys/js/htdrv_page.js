@@ -1177,19 +1177,18 @@ function pg_setkbdfocus(l, a, xo, yo)
     var h = a.height;
     var prevLayer = pg_curkbdlayer;
     var prevArea = pg_curkbdarea;
+    var v = 0;
     pg_curkbdarea = a;
     pg_curkbdlayer = l;
 
     if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
 	{
-		//abc();
-	var v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a);
+	v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a);
 	if (v & 1)
 	    {
 	    // mk box for kbd focus
 	    if (prevArea != a)
 		{
-		//alert("inside..");
 		if (cx__capabilities.Dom0NS)
 		    {
 		    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
@@ -1221,7 +1220,6 @@ function pg_setkbdfocus(l, a, xo, yo)
 		    l.pg_dtrgt.style.width = 2;
 		    l.pg_dtlft = document.createElement("div");
 		    l.pg_dtlft.style.width = 2;
-		    //alert("here");
 		    }
 		else if (cx__capabilities.Dom0NS)
 		    {
@@ -1242,7 +1240,30 @@ function pg_setkbdfocus(l, a, xo, yo)
 	        }
 	    }
 	}
+
+    // If area got keyboard or data focus, make sure the containers are
+    // 'shown' as needed.
+    if (v)
+	{
+	pg_show_containers(l);
+	}
+
     return v?true:false;
+    }
+
+
+// pg_show_containers() - makes sure containers, from innermost to
+// outermost, are displayed to the user.  Used when a control receives
+// keyboard focus to make sure control is visible to user.
+function pg_show_containers(l)
+    {
+    if (l == window || l == document) return true;
+    if (l.showcontainer && l.showcontainer() == false)
+	return false;
+    if (cx__capabilities.Dom0NS)
+	return pg_show_containers(l.parentLayer);
+    else if (cx__capabilities.Dom1HTML)
+	return pg_show_containers(l.parentNode);
     }
 
 

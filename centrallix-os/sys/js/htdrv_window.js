@@ -70,7 +70,24 @@ function wn_init(l,ml,gs,ct,titlebar)
 	pg_addsched_fn(window, "pg_reveal_event", new Array(l,l,'Reveal'));
 	}
 
+    // Show container API
+    l.showcontainer = wn_showcontainer;
+
     return l;
+    }
+
+// Called when we need to make sure the container is visible, typically
+// because a widget within it needs to have keyboard focus.  In the case
+// of a window, we un-shade it, make it visible, and bring it to the
+// top.
+function wn_showcontainer()
+    {
+    if (htr_getvisibility(this) != 'inherit')
+	this.SetVisibilityTH(true);
+    if (this.shaded)
+	wn_windowshade(this);
+    wn_bring_top(this);
+    return true;
     }
 
 // Called when our reveal/obscure request has been acted upon.
@@ -220,22 +237,7 @@ function wn_close(l)
     {
     if (l.closetype == 0)
 	{
-	if(cx__capabilities.Dom2CSS2)
-	    {
-	    l.style.setProperty('visibility','hidden','');
-	    }
-	else if(cx__capabilities.Dom0NS)
-	    {
-	    l.visibility = 'hidden';
-	    }
-	else if(cx__capabilities.Dom0IE)
-	    {
-	    l.runtimeStyle.visibility = 'hidden';
-	    }
-	else
-	    {
-	    alert("can't close");
-	    }
+	htr_setvisibility(l,'hidden');
 	}
     else
         {
