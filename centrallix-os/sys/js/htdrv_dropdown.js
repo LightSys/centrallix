@@ -276,6 +276,6 @@ function dd_init(l, clr_b, clr_h, fn, disp) {
 	l.resetvalue = dd_resetvalue;
 	l.keyhandler = dd_keyhandler;
 	l.losefocushandler = dd_losefocus;
-	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dropdown', 'dropdown', 1);
+	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dropdown', 'dropdown', 0);
 	if (fm_current) fm_current.Register(l);
 }
