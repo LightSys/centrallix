@@ -1,0 +1,764 @@
+LightServer Architechture Design
+Author: Greg Beeley
+Date: October 21-22, 1998
+-------------------------------------------------------------------------------
+
+I   OVERVIEW
+
+    The LightServer system is designed to be an HTML/Java/JavaScript centric
+    application design system.  Under the hood, the LightServer will provide
+    an abstraction layer that gives a common interface to each object and 
+    service on the network.  At a higher level, LightServer will provide a
+    data-driven object-based HTML page and layer construction mechanism based
+    on a scripting language and on natural language business logic.
+
+II  PROGRAMMING MODEL
+
+    The programmer of an application to be run in the LightServer context will
+    write an event-based script which will be parsed by LightServer and 
+    automatically partitioned between server-side execution, client-side 
+    JavaScript execution, and client-side execution on the client's pass-
+    through proxy used for editing and other client-side operating system
+    interaction.  Listed below are some examples of server-side vs. client-
+    side execution:
+
+    	CLIENT SIDE:
+
+	Button click simulation via image swapping, the triggering of a
+	request for a new HTML page, validation of an input field, such as
+	when an input field loses focus, hiding and/or showing of an object
+	when a button is clicked, moving an object around the HTML page.
+
+    	SERVER SIDE:
+
+	Requesting a database update, copying files, processing the request
+	for a new HTML page and sending it to the client, putting together
+	an HTML page based on programmatic instructions or on a structural
+	description.
+
+    The scripting language will specify access to various objects (or groups
+    of objects) on the server via the ObjectSystem, which is described in
+    the sections that follow.  The scripts will also specify any translations
+    that should be applied to the object as well as the presentation style
+    for the object when shown to the end-user.  Presentation styles and
+    translation mechanisms (one object type converted to another) are 
+    described in sections that follow.
+
+    The scripting language will be loosely based on JavaScript, the loosely
+    typed variant of Java that Netscape developed for use in its browsers.
+    It is possible at some point that a more natural-language scripting 
+    system will be used in place of the programming-language oriented
+    system described here.
+
+    The scripting language will also include inheritance features.  This is
+    done so that common types of applications can be pre-packaged but then
+    easily modified at the client's site.  The scripting language inheritance
+    will be somewhat similar to Java's inheritance syntax.
+
+III OBJECTSYSTEM ABSTRACTION
+
+    As mentioned before the LightServer system will provide an abstraction
+    layer for various objects on the network.  Each object will be identified
+    by one or more MIME types.  An HTML document, for example, might be
+    available for access as "text/plain", "text/html", and "application/
+    octet-stream".  An application accessing the document as "text/plain"
+    might be viewing the html source.  Another application accessing the
+    document as "text/html" would be presenting the document to the user as
+    a formatted HTML page.  Finally, a usage of the object as "application/
+    octet-stream" might be as a simple file copy.
+
+    Here are some typical object types:
+
+	application/octet-stream:	Raw binary data of any kind.  May
+					be text, a program, a document, or
+					any number of other things.
+	text/plain:			Raw textual data of any kind.  
+					Is relatively human-readable.
+	text/html:			An HTML document.
+	multipart/mixed:		A directory containing other sub
+					objects.
+	message/rfc822:			An email message of any kind.
+	image/gif:			A GIF image.
+	image/jpeg:			A JPEG image.
+	network/pop3:			A POP3 email server on the network.
+	network/http:			A HTTP web server on the network.
+	system/user:			A user on the system.
+
+    Objects can have properties.  These properties (or attributes) can be
+    managed and set by the system and/or by users.  Objects of specific
+    types are "well known" to have certain attributes.  For example, all
+    objects will have permissions for read/write/execute for the owner,
+    group, and world.  All objects will have a name and a list of types.
+    A symbolic link object will have a property that points to the actual
+    object.  
+
+    Objects can also contain child objects.  For example, a directory object
+    can "contain" other directory objects and file objects.  Objects need
+    not have any child objects, though.  The child objects may be of very
+    different types than the parent object.  Furthermore, the child objects
+    may actually be a "representation" of a part of the parent object.  For
+    example, a mailbox object contains mail message objects, though if one
+    were to access the mailbox as "application/octet-stream" rather than
+    in its normal access type, one would read all of the message objects.
+    Furthermore, a message object can contain file attachment objects, which
+    are really a part of the message if the message is accessed as "text/plain"
+    or even as "message/rfc822".
+
+    The child objects may be limited as to their type.  For example, a mailbox
+    may contain "message/rfc822" types but wouldn't be able to directly
+    contain an "image/gif" for instance.  A file directory on a UNIX system
+    can contain various object types, but not a "network/pop3".  One could,
+    however, create a symbolic link to the pop3 server from a UNIX directory
+    entry.
+
+    Some objects will have child objects inherently (the child objects are
+    automatically created and destroyed with the creation and destruction of
+    the parent object).  One such object might be a database table, which
+    may have two child objects inherently -- "rows" and "columns".  The rows
+    child object will contain one object for each row in the database table,
+    and the columns child object will contain one object for each column in
+    the database table, thus allowing access to the tabular data either as a
+    collection of rows (via primary key, by rows) or as a collection of 
+    columns (via column name).  Thus, such inherent child objects are used
+    mainly for organizational purposes.
+
+    Objects may have content.  A "text/plain" object will obviously contain 
+    textual data.  However, a "system/user" object or a "network/pop3"
+    object will not, since these objects are merely reflections of real world
+    entities and are not actually entities in and of themselves.  A text file
+    on the other hand is an entity itself and does not represent anything
+    in the "rest of the real world".  Thus it has content.
+
+    The objectsystem has a unified directory structure.  That is, a single 
+    path, like a file pathname, specifies access to a unique object.  As a
+    result, the various objectsystem hierarchies must be "mounted" into the
+    objectsystem at mount points, in a similar manner to the way UNIX handles
+    this.  The administrator of the server is responsible for setting up the
+    various objectsystem locations, although standard locations are provided
+    and the administrative interface will normally automatically link the
+    hierarchies into the main structure at the appropriate points.
+
+    Objects may also have methods associated with them, apart from setting
+    and reading the values of the object properties.  One example of an
+    object method is the "ReIndex" method of "system/index" objects (see
+    section below on OBJECTSYSTEM INDEXING), which causes the server to 
+    update the full-text index.  Methods on objects are less common, but
+    sometimes very useful.
+
+IV  OBJECTSYSTEM TRANSLATION
+
+    Translation systems will also be present in the objectsystem.  These 
+    translation drivers will have the capability to transform an object of
+    one type into an object of another type, or to transform the character-
+    istics of an object.  
+
+    One example of a translation driver transforming the characteristics of an
+    object might be changing the color hue of an image or otherwise doing 
+    colormap-substitution in a GIF image.  For example, an icon may be 
+    originally built with a white background and mainly teal/green foreground
+    colors.  A translation driver might be able to take that "image/gif"
+    object and change it into an "image/gif-cmap-trans" and in the process
+    modify the white background to black or transparent, or shift the hue
+    of the color map so that the green hues become bluish.
+
+    A more advanced translation driver might take a database table object and
+    transform it into a text/html object containing a report via the 
+    application of certain parameters (like columns, widths, where-clause, and
+    so forth).
+
+    Another translation driver might change a "text/html" document into an
+    object of type "application/epson-fx" so that an html document object, when
+    copied to a child object of a printer spooler object, would automatically
+    be transformed into a printable output format.
+
+    The translation can be made more "static" in the ObjectSystem via the 
+    creation of a Translation object.  A Translation object, when accessed, 
+    automatically performs a kind of translation from its source, giving a 
+    new object of a potentially different type.  Translation objects can also
+    result in a variation on the apparent object arrangement.  For example, if
+    a GIF image is stored in the objectsystem but is also frequently accessed
+    as a JPEG image via a "image/gif-->image/jpeg" translation driver, one 
+    could create a Translation object that has a data type of "image/jpeg",
+    and that when opened, will automatically perform the conversion from the
+    GIF file.  Translation object may also optionally be able to store the 
+    translation of the source so that the translation does not have to be
+    physically performed every time the object is accessed, but only when the
+    source has changed.  Furthermore, a Translation object may also optionally
+    be able to convert the data type backwards (i.e, in this case from JPEG 
+    back to GIF), should the end-user or application open the Translation 
+    object for writing.
+
+    Two special internally-handled Translation-like objects are described in
+    the next section.  These are the Query object and the QueryTree object.
+
+V   OBJECTSYSTEM QUERIES
+
+    The objectsystem is designed to be more advanced and faster than a simple
+    filesystem.  The objectsystem can potentially contain millions of objects 
+    for a given parent object.  As a result, one cannot simply request a list
+    of all objects for a given parent object in all cases -- the results 
+    would be enormous.  Thus, the objectsystem provides the capability to only
+    list objects for a given parent that match certain criteria.  The following
+    are examples of objectsystem queries:
+
+	Here, we're looking at database tables.  The typical objectsystem 
+	hierarchy for a database table is as follows:
+
+	    <table-name>/columns/<column-names>
+	    <table-name>/rows/<primary-key>
+
+	To obtain a single database record from a table with the primary key 
+	of "02006":
+	   
+	    SELECT "./rows/" FROM "/datasources/JNET_DB/Partner" 
+		WHERE "./rows/*:id" = 02006
+
+	    --or--
+
+	    SELECT "./rows/" FROM "/datasources/JNET_DB/Partner"
+		WHERE "./rows/*:name" = 02006
+
+	To obtain a range of database records for several primary key values:
+
+	    SELECT "./rows/" FROM "/datasources/JNET_DB/Partner"
+		WHERE "./rows/*:id" BETWEEN 02000 AND 02999
+
+	To obtain a list of database records by searching on a non-primary
+	key field, like "last_name":
+
+	    SELECT "./rows/" FROM "/datasources/JNET_DB/Partner"
+		WHERE "./rows/*:last_name" = "Smith"
+
+	To obtain a list of columns in the table,
+
+	    SELECT "./columns/" FROM "/datasources/JNET_DB/Partner"
+
+    SQL is the standard language for objectsystem queries as used here.  
+    The above queries are used in conjunction with an object "open with query"
+    type of function call to the objectsystem.  However, the objectsystem 
+    allows for a more powerful form of query execution as well.  The caller
+    can create a query object under any parent object that allows children
+    of type "system/query".  UNIX filesystem directories allow these kind of
+    children.  After creating the object, the query is not actually executed
+    until the query object is opened as a directory (to list its children).
+    At that point, a listing of the matching objects from the original data
+    source are retrieved.
+
+    Object properties can also be referenced in queries.  One of the select
+    statements above used the expression "./rows/*:name" to reference the
+    name of the objects just below the "rows" object.  The "name" property is
+    a predefined/reserved property that exists in all objects, but other 
+    object-specific properties can also be referenced.  For database rows,
+    the "name" property contains the value of the primary key for that row.
+    For files, the "name" would be the filename, and so forth.  
+
+    The SELECT query that is used to construct a query object may contain
+    an assignment to the special/reserved property "name" so that the 
+    resulting name assignments to the child objects under the query object
+    will be more "intelligible".  For example,
+
+	SELECT "./rows/", name="./rows/*:first_name"
+	    FROM "/datasources/JNET_DB/Partner"
+	    WHERE "./rows/*:last_name" = "Smith"
+
+    In performing this kind of name assignment, one must be sure that the
+    resulting name assignments are unique.  One way to do this is to 
+    concatenate the artificial key (in this case, Partner/rows/*:id) with the
+    intelligible key to produce something like:
+
+	SELECT "./rows/", name=convert("basic/string","./rows/*:id") + 
+	    "./rows/*:first_name"
+	    FROM "/datasources/JNET_DB/Partner"
+	    WHERE "./rows/*:last_name" = "Smith"
+
+    The database convert() function here actually takes a LightServer basic
+    data type (like basic/string) instead of the internal database type
+    (in this case, it would be varchar(255)).  The ObjectSystem driver that is
+    responsible for managing the database connectivity is responsible for 
+    converting the LightServer types to the appropriate database-specific type.
+
+    Note that these queries work not just for database objects, but also for
+    objects of other kinds, although relational databases are designed to 
+    provide enhanced searching performance over some of the more ordinary 
+    objects in the system.
+
+    A second, more powerful but more complicated, form of a query involves the
+    QueryTree object, of type "system/querytree".  This object allows a query
+    to affect not only the first-level child object listing, but also the 
+    parent-child hierarchy of the child objects of the query tree object.
+    Thus, if any of the queried objects themselves have children, these 
+    children will not normally be visible under the querytree's structure
+    unless the querytree's query parameters explicitly call for such.
+
+    One example of the use of a QueryTree object is when a database table has
+    a recursive structure, with a parent-child relationship internally 
+    existing between the table's records (this is usually implemented via
+    a foreign key reference within the table to the table's own primary key.
+    This foreign key would be the "parent row" pointer).  Ideally, the server
+    would provide a mechanism for these rows to be presented in the object-
+    system in a tree-structured manner.  To cause a QueryTree object to 
+    fulfill these requirements, it would be set up as follows:
+
+	Top-Level Query: (level = 0)
+
+	    SELECT "/datasources/JNET_DB/Comm/rows/" 
+		FROM "/datasources/JNET_DB/Comm"
+		WHERE "/datasources/JNET_DB/Comm/rows/*:parent_id" IS NULL
+
+	Query for all lower levels: (level = 1,*)
+
+	    SELECT "/datasources/JNET_DB/Comm/rows/" 
+		FROM "/datasources/JNET_DB/Comm"
+		WHERE "/datasources/JNET_DB/Comm/rows/*:parent_id" = ".:id"
+
+    Note that when setting up query SELECT statements within a QueryTree, the
+    "current objectsystem directory" is less intuitive, because one is dealing
+    with not only the directories of the DataTable objects, but also the 
+    directory being constructed by the QueryTree object.  Within a QueryTree,
+    the pathnames given in the select statement must be fully qualified except
+    when they relate to objects in the translated directory structure under-
+    neath the QueryTree object.  In this example, the ".:id" reference in the
+    second query refers to the "id" property of the parent row of the rows
+    being queried.
+
+    In this case, since database rows don't have any child objects, one doesn't
+    have to worry about those child objects not being visible within the 
+    QueryTree.  However, since QueryTrees can translate sources other than 
+    database rows, this could become an issue at some point.  It may be a valid
+    future direction to provide the ability to trace the shortcut generated by
+    the QueryTree object (or other Translation-like objects) to the original
+    object.
+
+VI  OBJECTSYSTEM INDEXING
+
+    The ObjectSystem also provides the capability to index the textual content
+    of objects for fast access.  Creating a full-text index on a set of 
+    objects is performed by creating an index object.  One of the properties 
+    of the index object ("system/index") is a pointer to a system/query object
+    (see above section on OBJECTSYSTEM QUERIES) which specifies the objects
+    to be indexed.  The index object also has one method: ReIndex.  This method
+    updates the full-text index by revisiting all of the objects to be indexed
+    by the index object.  
+
+    Index objects also have a second property which optionally specifies where
+    the index information is to be kept.  This location can be any object that
+    can have the type "system/association" (like a database table).
+
+    Querying the index can be performed via a query like the following:
+
+	SELECT "./" FROM "/users/johnsmith/IndexOfMyFiles"
+	    WHERE "./*" CONTAINS "firstword" AND "./*" CONTAINS "secondword"
+
+    The query result will be the listing of all of the objects (in this case
+    probably text files) containing both "firstword" and "secondword". 
+
+VII COMMON OBJECTS
+
+    This section describes some of the more common objects that will be used
+    in the ObjectSystem, in addition to the properties, types, content, and
+    methods of such objects.
+
+    1.  UxFile object -- a UNIX filesystem file.  The ObjectSystem driver for 
+	the UxFile objects will primarily pass through the open, read, write,
+	and close calls to the UNIX filesystem itself.  UxFile objects can have
+	diverse types, as determined primarily by the file's extension.  UxFile
+	objects normally contain no children, unless the file object is a 
+	special type such as a mailbox file.  In these cases the children of
+	such a file object will normally be subparts of the file (such as 
+	messages within a mailbox, or functions and declarations within a
+	C or Java program file).
+
+	PROPERTIES:
+
+	    Owner		system/user	This is the file's owner, and
+						will be a pointer to the 
+						system/user object for the 
+						owner.
+	    Group		system/group	File's group owner.
+	    Permissions		basic/bitmask	A bitmask of permissions 
+						options.
+	    Size		basic/integer	READONLY.  The size of the 
+						file.
+	    ModifyDate		basic/datetime	The last time that this file
+						was written to.
+	    ChangeDate		basic/datetime	The last time that this file's
+						permissions, owner, group, or
+						dates were changed.
+	    AccessDate		basic/datetime	The last time that this file
+						was read, written, or changed.
+	
+	METHODS:
+
+	    (none)
+
+	CONTENT TYPES:
+
+	    application/octet-stream	This type will always be valid for a
+					UxFile object, since a file is a stream
+					of bytes.
+	    system/directory		Only if the UxFile can have children,
+					as in the case of a mailbox.
+	    
+	    Various other types will be assigned to files according to the 
+	    extension of the file. 
+
+    2.  UxDirectory object -- the UxDirectory object is also a UNIX filesystem
+	object.  UxDirectory objects in the UNIX filesystem have no content,
+	but do have the same attributes as a UNIX filesystem File object.
+
+	PROPERTIES:
+
+	    (see UxFile object)
+
+	METHODS:
+
+	    (none)
+
+	TYPES:
+
+	    application/x-ux-directory	Basic type for UxDirectory objects.
+	    system/directory		Main directory type.
+
+    3.  Directory object -- the Directory object is like the UxDirectory
+	object, and will look the same to the end-user, but a Directory 
+	object has no direct correlation with an actual directory in the UNIX
+	filesystem, but is managed internally by the LightServer.
+
+	PROPERTIES:
+
+	    (see UxDirectory object)
+
+	METHODS:
+
+	    (none)
+
+	TYPES:
+
+	    system/directory		General directory object type.
+
+    4.  Query object --
+
+    5.  QueryTree object --
+
+    6.  SymLink object --
+
+    7.  Index object --
+
+    8.  Translation object --
+
+    9.  DataSource object --
+
+    10. DataTable object --
+
+    11. DataColumn object --
+
+    12. DataRow object --
+
+VIII HTML OBJECTS
+
+    This section describes the various kinds of HTML objects that will be
+    likely provided for use in the construction of HTML pages to be presented
+    to the user.
+
+    1.  ImageButton object -- an object that has three images associated with
+	it that make it behave like a button.  The first image is the nominal
+	button appearance, or the way the button looks when the user has 
+	neither pointed to it nor clicked it.  The second image is how the 
+	button looks when the user has pointed to it but not clicked it.  And,
+	finally, the third image shows what the button looks like when the 
+	user clicks it.  These three images are associated with the button as
+	properties of the button, and LightServer automatically generates the
+	JavaScript code to produce the desired button-click effect.
+
+	PROPERTIES:
+
+	    NominalImage	SymLink		This is the picture of the 
+						button when the user has 
+						neither pointed nor clicked
+						on the button.
+	    PointImage		SymLink		Image when user pointed to
+						the button.
+	    ClickImage		SymLink		Image when user has clicked
+						on the button.
+	
+	EVENTS:
+
+	    Clicked				This event is activated when
+						the user clicks the button.
+
+    2.  ScrollLayer object -- this object consists of a layer with a vertical
+	scrollbar.  A ScrollLayer contains a layer in which various objects
+	can be placed, including buttons, treeviews, html documents, and
+	forms.
+
+    3.  HtmlText object -- this object simply contains HTML text that can be
+	inserted at any point in building the final HTML page.
+
+    4.  TreeView object -- this object contains a tree-style listing of items,
+	each of which are layers with an ImageButton and a textual label,
+	which will normally correspond to the name of the object being listed
+	in the treeview.  Treeviews will show an object hierarchy for a
+	certain number of specified levels given a specific root node in the
+	ObjectSystem and possible filtering criteria.  Data can be passed 
+	through a translation driver before arriving at the treeview, if it
+	should become necessary.  TreeViews must stand alone within the layer
+	in which they are used (or within an entire page or frame).
+
+    5.  Form object -- a form contains a collection of data entry elements
+	which correspond to some specific function.  The various form data
+	entry elements that can be used are as follows:
+
+	    FormSubmit (button which submits the content of the form)
+	    FormClear (button which clears the form's contents)
+	    FormText (single line text entry box)
+	    FormPassword (single line text entry, showing '*'s)
+	    FormTextArea (multiline text entry box)
+	    FormCheckbox (on/off checkbox)
+	    FormRadioGroup (a radio-button style selection group)
+	    FormPickGroup (a drop-down or list box style selection group)
+
+	Forms can also contain other non-form-related HTML objects, such as 
+	images, links, and other text.  A form cannot directly contain any
+	FormGroupItem objects, which must be placed within a FormRadioGroup
+	or a FormPickGroup.
+
+    6.  Table object -- a table is a means for presenting data or arranging
+	objects on the final html page.
+
+    7.  Layer object -- a layer is a container for other objects.  HTML can 
+	be directly written into a layer, or other objects can be placed 
+	within it.
+
+    8.  FrameSet object -- a frameset is basically a collection of other 
+	HTML pages, separated by optionally resizeable borders.  
+
+    9.  Page object -- the basic top-level abstraction for an HTML document.
+
+    10. LayerWindow object -- a layer that is constructed so that it looks
+	just like a little window and can be moved around the page.
+
+IX  IMPLEMENTATION SCHEDULE
+
+    Not all aspects of the system need be implemented right at first for the
+    system to be of useful value.  For example, the natural language business
+    rules, objectsystem queries, indexes, translation drivers, and many of
+    the HTML objects need not be implemented at first.  Furthermore, the 
+    scripting language can be reduced to a very manageable subset.  An initial
+    implementation would require at least one or two objectsystem drivers to
+    provide some objects to work with, as well as some of the basic framework
+    for opening/closing objects, getting a directory listing, and some of the
+    HTML objects to present the data to the end-user.
+
+    Doubtless this specification will be expanded and modified as time 
+    progresses.  
+
+    The following aspects of the system would be foreseen to be implemented
+    for the on-line help document system application:
+
+	1.  Page, Layer, TreeView, Form, FormText, ImageButton, and
+	    ScrollLayer HTML objects.
+	2.  UNIX filesystem objectsystem driver.
+	3.  Sybase database objectsystem driver.
+	4.  QueryTree, Query, and Index objects.
+	5.  Minimal scripting language capability.
+
+    Of course, if full-text indexing and lookup isn't needed on the online
+    help system, the Index, Query, Form, and FormText objects would not be
+    needed.
+
+X   SCRIPTING LANGUAGE DEFINITION GRAMMAR
+
+    Module ::= 1"module" 1{Identifier} [1"extends" 1{Identifier}] 1{OpenBrace}
+		0+{ VariableDecl | FunctionDecl | EventDecl | Directive }
+		1{CloseBrace}
+    VariableDecl ::= 1"var" 1{Identifier} [1{Equals} 1{Expression}] 1{Semicolon}
+    FunctionDecl ::= 1"function" 1{Identifier} 1{ParamList} 1{OpenBrace}
+		0+{VariableDecl} 0+{1{1{Expression} 1{SemiColon}} | 
+		1{ControlStruct}} 1{CloseBrace}
+    EventDecl ::= 1"event" 1{Identifier} 1{Period} 1{Identifier} 1{ParamList}
+		1{OpenBrace} 0+{VariableDecl} 0+{1{Expression} 1{SemiColon}} 
+		1{CloseBrace}
+    Directive ::= 2{DollarSign} 1{QuotedString} 1{SemiColon}
+    Identifier ::= 1{[a-z] | [A-Z] | '_'} 0+{[a-z] | [A-Z] | [0-9] | '_'}
+    ParamList ::= 1{ 1{OpenParen} [1{Identifier} [1{Comma} 1{Identifier}]]
+		1{CloseParen} }
+    ActualParamList ::= 1{ 1{OpenParen} [1{Expression} [1{Comma} 1{Expression}]]
+		1{CloseParen} }
+    OpenBrace ::= '{'
+    CloseBrace ::= '}'
+    SemiColon ::= ';'
+    Colon ::= ':'
+    Equals ::= '='
+    OpenParen ::= '('
+    CloseParen ::= ')'
+    OpenBracket ::= '['
+    CloseBracket ::= ']'
+    Period ::= '.'
+    Expression ::= 1{ ObjectExpression | ValueExpression | { 1{OpenParen}
+		1{Expression} 1{CloseParen} } }
+    ObjectExpression ::= 1{ Identifier | 1{ 1{ObjectExpression} 1{Period} 
+		1{Identifier}} | 1{ 1{ObjectExpression} 1{OpenBracket}
+		1{Expression} 1{CloseBracket} } }
+    ValueExpression ::= 1{ Number | String | 1{ 1{Expression} 1{PostOperator}}
+		| 1{ 1{Expression} 1{MidOperator} 1{Expression} } | 
+		1{ 1{PreOperator} 1{Expression} } | 1{FunctionCall} |
+		1{ 1{ObjectExpression} 1{PostModOperator} } |
+		1{ 1{PreModOperator} 1{ObjectExpression} } |
+		1{ 1{ObjectExpression} 1{MidModOperator} 1{Expression} } }
+    ControlStruct ::= { ForStruct | WhileStruct | DoStruct | IfStruct |
+		SwitchStruct | BlockStruct }
+    FunctionCall ::= 1{ [1"new"] 1{ObjectExpression} 1{ActualParamList} }
+    PostOperator ::= {}
+    PreOperator ::= { "-" | "~" | "!" }
+    PostModOperator ::= { "++" | "--" }
+    PreModOperator ::= { "++" | "--" }
+    MidOperator ::= { "-" | "+" | "/" | "*" | "%" | "==" | "&&" | "||" | 
+		"&" | "|" | "^" | ">=" | "<=" | ">" | "<" | "!=" }
+    MidModOperator ::= { 1{Equals} | "<<" | ">>" | "+=" | "-=" | "/=" |
+		"*=" | "|=" | "&=" | "^=" }
+    BlockStruct ::= 1{ 1{OpenBrace} 1{BlockContentStruct} 1{CloseBrace} }
+    BlockContentStruct ::= 1{ 0+{ 1{ 1{Expression} 1{SemiColon} } |
+		1{ControlStruct} | 1"continue;" | 1"break;"} }
+    ForStruct ::= 1{ 1"for" 1{OpenParen} [Expression] 1{SemiColon} 
+		[Expression] 1{SemiColon} [Expression] 1{CloseParen}
+		1{BlockStruct} }
+    WhileStruct ::= 1{ 1"while" 1{OpenParen} 1{Expression} 1{CloseParen}
+		1{BlockStruct} }
+    DoStruct ::= 1{ 1"do" 1{BlockStruct} 1"while" 1{OpenParen} 1{Expression}
+		1{CloseParen} 1{SemiColon} }
+    IfStruct ::= 1{ 1"if" 1{OpenParen} 1{Expression} 1{CloseParen}
+		1{BlockStruct} }
+    SwitchStruct ::= 1{ 1"switch" 1{OpenParen} 1{Expression} 1{CloseParen}
+		1{OpenBrace} 0+{CaseStruct} 1{CloseBrace} }
+    CaseStruct ::= 1{ { 1{ 1"case" 1{Expression} 1{Colon} } | 1{ 1"default"
+		1{Colon} } } 1{BlockContentStruct} } 
+    Number ::= 1{ ['+' | '-'] 1+{[0-9]} [ '.' 1+{[0-9]} ] }
+    String ::= 1{ '"' 0+{[^"]} '"' }
+
+XI  SAMPLE SCRIPTING LANGUAGE MODULE
+
+    The following sample script module manages a fully-functional online
+    help system.  This help system includes the following features:
+
+	1.  Full-text searching via a pop-up search form.
+	2.  Treeview control for scanning through the various help topics.
+	3.  HTML text frame for viewing the help document.
+	4.  Search results in a pop-up treeview.
+	5.  Highlighting of search keywords in the documents via a 
+	    translation layer access.
+
+    This script module assumes the following things about the ObjectSystem's
+    underlying structure:
+
+	1.  The document database is rooted at /datasources/HELP_DB/
+	2.  A QueryTree like that described in this document is located
+	    at /apps/help_system/document_tree.
+	3.  A Full Text Index of the table is at /apps/help_system/text_idx
+	4.  A Query object for the index is at /apps/help_system/text_idx_qy
+	5.  This module is at /apps/help_system/help_system.lmd
+	6.  A translation module is available to convert "text/html" to 
+	    "text/html-highlighted".
+	7.  The HTML page structure is at /apps/help_system/mainpage/
+	8.  A set of three images exist for the search button at
+	    /apps/help_system/images/search[0-2].gif.
+
+    And... <drum roll> here's the code:
+
+    module help_system
+	{
+	// This event gets triggered when the main page is requested.
+	event main.load()
+	    {
+	    this = new Application("./mainpage/");
+	    return this;
+	    }
+	}
+
+    Here's a manual construction via code of the system without the HTML
+    page structure being stored.  Sometimes it is useful to dynamically 
+    create pages without any previous definition, so here it is...
+
+    module help_system
+	{
+	// These variables contain information about what the user just
+	// searched for.  We use this information to perform the highlight
+	// of the keywords via the translation layer.
+	var recent_search = "";
+
+	// We declare the sl and tv here (which are used in the control.
+	// load() event) so that their scope is global and we can declare
+	// events on them.
+	var img,sl,tv,control,text,swin,searchform,tv2;
+
+	// This event gets triggered when the main page is requested.
+	event main.onLoad()
+	    {
+	    text = new Page();
+	    control = new Page();
+	    main = new FrameSet("frameset","rows");
+	    main.Add(control,0.33);
+	    main.Add(text,0.67);
+	    return main;
+	    }
+	
+	// This event gets triggered when the frameset is loaded by the 
+	// browser and the browser requests the 'control' page.
+	event control.onLoad()
+	    {
+	    img = new ImageButton("images/search0.gif","images/search1.gif",
+		"images/search2.gif","");
+	    tv = new TreeView("/apps/help_system/document_tree");
+	    sl = new ScrollLayer();
+	    sl.Add(tv);
+	    control.Add(img);
+	    control.Add(sl);
+	    }
+
+	// This event fires when the user double-clicks a treeview item.
+	event tv.doubleClick(item)
+	    {
+	    text.load(item.path);
+	    }
+	event tv2.doubleClick(item)
+	    {
+	    text.load(item.path + 
+		" AS text/html-highlighted(" + recent_search + ")");
+	    }
+
+	// This event gets triggered when the frameset is loaded by the
+	// browser and the browser requests the 'text' page.
+	event text.onLoad()
+	    {
+	    text.setBackground("white");
+	    }
+
+	// This event gets fired when the user clicks the search button.
+	event img.onClick()
+	    {
+	    searchbox = new FormText("");
+	    searchbtn = new FormSubmit("Search!");
+	    searchform = new Form();
+	    searchform.Add(searchbox);
+	    searchform.Add(searchbtn);
+	    swin = new WindowLayer(300);
+	    swin.setBackground("white");
+	    swin.Add(searchform);
+	    swin.Show();
+	    }
+
+	// This event gets triggered when the user clicks the search
+	// button on the search form window.
+	event searchform.onSubmit(searchbox)
+	    {
+	    swin.Hide();
+	    swin = new WindowLayer(600);
+	    swin.setBackground("white");
+	    tv2 = new TreeView(
+	       "SELECT './' FROM './text_idx' WHERE './*' CONTAINS '" + 
+	       searchbox + "'");
+	    recent_search = searchbox;
+	    swin.Add(tv2);
+	    swin.Show();
+	    }
+	}
+

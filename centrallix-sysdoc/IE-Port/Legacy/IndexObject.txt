@@ -1,0 +1,208 @@
+Document:  Full-Text indexing and advanced lookup within LightServer
+Author:    Greg Beeley (GRB)
+Date:      June 22, 1999
+-------------------------------------------------------------------------------
+
+
+I   OVERVIEW
+
+    The Index Object, handled by the objectsystem driver objdrv_index, provides
+    a mechanism to catalog all words in a given document set and store those
+    words in an indexed fashion so that the given document set can be quickly
+    scanned for a set of search criteria, normally words (or possibly phrases)
+    that are found in those documents.
+
+    The Index Object, like other parts of LightServer, is designed to be as 
+    flexible as possible, having the ability to full-text index any type of
+    object that has content, including indexing of specific attributes of that
+    object (such as a document title or file name), and the ability to place
+    the index listing itself into any type of object directory that can support
+    name-attribute associations in the way a database table can.
+
+
+II  SYSTEM REQUIREMENTS
+
+    In order for the index object to work correctly, the remainder of the 
+    system needs to have several key features, which are enumerated below:
+
+    A.  Event Registry.
+
+        The event registry is an OSML feature that allows various modules to 
+	'hook' into OSML events and trigger external actions.  At some point 
+	this could include executing LightServer triggers, but for this driver's
+	needs all that is needful is that the event registry be there and that
+	it be active.  The index module will then trap updates to the documents
+	to be indexed, and update the index as appropriate when a document is
+	created, updated, or removed from the system.
+
+	In the case that most of the document updates bypass LightServer and
+	are done in other ways, the index object will have a ReIndex method
+	that will update the index in an asynchronous manner; this ReIndex 
+	method does not require the event registry and will be discussed at
+	length below.
+
+	The event registry will consist of a hash table of directory names,
+	with associated conditions and an action function pointer.  Whenever an
+	update/insert/delete is performed on any object in the given directory,
+	the condition for that item in the event registry is evaluated for the
+	object being updated.  If that condition is satisified, the action 
+	function pointer will be called with a pObject reference to the object
+	in question.  The function can then return 0 to allow the update, 
+	insert, or delete to complete successfully, or return -1 to force the
+	update, insert, or delete operation to fail.
+
+	Each index object will cause an event registry entry to be created for
+	the directory that the index object "watches over".
+
+	In order for the event registry to be properly restored on a server
+	re-start, the OSML will keep a persistent listing of registered events.
+
+	The registry then must consist of several basic items, listed below:
+
+	1.  Directory or Pathname of the directory to "watch" for updates.
+	2.  Condition describing the detailed nature of the event (such as when
+	    we are only looking for updates affecting a subset of objects, etc)
+	3.  Event Private ID - a unique identifier for the event that is used
+	    internally by the event handler to process the event.
+	4.  Event Class Code - a general class identifier for the event that is
+	    used to find the correct module to pass the event on to.  The 
+	    function to call upon event triggering is determined by looking this
+	    class code up in a listing of event handlers.  Modules can register
+	    event handlers on system startup, without specifying exactly what
+	    the events will be (the OSML will remember that).
+
+	The event handler registry will contain the following items:
+
+	1.  Event Handler Class Code - same as listed above.
+	2.  Event Handler Function - a function pointer to the function that
+	    will handle the particular event.
+
+
+    B.  "CONTAINS" Expression Operator.
+
+        In order for searches to work correctly, the search critera must be able
+	to be specified in a SQL statement when issuing the query on the index
+	object.  The proposed mechanism to do this is the CONTAINS operator,
+	which will specify that a given attribute (such as content of an object)
+	must contain a certain word or group or words or phrase.
+
+	The CONTAINS operator keyword will only be evaluatable when passed on 
+	through an index object, or if another objectsystem driver decides for
+	some reason to support that operator.
+
+
+III INDEXING SYSTEM DESIGN
+
+    The indexing system will consist primarily of a new objectsystem driver.
+    This driver's node file will be a structure file specifying the following
+    information:
+
+        1.  Directory to 'watch' for updates
+	2.  The SQL WHERE clause specifying which objects in the directory to
+	    watch.
+	3.  Whether to 'watch' the directory in question recursively -- that
+	    is, watch directories within that directory as well.
+	4.  Indexing level - the following levels will be supported:
+
+	    a.  Word list - just index the words in the document.
+	    b.  Contextual word list - track adjacent words as well, makes 
+	        searching more accurate.
+
+	5.  Word List repository directory - a place where the list of words
+	    found in the document(s) can be stored.
+	6.  Word List repository word id attribute name - name of the attribute
+	    used to store the 32-bit ID for the word, must be an integer
+	    attribute.
+	7.  Word List repository word text attribute name - name of the
+	    attribute used to store the text of the word itself, must be a 
+	    string attribute.
+	8.  Word List repository word id linkage count - an integer attribute
+	    that contains the total number of occurrences of the given word.
+	9.  Word Occurrence repository directory - a place where the list of
+	    word occurrences can be stored.
+	10. Word Occurrence word id attribute name - name of the attribute
+	    which tells which word this occurrence reflects.
+	11. Word Occurrence document id attribute name - id of document, from
+	    directory (15) below, which contains the occurrence of the word.
+	    This will be a 32-bit integer.
+	12. Word Occurrence count - how many times this word occurred in the
+	    document.  This has a maximum count of 255.
+	13. Word Occurrence emphasis - attribute reflecting the level of 
+	    emphasis this word has in this document.  This will range from 
+	    0 to 15.
+	14. Word Occurrence context word id - this field, optional depending
+	    on the setting of (4) above, conveys what the 'next' word in the 
+	    document was following the given word id.
+	15. Indexed Document repository directory - a place where a list of
+	    indexed documents can be stored.
+	16. Indexed Document repository document id attribute name, a 32bit
+	    integer.
+	17. Indexed Document partial pathname - name of the document,
+	    which must be appended to the 'directory to watch for updates',
+	    for which this occurrence is listed.  Such pathnames can be up
+	    to 255 characters long.
+	18. Maximum word length value - the longest length of a word that 
+	    can be indexed in the document.
+	19. Common word exclusion list - a string containing a space-separated
+	    list of words to be excluded from indexing (eg. a, an, the, etc.)
+	20. Attributes of the objects in the watch directory that also should
+	    be indexed, a space-separated string.
+	21. A default ReIndex method WHERE clause which will determine whether
+	    a given document should be re-indexed.
+
+
+    The following describes the processing that will take place for the various
+    operations triggering events:
+
+    A.  DOCUMENT CONTENT IS UPDATED
+
+        1.  Delete all Occurrence entries for the given document.
+	2.  Adjust Word List entries as well to reflect fewer occurrences.
+	3.  Build a wordlist for the new document content and attributes.
+	4.  Lookup ID's for the words in the wordlist, possibly create new word
+	    entries, and bump occurrence counters.
+	5.  Create Occurrence entries for the new document.
+
+    B.  DOCUMENT NAME IS MODIFIED
+
+        1.  Modify the entry in Indexed Document repository to reflect new name.
+
+    C.  DOCUMENT IS DELETED
+
+        1.  Delete all Occurrence entries for the given document.
+	2.  Adjust word list occurrence counts for the given words.
+	3.  Remove IndexedDocument entry.
+
+    D.  NEW DOCUMENT CREATED
+
+        1.  Add an IndexedDocument entry for the document.
+	2.  Build the wordlist for the content and/or attributes.
+	3.  Lookup ID's for the words, create new words, bump counters.
+	4.  Create new Occurrence entries for the words in the document.
+
+    E.  DOCUMENT ATTRIBUTE IS MODIFIED
+
+        1.  Get original attribute value and build a wordlist for it.
+	2.  Remove Occurrence entries that match that wordlist and update the
+	    WordList occurrence counters.
+	3.  Build a wordlist for the new attribute value.
+	4.  Add Occurrence entries and update the counters for the new words.
+
+    F.  RE-INDEX METHOD INVOKED
+        
+	1.  If a where clause was not supplied, use the default one.  If 
+	    "ALL" was specified for the WHERE clause, ignore any default WHERE
+	    clause and reindex all documents corresponding to just the main
+	    WHERE clause for the index (the one that specifies which documents
+	    to include in the index and which not to).
+	2.  Find all objects corresponding to the main WHERE clause and the
+	    ReIndex WHERE clause, and perform operations as in (A) above.
+	3.  Query for subobjects of each object found as well, if recursion
+	    was specified in the index configuration.
+	4.  If ReIndexAsync was called instead of ReIndex, complete the call 
+	    to the user immediately and perform the re-index operation in the
+	    background.
+
+    Note that this processing will occur at the OSML API level, not at the SQL
+    multiquery level, so UPDATE/INSERT/DELETE SQL functionality need not be 
+    necessarily present for this system to work correctly.

@@ -1,0 +1,121 @@
+Title:	  LightServer HTML Widgets Design Specification
+Author:	  Greg Beeley
+Date:	  November 18, 1998
+-------------------------------------------------------------------------------
+
+
+I   OVERVIEW
+
+    The basic presentation mechanism within the LightServer depends on a 
+    widget structure, where a "widget" is a higher level of abstraction of an
+    HTML element or set of HTML elements.  For example, a ImageButton widget
+    is implemented as an HTML <IMG> type of element, but with some added java-
+    script and three images which are swapped out as the user points and clicks
+    on the apparent button.
+
+
+II  PAGE CONSTRUCTION
+
+    When an HTML page is to be built, it is constructed via a series of widget
+    object creations.  New widgets are created and "added" either to the page
+    itself or to one of the widgets on the page.  Each widget has properties 
+    as well as positioning information relative to the page or the widget in
+    which it is placed.  
+
+    The HTML page itself is built in two steps.  The first step is the 
+    construction of the hierarchy of widgets comprising the page.  This 
+    process is relatively simple -- a series of add/set property/create 
+    commands driven either by a script or by a hierarchy prewritten in an
+    ObjectSystem directory tree.
+
+    The second step involves the actual construction of the resulting 
+    HTML and JavaScript code.  Each widget driver is called in turn to 
+    generate the HTML, and each driver is responsible for calling the
+    drivers for the respective child widgets in turn at the appropriate points
+    so that the child widget code can be inserted into the HTML data stream.
+    
+    The HTML document will be composed of several parts, each of which is
+    built in parallel with the others.
+
+    1.  HTML HEADER:	The header will contain such items as the page title,
+   			other metadata information, and the base font and
+			so forth, image maps, and static CSS layer definitions.
+			Not all drivers will add code to the HTML header.
+    2.  HTML BODY:	The body is where the main work occurs.  Almost all
+    			widget drivers will write HTML code into this 
+			section.
+    3.  SCRIPT BODY:	This section contains the JavaScript functions that
+    			are used by the various widget items during the
+			actual viewing of the HTML page.  Note that some
+			browsers may not be able to handle the script part
+			of the document.  If targeting these browsers, the
+			LightServer developer should keep this in mind.
+
+    The script body subpart has the unique property that it is possible that
+    a script may be generated multiple times during one page's creation.  For
+    example, a script that handles an ImageButton only needs to be inserted
+    once even though the page may contain 100 buttons.  As a result, the page
+    generator will provide lookup facilities and a structured mechanism for
+    managing functions and global variables that are inserted into the page.
+
+    An HTML page containing frames is a unique animal in that the frameset 
+    can be viewed visually as a container for other HTML pages, but the frames
+    are loaded into the browser separately from the main page.  The same is 
+    true of images.  Thus, a frameset must be considered a separate page for
+    page generation purposes, just as an image is a separate file from the
+    page in which it visually resides.
+
+
+III WIDGET INTERFACE DEFINITION
+
+    This section details the interface between a widget module and the page
+    construction mechanism within the LightServer.
+
+    When its xxxInitialize() routine is called, the widget driver is 
+    expected to register itself with the page renderer.  This registration 
+    process will provide the renderer with several things:
+
+    1.  Function entry points for the widget driver.
+
+    2.  A description of the information the widget driver will need in
+        order to intelligently place other objects within itself.  In other
+	words, the manner in which the "location" of a widget is specified
+	is actually a property of the widget's container (its parent widget
+	or the page itself).  Thus, the location properties of a widget will
+	change with the type of object it is placed within. 
+
+    3.  The name and content-type of the widget driver.
+
+    4.  A list of properties that a widget handled by the driver will have.
+
+    5.  A list of events that a widget handled by the driver will be able
+        to receive.
+
+    The various function entry points for the widget driver will allow the
+    page rendering system to initiate certain operations, such as requesting
+    the widget driver to actually instantiate its widget on the HTML page.
+    A list of functions follows:
+
+    1.  Render() - causes the widget driver to actually construct its
+        widget on the HTML page, given the widget's properties and the
+	various widgets arranged beneath it.
+    2.  Verify() - causes the widget driver to verify the parameters within
+        a widget without actually rendering the widget.
+
+    The following are utility functions provided by the rendering system that
+    a driver performing a Render() can use to insert functionality and text
+    into the HTML header, body, or script body.
+
+    1.  AddHeaderItem() - adds an HTML construct to the HTML header of the 
+        document.
+    2.  AddBodyItem() - adds an HTML construct to the HTML body of the 
+    	document.
+    3.  AddScriptFunction() - adds a JavaScript function to the script body
+        of the document.  If the function already exists, this routine will
+	not add a duplicate.
+    4.  AddScriptGlobal() - adds a script global variable to the script body
+        of the document.  Again, if the global variable already exists, this
+	routine will not add a duplicate variable.
+    5.  AddScriptInit() - adds an intialization code fragment to the script
+        body.  These are not checked for duplicates and are added in the 
+	order given.
