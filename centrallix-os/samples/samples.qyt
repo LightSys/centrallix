@@ -4,6 +4,8 @@ samples "system/querytree"
     Applications "system/querytree"
 	{
 	text = "Applications";
+	content = "<h1>Applications</h1>Click the icon to view a list of applications to choose from.";
+	content_type = "text/html";
 	Apps_List "system/querytree"
 	    {
 	    source="/samples";
@@ -13,6 +15,8 @@ samples "system/querytree"
     Components "system/querytree"
 	{
 	text = "Components";
+	content = "<h1>Components</h1>Click the icon to view a list of component objects to choose from.";
+	content_type = "text/html";
 	Cmps_List "system/querytree"
 	    {
 	    source="/samples";
@@ -22,6 +26,8 @@ samples "system/querytree"
     Reports "system/querytree"
 	{
 	text = "Reports";
+	content = "<h1>Reports</h1>Click the icon to view a list of report writer objects to choose from.";
+	content_type = "text/html";
 	Rpt_List "system/querytree"
 	    {
 	    source="/samples";
@@ -31,6 +37,8 @@ samples "system/querytree"
     DataSources "system/querytree"
 	{
 	text = "DataSources";
+	content = "<h1>Data Sources</h1>Click the icon to view a list of data source objects to choose from.";
+	content_type = "text/html";
 	DS_List "system/querytree"
 	    {
 	    source="/samples";
@@ -40,6 +48,8 @@ samples "system/querytree"
     Notes "system/querytree"
 	{
 	text = "Notes";
+	content = "<h1>Notes / Text Files</h1>Click the icon to view a list of text files to choose from.";
+	content_type = "text/html";
 	Notes_List "system/querytree"
 	    {
 	    source="/samples";
@@ -49,6 +59,8 @@ samples "system/querytree"
     MoreStuff "system/querytree"
 	{
 	text = "MoreStuff";
+	content = "<h1>More Stuff</h1>(that didn't fit in the previous categories).<br>Click the icon to view a list of these to choose from.";
+	content_type = "text/html";
 	MS_List "system/querytree"
 	    {
 	    source="/samples";
