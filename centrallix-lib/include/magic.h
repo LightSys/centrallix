@@ -26,10 +26,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: magic.h,v 1.11 2004/08/27 01:28:33 jorupp Exp $
+    $Id: magic.h,v 1.12 2004/08/30 02:29:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/magic.h,v $
 
     $Log: magic.h,v $
+    Revision 1.12  2004/08/30 02:29:49  gbeeley
+    - SnNode magic number
+    - fixed that constant with an, ummm, 'ambiguous' value
+
     Revision 1.11  2004/08/27 01:28:33  jorupp
      * cleaning up some compile warnings
 
@@ -126,6 +130,7 @@ typedef struct
 #define MGK_PRTOUTDRV 	0x123405a4	/* prtmgmt_v3.h::PrtHandle */
 #define MGK_STRUCTINF	0x123406fd	/* stparse_new.h::StructInf */
 #define MGK_HANDLE	0x12340707	/* xhandle.h::HandleData */
+#define MGK_STNODE	0x12340d21	/* st_node.h::SnNode */
 
 #define MGK_MEMSTART	0x12340809	/* newmalloc.c::MemStruct */
 #define MGK_MEMEND	0x12340908	/* newmalloc.c::MemStruct */

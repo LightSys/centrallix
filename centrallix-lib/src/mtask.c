@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.27 2004/08/30 01:36:40 jorupp Exp $
+    $Id: mtask.c,v 1.28 2004/08/30 02:29:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.28  2004/08/30 02:29:50  gbeeley
+    - SnNode magic number
+    - fixed that constant with an, ummm, 'ambiguous' value
+
     Revision 1.27  2004/08/30 01:36:40  jorupp
      * add a bit more debugging information to non-IO selects
          this should help diagnose the current issue with cygwin
@@ -270,7 +274,7 @@ static MTSystem MTASK;
 #define MTASK_DEBUG_FDCLOSE 0
 #define MTASK_DEBUG_SHOW_IO_SELECT 0
 #define MTASK_DEBUG_SHOW_NON_IO_SELECT 0
-#define MTASK_DEBUG_SHOW_SELECT_TICKS_USED
+#define MTASK_DEBUG_SHOW_SELECT_TICKS_USED 0
 #endif
 
 /*** mtSetDebug - sets the debugging level ***/
