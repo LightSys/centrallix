@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.8 2002/03/23 01:30:44 gbeeley Exp $
+    $Id: net_http.c,v 1.9 2002/03/23 03:41:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.9  2002/03/23 03:41:02  gbeeley
+    Fixed the ages-old problem in net_http.c where cookies weren't anchored
+    at the / directory, so zillions of sessions might be created...
+
     Revision 1.8  2002/03/23 01:30:44  gbeeley
     Added ls__startat option to the osml "queryfetch" mechanism, in the
     net_http.c driver.  Set ls__startat to the number of the first object
@@ -1020,7 +1024,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    {
 	    snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
-		     "Set-Cookie: %s\r\n", 
+		     "Set-Cookie: %s; path=/\r\n", 
 		     NHT.ServerString,nsess->Cookie);
 	    nsess->IsNewCookie = 0;
 	    }
@@ -1280,7 +1284,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
-		     "Set-Cookie: %s\r\n"
+		     "Set-Cookie: %s; path=/\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
 		}
@@ -1288,7 +1292,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
-		     "Set-Cookie: %s\r\n"
+		     "Set-Cookie: %s; path=/\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
 		}
@@ -1394,7 +1398,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	        {
 	        snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
-		     "Set-Cookie: %s\r\n"
+		     "Set-Cookie: %s; path=/\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
 		}
@@ -1402,7 +1406,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	        {
 	        snprintf(sbuf,256,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
-		     "Set-Cookie: %s\r\n"
+		     "Set-Cookie: %s; path=/\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
 		}
