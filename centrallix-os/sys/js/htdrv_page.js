@@ -267,13 +267,13 @@ function pg_status_close()
 
 function pg_init(l)
     {
-    l.ActionLoad = pg_load_page;
+    l.ActionLoadPage = pg_load_page;
     return l;
     }
 
 function pg_load_page(aparam)
     {
-    window.location.href = aparam.Page;
+    window.location.href = aparam.Source;
     }
 
 function pg_mvpginpt(ly)

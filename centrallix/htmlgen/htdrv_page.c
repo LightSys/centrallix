@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.38 2002/07/29 18:21:52 pfinley Exp $
+    $Id: htdrv_page.c,v 1.39 2002/07/30 12:56:29 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.39  2002/07/30 12:56:29  lkehresman
+    Renamed the "Load" action and the "Page" parameter to be "LoadPage" and
+    "Source", which is what is used in the "html" widget.  We should probably
+    keep actions as similar and standard as possible.
+
     Revision 1.38  2002/07/29 18:21:52  pfinley
     Changed a static while loop conditional to be an if statement.  This was
     causing an infinite loop when e.target pointed to an object.
@@ -644,8 +649,8 @@ htpageInitialize()
 	htrRegisterDriver(drv);
 
 	/** Actions **/
-	htrAddAction(drv, "Load");
-	htrAddParam(drv, "Load", "Path", DATA_T_STRING);
+	htrAddAction(drv, "LoadPage");
+	htrAddParam(drv, "LoadPage", "Source", DATA_T_STRING);
 	
     	/** Allocate the driver **/
 	drv = htrAllocDriver();
