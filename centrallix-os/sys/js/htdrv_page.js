@@ -444,6 +444,7 @@ function pg_resize(l)
 
     if (l!=window) 
 	{
+	//alert("setting h/w to " + maxheight + "/" + maxwidth);
 	l.clip.height = maxheight;
 	l.clip.width = maxwidth;
 	}
@@ -586,14 +587,15 @@ function pg_status_init()
  
 function pg_status_close()
     {
-    if (!pg_status)
-	return false
+    if (!pg_status) return false;
     pg_status.visibility = 'hide';
     }
 
 function pg_init(l,a,gs,ct)
     {
     l.ActionLoadPage = pg_load_page;
+    l.ActionLaunch = pg_launch;
+    window.windowlist = new Object();
     pg_attract = a;
     return l;
     }
@@ -601,6 +603,32 @@ function pg_init(l,a,gs,ct)
 function pg_load_page(aparam)
     {
     window.location.href = aparam.Source;
+    }
+
+function pg_launch(aparam)
+    {
+    // launch an app/rpt in a new window
+    var w_name;
+    var w_exists = false;
+    if (aparam.Name == null)
+	w_name = "new_window";
+    else
+	w_name = aparam.Name;
+    if (aparam.Multi != null && aparam.Multi == true)
+	{
+	for(var i = 0; i < 32; i++) // 32 max multi-instanced windows
+	    {
+	    if (window.windowlist[w_name + '_' + i] == null || window.windowlist[w_name + '_' + i].close == null)
+		w_name = w_name + '_' + i;
+	    }
+	}
+    if (window.windowlist[w_name] != null && window.windowlist[w_name].close != null) w_exists = true;
+    if ((aparam.Multi == null || aparam.Multi == false) && w_exists) 
+	{
+	window.windowlist[w_name].close();
+	w_exists = false;
+	}
+    if (!w_exists) window.windowlist[w_name] = window.open(aparam.Source, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",resizable=no,personalbar=no,menubar=no,status=no");
     }
 
 function pg_mvpginpt(ly)
@@ -612,10 +640,17 @@ function pg_mvpginpt(ly)
     }
 
 
-function pg_addsched(e)
+function pg_addsched(e,o)
     {
-    pg_schedtimeoutlist.push(e);
-    if(!pg_schedtimeout) pg_schedtimeout = setTimeout(pg_dosched, 0);
+    var sched = {exp:e, obj:o};
+    pg_schedtimeoutlist.push(sched);
+    if(!pg_schedtimeout) 
+	{
+	if (window.pg_isloaded)
+	    pg_schedtimeout = setTimeout(pg_dosched, 0);
+	else
+	    pg_schedtimeout = setTimeout(pg_dosched, 100);
+	}
     }
 
 function pg_expchange(p,o,n)
@@ -630,7 +665,7 @@ function pg_expchange(p,o,n)
 	    if (this == item[2] && p == item[1])
 		{
 		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
-		pg_addsched(exp.Objname + "." + exp.Propname + " = " + exp.Expression);
+		pg_addsched(exp.Objname + "." + exp.Propname + " = " + exp.Expression, window);
 		}
 	    }
 	}
@@ -641,10 +676,11 @@ function pg_expchange(p,o,n)
 function pg_dosched()
     {
     var p = null;
+    window.pg_isloaded = true;
     if (pg_schedtimeoutlist.length > 0)
     	{
 	p = pg_schedtimeoutlist.pop();
-	eval(p);
+	with (p.obj) { eval(p.exp); }
 	}
 
     if (pg_schedtimeoutlist.length > 0)
