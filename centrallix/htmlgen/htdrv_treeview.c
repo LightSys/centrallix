@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.31 2004/08/30 03:20:19 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.32 2004/09/02 05:05:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.32  2004/09/02 05:05:01  gbeeley
+    - fixed artifacting problem in Moz related to the treeview, due to poor
+      handling of the 'hidden' property on iframe's.
+
     Revision 1.31  2004/08/30 03:20:19  gbeeley
     - updates for widgets
     - bugfix for htrRender() handling of event handler function return values
@@ -374,7 +378,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    {
 	    htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,show_root?"inherit":"hidden",x,y,w,z);
 	    }
-	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
+	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
