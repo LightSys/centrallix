@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.11 2002/06/09 23:44:46 nehresma Exp $
+    $Id: htdrv_imagebutton.c,v 1.12 2002/06/19 21:22:45 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.12  2002/06/19 21:22:45  lkehresman
+    Added a losefocushandler to the table.  Not having this broke static tables.
+
     Revision 1.11  2002/06/09 23:44:46  nehresma
     This is the initial cut of the browser detection code.  Note that each widget
     needs to register which browser and style is supported.  The GNU regular
@@ -136,7 +139,6 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
     char n_img[128];
     char p_img[128];
     char c_img[128];

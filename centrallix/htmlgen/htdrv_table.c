@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.18 2002/06/10 21:47:45 jorupp Exp $
+    $Id: htdrv_table.c,v 1.19 2002/06/19 21:22:45 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.19  2002/06/19 21:22:45  lkehresman
+    Added a losefocushandler to the table.  Not having this broke static tables.
+
     Revision 1.18  2002/06/10 21:47:45  jorupp
      * bit of code cleanup
      * added movable borders to the dynamic table
@@ -1021,6 +1024,12 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 		"    return 3;\n"
 		"    }\n", 0);
 
+	htrAddScriptFunction(s, "tbls_rowunclick", "\n"
+		"function tbls_rowunclick()\n"
+		"    {\n"
+		"    return true;\n"
+		"    }\n", 0);
+
 	/** Function to enable clickable table rows **/
 	htrAddScriptFunction(s, "tbls_init", "\n"
 		"function tbls_init(pl, nm, w, cp, cs)\n"
@@ -1038,7 +1047,7 @@ httblRenderStatic(pHtSession s, pObject w_obj, int z, char* parentname, char* pa
 		"            if (ox != -1)\n"
 		"                {\n"
 		"                pl.getfocushandler = tbls_rowclick;\n"
-		"                //pl.losefocushandler = new Function();\n"
+		"                pl.losefocushandler = tbls_rowunclick;\n"
 		"                pg_addarea(pl,img.x-cp-1,img.y-cp-1,w-(cs-1)*2,(img.y-oy)-(cs-1),nm,imgnm,3);\n"
 		"                }\n"
 		"            ox = img.x;\n"
