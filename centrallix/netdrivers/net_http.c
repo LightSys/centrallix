@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.14 2002/04/25 19:29:30 gbeeley Exp $
+    $Id: net_http.c,v 1.15 2002/04/25 22:50:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.15  2002/04/25 22:50:00  gbeeley
+    Added ability to reference default session in ls__mode=osml operations
+    instead of having to create a new one.  Note that the session is the
+    transaction context, so be careful just using the default (which
+    applies to all connections from the user's browser).  Set the ls__sid
+    to "XDEFAULT" to use the default.
+
     Revision 1.14  2002/04/25 19:29:30  gbeeley
     Added handle support to object ids and query ids in the OSML over HTTP
     communication mechanism.
@@ -684,11 +691,11 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
     	/** Choose the request to perform **/
 	if (!strcmp(request,"opensession"))
 	    {
-	    ptr = (char*)objOpenSession(req_inf->StrVal);
-	    if (!ptr) 
+	    objsess = objOpenSession(req_inf->StrVal);
+	    if (!objsess) 
 		session_handle = XHN_INVALID_HANDLE;
 	    else
-		session_handle = xhnAllocHandle(&(sess->Hctx), ptr);
+		session_handle = xhnAllocHandle(&(sess->Hctx), objsess);
 	    snprintf(sbuf,256,"Content-Type: text/html\r\n"
 			 "Pragma: no-cache\r\n"
 	    		 "\r\n"
@@ -710,8 +717,16 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 		mssError(1,"NHT","Session ID required for OSML request '%s'",request);
 		return -1;
 		}
-	    session_handle = xhnStringToHandle(sid+1,NULL,16);
-	    objsess = (pObjSession)xhnHandlePtr(&(sess->Hctx), session_handle);
+	    if (!strcmp(sid,"XDEFAULT"))
+		{
+		session_handle = XHN_INVALID_HANDLE;
+		objsess = sess->ObjSess;
+		}
+	    else
+		{
+		session_handle = xhnStringToHandle(sid+1,NULL,16);
+		objsess = (pObjSession)xhnHandlePtr(&(sess->Hctx), session_handle);
+		}
 	    if (!objsess || !ISMAGIC(objsess, MGK_OBJSESSION))
 		{
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
@@ -799,6 +814,16 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 	    /** Again check the request... **/
 	    if (!strcmp(request,"closesession"))
 	        {
+		if (session_handle == XHN_INVALID_HANDLE)
+		    {
+		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
+			     "Pragma: no-cache\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    fdWrite(conn, sbuf, strlen(sbuf), 0,0);
+		    mssError(1,"NHT","Illegal attempt to close the default OSML session.");
+		    return -1;
+		    }
 		xhnFreeHandle(&(sess->Hctx), session_handle);
 	        objCloseSession(objsess);
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
