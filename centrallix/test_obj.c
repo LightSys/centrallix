@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.19 2003/02/25 03:31:39 gbeeley Exp $
+    $Id: test_obj.c,v 1.20 2003/02/26 01:32:59 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.20  2003/02/26 01:32:59  jorupp
+     * added presentation hints support to test_obj
+    	one little problem -- for some reason, asking about just one attribute doesn't work
+
     Revision 1.19  2003/02/25 03:31:39  gbeeley
     Completed the 'help' message in test_obj.
 
@@ -163,6 +167,95 @@ unsigned long ticks_last_tab=0;
 pObjSession s;
 
 #define BUFF_SIZE 1024
+
+typedef struct
+    {
+    char *buffer;
+    int buflen;
+    } WriteStruct, *pWriteStruct;
+
+int text_gen_callback(pWriteStruct dst, char *src, int len, int a, int b)
+    {
+    dst->buffer = (char*)realloc(dst->buffer,dst->buflen+len);
+    if(!dst->buffer)
+	return -1;
+    memcpy(dst->buffer+dst->buflen,src,len);
+    dst->buflen+=len;
+    return 0;
+    }
+
+int printExpression(pExpression exp)
+    {
+    pWriteStruct dst;
+    pParamObjects tmplist;
+
+    if(!exp)
+	return -1;
+    dst = (pWriteStruct)nmMalloc(sizeof(WriteStruct));
+    dst->buffer=(char*)malloc(0);
+    dst->buflen=0;
+
+    tmplist = expCreateParamList();
+    expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
+    expGenerateText(exp,tmplist,text_gen_callback,dst,'"',"JavaScript");
+    expFreeParamList(tmplist);
+
+    printf("%s",dst->buffer);
+
+    free(dst->buflen);
+    nmFree(dst,sizeof(WriteStruct));
+    return 0;
+    }
+
+
+
+int
+testobj_show_hints(pObject obj, char* attrname)
+    {
+    pObjPresentationHints hints;
+    int i;
+
+    hints = objPresentationHints(obj, attrname);
+    if(!hints)
+	{
+	mssError(1,"unable to get presentation hints for %s",attrname);
+	return -1;
+	}
+
+    printf("Presentation Hints for %s:\n",attrname);
+    printf("  constraint:\n");
+    printExpression(hints->Constraint);
+    printf("  default:\n");
+    printExpression(hints->DefaultExpr);
+    printf("  min:\n");
+    printExpression(hints->MinValue);
+    printf("  max:\n");
+    printExpression(hints->MaxValue);
+    printf("  enumerated values:\n");
+    for(i=0;i<hints->EnumList.nItems;i++)
+	{
+	printf("    %s\n",(char*)xaGetItem(&hints->EnumList,i));
+	}
+    printf("  enumerated query: %s\n",hints->EnumQuery);
+    printf("  format: %s\n",hints->Format);
+    printf("  visual length: %i\n",hints->VisualLength);
+    printf("  visual length2: %i\n",hints->VisualLength2);
+    printf("  readonly bits: ");
+    for(i=0;i<32;i++)
+	{
+	printf("%i",hints->BitmaskRO>>(31-i) & 0x01);
+	}
+    printf("\n");
+    printf("  style: %i\n",hints->Style);
+    printf("  groupid: %i\n",hints->GroupID);
+    printf("  groupname: %s\n",hints->GroupName);
+    printf("  description: %s\n",hints->FriendlyName);
+
+    objFreeHints(hints);
+    return 0;
+    }
+
+
 
 int
 testobj_show_attr(pObject obj, char* attrname)
@@ -408,6 +501,12 @@ int handle_tab()
 		{
 		rl_insert_text("/");
 		objClose(qobj);
+		}
+	    else
+		{
+		/** put a newline after the errors that were probably thrown **/
+		printf("\n");
+		rl_on_new_line();
 		}
 	    
 	    /** close the object and query we opened **/
@@ -786,19 +885,19 @@ start(void* v)
 	        {
 		if (!ptr)
 		    {
-		    printf("copy: must specify <dsttype/srctype> <source> <destination>\n");
+		    printf("copy1: must specify <dsttype/srctype> <source> <destination>\n");
 		    continue;
 		    }
 		if (!strcmp(ptr,"srctype")) use_srctype = 1; else use_srctype = 0;
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
-		    printf("copy: must specify <dsttype/srctype> <source> <destination>\n");
+		    printf("copy2: must specify <dsttype/srctype> <source> <destination>\n");
 		    continue;
 		    }
 		mlxCopyToken(ls, sbuf, 1023);
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
-		    printf("copy: must specify <dsttype/srctype> <source> <destination>\n");
+		    printf("copy3: must specify <dsttype/srctype> <source> <destination>\n");
 		    continue;
 		    }
 		ptr = mlxStringVal(ls, NULL);
@@ -861,6 +960,7 @@ start(void* v)
 		    continue;
 		    }
 		puts("Enter attributes, blank line to end.");
+		rl_bind_key ('\t', rl_insert_text);
 		while(1)
 		    {
 		    char* slbuf = readline("");
@@ -902,6 +1002,7 @@ start(void* v)
 			}
 		    }
 		if (objClose(obj) < 0) mssPrintError(StdOut);
+		rl_bind_key ('\t', handle_tab);
 		}
 	    else if (!strcmp(cmdname,"quit"))
 		{
@@ -932,6 +1033,38 @@ start(void* v)
 		objExecuteMethod(obj, mname, POD(&mptr));
 		objClose(obj);
 		}
+	    else if (!strcmp(cmdname,"hints"))
+		{
+		if (!ptr) ptr = "";
+		obj = objOpen(s, ptr, O_RDONLY, 0600, "system/object");
+		if (!obj)
+		    {
+		    printf("hints: could not open object '%s'\n",ptr);
+		    continue;
+		    }
+		attrname=NULL;
+		if (mlxNextToken(ls) == MLX_TOK_STRING)
+		    {
+		    attrname=nmMalloc(64);
+		    mlxCopyToken(ls, attrname, 63);
+		    attrname[63]='\0';
+		    }
+		if(attrname)
+		    {
+		    testobj_show_hints(obj, attrname);
+		    nmFree(attrname,64);
+		    }
+		else
+		    {
+		    attrname = objGetFirstAttr(obj);
+		    do
+			{
+			testobj_show_hints(obj, attrname);
+			}
+		    while ((attrname = objGetNextAttr(obj)));
+		    }
+		objClose(obj);
+		}
 	    else if (!strcmp(cmdname,"help"))
 		{
 		printf("Available Commands:\n");
@@ -941,6 +1074,7 @@ start(void* v)
 		printf("  create   - Create a new object.\n");
 		printf("  delete   - Delete an object.\n");
 		printf("  exec     - Call a method on an object.\n");
+		printf("  hints    - Show the presentation hints of an attribute (or object)\n");
 		printf("  help     - Displays this help screen.\n");
 		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
 		printf("  print    - Displays an object's content.\n");
