@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.2 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: exp_params.c,v 1.3 2002/11/22 19:29:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.3  2002/11/22 19:29:36  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.2  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -220,7 +226,7 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 		break;
 		}
 	    }
-	if (slot_id == -1) return -1;
+	if (slot_id < 0) return -1;
 
 	/** Replace the object. **/
 	this->Objects[slot_id] = replace_obj;
@@ -361,7 +367,7 @@ exp_internal_ResetAggregates(pExpression this, int reset_id)
 
     	/** Check reset on this. **/
 	if (this->NodeType == EXPR_N_FUNCTION && (this->Flags & EXPR_F_AGGREGATEFN) &&
-	    (this->ObjID == reset_id || reset_id == -1))
+	    (this->ObjID == reset_id || reset_id < 0))
 	    {
 	    this->AggCount = 0;
 	    this->AggValue = 0;
@@ -441,7 +447,7 @@ expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get
 		break;
 		}
 	    }
-	if (slot_id == -1) return -1;
+	if (slot_id < 0) return -1;
 
 	/** Set the functions. **/
 	this->GetTypeFn[slot_id] = type_fn;

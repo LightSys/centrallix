@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.2 2002/11/14 03:46:39 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.3 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.3  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.2  2002/11/14 03:46:39  gbeeley
     Updated some files that were depending on the old xaAddItemSorted() to
     use xaAddItemSortedInt32() because these uses depend on sorting on a
@@ -451,14 +457,14 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 	            rval = cld->Driver->NextItem(cld, mq);
 		    if (rval <= 0) break;
 		    ck = mqt_internal_CheckConstraint(qe, mq);
-		    if (ck == -1) return -1;
+		    if (ck < 0) return ck;
 		    if (ck == 1) break;
 		    }
 		}
 	    else
 	        {
 		ck = mqt_internal_CheckConstraint(qe, mq);
-		if (ck == -1) return -1;
+		if (ck < 0) return ck;
 		if (ck == 0) return 0;
 	        rval = (qe->IterCnt==1)?1:0;
 		}
@@ -504,7 +510,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 	                rval = cld->Driver->NextItem(cld, mq);
 			if (rval <= 0) break;
 		        ck = mqt_internal_CheckConstraint(qe, mq);
-		        if (ck == -1) return -1;
+		        if (ck < 0) return ck;
 		        if (ck == 1) break;
 		        }
 		    }
@@ -512,7 +518,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    {
 	            rval = (qe->IterCnt==1)?1:0;
 		    ck = mqt_internal_CheckConstraint(qe, mq);
-		    if (ck == -1) return -1;
+		    if (ck < 0) return ck;
 		    if (ck == 0) rval = 0;
 		    }
 		if (rval == 0)
@@ -557,7 +563,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 	                rval = cld->Driver->NextItem(cld, mq);
 			if (rval <= 0) break;
 		        ck = mqt_internal_CheckConstraint(qe, mq);
-		        if (ck == -1) return -1;
+		        if (ck < 0) return ck;
 		        if (ck == 1) break;
 		        }
 		    }
@@ -565,7 +571,7 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		    {
 	            rval = (qe->IterCnt==1)?1:0;
 		    ck = mqt_internal_CheckConstraint(qe, mq);
-		    if (ck == -1) return -1;
+		    if (ck < 0) return ck;
 		    if (ck == 0) rval = 0;
 		    }
 

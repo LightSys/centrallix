@@ -812,7 +812,7 @@ httpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	if(stLookup(inf->Attr,attrname)) return DATA_T_STRING;
 
-	//if(xaFindItem(inf->Attributes,attrname)!=-1) return DATA_T_STRING;
+	//if(xaFindItem(inf->Attributes,attrname) >= 0) return DATA_T_STRING;
 
 	/** Put checking for your own attributes here. **/
 	/** You will want to likely make a list of 'em in a global array **/

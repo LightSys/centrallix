@@ -48,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: st_param.c,v 1.2 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: st_param.c,v 1.3 2002/11/22 19:29:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/st_param.c,v $
 
     $Log: st_param.c,v $
+    Revision 1.3  2002/11/22 19:29:38  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.2  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -153,7 +159,7 @@ stp_internal_evaluate_parameter(pStpInf inf, pStructInf attr, pObject obj)
 		}
 
 	    /* Create new overrideinf */
-	    if (expression && (exprsuccess != -1))
+	    if (expression && (exprsuccess >= 0))
 		{
 		/* the expression worked.  Use new value in new inf */
 		if (expression->DataType != DATA_T_STRING)
@@ -420,7 +426,7 @@ stpAttrValue(pStructInf attr, pObject obj, int* intval, char** strval, int nval)
 	        ExpParamObjects = expCreateParamList();
 	        expAddParamToList(ExpParamObjects, "me", obj, EXPR_O_CURRENT);
 		flag = expEvalTree(expression,ExpParamObjects);
-		if (flag != -1)
+		if (flag >= 0)
 		    {
 		    if (expression->Flags == EXPR_F_NULL) flag = -1;
 		    else

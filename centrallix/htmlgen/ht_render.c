@@ -49,10 +49,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.28 2002/09/27 22:26:04 gbeeley Exp $
+    $Id: ht_render.c,v 1.29 2002/11/22 19:29:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.29  2002/11/22 19:29:36  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.28  2002/09/27 22:26:04  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -497,7 +503,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    rval = vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va);
 
 	    /** Sigh.  Some libc's return -1 and some return # bytes that would be written. **/
-	    if (rval == -1 || rval > (s->TmpbufSize - 1))
+	    if (rval < 0 || rval > (s->TmpbufSize - 1))
 		{
 		/** I think I need a bigger box.  Fix it and try again. **/
 		new_buf_size = s->TmpbufSize * 2;

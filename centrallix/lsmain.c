@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.23 2002/09/27 22:26:03 gbeeley Exp $
+    $Id: lsmain.c,v 1.24 2002/11/22 19:29:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.24  2002/11/22 19:29:36  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.23  2002/09/27 22:26:03  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -194,7 +200,7 @@ go_background()
 
 	pid = fork();
 
-	if (pid == -1) 
+	if (pid < 0) 
 	    {
 	    printf("Can't fork\n");
 	    exit(1);
@@ -206,7 +212,7 @@ go_background()
 	    }
 
 	/** child **/
-	if (setsid() == -1) 
+	if (setsid() < 0) 
 	    {
 	    printf("setsid() error\n");
 	    exit(1);
@@ -214,7 +220,7 @@ go_background()
 
 	/** fork again to lose our controlling terminal **/
 	pid = fork();
-	if (pid == -1) 
+	if (pid < 0) 
 	    {
 	    printf("Can't fork\n");
 	    exit(1);

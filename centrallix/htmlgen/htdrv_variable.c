@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.5 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_variable.c,v 1.6 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
+    Revision 1.6  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.5  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -123,7 +129,7 @@ htvblRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Get type and value **/
 	t = objGetAttrType(w_obj,"value");
-	if (t == -1)
+	if (t < 0)
 	    {
 	    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 	    }

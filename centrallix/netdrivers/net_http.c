@@ -61,10 +61,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.28 2002/09/27 22:26:06 gbeeley Exp $
+    $Id: net_http.c,v 1.29 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.29  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.28  2002/09/27 22:26:06  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -1930,7 +1936,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	fdWrite(conn,sbuf,strlen(sbuf),0,0);*/
 
 	/** If size specified, set the size. **/
-	if (size != -1) objSetAttrValue(target_obj, "size", DATA_T_INTEGER,POD(&size));
+	if (size >= 0) objSetAttrValue(target_obj, "size", DATA_T_INTEGER,POD(&size));
 
 	/** Set any attributes specified in the url inf **/
 	for(i=0;i<url_inf->nSubInf;i++)

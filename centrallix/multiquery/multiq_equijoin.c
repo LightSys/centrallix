@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.2 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.3 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.3  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.2  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -163,7 +169,7 @@ mqjAnalyze(pMultiQuery mq)
 			}
 
 		    /** If not seen it, add it to our list **/
-		    if (n == -1)
+		    if (n < 0)
 		        {
 			n = n_joins;
 			join_outer[n_joins] = where_item->Expr->ObjOuterMask;
@@ -197,7 +203,7 @@ mqjAnalyze(pMultiQuery mq)
 			break;
 			}
 		    }
-		if (found == -1) 
+		if (found < 0) 
 		    {
 		    mssError(1,"MQE","Join: referenced object not found in FROM clause");
 		    return -1;
@@ -226,13 +232,13 @@ mqjAnalyze(pMultiQuery mq)
 		join_obj2[i] = -1;
 		j = 0;
 		m = join_mask[i];
-		while(join_obj1[i] == -1) 
+		while(join_obj1[i] < 0) 
 		    {
 		    if (m & 1) join_obj1[i] = j;
 		    m >>= 1;
 		    j++;
 		    }
-		while(join_obj2[i] == -1)
+		while(join_obj2[i] < 0)
 		    {
 		    if (m & 1) join_obj2[i] = j;
 		    m >>= 1;
@@ -509,7 +515,7 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 	    if (qe->SlaveIterCnt == 0)
 	        {
 	        rval = master->Driver->NextItem(master, mq);
-	        if (rval == 0 || rval == -1) return rval;
+	        if (rval == 0 || rval < 0) return rval;
 	        qe->IterCnt++;
 		expFreezeEval(qe->Constraint, mq->QTree->ObjList, slave->SrcIndex);
 		if (mq->QTree->ObjList->Objects[qe->SrcIndex] != NULL)
@@ -524,7 +530,7 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 	        rval = slave->Driver->NextItem(slave, mq);
 	    else
 	        rval = 0;
-	    if ((rval == 0 || rval == -1) && (qe->SlaveIterCnt > 0 || !(qe->Flags & MQ_EF_OUTERJOIN)))
+	    if ((rval == 0 || rval < 0) && (qe->SlaveIterCnt > 0 || !(qe->Flags & MQ_EF_OUTERJOIN)))
 	        {
 		if (mq->QTree->ObjList->Objects[qe->SrcIndex] != NULL) 
 		    {

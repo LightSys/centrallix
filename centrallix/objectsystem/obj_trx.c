@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: obj_trx.c,v 1.5 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.5  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.4  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -477,7 +483,7 @@ oxtCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTre
 	    }
 
 	/** Did it fail?  Remove any new oxt if so. **/
-	if (rval == -1)
+	if (rval < 0)
 	    {
 	    if (!was_null && new_oxt != NULL)
 	        {
@@ -532,7 +538,7 @@ oxtDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Did it fail?  Remove any new oxt if so. **/
-	if (rval == -1)
+	if (rval < 0)
 	    {
 	    if (!was_null && new_oxt != NULL)
 	        {

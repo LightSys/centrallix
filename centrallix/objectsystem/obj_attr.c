@@ -48,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: obj_attr.c,v 1.5 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.5  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.4  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -167,7 +173,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		if (maxread > (maxbytes - bytes)) maxread = maxbytes - bytes;
 		if (bytes == 0) readcnt = objRead(this, readbuf, maxread, 0, FD_U_SEEK);
 		else readcnt = objRead(this, readbuf, maxread, 0,0);
-		if (readcnt == -1) return -1;
+		if (readcnt < 0) return readcnt;
 		if (readcnt == 0) break;
 		xsConcatenate(this->ContentPtr, readbuf, readcnt);
 		bytes += readcnt;

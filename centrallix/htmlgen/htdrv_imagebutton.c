@@ -44,10 +44,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.21 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.22 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.22  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.21  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -282,7 +288,7 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr,enabled);
 
 	/** HTML body <DIV> elements for the layers. **/
-	if (h == -1)
+	if (h < 0)
 	    if(strcmp(enabled,"false"))
 		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=%s border=0></DIV>\n",id,n_img);
 	    else

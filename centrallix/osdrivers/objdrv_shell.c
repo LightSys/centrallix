@@ -51,7 +51,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.3 2002/11/18 13:23:50 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.4 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -221,7 +221,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	tty_name[31]='\0';
 	
 	inf->shell_pid=fork();
-	if(inf->shell_pid==-1)
+	if(inf->shell_pid < 0)
 	    {
 	    mssError(0,"SHL","Unable to fork");
 	    inf->shell_pid=0;
@@ -471,10 +471,9 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	    return -1;
 	}
 
-    while(i==-1)
-	{
+    while(i < 0)
 	i=fdRead(inf->shell_fd,buffer,maxcnt,0,flags & ~FD_U_SEEK);
-	if(i==-1)
+	if(i < 0)
 	    {
 	    /** user doesn't want us to block **/
 	    if(flags & FD_U_NOBLOCK)
@@ -527,10 +526,10 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
     if(!inf->shell_pid)
 	return -1;
 
-    while(i==-1)
+    while(i < 0)
 	{
 	i=fdWrite(inf->shell_fd,buffer,cnt,0,flags & ~FD_U_SEEK);
-	if(i==-1)
+	if(i < 0)
 	    {
 	    /** user doesn;t want us to block **/
 	    if(flags & FD_U_NOBLOCK)

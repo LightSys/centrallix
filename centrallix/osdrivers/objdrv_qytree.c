@@ -53,10 +53,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.4 2002/08/10 02:09:45 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.5 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.5  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.4  2002/08/10 02:09:45  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -509,7 +515,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     
                         /** Validate the where clause expression if need be. **/
 			objlist->Session = s;
-                        v = !expr || (expEvalTree(expr,objlist) != -1 && expr->Integer != 0);
+                        v = !expr || (expEvalTree(expr,objlist) >= 0 && expr->Integer != 0);
                         if (expr) expFreeExpression(expr);
 			expr = NULL;
                         if (subref == path->nElements - 1) 

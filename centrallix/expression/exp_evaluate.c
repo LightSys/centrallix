@@ -66,10 +66,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.7 2002/08/10 02:09:44 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.8 2002/11/22 19:29:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.8  2002/11/22 19:29:36  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.7  2002/08/10 02:09:44  gbeeley
     Yowzers!  Implemented the first half of the conversion to the new
     specification for the obj[GS]etAttrValue OSML API functions, which
@@ -773,7 +779,7 @@ expRevEvalAnd(pExpression tree, pParamObjects objlist)
 	    subtree = (pExpression)(tree->Children.Items[i]);
 	    subtree->Integer = 1;
 	    s = expReverseEvalTree(subtree, objlist);
-	    if (s == -1) break;
+	    if (s < 0) break;
 	    }
     
     return s;
@@ -800,7 +806,7 @@ expRevEvalOr(pExpression tree, pParamObjects objlist)
 	    subtree = (pExpression)(tree->Children.Items[i]);
 	    subtree->Integer = 0;
 	    s = expReverseEvalTree(subtree, objlist);
-	    if (s == -1) break;
+	    if (s < 0) break;
 	    }
     
     return s;
@@ -1111,7 +1117,7 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 
 	/** Check null field **/
         if (tree->ObjID == -1) objClose(obj);
-	if (v == -1) 
+	if (v < 0) 
 	    {
 	    mssError(1,"EXP","Error accessing object attribute in expression");
 	    return -1;

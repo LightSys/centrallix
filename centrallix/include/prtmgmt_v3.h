@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.4 2002/10/21 22:55:11 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.5 2002/11/22 19:29:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.5  2002/11/22 19:29:37  gbeeley
+    Fixed some integer return value checking so that it checks for failure
+    as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
+    will allow us to pass error codes in the return value, such as something
+    like "return -ENOMEM;" or "return -EACCESS;".
+
     Revision 1.4  2002/10/21 22:55:11  gbeeley
     Added font/size test in test_prt to test the alignment of different fonts
     and sizes on one line or on separate lines.  Fixed lots of bugs in the
@@ -281,25 +287,31 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_F_OPEN     	    4		/* container is open for writing */
 #define PRT_OBJ_F_NEWLINE  	    8		/* object starts a new line (for textflow) */
 #define PRT_OBJ_F_SOFTNEWLINE	    16		/* object starts a soft new line (from wordwrapping) */
-#define PRT_OBJ_F_ALLOWBREAK	    32		/* allow object to be broken for pagination/wordwrap */
-#define PRT_OBJ_F_REPEAT	    64		/* object repeats on subsequent pages */
+#define PRT_OBJ_F_ALLOWHARDBREAK    32		/* allow object to be broken for pagination via WriteFF */
+#define PRT_OBJ_F_REPEAT	    64		/* object repeats *verbatim* on subsequent pages */
 #define PRT_OBJ_F_CALLBACK	    128		/* do an API callback to get the object's content */
 #define PRT_OBJ_F_FIXEDSIZE	    256		/* object's size cannot be resized */
 #define PRT_OBJ_F_REQCOMPLETE	    512		/* require completion of content before emitting the page */
 #define PRT_OBJ_F_XSET		    1024	/* X location is pre-set. */
 #define PRT_OBJ_F_YSET		    2048	/* Y location is pre-set. */
+#define PRT_OBJ_F_ALLOWSOFTBREAK    4096	/* allow break for pagination via wrapping or newlines */
+#define PRT_OBJ_F_ALLOWBREAK	    (PRT_OBJ_F_ALLOWSOFTBREAK | PRT_OBJ_F_ALLOWHARDBREAK)
+#define PRT_OBJ_F_SYNCBREAK	    8192	/* container will break when another on the page does */
 
 /** these flags can be used by the api caller **/
 #define PRT_OBJ_U_FLOWAROUND	    PRT_OBJ_F_FLOWAROUND
 #define PRT_OBJ_U_NOLINESEQ	    PRT_OBJ_F_NOLINESEQ
 #define PRT_OBJ_U_ALLOWBREAK	    PRT_OBJ_F_ALLOWBREAK
+#define PRT_OBJ_U_ALLOWHARDBREAK    PRT_OBJ_F_ALLOWHARDBREAK
+#define PRT_OBJ_U_ALLOWSOFTBREAK    PRT_OBJ_F_ALLOWSOFTBREAK
 #define PRT_OBJ_U_REPEAT	    PRT_OBJ_F_REPEAT
 #define PRT_OBJ_U_FIXEDSIZE	    PRT_OBJ_F_FIXEDSIZE
 #define PRT_OBJ_U_REQCOMPLETE	    PRT_OBJ_F_REQCOMPLETE
 #define PRT_OBJ_U_XSET		    PRT_OBJ_F_XSET
 #define PRT_OBJ_U_YSET		    PRT_OBJ_F_YSET
+#define PRT_OBJ_U_SYNCBREAK	    PRT_OBJ_F_SYNCBREAK
 
-#define PRT_OBJ_UFLAGMASK	    (PRT_OBJ_U_FLOWAROUND | PRT_OBJ_U_NOLINESEQ | PRT_OBJ_U_ALLOWBREAK | PRT_OBJ_U_REPEAT | PRT_OBJ_U_FIXEDSIZE | PRT_OBJ_U_REQCOMPLETE | PRT_OBJ_U_XSET | PRT_OBJ_U_YSET)
+#define PRT_OBJ_UFLAGMASK	    (PRT_OBJ_U_FLOWAROUND | PRT_OBJ_U_NOLINESEQ | PRT_OBJ_U_ALLOWBREAK | PRT_OBJ_U_REPEAT | PRT_OBJ_U_FIXEDSIZE | PRT_OBJ_U_REQCOMPLETE | PRT_OBJ_U_XSET | PRT_OBJ_U_YSET | PRT_OBJ_U_SYNCBREAK)
 
 #define PRT_OBJ_A_BOLD		    1
 #define PRT_OBJ_A_ITALIC	    2
@@ -377,6 +389,8 @@ pPrtObjStream prt_internal_GetPage(pPrtObjStream obj);
 pPrtObjStream prt_internal_AddEmptyObj(pPrtObjStream container);
 pPrtObjStream prt_internal_CreateEmptyObj(pPrtObjStream container);
 int prt_internal_Dump(pPrtObjStream obj);
+pPrtObjStream prt_internal_Duplicate(pPrtObjStream obj, int with_content);
+int prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment);
 
 /** Strict-formatter to output-driver interfacing **/
 pPrtOutputDriver prt_strictfm_AllocDriver();
