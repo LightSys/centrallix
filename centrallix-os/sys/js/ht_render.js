@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -249,8 +249,12 @@ function htr_extract_bgcolor(s)
 	}
     else if (s.substr(0,8) == "bgcolor=")
 	{
+	{
 	var qp = s.indexOf("'");
-	return s.substr(qp+1,s.length-qp-2);
+	if (qp < 1)
+	    return s.substr(8);
+	else
+	    return s.substr(qp+1,s.length-qp-2);
 	}
     return null;
     }
@@ -370,8 +374,6 @@ function htr_getvisheight(l)
 	return pg_get_style(l, "clip.height");
     return null;
     }
-
-
 
 function htr_getzindex(l)
     {
