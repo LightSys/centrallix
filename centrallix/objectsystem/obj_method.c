@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_method.c,v 1.2 2003/05/30 17:39:52 gbeeley Exp $
+    $Id: obj_method.c,v 1.3 2004/06/15 19:43:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_method.c,v $
 
     $Log: obj_method.c,v $
+    Revision 1.3  2004/06/15 19:43:03  gbeeley
+    - Fix for .c param not matching the .h param
+
     Revision 1.2  2003/05/30 17:39:52  gbeeley
     - stubbed out inheritance code
     - bugfixes
@@ -94,7 +97,7 @@ objGetNextMethod(pObject this)
  *** dependent parameter.
  ***/
 int 
-objExecuteMethod(pObject this, char* methodname, void* param)
+objExecuteMethod(pObject this, char* methodname, pObjData param)
     {
     return this->Driver->ExecuteMethod(this->Data, methodname, param, &(this->Session->Trx));
     }
