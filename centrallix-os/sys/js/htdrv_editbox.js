@@ -113,6 +113,7 @@ function eb_keyhandler(l,e,k)
     ibeam_current.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*text_metric.charWidth, l.ContentLayer.pageY);
     ibeam_current.visibility = 'inherit';
     l.changed=true;
+    cn_activate(l,"DataChange");
     return false;
     }
 
@@ -130,12 +131,14 @@ function eb_select(x,y,l,c,n)
     ibeam_current.moveToAbsolute(eb_current.ContentLayer.pageX + eb_current.cursorCol*text_metric.charWidth, eb_current.ContentLayer.pageY);
     ibeam_current.zIndex = eb_current.zIndex + 2;
     ibeam_current.visibility = 'inherit';
+    cn_activate(l,"GetFocus");
     return 1;
     }
 
 function eb_deselect()
     {
     ibeam_current.visibility = 'hidden';
+    cn_activate(eb_current,"LoseFocus");
     if (eb_current)
 	{
 	eb_current.cursorlayer = null;
@@ -159,6 +162,7 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	}
     l.kind = 'eb';
     l.document.Layer = l;
+    l.document.layer = l;
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
     l.fieldname = fieldname;
@@ -168,6 +172,8 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
     c2.mainlayer = l;
     c1.kind = 'eb';
     c2.kind = 'eb';
+    c1.document.layer = l;
+    c2.document.layer = l;
     l.content = '';
     l.keyhandler = eb_keyhandler;
     l.getfocushandler = eb_select;

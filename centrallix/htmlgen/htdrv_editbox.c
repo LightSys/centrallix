@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.23 2002/07/19 14:54:22 pfinley Exp $
+    $Id: htdrv_editbox.c,v 1.24 2002/07/25 19:48:17 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.24  2002/07/25 19:48:17  pfinley
+    Standardized event connectors for editbox widget.  It now has:
+      Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,Change,GetFocus,LoseFocus
+
     Revision 1.23  2002/07/19 14:54:22  pfinley
     - Modified the page mousedown & mouseover handlers so that the cursor ibeam
     "can't" be clicked on (only supports the global cursor).
@@ -193,6 +197,8 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
+    pObject sub_w_obj;
+    pObjQuery qy;
 
     	/** Get an id for this. **/
 	id = (HTEB.idcnt++);
@@ -271,6 +277,32 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 
+	htrAddEventHandler(s, "document","MOUSEUP", "eb", 
+	    "\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly, 'Click');\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseUp');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEDOWN", "eb", 
+	    "\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseDown');\n"
+	    "\n");
+
+	htrAddEventHandler(s, "document","MOUSEOVER", "eb", 
+	    "\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseOver');\n"
+	    "\n");
+   
+	htrAddEventHandler(s, "document","MOUSEOUT", "eb", 
+	    "\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseOut');\n"
+	    "\n");
+   
+	htrAddEventHandler(s, "document","MOUSEMOVE", "eb", 
+	    "\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseMove');\n"
+	    "\n");
+
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\", %d, \"%s\");\n",
 		nptr, parentname, id, 
@@ -299,6 +331,18 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	/*sprintf(sbuf2,"%s.mainlayer",nptr);*/
 	/*htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);*/
 
+	/** Check for more sub-widgets **/
+	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
+	if (qy)
+	    {
+	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
+		{
+		htrRenderWidget(s, sub_w_obj, z+1, parentname, nptr);
+		objClose(sub_w_obj);
+		}
+	    objQueryClose(qy);
+	    }
+
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</BODY></DIV>\n");
 
@@ -324,6 +368,17 @@ htebInitialize()
 	drv->Verify = htebVerify;
 	strcpy(drv->Target, "Netscape47x:default");
 
+	/** Events **/ 
+	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
+	htrAddEvent(drv,"Change");
+	htrAddEvent(drv,"GetFocus");
+	htrAddEvent(drv,"LoseFocus");
+
 	/** Add a 'set value' action **/
 	htrAddAction(drv,"SetValue");
 	htrAddParam(drv,"SetValue","Value",DATA_T_STRING);	/* value to set it to */
@@ -333,7 +388,7 @@ htebInitialize()
 	htrAddEvent(drv,"Modified");
 	htrAddParam(drv,"Modified","NewValue",DATA_T_STRING);
 	htrAddParam(drv,"Modified","OldValue",DATA_T_STRING);
-	
+
 	/** Register. **/
 	htrRegisterDriver(drv);
 
