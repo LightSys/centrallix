@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.11 2002/07/23 15:22:39 mcancel Exp $
+    $Id: htdrv_tab.c,v 1.12 2002/07/30 19:04:45 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.12  2002/07/30 19:04:45  lkehresman
+    * Added standard events to tab widget
+    * Converted tab widget to use standard mainlayer and layer properties
+
     Revision 1.11  2002/07/23 15:22:39  mcancel
     Changing htrAddHeaderItem to htrAddStylesheetItem for a couple of files
     that missed the API change - for adding style sheet definitions.
@@ -210,29 +214,33 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 
 	/** Add a global for the master tabs listing **/
 	htrAddScriptGlobal(s, "tc_tabs", "null", 0);
+	htrAddScriptGlobal(s, "tc_cur_mainlayer", "null", 0);
 
 	/** Event handler for click-on-tab **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tc",
+		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseDown');\n"
 		"    if (ly.kind == 'tc') ly.makeCurrent();\n");
 
-		/*"    for(i=0;i<tc_tabs.length;i++)\n"
+	htrAddEventHandler(s, "document","MOUSEUP","tc",
+		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseUp');\n");
+
+	htrAddEventHandler(s, "document","MOUSEMOVE","tc",
+		"    if (!ly.mainlayer || ly.mainlayer.kind != 'tc')\n"
 		"        {\n"
-		"        if (e.pageX > tc_tabs[i].pageX && e.pageX < tc_tabs[i].pageX + tc_tabs[i].document.width &&\n"
-		"            e.pageY > tc_tabs[i].pageY - 24 && e.pageY < tc_tabs[i].pageY)\n"
-		"            {\n"
-		"            for(j=0;j<tc_tabs[i].tabs.length;j++)\n"
-		"                {\n"
-		"                t = tc_tabs[i].tabs[j];\n"
-		"                if (e.pageX > t.pageX && e.pageX < t.pageX + t.document.width && e.pageY > t.pageY && e.pageY < t.pageY + 24)\n"
-		"                    {\n"
-		"                    ly = (e.target.layer == null)?e.target:e.target.layer;\n"
-		"                    if (t != ly) alert(show_obj(ly));\n"
-		"                    t.makeCurrent();\n"
-		"                    break;\n"
-		"                    }\n"
-		"                }\n"
-		"            }\n"
-		"        }\n");*/
+		"        if (tc_cur_mainlayer) cn_activate(tc_cur_mainlayer, 'MouseOut');\n"
+		"        tc_cur_mainlayer = null;\n"
+		"        }\n"
+		"    else if (ly.kind && ly.kind.substr(0,2) == 'tc')\n"
+		"        {\n"
+		"        cn_activate(ly.mainlayer, 'MouseMove');\n"
+		"        }\n");
+
+	htrAddEventHandler(s, "document","MOUSEOVER","tc",
+		"    if (ly.kind && ly.kind.substr(0,2) == 'tc')\n"
+		"        {\n"
+		"        cn_activate(ly.mainlayer, 'MouseOver');\n"
+		"        tc_cur_mainlayer = ly.mainlayer;\n"
+		"        }\n");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    %s = tc_init(%s.layers.tc%dbase);\n",
@@ -318,8 +326,8 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			}
 
 		    /** Add script initialization to add a new tabpage **/
-		    htrAddScriptInit_va(s,"    %s = %s.addTab(%s.layers.tc%dtab%d,%s.document.layers.tc%dpane%d);\n",
-			ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt);
+		    htrAddScriptInit_va(s,"    %s = %s.addTab(%s.layers.tc%dtab%d,%s.document.layers.tc%dpane%d,%s);\n",
+			ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt, nptr);
 
 		    /** Add named global for the tabpage **/
 		    subnptr = (char*)nmMalloc(strlen(ptr)+1);
@@ -344,8 +352,15 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    objQueryClose(subqy);
 		    htrAddBodyItem(s, "</DIV>\n");
 		    }
+		else if (!strcmp(ptr,"widget/connector"))
+		    {
+		    snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+		    snprintf(name,64,"%s.mainlayer",nptr);
+		    htrRenderWidget(s, tabpage_obj, z+2, sbuf, name);
+		    }
 		objClose(tabpage_obj);
 		}
+
 	    objQueryClose(qy);
 	    }
 

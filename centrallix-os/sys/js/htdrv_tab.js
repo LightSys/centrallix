@@ -33,7 +33,7 @@ function tc_makecurrent()
     this.clip.height = 25;
     }
 
-function tc_addtab(l_tab, l_page)
+function tc_addtab(l_tab, l_page, l)
     {
     if (this.tabs.length > 0)
 	{
@@ -55,6 +55,11 @@ function tc_addtab(l_tab, l_page)
 	l_tab.document.images[i].kind = 'tc';
 	}
     this.tabs[this.tabs.length++] = l_tab;
+    l_page.kind = 'tc_pn';
+    l_page.document.layer = l_page;
+    l_page.mainlayer = l;
+    l_tab.mainlayer = l;
+    l_tab.document.layer = l_tab;
     l_tab.tabpage = l_page;
     l_tab.tabctl = this;
     l_tab.makeCurrent = tc_makecurrent;
@@ -70,6 +75,9 @@ function tc_addtab(l_tab, l_page)
 
 function tc_init(l)
     {
+    l.mainlayer = l;
+    l.document.layer = l;
+    l.kind = 'tc';
     l.currentTab = 1;
     l.nTabs = 0;
     l.isShorting = 0;
