@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.1 2002/07/09 14:09:04 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.2 2002/07/09 18:58:49 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.2  2002/07/09 18:58:49  lkehresman
+    Added double buffering to the datetime widget to reduse flickering
+
     Revision 1.1  2002/07/09 14:09:04  lkehresman
     Added first revision of the datetime widget.  No form interatction, and no
     time setting functionality, only date.  This has been on my laptop for a
@@ -201,18 +204,41 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.colorBG = bgcolor;\n"
 		"    l.colorFG = fgcolor;\n"
 		"    l.mode = 0;\n"
+		"    l.ld.contentLayer = new Layer(1024, l.ld);\n"
+		"    l.ld.contentLayer.visibility = 'inherit';\n"
+		"    l.ld.hiddenLayer = new Layer(1024, l.ld);\n"
+		"    l.ld.hiddenLayer.visibility = 'hide';\n"
 		"    l.strMonthsAbbrev = Array('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');\n"
 		"    l.strDaysAbbrev = Array('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');\n"
-		"    l.dayLayersArray = Array();\n"
+		"    l.ld.contentLayer.dayLayersArray = Array();\n"
+		"    l.ld.hiddenLayer.dayLayersArray = Array();\n"
+		"    l.vl = l.ld.contentLayer;\n" // visible layer
+		"    l.hl = l.ld.hiddenLayer;\n" // hidden layer
+		"    l.vl.clip.height=500; l.vl.clip.width=500;\n"
+		"    l.hl.clip.height=500; l.hl.clip.width=500;\n"
 		"    for (var i=0; i < 31; i++)\n"
 		"        {\n"
-		"        l.dayLayersArray[i] = new Layer(128, l.ld);\n"
-		"        l.dayLayersArray[i].losefocushandler = dt_losefocus;\n"
-		"        l.dayLayersArray[i].document.mainlayer = l;\n"
-		"        l.dayLayersArray[i].document.layer = l.dayLayersArray[i];\n"
-		"        l.dayLayersArray[i].kind = 'dt';\n"
-		"        l.dayLayersArray[i].subkind = 'dt_day';\n"
+		"        l.ld.contentLayer.dayLayersArray[i] = new Layer(128, l.ld.contentLayer);\n"
+		"        l.ld.contentLayer.dayLayersArray[i].losefocushandler = dt_losefocus;\n"
+		"        l.ld.contentLayer.dayLayersArray[i].document.mainlayer = l;\n"
+		"        l.ld.contentLayer.dayLayersArray[i].document.layer = l.ld.contentLayer.dayLayersArray[i];\n"
+		"        l.ld.contentLayer.dayLayersArray[i].kind = 'dt';\n"
+		"        l.ld.contentLayer.dayLayersArray[i].visibility = 'inherit';\n"
+		"        l.ld.contentLayer.dayLayersArray[i].subkind = 'dt_day';\n"
+
+		"        l.ld.hiddenLayer.dayLayersArray[i] = new Layer(128, l.ld.hiddenLayer);\n"
+		"        l.ld.hiddenLayer.dayLayersArray[i].losefocushandler = dt_losefocus;\n"
+		"        l.ld.hiddenLayer.dayLayersArray[i].document.mainlayer = l;\n"
+		"        l.ld.hiddenLayer.dayLayersArray[i].document.layer = l.ld.hiddenLayer.dayLayersArray[i];\n"
+		"        l.ld.hiddenLayer.dayLayersArray[i].kind = 'dt';\n"
+		"        l.ld.hiddenLayer.dayLayersArray[i].visibility = 'inherit';\n"
+		"        l.ld.hiddenLayer.dayLayersArray[i].subkind = 'dt_day';\n"
 		"        }\n"
+		"    l.ld.hdr = new Layer(1024, l.ld);\n"
+		"    l.ld.hdr1 = new Layer(1024, l.ld);\n"
+		"    l.ld.hdr2 = new Layer(1024, l.ld);\n"
+		"    l.ld.hdr3 = new Layer(1024, l.ld);\n"
+		"    l.ld.hdr4 = new Layer(1024, l.ld);\n"
 		"    dt_drawmonth(l.ld, l.tmpdate);\n"
 		"    dt_drawdate(l.lbdy, l.tmpdate);\n"
 		"    }\n" ,0);
@@ -311,7 +337,6 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "dt_drawmonth", "\n"
 		"function dt_drawmonth(l, d)\n"
 		"    {\n"
-		"    l.hdr = new Layer(1024, l);\n"
 		"    l.hdr.x = 28; l.hdr.y = 2;\n"
 		"    l.hdr.visibility = 'inherit';\n"
 		"    l.hdr.document.write('<table '+l.document.mainlayer.colorBG+' width=124 height=20 cellpadding=0 cellspacing=0 border=0><tr><td align=center valign=middle><b>'+l.document.mainlayer.strMonthsAbbrev[d.getMonth()]+' '+(d.getYear()+1900)+'</b></td></tr></table>');\n"
@@ -320,7 +345,6 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.hdr.document.subkind = 'dt_dropdown';\n"
 		"    l.hdr.document.close();\n"
 		
-		"    l.hdr1 = new Layer(1024, l);\n"
 		"    l.hdr1.x = 2; l.hdr.y = 2;\n"
 		"    l.hdr1.visibility = 'inherit';\n"
 		"    l.hdr1.document.write('<table width=25 height=20 border=0 cellpadding=0 cellspacing=0><tr><td align=center valign=middle><B>&lt;&lt;</B></td></tr></table>');\n"
@@ -330,7 +354,6 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.hdr1.document.close();\n"
 		"    l.hdr1.losefocushandler = dt_losefocus;\n"
 		
-		"    l.hdr2 = new Layer(1024, l);\n"
 		"    l.hdr2.x = 27; l.hdr.y = 2;\n"
 		"    l.hdr2.visibility = 'inherit';\n"
 		"    l.hdr2.document.write('<table width=25 height=20 border=0 cellpadding=0 cellspacing=0><tr><td align=center valign=middle><B>&lt;</B></td></tr></table>');\n"
@@ -340,7 +363,6 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.hdr2.document.close();\n"
 		"    l.hdr2.losefocushandler = dt_losefocus;\n"
 		
-		"    l.hdr3 = new Layer(1024, l);\n"
 		"    l.hdr3.x = l.document.mainlayer.std_w-52; l.hdr.y = 2;\n"
 		"    l.hdr3.visibility = 'inherit';\n"
 		"    l.hdr3.document.write('<table width=25 height=20 border=0 cellpadding=0 cellspacing=0><tr><td align=center valign=middle><B>&gt;</B></td></tr></table>');\n"
@@ -350,7 +372,6 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.hdr3.document.close();\n"
 		"    l.hdr3.losefocushandler = dt_losefocus;\n"
 		
-		"    l.hdr4 = new Layer(1024, l);\n"
 		"    l.hdr4.x = l.document.mainlayer.std_w-27; l.hdr.y = 2;\n"
 		"    l.hdr4.visibility = 'inherit';\n"
 		"    l.hdr4.document.write('<table width=25 height=20 border=0 cellpadding=0 cellspacing=0><tr><td align=center valign=middle><B>&gt;&gt;</B></td></tr></table>');\n"
@@ -383,10 +404,15 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    for (var i=1; i <= dt_getdaysinmonth(tmpDate); i++)\n"
 		"        {\n"
 		"        if (col!=0 && col%7==0) { row++; col=0; }\n"
-		"        dt_drawday(l.document.mainlayer.dayLayersArray[i-1], i, col, row);\n"
+		"        dt_drawday(l.document.mainlayer.ld.hiddenLayer.dayLayersArray[i-1], i, col, row);\n"
 		"        col++;\n"
 		"        }\n"
-		"    for (;i <= 31; i++) { l.document.mainlayer.dayLayersArray[i-1].visibility = 'hide'; }\n"
+		"    for (;i <= 31; i++) { l.document.mainlayer.ld.hiddenLayer.dayLayersArray[i-1].visibility = 'hide'; }\n"
+		"    l.document.mainlayer.ld.hiddenLayer.visibility = 'inherit';\n"
+		"    l.document.mainlayer.ld.contentLayer.visibility = 'hidden';\n"
+		"    tmp = l.document.mainlayer.ld.contentLayer;\n"
+		"    l.document.mainlayer.ld.contentLayer = l.document.mainlayer.ld.hiddenLayer;\n"
+		"    l.document.mainlayer.ld.hiddenLayer = tmp;\n"
 		"    }\n", 0);
 
 	htrAddScriptFunction(s, "dt_drawday", "\n"
