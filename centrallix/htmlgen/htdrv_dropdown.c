@@ -41,10 +41,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.9 2002/03/16 04:30:45 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.10 2002/04/27 04:33:12 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.10  2002/04/27 04:33:12  lkehresman
+    Rewrote the dropdown list.  It is a lot cleaner now, and fully works with
+    the form.  It also can take an 'sql' parameter to read the initial values
+    from a query.  Everything is in place except the scrolling.
+
     Revision 1.9  2002/03/16 04:30:45  lkehresman
     * Added scrollbar to dropdown list (only arrows work currently, not drag box)
     * Added fieldname property
@@ -109,8 +114,14 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    char string[HT_SBUF_SIZE];
    char fieldname[30];
    char *ptr;
+   char *sql;
+   char *str;
+   char *attr;
+   int type, rval;
    int x,y,w;
    int id;
+   ObjData od;
+   pObject qy_obj;
    pObjQuery qy;
 
    /** Get an id for this. **/
@@ -120,39 +131,34 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    if (objGetAttrValue(w_obj,"x",POD(&x)) != 0) x=0;
    if (objGetAttrValue(w_obj,"y",POD(&y)) != 0) y=0;
    if (objGetAttrValue(w_obj,"width",POD(&w)) != 0) {
-	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-	return -1;
+        mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+        return -1;
    }
 
    if (objGetAttrValue(w_obj,"hilight",POD(&ptr)) == 0) {
-	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
+        snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
-	mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
-	return -1;
+        mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
+        return -1;
    }
 
    if (objGetAttrValue(w_obj,"bgcolor",POD(&ptr)) == 0) {
-	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
+        snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
    } else {
-	mssError(1,"HTDD","Drop Down widget must have a 'bgcolor' property");
-	return -1;
+        mssError(1,"HTDD","Drop Down widget must have a 'bgcolor' property");
+        return -1;
    }
 
    if (objGetAttrValue(w_obj,"fieldname",POD(&ptr)) == 0) {
-	strncpy(fieldname,ptr,30);
+        strncpy(fieldname,ptr,30);
    } else {
-	fieldname[0]='\0';
+        fieldname[0]='\0';
    }
-
 
    /** Ok, write the style header items. **/
    snprintf(sbuf,HT_SBUF_SIZE,"    <STYLE TYPE=\"text/css\">\n");
    htrAddHeaderItem(s,sbuf);
    snprintf(sbuf,HT_SBUF_SIZE,"\t#dd%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"\t#dd%dspane { POSITION:absolute; VISIBILITY:hide; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,(x+w-18),(y+18),18,z+2);
-   htrAddHeaderItem(s,sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"\t#dd%dthum { POSITION:absolute; VISIBILITY:hide; LEFT:%d; TOP:%d; WIDTH:18; Z-INDEX:%d; }\n",id,(x+w-18),(y+36),z+2);
    htrAddHeaderItem(s,sbuf);
    snprintf(sbuf,HT_SBUF_SIZE,"    </STYLE>\n");
    htrAddHeaderItem(s,sbuf);
@@ -161,303 +167,261 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
    /** Get Value function **/
    htrAddScriptFunction(s, "dd_getvalue", "\n"
-	"function dd_getvalue() {\n"
-	"   return this.document.iLayer.value;"
-	"}\n", 0);
+        "function dd_getvalue() {\n"
+        "   return this.labelLayer.value;"
+        "}\n", 0);
    
    /** Set Value function **/
    htrAddScriptFunction(s, "dd_setvalue", "\n"
-	"function dd_setvalue(v) {\n"
-	"   for (i=0; i < this.values.length; i++) {\n"
-	"      if (this.values[i] == v) {\n"
-	"         dd_write_item(this.document.iLayer, this.labels[i], this.values[i], this);\n"
-	"         return true;\n"
-	"      }\n"
-	"   }\n"
-	"   return false;\n"
-	"}\n", 0);
+        "function dd_setvalue(v) {\n"
+        "   for (i=0; i < this.values.length; i++) {\n"
+        "      if (this.values[i] == v) {\n"
+        "         dd_write_item(this.labelLayer, this.labels[i], this.values[i], this);\n"
+        "         return true;\n"
+        "      }\n"
+        "   }\n"
+        "   return false;\n"
+        "}\n", 0);
    
    /** Clear Value function **/
    htrAddScriptFunction(s, "dd_clearvalue", "\n"
-	"function dd_clearvalue() {\n"
-	"   this.setvalue('');\n"  /* FIXME -- this doesn't do anything */
-	"}\n", 0);
+        "function dd_clearvalue() {\n"
+        "   dd_write_item(this.labelLayer, '', '');\n"
+        "}\n", 0);
    
    /** Reset Value function **/
    htrAddScriptFunction(s, "dd_resetvalue", "\n"
-	"function dd_resetvalue() {\n"
-	"   this.clearvalue();\n"
-	"}\n", 0);
-   
-   /** Set Options function 
-   *** The elements are passed in in the form of a hash where the
-   *** key to the hash is the data value, and the value of the
-   *** hash is the displayed label.
-   **/
-   htrAddScriptFunction(s, "dd_setoptions", "\n"
-	"function dd_setoptions(ary) {\n"
-	"}\n", 0);
+        "function dd_resetvalue() {\n"
+        "   this.clearvalue();\n"
+        "}\n", 0);
    
    /** Enable function **/
    htrAddScriptFunction(s, "dd_enable", "\n"
-	"function dd_enable() {\n"
-	"   this.document.images[8].src = '/sys/images/ico15b.gif';\n"
-	"   this.enabled = 'full';\n"
-	"}\n", 0);
+        "function dd_enable() {\n"
+        "   this.topLayer.document.images[8].src = '/sys/images/ico15b.gif';\n"
+        "   this.enabled = 'full';\n"
+        "}\n", 0);
    
    /** Read-Only function **/
    htrAddScriptFunction(s, "dd_readonly", "\n"
-	"function dd_readonly() {\n"
-	"   this.enabled = 'readonly';\n"
-	"}\n", 0);
+        "function dd_readonly() {\n"
+        "   this.enabled = 'readonly';\n"
+        "}\n", 0);
    
    /** Disable function **/
    htrAddScriptFunction(s, "dd_disable", "\n"
-	"function dd_disable() {\n"
-	"   this.document.images[8].src = '/sys/images/ico15a.gif';\n"
-	"   this.enabled = 'disabled';\n"
-	"}\n", 0);
+        "function dd_disable() {\n"
+        "   this.topLayer.document.images[8].src = '/sys/images/ico15a.gif';\n"
+        "   this.enabled = 'disabled';\n"
+        "}\n", 0);
    
    /** Disable function **/
    htrAddScriptFunction(s, "dd_write_item", "\n"
-	"function dd_write_item(itemLayer, label, value, l) {\n"
-	"   itemLayer.document.write('<table cellpadding=2 cellspacing=0 height=16 border=0><tr><td valign=middle>'+label+'</td></tr></table>');\n"
-	"   itemLayer.label = label;\n"
-	"   itemLayer.value = value;\n"
-	"   itemLayer.document.close();\n"
-	"}\n", 0);
+        "function dd_write_item(itemLayer, label, value) {\n"
+        "   itemLayer.document.write('<table cellpadding=2 cellspacing=0 height=16 border=0><tr><td valign=middle>'+label+'</td></tr></table>');\n"
+        "   itemLayer.label = label;\n"
+        "   itemLayer.value = value;\n"
+        "   itemLayer.document.close();\n"
+        "   itemLayer.kind = 'dropdown';\n"
+        "}\n", 0);
 
    /** Adds an item to the dropdown layer l **/
    htrAddScriptFunction(s, "dd_additem", "\n"
-	"function dd_additem(l, label, value) {\n"
-	"   l.labels.push(label);\n"
-	"   l.values.push(value);\n"
-	"   tmpLayer = new Layer(1024, l.document.fullLayer);"
-	"   tmpLayer.label = label;\n"
-	"   tmpLayer.value = value;\n"
-	"   tmpLayer.kind = 'dropdown';"
-	"   tmpLayer.subkind = 'dropdownitem';"
-	"   dd_write_item(tmpLayer, label, value, l);\n"
-	"   tmpLayer.document.layer = tmpLayer;\n"
-	"   tmpLayer.document.parentLayer = l;\n"
-	"   tmpLayer.document.close();\n"
-	"   tmpLayer.clip.width = l.defaultWidth-20;\n"
-	"   tmpLayer.clip.height = 18;\n"
-	"   tmpLayer.clip.top = 1;\n"
-	"   tmpLayer.pageX = l.pageX+1;\n"
-	"   tmpLayer.top = ((l.labels.length-1)*16);\n"
-	"   tmpLayer.bgColor = l.bgColor;\n"
-	"   tmpLayer.visibility = 'inherit';\n"
-	"   l.itemLayers.push(tmpLayer);\n"
-	"   if (l.labels.length > l.numDispElements) {\n"
-	"      l.scrollLayer.document.write('<table height='+(l.numDispElements*16)+' border=0 cellspacing=0 cellpadding=0 width=18>');\n"
-	"      l.scrollLayer.document.write('<tr><td align=right><img src=/sys/images/ico13b.gif name=u></td></tr><tr><td align=right>');\n"
-	"      l.scrollLayer.document.write('<img src=/sys/images/trans_1.gif height='+((l.numDispElements*16)-34)+' width=18 name=t>');\n"
-	"      l.scrollLayer.document.write('</td></tr><tr><td align=right><img src=/sys/images/ico12b.gif name=d></td></tr></table>');\n"
-	"      l.scrollLayer.document.close();\n"
-	"      l.scrollLayer.document.images[0].parentLayer = l;\n"
-	"      l.scrollLayer.document.images[1].parentLayer = l;\n"
-	"      l.scrollLayer.document.images[2].parentLayer = l;\n"
-	"      l.scrollLayer.document.images[0].subkind = 'dropdownScroll';\n"
-	"      l.scrollLayer.document.images[1].subkind = 'dropdownScroll';\n"
-	"      l.scrollLayer.document.images[2].subkind = 'dropdownScroll';\n"
-	"   } else {\n"
-	"      l.document.fullLayer.clip.height += 16;\n"
-	"      l.c1Layer.clip.height += 16;\n"
-	"      l.c2Layer.clip.height += 16;\n"
-	"   }\n"
-	"}\n", 0);
+        "function dd_additem(l, label, value) {\n"
+        "   l.labels.push(label);\n"
+        "   l.values.push(value);\n"
+        "   l.ddLayer.clip.height = ((l.numItems+1) * 16) + 2;\n"
+        "   var tmpLayer = new Layer(1024, l.ddLayer);\n"
+        "   tmpLayer.kind = 'dropdown';\n"
+        "   tmpLayer.subkind = 'dropdown_item';\n"
+        "   tmpLayer.topLayer = l;\n"
+        "   tmpLayer.document.layer = tmpLayer;\n"
+        "   tmpLayer.bgColor = l.colorBack;\n"
+        "   tmpLayer.label = label;\n"
+        "   tmpLayer.value = value;\n"
+        "   tmpLayer.x = 1;\n"
+        "   tmpLayer.y = ((l.numItems) * 16) + 1;\n"
+        "   tmpLayer.clip.width = l.clip.width - 2;\n"
+        "   tmpLayer.clip.height = 16;\n"
+        "   tmpLayer.visibility = 'inherit';\n"
+        "   l.itemLayers.push(tmpLayer);\n"
+        "   dd_write_item(tmpLayer, label, value);\n"
+        "   l.bg1Layer.clip.height = l.ddLayer.clip.height;\n"
+        "   l.numItems++;\n"
+        "}\n", 0);
    
 
    /** Form Status initializer **/
    htrAddScriptFunction(s, "dd_init", "\n"
-	"function dd_init(l,lspane, lthum, w,color,hilight, fieldname) {\n"
-	"   l.document.layer = l;\n"
-	"   l.numDispElements = 8;\n"
-	"   l.fieldname = fieldname;\n"
-	"   l.width = w;\n"
-	"   l.bgColor = color;\n"
-	"   l.hilight = hilight;\n"
-	"   l.kind = 'dropdown';\n"
-	"   l.enabled = 'full';\n"
-	"   l.labels = new Array();\n"
-	"   l.values = new Array();\n"
-	"   l.itemLayers = new Array();\n"
-	"   l.defaultWidth = w;\n"
-	"   l.form = fm_current;\n"
-	"   l.scrollLayer = lspane;\n"
-	"   l.scrollLayer.visibility = 'hide';\n"
-	"   l.scrollLayer.bgColor = color;\n"
-	"   l.scrollLayer.kind = 'dropdown';\n"
-	"   l.scrollLayer.subkind = 'dropdownScroll';\n"
-	"   l.thumbLayer = lthum;\n"
-	"   l.thumbLayer.visibility = 'hide';\n"
-	"   l.thumbLayer.kind = 'dropdown';\n"
-	"   l.thumbLayer.subkind = 'dropdownThumb';\n"
-	"   l.thumbLayer.document.images[0].subkind = 'dropdownThumb';\n"
-	"   l.document.iLayer = new Layer(1024, l);\n"
-	"   l.document.iLayer.value = '';\n"
-	"   l.document.iLayer.label = '';\n"
-	"   l.document.iLayer.visibility = 'inherit';\n"
-	"   l.document.iLayer.pageX = l.pageX+1;\n"
-	"   l.document.iLayer.pageY = l.pageY;\n"
-	"   l.document.iLayer.kind = 'dropdown';\n"
-	"   l.document.iLayer.subkind = 'dropdownitem';\n"
-	"   l.document.iLayer.bgColor = l.bgColor;\n"
-	"   l.document.iLayer.clip.width = l.defaultWidth-20;\n"
-	"   l.document.iLayer.clip.height = 16;\n"
-	"   l.document.iLayer.clip.top = 1;\n"
-	"   l.document.iLayer.enabled = 'full';\n"
-	"   l.document.iLayer.document.layer = l;\n"
-	"   l.document.fullLayer = new Layer(1024);\n"
-	"   l.document.fullLayer.bgColor = l.bgColor;\n"
-	"   l.document.fullLayer.clip.width = w-18;\n"
-	"   l.document.fullLayer.clip.height = 1;\n"
-	"   l.document.fullLayer.visibility = 'hidden';\n"
-	"   l.document.fullLayer.pageX = l.pageX;\n"
-	"   l.document.fullLayer.pageY = l.pageY + 18;\n"
-	"   l.document.fullLayer.kind = 'dropdownItemlist'\n"
-	"   l.document.fullLayer.document.layer = l.document.fullLayer;\n"
-	"   l.c1Layer = new Layer(1024, l.document.fullLayer);\n"
-	"   l.c1Layer.bgColor = '#ffffff';\n"
-	"   l.c1Layer.visibility = 'inherit';\n"
-	"   l.c1Layer.clip.width = w;\n"
-	"   l.c1Layer.clip.height = l.document.fullLayer.clip.height;\n"
-	"   l.c2Layer = new Layer(1024, l.document.fullLayer);\n"
-	"   l.c2Layer.bgColor = '#888888';\n"
-	"   l.c2Layer.visibility = 'inherit';\n"
-	"   l.c2Layer.clip.width = w;\n"
-	"   l.c2Layer.clip.top = 1;\n"
-	"   l.c2Layer.clip.left = 1;\n"
-	"   l.c2Layer.clip.height = l.document.fullLayer.clip.height;\n"
-	"   for (i=0; i < l.document.images.length; i++) {\n"
-	"      l.document.images[i].kind = 'dropdown';\n"
-	"      l.document.images[i].enabled = 'full';\n"
-	"      l.document.images[i].layer = l;\n"
-	"   }\n"
-	"   l.setvalue = dd_setvalue;\n"
-	"   l.getvalue = dd_getvalue;\n"
-	"   l.enable = dd_enable;\n"
-	"   l.readonly = dd_readonly;\n"
-	"   l.disable = dd_disable;\n"
-	"   l.clearvalue=dd_clearvalue;\n"
-	"   l.resetvalue=dd_resetvalue;\n"
-	"   if (fm_current) fm_current.Register(l);\n"
-	"}\n", 0);
+        "function dd_init(l, clr_b, clr_h, fn) {\n"
+        "   l.numItems = 0;\n"
+        "   l.fieldname = fn;\n"
+        "   l.colorBack = clr_b;\n"
+        "   l.colorHilight = clr_h;\n"
+        "   l.enabled = 'full';\n"
+        "   l.form = fm_current;\n"
+        "   l.topLayer = l;\n"
+        "   l.document.layer = l;\n"
+        "   l.kind = 'dropdown';\n"
+        "   l.subkind = 'dropdown_top';\n"
+        "   l.itemLayers = Array();\n"
+        "   l.labels = new Array();\n"
+        "   l.values = new Array();\n"
+        "   for (i=0; i < l.document.images.length; i++) {\n"
+        "      l.document.images[i].kind = 'dropdown';\n"
+        "      l.document.images[i].topLayer = l;\n"
+        "      l.document.images[i].layer = l;\n"
+        "   }\n"
+
+        "   l.ddLayer = new Layer(1024);\n"
+        "   l.ddLayer.layer = l.ddLayer;\n"
+        "   l.ddLayer.kind = 'dropdown';\n"
+        "   l.ddLayer.subkind = 'dropdown_bottom';\n"
+        "   l.ddLayer.topLayer = l;\n"
+        "   l.ddLayer.document.layer = l.ddLayer;\n"
+        "   l.ddLayer.clip.width = l.clip.width;\n"
+        "   l.ddLayer.bgColor = '#ffffff';\n"
+
+        "   l.labelLayer = new Layer(1024, l);\n"
+        "   l.labelLayer.kind = 'dropdown';\n"
+        "   l.labelLayer.topLayer = l;\n"
+        "   l.labelLayer.layer = l.labelLayer;\n"
+        "   l.labelLayer.clip.width = l.clip.width - 18;\n"
+        "   l.labelLayer.clip.height = 16;\n"
+        "   l.labelLayer.x = 1;\n"
+        "   l.labelLayer.y = 0;\n"
+        "   l.labelLayer.visibility = 'inherit';\n"
+
+        "   l.bg1Layer = new Layer(1024, l.ddLayer);\n"
+        "   l.bg1Layer.layer = l.bg1Layer;\n"
+        "   l.bg1Layer.kind = 'dropdown';\n"
+        "   l.bg1Layer.bgColor = '#888888';\n"
+        "   l.bg1Layer.visibility = 'inherit';\n"
+        "   l.bg1Layer.top = 1;\n"
+        "   l.bg1Layer.x = 1;\n"
+        "   l.bg1Layer.clip.width = l.ddLayer.clip.width;\n"
+        
+        "   l.setvalue = dd_setvalue;\n"
+	     "   l.getvalue = dd_getvalue;\n"
+	     "   l.enable = dd_enable;\n"
+        "   l.readonly = dd_readonly;\n"
+        "   l.disable = dd_disable;\n"
+        "   l.clearvalue = dd_clearvalue;\n"
+        "   l.resetvalue = dd_resetvalue;\n"
+        "   if (fm_current) fm_current.Register(l);\n"
+        "}\n", 0);
 
    htrAddEventHandler(s, "document","MOUSEOVER", "dropdown", 
-	"\n"
-	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && dd_current == targetLayer.document.parentLayer && targetLayer.subkind == 'dropdownitem' && dd_current.enabled == 'full') {\n"
-	"      targetLayer.bgColor = dd_current.hilight;\n"
-	"   }\n"
-	"\n");
+        "\n"
+        "   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+        "   if (dd_current != null && dd_current == targetLayer.topLayer && targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
+        "      targetLayer.bgColor = dd_current.colorHilight;\n"
+        "   }\n"
+        "\n");
 
    htrAddEventHandler(s, "document","MOUSEUP", "dropdown", 
-	"\n"
-	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && targetLayer.subkind == 'dropdownScroll' && dd_current.enabled == 'full') {\n"
-	"      if (targetLayer.name == 'u') {\n"
-	"         targetLayer.src = '/sys/images/ico13b.gif';\n"
-	"      } else if (targetLayer.name == 'd') {\n"
-	"         targetLayer.src = '/sys/images/ico12b.gif';\n"
-	"      }\n"
-	"   }\n"
-	"\n");
+        "\n"
+        "\n");
 
    htrAddEventHandler(s, "document","MOUSEOUT", "dropdown", 
-	"\n"
-	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && targetLayer.subkind == 'dropdownitem' && dd_current.enabled == 'full') {\n"
-	"      targetLayer.bgColor = dd_current.bgColor;\n"
-	"   }\n"
-	"\n");
+        "\n"
+        "   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+        "   if (dd_current != null && dd_current == targetLayer.topLayer && targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
+        "      targetLayer.bgColor = dd_current.colorBack;\n"
+        "   }\n"
+        "\n");
 
    htrAddEventHandler(s, "document","MOUSEDOWN", "dropdown", 
-	"\n"
-	"   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
-	"   if (dd_current != null && targetLayer != dd_current) {\n"
-	"      if (targetLayer.subkind == 'dropdownScroll' || targetLayer.subkind == 'dropdownThumb') {\n"
-	"         il = dd_current.itemLayers;\n"
-	"         fl = dd_current.document.fullLayer;\n"
-	"         if (targetLayer.name == 'u') {\n"
-	"            targetLayer.src = '/sys/images/ico13c.gif';\n"
-	"            for (i=il.length-1; i >= 0 && il[0].y < 0; i--) {\n"
-	"               il[i].y += 8;\n"
-	"            }\n"
-	"         } else if (targetLayer.name == 'd') {\n"
-	"            targetLayer.src = '/sys/images/ico12c.gif';\n"
-	"            for (i=0; i < il.length && il[il.length-1].y > fl.clip.height-16; i++) {\n"
-	"               il[i].y -= 8;\n"
-	"            }\n"
-	"         }\n"
-	"      } else {\n"
-	"         dd_current.document.fullLayer.visibility = 'hide';\n"
-	"         dd_current.scrollLayer.visibility = 'hide';\n"
-	"         dd_current.thumbLayer.visibility = 'hide';\n"
-	"         if (targetLayer.subkind == 'dropdownitem' && dd_current.enabled == 'full') {\n"
-	"            targetLayer.bgColor = dd_current.bgColor;\n"
-	"            dd_write_item(dd_current.document.iLayer, targetLayer.label, targetLayer.value, dd_current);\n"
-	"            dd_current.form.DataNotify(dd_current);\n"
-	"         }\n"
-	"         dd_current.document.images[8].src = '/sys/images/ico15b.gif';\n"
-	"         dd_current = null;\n"
-	"      }\n"
-	"   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
-	"      if (targetLayer.enabled != 'disabled') {\n"
-	"         if (targetLayer.scrollLayer.visibility != 'hide') {\n"
-	"            targetLayer.scrollLayer.document.images[0].src = '/sys/images/ico13b.gif';\n"
-	"            targetLayer.scrollLayer.document.images[2].src = '/sys/images/ico12b.gif';\n"
-	"         }\n"
-	"         if (targetLayer.document.fullLayer.visibility != 'hide') {\n"
-	"            targetLayer.document.images[8].src = '/sys/images/ico15b.gif';\n"
-	"            targetLayer.document.fullLayer.visibility = 'hide';\n"
-	"            targetLayer.scrollLayer.visibility = 'hide';\n"
-	"            targetLayer.thumbLayer.visibility = 'hide';\n"
-	"            dd_current = null;\n"
-	"         } else {\n"
-	"            targetLayer.document.images[8].src = '/sys/images/ico15c.gif';\n"
-	"            targetLayer.document.fullLayer.visibility = 'inherit';\n"
-	"            if (targetLayer.labels.length > targetLayer.numDispElements) {\n"
-	"               targetLayer.scrollLayer.visibility = 'inherit';\n"
-	"               targetLayer.thumbLayer.visibility = 'inherit';\n"
-	"            }\n"
-	"            dd_current = targetLayer;\n"
-	"         }\n"
-	"      }\n"
-	"   }\n"
-	"\n");
+        "\n"
+        "   targetLayer = (e.target.layer == null) ? e.target : e.target.layer;\n"
+        "   if (dd_current != null && (targetLayer != dd_current || targetLayer.kind != 'dropdown')) {\n"
+        "      dd_current.document.images[8].src = '/sys/images/ico15b.gif';\n"
+        "      dd_current.ddLayer.visibility = 'hide';\n"
+        "      if (targetLayer.subkind == 'dropdown_item' && dd_current.enabled == 'full') {\n"
+        "         targetLayer.bgColor = dd_current.colorBack;\n"
+        "         dd_write_item(dd_current.labelLayer, targetLayer.label, targetLayer.value, dd_current);\n"
+        "         dd_current.form.DataNotify(dd_current);\n"
+        "      }\n"
+        "      dd_current = null;\n"
+        "   } else if (targetLayer != null && targetLayer.kind == 'dropdown') {\n"
+        "      targetLayer.ddLayer.zIndex = 1000000;\n"
+        "      targetLayer.ddLayer.pageX = targetLayer.pageX;\n"
+        "      targetLayer.ddLayer.pageY = targetLayer.pageY + 18;\n"
+        "      targetLayer.document.images[8].src = '/sys/images/ico15c.gif';\n"
+        "      dd_current = targetLayer.topLayer;\n"
+        "      dd_current.form.FocusNotify(dd_current);\n"
+        "      dd_current.ddLayer.visibility = 'inherit';\n"
+        "   }\n"
+        "\n");
 
    /** Script initialization call. **/
-   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain, %s.layers.dd%dspane, %s.layers.dd%dthum, %d, '%s', '%s', '%s');\n", parentname, id, parentname, id, parentname, id, w, bgstr, hilight, fieldname);
+   snprintf(sbuf,HT_SBUF_SIZE,"    dd_init(%s.layers.dd%dmain, '%s', '%s', '%s');\n", parentname, id, bgstr, hilight, fieldname);
    htrAddScriptInit(s, sbuf);
 
    /* Read and initialize the dropdown items */
-   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-   if (qy) {
-      while((w_obj = objQueryFetch(qy, O_RDONLY))) {
-         objGetAttrValue(w_obj,"outer_type",POD(&ptr));
-         if (!strcmp(ptr,"widget/dropdownitem")) {
-	    if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
-	       mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-	       return -1;
-   	    }
-            memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	    snprintf(sbuf,HT_SBUF_SIZE,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, string);
-	    htrAddScriptInit(s, sbuf);
+   if (objGetAttrValue(w_obj,"sql",POD(&sql)) == 0) {
+       if ((qy = objMultiQuery(w_obj->Session, sql))) {
+          while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
+             // Label
+             attr = objGetFirstAttr(qy_obj);
+             if (!attr) {
+                mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+                return -1;
+             }
+             type = objGetAttrType(qy_obj, attr);
+             rval = objGetAttrValue(qy_obj, attr, &od);
+             if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
+                str = objDataToStringTmp(type, (void*)(&od), 0);
+             } else {
+                str = objDataToStringTmp(type, (void*)(od.String), 0);
+             }
+             snprintf(sbuf,HT_SBUF_SIZE,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, str);
+             htrAddScriptInit(s, sbuf);
+             // Value
+             attr = objGetNextAttr(qy_obj);
+             if (!attr) {
+                mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
+                return -1;
+             }
 
-	    if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
-	       mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-	       return -1;
-   	    }
-            memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	    snprintf(sbuf,HT_SBUF_SIZE,"'%s');\n", string);
-	    htrAddScriptInit(s, sbuf);
-         }
-         objClose(w_obj);
-      }
+             type = objGetAttrType(qy_obj, attr);
+             rval = objGetAttrValue(qy_obj, attr, &od);
+             if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
+                str = objDataToStringTmp(type, (void*)(&od), 0);
+             } else {
+                str = objDataToStringTmp(type, (void*)(od.String), 0);
+             }
+             snprintf(sbuf,HT_SBUF_SIZE," '%s');\n", str);
+             htrAddScriptInit(s, sbuf);
+          }
+          objQueryClose(qy);
+       }
+   } else {
+       if ((qy = objOpenQuery(w_obj,"",NULL,NULL,NULL))) {
+          while((w_obj = objQueryFetch(qy, O_RDONLY))) {
+             objGetAttrValue(w_obj,"outer_type",POD(&ptr));
+             if (!strcmp(ptr,"widget/dropdownitem")) {
+                if (objGetAttrValue(w_obj,"label",POD(&ptr)) != 0) {
+                   mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+                   return -1;
+                   }
+                memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+                snprintf(sbuf,HT_SBUF_SIZE,"    dd_additem(%s.layers.dd%dmain, '%s',", parentname, id, string);
+                htrAddScriptInit(s, sbuf);
+    
+                if (objGetAttrValue(w_obj,"value",POD(&ptr)) != 0) {
+                   mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+                   return -1;
+                   }
+                memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+                snprintf(sbuf,HT_SBUF_SIZE,"'%s');\n", string);
+                htrAddScriptInit(s, sbuf);
+             }
+             objClose(w_obj);
+          }
+          objQueryClose(qy);
+       }
    }
-   objQueryClose(qy);
 
    /** HTML body <DIV> element for the layers. **/
    snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"dd%dmain\">\n", id);
@@ -487,10 +451,6 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
    snprintf(sbuf,HT_SBUF_SIZE,"  </TABLE></TD><TD width=18><IMG SRC=/sys/images/ico15b.gif></TD></TR></TABLE>\n");
    htrAddBodyItem(s, sbuf);
    snprintf(sbuf,HT_SBUF_SIZE,"</DIV>\n");
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"dd%dspane\"></DIV>\n", id);
-   htrAddBodyItem(s, sbuf);
-   snprintf(sbuf,HT_SBUF_SIZE,"<DIV ID=\"dd%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n",id);
    htrAddBodyItem(s, sbuf);
 
    return 0;
