@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.12 2003/07/07 20:29:21 affert Exp $
+    $Id: obj_object.c,v 1.13 2003/08/01 15:53:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.13  2003/08/01 15:53:07  gbeeley
+    Fix for objDelete on certain types of data sources which rely on the
+    writability of obj->Prev during delete operations.
+
     Revision 1.12  2003/07/07 20:29:21  affert
     Fixed a bug.
 
@@ -1336,7 +1340,7 @@ objDelete(pObjSession session, char* path)
 
 	/** Lookup the directory path. **/
 	/*tmp = obj_internal_ProcessPath(session, path, 0, "");*/
-	tmp = obj_internal_ProcessOpen(session, path, 0, 0, "");
+	tmp = obj_internal_ProcessOpen(session, path, O_RDWR, 0, "");
 	if (!tmp) 
 	    {
 	    mssError(0,"OSML","Failed to delete object - pathname invalid");
