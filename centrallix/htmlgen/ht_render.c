@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.14 2002/06/20 16:22:08 gbeeley Exp $
+    $Id: ht_render.c,v 1.15 2002/06/24 20:07:41 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.15  2002/06/24 20:07:41  lkehresman
+    Committing a fix for Jonathan (he doesn't have CVS access right now).
+    This now detects Mozilla pre-1.0 versions.
+
     Revision 1.14  2002/06/20 16:22:08  gbeeley
     Wrapped the nonconstant format string warning in an ifdef WITH_SECWARN
     so it doesn't bug people other than developers.
@@ -165,6 +169,7 @@ htrRegisterUserAgent()
 	reg = (regex_t *)nmMalloc(sizeof(regex_t));
 	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:0\\.9\\.[7-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    xaAddItem(&(htregMoz), (void *)reg);
+	reg = (regex_t *)nmMalloc(sizeof(regex_t));
 	if (!regcomp(reg, "Mozilla\\/5\\.0 .*rv:1\\.0\\.[0-9]", REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    xaAddItem(&(htregMoz), (void *)reg);
 
