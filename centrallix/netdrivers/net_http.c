@@ -52,10 +52,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.15 2002/04/25 22:50:00 gbeeley Exp $
+    $Id: net_http.c,v 1.16 2002/05/01 02:20:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.16  2002/05/01 02:20:31  gbeeley
+    Modification in net_http: ls__req=close now allows multiple object
+    ids to be strung together in the ls__oid parameter.
+
     Revision 1.15  2002/04/25 22:50:00  gbeeley
     Added ability to reference default session in ls__mode=osml operations
     instead of having to create a new one.  Note that the session is the
@@ -669,6 +673,7 @@ int
 nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* request, pStruct req_inf)
     {
     char* ptr;
+    char* newptr;
     pObjSession objsess;
     pObject obj;
     pObjQuery qy;
@@ -858,8 +863,25 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 	        }
 	    else if (!strcmp(request,"close"))
 	        {
-		xhnFreeHandle(&(sess->Hctx), obj_handle);
-		objClose(obj);
+		/** For this, we loop through a comma-separated list of object
+		 ** ids to close.
+		 **/
+		ptr = NULL;
+		stAttrValue_ne(stLookup_ne(req_inf,"ls__oid"),&ptr);
+		while(ptr && *ptr)
+		    {
+		    obj_handle = xhnStringToHandle(ptr+1, &newptr, 16);
+		    if (newptr <= ptr+1) break;
+		    ptr = newptr;
+		    obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
+		    if (!obj || !ISMAGIC(obj, MGK_OBJECT)) 
+			{
+			mssError(1,"NHT","Invalid object id(s) in OSML 'close' request");
+			continue;
+			}
+		    xhnFreeHandle(&(sess->Hctx), obj_handle);
+		    objClose(obj);
+		    }
 	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
 			 "Pragma: no-cache\r\n"
 	    		 "\r\n"

@@ -62,10 +62,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.5 2002/04/25 17:59:59 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.6 2002/05/01 02:20:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.6  2002/05/01 02:20:31  gbeeley
+    Modification in net_http: ls__req=close now allows multiple object
+    ids to be strung together in the ls__oid parameter.
+
     Revision 1.5  2002/04/25 17:59:59  gbeeley
     Added better magic number support in the OSML API.  ObjQuery and
     ObjSession structures are now protected with magic numbers, and
@@ -2448,6 +2452,10 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		else if (cnt == 0 && (!(SYBD_USE_CURSORS) || qy->RowsSinceFetch < SYBD_CURSOR_ROWCOUNT))
 		    {
 		    /** No rows left and fewer than rowcount (or no) rows returned - query over. **/
+		    /** Release the command structure now that we're done. **/
+		    if (qy->Cmd) sybd_internal_Close(qy->Cmd);
+		    qy->Cmd = NULL;
+
 		    return NULL;
 		    }
 		else
