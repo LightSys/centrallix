@@ -1,0 +1,112 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'dropdown.html' -->
+<h2 class="widgetname"><a name="dropdown">dropdown</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/dropdown</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+		  <p>A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+		  <p>This widget can be placed within any visual widget (or within a form widget).</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the editbox, default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the editbox, default is 0.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the editbox.</td>
+</tr>
+<tr>
+<td class="name">highlight</td>
+<td class="type">integer</td>
+<td class="description">The color of the highlighted option when the mouse goes over the itme.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">integer</td>
+<td class="description">The background color for the widget.</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Fieldname (from the dataset) to bind this element to</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of widget/dropdownitem child widgets)</p>
+<table class="childproperties">
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">The text label to appear in the dropdown listing.</td>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">string</td>
+<td class="description">The actual data that is stored with this item.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+$Version=2$
+// Example using child widgets for options
+myDropDown1 &quot;widget/dropdown&quot;
+	{
+	x=10;
+	y=10;
+	width=120;
+	bgcolor=&quot;#dcdcdc&quot;;
+	highlight=&quot;#c0c0c0&quot;;
+	fieldname=&quot;gender&quot;;
+
+	myDropDownChild1 &quot;widget/dropdownitem&quot;
+		{
+		label=&quot;Male&quot;;
+		value=&quot;0&quot;;
+		}
+	myDropDownChild2 &quot;widget/dropdownitem&quot;
+		{
+		label=&quot;Female&quot;;
+		value=&quot;1&quot;;
+		}
+	}
+
+$Version=2$
+//  Example getting options from datasource using a query
+myDropDown2 &quot;widget/dropdown&quot;
+	{
+	x=10;
+	y=10;
+	width=120;
+	bgcolor=&quot;#dcdcdc&quot;;
+	highlight=&quot;#c0c0c0&quot;;
+	fieldname=&quot;gender&quot;;
+	sql=&quot;SELECT :gender_label, :gender_value FROM /my_DB/infotable/rows&quot;;
+	}
+
+		
+		</pre>
+</body>
+</html>

@@ -115,6 +115,72 @@ my_editbox "widget/editbox"
 		]]>
 		</sample>
 	</widget>
+	<widget name="dropdown" type="widget/dropdown">
+		<overview>
+		  <p>A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.</p>
+		</overview>
+		<usage>
+		  <p>This widget can be placed within any visual widget (or within a form widget).</p>
+		</usage>
+		<properties>
+			<property name="x" type="integer">x-coordinate of the upper left corner of the editbox, default is 0.</property>
+			<property name="y" type="integer">y-coordinate of the upper left corner of the editbox, default is 0.</property>
+			<property name="width" type="integer">width, in pixels, of the editbox.</property>
+			<property name="highlight" type="integer">The color of the highlighted option when the mouse goes over the itme.</property>
+			<property name="bgcolor" type="integer">The background color for the widget.</property>
+			<property name="fieldname" type="string">Fieldname (from the dataset) to bind this element to</property>
+		</properties>
+		<children>
+			<child type="widget/dropdownitem">
+				<childproperty name="label" type="string">The text label to appear in the dropdown listing.</childproperty>
+				<childproperty name="value" type="string">The actual data that is stored with this item.</childproperty>
+			</child>
+		</children>
+		<events>
+		</events>
+		<actions>
+		</actions>
+		<sample>
+		<![CDATA[
+$Version=2$
+// Example using child widgets for options
+myDropDown1 "widget/dropdown"
+	{
+	x=10;
+	y=10;
+	width=120;
+	bgcolor="#dcdcdc";
+	highlight="#c0c0c0";
+	fieldname="gender";
+
+	myDropDownChild1 "widget/dropdownitem"
+		{
+		label="Male";
+		value="0";
+		}
+	myDropDownChild2 "widget/dropdownitem"
+		{
+		label="Female";
+		value="1";
+		}
+	}
+
+$Version=2$
+//  Example getting options from datasource using a query
+myDropDown2 "widget/dropdown"
+	{
+	x=10;
+	y=10;
+	width=120;
+	bgcolor="#dcdcdc";
+	highlight="#c0c0c0";
+	fieldname="gender";
+	sql="SELECT :gender_label, :gender_value FROM /my_DB/infotable/rows";
+	}
+
+		]]>
+		</sample>
+	</widget>
 	<widget name="execmethod" type="widget/execmethod">
 		<overview>
 			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
