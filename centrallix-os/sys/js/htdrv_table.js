@@ -47,7 +47,20 @@ function tbld_update(p1)
     for(var i=1;i<this.windowsize+1;i++)
 	{
 	if(this.osrc.FirstRecord>this.SlotToRecnum(i) || this.osrc.LastRecord<this.SlotToRecnum(i))
-	    confirm('oops... '+this.SlotToRecnum(i)+'('+i+') is not in the replica');
+	    {
+	    var temp;
+	    temp="oops... Looking for record not in replica\n";
+	    temp+="Looking for:"+this.SlotToRecnum(i)+" slot("+i+")\n";
+	    temp+="FirstRecord: "+this.osrc.FirstRecord+"\n";
+	    temp+="LastRecord: "+this.osrc.LastRecord+"\n";
+	    temp+="Replica Contents:";
+	    for(var i in this.osrc.replica)
+		{
+		temp+=" "+i;
+		}
+	    temp+="\n";
+	    confirm(temp);
+	    }
 	
 	this.rows[i].y=((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1));
 	this.rows[i].fg.visibility='inherit';
