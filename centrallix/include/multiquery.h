@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.2 2002/03/23 01:30:44 gbeeley Exp $
+    $Id: multiquery.h,v 1.3 2002/04/05 04:42:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.3  2002/04/05 04:42:42  gbeeley
+    Fixed a bug involving inconsistent serial numbers and objlist states
+    for a multiquery if the user skips back to a previous fetched object
+    context and then continues on with the fetching.  Problem also did
+    surface if user switched to last-fetched-object after switching to
+    a previously fetched one.
+
     Revision 1.2  2002/03/23 01:30:44  gbeeley
     Added ls__startat option to the osml "queryfetch" mechanism, in the
     net_http.c driver.  Set ls__startat to the number of the first object
@@ -167,9 +174,11 @@ typedef struct
     pQueryStructure	QTree;			/* query syntax tree head ptr */
     int			Flags;			/* bitmask MQ_F_xxx */
     int			LinkCnt;		/* number of opens on this */
-    int			Serial;
+    int			CntSerial;		/* serial number counter. */
+    int			CurSerial;		/* reflects what the objlist has in it. */
     pObjSession		SessionID;
     pParamObjects	OneObjList;
+    ParamObjects	CurObjList;		/* objlist used for next fetch */
     }
     MultiQuery, *pMultiQuery;
 

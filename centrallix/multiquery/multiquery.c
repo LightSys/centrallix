@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.5 2002/03/23 01:30:44 gbeeley Exp $
+    $Id: multiquery.c,v 1.6 2002/04/05 04:42:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.6  2002/04/05 04:42:43  gbeeley
+    Fixed a bug involving inconsistent serial numbers and objlist states
+    for a multiquery if the user skips back to a previous fetched object
+    context and then continues on with the fetching.  Problem also did
+    surface if user switched to last-fetched-object after switching to
+    a previously fetched one.
+
     Revision 1.5  2002/03/23 01:30:44  gbeeley
     Added ls__startat option to the osml "queryfetch" mechanism, in the
     net_http.c driver.  Set ls__startat to the number of the first object
@@ -1284,11 +1291,12 @@ mq_internal_CkSetObjList(pMultiQuery mq, pPseudoObject p)
     {
 
     	/** Check serial id # **/
-	if (mq->Serial == p->Serial) return 0;
+	if (mq->CurSerial == p->Serial) return 0;
 
 	/** Ok, need to update... **/
 	memcpy(mq->QTree->ObjList, &p->ObjList, sizeof(ParamObjects));
 	mq->QTree->ObjList->MainFlags |= EXPR_MO_RECALC;
+	mq->CurSerial = p->Serial;
 
     return 1;
     }
@@ -1314,7 +1322,8 @@ mqStartQuery(pObjSession session, char* query_text)
 	this = (pMultiQuery)nmMalloc(sizeof(MultiQuery));
 	if (!this) return NULL;
 	memset(this,0,sizeof(MultiQuery));
-	this->Serial = 0;
+	this->CntSerial = 0;
+	this->CurSerial = 0;
 	this->SessionID = session;
 	this->LinkCnt = 1;
 
@@ -1459,6 +1468,13 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
     int i;
     pObject obj;
 
+	/** Make sure the cur objlist is correct **/
+	if (qy->CurSerial != qy->CntSerial)
+	    {
+	    qy->CurSerial = qy->CntSerial;
+	    memcpy(qy->QTree->ObjList, &qy->CurObjList, sizeof(ParamObjects));
+	    }
+
 	/** Search for results matching the HAVING clause **/
 	while(1)
 	    {
@@ -1474,8 +1490,14 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
 	    p->Query = qy;
 	    qy->LinkCnt++;
 
-	    /** Copy the object list and link to the objects **/
+	    /** Copy the object list and link to the objects.
+	     ** We don't link to objects for the qy->CurObjList since that
+	     ** objlist normally shadows QTree->ObjList, except when the
+	     ** user skips back to previous objects temporarily and then
+	     ** goes and does another fetch.
+	     **/
 	    memcpy(&p->ObjList, qy->QTree->ObjList, sizeof(ParamObjects));
+	    memcpy(&qy->CurObjList, qy->QTree->ObjList, sizeof(ParamObjects));
 	    for(i=0;i<p->ObjList.nObjects;i++) 
 	        {
 	        obj = (pObject)(p->ObjList.Objects[i]);
@@ -1483,8 +1505,9 @@ mqQueryFetch(void* qy_v, int mode, pObjTrxTree* oxt)
 	        }
 
 	    /** Update row serial # **/
-	    qy->Serial++;
-	    p->Serial = qy->Serial;
+	    qy->CntSerial++;
+	    p->Serial = qy->CntSerial;
+	    qy->CurSerial = qy->CntSerial;
 
 	    /** Verify HAVING clause **/
 	    if (!qy->HavingClause) break;
