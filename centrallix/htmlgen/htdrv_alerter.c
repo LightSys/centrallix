@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.5  2002/03/12 04:01:48  jorupp
+    * started work on a tree-view interface to the javascript DOM
+         didn't go so well...
+
     Revision 1.4  2002/03/09 20:24:10  jorupp
     * modified ActionViewDOM to handle recursion and functions better
     * removed some redundant code
@@ -151,12 +155,20 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        funcbehav=1;\n"
 		"        }\n"
 		*/
+		"    alrt_view_DOM(walkthis);\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "alrt_view_DOM", "\n"
+		"function alrt_view_DOM(walkthis)\n"
+		"    {\n"
 		"    var DOM=alrt_walk_DOM(walkthis,\"Base Object\",typeof(walkthis),0);\n"
 		"    var win=window.open();\n"
 		"    win.document.write(\"<PRE>\"+DOM+\"</PRE>\\n\");\n"
 		"    win.document.close();\n"
 		"    delete DOM\n"
 		"    }\n", 0);
+
+	  
 	htrAddScriptFunction(s, "alrt_walk_DOM", "\n"
 		"function alrt_walk_DOM(walkthis,name,type,depth)\n"
 		"    {\n"
@@ -164,8 +176,11 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        return \"\";\n"
 		"    if(type==\"function\")\n"
 		"        {\n"
-		"        var fname=((/function ([^(]*)/).exec(walkthis))[1];\n"
-		"        return \"<LI>\"+name+\" (\"+type+\"): <b>\"+fname+\"</b></LI>\\n\"\n"
+		"        var fname=((/function([^(]*)/).exec(walkthis));\n"
+		"        if(fname && fname[1])\n"
+		"            {\n"
+		"            return \"<LI>\"+name+\" (\"+type+\"): <b>\"+fname[1]+\"</b></LI>\\n\"\n"
+		"            }\n"
 		/*
 		"        if(funcbehav==1)\n"
 		"            {\n"
@@ -212,7 +227,6 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    ret+=\"</UL>\\n\";\n"
 		"    return ret;\n"
 		"    }\n", 0);
-
 #if 0
 		"function alrt_search(arr,obj)\n"
 		"    {\n"
@@ -224,6 +238,146 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    return 0;\n"
 		"    }\n", 0);
 #endif
+
+
+
+/***  ---- Jonathan Rupp - 3/11/02 ----
+ *** the tree_DOM functions are my attempt to get a tree-view type
+ *** display of the Javascript DOM.  Needless to say, it didn't go
+ *** so well.  I tried to get it working, but it only partially works
+ *** (when you expand a list, it doesn't adjust the others, and 
+ *** you can't un-expand a list)
+ ***/
+	htrAddScriptFunction(s, "alrt_action_view_tree_DOM", "\n"
+		"function alrt_action_view_tree_DOM(param)\n"
+		"    {\n"
+		"    var viewthis=param[\"param\"];\n"
+		"    alrt_view_tree_DOM(viewthis);\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "alrt_tree_DOM_compress", "\n"
+		"function alrt_tree_DOM_compress(s,l)\n"
+		"    {\n"
+		"    if(l.document.layers.length)\n"
+		"        {\n"
+		"        for(var i=l.document.layers.length-1;i>-1;i--)\n"
+		"            {\n"
+		"            s(s,l.document.layers[i]);\n"
+		"            }\n"
+		"        }\n"
+		"    l.clip.height=0;\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "alrt_tree_DOM_onMD", "\n"
+		"function alrt_tree_DOM_onMD()\n"
+		"    {\n"
+		"    pl=this.layer;\n"
+		"    //if(!pl) pl=this;\n"
+		"    if(pl.isExpanded)\n"
+		"        {\n"	/* already expanded, compress */
+		"        pl.window.confirm(\"Compressing at level \"+pl.level);\n"
+		"        pl.window.compress(pl.window.compress,pl);\n"
+		"        pl.window.pg_resize(pl);\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"	/* expand it */
+		"        var top=pl.top+pl.clip.height;\n"
+		"        for(var i in pl.obj)\n"
+		"            {\n"
+		"            l=new Layer(1024,pl);\n"
+		"            l.isExpanded=false;\n"
+		"            l.level=pl.level+1;\n"
+		"            l.root=pl.root;\n"
+		"            l.obj=pl.obj[i];\n"
+		"            l.objname=i;\n"
+		"            l.window=pl.window;\n"
+		"            l.bgColor=pl.document.bgColor;\n"
+		"            l.top=top;\n"
+		"            l.left=pl.left+20;\n"
+		
+		"            l2=new Layer(1024,l);\n"
+		"            l2.bgColor=l.bgColor;\n"
+		"            l2.layer=l;\n"
+		
+		"            switch(typeof(l.obj))\n"
+		"                {\n"
+		"                case \"object\":\n"
+		"                case \"array\":\n"
+		"                case \"function\":\n"
+		"                    l2.document.write(l.objname+\" (\"+typeof(l.obj)+\"):\");\n"
+		"                    l2.captureEvents(Event.MOUSEDOWN);\n"
+		"                    l2.onMouseDown=l.window.treeonMD;\n"
+		"                    break;\n"
+		"                default:\n"
+		"                    l2.document.write(l.objname+\" (\"+typeof(l.obj)+\"):\"+l.obj);\n"
+		"                    break;\n"
+		"                }\n"
+		"            \n"
+		"            l2.document.close();\n"
+		"            \n"
+		"            top+=l2.clip.height;\n"
+		"            l.visibility='inherit';\n"
+		"            l2.visibility='inherit';\n"
+		"            pl.window.pg_resize(l);\n"
+		"            }\n"
+		"        pl.window.pg_resize(pl);\n"
+		"        pl.isExpanded=true;\n"
+		"        }\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "alrt_view_tree_DOM", "\n"
+		"function alrt_view_tree_DOM(viewthis)\n"
+		"    {\n"
+		"    var win=window.open();\n"
+		"    win.objtoview=navBtn1;\n"
+		"    win.buildbasetree=alrt_build_base_tree_DOM;\n"
+		"    win.treeonMD=alrt_tree_DOM_onMD;\n"
+		"    win.compress=alrt_tree_DOM_compress;\n"
+		"    win.pg_resize=pg_resize;\n"
+		"    win.document.write(\"<html>\\n\");\n"
+		"    win.document.write(\"<head>\\n\");\n"
+		"    win.document.write(\"  <STYLE TYPE=\\\"text/css\\\">\\n\");\n"
+		"    win.document.write(\"    dr { POSITION: absolute; VISIBILITY:inherit; TOP:0; LEFT:0; HEIGHT:1000; WIDTH:800; }\\n\");\n"
+		"    win.document.write(\"  </STYLE>\\n\");\n"
+		"    win.document.write(\"</head>\\n\");\n"
+		"    win.document.write(\"<body onload=\\\"window.buildbasetree();\\\">\\n\");\n"
+		"    \n" /* I don't know why, but I have to use LAYER here... */
+		"    win.document.write(\"<LAYER ID=\\\"dr\\\">\");\n"
+		"    win.document.write(\"  <LAYER ID=\\\"data\\\">\");\n"
+		"    if(win.objtoview && win.objtoview.name)\n"
+		"        {\n"
+		"        win.document.write(win.objtoview.name+\" (\"+typeof(win.objtoview)+\"):\");\n"
+		"        }\n"
+		"    else\n"
+		"        {\n"
+		"        win.document.write(\"Base Object (\"+typeof(win.objtoview)+\"):\");\n"
+		"        }\n"
+		"    win.document.write(\"  </LAYER>\\n\");\n"
+		"    win.document.write(\"</LAYER>\\n\");\n"
+		"    \n"
+		"    win.document.write(\"</body>\\n\");\n"
+		"    win.document.write(\"</html>\");\n"
+		"    win.document.close();\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "alrt_build_base_tree_DOM", "\n"
+		"function alrt_build_base_tree_DOM()\n"
+		"    {\n"
+		"    l=this.document.dr;\n"
+		"    //alrt_view_DOM(l);\n"
+		"    l.isExpanded=false;\n"
+		"    l.level=0;\n"
+		"    l.root=l;\n"
+		"    l.obj=this.objtoview\n"
+		"    l.window=this;\n"
+		"    l.children=null;\n"
+		"    l.bgColor=this.document.bgColor;\n"
+		"    var l2=l.document.data;\n"
+		"    l2.layer=l;\n"
+		"    l2.captureEvents(Event.MOUSEDOWN);\n"
+		"    l2.onMouseDown=l.window.treeonMD;\n"
+		"    l.visibility='inherit';\n"
+		"    }\n", 0);
 	
 	/** Alert initializer **/
 	htrAddScriptFunction(s, "alrt_init", "\n"
@@ -233,6 +387,7 @@ htalrtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    alrt.ActionAlert = alrt_action_alert;\n"
 		"    alrt.ActionConfirm = alrt_action_confirm;\n"
 		"    alrt.ActionViewDOM = alrt_action_view_DOM;\n"
+		"    alrt.ActionViewTreeDOM = alrt_action_view_tree_DOM;\n"
 		"    return alrt;\n"
 		"    }\n",0);
 
