@@ -63,10 +63,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.45 2004/08/15 03:10:48 gbeeley Exp $
+    $Id: net_http.c,v 1.46 2004/08/17 03:46:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.46  2004/08/17 03:46:41  gbeeley
+    - ignore "null" connections from MSIE
+    - better error reporting when wgtr routines fail
+    - use location.replace to make the browser's Back button work
+
     Revision 1.45  2004/08/15 03:10:48  gbeeley
     - moving client canvas size detection logic from htmlgen to net_http so
       that it can be passed to wgtrVerify(), later to be used in adjusting
@@ -2259,7 +2264,7 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 			 "        loc += 'cx__width=' + window.document.body.clientWidth + '&cx__height=' + window.document.body.clientHeight;\n"
 			 "    else\n"
 			 "        loc += 'cx__width=' + window.innerWidth + '&cx__height=' + window.innerHeight;\n"
-			 "    window.location.href = loc;\n"
+			 "    window.location.replace(loc);\n"
 			 "    }\n");
 	fdPrintf(output, "</script><body %s onload='startup();'><img src='/sys/images/loading.gif'></body></html>\n", bgnd);
 
@@ -2473,13 +2478,24 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 
 		/** Read the app spec, verify it, and generate it to DHTML **/
 		if ( (widget_tree = wgtrParseOpenObject(target_obj)) == NULL)
+		    {
 		    mssError(1, "HTTP", "Couldn't parse %s of type %s", url_inf->StrVal, ptr);
+		    fdPrintf(conn,"<h1>An error occurred while constructing the application:</h1><pre>");
+		    mssPrintError(conn);
+		    objClose(target_obj);
+		    return -1;
+		    }
 		else
 		    {
 		    /*wgtrPrint(widget_tree, 0);*/
 		    if (wgtrVerify(widget_tree, client_w, client_h, client_w, client_h) < 0)
 			{
 			mssError(0, "HTTP", "Couldn't verify widget tree for '%s'", target_obj->Pathname->Pathbuf);
+			fdPrintf(conn,"<h1>An error occurred while constructing the application:</h1><pre>");
+			mssPrintError(conn);
+			wgtrFree(widget_tree);
+			objClose(target_obj);
+			return -1;
 			}
 		    else wgtrRender(conn, target_obj->Session, widget_tree, url_inf, "DHTML");
 		    wgtrFree(widget_tree);
@@ -2981,11 +2997,24 @@ nht_internal_ConnHandler(void* conn_v)
 	/** Read in the main request header.  Note - error handler is at function
 	 ** tail, as in standard goto-based error handling.
 	 **/
-	if (mlxNextToken(s) != MLX_TOK_KEYWORD) { msg="Invalid method syntax"; goto error; }
+	toktype = mlxNextToken(s);
+	if (toktype == MLX_TOK_EOF)
+	    {
+	    /** MSIE likes to open connections and then close them without
+	     ** sending a request; don't print errors on this condition.
+	     **/
+	    mlxCloseSession(s);
+	    netCloseTCP(conn, 1000, 0);
+	    thExit();
+	    }
+
+	/** Expecting request method **/
+	if (toktype != MLX_TOK_KEYWORD) { msg="Invalid method syntax"; goto error; }
 	mlxCopyToken(s,method,16);
 	mlxSetOptions(s,MLX_F_IFSONLY);
+
+	/** Expecting request URL and version **/
 	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Invalid url syntax"; goto error; }
-	/*strcpy(url,mlxStringVal(s,NULL));*/
 	did_alloc = 1;
 	urlptr = mlxStringVal(s, &did_alloc);
 	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected HTTP version after url"; goto error; }
