@@ -5,6 +5,8 @@
 #include "mtask.h"
 #include "mtlexer.h"
 #include "obj.h"
+#include <readline/readline.h>
+#include <readline/history.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -46,12 +48,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.1 2001/08/13 18:00:46 gbeeley Exp $
+    $Id: test_obj.c,v 1.2 2001/09/18 15:39:23 mattphillips Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
-    Revision 1.1  2001/08/13 18:00:46  gbeeley
-    Initial revision
+    Revision 1.2  2001/09/18 15:39:23  mattphillips
+    Added GNU Readline support.  This adds full commandline editting support, and
+    scrollback support.  No tab completion yet, though.
+
+    NOTE: The readline and readline-devel packages (for RPM based distributions)
+    are required for building now.
+
+    Revision 1.1.1.1  2001/08/13 18:00:46  gbeeley
+    Centrallix Core initial import
 
     Revision 1.1.1.1  2001/08/07 02:30:51  gbeeley
     Centrallix Core Initial Import
@@ -66,6 +75,8 @@ start(void* v)
     {
     pObjSession s;
     char sbuf[1024];
+    static char* inbuf = (char *)NULL;
+    char prompt[1024];
     char* ptr;
     char cmdname[64];
     pObject obj,child_obj,to_obj;
@@ -123,6 +134,9 @@ start(void* v)
 	htpInitialize();
 	txtInitialize();
 
+	/** Disable tab complete until we have a function to do something useful with it. **/
+	rl_bind_key ('\t', rl_insert);
+
 	/** Authenticate **/
 	printf("Username: "); gets(user);
 	pwd = getpass("Password: ");
@@ -136,10 +150,24 @@ start(void* v)
 	while(1)
 	    {
 	    is_where = 0;
-	    printf("OSML:%s> ",objGetWD(s)); fflush(stdout);
-	    gets(sbuf);
+	    sprintf(prompt,"OSML:%.1000s> ",objGetWD(s));
+
+	    /** If the buffer has already been allocated, return the memory to the free pool. **/
+	    if (inbuf)
+		{
+		free (inbuf);
+		inbuf = (char *)NULL;
+		}   
+
+	    /** Get a line from the user using readline library call. **/
+	    inbuf = readline (prompt);   
+
+	    /** If the line has any text in it, save it on the readline history. **/
+	    if (inbuf && *inbuf)
+		add_history (inbuf);
+
 	    if (ls) mlxCloseSession(ls);
-	    ls = mlxStringSession(sbuf,MLX_F_ICASE);
+	    ls = mlxStringSession(inbuf,MLX_F_ICASE);
 	    if (mlxNextToken(ls) != MLX_TOK_KEYWORD) continue;
 	    ptr = mlxStringVal(ls,NULL);
 	    if (!ptr) continue;
