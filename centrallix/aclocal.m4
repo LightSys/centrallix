@@ -67,17 +67,12 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 dnl Define the location of the Centrallix config file
 AC_DEFUN(CENTRALLIX_CONF_FILE,
     [
-	AC_ARG_WITH(centrallix-config,
-	    AC_HELP_STRING([--with-centrallix-config=FILE],
-		[Full path of centrallix config file (default is PREFIX/etc/centrallix.conf)]
-	    ),
-	    centrallix_config="$withval",
-	    if test "$prefix" = "NONE"; then
-		centrallix_config="$ac_default_prefix/etc/centrallix.conf"
-	    else
-		centrallix_config="$prefix/etc/centrallix.conf"
-	    fi
-	)
+	centrallix_config="$sysconfdir/centrallix.conf"
+	if test "$prefix" = "NONE"; then
+	    centrallix_config="${centrallix_config/\$\{prefix\}/$ac_default_prefix}"
+	else
+	    centrallix_config="${centrallix_config/\$\{prefix\}/$prefix}"
+	fi
 
 	AC_DEFINE_UNQUOTED(CENTRALLIX_CONFIG, 
 	    "$centrallix_config", 
@@ -85,6 +80,22 @@ AC_DEFUN(CENTRALLIX_CONF_FILE,
 	)
     ]
 )
+
+dnl Define the location of the Centrallix OS tree
+AC_DEFUN(CENTRALLIX_OS_DIR,
+    [
+	AC_ARG_WITH(centrallix-os,
+	    AC_HELP_STRING([--with-centrallix-os=FILE],
+		[Full path of centrallix OS directory (default is /var/centrallix/os)]
+	    ),
+	    centrallix_os="$withval",
+	    centrallix_os="/var/centrallix/os"
+	)
+
+	AC_SUBST(CXOSDIR, $centrallix_os)
+    ]
+)
+
 
 dnl Test for the Sybase libraries.
 AC_DEFUN(CENTRALLIX_CHECK_SYBASE,

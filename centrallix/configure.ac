@@ -9,6 +9,7 @@ CFLAGS=${CFLAGS/-O2}
 AC_PROG_MAKE_SET
 AC_PROG_AWK
 AC_PATH_PROG([STRIP], [strip], [])
+AC_PATH_PROG([SED], [sed], [])
 AC_PROG_INSTALL
 
 dnl Checks for libraries.
@@ -39,6 +40,7 @@ dnl Centrallix specific tests.
 CENTRALLIX_CHECK_CENTRALLIX
 AH_TEMPLATE([CENTRALLIX_CONFIG], [Full path of config file])
 CENTRALLIX_CONF_FILE
+CENTRALLIX_OS_DIR
 
 dnl HTTP osdriver support.
 AH_TEMPLATE([USE_HTTP], [Define for HTTP support])

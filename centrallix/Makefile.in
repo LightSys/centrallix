@@ -37,13 +37,14 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 AWK = @AWK@
 CC = @CC@
 STRIP = @STRIP@
+SED = @SED@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_DATA = @INSTALL_DATA@
 
 # VPATH - all the directories we manage.
-VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression
+VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc
 
 # Support modules -- only basic utilities.
 #XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
@@ -145,16 +146,16 @@ XRPTMODS=epsonfx_prt.o \
 	 text_prt.o
 RPTMODS=$(patsubst %,report/%,$(XRPTMODS))
 
-## V3 reporting subsystem
-#XV3RPTMODS=prtmgmt_v3_api.o \
-#	   prtmgmt_v3_fm_strict.o \
-#	   prtmgmt_v3_internal.o \
-#	   prtmgmt_v3_lm_page.o \
-#	   prtmgmt_v3_lm_text.o \
-#	   prtmgmt_v3_main.o \
-#	   prtmgmt_v3_od_pcl.o \
-#	   prtmgmt_v3_session.o
-#V3RPTMODS=$(patsubst %,report/%,$(XV3RPTMODS))
+# V3 reporting subsystem
+XV3RPTMODS=prtmgmt_v3_api.o \
+	   prtmgmt_v3_fm_strict.o \
+	   prtmgmt_v3_internal.o \
+	   prtmgmt_v3_lm_page.o \
+	   prtmgmt_v3_lm_text.o \
+	   prtmgmt_v3_main.o \
+	   prtmgmt_v3_od_pcl.o \
+	   prtmgmt_v3_session.o
+V3RPTMODS=$(patsubst %,report/%,$(XV3RPTMODS))
 
 # Expression evaluation/compilation manager.
 XEXPRMODS=exp_main.o \
@@ -181,6 +182,12 @@ TESTSUITE=$(patsubst %,testsuite/%,$(XTESTSUITE))
 
 # Loadable modules.
 MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES)
+
+# Configuration Files
+XCONFFILES=centrallix.conf \
+	   rootnode \
+	   types.cfg
+CONFFILES=$(patsubst %,etc/%,$(XCONFFILES))
 
 # Some basic build parameters.
 MASTERHOST=greg
@@ -238,11 +245,15 @@ modules_install: mods
 	@echo "***************************************************************"
 	@echo ""
 
-all:	centrallix mods
+config: etc/rootnode etc/centrallix.conf etc/centrallix.init
+
+all:	centrallix mods config
 
 install: all modules_install
 	@mkdir -p $(sbindir)
 	$(INSTALL) centrallix $(sbindir)
+	$(INSTALL) -m 644 $(CONFFILES) $(sysconfdir)
+	#$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
 
 .c.so:	$<
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
@@ -269,11 +280,22 @@ lsclient: lsclient.o $(BASIC)
 htmltest: htmltest.o $(SUPPORT)
 	$(CC) htmltest.o $(SUPPORT) $(PROFILE) -o htmltest
 
+etc/rootnode:
+	$(SED) -e "s|##OSDIR##|@CXOSDIR@|g" etc/rootnode.in > etc/rootnode
+
+etc/centrallix.conf:
+	$(SED) -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LIBDIR##|$(libdir)|g" etc/centrallix.conf.in > etc/centrallix.conf
+
+etc/centrallix.init:
+	$(SED) -e "s|##SBINDIR##|$(sbindir)|g" -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LOCALSTATEDIR##|$(localstatedir)|g" -e "s|##LIBDIR##|$(libdir)|g" -e "s|##CXLIBDIR##|$(CXLIBDIR)|g" etc/centrallix.init.in > etc/centrallix.init
+
 clean:
 	@rm -f */*.o
 	@rm -f */*.so
 	@rm -f centrallix test_obj lsclient
 	@rm -f *.o
+	@rm -f etc/centrallix.conf etc/rootnode
+	@rm -f etc/centrallix.init
 
 distclean: clean
 	@rm -f config.status config.cache config.log

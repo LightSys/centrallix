@@ -3,6 +3,5 @@
 //
 rootnode "system/uxfile"
     {
-    path = "/home/centrallix/os"
-    //path = "/var/centrallix/os"
+    path = "##OSDIR##"
     }

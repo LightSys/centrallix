@@ -7,9 +7,9 @@ $Version=2$
 centrallix "system/config"
     {
     // General Configuration Data
-    types_config = "/usr/local/etc/types.cfg";
+    types_config = "##SYSCONFDIR##/types.cfg";
     rootnode_type = "system/uxfile";
-    rootnode_file = "/usr/local/etc/rootnode";
+    rootnode_file = "##SYSCONFDIR##/rootnode";
     
     // Configuration for various modules follows....
 
@@ -36,7 +36,7 @@ centrallix "system/config"
 	// Authentication method - "system" or "altpasswd".
 	auth_method = "system";
 	//auth_method = "altpasswd";
-	//altpasswd_file = "/usr/local/etc/cxpasswd";
+	//altpasswd_file = "##SYSCONFDIR##/cxpasswd";
 
 	// Error message logging mechanism.  Method is 'stdout' or 'syslog'.
 	log_method = "stdout";
@@ -51,7 +51,7 @@ centrallix "system/config"
     // Loadable Modules
     modules "system/config"
 	{
-//	sybd "system/config-module" { path="/usr/local/lib/centrallix/objdrv_sybase.so"; type="osdriver"; }
+//	sybd "system/config-module" { path="##LIBDIR##/objdrv_sybase.so"; type="osdriver"; }
 	}
     }
 
