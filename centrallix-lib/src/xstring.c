@@ -26,10 +26,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.3 2001/10/03 15:48:09 gbeeley Exp $
+    $Id: xstring.c,v 1.4 2002/08/06 16:00:29 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.4  2002/08/06 16:00:29  lkehresman
+    Added some xstring manipulation functions:
+      xsRTrim - right trim whitespace
+      xsLTrim - left trim whitespace
+      xsTrim - xsRTrim && xsLTrim
+
     Revision 1.3  2001/10/03 15:48:09  gbeeley
     Added xsWrite() function to mimic fdWrite/objWrite for XStrings.
 
@@ -373,4 +379,54 @@ xsWrite(pXString this, char* buf, int len, int offset, int flags)
     return len;
     }
 
+/*** xsRTrim - Trims all the white space off of the right side
+ *** of a given XString.  This is accomplished by moving the
+ *** \0 character up to the desired location.
+ ***/
+int
+xsRTrim(pXString this)
+    {
+    int i;
 
+	for (i=this->Length-1; i >= 0 && 
+		   (this->String[i] == '\r' ||
+		    this->String[i] == '\n' ||
+		    this->String[i] == '\t' ||
+		    this->String[i] == ' '); i--);
+	this->String[i+1] = '\0';
+	this->Length -= (i+1);
+
+    return 0;
+    }
+
+/*** xsLTrim - Trims all the white space off of the left side
+ *** of a given XString.  This is accomplished by using memmove.
+ ***/
+int
+xsLTrim(pXString this)
+    {
+    int i;
+
+	for (i=0; i < this->Length && 
+		   (this->String[i] == '\r' ||
+		    this->String[i] == '\n' ||
+		    this->String[i] == '\t' ||
+		    this->String[i] == ' '); i++);
+	memmove(this->String, this->String+i, this->Length-i);
+	this->Length -= i;
+	this->String[this->Length] = '\0';
+
+    return 0;
+    }
+
+/*** xsTrim - Does both xsLTrim and xsRTrim on the given string
+ ***/
+int
+xsTrim(pXString this)
+    {
+
+	xsLTrim(this);
+	xsRTrim(this);
+
+    return 0;
+    }

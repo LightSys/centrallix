@@ -20,10 +20,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.3 2001/10/03 15:48:09 gbeeley Exp $
+    $Id: xstring.h,v 1.4 2002/08/06 16:00:28 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.4  2002/08/06 16:00:28  lkehresman
+    Added some xstring manipulation functions:
+      xsRTrim - right trim whitespace
+      xsLTrim - left trim whitespace
+      xsTrim - xsRTrim && xsLTrim
+
     Revision 1.3  2001/10/03 15:48:09  gbeeley
     Added xsWrite() function to mimic fdWrite/objWrite for XStrings.
 
@@ -63,6 +69,9 @@ char* xsStringEnd(pXString this);
 int xsPrintf(pXString this, char* fmt, ...);
 int xsConcatPrintf(pXString this, char* fmt, ...);
 int xsWrite(pXString this, char* buf, int len, int offset, int flags);
+int xsRTrim(pXString this);
+int xsLTrim(pXString this);
+int xsTrim(pXString this);
 
 #define XS_U_SEEK	2
 
