@@ -223,11 +223,44 @@ function tv_doalert()
     alert(this);
     }
 
-function tv_build_layer(l,img_src,link_href,link_text, link_bold)
+function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_subobj)
     {
+    // build the image list
+    l.imgs = new Array();
+    l.imgs[l.tree_depth] = img_src;
+    var start_img = (l.mainlayer.show_branches)?0:l.tree_depth;
+    for(var i = start_img; i<l.tree_depth-1; i++)
+	{
+	if (l.parent.imgs[i] == '/sys/images/tree_middle_blank.gif' || l.parent.imgs[i] == '/sys/images/tree_corner_closed.gif' || l.parent.imgs[i] == '/sys/images/tree_corner_leaf.gif' || l.parent.imgs[i] == '/sys/images/tree_corner_open.gif')
+	    l.imgs[i] = '/sys/images/tree_middle_blank.gif';
+	else
+	    l.imgs[i] = '/sys/images/tree_middle_branch.gif';
+	}
+    if (l.tree_depth > start_img)
+	{
+	if (is_last)
+	    {
+	    if (has_subobj == null || has_subobj == true)
+		l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_closed.gif';
+	    else
+		l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_leaf.gif';
+	    }
+	else
+	    {
+	    if (has_subobj == null || has_subobj == true)
+		l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_closed.gif';
+	    else
+		l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_leaf.gif';
+	    }
+	}
+
+    // build the layer
     if(cx__capabilities.Dom0NS)
 	{
-	var tvtext = "<IMG SRC='" + img_src + "' align='left'>&nbsp;<A HREF='" + link_href + "'>" +
+	var tvtext = "";
+	for(var i = start_img; i<=l.tree_depth; i++)
+	    tvtext += "<IMG SRC='" + l.imgs[i] + "' align='left'>";
+	tvtext += "&nbsp;<A HREF='" + link_href + "'>" +
 	    (link_bold?"<b>":"") + link_text + (link_bold?"<b>":"") + "</A>";
 	if (l.tvtext != tvtext)
 	    {
@@ -246,13 +279,16 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold)
 	    }
 
 	/** the image **/
-	var img = document.createElement('img');
-	img.setAttribute('src',img_src);
-	img.setAttribute('align','left');
-	l.appendChild(img);
+	for(var i = start_img; i<=l.tree_depth; i++)
+	    {
+	    var img = document.createElement('img');
+	    img.setAttribute('src',l.imgs[i]);
+	    img.setAttribute('align','left');
+	    l.appendChild(img);
+	    }
 
-	/** the space **/
-	l.appendChild(document.createTextNode(" "));
+	/** the space - a0 is the unicode value for nbsp. **/
+	l.appendChild(document.createTextNode("\u00a0"));
 
 	/** the link **/
 	var a = document.createElement('a');
@@ -312,7 +348,7 @@ function tv_GetLinkCnt(l)
 			}
 			o=l.parent.objptr[l.objn];
 		    var link_txt=l.objn+"&nbsp;("+typeof(o)+"):&nbsp;"+o;
-		    tv_build_layer(l,"/sys/images/ico01b.gif","",link_txt);
+		    tv_build_layer(l,"/sys/images/ico01b.gif","",link_txt, false, false);
 		    }
 		return 0;
 		}
@@ -366,8 +402,12 @@ function tv_BuildNewLayers(l, linkcnt)
     var tgtClipWidth = tv_tgt_layer.mainlayer.setwidth - (getRelativeX(tv_tgt_layer) - getRelativeX(tv_tgt_layer.mainlayer)) - 20;
     var tgtX = getRelativeX(tv_tgt_layer);
     var tgtY = getRelativeY(tv_tgt_layer);
-
     var jsProps = null;
+    var can_expand;
+    var links;
+    
+    if (tv_tgt_layer) links = pg_links(tv_tgt_layer.ld);
+
     if(l.isjs)
 	{
 	jsProps = new Array();
@@ -387,6 +427,8 @@ function tv_BuildNewLayers(l, linkcnt)
 	var one_link;
 	var one_layer = tv_new_layer(tgtClipWidth,tv_tgt_layer.pdoc,l.mainlayer);
 	var im;
+	can_expand = null;
+
 	one_layer.parent=l;
 	one_layer.collapse=one_layer.parent.collapse;
 	one_layer.expand=one_layer.parent.expand;
@@ -431,43 +473,58 @@ function tv_BuildNewLayers(l, linkcnt)
 		}
 	    one_layer.isjs=true;
 	    one_layer.objn=j;
+	    can_expand = (im == '02');
 	    }
 	else
 	    {
-	    link_txt = tv_tgt_layer.ld.document.links[i].text;
-	    link_href = tv_tgt_layer.ld.document.links[i].href;
+	    link_txt = cx_info_extract_str(links[i].text);
+	    link_href = links[i].href;
 	    one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
 	    im = '01';
 	    if (link_txt == '' || link_txt == null) link_txt = one_link;
 	    else link_txt = one_link + ' - ' + link_txt;
-	    if (one_link.lastIndexOf('/') > 0) im = '02';
-	    else one_link = one_link + '/';
+	    //if (one_link.lastIndexOf('/') > 0) im = '02';
+	    //else 
+	    one_link = one_link + '/';
+	    var flags = cx_info_extract_flags(links[i].text);
+	    if (flags & cx_info_flags.can_have_subobj) im = '02';
+	    if (flags & cx_info_flags.no_subobj) can_expand = false;
+	    if (flags & cx_info_flags.has_subobj) can_expand = true;
 	    }
 
-	tv_build_layer(one_layer,"/sys/images/ico" + im + "b.gif",link_href,link_txt, link_bold);
+	one_layer.tree_depth = one_layer.parent.tree_depth+1;
+	tv_build_layer(one_layer,"/sys/images/ico" + im + "b.gif",link_href,link_txt, link_bold, i == linkcnt, can_expand);
 	one_layer.fname = tv_tgt_layer.fname + one_link;
 	one_layer.type = im;
-	if (cx__capabilities.Dom0NS)
-	    {
-	    moveTo(one_layer, tgtX + 20, tgtY + 20*i);
-	    }
+	/*if (cx__capabilities.Dom0NS)
+	    {*/
+	    if (l.mainlayer.show_branches)
+		moveTo(one_layer, tgtX, tgtY + 20*i);
+	    else
+		moveTo(one_layer, tgtX + 20, tgtY + 20*i);
+	    /*}
 	else if (cx__capabilities.Dom1HTML)
 	    {
 	    moveTo(one_layer, tgtX + 20, tgtY + 20);
-	    }
+	    }*/
 	pg_set_style_string(one_layer,'visibility','inherit');
 	var images = pg_images(one_layer);
 	one_layer.img = images[images.length-1];
 	one_layer.img.kind = 'tv';
-	var links = pg_links(one_layer);
-	if (links.length != 0)
+	one_layer.img.layer = one_layer;
+	if (one_layer.mainlayer.show_branches && one_layer.tree_depth > 0)
 	    {
-	    links[0].kind = 'tv';
-	    links[0].layer = one_layer;
+	    images[images.length-2].kind = 'tv';
+	    images[images.length-2].layer = one_layer;
+	    }
+	var one_links = pg_links(one_layer);
+	if (one_links.length != 0)
+	    {
+	    one_links[0].kind = 'tv';
+	    one_links[0].layer = one_layer;
 	    }
 	one_layer.expanded = 0;
-	one_layer.img.layer = one_layer;
 	one_layer.zIndex = tv_tgt_layer.zIndex;
 	one_layer.pdoc = tv_tgt_layer.pdoc;
 	one_layer.ld = tv_tgt_layer.ld;
@@ -495,6 +552,16 @@ function tv_loaded(e)
 
     var linkcnt = tv_GetLinkCnt(l);
 
+    if (linkcnt < 0 && l.mainlayer.show_branches && l.tree_depth > 0)
+	{
+	if (l.imgs[l.tree_depth-1] == '/sys/images/tree_middle_open.gif')
+	    l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_leaf.gif';
+	else if (l.imgs[l.tree_depth-1] == '/sys/images/tree_corner_open.gif')
+	    l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_leaf.gif';
+	var imgs = pg_images(l);
+	pg_set(imgs[l.tree_depth-1], 'src', l.imgs[l.tree_depth-1]);
+	}
+
     if (linkcnt < 0) linkcnt = 0;
 
     tv_MakeRoom(l, linkcnt);
@@ -521,10 +588,15 @@ function tv_loaded(e)
     return false;
     }
 
-function tv_init(l,fname,loader,pdoc,w,p,newroot)
+function tv_init(l,fname,loader,pdoc,w,p,newroot,b)
     {
     l.LSParent = p;
     l.fname = fname;
+    l.show_branches = b;
+    if (htr_getvisibility(l) == 'inherit')
+	l.tree_depth = 0;
+    else
+	l.tree_depth = -1;
     var t;
     if(!l.is_initialized)
 	{ /* not re-init */
@@ -543,7 +615,7 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
 	}
     else
 	{ /* re-init */
-	tv_build_layer(l,"/sys/images/ico02b.gif","",l.fname);
+	tv_build_layer(l,"/sys/images/ico02b.gif","",l.fname,false,null);
 	if (newroot)
 	    l.objptr = newroot;
 	else if (t=(/javascript:([a-zA-Z0-9_]*)/).exec(fname))
@@ -603,6 +675,15 @@ function tv_expand()
     pg_set(l.img,'src','/sys/images/ico11c.gif');
     tv_tgt_layer = l;
 
+    if (l.mainlayer.show_branches && l.tree_depth > 0)
+	{
+	if (l.imgs[l.tree_depth-1] == '/sys/images/tree_middle_closed.gif')
+	    l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_open.gif';
+	else if (l.imgs[l.tree_depth-1] == '/sys/images/tree_corner_closed.gif')
+	    l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_open.gif';
+	var imgs = pg_images(l);
+	pg_set(imgs[l.tree_depth-1], 'src', l.imgs[l.tree_depth-1]);
+	}
 
     l.expanded = 1;
     if(l.isjs)
@@ -617,9 +698,9 @@ function tv_expand()
 	else
 	    use_fname = l.fname;
 	if (use_fname.lastIndexOf('?') > use_fname.lastIndexOf('/', use_fname.length-2))
-	    pg_serialized_load(l.ld, use_fname + '&ls__mode=list', tv_loaded);
+	    pg_serialized_load(l.ld, use_fname + '&ls__mode=list&ls__info=1', tv_loaded);
 	else
-	    pg_serialized_load(l.ld, use_fname + '?ls__mode=list', tv_loaded);
+	    pg_serialized_load(l.ld, use_fname + '?ls__mode=list&ls__info=1', tv_loaded);
 	}
     }
 
@@ -633,6 +714,16 @@ function tv_collapse()
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src','/sys/images/ico11c.gif');
     tv_tgt_layer = l;
+
+    if (l.mainlayer.show_branches && l.tree_depth > 0)
+	{
+	if (l.imgs[l.tree_depth-1] == '/sys/images/tree_middle_open.gif')
+	    l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_closed.gif';
+	else if (l.imgs[l.tree_depth-1] == '/sys/images/tree_corner_open.gif')
+	    l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_closed.gif';
+	var imgs = pg_images(l);
+	pg_set(imgs[l.tree_depth-1], 'src', l.imgs[l.tree_depth-1]);
+	}
 
 
     l.expanded = 0;
