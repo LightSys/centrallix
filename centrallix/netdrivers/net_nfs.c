@@ -14,6 +14,9 @@
 #define HAVE_LIBZ 1
 #endif
 
+#include "stparse.h"
+#include "st_node.h"
+
 #include "centrallix.h"
 
 #include "nfs/mount.h"
@@ -59,10 +62,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.10 2003/03/09 18:59:13 jorupp Exp $
+    $Id: net_nfs.c,v 1.11 2003/03/11 03:16:33 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.11  2003/03/11 03:16:33  jorupp
+     * Mike and I got dumping and reloading of the inode mapping working
+
     Revision 1.10  2003/03/09 18:59:13  jorupp
      * add SIGINT handling, which calls shutdown handlers
 
@@ -171,6 +177,7 @@ struct
     pXHashTable fhToPath;
     pXHashTable pathToFh;
     int nextFileHandle;
+    char *inodeFile;
     }
     NNFS;
 
@@ -410,6 +417,9 @@ nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
     result=xhLookup(NNFS.pathToFh, path);
     if (!result)
 	{
+	/** need to keep this memory around after this function returns **/
+	char *p;
+	p = strdup(path);
 	printf("path %s not found in hash\n",path);
 	memset(fhandle_c.fhc,0,FHSIZE);
 	fhandle_c.fhi=NNFS.nextFileHandle++;
@@ -417,8 +427,8 @@ nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
 	strncpy(my_fh,fhandle_c.fhc,FHSIZE);
 
 	/** add to both hashes here **/
-	xhAdd(NNFS.fhToPath,my_fh,path);
-	xhAdd(NNFS.pathToFh,path,my_fh);
+	xhAdd(NNFS.fhToPath,my_fh,p);
+	xhAdd(NNFS.pathToFh,p,my_fh);
 
 	strncpy(fh,fhandle_c.fhc,FHSIZE);
 	return 0;
@@ -757,6 +767,138 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     return retval;
     }
 
+/***
+**** nnfs_internal_create_inode_map
+***/
+void
+nnfs_internal_create_inode_map()
+    {
+    pFile inFile;
+    pStructInf stInode;
+    int i;
+
+    if(!NNFS.inodeFile)
+	{
+	return;
+	}
+
+    inFile = fdOpen(NNFS.inodeFile,O_RDONLY, 0600);
+    if(!inFile)
+	{
+	mssError(1,"NNFS","Warning: cannot open %s: %s",NNFS.inodeFile,strerror(errno));
+	return;
+	}
+    
+    stInode = stParseMsg(inFile,0);
+    if(!stInode)
+	{
+	mssError(1,"NNFS","Cannot parse %s",NNFS.inodeFile);
+	return;
+	}
+
+    for(i=0;i<stInode->nSubInf;i++)
+	{
+	pStructInf group,entry;
+
+	char *name;
+	fhandle *fh;
+	int inode;
+
+	group = stInode->SubInf[i];
+	if(group)
+	    {
+	    entry = stLookup(group,"path");
+	    if(entry && stGetAttrValue(entry,DATA_T_STRING,POD(&name),0)!=0)
+		{
+		mssError(0,"NNFS","Unable to read inode");
+		continue;
+		}
+	    entry = stLookup(group,"inode");
+	    if(entry && stGetAttrValue(entry,DATA_T_INTEGER,POD(&inode),0)!=0)
+		{
+		mssError(0,"NNFS","Unable to read inode for: %s",name);
+		continue;
+		}
+	    name = strdup(name);
+	    fh = (fhandle*)nmMalloc(sizeof(fhandle));
+	    memset(fh,0,sizeof(fhandle));
+	    *(int*)fh = inode;
+	    xhAdd(NNFS.fhToPath,(char*)fh,name);
+	    xhAdd(NNFS.pathToFh,name,(char*)fh);
+	    }
+
+	}
+
+    stFreeInf(stInode);
+    fdClose(inFile,0);
+    }
+
+
+/***
+**** nnfs_internal_dump_inode_map
+***/
+void
+nnfs_internal_dump_inode_map()
+    {
+    pFile outFile;
+    pStructInf stInode;
+    int i;
+
+    if(!NNFS.inodeFile)
+	{
+	mssError(0,"NNFS","No inode map file specified in configuration");
+	return;
+	}
+
+    outFile = fdOpen(NNFS.inodeFile,O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    if(!outFile)
+	{
+	mssError(1,"NNFS","Cannot open inode.map: %s",strerror(errno));
+	return;
+	}
+    stInode = stCreateStruct("inode_map","system/inode-map");
+    if(!stInode)
+	{
+	mssError(1,"NNFS","Cannot create StructInf");
+	return;
+	}
+    /** how do we tell it to create version 2 structure files? **/
+    //stInode->Flags |= ST_F_VERSION2;
+
+    for(i=0;i<NNFS.fhToPath->nRows;i++)
+	{
+	pXHashEntry ptr;
+	ptr = (pXHashEntry)xaGetItem(&(NNFS.fhToPath->Rows),i);
+	while(ptr)
+	    {
+	    pStructInf group;
+	    pStructInf entry;
+	    group = stAddGroup(stInode,"node","system/inode");
+	    if(group)
+		{
+		entry = stAddAttr(group,"path");
+		if(!entry || stSetAttrValue(entry, DATA_T_STRING, POD(&(ptr->Data)), 0)<0 )
+		    mssError(1,"NNFS","Unable to create path attribute");
+		entry = stAddAttr(group,"inode");
+		if(!entry || stSetAttrValue(entry, DATA_T_INTEGER, POD(ptr->Key), 0)<0)
+		    mssError(1,"NNFS","Unable to create inode attribute");
+		}
+	    else
+		{
+		mssError(1,"NNFS","Unable to create inode group");
+		}
+	    ptr=ptr->Next;
+	    }
+	}
+
+    if(stGenerateMsg(outFile,stInode,ST_F_VERSION2)<0)
+	{
+	mssError(1,"NNFS","Unable to write inode mapping");
+	}
+
+    fdClose(outFile,0);
+    stFreeInf(stInode);
+    }
 
 /***
 **** nnfs_internal_request_handler - waits for and processes queued nfs requests
@@ -831,7 +973,9 @@ nnfs_internal_request_handler(void* v)
 	xdr_destroy(&xdr_out);
 	nmFree(buf,MAX_PACKET_SIZE);
 	nmFree(entry,sizeof(QueueEntry));
+
 	}
+    
     }
 
 /*** nnfs_internal_nfs_listener - listens for and processes nfs requests
@@ -1137,13 +1281,9 @@ nnfs_internal_mount_listener(void* v)
 	    {
 	    nnfs_internal_get_exports(mp_config);
 	    }
-	NNFS.fhToPath=(pXHashTable)nmMalloc(sizeof(XHashTable));
-	NNFS.pathToFh=(pXHashTable)nmMalloc(sizeof(XHashTable));
-	xhInit(NNFS.fhToPath,16,0);
-	xhInit(NNFS.pathToFh,16,0);
 	NNFS.mountList=(pXArray)nmMalloc(sizeof(XArray));
 	xaInit(NNFS.mountList,4);
-
+	
     	/** Open the server listener socket. **/
 	listen_socket = netListenUDP(listen_port, 0);
 	if (!listen_socket) 
@@ -1342,6 +1482,7 @@ void
 nnfsShutdownHandler()
     {
     mssError(0,"NNFS","NFS netdriver is shutting down");
+    nnfs_internal_dump_inode_map();
     }
 
 
@@ -1370,11 +1511,17 @@ nnfsInitialize()
 		{
 		NNFS.queueSize = 100;
 		}
+	    /** Now lookup where the inode map file should be **/
+	    if (stAttrValue(stLookup(my_config, "inode_map"), NULL, &(NNFS.inodeFile) , 0) < 0)
+		{
+		NNFS.inodeFile=NULL;
+		}
 	    }
 	else
 	    {
 	    NNFS.numThreads = 10;
 	    NNFS.queueSize = 100;
+	    NNFS.inodeFile=NULL;
 	    }
 
 	NNFS.queue = (pQueueEntry*)nmMalloc(NNFS.queueSize*sizeof(pQueueEntry));
@@ -1384,6 +1531,12 @@ nnfsInitialize()
 	NNFS.semaphore = syCreateSem(0,0);
 	/** 0 is reserved **/
 	NNFS.nextFileHandle=1;
+
+	NNFS.fhToPath=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	NNFS.pathToFh=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	xhInit(NNFS.fhToPath,16,0);
+	xhInit(NNFS.pathToFh,16,0);
+	nnfs_internal_create_inode_map();
 
 	/** add shutdown handler **/
 	cxAddShutdownHandler(nnfsShutdownHandler);

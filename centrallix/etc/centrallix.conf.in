@@ -39,6 +39,7 @@ centrallix "system/config"
 //	    {
 //	    export1 "system/config" { path="/"; readonly=1; }
 //	    }
+//	inode_map = "##SYSCONFDIR##/inode.map";
 //	}
 
     // The MSS MTask Session Manager module.
