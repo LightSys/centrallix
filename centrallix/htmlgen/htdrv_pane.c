@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.20 2003/07/28 22:05:25 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.21 2003/07/28 22:26:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.21  2003/07/28 22:26:20  gbeeley
+    Minor geometry fixes to the pane widget.
+
     Revision 1.20  2003/07/28 22:05:25  gbeeley
     Added 'flat' pane style which does not have a raised/lowered border.
 
@@ -297,11 +300,16 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 	else if(s->Capabilities.CSS1)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w-2,h-2,z);
 	    if (style == 2) /* flat */
+		{
+		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 		htrAddStylesheetItem_va(s,"\t#pn%dmain { %s}\n",id,main_bg);
+		}
 	    else /* lowered or raised */
+		{
+		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w-2,h-2,z);
 		htrAddStylesheetItem_va(s,"\t#pn%dmain { border-style: solid; border-width: 1px; border-color: %s %s %s %s; %s}\n",id,c1,c2,c2,c1,main_bg);
+		}
 	    }
 	else
 	    {
@@ -355,7 +363,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s height=%d>\n",w,main_bg,h);
 	    if (style == 2) /* flat */
 		{
-		htrAddBodyItem_va(s,"        <TR><TD>&nbsp;</TD></TR>\n    </TABLE>\n\n");
+		htrAddBodyItem_va(s,"        <TR><TD><img src=/sys/images/trans_1.gif></TD></TR>\n    </TABLE>\n\n");
 		}
 	    else /* lowered or raised */
 		{
@@ -363,7 +371,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
 		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-		htrAddBodyItem_va(s,"            <TD>&nbsp;</TD>\n");
+		htrAddBodyItem_va(s,"            <TD><img src=/sys/images/trans_1.gif></TD>\n");
 		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
 		htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
 		htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
