@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.25 2003/04/03 21:41:07 gbeeley Exp $
+    $Id: test_obj.c,v 1.26 2003/04/04 05:02:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.26  2003/04/04 05:02:44  gbeeley
+    Added more flags to objInfo dealing with content and seekability.
+    Added objInfo capability to objdrv_struct.
+
     Revision 1.25  2003/04/03 21:41:07  gbeeley
     Fixed xstring modification problem in test_obj as well as const path
     modification problem in the objOpen process.  Both were causing the
@@ -888,6 +892,13 @@ start(void* v)
 			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) printf("subobject_cnt_known ");
 			if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) printf("can_add_attrs ");
 			if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) printf("cant_add_attrs ");
+			if (info->Flags & OBJ_INFO_F_CAN_SEEK_FULL) printf("can_seek_full ");
+			if (info->Flags & OBJ_INFO_F_CAN_SEEK_REWIND) printf("can_seek_rewind ");
+			if (info->Flags & OBJ_INFO_F_CANT_SEEK) printf("cant_seek ");
+			if (info->Flags & OBJ_INFO_F_CAN_HAVE_CONTENT) printf("can_have_content ");
+			if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) printf("cant_have_content ");
+			if (info->Flags & OBJ_INFO_F_HAS_CONTENT) printf("has_content ");
+			if (info->Flags & OBJ_INFO_F_NO_CONTENT) printf("no_content ");
 			printf("\n");
 			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
 			    {

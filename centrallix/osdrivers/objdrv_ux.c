@@ -54,10 +54,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.7 2003/03/31 23:23:40 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.8 2003/04/04 05:02:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.8  2003/04/04 05:02:44  gbeeley
+    Added more flags to objInfo dealing with content and seekability.
+    Added objInfo capability to objdrv_struct.
+
     Revision 1.7  2003/03/31 23:23:40  gbeeley
     Added facility to get additional data about an object, particularly
     with regard to its ability to have subobjects.  Added the feature at
@@ -1373,11 +1377,14 @@ uxdInfo(void* inf_v, pObjectInfo info)
 	/** Is it a directory? **/
 	if (inf->Flags & UXD_F_ISDIR)
 	    {
-	    info->Flags |= (OBJ_INFO_F_CAN_HAVE_SUBOBJ);
+	    info->Flags |= (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_CANT_HAVE_CONTENT |
+		    OBJ_INFO_F_NO_CONTENT);
 	    }
 	else
 	    {
-	    info->Flags |= (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ);
+	    info->Flags |= (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ | 
+		    OBJ_INFO_F_CAN_SEEK_FULL | OBJ_INFO_F_CAN_HAVE_CONTENT | 
+		    OBJ_INFO_F_HAS_CONTENT);
 	    }
 
     return 0;

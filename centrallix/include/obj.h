@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.14 2003/03/31 23:23:38 gbeeley Exp $
+    $Id: obj.h,v 1.15 2003/04/04 05:02:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.15  2003/04/04 05:02:43  gbeeley
+    Added more flags to objInfo dealing with content and seekability.
+    Added objInfo capability to objdrv_struct.
+
     Revision 1.14  2003/03/31 23:23:38  gbeeley
     Added facility to get additional data about an object, particularly
     with regard to its ability to have subobjects.  Added the feature at
@@ -368,13 +372,20 @@ typedef struct _OA
     ObjectInfo, *pObjectInfo;
 
 /** info flags **/
-#define	OBJ_INFO_F_NO_SUBOBJ		1   /* object has no subobjects */
-#define OBJ_INFO_F_HAS_SUBOBJ		2   /* object has at least one subobject */
-#define OBJ_INFO_F_CAN_HAVE_SUBOBJ	4   /* object *can* have subobjects */
-#define OBJ_INFO_F_CANT_HAVE_SUBOBJ	8   /* object *cannot* have subobjects */
-#define OBJ_INFO_F_SUBOBJ_CNT_KNOWN	16  /* number of subobjects is known */
-#define OBJ_INFO_F_CAN_ADD_ATTR		32  /* attributes can be added to object */
-#define OBJ_INFO_F_CANT_ADD_ATTR	64  /* attributes cannot be added to object */
+#define	OBJ_INFO_F_NO_SUBOBJ		(1<<0)	/* object has no subobjects */
+#define OBJ_INFO_F_HAS_SUBOBJ		(1<<1)	/* object has at least one subobject */
+#define OBJ_INFO_F_CAN_HAVE_SUBOBJ	(1<<2)	/* object *can* have subobjects */
+#define OBJ_INFO_F_CANT_HAVE_SUBOBJ	(1<<3)	/* object *cannot* have subobjects */
+#define OBJ_INFO_F_SUBOBJ_CNT_KNOWN	(1<<4)	/* number of subobjects is known */
+#define OBJ_INFO_F_CAN_ADD_ATTR		(1<<5)	/* attributes can be added to object */
+#define OBJ_INFO_F_CANT_ADD_ATTR	(1<<6)	/* attributes cannot be added to object */
+#define OBJ_INFO_F_CAN_SEEK_FULL	(1<<7)	/* OBJ_U_SEEK fully supported on object */
+#define OBJ_INFO_F_CAN_SEEK_REWIND	(1<<8)	/* OBJ_U_SEEK supported with '0' offset */
+#define OBJ_INFO_F_CANT_SEEK		(1<<9)	/* OBJ_U_SEEK never honored */
+#define OBJ_INFO_F_CAN_HAVE_CONTENT	(1<<10)	/* object can have content */
+#define OBJ_INFO_F_CANT_HAVE_CONTENT	(1<<11)	/* object cannot have content */
+#define OBJ_INFO_F_HAS_CONTENT		(1<<12)	/* object actually has content, even if zero-length */
+#define OBJ_INFO_F_NO_CONTENT		(1<<13)	/* object does not have content, objRead() would fail */
 
 
 /** objectsystem open fd **/

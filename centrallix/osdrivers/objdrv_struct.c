@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.5 2002/08/13 01:51:13 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.6 2003/04/04 05:02:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.6  2003/04/04 05:02:44  gbeeley
+    Added more flags to objInfo dealing with content and seekability.
+    Added objInfo capability to objdrv_struct.
+
     Revision 1.5  2002/08/13 01:51:13  gbeeley
     Added mssError warning/error message if the attribute could not be found
     or a type mismatch occurred.
@@ -812,6 +816,33 @@ stxExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree oxt)
     }
 
 
+/*** stxInfo - return additional informational flags about an
+ *** object.
+ ***/
+int
+stxInfo(void* inf_v, pObjectInfo info)
+    {
+    pStxData inf = STX(inf_v);
+    int i;
+
+	/** Setup the flags, and we know the subobject count btw **/
+	info->Flags = (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
+		OBJ_INFO_F_CAN_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT |
+		OBJ_INFO_F_NO_CONTENT);
+	info->nSubobjects = 0;
+	for(i=0;i<inf->Data->nSubInf;i++)
+	    {
+	    if (stStructType(inf->Data->SubInf[i]) == ST_T_SUBGROUP) info->nSubobjects++;
+	    }
+	if (info->nSubobjects)
+	    info->Flags |= OBJ_INFO_F_HAS_SUBOBJ;
+	else
+	    info->Flags |= OBJ_INFO_F_NO_SUBOBJ;
+
+    return 0;
+    }
+
+
 /*** stxInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
@@ -856,6 +887,7 @@ stxInitialize()
 	drv->GetFirstMethod = stxGetFirstMethod;
 	drv->GetNextMethod = stxGetNextMethod;
 	drv->ExecuteMethod = stxExecuteMethod;
+	drv->Info = stxInfo;
 
 	nmRegister(sizeof(StxData),"StxData");
 	nmRegister(sizeof(StxQuery),"StxQuery");
