@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.16 2003/02/20 23:16:44 jorupp Exp $
+    $Id: mtask.c,v 1.17 2003/03/03 02:12:03 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.17  2003/03/03 02:12:03  jorupp
+     * it always helps when you put the brace on the correct side.... :)
+
     Revision 1.16  2003/02/20 23:16:44  jorupp
      * mtask debugging is not enabled by default
      * added configure option to turn it on
@@ -3248,8 +3251,8 @@ netSendUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
 		    printf("invalid host\n");
 		    return -1;
 		    }
-		}
 		from->sin_port = htons(port);
+		}
 	    }
 
     	if (filedesc->Status == FD_S_CLOSING) return -1;
