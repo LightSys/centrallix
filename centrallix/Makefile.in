@@ -53,7 +53,11 @@ VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:repor
 # Support modules -- basic and advanced utilities.
 XSUPPORT=stparse.o \
 	 st_node.o \
-	 htmlparse.o 
+	 htmlparse.o \
+	 mime/mime_parse.o \
+	 mime/mime_address.o \
+	 mime/mime_util.o
+
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
 
 # OSML modules that implement the OSML API for internal C use
