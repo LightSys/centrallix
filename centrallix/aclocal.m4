@@ -126,6 +126,8 @@ AC_DEFUN(CENTRALLIX_CONF_FILE,
 	    centrallix_config="`echo $centrallix_config | sed -e "s|\\\${prefix}|$prefix|"`"
 	fi
 
+	centrallix_config=${centrallix_config#$builddir}
+
 	AC_DEFINE_UNQUOTED(CENTRALLIX_CONFIG, 
 	    "$centrallix_config", 
 	    [Location of the centrallix config file]
@@ -958,6 +960,7 @@ AC_DEFUN(CHECK_OPTIMIZE,
 	else
 	    AC_MSG_RESULT(yes)
 	    CFLAGS="$CFLAGS -O2"
+	    PROFILE=""
 	    AC_DEFINE(USING_OPTIMIZATION,1,[defined to 1 if -On is being passed to the compiler])
 	fi
     fi
@@ -1012,5 +1015,21 @@ AC_DEFUN(CHECK_LOGMETHOD,
 	)
 	AC_MSG_RESULT($logmethod)
 	AC_SUBST(LOGMETHOD, $logmethod)
+    ]
+)
+
+dnl Check for runtime dirs that differ from install dirs.  Needed
+dnl for RPM builds to work correctly.
+AC_DEFUN(CHECK_BUILDDIR,
+    [
+	AC_ARG_WITH(builddir,
+	    AC_HELP_STRING([--with-builddir=dir],
+		[If build dir is not same as deploy dir, set build dir here]
+	    ),
+	    builddir="$withval",
+	    builddir=""
+	)
+	builddir=${builddir%/}
+	AC_SUBST(BUILDDIR, $builddir)
     ]
 )

@@ -52,6 +52,9 @@ AH_TEMPLATE([CX_STATIC])
 AC_DEFINE(CX_STATIC,2)
 BUILD_DYNAMIC
 
+dnl Check for different runtime dir than build install dir
+CHECK_BUILDDIR
+    
 dnl Centrallix specific tests.
 CENTRALLIX_CHECK_CENTRALLIX
 AH_TEMPLATE([CENTRALLIX_CONFIG], [Full path of config file])
@@ -135,7 +138,7 @@ CHECK_OPTIMIZE
 
 dnl Check for log method
 CHECK_LOGMETHOD
-    
+
 dnl Define WITH_DYNAMIC_LOAD in config.h
 if test "$WITH_DYNAMIC_LOAD" = "yes"; then
     AC_DEFINE(WITH_DYNAMIC_LOAD,1,[Use dynamic loading])

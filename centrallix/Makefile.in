@@ -31,6 +31,10 @@ mandir = @mandir@
 includedir = @includedir@
 top_builddir = .
 
+cxosdir = @CXOSDIR@
+builddir = @BUILDDIR@
+
+
 EXEEXT = @EXEEXT@
 OBJEXT = @OBJEXT@
 PATH_SEPARATOR = @PATH_SEPARATOR@
@@ -355,11 +359,17 @@ config_install: config
 		fi \
 	done ; \
 	if [ ! -a "$(sysconfdir)/centrallix.conf" ]; then \
-	    mv "$(sysconfdir)/centrallix/centrallix.conf" "$(sysconfdir)/centrallix.conf" ;
+	    mv "$(sysconfdir)/centrallix/centrallix.conf" "$(sysconfdir)/centrallix.conf" ; \
 	fi
 
 rhinit_install: config
-	$(INSTALL) -m 744 etc/centrallix.init /etc/rc.d/init.d/centrallix
+	mkdir -p "$(sysconfdir)/rc.d/init.d"
+	$(INSTALL) -m 744 etc/centrallix.init "$(sysconfdir)/rc.d/init.d/centrallix"
+
+test_install: test_obj test_prt
+	mkdir -p "$(bindir)"
+	$(INSTALL) -m 755 test_obj "$(bindir)"
+	$(INSTALL) -m 755 test_prt "$(bindir)"
 
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
@@ -393,13 +403,29 @@ htmltest: htmltest.o $(SUPPORT)
 	$(CC) htmltest.o $(SUPPORT) $(PROFILE) -o htmltest
 
 etc/rootnode: etc/rootnode.in
-	@$(SED) -e "s|##OSDIR##|@CXOSDIR@|g" etc/rootnode.in > etc/rootnode
+	@CXOSDIR=$(cxosdir); \
+	RUNCXOSDIR=$${CXOSDIR#$(builddir)}; \
+	$(SED) -e "s|##OSDIR##|$$RUNCXOSDIR|g" etc/rootnode.in > etc/rootnode
 
 etc/centrallix.conf: etc/centrallix.conf.mk
-	@$(SED) -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LIBDIR##|$(libdir)|g" etc/centrallix.conf.mk > etc/centrallix.conf
+	@SYSCONFDIR=$(sysconfdir); \
+	RUNSYSCONFDIR=$${SYSCONFDIR#$(builddir)}; \
+	LIBDIR=$(libdir); \
+	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
+	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" etc/centrallix.conf.mk > etc/centrallix.conf
 
 etc/centrallix.init: etc/centrallix.init.in
-	@$(SED) -e "s|##SBINDIR##|$(sbindir)|g" -e "s|##SYSCONFDIR##|$(sysconfdir)|g" -e "s|##LOCALSTATEDIR##|$(localstatedir)|g" -e "s|##LIBDIR##|$(libdir)|g" -e "s|##CXLIBDIR##|$(CXLIBDIR)|g" etc/centrallix.init.in > etc/centrallix.init
+	@SYSCONFDIR=$(sysconfdir); \
+	RUNSYSCONFDIR=$${SYSCONFDIR#$(builddir)}; \
+	LIBDIR=$(libdir); \
+	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
+	SBINDIR=$(sbindir); \
+	RUNSBINDIR=$${SBINDIR#$(builddir)}; \
+	CXLIBDIR=$(cxlibdir); \
+	RUNCXLIBDIR=$${CXLIBDIR#$(builddir)}; \
+	LOCALSTATEDIR=$(localstatedir); \
+	RUNLOCALSTATEDIR=$${LOCALSTATEDIR#$(builddir)}; \
+	$(SED) -e "s|##SBINDIR##|$$RUNSBINDIR|g" -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LOCALSTATEDIR##|$$RUNLOCALSTATEDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##CXLIBDIR##|$$RUNCXLIBDIR|g" etc/centrallix.init.in > etc/centrallix.init
 
 clean:
 	@rm -f */*.o
@@ -411,7 +437,7 @@ clean:
 
 distclean: clean
 	@rm -f config.status config.cache config.log
-	@rm -rf autom4te-2.5x.cache/
+	@rm -rf autom4te-*.cache/
 	@rm -f config.h
 	@rm -f Makefile stamp-h
 	@rm -f .depend
@@ -423,7 +449,7 @@ distreallyclean: distclean
 
 depend:	.depend
 
-.depend: *.[ch] */*.[ch] */*/*.[ch] @CXINCDIR@/*.h
+.depend: *.[ch] */*.[ch] */*/*.[ch] @CXINCDIR@/cxlib/*.h
 	@echo "Rebuilding dependencies..."
 	@makedepend -o.o -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >.depend 2>/dev/null
 	@makedepend -o.so -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >>.depend 2>/dev/null

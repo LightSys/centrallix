@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.34 2005/02/26 06:42:35 gbeeley Exp $
+    $Id: centrallix.c,v 1.35 2005/03/01 07:14:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.35  2005/03/01 07:14:59  gbeeley
+    - RPM build fixes.  The deployment root may not be the same as the build
+      root, so we need to adjust the paths in the generated configuration
+      files accordingly, if --with-builddir is specified.
+
     Revision 1.34  2005/02/26 06:42:35  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -364,6 +369,7 @@ cx_internal_LoadModules(char* type)
 	    if (modtype && strcmp(modtype,type)) continue;
 	    if (!modpath || !modtype)
 		{
+		if (!CxGlobals.QuietInit) printf("mod: driver %s failed\n", one_module->Name);
 		mssError(1,"CX","Module '%s' must have path and type settings; load failed",one_module->Name);
 		continue;
 		}
@@ -390,6 +396,7 @@ cx_internal_LoadModules(char* type)
 	    if (!moduledata->dlhandle)
 		{
 		nmFree(moduledata, sizeof(CxModule));
+		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		mssError(1,"CX","Module '%s' could not be loaded",modpath);
 		mssError(1,"CX","ERROR: %s",dlerror());
 		continue;
@@ -401,6 +408,7 @@ cx_internal_LoadModules(char* type)
 		{
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
+		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		mssError(1,"CX","Module '%s' has no Init function declared: %s",modpath, dlerror());
 		continue;
 		}
@@ -413,6 +421,7 @@ cx_internal_LoadModules(char* type)
 		{
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
+		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		mssError(1,"CX","Module '%s' has no Interface Version declared: %s",modpath,dlerror());
 		continue;
 		}
@@ -430,6 +439,7 @@ cx_internal_LoadModules(char* type)
 		{
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
+		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		mssError(1,"CX","Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?)",
 		    modpath, *(moduledata->InterfaceVer));
 		continue;
@@ -441,6 +451,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		mssError(0,"CX","Module '%s' load failed",modpath);
+		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		continue;
 		}
 	    
@@ -476,7 +487,7 @@ void cxShutdownThread(void *v)
     if(CxGlobals.ShuttingDown)
 	return;
     CxGlobals.ShuttingDown = 1;
-    mssError(0,"CN","Centrallix is shutting down");
+    mssError(0,"CX","Centrallix is shutting down");
     for(i=0;i<xaCount(&CxGlobals.ShutdownHandlers);i++)
 	{
 	ShutdownHandlerFunc handler = (ShutdownHandlerFunc) xaGetItem(&CxGlobals.ShutdownHandlers,i);
