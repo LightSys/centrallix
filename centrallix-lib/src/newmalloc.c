@@ -34,10 +34,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.2 2001/09/28 20:00:21 gbeeley Exp $
+    $Id: newmalloc.c,v 1.3 2002/04/27 01:42:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
+    Revision 1.3  2002/04/27 01:42:34  gbeeley
+    Fixed a nmSysRealloc() problem - newly allocated buffer would be four
+    bytes too short....
+
     Revision 1.2  2001/09/28 20:00:21  gbeeley
     Modified magic number system syntax slightly to eliminate semicolon
     from within the macro expansions of the ASSERT macros.
@@ -350,6 +354,7 @@ nmSysMalloc(int size)
 #ifdef NM_USE_SYSMALLOC
     char* ptr;
     ptr = (char*)malloc(size+4);
+    if (!ptr) return NULL;
     *(int*)ptr = size;
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]++;
     return (void*)(ptr+4);
@@ -380,8 +385,9 @@ nmSysRealloc(void* ptr, int newsize)
     char* newptr;
     if (!ptr) return nmSysMalloc(newsize);
     size = *(int*)(((char*)ptr)-4);
+    newptr = (char*)realloc((((char*)ptr)-4), newsize+4);
+    if (!newptr) return NULL;
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
-    newptr = (char*)realloc((((char*)ptr)-4), newsize);
     *(int*)newptr = newsize;
     if (newsize > 0 && newsize <= MAX_SIZE) nmsys_outcnt[newsize]++;
     return (void*)(newptr+4);
@@ -397,6 +403,7 @@ nmSysStrdup(char* ptr)
     char* newptr;
     int n = strlen(ptr);
     newptr = (char*)nmSysMalloc(n+1);
+    if (!newptr) return NULL;
     memcpy(newptr,ptr,n+1);
     return newptr;
 #else
