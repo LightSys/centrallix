@@ -135,11 +135,11 @@ function dd_keyhandler(l,e,k)
 
 function dd_hilight_item(l,i)
     {
-    dd_scroll_to(l,i);
     if (l.SelectedItem != null)
 	dd_unhilight_item(l,l.SelectedItem);
     l.SelectedItem = i;
     l.Items[i].bgColor=l.hl;
+    dd_scroll_to(l,i);
     }
 
 function dd_unhilight_item(l,i)
@@ -209,7 +209,7 @@ function dd_scroll_to(l, n)
     else //down
 	{
 	dd_target_img=l.PaneLayer.BarLayer.document.images[2];
-	dd_incr = (top-il.y+16);
+	dd_incr = (top-il.y+(16*(dd_current.NumDisplay-1)));
 	}
     dd_scroll();
     }
