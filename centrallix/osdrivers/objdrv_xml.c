@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.2 2002/07/31 16:20:44 gbeeley Exp $
+    $Id: objdrv_xml.c,v 1.3 2002/08/01 00:32:01 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.3  2002/08/01 00:32:01  jorupp
+     * fixed a memory leak.  Had forgotten to free() the memory allocated when retrieving the text of the node
+     * added checking for a valid name before adding a subnode to the hash table of child nodes
+
     Revision 1.2  2002/07/31 16:20:44  gbeeley
     Added libxml 1.x compatibility.  Define USE_LIBXML1 in order to make it
     work.  This involved primarily changing the way that children were
@@ -572,10 +576,11 @@ xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 
     if(i<0) return -1;
     
-    if(buf)
-        memcpy(buffer,buf+inf->Offset,i);
+    memcpy(buffer,buf+inf->Offset,i);
 
     inf->Offset+=i;
+
+    free(buf);
 
     return i;
     }
@@ -804,13 +809,20 @@ xml_internal_BuildSubNodeHashTable(pXmlData inf)
 	if(XML_DEBUG) printf("walking children to set up hash table\n");
 	while(p)
 	    {
-	    if((pHE=(int*)xhLookup(inf->Elements,(char*)p->name)))
-		*pHE++;
+	    if(p->name)
+		{
+		if((pHE=(int*)xhLookup(inf->Elements,(char*)p->name)))
+		    *pHE++;
+		else
+		    {
+		    pHE=(int*)nmSysMalloc(sizeof(int*));
+		    *pHE=1;
+		    xhAdd(inf->Elements,(char*)p->name,(char*)pHE);
+		    }
+		}
 	    else
 		{
-		pHE=(int*)nmSysMalloc(sizeof(int*));
-		*pHE=1;
-		xhAdd(inf->Elements,(char*)p->name,(char*)pHE);
+		mssError(0,"HTTP","Node with no name!");
 		}
 	    p=p->next;
 	    }
