@@ -35,6 +35,9 @@ AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
 FINAL_TARGETS="libCentrallix.a"
 
+dnl Check for makedepend
+CHECK_MAKEDEPEND
+
 dnl Check if -pg is allowed with -fPIC
 AH_TEMPLATE([USE_PROFILE], [Define for profiling])
 CHECK_PROFILE
