@@ -877,8 +877,6 @@ function osrc_action_double_sync_cb()
 /**  OSRC Initializer **/
 function osrc_init(loader,ra,sa,rs,sql,filter,name)
     {
-    if(window_current)
-	window_current.RegisterOSRC(loader);
     loader.osrcname=name;
     loader.readahead=ra;
     loader.scrollahead=sa;
@@ -929,6 +927,11 @@ function osrc_init(loader,ra,sa,rs,sql,filter,name)
     loader.ActionDoubleSyncCB = osrc_action_double_sync_cb;
     loader.InitQuery = osrc_init_query;
     loader.cleanup = osrc_cleanup;
+
+    if(window_current)
+       window_current.RegisterOSRC(loader);
+    else
+       loader.InitQuery();
 
     return loader;
     }
