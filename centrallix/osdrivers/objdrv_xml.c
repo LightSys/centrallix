@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include "obj.h"
 #include "mtask.h"
 #include "xarray.h"
@@ -56,10 +57,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.13 2002/08/13 14:07:02 lkehresman Exp $
+    $Id: objdrv_xml.c,v 1.14 2002/08/13 14:45:51 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.14  2002/08/13 14:45:51  jorupp
+     * the header files for libxml2 include stdlib, but apparently the libxml1 ones don't -- added the #include
+     * fixed a couple of missed casts that caused compile warnings
+
     Revision 1.13  2002/08/13 14:07:02  lkehresman
     fixed warning messages when copiling the xml driver
 
@@ -510,10 +515,10 @@ xml_internal_ReadDoc(pObject obj)
 	else
 	    {
 	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
-	    pCache=nmMalloc(sizeof(XmlCacheObj));
+	    pCache=(pXMLCacheObj)nmMalloc(sizeof(XmlCacheObj));
 	    if(!pCache) return NULL;
 	    memset(pCache,0,sizeof(XmlCacheObj));
-	    ptr=malloc(strlen(path)+1);
+	    ptr=(char*)malloc(strlen(path)+1);
 	    strcpy(ptr,path);
 	    xhAdd(&XML_INF.cache,ptr,(char*)pCache);
 	    }
@@ -525,7 +530,7 @@ xml_internal_ReadDoc(pObject obj)
 	    xmlLineNumbersDefault(1);
 #endif
 	    /** parse the document **/
-	    ptr=malloc(XML_BLOCK_SIZE);
+	    ptr=(char*)malloc(XML_BLOCK_SIZE);
 	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
 	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
