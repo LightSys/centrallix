@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.24 2004/03/10 10:51:09 jasonyip Exp $
+    $Id: htdrv_textbutton.c,v 1.25 2004/03/11 23:17:44 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.25  2004/03/11 23:17:44  jasonyip
+
+    Fixed the moveBy to use the geometry libary.
+
     Revision 1.24  2004/03/10 10:51:09  jasonyip
 
     These are the latest IE-Port files.
@@ -405,7 +409,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddEventHandler(s, "document","MOUSEDOWN","tb",
 		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
-		"        ly.moveBy(1,1);\n"
+		"        moveBy(ly,1,1);\n"
 		"        tb_setmode(ly,2);\n"
 		"        cn_activate(ly, 'MouseDown');\n"
 		"        }\n");
@@ -413,7 +417,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddEventHandler(s, "document","MOUSEUP","tb",
 		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
-		"        ly.moveBy(-1,-1);\n"
+		"        moveBy(ly,-1,-1);\n"
 		"        if (e.pageX >= getPageX(ly) &&\n"
 		"            e.pageX < getPageX(ly) + getClipWidth(ly) &&\n"
 		"            e.pageY >= getPageY(ly) &&\n"
