@@ -59,10 +59,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_nfs.c,v 1.3 2003/03/04 00:39:53 nehresma Exp $
+    $Id: net_nfs.c,v 1.4 2003/03/08 21:24:34 nehresma Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_nfs.c,v $
 
     $Log: net_nfs.c,v $
+    Revision 1.4  2003/03/08 21:24:34  nehresma
+    changes:
+      - renamed functions to be nnfs_internal_*
+      - added XHashTable stuff for fhandle to path (and back) lookups
+      - added config file stuff for export lists - I will rename some ambiguous
+        stuff in here later (called exports "mount points" in a couple places)
+
     Revision 1.3  2003/03/04 00:39:53  nehresma
     couple typo fixes
 
@@ -112,6 +119,12 @@ typedef struct
     XArray waitingList;
     } ThreadInfo, *pThreadInfo;
 
+typedef struct
+    {
+    char *path;
+    /** other things such as hosts, flags, etc. go here eventually **/
+    } Exports, *pExports;
+
 #include "xarray.h"
 #include "mtask.h"
 
@@ -127,9 +140,16 @@ struct
     pFile nfsSocket;
     }
     NNFS;
+pXArray mountPoints;
+pXHashTable fhToPath;
+pXHashTable pathToFh;
+/** the next available filehandle **/
+/** 0 is reserved **/
+int nextFileHandle=1;
+
 
 void
-dump_buffer(unsigned char* buf, int len)
+nnfs_internal_dump_buffer(unsigned char* buf, int len)
     {
     int i;
     printf("Dumping %i byte buffer at %p\n",len,buf);
@@ -159,48 +179,48 @@ struct rpc_struct
     };
 
 /** function prototypes for the mountd program **/
-void* mountproc_null(void*);
-fhstatus* mountproc_mnt(dirpath*);
-mountlist* mountproc_dump(void*);
-void* mountproc_umnt(dirpath*);
-void* mountproc_umntall(void*);
-exportlist* mountproc_export(void*);
+void* nnfs_internal_mountproc_null(void*);
+fhstatus* nnfs_internal_mountproc_mnt(dirpath*);
+mountlist* nnfs_internal_mountproc_dump(void*);
+void* nnfs_internal_mountproc_umnt(dirpath*);
+void* nnfs_internal_mountproc_umntall(void*);
+exportlist* nnfs_internal_mountproc_export(void*);
 
 /** the program information for mountd **/
 struct rpc_struct mount_program[] = 
     {
 	{
-	(rpc_func)mountproc_null,
+	(rpc_func)nnfs_internal_mountproc_null,
 	(xdrproc_t) xdr_void, sizeof(void),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
     ,
 	{
-	(rpc_func)mountproc_mnt,
+	(rpc_func)nnfs_internal_mountproc_mnt,
 	(xdrproc_t) xdr_fhstatus, sizeof(fhstatus),
 	(xdrproc_t) xdr_dirpath, sizeof(dirpath),
 	}
     ,
 	{
-	(rpc_func)mountproc_dump,
+	(rpc_func)nnfs_internal_mountproc_dump,
 	(xdrproc_t) xdr_mountlist, sizeof(mountlist),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
     ,
 	{
-	(rpc_func)mountproc_umnt,
+	(rpc_func)nnfs_internal_mountproc_umnt,
 	(xdrproc_t) xdr_void, sizeof(void),
 	(xdrproc_t) xdr_dirpath, sizeof(dirpath),
 	}
     ,
 	{
-	(rpc_func)mountproc_umntall,
+	(rpc_func)nnfs_internal_mountproc_umntall,
 	(xdrproc_t) xdr_void, sizeof(void),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
     ,
 	{
-	(rpc_func)mountproc_export,
+	(rpc_func)nnfs_internal_mountproc_export,
 	(xdrproc_t) xdr_exportlist, sizeof(exportlist),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
@@ -210,133 +230,133 @@ struct rpc_struct mount_program[] =
 int num_mount_procs = sizeof(mount_program)/sizeof(struct rpc_struct);
 
 /** function prototypes for the nfs program **/
-void* nfsproc_null(void*);
-attrstat* nfsproc_getattr(fhandle*);
-attrstat* nfsproc_setattr(sattrargs*);
-void* nfsproc_root(void*);
-diropres* nfsproc_lookup(diropargs*);
-readlinkres* nfsproc_readlink(fhandle*);
-readres* nfsproc_read(readargs*);
-void* nfsproc_writecache(void*);
-attrstat* nfsproc_write(writeargs*);
-diropres* nfsproc_create(createargs*);
-nfsstat* nfsproc_remove(diropargs*);
-nfsstat* nfsproc_rename(renameargs*);
-nfsstat* nfsproc_link(linkargs*);
-nfsstat* nfsproc_symlink(symlinkargs*);
-diropres* nfsproc_mkdir(createargs*);
-nfsstat* nfsproc_rmdir(diropargs*);
-readdirres* nfsproc_readdir(readdirargs*);
-statfsres* nfsproc_statfs(fhandle*);
+void* nnfs_internal_nfsproc_null(void*);
+attrstat* nnfs_internal_nfsproc_getattr(fhandle*);
+attrstat* nnfs_internal_nfsproc_setattr(sattrargs*);
+void* nnfs_internal_nfsproc_root(void*);
+diropres* nnfs_internal_nfsproc_lookup(diropargs*);
+readlinkres* nnfs_internal_nfsproc_readlink(fhandle*);
+readres* nnfs_internal_nfsproc_read(readargs*);
+void* nnfs_internal_nfsproc_writecache(void*);
+attrstat* nnfs_internal_nfsproc_write(writeargs*);
+diropres* nnfs_internal_nfsproc_create(createargs*);
+nfsstat* nnfs_internal_nfsproc_remove(diropargs*);
+nfsstat* nnfs_internal_nfsproc_rename(renameargs*);
+nfsstat* nnfs_internal_nfsproc_link(linkargs*);
+nfsstat* nnfs_internal_nfsproc_symlink(symlinkargs*);
+diropres* nnfs_internal_nfsproc_mkdir(createargs*);
+nfsstat* nnfs_internal_nfsproc_rmdir(diropargs*);
+readdirres* nnfs_internal_nfsproc_readdir(readdirargs*);
+statfsres* nnfs_internal_nfsproc_statfs(fhandle*);
 
 // :'<,'>s/\(.*\)\* \(.*\)(\(.*\)\*);/^I{^M^I(rpc_func) \2,^M^I(xdrproc_t) xdr_\1, sizeof(\1),^M^I(xdrproc_t) xdr_\3, sizeof(\3),^M^I}^M    ,
 /** the program information for nfs (made with the above vim command from the function prototypes) **/
 struct rpc_struct nfs_program[] = 
     {
 	{
-	(rpc_func) nfsproc_null,
+	(rpc_func) nnfs_internal_nfsproc_null,
 	(xdrproc_t) xdr_void, sizeof(void),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
     ,
 	{
-	(rpc_func) nfsproc_getattr,
+	(rpc_func) nnfs_internal_nfsproc_getattr,
 	(xdrproc_t) xdr_attrstat, sizeof(attrstat),
 	(xdrproc_t) xdr_fhandle, sizeof(fhandle),
 	}
     ,
 	{
-	(rpc_func) nfsproc_setattr,
+	(rpc_func) nnfs_internal_nfsproc_setattr,
 	(xdrproc_t) xdr_attrstat, sizeof(attrstat),
 	(xdrproc_t) xdr_sattrargs, sizeof(sattrargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_root,
+	(rpc_func) nnfs_internal_nfsproc_root,
 	(xdrproc_t) xdr_void, sizeof(void),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
     ,
 	{
-	(rpc_func) nfsproc_lookup,
+	(rpc_func) nnfs_internal_nfsproc_lookup,
 	(xdrproc_t) xdr_diropres, sizeof(diropres),
 	(xdrproc_t) xdr_diropargs, sizeof(diropargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_readlink,
+	(rpc_func) nnfs_internal_nfsproc_readlink,
 	(xdrproc_t) xdr_readlinkres, sizeof(readlinkres),
 	(xdrproc_t) xdr_fhandle, sizeof(fhandle),
 	}
     ,
 	{
-	(rpc_func) nfsproc_read,
+	(rpc_func) nnfs_internal_nfsproc_read,
 	(xdrproc_t) xdr_readres, sizeof(readres),
 	(xdrproc_t) xdr_readargs, sizeof(readargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_writecache,
+	(rpc_func) nnfs_internal_nfsproc_writecache,
 	(xdrproc_t) xdr_void, sizeof(void),
 	(xdrproc_t) xdr_void, sizeof(void),
 	}
     ,
 	{
-	(rpc_func) nfsproc_write,
+	(rpc_func) nnfs_internal_nfsproc_write,
 	(xdrproc_t) xdr_attrstat, sizeof(attrstat),
 	(xdrproc_t) xdr_writeargs, sizeof(writeargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_create,
+	(rpc_func) nnfs_internal_nfsproc_create,
 	(xdrproc_t) xdr_diropres, sizeof(diropres),
 	(xdrproc_t) xdr_createargs, sizeof(createargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_remove,
+	(rpc_func) nnfs_internal_nfsproc_remove,
 	(xdrproc_t) xdr_nfsstat, sizeof(nfsstat),
 	(xdrproc_t) xdr_diropargs, sizeof(diropargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_rename,
+	(rpc_func) nnfs_internal_nfsproc_rename,
 	(xdrproc_t) xdr_nfsstat, sizeof(nfsstat),
 	(xdrproc_t) xdr_renameargs, sizeof(renameargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_link,
+	(rpc_func) nnfs_internal_nfsproc_link,
 	(xdrproc_t) xdr_nfsstat, sizeof(nfsstat),
 	(xdrproc_t) xdr_linkargs, sizeof(linkargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_symlink,
+	(rpc_func) nnfs_internal_nfsproc_symlink,
 	(xdrproc_t) xdr_nfsstat, sizeof(nfsstat),
 	(xdrproc_t) xdr_symlinkargs, sizeof(symlinkargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_mkdir,
+	(rpc_func) nnfs_internal_nfsproc_mkdir,
 	(xdrproc_t) xdr_diropres, sizeof(diropres),
 	(xdrproc_t) xdr_createargs, sizeof(createargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_rmdir,
+	(rpc_func) nnfs_internal_nfsproc_rmdir,
 	(xdrproc_t) xdr_nfsstat, sizeof(nfsstat),
 	(xdrproc_t) xdr_diropargs, sizeof(diropargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_readdir,
+	(rpc_func) nnfs_internal_nfsproc_readdir,
 	(xdrproc_t) xdr_readdirres, sizeof(readdirres),
 	(xdrproc_t) xdr_readdirargs, sizeof(readdirargs),
 	}
     ,
 	{
-	(rpc_func) nfsproc_statfs,
+	(rpc_func) nnfs_internal_nfsproc_statfs,
 	(xdrproc_t) xdr_statfsres, sizeof(statfsres),
 	(xdrproc_t) xdr_fhandle, sizeof(fhandle),
 	}
@@ -350,30 +370,58 @@ int num_nfs_procs = sizeof(nfs_program)/sizeof(struct rpc_struct);
 int
 nnfs_internal_get_fhandle(fhandle fh, const dirpath path)
     {
-    if(!strcmp(path,"/"))
+    char *result;
+    char *my_fh;
+    union 
 	{
-	memset(fh,0,FHSIZE);
+	int fhi;
+	fhandle fhc;
+	} fhandle_c;
+
+    /** First lets look in the hash to see if this path has already 
+      * been given a unique inode or file handle. **/
+    result=xhLookup(pathToFh, path);
+    if (!result)
+	{
+	printf("path %s not found in hash\n",path);
+	memset(fhandle_c.fhc,0,FHSIZE);
+	fhandle_c.fhi=nextFileHandle++;
+	my_fh = (char*)nmMalloc(FHSIZE);
+	strncpy(my_fh,fhandle_c.fhc,FHSIZE);
+
+	/** add to both hashes here **/
+	xhAdd(fhToPath,my_fh,path);
+	xhAdd(pathToFh,path,my_fh);
+
+	strncpy(fh,fhandle_c.fhc,FHSIZE);
 	return 0;
 	}
+    else
+	{
+	strncpy(fhandle_c.fhc,result,FHSIZE);
+	strncpy(fh,result,FHSIZE);
+	printf("path %s found in hash: %d\n",path,fhandle_c.fhi);
+	return 0;
+	}
+
     return -1;
     }
 
 int
 nnfs_internal_get_path(dirpath *path, const fhandle fh)
     {
-    int i;
-    for(i=0;i<FHSIZE;i++)
-	{
-	if(fh[i]!=0)
-	    return -1;
-	}
-    *path="/";
+    char *result;
+
+    result = xhLookup(fhToPath, (char*)fh);
+    if (!result)
+	return -1;
+    path=&result;
     return 0;
     }
 
 //'<,'>s/\(.*\)\* \(.*\)(\(.*\));/\1\* \2(\3 param)^M    {^M    \1\* retval = NULL;^M    retval = (\1\*)nmMalloc(sizeof(\1));^M\/** do work here **\/^M    ^M    return retval;^M    }^M
 /** the functions that impliement mount (made using the above vim command from the prototypes) **/
-void* mountproc_null(void* param)
+void* nnfs_internal_mountproc_null(void* param)
     {
     void* retval = NULL;
     /** do work here **/
@@ -381,7 +429,7 @@ void* mountproc_null(void* param)
     return retval;
     }
 
-fhstatus* mountproc_mnt(dirpath* param)
+fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     {
     int i;
     fhstatus* retval = NULL;
@@ -402,7 +450,7 @@ fhstatus* mountproc_mnt(dirpath* param)
     return retval;
     }
 
-mountlist* mountproc_dump(void* param)
+mountlist* nnfs_internal_mountproc_dump(void* param)
     {
     mountlist* retval = NULL;
     retval = (mountlist*)nmMalloc(sizeof(mountlist));
@@ -411,7 +459,7 @@ mountlist* mountproc_dump(void* param)
     return retval;
     }
 
-void* mountproc_umnt(dirpath* param)
+void* nnfs_internal_mountproc_umnt(dirpath* param)
     {
     void* retval = NULL;
     /** do work here **/
@@ -419,7 +467,7 @@ void* mountproc_umnt(dirpath* param)
     return retval;
     }
 
-void* mountproc_umntall(void* param)
+void* nnfs_internal_mountproc_umntall(void* param)
     {
     void* retval = NULL;
     /** do work here **/
@@ -427,7 +475,7 @@ void* mountproc_umntall(void* param)
     return retval;
     }
 
-exportlist* mountproc_export(void* param)
+exportlist* nnfs_internal_mountproc_export(void* param)
     {
     exportlist* retval = NULL;
     retval = (exportlist*)nmMalloc(sizeof(exportlist));
@@ -437,7 +485,7 @@ exportlist* mountproc_export(void* param)
     }
 
 /** the functions that impliment nfs **/
-void* nfsproc_null(void* param)
+void* nnfs_internal_nfsproc_null(void* param)
     {
     void* retval = NULL;
     /** do work here **/
@@ -445,7 +493,7 @@ void* nfsproc_null(void* param)
     return retval;
     }
 
-attrstat* nfsproc_getattr(fhandle* param)
+attrstat* nnfs_internal_nfsproc_getattr(fhandle* param)
     {
     attrstat* retval = NULL;
     char *path;
@@ -482,7 +530,7 @@ attrstat* nfsproc_getattr(fhandle* param)
     return retval;
     }
 
-attrstat* nfsproc_setattr(sattrargs* param)
+attrstat* nnfs_internal_nfsproc_setattr(sattrargs* param)
     {
     attrstat* retval = NULL;
     retval = (attrstat*)nmMalloc(sizeof(attrstat));
@@ -491,7 +539,7 @@ attrstat* nfsproc_setattr(sattrargs* param)
     return retval;
     }
 
-void* nfsproc_root(void* param)
+void* nnfs_internal_nfsproc_root(void* param)
     {
     void* retval = NULL;
     /** do work here **/
@@ -499,7 +547,7 @@ void* nfsproc_root(void* param)
     return retval;
     }
 
-diropres* nfsproc_lookup(diropargs* param)
+diropres* nnfs_internal_nfsproc_lookup(diropargs* param)
     {
     diropres* retval = NULL;
     retval = (diropres*)nmMalloc(sizeof(diropres));
@@ -508,7 +556,7 @@ diropres* nfsproc_lookup(diropargs* param)
     return retval;
     }
 
-readlinkres* nfsproc_readlink(fhandle* param)
+readlinkres* nnfs_internal_nfsproc_readlink(fhandle* param)
     {
     readlinkres* retval = NULL;
     retval = (readlinkres*)nmMalloc(sizeof(readlinkres));
@@ -517,7 +565,7 @@ readlinkres* nfsproc_readlink(fhandle* param)
     return retval;
     }
 
-readres* nfsproc_read(readargs* param)
+readres* nnfs_internal_nfsproc_read(readargs* param)
     {
     readres* retval = NULL;
     retval = (readres*)nmMalloc(sizeof(readres));
@@ -526,7 +574,7 @@ readres* nfsproc_read(readargs* param)
     return retval;
     }
 
-void* nfsproc_writecache(void* param)
+void* nnfs_internal_nfsproc_writecache(void* param)
     {
     void* retval = NULL;
     /** do work here **/
@@ -534,7 +582,7 @@ void* nfsproc_writecache(void* param)
     return retval;
     }
 
-attrstat* nfsproc_write(writeargs* param)
+attrstat* nnfs_internal_nfsproc_write(writeargs* param)
     {
     attrstat* retval = NULL;
     retval = (attrstat*)nmMalloc(sizeof(attrstat));
@@ -543,7 +591,7 @@ attrstat* nfsproc_write(writeargs* param)
     return retval;
     }
 
-diropres* nfsproc_create(createargs* param)
+diropres* nnfs_internal_nfsproc_create(createargs* param)
     {
     diropres* retval = NULL;
     retval = (diropres*)nmMalloc(sizeof(diropres));
@@ -552,7 +600,7 @@ diropres* nfsproc_create(createargs* param)
     return retval;
     }
 
-nfsstat* nfsproc_remove(diropargs* param)
+nfsstat* nnfs_internal_nfsproc_remove(diropargs* param)
     {
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
@@ -561,7 +609,7 @@ nfsstat* nfsproc_remove(diropargs* param)
     return retval;
     }
 
-nfsstat* nfsproc_rename(renameargs* param)
+nfsstat* nnfs_internal_nfsproc_rename(renameargs* param)
     {
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
@@ -570,7 +618,7 @@ nfsstat* nfsproc_rename(renameargs* param)
     return retval;
     }
 
-nfsstat* nfsproc_link(linkargs* param)
+nfsstat* nnfs_internal_nfsproc_link(linkargs* param)
     {
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
@@ -579,7 +627,7 @@ nfsstat* nfsproc_link(linkargs* param)
     return retval;
     }
 
-nfsstat* nfsproc_symlink(symlinkargs* param)
+nfsstat* nnfs_internal_nfsproc_symlink(symlinkargs* param)
     {
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
@@ -588,7 +636,7 @@ nfsstat* nfsproc_symlink(symlinkargs* param)
     return retval;
     }
 
-diropres* nfsproc_mkdir(createargs* param)
+diropres* nnfs_internal_nfsproc_mkdir(createargs* param)
     {
     diropres* retval = NULL;
     retval = (diropres*)nmMalloc(sizeof(diropres));
@@ -597,7 +645,7 @@ diropres* nfsproc_mkdir(createargs* param)
     return retval;
     }
 
-nfsstat* nfsproc_rmdir(diropargs* param)
+nfsstat* nnfs_internal_nfsproc_rmdir(diropargs* param)
     {
     nfsstat* retval = NULL;
     retval = (nfsstat*)nmMalloc(sizeof(nfsstat));
@@ -606,7 +654,7 @@ nfsstat* nfsproc_rmdir(diropargs* param)
     return retval;
     }
 
-readdirres* nfsproc_readdir(readdirargs* param)
+readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     {
     readdirres* retval = NULL;
     retval = (readdirres*)nmMalloc(sizeof(readdirres));
@@ -615,7 +663,7 @@ readdirres* nfsproc_readdir(readdirargs* param)
     return retval;
     }
 
-statfsres* nfsproc_statfs(fhandle* param)
+statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     {
     statfsres* retval = NULL;
     retval = (statfsres*)nmMalloc(sizeof(statfsres));
@@ -687,7 +735,7 @@ nnfs_internal_request_handler(void* v)
 	    {
 	    int i;
 	    i = xdr_getpos(&xdr_out);
-	    dump_buffer(buf,i);
+//	    nnfs_internal_dump_buffer(buf,i);
 	    if(netSendUDP(NNFS.nfsSocket,buf,i,0,&(entry->source),NULL,0) == -1)
 		{
 		mssError(0,"NNFS","unable to send message: %s",strerror(errno));
@@ -866,7 +914,7 @@ nnfs_internal_nfs_listener(void* v)
 			{
 			int i;
 			i=xdr_getpos(&xdr_out);
-			dump_buffer(outbuf,i);
+//			nnfs_internal_dump_buffer(outbuf,i);
 			if(netSendUDP(NNFS.nfsSocket,outbuf,i,0,&remoteaddr,NULL,0) == -1)
 			    {
 			    mssError(0,"NNFS","unable to send message: %s",strerror(errno));
@@ -902,6 +950,35 @@ nnfs_internal_nfs_listener(void* v)
     thExit();
     }
 
+/** Read the export list from the config file **/
+void nnfs_internal_get_exports(pStructInf inf)
+    {
+    int i;
+    char* path;
+    pExports exp;
+
+    /** If we want to provide "reread" functionality in the future, be
+      * sure to get rid of the old mount list data first. **/
+    mountPoints=(pXArray)nmMalloc(sizeof(XArray));
+    xaInit(mountPoints, 2);
+    for (i=0;i<inf->nSubInf;i++)
+	{
+	path=NULL;
+	stAttrValue(stLookup(inf->SubInf[i],"path"),NULL,&path,0);
+
+	if (!path)
+	    {
+	    mssError(1,"NNFS","Mount point '%s' must have a path defined.",inf->SubInf[i]->Name);
+	    continue;
+	    }
+
+	exp=(pExports)malloc(sizeof(Exports));
+	exp->path=path;
+
+	xaAddItem(mountPoints,exp);
+	}
+    }
+
 /*** nnfs_internal_mount_listener - listens for and processes mount requests
  ***   RFC 1094
  ***/
@@ -911,6 +988,7 @@ nnfs_internal_mount_listener(void* v)
     pFile listen_socket;
     pFile connection_socket;
     pStructInf my_config;
+    pStructInf mp_config;
     char listen_port[32];
     char* strval;
     int intval;
@@ -927,23 +1005,40 @@ nnfs_internal_mount_listener(void* v)
 	/** Get our configuration **/
 	strcpy(listen_port,"5000");
 	my_config = stLookup(CxGlobals.ParsedConfig, "net_nfs");
-	if (my_config)
+	if (!my_config)
 	    {
-	    /** Got the config.  Now lookup what the UDP port is that we listen on **/
-	    strval=NULL;
-	    if (stAttrValue(stLookup(my_config, "mount_port"), &intval, &strval, 0) >= 0)
+	    mssError(1,"NNFS","No configuration for net_nfs in config file.");
+	    thExit();
+	    }
+
+	/** Got the config.  Now lookup what the UDP port is that we listen on **/
+	strval=NULL;
+	if (stAttrValue(stLookup(my_config, "mount_port"), &intval, &strval, 0) >= 0)
+	    {
+	    if (strval)
+	        {
+		memccpy(listen_port, strval, 0, 31);
+		listen_port[31] = '\0';
+		}
+	    else
 		{
-		if (strval)
-		    {
-		    memccpy(listen_port, strval, 0, 31);
-		    listen_port[31] = '\0';
-		    }
-		else
-		    {
-		    snprintf(listen_port,32,"%d",intval);
-		    }
+		snprintf(listen_port,32,"%d",intval);
 		}
 	    }
+
+	/** Look for mountpoints **/
+	mp_config=NULL;
+	mp_config=stLookup(my_config, "mount_points");
+	if (!mp_config)
+	    {
+	    mssError(1,"NNFS","No mount points defined in config file");
+	    thExit();
+	    }
+	nnfs_internal_get_exports(mp_config);
+	fhToPath=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	pathToFh=(pXHashTable)nmMalloc(sizeof(XHashTable));
+	xhInit(fhToPath,16,0);
+	xhInit(pathToFh,16,0);
 
     	/** Open the server listener socket. **/
 	listen_socket = netListenUDP(listen_port, 0);
@@ -1045,7 +1140,7 @@ nnfs_internal_mount_listener(void* v)
 		    {
 		    int i;
 		    i = xdr_getpos(&xdr_out);
-		    dump_buffer(outbuf,i);
+//		    nnfs_internal_dump_buffer(outbuf,i);
 		    if(netSendUDP(listen_socket,outbuf,i,0,&remoteaddr,NULL,0) == -1)
 			{
 			mssError(0,"NNFS","unable to send message: %s",strerror(errno));
