@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.22 2002/09/06 19:01:44 lkehresman Exp $
+    $Id: objdrv_mime.c,v 1.23 2002/09/09 20:12:58 uid20175 Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.23  2002/09/09 20:12:58  uid20175
+    Fixed a bug that wasn't properly returning attributes for a given path
+    element.
+
     Revision 1.22  2002/09/06 19:01:44  lkehresman
     * Added a function in mime_util.c to convert a string to lower case
     * Added a function in mime_util.c to get a three-letter extension for
@@ -262,8 +266,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     memset(inf,0,sizeof(MimeInfo));
     memset(msg,0,sizeof(MimeHeader));
     /** Set object parameters **/
-    node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
-    strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,0));
     inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
     memset(inf->MimeDat,0,sizeof(MimeData));
     inf->MimeDat->Parent = obj->Prev;
@@ -308,12 +310,13 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 
     /** assume we're only going to handle one level **/
     obj->SubCnt=1;
-    if (!(obj->Pathname->nElements < obj->SubPtr+obj->SubCnt))
+    if (obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
 	{
 	int i;
 
 	/* at least one more element of path to worry about */
 	ptr = obj_internal_PathPart(obj->Pathname, obj->SubPtr+obj->SubCnt-1, 1);
+	//fprintf(stderr, "path: %s\n", ptr);
 	for (i=0; i < xaCount(&(inf->Header->Parts)); i++)
 	    {
 	    pMimeHeader phdr;
