@@ -39,135 +39,6 @@
 /* Description: HTML Widget driver for a drop down list                 */
 /************************************************************************/
 
-/**CVSDATA***************************************************************
-
-    $Id: htdrv_dropdown.c,v 1.27 2002/07/26 18:15:40 lkehresman Exp $
-    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
-
-    $Log: htdrv_dropdown.c,v $
-    Revision 1.27  2002/07/26 18:15:40  lkehresman
-    Added standard events to dropdown
-    MouseUp,MouseDown,MouseOut,MouseOver,MouseMove,Click,DataChange,GetFocus,LoseFocus
-
-    Revision 1.26  2002/07/25 15:06:47  lkehresman
-    * Fixed bug where dropdown wasn't going away
-    * Added enable/disable/readonly support
-
-    Revision 1.25  2002/07/24 20:33:15  lkehresman
-    Complete reworking of the dropdown widget.  Much more functionality
-    (including, FINALLY, a working scrollbar).  Better interface.  More
-    bugs (still working out some of the kinks).  This also has a shell
-    for client-side dynamic population of the dropdown, which was the
-    main reason for the restructure/rewrite.
-
-    Revision 1.24  2002/07/20 19:44:25  lkehresman
-    Event handlers now have the variable "ly" defined as the target layer
-    and it will be global for all the events.  We were finding that nearly
-    every widget defined this themselves, so I just made it global to save
-    some variables and a lot of lines of duplicate code.
-
-    Revision 1.23  2002/07/19 21:17:49  mcancel
-    Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
-
-    Revision 1.22  2002/07/16 18:23:20  lkehresman
-    Added htrAddStylesheetItem() function to help consolidate the output of
-    the html generator.  Now, all stylesheet definitions are included in the
-    same <style></style> tags rather than each widget having their own.  I
-    have modified the current widgets to take advantage of this.  In the
-    future, do not use htrAddHeaderItem(), but use this new function.
-
-    NOTE:  There is also a htrAddStylesheetItem_va() function if you need it.
-
-    Revision 1.21  2002/07/16 17:52:00  lkehresman
-    Updated widget drivers to use include files
-
-    Revision 1.20  2002/07/09 14:09:04  lkehresman
-    Added first revision of the datetime widget.  No form interatction, and no
-    time setting functionality, only date.  This has been on my laptop for a
-    while and I wanted to get it into CVS for backup purposes.  More functionality
-    to come soon.
-
-    Revision 1.19  2002/06/26 00:46:17  lkehresman
-    * Added keyhandler to dropdown (you can type the first letter of options
-      to jump to that option and bounce around)
-    * Improved scrolling by adding all items to a layer and created universal
-      scrolling methods
-    * Fixed some GUI bugs
-
-    Revision 1.18  2002/06/24 15:33:09  lkehresman
-    Improvements and bugfixes to the dropdown widget:
-     * Uses pg_addarea() function so mouseovers work
-     * Handles mouse clicks better for showing/hiding the dropdown
-
-    Revision 1.17  2002/06/19 19:08:55  lkehresman
-    Changed all snprintf to use the *_va functions
-
-    Revision 1.16  2002/06/09 23:44:46  nehresma
-    This is the initial cut of the browser detection code.  Note that each widget
-    needs to register which browser and style is supported.  The GNU regular
-    expression library is also needed (comes with GLIBC).
-
-    Revision 1.15  2002/06/06 17:12:20  jorupp
-     * fix bugs in radio and dropdown related to having no form
-     * work around Netscape bug related to functions not running all the way through
-        -- Kardia has been tested on Linux and Windows to be really stable now....
-
-    Revision 1.14  2002/06/02 22:13:21  jorupp
-     * added disable functionality to image button (two new Actions)
-     * bugfixes
-
-    Revision 1.13  2002/05/31 19:22:03  lkehresman
-    * Added option to dropdown to allow specification of number of elements
-      to display at one time (default 3).
-    * Fixed some places that were getting truncated prematurely.
-
-    Revision 1.12  2002/05/03 03:42:16  gbeeley
-    Added objClose to close objects returned from fetches in the dropdown
-    list SQL query.
-
-    Revision 1.11  2002/04/29 19:23:13  lkehresman
-    Fixed scrolling on dropdowns.  It now works properly
-
-    Revision 1.9  2002/03/16 04:30:45  lkehresman
-    * Added scrollbar to dropdown list (only arrows work currently, not drag box)
-    * Added fieldname property
-
-    Revision 1.8  2002/03/14 22:02:58  jorupp
-     * bugfixes, dropdown doesn't throw errors when being cleared/reset
-
-    Revision 1.7  2002/03/14 15:48:43  lkehresman
-    * Added enable, disable, readonly functions
-    * Improved GUI quite a bit.. looks purdy
-    * Added/improved forms interaction functions (setvalue, getvalue...)
-
-    Revision 1.6  2002/03/13 19:05:44  lkehresman
-    Beautified the dropdown widget
-    added basic form interaction
-
-    Revision 1.5  2002/03/13 02:50:38  lkehresman
-    Dropdown now works!  Everything except the form functions.. that is to come
-    shortly.
-
-    Revision 1.4  2002/03/13 00:38:23  lkehresman
-    Layer improvements for dropdown widget.  You can now click anywhere on the
-    layer and get the dropdown to appear.
-
-    Revision 1.3  2002/03/11 14:10:16  lkehresman
-    Added basic functionality for the dropdown widget.
-
-    Revision 1.2  2002/03/09 19:21:20  gbeeley
-    Basic security overhaul of the htmlgen subsystem.  Fixed many of my
-    own bad sprintf habits that somehow worked their way into some other
-    folks' code as well ;)  Textbutton widget had an inadequate buffer for
-    the tb_init() call, causing various problems, including incorrect labels,
-    and more recently, javascript errors.
-
-    Revision 1.1  2002/03/07 00:20:00  lkehresman
-    Added shell for the drop down list form widget.
-
-
- **END-CVSDATA***********************************************************/
-
 /** globals **/
 static struct {
    int     idcnt;
@@ -258,6 +129,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
     htrAddScriptGlobal(s, "dd_click_x","0",0);
     htrAddScriptGlobal(s, "dd_click_y","0",0);
     htrAddScriptGlobal(s, "dd_incr","0",0);
+    htrAddScriptGlobal(s, "dd_cur_mainlayer","null",0);
     htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
     htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
@@ -281,16 +153,20 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"        dd_scroll(0);\n"
 	"        return false;\n"
 	"        }\n"
-	"    if (ly.document && ly.document.mainlayer && ly.document.mainlayer.kind == 'dd') cn_activate(ly.document.mainlayer, 'MouseMove');\n"
-	"\n");
-
-    htrAddEventHandler(s, "document","MOUSEOUT", "dd", 
-	"    if (ly.kind=='dd') cn_activate(ly, 'MouseOut');\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind != 'dd')\n"
+	"        {\n"
+	"        cn_activate(ly.mainlayer, 'MouseMove');\n"
+	"        tc_cur_mainlayer = null;\n"
+	"        }\n"
 	"\n");
 
     htrAddEventHandler(s, "document","MOUSEOVER", "dd", 
 	"\n"
-	"    if (ly.kind=='dd') cn_activate(ly, 'MouseOver');\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd')\n"
+	"        {\n"
+	"        cn_activate(ly.mainlayer, 'MouseOver');\n"
+	"        dd_cur_mainlayer = ly.mainlayer;\n"
+	"        }\n"
 	"    if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')\n"
 	"        {\n"
 	"        dd_lastkey = null;\n"
@@ -300,10 +176,9 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     htrAddEventHandler(s, "document","MOUSEUP", "dd", 
 	"\n"
-	"    if (ly.document && ly.document.mainlayer && ly.document.mainlayer.kind == 'dd')\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd')\n"
 	"        {\n"
-	"        cn_activate(ly.document.mainlayer, 'MouseUp');\n"
-	"        cn_activate(ly.document.mainlayer, 'Click');\n"
+	"        cn_activate(ly.mainlayer, 'MouseUp');\n"
 	"        }\n"
 	"    if (dd_timeout != null)\n"
 	"        {\n"
@@ -325,7 +200,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 
     htrAddEventHandler(s, "document","MOUSEDOWN", "dd", 
 	"\n"
-	"    if (ly.document && ly.document.mainlayer && ly.document.mainlayer.kind == 'dd') cn_activate(ly.document.mainlayer, 'MouseDown');\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd') cn_activate(ly.mainlayer, 'MouseDown');\n"
 	"    dd_target_img = e.target;\n"
 	"    if (ly.kind == 'dd' && ly.enabled != 'disabled')\n"
 	"        {\n"
@@ -520,7 +395,6 @@ int htddInitialize() {
    strcpy(drv->Target, "Netscape47x:default");
 
    /** Register events **/
-   htrAddEvent(drv,"Click");
    htrAddEvent(drv,"MouseUp");
    htrAddEvent(drv,"MouseDown");
    htrAddEvent(drv,"MouseOver");
@@ -537,3 +411,33 @@ int htddInitialize() {
 
    return 0;
 }
+
+/**CVSDATA***************************************************************
+
+    $Id: htdrv_dropdown.c,v 1.28 2002/07/31 13:35:59 lkehresman Exp $
+    $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
+
+    $Log: htdrv_dropdown.c,v $
+    Revision 1.28  2002/07/31 13:35:59  lkehresman
+    * Made x.mainlayer always point to the top layer in dropdown
+    * Fixed a netscape crash bug with the event stuff from the last revision of dropdown
+    * Added a check to the page event stuff to make sure that pg_curkbdlayer is set
+        before accessing the pg_curkbdlayer.getfocushandler() function. (was causing
+        javascript errors before because of the special case of the dropdown widget)
+
+    Revision 1.27  2002/07/26 18:15:40  lkehresman
+    Added standard events to dropdown
+    MouseUp,MouseDown,MouseOut,MouseOver,MouseMove,Click,DataChange,GetFocus,LoseFocus
+
+    Revision 1.26  2002/07/25 15:06:47  lkehresman
+    * Fixed bug where dropdown wasn't going away
+    * Added enable/disable/readonly support
+
+    Revision 1.25  2002/07/24 20:33:15  lkehresman
+    Complete reworking of the dropdown widget.  Much more functionality
+    (including, FINALLY, a working scrollbar).  Better interface.  More
+    bugs (still working out some of the kinks).  This also has a shell
+    for client-side dynamic population of the dropdown, which was the
+    main reason for the restructure/rewrite.
+
+ **END-CVSDATA***********************************************************/

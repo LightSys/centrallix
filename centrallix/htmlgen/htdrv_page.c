@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.40 2002/07/30 16:09:05 pfinley Exp $
+    $Id: htdrv_page.c,v 1.41 2002/07/31 13:35:58 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.41  2002/07/31 13:35:58  lkehresman
+    * Made x.mainlayer always point to the top layer in dropdown
+    * Fixed a netscape crash bug with the event stuff from the last revision of dropdown
+    * Added a check to the page event stuff to make sure that pg_curkbdlayer is set
+        before accessing the pg_curkbdlayer.getfocushandler() function. (was causing
+        javascript errors before because of the special case of the dropdown widget)
+
     Revision 1.40  2002/07/30 16:09:05  pfinley
     Added Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove events to the
     radiobutton widget.
@@ -548,7 +555,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"        var prevLayer = pg_curkbdlayer;\n"
 		"        pg_curkbdarea = pg_curarea;\n"
 		"        pg_curkbdlayer = pg_curlayer;\n"
-		"        if (pg_curkbdlayer.getfocushandler)\n"
+		"        if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)\n"
 		"            {\n"
 		"            var v=pg_curkbdlayer.getfocushandler(e.pageX-pg_curarea.layer.pageX,e.pageY-pg_curarea.layer.pageY,pg_curarea.layer,pg_curarea.cls,pg_curarea.name,pg_curarea);\n"
 		"            if (v & 1)\n"

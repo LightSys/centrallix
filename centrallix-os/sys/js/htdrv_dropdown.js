@@ -172,7 +172,7 @@ function dd_select_item(l,i)
 function dd_getfocus()
     {
     cn_activate(this, "GetFocus");
-    return true;
+    return 0;
     }
 
 function dd_losefocus()
@@ -263,7 +263,7 @@ function dd_create_pane(l)
     p.kind = 'dd_pn';
     p.visibility = 'hide';
     p.document.layer = p;
-    p.document.mainlayer = l;
+    p.mainlayer = l;
     p.document.write("<BODY bgcolor="+l.bg+">");
     p.document.write("<TABLE border=0 cellpadding=0 cellspacing=0 width="+l.w+" height="+l.h2+">");
     p.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>");
@@ -296,7 +296,7 @@ function dd_create_pane(l)
     /**  Create scroll background layer  **/
     p.ScrLayer = new Layer(1024, p);
     p.ScrLayer.document.layer = p;
-    p.ScrLayer.document.mainlayer = l;
+    p.ScrLayer.mainlayer = l;
     p.ScrLayer.x = 2; p.ScrLayer.y = 2;
     p.ScrLayer.clip.height = l.h2;
     if (l.NumDisplay < l.NumElements)
@@ -351,7 +351,7 @@ function dd_create_pane(l)
 	    l.Items[i] = new Layer(1024, p.ScrLayer);
 	    l.Items[i].kind = 'dd_itm';
 	    }
-	l.Items[i].document.mainlayer = l;
+	l.Items[i].mainlayer = l;
 	l.Items[i].document.layer = l.Items[i];
 	l.Items[i].x = 0;
 	l.Items[i].y = (i*16);
@@ -373,7 +373,7 @@ function dd_add_items(l,ary)
     l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*16)+4;
     l.PaneLayer = dd_create_pane(l);
     l.PaneLayer.h = l.NumElements*16;
-    l.PaneLayer.document.mainlayer = l;
+    l.PaneLayer.mainlayer = l;
     }
 
 function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
@@ -384,7 +384,7 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.VisLayer = c1;
     l.HidLayer = c2;
     l.VisLayer.document.layer = l.HidLayer.document.layer = l;
-    l.VisLayer.document.mainlayer = l.HidLayer.document.mainlayer = l;
+    l.VisLayer.mainlayer = l.HidLayer.mainlayer = l;
     l.Items = new Array();
     if (l.NumDisplay < 5)
 	{
@@ -407,7 +407,7 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.enabled = 'full';
     l.form = fm_current;
     l.document.layer = l;
-    l.document.mainlayer = l;
+    l.mainlayer = l;
     l.kind = 'dd';
     htutil_tag_images(l.document,'dd',l,l);
     pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dd', 'dd', 0);
