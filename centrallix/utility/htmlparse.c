@@ -3,11 +3,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include "mtask.h"
-#include "mtsession.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "obj.h"
 #include "htmlparse.h"
 #include "stparse_ne.h"
+#include "cxlib/cxsec.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htmlparse.c,v 1.2 2001/10/16 23:53:02 gbeeley Exp $
+    $Id: htmlparse.c,v 1.3 2005/02/26 06:39:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/htmlparse.c,v $
 
     $Log: htmlparse.c,v $
+    Revision 1.3  2005/02/26 06:39:22  gbeeley
+    * SECURITY FIX: possible heap corruption bug in htmlparse.c regarding
+      illegal placement of % and & (and other chars) in the URL.
+
     Revision 1.2  2001/10/16 23:53:02  gbeeley
     Added expressions-in-structure-files support, aka version 2 structure
     files.  Moved the stparse module into the core because it now depends
@@ -470,12 +475,14 @@ htsParseURL(char* url)
 	while(last_slash > url && *last_slash != '/') --last_slash;
         while(*url && (*url != '?' || url < last_slash)) 
 	    {
-	    if (*url == '?') in_params=1;
+	    /* grb - this is done twice - see obj_internal_DoPathSegment() */
+	    /*if (*url == '?') in_params=1;
 	    if (*url == '/') in_params=0;
 	    if (in_params)
 	        *(dst++) = *(url++);
 	    else
-	        *(dst++) = htsConvertChar(&url);
+	        *(dst++) = htsConvertChar(&url);*/
+	    *(dst++) = *(url++);
 	    }
         *dst=0;
         main_inf->StrAlloc = 1;
@@ -483,7 +490,7 @@ htsParseURL(char* url)
 
         /** Step through any parameters, and alloc inf structures for them. **/
         if (*url == '?') url++;
-        while(*url)
+        while(*url && *url != '/')
             {
             /** Alloc a structure for this param. **/
             attr_inf = stAllocInf_ne();
@@ -492,24 +499,30 @@ htsParseURL(char* url)
                 stFreeInf_ne(main_inf);
                 return NULL;
                 }
-            stAddInf_ne(main_inf, attr_inf);
 
             /** Copy the param name. **/
             dst = attr_inf->Name;
-            while (*url && *url != '=' && (dst-(attr_inf->Name)) < 31)
+            while (*url && *url != '&' && *url != '/' && *url != '=' && (dst-(attr_inf->Name)) < 31)
                 {
-                if (*url == '/')
-                    {
-                    url++;
-                    continue;
-                    }
                 *(dst++) = htsConvertChar(&url);
                 }
             *dst=0;
             if (*url == '=') url++;
 
+	    /** Name must comply with symbol name standards **/
+	    if (cxsecVerifySymbol(attr_inf->Name) < 0)
+		{
+		stFreeInf_ne(attr_inf);
+		continue;
+		}
+
+	    /** Ok, at least have a good attr name **/
+	    attr_inf->StrVal = "";
+	    attr_inf->StrAlloc = 0;
+            stAddInf_ne(main_inf, attr_inf);
+
             /** Copy the param value, alloc'ing a string for it **/
-            ptr = strchr(url,'&');
+            ptr = strpbrk(url,"&/");
             if (!ptr) len = strlen(url);
             else len = ptr-url;
             ptr = (char*)nmSysMalloc(len*3+1);
@@ -519,13 +532,8 @@ htsParseURL(char* url)
                 return NULL;
                 }
             dst=ptr;
-            while(*url && *url != '&')
+            while(*url && *url != '&' && *url != '/')
                 {
-                if (*url == '/')
-                    {
-                    url++;
-                    continue;
-                    }
                 *(dst++) = htsConvertChar(&url);
                 }
             *dst=0;
@@ -556,10 +564,12 @@ htsConvertChar(char** ptr)
             }
         else if (**ptr == '%')
             {
-            x[0] = (*ptr)[1];
-            x[1] = (*ptr)[2];
+	    (*ptr)++;
+            x[0] = (*ptr)[0];
+            x[1] = (*ptr)[1];
             x[2] = 0;
-            (*ptr)+=3;
+	    if ((x[0] >= '0' && x[0] <= '9') || (x[0] >= 'a' && x[0] <= 'f') || (x[0] >= 'A' && x[0] <= 'F')) (*ptr)++;
+	    if ((x[1] >= '0' && x[1] <= '9') || (x[1] >= 'a' && x[1] <= 'f') || (x[1] >= 'A' && x[1] <= 'F')) (*ptr)++;
             ch = strtol(x,NULL,16);
             }
         else
