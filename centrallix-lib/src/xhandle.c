@@ -33,10 +33,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhandle.c,v 1.3 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: xhandle.c,v 1.4 2004/06/12 04:09:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xhandle.c,v $
 
     $Log: xhandle.c,v $
+    Revision 1.4  2004/06/12 04:09:37  gbeeley
+    - supporting logic to allow saving of an MTask security context for later
+      use in a new thread.  This is needed for the asynchronous event delivery
+      mechanism for object-updates being sent to the client.
+
     Revision 1.3  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -143,6 +148,22 @@ xhnHandlePtr(pHandleContext ctx, handle_t handle_id)
 	ASSERTMAGIC(h, MGK_HANDLE);
 
     return h->Ptr;
+    }
+
+
+/*** xhnHandle() - return the handle for a given pointer.
+ ***/
+handle_t
+xhnHandle(pHandleContext ctx, void* ptr)
+    {
+    pHandleData h;
+
+	/** Look it up **/
+	h = (pHandleData)xhLookup(&(ctx->HandleTableByPtr), (void*)&ptr);
+	if (!h) return -1;
+	ASSERTMAGIC(h, MGK_HANDLE);
+
+    return h->HandleID;
     }
 
 

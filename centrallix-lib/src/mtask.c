@@ -50,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.24 2004/05/04 18:18:59 gbeeley Exp $
+    $Id: mtask.c,v 1.25 2004/06/12 04:09:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.25  2004/06/12 04:09:37  gbeeley
+    - supporting logic to allow saving of an MTask security context for later
+      use in a new thread.  This is needed for the asynchronous event delivery
+      mechanism for object-updates being sent to the client.
+
     Revision 1.24  2004/05/04 18:18:59  gbeeley
     - Adding fdAccess() wrapper for access(2).
     - Moving PTOD definition to module in centrallix core.
@@ -676,7 +681,8 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.CurrentThread->Flags = THR_F_STARTING;
 	MTASK.CurrentThread->StartFn = start_fn;
 	MTASK.CurrentThread->StartParam = NULL;
-	MTASK.CurrentThread->UserID = geteuid();
+	MTASK.CurrentThread->SecContext.UserID = geteuid();
+	MTASK.CurrentThread->SecContext.GroupID = getegid();
 	MTASK.StartUserID = geteuid();
 	MTASK.CurUserID = geteuid();
 	MTASK.CurGroupID = getegid();
@@ -1245,18 +1251,18 @@ mtSched()
 	lowest_run_thr->Status = THR_S_EXECUTING;
 
 	/** Switch to that thread's UID if different from current. **/
-	if (lowest_run_thr->UserID != MTASK.CurUserID) 
+	if (lowest_run_thr->SecContext.UserID != MTASK.CurUserID) 
 	    {
 	    if (MTASK.CurUserID != 0) seteuid(0);
-	    if (lowest_run_thr->UserID != 0) seteuid(lowest_run_thr->UserID);
-	    MTASK.CurUserID = lowest_run_thr->UserID;
+	    if (lowest_run_thr->SecContext.UserID != 0) seteuid(lowest_run_thr->SecContext.UserID);
+	    MTASK.CurUserID = lowest_run_thr->SecContext.UserID;
 	    }
-	if (lowest_run_thr->GroupID != MTASK.CurGroupID)
+	if (lowest_run_thr->SecContext.GroupID != MTASK.CurGroupID)
 	    {
 	    if (MTASK.CurUserID != 0) seteuid(0);
-	    if (lowest_run_thr->GroupID != 0) setegid(lowest_run_thr->GroupID);
+	    if (lowest_run_thr->SecContext.GroupID != 0) setegid(lowest_run_thr->SecContext.GroupID);
 	    if (MTASK.CurUserID != 0) seteuid(MTASK.CurUserID);
-	    MTASK.CurGroupID = lowest_run_thr->GroupID;
+	    MTASK.CurGroupID = lowest_run_thr->SecContext.GroupID;
 	    }
 
 	/** Jump into the thread... **/
@@ -1306,15 +1312,15 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->Flags = THR_F_STARTING;
 	thr->StartFn = start_fn;
 	thr->StartParam = start_param;
-	thr->UserID = MTASK.CurUserID;
-	thr->GroupID = MTASK.CurGroupID;
+	thr->SecContext.UserID = MTASK.CurUserID;
+	thr->SecContext.GroupID = MTASK.CurGroupID;
 	/** copy the thread param from the current thread, if there is one
 	      this allows the signal handler, which will sometimes get called while
 	      the scheduler is in a select() call to spawn a new thread **/
 	if(MTASK.CurrentThread)
-	    thr->ThrParam = MTASK.CurrentThread->ThrParam;
+	    thr->SecContext.ThrParam = MTASK.CurrentThread->SecContext.ThrParam;
 	else
-	    thr->ThrParam = NULL;
+	    thr->SecContext.ThrParam = NULL;
 
 	/** Add to the thread table. **/
 	for(i=0;i<MAX_THREADS;i++)
@@ -1816,17 +1822,17 @@ thSetUserID(pThread thr, int new_uid)
 	if (!thr) thr = MTASK.CurrentThread;
 
 	/** Verify permissions **/
-	if (MTASK.CurrentThread->UserID != 0) return -1;
+	if (MTASK.CurrentThread->SecContext.UserID != 0) return -1;
 
 	/** Switch to it. **/
-	if (thr->UserID != new_uid)
+	if (thr->SecContext.UserID != new_uid)
 	    {
 	    seteuid(new_uid);
 	    MTASK.CurUserID = new_uid;
 	    }
 
 	/** Set this ID **/
-	thr->UserID = new_uid;
+	thr->SecContext.UserID = new_uid;
 
     return 0;
     }
@@ -1843,7 +1849,7 @@ thGetUserID(pThread thr)
 	/** Checking current thread? **/
 	if (!thr) thr = MTASK.CurrentThread;
 
-    return thr->UserID;
+    return thr->SecContext.UserID;
     }
 
 
@@ -1858,7 +1864,7 @@ thSetGroupID(pThread thr, int new_gid)
 	if (!thr) thr = MTASK.CurrentThread;
 
 	/** Verify permissions **/
-	if (MTASK.CurrentThread->UserID != 0) return -1;
+	if (MTASK.CurrentThread->SecContext.UserID != 0) return -1;
 
 	/** Switch to it. **/
 	if (MTASK.CurGroupID != new_gid)
@@ -1868,7 +1874,7 @@ thSetGroupID(pThread thr, int new_gid)
 	    }
 
 	/** Set this ID **/
-	thr->GroupID = new_gid;
+	thr->SecContext.GroupID = new_gid;
 
     return 0;
     }
@@ -1884,9 +1890,70 @@ thGetGroupID(pThread thr)
 	/** Checking current thread? **/
 	if (!thr) thr = MTASK.CurrentThread;
 
-    return thr->GroupID;
+    return thr->SecContext.GroupID;
     }
 
+
+/*** THSETSECCONTEXT sets the overall security context of a thread to one
+ *** provided by the caller.  The context provided must have been obtained
+ *** by thGetSecContext() on another thread.  Callers must not directly
+ *** modify the security context structure.  Unlike the thSetUserID() call,
+ *** in this case the caller need not have root (0) permission.
+ ***/
+int
+thSetSecContext(pThread thr, pMTSecContext context)
+    {
+
+	/** Current thread? **/
+	if (!thr) thr = MTASK.CurrentThread;
+
+	/** Update thread context **/
+	thr->SecContext.UserID = context->UserID;
+	thr->SecContext.GroupID = context->GroupID;
+	thr->SecContext.ThrParam = context->ThrParam;
+
+	/** Update current run settings if thread is current thread **/
+	if (thr == MTASK.CurrentThread)
+	    {
+	    if (thr->SecContext.UserID != MTASK.CurUserID)
+		{
+		if (MTASK.CurUserID) seteuid(0);
+		if (thr->SecContext.UserID) seteuid(thr->SecContext.UserID);
+		MTASK.CurUserID = thr->SecContext.UserID;
+		}
+	    if (thr->SecContext.GroupID != MTASK.CurGroupID)
+		{
+		if (MTASK.CurGroupID) setegid(0);
+		if (thr->SecContext.GroupID) setegid(thr->SecContext.GroupID);
+		MTASK.CurGroupID = thr->SecContext.GroupID;
+		}
+	    }
+
+    return 0;
+    }
+
+
+/*** THGETSECCONTEXT gets the overall security context of a thread, saving
+ *** it in a MTSecContext structure allocated by the caller.  This is usually
+ *** done to save the security context of a calling thread, so a new thread
+ *** under that security context can be later created as the result of a
+ *** totally unrelated event or occurrence (asynchronous from the original
+ *** thread's execution).
+ ***/
+int
+thGetSecContext(pThread thr, pMTSecContext context)
+    {
+
+	/** Current thread? **/
+	if (!thr) thr = MTASK.CurrentThread;
+
+	/** Save it **/
+	context->UserID = thr->SecContext.UserID;
+	context->GroupID = thr->SecContext.GroupID;
+	context->ThrParam = thr->SecContext.ThrParam;
+
+    return 0;
+    }
 
 
 /*** THSETPARAM sets the generic parameter for the specified thread.  This
@@ -1915,7 +1982,7 @@ thSetParam(pThread thr, const char* name, void* param)
 	    }
 	thr->ThrParam[i]->Param = param;
 #else
-	thr->ThrParam = param;
+	thr->SecContext.ThrParam = param;
 #endif
 
     return 0;
@@ -1941,7 +2008,7 @@ thGetParam(pThread thr, const char* name)
 
     return thr->ThrParam[i]->Param;
 #else
-    return thr->ThrParam;
+    return thr->SecContext.ThrParam;
 #endif
     }
 

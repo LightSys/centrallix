@@ -23,10 +23,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.13 2004/05/04 18:18:59 gbeeley Exp $
+    $Id: mtask.h,v 1.14 2004/06/12 04:09:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.14  2004/06/12 04:09:37  gbeeley
+    - supporting logic to allow saving of an MTask security context for later
+      use in a new thread.  This is needed for the asynchronous event delivery
+      mechanism for object-updates being sent to the client.
+
     Revision 1.13  2004/05/04 18:18:59  gbeeley
     - Adding fdAccess() wrapper for access(2).
     - Moving PTOD definition to module in centrallix core.
@@ -142,6 +147,21 @@
 #define MT_FD_FLUSH_INTERVAL	5000	/* 5 seconds */
 
 
+/** MTASK security context structure **/
+/** currently only relates to user id and group id **/
+typedef struct _MSEC
+    {
+    int		UserID;				/* ID of user of this thread */
+    int		GroupID;			/* primary group of user */
+#if 0
+    pThrExt	ThrParam[16];			/* Structure extension */
+#else
+    void*	ThrParam;
+#endif
+    }
+    MTSecContext, *pMTSecContext;
+
+
 /** EventCk Functions **/
 int evThread(int event, void* object);
 int evFile(int event, void* object);
@@ -169,13 +189,7 @@ typedef struct _THR
     int		CntDown;			/* Usage calculation */
     int		Status;				/* THR_S_xxx */
     int		Flags;				/* one or more of THR_F_xxx */
-    int		UserID;				/* ID of user of this thread */
-    int		GroupID;			/* primary group of user */
-#if 0
-    pThrExt	ThrParam[16];			/* Structure extension */
-#else
-    void*	ThrParam;
-#endif
+    MTSecContext SecContext;			/* security context of thread */
     void	(*StartFn)();			/* start function */
     void*	StartParam;			/* Param to pass to start fn */
     int		BlkReturnCode;			/* Return code for longjmp */
@@ -380,14 +394,19 @@ int thSetPrio(pThread thr, int prio);
 int thLock();
 int thUnlock();
 int thSleep(int msec);
-int thSetUserID(pThread thr, int new_uid);
-int thGetUserID(pThread thr);
-int thSetGroupID(pThread thr, int new_gid);
-int thGetGroupID(pThread thr);
 int thSetParam(pThread thr, const char* name, void* param);
 void* thGetParam(pThread thr, const char* name);
 int thSetFlags(pThread thr, int flags);
 int thClearFlags(pThread thr, int flags);
+
+
+/** MTASK Security-related functions **/
+int thSetUserID(pThread thr, int new_uid);
+int thGetUserID(pThread thr);
+int thSetGroupID(pThread thr, int new_gid);
+int thGetGroupID(pThread thr);
+int thGetSecContext(pThread thr, pMTSecContext context);
+int thSetSecContext(pThread thr, pMTSecContext context);
 
 
 /** MTASK File i/o functions **/

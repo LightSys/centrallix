@@ -21,10 +21,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xhandle.h,v 1.2 2002/05/03 03:46:29 gbeeley Exp $
+    $Id: xhandle.h,v 1.3 2004/06/12 04:09:37 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xhandle.h,v $
 
     $Log: xhandle.h,v $
+    Revision 1.3  2004/06/12 04:09:37  gbeeley
+    - supporting logic to allow saving of an MTask security context for later
+      use in a new thread.  This is needed for the asynchronous event delivery
+      mechanism for object-updates being sent to the client.
+
     Revision 1.2  2002/05/03 03:46:29  gbeeley
     Modifications to xhandle to support clearing the handle list.  Added
     a param to xhClear to provide support for xhnClearHandles.  Added a
@@ -82,6 +87,7 @@ int xhnDeInitContext(pHandleContext this);
 /*** Handle management ***/
 handle_t xhnAllocHandle(pHandleContext ctx, void* ptr);
 void* xhnHandlePtr(pHandleContext ctx, handle_t handle_id);
+handle_t xhnHandle(pHandleContext ctx, void* ptr);
 int xhnUpdateHandle(pHandleContext ctx, handle_t handle_id, void* ptr);
 int xhnUpdateHandleByPtr(pHandleContext ctx, void* old_ptr, void* ptr);
 int xhnFreeHandle(pHandleContext ctx, handle_t handle_id);
