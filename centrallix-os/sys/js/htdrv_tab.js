@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -22,9 +22,9 @@ function tc_makecurrent()
 	    htr_setzindex(t.tabpage,htr_getzindex(this.tabctl) - 1);
 	    htr_setvisibility(t.tabpage,'hidden');
 	    t.marker_image.src = '/sys/images/tab_lft3.gif';
-	    t.pageY += this.tabctl.yo;
-	    t.pageX += this.tabctl.xo;
-	    t.clip[this.tabctl.cl] += this.tabctl.ci;
+	    setPageY(t, getPageY(t)+this.tabctl.yo);
+	    setPageX(t, getPageX(t)+this.tabctl.xo);
+	    pg_set_style(t, this.tabctl.cl, pg_get_style(this, this.tabctl.cl) + this.tabctl.ci);
 	    if (this.tabctl.inactive_bgColor) htr_setbgcolor(t,this.tabctl.inactive_bgColor);
 	    if (this.tabctl.inactive_bgnd) htr_setbgimage(t,this.tabctl.inactive_bgnd);
 	    }
@@ -35,9 +35,9 @@ function tc_makecurrent()
     htr_setzindex(this.tabpage, htr_getzindex(this.tabctl) + 1);
     htr_setvisibility(this.tabpage,'inherit');
     this.marker_image.src = '/sys/images/tab_lft2.gif';
-    this.pageY -= this.tabctl.yo;
-    this.pageX -= this.tabctl.xo;
-    this.clip[this.tabctl.cl] -= this.tabctl.ci;
+    setPageY(this, getPageY(this)-this.tabctl.yo);
+    setPageX(this, getPageX(this)-this.tabctl.xo);
+    pg_set_style(this, this.tabctl.cl, pg_get_style(this, this.tabctl.cl) - this.tabctl.ci);
     htr_unwatch(this.tabctl,"selected","tc_selection_changed");
     htr_unwatch(this.tabctl,"selected_index","tc_selection_changed");
     this.tabctl.selected_index = this.tabindex;
@@ -59,37 +59,45 @@ function tc_addtab(l_tab, l_page, l, nm)
 	{
 	if (this.tabs.length > 0)
 	    {
-	    newx = this.tabs[this.tabs.length-1].pageX + htr_getphyswidth(this.tabs[this.tabs.length-1]) + 1;
+	    newx = getPageX(this.tabs[this.tabs.length-1]) + htr_getphyswidth(this.tabs[this.tabs.length-1]) + 1;
 	    if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newx += l.xo;
 	    }
 	else
-	    newx = this.pageX;
+	    newx = getPageX(this);
 	}
     else if (l.tloc == 2) // left
-	newx = this.pageX - htr_getviswidth(l_tab) + 1;
+	newx = getPageX(this)- htr_getviswidth(l_tab) + 1;
     else if (l.tloc == 3) // right
-	newx = this.pageX + htr_getviswidth(this) - 1;
+	newx = getPageX(this) + htr_getviswidth(this) - 1;
 
     if (l.tloc == 2 || l.tloc == 3) // left or right
 	{
 	if (this.tabs.length > 0)
 	    {
-	    newy = this.tabs[this.tabs.length-1].pageY + 26;
+	    newy = getPageY(this.tabs[this.tabs.length-1]) + 26;
 	    if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newy += l.yo;
 	    }
 	else
-	    newy = this.pageY;
+	    newy = getPageY(this);
 	}
     else if (l.tloc == 1) // bottom
-	newy = this.pageY + htr_getvisheight(this) - 1;
+	newy = getPageY(this)+ htr_getvisheight(this) - 1;
     else // top
-	newy = this.pageY - 24;
-	    
+	newy = getPageY(this) - 24;
+
     if (htr_getvisibility(l_page) != 'inherit')
 	{
 	newx += l.xo;
 	newy += l.yo;
-	l_tab.clip[l.cl] += l.ci;
+	if (cx__capabilities.Dom0NS)
+	    {
+	    l_tab.clip[l.cl] += l.ci;
+	    }
+	else
+	    {
+	    l.cl = "clip." + l.cl;
+	    pg_set_style(l_tab, l.cl, pg_get_style(l_tab, l.cl)+l.ci);
+	    }
 	if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
 	else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
 	if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
@@ -120,12 +128,12 @@ function tc_addtab(l_tab, l_page, l, nm)
     l_tab.tabpage = l_page;
     l_tab.tabctl = this;
     l_tab.makeCurrent = tc_makecurrent;
-    l_tab.pageX = newx;
-    l_tab.pageY = newy;
+    setPageX(l_tab, newx);
+    setPageY(l_tab, newy);
     l_page.tabctl = this;
     l_page.tab = l_tab;
-    l_page.clip.width = this.clip.width-2;
-    l_page.clip.height = this.clip.height-2;
+    setClipWidth(l_page, getClipWidth(this)-2);
+    setClipHeight(l_page, getClipHeight(this)-2);
 
     // Indicate that we generate reveal/obscure notifications
     l_page.Reveal = tc_cb_reveal;
@@ -237,7 +245,7 @@ function tc_cb_reveal(e)
     {
     switch(e.eventName)
 	{
-	case 'ObscureOK': 
+	case 'ObscureOK':
 	    this.tabctl.ChangeSelection2(e.c);
 	    break;
 	case 'RevealOK':

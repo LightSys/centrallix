@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -56,9 +56,9 @@ function sp_init(l,aname,tname,p)
     images[0].thum=tlayer;
     images[0].area=alayer;
     images[0].pane=l;
-    alayer.clip.width=l.clip.width-18;
-    alayer.maxwidth=alayer.clip.width;
-    alayer.minwidth=alayer.clip.width;
+    setClipWidth(alayer, getClipWidth(l)-18);
+    alayer.maxwidth=getClipWidth(alayer);
+    alayer.minwidth=getClipWidth(alayer);
     tlayer.nofocus = true;
     alayer.nofocus = true;
     htr_init_layer(l,l,"sp");
@@ -69,15 +69,24 @@ function sp_init(l,aname,tname,p)
     l.area = alayer;
     l.UpdateThumb = sp_UpdateThumb;
     l.ActionScrollTo = sp_action_scrollto;
-    
-    alayer.clip.pane = l;
-    alayer.clip.watch("height",sp_WatchHeight);
+
+    if(cx__capabilities.Dom0IE)
+        {
+        alayer.runtimeStyle.clip.pane = l;
+        // how to watch this in IE?
+        alayer.runtimeStyle.clip.onpropertychange = sp_WatchHeight;
+	}
+    else
+    	{
+    	alayer.clip.pane = l;
+    	alayer.clip.watch("height",sp_WatchHeight);
+    	}
     }
 
 function sp_action_scrollto(aparam)
     {
-    var h=this.area.clip.height; // height of content
-    var d=h-this.clip.height; // height of non-visible content (max scrollable distance)
+    var h=getClipHeight(this.area); // height of content
+    var d=h-getClipHeight(this); // height of non-visible content (max scrollable distance)
     if (d < 0) d=0;
     if (aparam.Percent)
 	{
@@ -96,9 +105,14 @@ function sp_action_scrollto(aparam)
 
 function sp_WatchHeight(property, oldvalue, newvalue)
     {
+    if (cx__capabilities.Dom0IE)
+        {
+        newvalue = htr_get_watch_newval(window.event);
+        }
+
     // make sure region not offscreen now
-    if (this.pane.area.y + newvalue < this.pane.clip.height) this.pane.area.y = this.pane.clip.height - newvalue;
-    if (newvalue < this.pane.clip.height) this.pane.area.y = 0;
+    if (getRelativeY(this.pane.area) + newvalue < getClipHeight(this.pane)) setRelativeY(this.pane.area, getClipHeight(this.pane) - newvalue);
+    if (newvalue < getClipHeight(this.pane)) setRelativeY(this.pane.area, 0);
     this.pane.UpdateThumb(newvalue);
     this.bottom = this.top + newvalue; /* ns seems to unlink bottom = top + height if you modify clip obj */
     return newvalue;
@@ -109,37 +123,38 @@ function sp_UpdateThumb(h)
     /** 'this' is a spXpane **/
     if(!h)
 	{ /** if h is supplied, it is the soon-to-be clip.height of the spXarea **/
-	h=this.area.clip.height; // height of content
+	h=getClipHeight(this.area); // height of content
 	}
-    var d=h-this.clip.height; // height of non-visible content (max scrollable distance)
-    var v=this.clip.height-(3*18);
-    if(d<=0) 
-	this.thum.y=18;
-    else 
-	this.thum.y=18+v*(-this.area.y/d);
+    var d=h-getClipHeight(this); // height of non-visible content (max scrollable distance)
+    var v=getClipHeight(this)-(3*18);
+    if(d<=0)
+	setRelativeY(this.thum, 18);
+    else
+	setRelativeY(this.thum, 18+v*(-getRelativeY(this.area)/d));
     }
 
 function do_mv()
     {
+
     var ti=sp_target_img;
     /** not sure why, but it's getting called with a null sp_target_img sometimes... **/
     if(!ti)
 	{
 	return;
 	}
-    var h=ti.area.clip.height; // height of content
-    var d=h-ti.pane.clip.height; // height of non-visible content (max scrollable distance)
+    var h=getClipHeight(ti.area); // height of content
+    var d=h-getClipHeight(ti.pane); // height of non-visible content (max scrollable distance)
     var incr=sp_mv_incr;
     if(d<0)
 	incr=0;
     if (ti.kind=='sp')
 	{
-	var scrolled = -ti.area.y; // distance scrolled already
+	var scrolled = -getRelativeY(ti.area); // distance scrolled already
 	if(incr > 0 && scrolled+incr>d)
 	    incr=d-scrolled;
 
 	/** if we've scrolled down less than we want to go up, go up the distance we went down **/
-	if(incr < 0 && scrolled<-incr) 
+	if(incr < 0 && scrolled<-incr)
 	    incr=-scrolled;
 
 	/*var layers = pg_layers(ti.pane);
@@ -152,7 +167,7 @@ function do_mv()
 	    }*/
 
 	/** actually move the displayed content **/
-	ti.area.y-=incr;
+	setRelativeY(ti.area, getRelativeY(ti.area)-incr);
 	}
     else
 	{
