@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.9 2002/09/27 22:26:05 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.10 2002/11/02 01:48:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.10  2002/11/02 01:48:27  gbeeley
+    Re-added some script init and subwidget (connectors) lines that got
+    removed at some point along the road here.
+
     Revision 1.9  2002/09/27 22:26:05  gbeeley
     Finished converting over to the new obj[GS]etAttrValue() API spec.  Now
     my gfingrersd asre soi rtirewd iu'm hjavimng rto trype rthius ewithj nmy
@@ -121,6 +125,8 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     {
     char* ptr;
     char name[64];
+    char sbuf[256];
+    char sbuf2[160];
     int id;
     char* nptr;
     char* objname;
@@ -144,7 +150,16 @@ htexRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
- 
+
+	/** Script initialization call. **/
+	htrAddScriptInit_va(s, "    %s = ex_init('%s', '%s', '%s');\n", nptr, objname,
+	    methodname, methodparam);
+
+	/** Check for objects within the timer. **/
+	snprintf(sbuf, HT_SBUF_SIZE, "%s.document",nptr);
+	snprintf(sbuf2,160,"%s",nptr);
+	htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);
+
 	htrAddScriptInclude(s,"/sys/js/htdrv_execmethod.js",0);
 
     return 0;
