@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.12 2002/08/10 02:43:19 gbeeley Exp $
+    $Id: test_obj.c,v 1.13 2002/08/13 14:22:50 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.13  2002/08/13 14:22:50  lkehresman
+    * removed unused variables in test_obj
+    * added an incomplete "help" command to test_obj
+
     Revision 1.12  2002/08/10 02:43:19  gbeeley
     Test-obj now automatically displays 'system' attributes on a show
     command.  This includes inner_type, outer_type, name, and annotation,
@@ -145,7 +149,7 @@ testobj_show_attr(pObject obj, char* attrname)
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) 
 	    {
-	    printf("  %20.20s: (no such attribute)\n");
+	    printf("  %20.20s: (no such attribute)\n", attrname);
 	    return -1;
 	    }
 	switch(type)
@@ -238,14 +242,12 @@ start(void* v)
     char* filename;
     char* filetype;
     char* fileannot;
-    int cnt,i;
+    int cnt;
     char* attrname;
     char* methodname;
     int type;
     DateTime dtval;
     pDateTime dt;
-    pIntVec iv;
-    pStringVec sv;
     char* stringval;
     int intval;
     int is_where, is_orderby;
@@ -690,6 +692,22 @@ start(void* v)
 		mptr = mparam;
 		objExecuteMethod(obj, mname, POD(&mptr));
 		objClose(obj);
+		}
+	    else if (!strcmp(cmdname,"help"))
+		{
+		printf("Available Commands:\n");
+		printf("  annot\n");
+		printf("  cd       - Change the current working \"directory\" in the objectsystem.\n");
+		printf("  copy     - \n");
+		printf("  create   - \n");
+		printf("  delete   - \n");
+		printf("  exec     - \n");
+		printf("  help     - Displays this help screen.\n");
+		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
+		printf("  print    - \n");
+		printf("  query    - \n");
+		printf("  quit     - Exits this application.\n");
+		printf("  show     - \n");
 		}
 	    else
 		{
