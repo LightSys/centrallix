@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.38  2002/06/01 19:33:44  jorupp
+     * I don't know why this worked before, but it works now
+
     Revision 1.37  2002/05/31 05:03:32  jorupp
      * OSRC now can do a DoubleSync -- check kardia for an example
 
@@ -964,14 +967,14 @@ old query code
 	    
 		/** build the object to pass to objectsource **/
 		"    var dataobj=new Array();\n"
-		"    for(var i in form.elements)\n"
+		"    for(var i in this.elements)\n"
 		"        {\n"
-		"        if(form.elements[i]._form_IsChanged)\n"
+		"        if(this.elements[i]._form_IsChanged)\n"
 		"            {\n"
 		"            var t=new Object();\n"
-		"            t.oid=form.elements[i].fieldname;\n"
-		"            t.value=form.elements[i].getvalue();\n"
-		"            t.type=form.elements[i]._form_type;\n"
+		"            t.oid=this.elements[i].fieldname;\n"
+		"            t.value=this.elements[i].getvalue();\n"
+		"            t.type=this.elements[i]._form_type;\n"
 		"            dataobj.push(t);\n"
 		"            }\n"
 		"        }\n"
