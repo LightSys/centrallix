@@ -43,6 +43,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.32  2002/05/30 04:07:08  jorupp
+     * changed interface with form elements to use enablemodify (for enable for modification)
+        and enablenew (for enable for new data entry) -- useful for the disableable editbox
+
     Revision 1.31  2002/05/30 00:03:07  jorupp
      * this ^should^ allow nesting of the osrc and form, but who knows.....
 
@@ -713,7 +717,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    if(this.oldmode=='No Data' || this.oldmode=='View')\n"
 		"        {\n"
-		"        this.EnableAll();\n"
+		"        this.EnableModifyAll();\n"
 		"        }\n"
 		"    for(var i in this.statuswidgets)\n"
 		"        {\n"
@@ -745,15 +749,32 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        }\n"
 		"    }\n", 0);
 
-	/** Enables all children **/
-	htrAddScriptFunction(s, "form_enable_all", "\n"
+	/** Enables all children (for modify) **/
+	htrAddScriptFunction(s, "form_enable_modify_all", "\n"
 		"function form_enable_all()\n"
 		"    {\n"
 		"    for(var i in this.elements)\n"
 		"        {\n"
-		"        this.elements[i].enable();\n"
+		"        if(this.elements[i].enablemodify);\n"
+		"            this.elements[i].enablemodify();\n"
+		"        else\n"
+		"            this.elements[i].enable();\n"
 		"        }\n"
 		"    }\n", 0);
+
+	/** Enables all children (for modify) **/
+	htrAddScriptFunction(s, "form_enable_new_all", "\n"
+		"function form_enable_all()\n"
+		"    {\n"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        if(this.elements[i].enablenew);\n"
+		"            this.elements[i].enablenew();\n"
+		"        else\n"
+		"            this.elements[i].enable();\n"
+		"        }\n"
+		"    }\n", 0);
+
 
 	/** make all children readonly**/
 	htrAddScriptFunction(s, "form_readonly_all", "\n"
@@ -918,9 +939,9 @@ old query code
 		"    	 return 0;\n"
 		"        }\n"
 		"    this.cb['OperationCompleteSuccess'].add(this,\n"
-		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableAll();this.cb['OperationCompleteFail'].clear();\"),null,-100);\n"
+		"           new Function(\"this.IsUnsaved=false;this.Pending=false;this.EnableModifyAll();this.cb['OperationCompleteFail'].clear();\"),null,-100);\n"
 		"     this.cb['OperationCompleteFail'].add(this,\n"
-		"           new Function(\"this.Pending=false;this.EnableAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();\"),null,-100);\n"
+		"           new Function(\"this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();\"),null,-100);\n"
 	    
 		/** build the object to pass to objectsource **/
 		"    var dataobj=new Array();\n"
@@ -1115,7 +1136,8 @@ old query code
 		/** noone else should call these.... **/
 		"    form.ClearAll = form_clear_all;\n"
 		"    form.DisableAll = form_disable_all;\n"
-		"    form.EnableAll = form_enable_all;\n"
+		"    form.EnableModifyAll = form_enable_modify_all;\n"
+		"    form.EnableNewAll = form_enable_new_all;\n"
 		"    form.ReadOnlyAll = form_readonly_all;\n"
 		"    form.ChangeMode = form_change_mode;\n"
 		"    //form.InitQuery = form_init_query;\n"
