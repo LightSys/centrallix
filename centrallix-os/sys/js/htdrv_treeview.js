@@ -21,12 +21,13 @@ function tv_show_obj(obj)
 function tv_new_layer(width,pdoc,l)
     {
     var nl;
-    if (pdoc.tv_layer_cache != null)
+    if (pdoc.tv_layer_cache.length > 0)
 	{
-	nl = pdoc.tv_layer_cache;
+	/*nl = pdoc.tv_layer_cache;
 	pdoc.tv_layer_cache = nl.next;
-	nl.next = null;
+	nl.next = null;*/
 	tv_cache_cnt--;
+	nl = pdoc.tv_layer_cache.pop();
 	}
     else
 	{
@@ -71,10 +72,29 @@ function tv_new_layer(width,pdoc,l)
 
 function tv_cache_layer(l,pdoc)
     {
-    l.next = pdoc.tv_layer_cache;
-    pdoc.tv_layer_cache = l;
+    pg_debug('tv_cache_layer: ' + pdoc.layer.name + '\n');
+    /*l.next = pdoc.tv_layer_cache;
+    pdoc.tv_layer_cache = l;*/
+    pdoc.tv_layer_cache.push(l);
     pg_set_style_string(l,'visibility','hidden');
     tv_cache_cnt++;
+    }
+
+
+function tv_action_setfocus(aparam)
+    {
+    }
+
+function tv_action_setroot(aparam)
+    {
+    // Make sure we've collapsed the current tree
+    this.root.collapse();
+
+    // Set the root
+    if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
+    if (!aparam.NewRootObj) aparam.NewRootObj = null;
+    tv_init(this.root,aparam.NewRoot,this.root.ld,this.root.pdoc,this.root.clip.width,this.root.LSParent,aparam.NewRootObj);
+    if (aparam.Expand == 'yes') this.root.expand();
     }
 
 function tv_click(e)
@@ -89,22 +109,26 @@ function tv_click(e)
 	{
 	if (l.parent)
 	    {
-	    switch(typeof(l.parent.obj[l.objn]))
+	    switch(typeof(l.parent.objptr[l.objn]))
 		{
 		case "function":
 		    if(confirm("Run Function?"))
 			{
 			r=prompt("Parameters (fill in array)?",new Array("p1"));
-			if(r==undefined) confirm('Return value:'+l.parent.obj[l.objn].apply(l.parent.obj));
-			else confirm('Return value:'+l.parent.obj[l.objn].apply(l.parent.obj,eval(r)));
+			if(r==undefined) confirm('Return value:'+l.parent.objptr[l.objn].apply(l.parent.objptr));
+			else confirm('Return value:'+l.parent.objptr[l.objn].apply(l.parent.objptr,eval(r)));
 			}
 		    break;
 		case "object":
 		    if(confirm("Change root to here?"))
 			{
-			l.root.collapse();
-			if(l.parent.obj[l.objn].name) tv_init(l.root,"javascript:"+l.parent.obj[l.objn].name,l.root.ld,l.root.pdoc,l.root.clip.width,l.root.LSParent,l.parent.obj[l.objn]);
-			else tv_init(l.root,"javascript:"+l.objn,l.root.ld,l.root.pdoc,l.root.clip.width,l.root.LSParent,l.parent.obj[l.objn]);
+			var nr;
+			if(l.parent.objptr[l.objn].name) 
+			    nr = "javascript:"+l.parent.objptr[l.objn].name;
+			else
+			    nr = "javascript:"+l.objn;
+			l.mainlayer.ActionSetRoot({NewRoot:nr, NewRootObj:l.parent.objptr[l.objn]});
+			//else tv_init(l.root,"javascript:"+l.objn,l.root.ld,l.root.pdoc,l.root.clip.width,l.root.LSParent,l.parent.objptr[l.objn]);
 			}
 		    break;
 		}
@@ -136,13 +160,13 @@ function tv_rclick(e)
 	    var l=e.target.layer;
 	    if (l.parent)
 		{
-		switch(typeof(l.parent.obj[l.objn]))
+		switch(typeof(l.parent.objptr[l.objn]))
 		    {
 		    case "object":
 			r=prompt('code to run in context of object:','');
 			if(r!=undefined)
 			    {
-			    (new Function(r)).apply(l.parent.obj[l.objn]);
+			    (new Function(r)).apply(l.parent.objptr[l.objn]);
 			    }
 			break;
 		    }
@@ -179,7 +203,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold)
     {
     if(cx__capabilities.Dom0NS)
 	{
-	tvtext = "<IMG SRC='" + img_src + "' align='left'>&nbsp;<A HREF='" + link_href + "'>" + 
+	var tvtext = "<IMG SRC='" + img_src + "' align='left'>&nbsp;<A HREF='" + link_href + "'>" + 
 	    (link_bold?"<b>":"") + link_text + (link_bold?"<b>":"") + "</A>";
 	if (l.tvtext != tvtext)
 	    {
@@ -232,44 +256,44 @@ function tv_GetLinkCnt(l)
     {
     if(l.isjs)
 	{
-	if(typeof(l.obj)=="function")
+	if(typeof(l.objptr)=="function")
 	    {
 	    var win=window.open();
-	    win.document.write("<PRE>"+l.obj+"</PRE>");
+	    win.document.write("<PRE>"+l.objptr+"</PRE>");
 	    win.document.close();
 	    return 0;
 	    }
 	else
 	    {
-	    if(!l.obj)
+	    if(!l.objptr)
 		{
 		l.expanded=0;
-		var ret=prompt(l.objn,l.parent.obj[l.objn]);
+		var ret=prompt(l.objn,l.parent.objptr[l.objn]);
 		if(ret!=undefined)
 		    {
-		    switch(typeof(l.parent.obj[l.objn]))
+		    switch(typeof(l.parent.objptr[l.objn]))
 			{
 			case "boolean":
 			    if(ret=="true" || ret==1 || ret==-1)
 				{
-				l.parent.obj[l.objn]=true;
+				l.parent.objptr[l.objn]=true;
 				}
 			    else
 				{
-				l.parent.obj[l.objn]=false;
+				l.parent.objptr[l.objn]=false;
 				}
 			    break;
 			default:
-			    l.parent.obj[l.objn]=ret;
+			    l.parent.objptr[l.objn]=ret;
 			}
-			o=l.parent.obj[l.objn];
-		    var link_txt=l.objn+" ("+typeof(o)+"): "+o;
+			o=l.parent.objptr[l.objn];
+		    var link_txt=l.objn+"&nbsp;("+typeof(o)+"):&nbsp;"+o;
 		    tv_build_layer(l,"/sys/images/ico01b.gif","",link_txt);
 		    }
 		return 0;
 		}
 	    var linkcnt=0;
-	    for(var i in l.obj) linkcnt++;
+	    for(var i in l.objptr) linkcnt++;
 	    return linkcnt;
 	    }
 	}
@@ -286,7 +310,7 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 
     var tgtTop = pg_get_style(tv_tgt_layer,"top");
     var layers = pg_layers(tv_tgt_layer.pdoc);
-    for (j=0;j<layers.length;j++)
+    for (var j=0;j<layers.length;j++)
 	{
 	var sl = layers[j];
 	if(cx__capabilities.Dom2CSS)
@@ -309,6 +333,8 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 	}
     }
 
+function tv_clear_objs(l) { for(var i = 2; i<l.pdoc.layers.length;i++) l.pdoc.layers[i].objptr = null; }
+
 function tv_BuildNewLayers(l, linkcnt)
     {
     /** pre-load some variables **/
@@ -317,16 +343,15 @@ function tv_BuildNewLayers(l, linkcnt)
     var tgtX = tv_tgt_layer.x;
     var tgtY = tv_tgt_layer.y;
 
-    var jsProps = null
+    var jsProps = null;
     if(l.isjs)
 	{
 	jsProps = new Array();
-	for(var prop in l.obj)
+	for(var prop in l.objptr)
 	    {
 	    jsProps.push(prop);
 	    }
 	}
-    
     for(var i=1;i<=linkcnt;i++)
 	{
 	var link_txt;
@@ -334,7 +359,9 @@ function tv_BuildNewLayers(l, linkcnt)
 	var link_bold;
     
 	var link_bold = 0;
+	var one_link;
 	var one_layer = tv_new_layer(tgtClipWidth,tv_tgt_layer.pdoc,l.mainlayer);
+	var im;
 	one_layer.parent=l;
 	one_layer.collapse=one_layer.parent.collapse;
 	one_layer.expand=one_layer.parent.expand;
@@ -343,20 +370,20 @@ function tv_BuildNewLayers(l, linkcnt)
 	    var j = jsProps[i-1];
 	    if(j=="applets" || j=="embeds")
 		{
-		o=null;
-		t="object";
+		var o=null;
+		var t="object";
 		}
 	    else
 		{
-		var o=l.obj[j];
-		t=typeof(o);
+		var o=l.objptr[j];
+		var t=typeof(o);
 		}
 	    link_href="";
 	    one_link=j + '.';
 	    if(o && (t=="object" || t=="function"))
 		{
-		one_layer.obj=o;
-		link_txt=j+" ("+t+"): ";
+		/*if (window.doit)*/ one_layer.objptr=o;
+		link_txt=j+"&nbsp;("+t+"):&nbsp;";
 		if(t=="function")
 		    {
 		    im='01';
@@ -370,8 +397,11 @@ function tv_BuildNewLayers(l, linkcnt)
 		}
 	    else
 		{
-		link_txt=j+" ("+t+"): "+o;
-		one_layer.obj=null;
+		if (t=='string' && o.length > 64) 
+		    link_txt = j+"&nbsp;("+t+"):&nbsp;"+o.substr(0,64) + "&nbsp;...";
+		else
+		    link_txt=j+"&nbsp;("+t+"):&nbsp;"+o;
+		one_layer.objptr=null;
 		im = '01';
 		}
 	    one_layer.isjs=true;
@@ -390,8 +420,8 @@ function tv_BuildNewLayers(l, linkcnt)
 	    else one_link = one_link + '/';
 	    }
 
-	one_layer.fname = tv_tgt_layer.fname + one_link;
 	tv_build_layer(one_layer,"/sys/images/ico" + im + "b.gif",link_href,link_txt, link_bold);
+	one_layer.fname = tv_tgt_layer.fname + one_link;
 	one_layer.type = im;
 	one_layer.moveTo(tgtX + 20, tgtY + 20*i);
 	pg_set_style_string(one_layer,'visibility','inherit');
@@ -434,7 +464,6 @@ function tv_loaded(e)
     var linkcnt = tv_GetLinkCnt(l);
 
     if (linkcnt < 0) linkcnt = 0;
-
     tv_MakeRoom(l, linkcnt);
 
     tv_BuildNewLayers(l, linkcnt);
@@ -463,25 +492,31 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     {
     l.LSParent = p;
     l.fname = fname;
-    if(newroot==undefined)
+    var t;
+    if(!l.is_initialized)
 	{ /* not re-init */
-	if(t=(/javascript:(.*)/).exec(fname))
+	if(t=(/javascript:([a-zA-Z0-9_]*)/).exec(fname))
 	   {
 	   l.isjs=true;
 	   if(t[1])
 	       {
-	       l.obj=eval(t[1]);
+	       l.objptr=eval(t[1]);
 	       }
 	   else
 	       {
-	       l.obj=window;
+	       l.objptr=window;
 	       }
 	   }
 	}
     else
 	{ /* re-init */
 	tv_build_layer(l,"/sys/images/ico02b.gif","",l.fname);
-	l.obj=newroot;
+	if (newroot)
+	    l.objptr = newroot;
+	else if (t=(/javascript:([a-zA-Z0-9_]*)/).exec(fname))
+	    l.objptr = eval(t[1]);
+	else
+	    l.objptr = window;
 	l.isjs=true;
 	}
     l.expanded = 0;
@@ -492,22 +527,10 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     l.kind = 'tv';
     l.pdoc = pdoc;
     l.ld = loader;
-    if(cx__capabilities.Dom0NS)
-	{
-	l.document.layer = l;
-	}
-    else if(cx__capabilities.Dom1HTML)
-	{
-	l.layer = l;
-	}
-    else
-	{
-	alert('browser not supported');
-	}
-    l.mainlayer = l;
+    htr_init_layer(l,l,'tv');
     //l.ld.parent = l;
     l.root = l;
-    pdoc.tv_layer_cache = null;
+    if (!pdoc.tv_layer_cache) pdoc.tv_layer_cache = new Array();
     if(cx__capabilities.Dom0NS)
 	{
 	pdoc.tv_layer_tgt = l.parentLayer;
@@ -525,18 +548,27 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot)
     l.childimgs = '';
     l.collapse=tv_collapse;
     l.expand=tv_expand;
+
+    // Actions
+    l.ActionSetRoot = tv_action_setroot;
+    l.ActionSetFocus = tv_action_setfocus;
+
+    l.is_initialized = true;
+
+    // Auto expand if not showing root, otherwise what's the use?
+    if (htr_getvisibility(l) != 'inherit') l.root.expand();
     }
 
 function tv_expand()
     {
     var l = this;
     if (l==null) return false;
+    if (l.expanded==1) return false;
     if (l.img.realsrc != null) return false;
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src','/sys/images/ico11c.gif');
     tv_tgt_layer = l;
     
-    if (l.expanded==1) return false;
     
     l.expanded = 1;
     if(l.isjs)
@@ -551,36 +583,38 @@ function tv_expand()
 	else
 	    use_fname = l.fname;
 	if (use_fname.lastIndexOf('?') > use_fname.lastIndexOf('/', use_fname.length-2))
-	    pg_set(l.ld,'src',use_fname + '&ls__mode=list');
+	    pg_serialized_load(l.ld, use_fname + '&ls__mode=list', tv_loaded);
 	else
-	    pg_set(l.ld,'src',use_fname + '?ls__mode=list');
-	l.ld.onload = tv_loaded;
+	    pg_serialized_load(l.ld, use_fname + '?ls__mode=list', tv_loaded);
 	}
     }
 
 function tv_collapse()
     {
     var l = this;
+    var sl;
     if (l==null) return false;
+    if (l.expanded==0) return false;
     if (l.img.realsrc != null) return false;
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src','/sys/images/ico11c.gif');
     tv_tgt_layer = l;
     
-    if (l.expanded==0) return false;
     
     l.expanded = 0;
-    cnt = 0;
+    var cnt = 0;
     var lyrs = pg_layers(l.pdoc);
     var len = lyrs.length;
-    for(i=len-1;i>=0;i--)
+    pg_debug('tv_collapse: ' + l.fname + '\n');
+    for(var i=len-1;i>=0;i--)
 	{
 	sl = lyrs[i];
 	if (sl.fname!=null && sl!=l && l.fname==sl.fname.substring(0,l.fname.length))
 	    {
+	    pg_debug('tv_collapse: caching ' + sl.fname + '\n');
 	    //alert(sl.fname);
 	    tv_cache_layer(sl,l.pdoc);
-	    delete lyrs[i];
+	    //delete lyrs[i];
 	    sl.fname = null;
 	    if(cx__capabilities.Dom0NS)
 		{
@@ -600,7 +634,7 @@ function tv_collapse()
 	}
     //sl = layers[0];
     var vis = '';
-    for (j=0;j<len;j++)
+    for (var j=0;j<len;j++)
 	{
 	sl = lyrs[j];
 	var visibility = pg_get_style(sl,'visibility');
