@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.24 2002/07/25 19:48:17 pfinley Exp $
+    $Id: htdrv_editbox.c,v 1.25 2002/07/25 20:38:40 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.25  2002/07/25 20:38:40  pfinley
+    Change event needed to be DataChange event.
+
     Revision 1.24  2002/07/25 19:48:17  pfinley
     Standardized event connectors for editbox widget.  It now has:
       Click,MouseUp,MouseDown,MouseOver,MouseOut,MouseMove,Change,GetFocus,LoseFocus
@@ -375,7 +378,7 @@ htebInitialize()
 	htrAddEvent(drv,"MouseOver");
 	htrAddEvent(drv,"MouseOut");
 	htrAddEvent(drv,"MouseMove");
-	htrAddEvent(drv,"Change");
+	htrAddEvent(drv,"DataChange");
 	htrAddEvent(drv,"GetFocus");
 	htrAddEvent(drv,"LoseFocus");
 
