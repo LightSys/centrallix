@@ -49,10 +49,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.4 2002/10/21 20:22:12 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.5 2003/03/06 02:52:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.5  2003/03/06 02:52:33  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.4  2002/10/21 20:22:12  gbeeley
     Text foreground color attribute now basically operational.  Range of
     colors is limited however.  Tested on PCL output driver, on hp870c
@@ -235,13 +243,14 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
     pXArray resolutions;
     pPrtResolution res, best_res=NULL, best_greater_res=NULL;
     double dist, best_dist=0.0, best_greater_dist=0.0, xratio, yratio;
-    pPrtObjStream cur_obj;
+    pPrtObjStream cur_obj, rect_obj;
     pPrtOutputDriver drv;
     void* drvdata;
     PrtTextStyle cur_style;
     double cur_y;
     /*XArray cur_objlist;*/
     int i;
+    double end_y;
 
 	/** First, determine what resolution the graphics will be rendered at **/
 	drv = context->OutputDriver;
@@ -313,6 +322,28 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    break;
 
 		case PRT_OBJ_T_IMAGE:
+		    break;
+
+		case PRT_OBJ_T_RECT:
+		    /** Ask output driver to print as much of the rectangle as it can **/
+		    end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height);
+
+		    /** Adjust the rectangle to remove what was already printed **/
+		    if (end_y < cur_obj->PageY + cur_obj->Height && end_y > cur_obj->PageY)
+			{
+			cur_obj->Height -= (end_y - cur_obj->PageY);
+			cur_obj->PageY = end_y;
+
+			/** Remove from YList and re-add in a sorted manner.  This way, it
+			 ** comes back up when we need to print the next segment of
+			 ** the rectangle.
+			 **/
+			rect_obj = cur_obj;
+			cur_obj = cur_obj->YPrev;
+			rect_obj->YPrev->YNext = rect_obj->YNext;
+			if (rect_obj->YNext) rect_obj->YNext->YPrev = rect_obj->YPrev;
+			prt_internal_AddYSorted(cur_obj, rect_obj);
+			}
 		    break;
 
 		default:

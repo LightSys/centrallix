@@ -50,10 +50,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.8 2003/02/27 22:02:23 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.9 2003/03/06 02:52:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.9  2003/03/06 02:52:36  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.8  2003/02/27 22:02:23  gbeeley
     Some improvements in the balanced multi-column output.  A lot of fixes
     in the multi-column output and in the text layout manager.  Added a
@@ -138,6 +146,7 @@ typedef struct _PPCL
     pPrtResolution	SelectedResolution;
     pPrtSession		Session;
     PrtTextStyle	SelectedStyle;
+    double		CurVPos;
     }
     PrtPclodInf, *pPrtPclodInf;
 
@@ -464,6 +473,7 @@ prt_pclod_SetVPos(void* context_v, double y)
 	/** Generate the vertical index positioning command. **/
 	snprintf(pclbuf, 64, "\33&a%.1fV", (y)*120 + 0.000001);
 	prt_pclod_Output(context, pclbuf, -1);
+	context->CurVPos = y;
 
     return 0;
     }
@@ -551,8 +561,29 @@ prt_pclod_WriteFF(void* context_v)
 
 	/** Create the formfeed/home command. **/
 	prt_pclod_Output(context, "\14\33&a0V\33&a0H", -1);
+	context->CurVPos = 0.0;
 
     return 0;
+    }
+
+
+/*** prt_pclod_WriteRect() - write a rectangular area out to the page (or
+ *** a fragment of one).  Return the Y coordinate of the bottom of the
+ *** fragment that was actually output.
+ ***/
+double
+prt_pclod_WriteRect(void* context_v, double width, double height)
+    {
+    pPrtPclodInf context = (pPrtPclodInf)context_v;
+    char pclbuf[80];
+
+	/** For now, just draw the whole rectangle; PCL printer memory
+	 ** might end up being an issue though
+	 **/
+	snprintf(pclbuf,80,"\33*c%.1fH\33*c%.1fV\33*c0P",width*72.0,height*120.0);
+	prt_pclod_Output(context, pclbuf, -1);
+	
+    return context->CurVPos + height;
     }
 
 
@@ -581,6 +612,7 @@ prt_pclod_Initialize()
 	drv->WriteText = prt_pclod_WriteText;
 	drv->WriteRasterData = prt_pclod_WriteRasterData;
 	drv->WriteFF = prt_pclod_WriteFF;
+	drv->WriteRect = prt_pclod_WriteRect;
 
 	prt_strictfm_RegisterDriver(drv);
 

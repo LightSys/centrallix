@@ -35,10 +35,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.10 2003/03/01 07:24:01 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.11 2003/03/06 02:52:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.11  2003/03/06 02:52:30  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.10  2003/03/01 07:24:01  gbeeley
     Ok.  Balanced columns now working pretty well.  Algorithm is currently
     somewhat O(N^2) however, and is thus a bit expensive, but still not
@@ -128,6 +136,10 @@ typedef struct _PLM
     int			(*Reflow)();		/* called by parent object's layout mgr to indicate that
 						   child geom or overlays have changed, and child should
 						   reflow the layout, including LinkNext'd layout areas */
+    int			(*Finalize)();		/* this is the layout manager's chance to make any last-
+						   milllisecond changes to the container before the page
+						   is generated.  The changes may NOT affect the container's
+						   geometry */
     }
     PrtLayoutMgr, *pPrtLayoutMgr;
 
@@ -263,6 +275,7 @@ typedef struct _PD
     int			(*WriteText)();
     int			(*WriteRasterData)();
     int			(*WriteFF)();
+    double		(*WriteRect)();
     }
     PrtOutputDriver, *pPrtOutputDriver;
 
@@ -440,6 +453,7 @@ double prt_internal_GetFontHeight(pPrtObjStream obj);
 double prt_internal_GetFontBaseline(pPrtObjStream obj);
 double prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n);
 pPrtObjStream prt_internal_YSort(pPrtObjStream obj);
+int prt_internal_AddYSorted(pPrtObjStream obj, pPrtObjStream newobj);
 int prt_internal_FreeTree(pPrtObjStream obj);
 int prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page);
 pPrtObjStream prt_internal_GetPage(pPrtObjStream obj);

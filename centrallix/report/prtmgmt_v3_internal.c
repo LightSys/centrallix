@@ -49,10 +49,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.10 2003/03/01 07:24:02 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.11 2003/03/06 02:52:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.11  2003/03/06 02:52:34  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.10  2003/03/01 07:24:02  gbeeley
     Ok.  Balanced columns now working pretty well.  Algorithm is currently
     somewhat O(N^2) however, and is thus a bit expensive, but still not
@@ -381,6 +389,23 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
     }
 
 
+/*** prt_internal_YCompare() - compares two objects to see which one comes
+ *** first in the Y order.  Returns 0 if they are the same, -1 if the first
+ *** object comes first, and 1 if the second object comes first (and thus
+ *** the first one is 'greater').
+ ***/
+int
+prt_internal_YCompare(pPrtObjStream first, pPrtObjStream second)
+    {
+    if (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))
+	return 1;
+    else if (first->PageY == second->PageY && first->PageX == second->PageX)
+	return 0;
+    else
+	return -1;
+    }
+
+
 /*** prt_internal_YSort() - sorts all objects on a page by their absolute
  *** Y location on the page, so that the page formatters can output the 
  *** page data in correct sequence.  Returns the first object in the page,
@@ -410,7 +435,7 @@ prt_internal_YSort(pPrtObjStream obj)
 	    did_swap = 0;
 	    for(sortptr= &first;*sortptr && (*sortptr)->YNext;sortptr=&((*sortptr)->YNext))
 		{
-		if ((*sortptr)->PageY > (*sortptr)->YNext->PageY || ((*sortptr)->PageY == (*sortptr)->YNext->PageY && (*sortptr)->PageX > (*sortptr)->YNext->PageX))
+		if (prt_internal_YCompare(*sortptr, (*sortptr)->YNext) > 0)
 		    {
 		    /** Do the swap.  Tricky, but doable :) **/
 		    did_swap = 1;
@@ -431,6 +456,28 @@ prt_internal_YSort(pPrtObjStream obj)
 	    } while(did_swap);
 
     return first;
+    }
+
+
+/*** prt_internal_AddYSorted() - adds an object to the YPrev/YNext chain in its
+ *** proper place in sorted order.  'obj' is the object to start the 'Y' search
+ *** at, and 'newobj' is the object to add to the chain.
+ ***/
+int
+prt_internal_AddYSorted(pPrtObjStream obj, pPrtObjStream newobj)
+    {
+
+	/** Search for the place to insert it **/
+	while (obj->YNext && prt_internal_YCompare(newobj, obj->YNext) > 0)
+	    obj = obj->YNext;
+
+	/** Ok, insert *after* the 'obj' **/
+	newobj->YNext = obj->YNext;
+	newobj->YPrev = obj;
+	newobj->YPrev->YNext = newobj;
+	if (newobj->YNext) newobj->YNext->YPrev = newobj;
+
+    return 0;
     }
 
 
@@ -509,6 +556,33 @@ prt_internal_FreeTree(pPrtObjStream obj)
     }
 
 
+/*** prt_internal_Finalize_r() - gives the layout managers a chance to 
+ *** make last minute, non-geometric changes to the containers they
+ *** manage before the container is actually printed.
+ ***/
+int
+prt_internal_Finalize_r(pPrtObjStream this)
+    {
+    pPrtObjStream content;
+
+	/** Finalize children first.  That way, since a finalize may modify
+	 ** the content of an object, we don't have trouble looking at the 
+	 ** content while it is being modified. 
+	 **/
+	content = this->ContentHead;
+	while(content)
+	    {
+	    prt_internal_Finalize_r(content);
+	    content = content->Next;
+	    }
+
+	/** Then do this container **/
+	if (this->LayoutMgr && this->LayoutMgr->Finalize) this->LayoutMgr->Finalize(this);
+
+    return 0;
+    }
+
+
 /*** prt_internal_GeneratePage() - starts the formatting process for a given
  *** page and sends it to the output device.
  ***/
@@ -519,7 +593,10 @@ prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);
 	ASSERTMAGIC(page, MGK_PRTOBJSTRM);
 
-	/** First, y-sort the page **/
+	/** First, give the layout managers a chance to 'finalize' **/
+	prt_internal_Finalize_r(page);
+
+	/** Next, y-sort the page **/
 	prt_internal_YSort(page);
 
 	/** Now, send it to the formatter **/

@@ -53,10 +53,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.15 2003/03/03 23:45:22 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.16 2003/03/06 02:52:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.16  2003/03/06 02:52:35  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.15  2003/03/03 23:45:22  gbeeley
     Added support for multi-column formatting where columns are not equal
     in width.  Specifying width/height as negative when adding one object
@@ -1066,6 +1074,7 @@ prt_textlm_Initialize()
 	lm->Resize = prt_textlm_Resize;
 	lm->SetValue = NULL;
 	lm->Reflow = NULL;
+	lm->Finalize = NULL;
 	strcpy(lm->Name, "textflow");
 
 	/** Register the layout manager **/

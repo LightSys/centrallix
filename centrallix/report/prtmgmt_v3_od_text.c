@@ -47,10 +47,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_text.c,v 1.1 2003/02/27 22:03:39 gbeeley Exp $
+    $Id: prtmgmt_v3_od_text.c,v 1.2 2003/03/06 02:52:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_text.c,v $
 
     $Log: prtmgmt_v3_od_text.c,v $
+    Revision 1.2  2003/03/06 02:52:36  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.1  2003/02/27 22:03:39  gbeeley
     Added text/plain output driver, which will among other things allow me
     to test this beast without wasting so much paper printing PCL stuff ;)
@@ -318,6 +326,55 @@ prt_textod_WriteFF(void* context_v)
     }
 
 
+/*** prt_textod_WriteRect() - writes a solid rectangular area into the 
+ *** document.  Depending on the geometry and so forth, we write a 
+ *** character to represent the line or shaded area, such as - or |
+ *** or perhaps = or * for a larger area.  Return the absolute Y point at
+ *** which we ended the rectangle.
+ ***/
+double
+prt_textod_WriteRect(void* context_v, double width, double height)
+    {
+    pPrtTextodInf context = (pPrtTextodInf)context_v;
+    double new_y;
+    char rectbuf[32];
+    int n,cnt;
+    char rectch;
+
+	/** Make sure the physical position matches the logical one. **/
+	prt_textod_SetHPos(context_v, context->CurHPos);
+
+	/** Select an appropriate character to use **/
+	if (width < 1.0 && height >= 1.0) rectch = '|';
+	else if (width >= 1.0 && height < 0.3) rectch = '-';
+	else if (width >= 1.0 && height >= 0.3 && height < 1.0) rectch = '=';
+	else if (width < 1.0 && height < 1.0) rectch = '+';
+	else rectch = '*';
+
+	/** How many? **/
+	if (width < 1.0) n = 1;
+	else n = (width + 0.0001);
+
+	/** Write em **/
+	context->CurHPos += n;
+	context->CurPhysHPos += n;
+	memset(rectbuf,rectch,(n>32)?32:n);
+	while(n > 0)
+	    {
+	    cnt = n;
+	    if (cnt > 32) cnt = 32;
+	    prt_textod_Output(context, rectbuf, cnt);
+	    n -= cnt;
+	    }
+
+	/** How far did we get? */
+	if (height < 1.0) new_y = context->CurVPos + height;
+	else new_y = context->CurVPos + 1.0;
+
+    return new_y;
+    }
+
+
 /*** prt_textod_Initialize() - init this module and register with the main
  *** format driver as a strict output formatter.
  ***/
@@ -343,6 +400,7 @@ prt_textod_Initialize()
 	drv->WriteText = prt_textod_WriteText;
 	drv->WriteRasterData = prt_textod_WriteRasterData;
 	drv->WriteFF = prt_textod_WriteFF;
+	drv->WriteRect = prt_textod_WriteRect;
 
 	prt_strictfm_RegisterDriver(drv);
 

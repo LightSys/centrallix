@@ -58,10 +58,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.12 2003/03/03 23:45:19 gbeeley Exp $
+    $Id: test_prt.c,v 1.13 2003/03/06 02:52:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.13  2003/03/06 02:52:32  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.12  2003/03/03 23:45:19  gbeeley
     Added support for multi-column formatting where columns are not equal
     in width.  Specifying width/height as negative when adding one object
@@ -206,7 +214,7 @@ start(void* v)
     int log_all_errors;
     pPrtSession prtsession;
     int rval;
-    int pagehandle, areahandle, sectionhandle;
+    int pagehandle, areahandle, sectionhandle, recthandle;
     int rcnt;
     void* outputfn;
     void* outputarg;
@@ -217,6 +225,8 @@ start(void* v)
     pPrtObjStream prtobj;
     int ncols;
     int is_balanced=0, is_unequal=0;
+    double x,y,w,h;
+    int color;
 
 	outputfn = testWrite;
 	outputarg = NULL;
@@ -336,9 +346,71 @@ start(void* v)
 		       "  justify     - writes text in each of four justification modes\n"
 		       "  output      - redirects output to a file/device instead of screen\n"
 		       "  printfile   - output contents of a file into a whole-page area\n"
+		       "  rectangle   - draws a rectangle\n"
 		       "  session     - test open/close of a session for a given content type\n"
 		       "  text        - puts a given string of text in a given content type\n"
 		      );
+		}
+	    else if (!strcmp(cmdname,"rectangle"))
+		{
+		if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		    {
+		    printf("test_prt: usage: rectangle <mime type> x y width height {color}\n"
+			   "    (where x, y, width, and height are floating-point with a decimal pt.)\n");
+		    continue;
+		    }
+		ptr = mlxStringVal(ls,NULL);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
+		printf("columns: prtOpenSession returned %8.8X\n", (int)prtsession);
+		if (!prtsession)
+		    {
+		    continue;
+		    }
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: rectangle <mime type> x y width height {color}\n"
+			   "    (where x, y, width, and height are floating-point with a decimal pt.)\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		x = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: rectangle <mime type> x y width height {color}\n"
+			   "    (where x, y, width, and height are floating-point with a decimal pt.)\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		y = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: rectangle <mime type> x y width height {color}\n"
+			   "    (where x, y, width, and height are floating-point with a decimal pt.)\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		w = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		    {
+		    printf("test_prt: usage: rectangle <mime type> x y width height {color}\n"
+			   "    (where x, y, width, and height are floating-point with a decimal pt.)\n");
+		    prtCloseSession(prtsession);
+		    continue;
+		    }
+		h = mlxDoubleVal(ls);
+		if (mlxNextToken(ls) == MLX_TOK_INTEGER)
+		    color = mlxIntVal(ls);
+		else
+		    color = 0x000000;
+		pagehandle = prtGetPageRef(prtsession);
+		printf("rectangle: prtGetPageRef returned page handle %d\n", pagehandle);
+		prtSetColor(pagehandle, color);
+		recthandle = prtAddObject(pagehandle, PRT_OBJ_T_RECT, x, y, w, h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET, NULL);
+		printf("rectangle: prtAddObject(rectangle) returned rectangle handle %d\n", recthandle);
+		rval = prtEndObject(recthandle);
+		printf("rectangle: prtEndObject(rectangle) returned %d\n", rval);
+		rval = prtCloseSession(prtsession);
+		printf("rectangle: prtCloseSession returned %d\n", rval);
 		}
 	    else if (!strcmp(cmdname,"columns"))
 		{
@@ -404,7 +476,7 @@ start(void* v)
 		    }
 		else
 		    {
-		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 2.0, "balanced", is_balanced, NULL);
+		    sectionhandle = prtAddObject(pagehandle, PRT_OBJ_T_SECTION, 0, 0, 80, 0, PRT_OBJ_U_ALLOWBREAK, "numcols", ncols, "colsep", 3.0, "balanced", is_balanced, "linewidth", 0.5, NULL);
 		    }
 		printf("columns: prtAddObject(PRT_OBJ_T_SECTION) returned section handle %d\n", sectionhandle);
 		/*areahandle = prtAddObject(sectionhandle, PRT_OBJ_T_AREA, 0, 0, (80-2*(ncols-1))/ncols, 0, PRT_OBJ_U_ALLOWBREAK, NULL);*/

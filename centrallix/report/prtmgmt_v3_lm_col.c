@@ -52,10 +52,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.6 2003/03/03 23:45:21 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.7 2003/03/06 02:52:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.7  2003/03/06 02:52:34  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.6  2003/03/03 23:45:21  gbeeley
     Added support for multi-column formatting where columns are not equal
     in width.  Specifying width/height as negative when adding one object
@@ -99,6 +107,9 @@
 #define PRT_COLLM_DEFAULT_COLS	1	/* default is 1 column */
 #define PRT_COLLM_DEFAULT_SEP	1.0	/* default column separation = 1.0 unit or 0.1 inch */
 
+#define PRT_COLLM_DEFAULT_LINE	0.0	/* line sep. 0.1 unit = 0.01 inch = 0.72 point */
+#define PRT_COLLM_DEFAULT_LCOLOR 0x000000 /* default line color = black */
+
 #define PRT_COLLM_F_BALANCED	1	/* content balances between cols */
 #define PRT_COLLM_F_SOFTFLOW	2	/* content can flow from one col to next */
 
@@ -112,6 +123,8 @@ typedef struct _PMC
     int		nColumns;
     double	ColSep;
     double	ColWidths[PRT_COLLM_MAXCOLS];
+    double	LineWidth;
+    int		LineColor;
     pPrtObjStream CurrentCol;
     }
     PrtColLMData, *pPrtColLMData;
@@ -497,11 +510,15 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 	memset(lm_inf, 0, sizeof(PrtColLMData));
 	this->LMData = lm_inf;
 
-	/** Look for layoutmanager-specific settings passed in. **/
+	/** Set up some defaults **/
 	lm_inf->nColumns = PRT_COLLM_DEFAULT_COLS;
 	lm_inf->ColWidths[0] = -1.0;
 	lm_inf->ColSep = PRT_COLLM_DEFAULT_SEP;
 	lm_inf->Flags = PRT_COLLM_DEFAULT_FLAGS;
+	lm_inf->LineWidth = PRT_COLLM_DEFAULT_LINE;
+	lm_inf->LineColor = PRT_COLLM_DEFAULT_LCOLOR;
+	
+	/** Look for layoutmanager-specific settings passed in. **/
 	while((attrname = va_arg(va, char*)) != NULL)
 	    {
 	    if (!strcmp(attrname, "numcols"))
@@ -558,6 +575,16 @@ prt_collm_InitContainer(pPrtObjStream this, va_list va)
 		    lm_inf->Flags |= PRT_COLLM_F_SOFTFLOW;
 		else
 		    lm_inf->Flags &= ~PRT_COLLM_F_SOFTFLOW;
+		}
+	    else if (!strcmp(attrname, "linewidth"))
+		{
+		/** Width of separation line - 0.0 to turn it off **/
+		lm_inf->LineWidth = va_arg(va, double);
+		}
+	    else if (!strcmp(attrname, "linecolor"))
+		{
+		/** Color of separation line **/
+		lm_inf->LineColor = va_arg(va, int);
 		}
 	    }
 
@@ -635,6 +662,48 @@ prt_collm_SetValue(pPrtObjStream this, char* attrname, va_list va)
     }
 
 
+/*** prt_collm_Finalize() - this is called when the object is just about to
+ *** be printed, and gives the layout manager a chance to do some last 
+ *** minute changes once the geometry has stabilized.  If the columns are
+ *** configured to have a vertical separating line between them, then we
+ *** add that here (a very thin rectangle)
+ ***/
+int
+prt_collm_Finalize(pPrtObjStream this)
+    {
+    pPrtColLMData lm_inf = (pPrtColLMData)(this->LMData);
+    pPrtObjStream rect_obj;
+    pPrtObjStream col_obj;
+    int i;
+
+	/** Work only on the parent section object, not on individual column
+	 ** objects, which don't have an LMData setting.
+	 **/
+	if (!lm_inf) return 0;
+
+	/** Do we need the separator? **/
+	if (lm_inf->LineWidth > 0.0)
+	    {
+	    col_obj = this->ContentHead;
+	    for(i=0;i<lm_inf->nColumns-1 && col_obj && col_obj->ObjType->TypeID == PRT_OBJ_T_SECTCOL;i++)
+		{
+		/** Allocate the rectangle and set it up **/
+		rect_obj = prt_internal_AllocObjByID(PRT_OBJ_T_RECT);
+		if (!rect_obj) return -1;
+		rect_obj->FGColor = lm_inf->LineColor;
+		rect_obj->Width = lm_inf->LineWidth;
+		rect_obj->Height = this->Height - this->MarginTop - this->MarginBottom;
+		rect_obj->Y = 0.0;
+		rect_obj->X = col_obj->X + col_obj->Width + (lm_inf->ColSep*0.5) - (lm_inf->LineWidth*0.5);
+		prt_internal_Add(this, rect_obj);
+		col_obj = col_obj->Next;
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_collm_Initialize() - initialize the textflow layout manager and
  *** register with the print management subsystem.
  ***/
@@ -658,6 +727,7 @@ prt_collm_Initialize()
 	lm->Resize = prt_collm_Resize;
 	lm->SetValue = prt_collm_SetValue;
 	lm->Reflow = NULL;
+	lm->Finalize = prt_collm_Finalize;
 	strcpy(lm->Name, "columnar");
 
 	/** Register the layout manager **/

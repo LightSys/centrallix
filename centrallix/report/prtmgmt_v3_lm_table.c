@@ -53,10 +53,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.2 2003/03/03 23:45:22 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.3 2003/03/06 02:52:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.3  2003/03/06 02:52:35  gbeeley
+    Added basic rectangular-area support (example - border lines for tables
+    and separator lines for multicolumn areas).  Works on both PCL and
+    textonly.  Palette-based coloring of rectangles (via PCL) not seeming
+    to work consistently on my system, however.  Warning: using large
+    dimensions for the 'rectangle' command in test_prt may consume much
+    printer ink!!  Now it's time to go watch the thunderstorms....
+
     Revision 1.2  2003/03/03 23:45:22  gbeeley
     Added support for multi-column formatting where columns are not equal
     in width.  Specifying width/height as negative when adding one object
@@ -71,9 +79,38 @@
  **END-CVSDATA***********************************************************/
 
 
+#define PRT_TABLM_MAXCOLS		256	/* maximum columns in a table */
+
+#define PRT_TABLM_F_HEADER		1	/* table has a header that repeats */
+#define PRT_TABLM_F_FOOTER		2	/* table has a repeating footer */
+
+#define PRT_TABLM_DEFAULT_FLAGS		(PRT_TABLM_F_HEADER)
+#define PRT_TABLM_DEFAULT_OUTER		0.1	/* width of outer border */
+#define PRT_TABLM_DEFAULT_OCOLOR	0x000000
+#define PRT_TABLM_DEFAULT_INNER		0.1	/* width of inner border */
+#define PRT_TABLM_DEFAULT_ICOLOR	0x000000
+#define PRT_TABLM_DEFAULT_SHADOW	1.0	/* width of table shadow */
+#define PRT_TABLM_DEFAULT_SCOLOR	0x808080
+#define PRT_TABLM_DEFAULT_COLSEP	1.0	/* column separation */
+
+
 /*** table specific data ***/
 typedef struct _PTB
     {
+    double		ColWidths[PRT_TABLM_MAXCOLS];
+    double		ColX[PRT_TABLM_MAXCOLS];
+    double		ColSep;
+    int			nColumns;	/* number of columns in table */
+    int			CurColID;	/* next cell inserted is this col. */
+    pPrtObjStream	HeaderRow;	/* row that is the table header */
+    pPrtObjStream	FooterRow;	/* table footer row */
+    int			Flags;
+    double		OuterBorderWidth; /* width of outer table border */
+    double		InnerBorderWidth; /* width of inner table border */
+    double		ShadowWidth;      /* width of inner table border */
+    int			OuterBorderColor; /* color of outer border */
+    int			InnerBorderColor; /* color of inner border */
+    int			ShadowColor;      /* color of table shadow */
     }
     PrtTabLMData, *pPrtTabLMData;
 
@@ -146,6 +183,111 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 int
 prt_tablm_InitContainer(pPrtObjStream this, va_list va)
     {
+    pPrtTabLMData lm_inf;
+    int i;
+    double totalwidth;
+    char* attrname;
+
+	/** Allocate our lm-specific data **/
+	lm_inf = (pPrtTabLMData)nmMalloc(sizeof(PrtTabLMData));
+	if (!lm_inf) return -ENOMEM;
+	this->LMData = (void*)lm_inf;
+
+	/** Set up the defaults **/
+	lm_inf->nColumns = 1;
+	lm_inf->CurColID = 1;
+	lm_inf->HeaderRow = NULL;
+	lm_inf->FooterRow = NULL;
+	lm_inf->Flags = PRT_TABLM_DEFAULT_FLAGS;
+	lm_inf->OuterBorderWidth = PRT_TABLM_DEFAULT_OUTER;
+	lm_inf->InnerBorderWidth = PRT_TABLM_DEFAULT_INNER;
+	lm_inf->ShadowWidth = PRT_TABLM_DEFAULT_SHADOW;
+	lm_inf->OuterBorderColor = PRT_TABLM_DEFAULT_OCOLOR;
+	lm_inf->InnerBorderColor = PRT_TABLM_DEFAULT_ICOLOR;
+	lm_inf->ShadowColor = PRT_TABLM_DEFAULT_SCOLOR;
+	lm_inf->ColSep = PRT_TABLM_DEFAULT_COLSEP;
+	lm_inf->ColWidths[0] = -1.0;
+
+	/** Get params from the caller **/
+	while((attrname = va_arg(va, char*)) != NULL)
+	    {
+	    if (!strcmp(attrname, "numcols"))
+		{
+		/** set number of columns; default = 1 **/
+		lm_inf->nColumns = va_arg(va, int);
+		if (lm_inf->nColumns > PRT_TABLM_MAXCOLS || lm_inf->nColumns < 1)
+		    {
+		    nmFree(lm_inf, sizeof(PrtTabLMData));
+		    this->LMData = NULL;
+		    mssError(1,"TABLM","Invalid number of columns (numcols=%d) for a table; max is %d", lm_inf->nColumns, PRT_TABLM_MAXCOLS);
+		    return -EINVAL;
+		    }
+		}
+	    else if (!strcmp(attrname, "colwidths"))
+		{
+		/** Set widths of columns; default = 1 column and full width **/
+		for(i=0;i<lm_inf->nColumns;i++)
+		    {
+		    lm_inf->ColWidths[i] = va_arg(va, double);
+		    lm_inf->ColWidths[i] = prtUnitX(this->Session, lm_inf->ColWidths[i]);
+		    }
+		}
+	    else if (!strcmp(attrname, "colsep"))
+		{
+		/** Set separation between columns; default = 1.0 internal unit (0.1 inch) **/
+		lm_inf->ColSep = va_arg(va, double);
+		lm_inf->ColSep = prtUnitX(this->Session, lm_inf->ColSep);
+		if (lm_inf->ColSep < 0.0)
+		    {
+		    nmFree(lm_inf, sizeof(PrtTabLMData));
+		    this->LMData = NULL;
+		    mssError(1,"TABLM","Column separation amount (colsep) must not be negative");
+		    return -EINVAL;
+		    }
+		}
+	    }
+
+	/** Widths not yet set? **/
+	if (lm_inf->ColWidths[0] < 0)
+	    {
+	    for(i=0;i<lm_inf->nColumns;i++)
+		{
+		lm_inf->ColWidths[i] = (this->Width - this->MarginLeft - this->MarginRight - (lm_inf->nColumns-1)*lm_inf->ColSep)/lm_inf->nColumns;
+		}
+	    }
+
+	/** Check column width constraints **/
+	totalwidth = lm_inf->ColSep*(lm_inf->nColumns-1);
+	for(i=0;i<lm_inf->nColumns;i++)
+	    {
+	    if (lm_inf->ColWidths[i] <= 0.0 || lm_inf->ColWidths[i] > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+		{
+		mssError(1,"TABLM","Invalid width for column #%d",i+1);
+		nmFree(lm_inf, sizeof(PrtTabLMData));
+		this->LMData = NULL;
+		return -EINVAL;
+		}
+	    totalwidth += lm_inf->ColWidths[i];
+	    }
+
+	/** Check total of column widths. **/
+	if (totalwidth > (this->Width - this->MarginLeft - this->MarginRight + 0.0001))
+	    {
+	    mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
+	    nmFree(lm_inf, sizeof(PrtTabLMData));
+	    this->LMData = NULL;
+	    return -EINVAL;
+	    }
+
+	/** Set column X positions **/
+	totalwidth = 0.0;
+	for(i=0;i<lm_inf->nColumns;i++)
+	    {
+	    lm_inf->ColX[i] = totalwidth;
+	    totalwidth += lm_inf->ColWidths[i];
+	    totalwidth += lm_inf->ColSep;
+	    }
+
     return 0;
     }
 
@@ -168,6 +310,17 @@ int
 prt_tablm_SetValue(pPrtObjStream this, char* attrname, va_list va)
     {
     return -1;
+    }
+
+
+/*** prt_tablm_Finalize() - puts the finishing touches on a table just before
+ *** the page is printed.  This mainly means adding the nice graphics for the
+ *** table's borders and shadow now that the geometry of the table is stable.
+ ***/
+int
+prt_tablm_Finalize(pPrtObjStream this)
+    {
+    return 0;
     }
 
 
@@ -194,6 +347,7 @@ prt_tablm_Initialize()
 	lm->Resize = prt_tablm_Resize;
 	lm->SetValue = prt_tablm_SetValue;
 	lm->Reflow = NULL;
+	lm->Finalize = prt_tablm_Finalize;
 	strcpy(lm->Name, "tabular");
 
 	/** Register the layout manager **/
