@@ -48,10 +48,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.3 2001/09/28 19:06:18 gbeeley Exp $
+    $Id: test_obj.c,v 1.4 2001/10/02 16:24:24 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.4  2001/10/02 16:24:24  gbeeley
+    Changed %f printf conversion to more intuitive %g.
+
     Revision 1.3  2001/09/28 19:06:18  gbeeley
     Fixed EOF handling on readline()==NULL; fixed "query" command to use inbuf
     instead of sbuf.
@@ -398,7 +401,7 @@ start(void* v)
 			    if (objGetAttrValue(obj,attrname,POD(&dblval)) == 1)
 			        printf("  %20.20s: NULL\n",attrname);
 			    else
-			        printf("  %20.20s: %lf\n", attrname, dblval);
+			        printf("  %20.20s: %g\n", attrname, dblval);
 			    break;
 
 			case DATA_T_MONEY:
