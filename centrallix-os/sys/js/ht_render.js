@@ -16,17 +16,6 @@ var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
 var EVENT_PREVENT_DEFAULT_ACTION = 2;
 
-function user_name()
-    {
-    return pg_username;
-    }
-function getdate()
-    {
-    var dt = new Date();
-    var dtstr = '' + (dt.getMonth()+1) + '/' + (dt.getDate()) + '/' + (dt.getFullYear()) + ' ' + (dt.getHours()) + ':' + (dt.getMinutes()) + ':' + (dt.getSeconds());
-    return dtstr;
-    }
-
 function htr_event(e)
     {
     var cx__event = new Object();
@@ -70,15 +59,41 @@ function htr_event(e)
 	}
     else if(cx__capabilities.Dom0IE)
 	{
-	cx__event.IEEvent = window.event;
+	e = window.event
+	
+	cx__event.IEEvent = e;
 	cx__event.type = e.type;
-	cx__event.target = e.srcElement;
+
+	// supported by IE 6
+	var t = e.srcElement;
+	while(t.nodeType == 3 || t.nodeName == 'SPAN' || 
+	    (t.nodeType == 1 && !(t.tagName == 'DIV' || t.tagName == 'IMG')))
+	    t = t.parentNode;
+
+	cx__event.target = t;
+	
+	//cx__event.target = htr_get_parent_div(e.srcElement);
+
+	//status = "ht_render.js target nodeName " + cx__event.target.nodeName + " " + cx__event.target.id;
+
 	cx__event.pageX = e.clientX;
 	cx__event.pageY = e.clientY;
-	}
-    if(e.altKey && e.type && e.type.substring(0,5) == "mouse")
-	{
-	//htr_alert_obj(cx__event,3);
+	cx__event.which = e.button;
+	cx__event.keyCode = e.keyCode;
+	cx__event.modifiers = e.accessKey;
+
+	cx__event.x = e.offsetX;
+	cx__event.y = e.offsetY;
+	/*
+	cx__event.width = e.width;
+	cx__event.height = e.height;
+	cx__event.layerX = e.layerX;
+	cx__event.layerY = e.layerY;
+	cx__event.which = e.which;
+	cx__event.modifiers = e.modifiers;
+	cx__event.data = e.data;*/
+	cx__event.screenX = e.screenX;
+	cx__event.screenY = e.screenY;
 	}
     return cx__event;
     }
@@ -128,7 +143,14 @@ function htr_watch(obj, attr, func)
 	{
 	obj.htr_watchlist = new Array();
 	}
-    obj.watch(attr,htr_watchchanged);
+    if (cx__capabilities.Dom0IE) 
+        {
+        obj.onpropertychange = htr_watchchanged;
+	} 
+	else
+	{
+    	obj.watch(attr,htr_watchchanged);
+	}
     var watchitem = new Object();
     watchitem.attr = attr;
     watchitem.func = func;
@@ -152,7 +174,8 @@ function htr_unwatch(obj, attr, func)
 function htr_watchchanged(prop,oldval,newval)
     {
     var setprop = newval;
-    //alert("changed: " + prop);
+    //alert("changed: " + event.srcElement.id);
+    
     for (var i=0;i<this.htr_watchlist.length;i++)
 	{
 	if (this.htr_watchlist[i].attr == prop)
@@ -164,15 +187,31 @@ function htr_watchchanged(prop,oldval,newval)
     return setprop;
     }
 
+function htr_get_watch_newval(e)
+    {
+    if(e.propertyName.substr(0,6) == "style.")
+        {
+        return e.srcElement.style[e.propertyName.substr(6)];
+        }
+    else
+        {
+        return e.srcElement[e.propertyName];
+        }
+    }
+
 function htr_init_layer(l,ml,kind)
     {
     if (l.document)
+    {
 	l.document.layer = l;
+    }
     else
 	l.layer = l;
+	
     if (cx__capabilities.Dom1HTML)
 	l.parentLayer = l.parentNode;
-    l.mainlayer = ml;
+	
+    l.mainlayer = ml;    
     l.kind = kind;
     l.cxSubElement = htr_get_subelement;
     if (l.document) l.document.cxSubElement = htr_get_subelement;
@@ -211,10 +250,7 @@ function htr_extract_bgcolor(s)
     else if (s.substr(0,8) == "bgcolor=")
 	{
 	var qp = s.indexOf("'");
-	if (qp < 1)
-	    return s.substr(8);
-	else
-	    return s.substr(qp+1,s.length-qp-2);
+	return s.substr(qp+1,s.length-qp-2);
 	}
     return null;
     }
@@ -237,18 +273,34 @@ function htr_extract_bgimage(s)
 function htr_getvisibility(l)
     {
     if (cx__capabilities.Dom0NS)
+        {
 	return l.visibility;
+	}
+    else if (cx__capabilities.Dom0IE)
+        {
+        return l.currentStyle.visibility;
+	}
     else if (cx__capabilities.Dom1HTML)
+        {
 	return l.style.visibility;
+	}
     return null;
     }
 
 function htr_setvisibility(l,v)
     {
     if (cx__capabilities.Dom0NS)
+        {
 	l.visibility = v;
+	}
+    else if (cx__capabilities.Dom0IE)
+        {
+        l.runtimeStyle.visibility = v;
+	}	
     else if (cx__capabilities.Dom1HTML)
+        {
 	l.style.visibility = v;
+	}
     return null;
     }
 
@@ -337,4 +389,17 @@ function htr_setzindex(l,v)
     else if (cx__capabilities.Dom1HTML)
 	l.style.zIndex = v;
     return null;
+    }
+
+/**
+* IE's srcElement will always be the lowest level element you clicked on
+* need to trace back to the parent div node
+* Since a div node can be a child of anotjer div node, trace back to the topmost div
+**/
+function htr_get_parent_div(o)
+    {
+    if(o && o.parentNode && o.nodeName != "BODY" && o.nodeName != "DIV" || o.parentNode.nodeName == "DIV") {
+	return htr_get_parent_div(o.parentNode);
+    }
+    return o;
     }
