@@ -57,10 +57,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.17 2002/08/21 02:11:56 jorupp Exp $
+    $Id: objdrv_xml.c,v 1.18 2002/08/24 00:44:18 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.18  2002/08/24 00:44:18  jorupp
+     * incorporated changes that dman sent me to fix the bad typing problems with passing free() to xhClear
+
     Revision 1.17  2002/08/21 02:11:56  jorupp
      * will return the empty string for an attribute value if it is using a node for the value,
      	and there is no text or children in that node
@@ -335,6 +338,17 @@ xml_internal_GetChildren(xmlNodePtr parent)
 #endif
     }
 #endif
+
+/*** This is dumb, but is needed for type safety (second argument to xhClear)
+ ***/
+int
+free_wrapper(void* ptr, void* arg)
+    {
+        arg = NULL ; /* avoid complaints from picky compilers */
+        free(ptr)  ;
+        return 0   ; /* meaningless, but is needed for type safety */
+    }
+
 
 /*** xml_internal_IsObject
  ***   decides if an XML node will be a centrallix object
@@ -628,7 +642,7 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	    {
 	    /** this structure might not have been allocated **/
 	    if(XML_DEBUG) printf("Clearing Attributes hash\n");
-	    xhClear(inf->Attributes,(void*)free,NULL);
+	    xhClear(inf->Attributes,free_wrapper,NULL);
 	    if(XML_DEBUG) printf("Done Clearing Attributes hash\n");
 	    xhDeInit(inf->Attributes);
 	    nmFree(inf->Attributes,sizeof(XHashTable));
@@ -942,7 +956,7 @@ xmlQueryClose(void* qy_v, pObjTrxTree* oxt)
 	if(qy->Types)
 	    {
 	    if(XML_DEBUG) printf("Clearing Types hash\n");
-	    xhClear(qy->Types,(void*)free,NULL);
+	    xhClear(qy->Types,free_wrapper,NULL);
 	    if(XML_DEBUG) printf("Done Clearing Types hash\n");
 	    xhDeInit(qy->Types);
 	    nmFree(qy->Types,sizeof(XHashTable));
