@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.3 2002/02/22 23:48:39 jorupp Exp $
+    $Id: htdrv_editbox.c,v 1.4 2002/02/23 04:28:29 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.4  2002/02/23 04:28:29  jorupp
+    bug fixes in form, I-bar in editbox is reset on a setvalue()
+
     Revision 1.3  2002/02/22 23:48:39  jorupp
     allow editbox to work without form, form compiles, doesn't do much
 
@@ -192,7 +195,16 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptFunction(s, "eb_setvalue", "\n"
 		"function eb_setvalue(v,f)\n"
 		"    {\n"
-		"    eb_settext(this,v);\n"
+		"    var x=String(v);\n"
+		"    eb_settext(this,x);\n"
+		"    if(this.cursorCol>x.length);\n"
+		"        {\n"
+		"        this.cursorCol=x.length;\n"
+		"        }\n"
+		"    if(this.cursorlayer == eb_ibeam)\n"
+		"        {\n"
+		"        eb_ibeam.moveToAbsolute(this.ContentLayer.pageX + this.cursorCol*eb_metric.charWidth, this.ContentLayer.pageY);\n"
+		"        }\n"
 		"    }\n", 0);
 
 	/** Enable control function **/
@@ -232,9 +244,14 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"function eb_keyhandler(l,e,k)\n"
 		"    {\n"
 		"    txt = l.content;\n"
+		"    if (k == 9)\n"
+		"        {\n"
+		"        if(l.form) l.form.TabNotify(this)\n"
+		"        }\n"
 		"    if (k >= 32 && k < 127)\n"
 		"        {\n"
 		"        newtxt = txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length);\n"
+		"        eb_ibeam.moveToAbsolute(l.ContentLayer.pageX + l.cursorCol*eb_metric.charWidth, l.ContentLayer.pageY);\n"
 		"        l.cursorCol++;\n"
 		"        l.changed=true;\n"
 		"        }\n"

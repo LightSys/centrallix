@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.3  2002/02/23 04:28:29  jorupp
+    bug fixes in form, I-bar in editbox is reset on a setvalue()
+
     Revision 1.2  2002/02/22 23:48:39  jorupp
     allow editbox to work without form, form compiles, doesn't do much
 
@@ -76,6 +79,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     {
     char* ptr;
     char name[64];
+    char tabmode[64];
     //char sbuf[200];
     //char sbuf2[160];
     char *sbuf3;
@@ -94,6 +98,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	if (objGetAttrValue(w_obj,"AllowNoData",POD(&allownodata)) != 0) allownodata=1;
 	/** The way I read the specs -- overriding this resides in the code, not here **/
 	if (objGetAttrValue(w_obj,"MultiEnter",POD(&multienter)) != 0) multienter=0;
+	if (objGetAttrValue(w_obj,"TabMode",POD(tabmode)) != 0) tabmode[0]='\0';
 
 
 	/** Get name **/
@@ -104,15 +109,13 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
 
-	if (id==0)
-	    htrAddScriptGlobal(s, "fm_current", "null",0); /* create the global def only once*/
 	htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); /* create our instance variable */
 
 
 	htrAddScriptFunction(s, "form_cb_register", "\n"
 		"function form_cb_register(aparam)\n"
 		"    {\n"
-		"	this.elements.push(aparam);\n"
+		"    this.elements.push(aparam);\n"
 		"    }\n", 0);
 
 	htrAddScriptFunction(s, "form_cb_data_notify", "\n"
@@ -124,6 +127,25 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_cb_focus_notify", "\n"
 		"function form_cb_focus_notify(aparam)\n"
 		"    {\n"
+		"    }\n", 0);
+
+	htrAddScriptFunction(s, "form_cb_tab_notify", "\n"
+		"function form_cb_tab_notify(control)\n"
+		"    {\n"
+		"    var ctrlnum;\n"
+		"    for(var i in this.elements)\n"
+		"        {\n"
+		"        if(this.elements[i].name=control.name)\n"
+		"            {\n"
+		"            ctrlnum=i;\n"
+		"            }\n"
+		"        }\n"
+		"    if(this.elements[ctrlnum+1])\n"
+		"        {\n"
+		"        \n"			/* this is where we bounce the tab up the call tree */
+		"        } else {\n"
+		"        \n"			/* this is where we set the focus */
+		"        }\n"
 		"    }\n", 0);
 
 	htrAddScriptFunction(s, "form_cb_data_available", "\n"
@@ -211,17 +233,17 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptFunction(s, "form_change_mode", "\n"
 		"function form_change_mode(form,newmode)\n"
 		"    {\n"
-		"    alert(\"Form is going from \"+form.mode+\" to \"+newmode+\" mode.\");\n"	/*in-prog*/
-		"    for(var i in this.elements)\n"
+		"    alert(\"Form is going from \"+form.mode+\" to \"+newmode+\" mode.\");\n"
+		"    for(var i in form.elements)\n"
 		"        {\n"
-		"        this.elements[i].setvalue(new String(\"\"));\n"
+		"        form.elements[i].setvalue(\"\");\n"
 		"        }\n"
+		"    form.oldmode = form.mode;\n"
+		"    form.mode = \"query\";\n"
+		"    form.changed = false;\n"
 		"    var event = new Object();\n"
-		"    event.Caller = this;\n"
-		"    this.oldmode = this.mode;\n"
-		"    this.mode = \"query\";\n"
-		"    this.changed = false;\n"
-		"    cn_activate(this, 'StatusChange', event);\n"
+		"    event.Caller = form;\n"
+		/*"    //cn_activate(form, 'StatusChange', event);\n"		 doesn't work -- FIX ME*/
 		"    delete event;\n"
 		"    return 1;\n"
 		"    }\n", 0);
@@ -247,7 +269,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	/** Form initializer **/
 	htrAddScriptFunction(s, "form_init", "\n"
-		"function form_init(aq,an,am,av,and,me)\n"
+		"function form_init(aq,an,am,av,and,me,name)\n"
 		"    {\n"
 		"    form = new Object();\n"
 		"    form.elements = new Array();\n"
@@ -255,6 +277,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.oldmode = null;\n"
 		"    form.objsrc = new Object();\n"
 		"    form.changed = false;\n"
+		"    form.name = name;\n"
 
 		"    form.allowquery = aq;\n"
 		"    form.allownew = an;\n"
@@ -272,7 +295,6 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.ActionNew = form_action_new;\n"
 		"    form.ActionPrev = form_action_next;\n"
 		"    form.ActionQuery = form_action_query;\n"
-		/*"    form.ActionQuery = form_action_query;\n"*/
 		"    form.ActionQueryExec = form_action_queryexec;\n"
 		"    form.ActionSave = form_action_save;\n"
 		"    form.IsDiscardReady = form_cb_is_discard_ready;\n"
@@ -285,6 +307,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.Register = form_cb_register;\n"
 		"    form.DataNotify = form_cb_data_notify;\n"
 		"    form.FocusNotify = form_cb_focus_notify;\n"
+		"    form.TabNotify = form_cb_tab_notify;\n"
 
 		/** editbox expects lower case......**/
 		/**
@@ -293,13 +316,38 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    form.focusnotify = form_cb_focus_notify;\n"
 		**/
 		"    return form;\n"
-		"    }\n", 0);
+		"    }\n",0);
+	//nmFree(sbuf3,800);
 
 	sbuf3 = nmMalloc(200);
-	snprintf(sbuf3,200,"    %s=fm_current=form_init(%i,%i,%i,%i,%i,%i);\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter);
+	snprintf(sbuf3,200,"        %s=fm_current=form_init(%i,%i,%i,%i,%i,%i,%s);\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name);
 	htrAddScriptInit(s,sbuf3);
 	nmFree(sbuf3,200);
+
+	/*
+	snprintf(sbuf3,800,
+			"    if(fm_current)\n"
+			"        {\n"
+			"        var old_fm=fm_current;\n"
+			"        %s=fm_current=form_init(%i,%i,%i,%i,%i,%i);\n"
+			"        old_fm.register(fm_current);\n"
+			"        fm_current=old_fm;\n"
+			"        }\n"
+			"    else\n"
+			"        {\n"
+			"        %s=fm_current=form_init(%i,%i,%i,%i,%i,%i);\n"
+			"        }\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,
+		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter
+	    );
+	*/
+
+
+
+
+
+	//htrAddScriptInit(s,sbuf3);
 
 	/** Check for objects within the form. **/
 
@@ -308,6 +356,7 @@ htformRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	//htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z);	/* non-visual, don't consume a z level */
 	htrRenderSubwidgets(s, w_obj, parentname, parentobj, z);	/* non-visual, don't consume a z level */
 	
+	htrAddScriptInit(s,"    fm_current = null;");
 
     return 0;
     }
