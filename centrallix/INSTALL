@@ -48,15 +48,6 @@ three sections outlined below.
 
 2.  COMPILE AND INSTALL CENTRALLIX
 ==================================
-    The first thing you need to do is create a file callled ".subbuild" that
-    has the number "1" in it and nothing else.  This file is used to increment
-    the number of builds that are made on your local system and is used to help
-    keep development versions in line.  You can create this file by going
-    to the centrallix directory (same directory as the "configure" script) and
-    typing the following:
-      
-      $ echo 1 > .subbuild
-    
     Since the last release of Centrallix, we have added autoconf support.
     This means that you can run the familiar "configure" script to detect
     settings on your system.  You can also specify the "--prefix" parameter
