@@ -8,6 +8,7 @@ AC_PROG_CC
 CFLAGS=`echo $CFLAGS | sed -e "s/-O2//"`
 AC_PROG_MAKE_SET
 AC_PROG_AWK
+AC_PATH_PROG([GREP], [grep], [])
 AC_PATH_PROG([STRIP], [strip], [])
 AC_PATH_PROG([AR], [ar], [])
 AC_PATH_PROG([RANLIB], [ranlib], [])
