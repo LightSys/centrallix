@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.37 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.38 2002/06/24 17:28:58 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.38  2002/06/24 17:28:58  jorupp
+     * osrc will now close objects when they are removed from the replica
+
     Revision 1.37  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -619,6 +622,10 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "        this.OSMLRecord=0;\n" /* the last record we got from the OSML */
 
       /** Clear replica **/
+      "        if(this.replica)\n"
+      "            for(var i in this.replica)\n"
+      "                this.oldoids.push(this.replica[i].oid);\n"
+      "        \n"
       "        if(this.replica) delete this.replica;\n"
       "        this.replica=new Array();\n"
       "        this.LastRecord=0;\n"
@@ -757,6 +764,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                this.LastRecord=this.OSMLRecord;\n"
       "                while(this.LastRecord-this.FirstRecord>=this.replicasize)\n"
       "                    {\n" /* clean up replica */
+      "                    this.oldoids.push(this.replica[this.FirstRecord].oid);\n"
       "                    delete this.replica[this.FirstRecord];\n"
       "                    this.FirstRecord++;\n"
       "                    }\n"
@@ -766,6 +774,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                this.FirstRecord=this.OSMLRecord;\n"
       "                while(this.LastRecord-this.FirstRecord>=this.replicasize)\n"
       "                    {\n" /* clean up replica */
+      "                    this.oldoids.push(this.replica[this.LastRecord].oid);\n"
       "                    delete this.replica[this.LastRecord];\n"
       "                    this.LastRecord--;\n"
       "                    }\n"
@@ -803,16 +812,47 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "            else\n"
       "                this.TellAllReplicaMoved();\n"
       "            this.pending=false;\n"
+      "            this.onload=osrc_oldoid_cleanup;\n"
+      "            this.onload();\n"
       "            }\n"
       "        }\n"
       "    }\n",0);
       
+   htrAddScriptFunction(s, "osrc_oldoid_cleanup", "\n"
+      "function osrc_oldoid_cleanup()\n"
+      "    {\n"
+      "    this.onload=null;\n"
+      "    if(this.oldoids && this.oldoids[0])\n"
+      "        {\n"
+      "        this.pending=true;\n"
+      "        this.onload=osrc_oldoid_cleanup_cb;\n"
+      "        var src='';\n"
+      "        for(var i in this.oldoids)\n"
+      "            src+=this.oldoids[i];\n"
+      "        if(this.sid)\n"
+      "            this.src = '/?ls__mode=osml&ls__req=close&ls__sid='+this.sid+'&ls__oid=' + src;\n"
+      "        else\n"
+      "            alert('session is invalid');\n"
+      "        }\n"
+      "    }\n",0);
+ 
+   htrAddScriptFunction(s, "osrc_oldoid_cleanup_cb", "\n"
+      "function osrc_oldoid_cleanup_cb()\n"
+      "    {\n"
+      "    this.pending=false;\n"
+      "    //alert('cb recieved');\n"
+      "    this.onload=null;\n"
+      "    delete this.oldoids;\n"
+      "    this.oldoids=new Array();\n"
+      "    }\n",0);
+ 
    htrAddScriptFunction(s, "osrc_close_query", "\n"
       "function osrc_close_query()\n"
       "    {\n"
       "    //Close Query\n"
       "    this.qid=null;\n"
-      "    this.onload=null;\n"
+      "    this.onload=osrc_oldoid_cleanup;\n"
+      "    this.onload();\n"
       "    //this.onload = osrc_close_session;\n"
       "    //this.src = '/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid;\n"
       "    }\n",0);
@@ -830,6 +870,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    {\n"
       "    //Close Session\n"
       "    this.onload = null;\n"
+      "    this.onload=osrc_oldoid_cleanup;\n"
       "    this.src = '/?ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid;\n"
       "    this.qid=null;\n"
       "    this.sid=null;\n"
@@ -1244,6 +1285,8 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    loader.MoveToRecord=osrc_move_to_record;\n"
       "    loader.MoveToRecordCB=osrc_move_to_record_cb;\n"
       "    loader.children = new Array();\n"
+      "    loader.oldoids = new Array();\n"
+      "    \n"
       "    //loader.ActionClear=osrc_action_clear;\n"
       "    loader.ActionQuery=osrc_action_query;\n"
       "    loader.ActionQueryObject=osrc_action_query_object;\n"
