@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.11 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_textbutton.c,v 1.12 2002/07/20 16:30:21 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.12  2002/07/20 16:30:21  lkehresman
+    Added four new standard event connectors to the textbutton (MouseUp,
+    MouseDown, MouseOver, MouseOut)
+
     Revision 1.11  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -242,6 +246,13 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        else ly = e.target;\n"
 		"        ly.moveBy(1,1);\n"
 		"        tb_setmode(ly,2);\n"
+		"        if (ly.EventMouseDown != null)\n"
+		"            {\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
+		"            cn_activate(ly, 'MouseDown', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","tb",
@@ -256,13 +267,13 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"            e.pageY < ly.pageY + ly.clip.height)\n"
 		"            {\n"
 		"            tb_setmode(ly,1);\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
 		"            if (ly.EventClick != null)\n"
-		"                {\n"
-		"                eparam = new Object();\n"
-		"                eparam.Caller = ly;\n"
 		"                cn_activate(ly, 'Click', eparam);\n"
-		"                delete eparam;\n"
-		"                }\n"
+		"            if (ly.EventMouseUp != null)\n"
+		"                cn_activate(ly, 'MouseUp', eparam);\n"
+		"            delete eparam;\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
@@ -274,12 +285,30 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (e.target != null && e.target.kind == 'tb')\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,1);\n"
+		"        if (e.target.layer != null) ly = e.target.layer;\n"
+		"        else ly = e.target;\n"
+		"        if (ly.EventMouseOver != null)\n"
+		"            {\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
+		"            cn_activate(ly, 'MouseOver', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","tb",
 		"    if (e.target != null && e.target.kind == 'tb')\n"
 		"        {\n"
 		"        if (e.target.mode != 2) tb_setmode(e.target,0);\n"
+		"        if (e.target.layer != null) ly = e.target.layer;\n"
+		"        else ly = e.target;\n"
+		"        if (ly.EventMouseOut != null)\n"
+		"            {\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
+		"            cn_activate(ly, 'MouseOut', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
 		"        }\n");
 
 	/** Check for more sub-widgets within the textbutton. **/
@@ -318,6 +347,10 @@ httbtnInitialize()
 
 	/** Add the 'click' event **/
 	htrAddEvent(drv, "Click");
+	htrAddEvent(drv, "MouseUp");
+	htrAddEvent(drv, "MouseDown");
+	htrAddEvent(drv, "MouseOver");
+	htrAddEvent(drv, "MouseOut");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
