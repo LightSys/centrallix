@@ -207,7 +207,7 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	l.enabled = 'full';
 	}
     l.isFormStatusWidget = false;
-    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', 1);
+    pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', is_readonly);
     c1.y = ((l.clip.height - eb_metric.charHeight)/2);
     c2.y = ((l.clip.height - eb_metric.charHeight)/2);
     if (fm_current) fm_current.Register(l);
