@@ -32,6 +32,7 @@ function dt_resetvalue() {
 
 function dt_enable() {
 	this.enabled = 'full';
+	this.bgColor = this.bg;
 }
 
 function dt_readonly() {
@@ -40,6 +41,7 @@ function dt_readonly() {
 
 function dt_disable() {
 	this.enabled = 'disabled';
+	this.bgColor = '#e0e0e0';
 }
 
 // Date/Time Functions
@@ -62,7 +64,7 @@ function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	l.document.layer  = c1.document.layer = c2.document.layer = l;
 	dt_tag_images(l.document, 'dt', l);
 	l.w = w; l.h = h;
-	l.bg = bg;
+	l.bg = htr_extract_bgcolor(bg);
 	l.fg = fg;
 	l.form = fm_current;
 	l.DateStr = id;
@@ -183,8 +185,10 @@ function dt_toggle(l) {
 	}
 }
 
-function dt_getfocus(a,b,c) {
-	cn_activate(c, 'GetFocus');
+function dt_getfocus(x,y,l) {
+	if (this.enabled != 'full') return 0;
+	cn_activate(l, 'GetFocus');
+	return 1;
 }
 
 function dt_getfocus_day(a,b,c,d,e,f) {
@@ -267,14 +271,14 @@ function dt_mousedown(l) {
 	if (p.kind == 'dt_day') {
 		dt_drawdate(p.ml, p.DateVal);
 		p = l.ml; 
-	} else if (p.kind == 'dt') {
+	} else if (p.kind == 'dt' && p.enabled == 'full') {
 		dt_toggle(p);
 	}
 	if (p.kind == 'dt' || p.kind == 'dt_day') {
 		if (dt_current) {
 			dt_current = null;
 			p.PaneLayer.visibility = 'hide';
-		} else {
+		} else if (p.enabled == 'full') {
 			dt_current = p;
 			p.PaneLayer.x = p.pageX;
 			p.PaneLayer.y = p.pageY+p.h;
@@ -284,7 +288,7 @@ function dt_mousedown(l) {
 }
 
 function dt_mouseup(l) {
-	if (l.kind == 'dt') {
+	if (l.kind == 'dt' && l.enabled == 'full') {
 		dt_toggle(l);
 	}
 }
