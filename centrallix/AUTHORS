@@ -47,6 +47,13 @@ Michelle Cancel
 		Worked on the menu widget and helped with other aspects of
 		the htmlgen subsystem.
 
+David O'Neill
+		Created the BerkeleyDB objectsystem driver.
+
+Jason Yip
+		Added much support for IE55 and IE60 to the HTMLGen subsystem,
+		including the cross-browser geometry JS library modules.
+
 Taylor University CSS Department
 
 		Luke, Jonathan, Joe, John, and Josh all worked on Centrallix as
