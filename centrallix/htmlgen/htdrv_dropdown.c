@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.19 2002/06/26 00:46:17 lkehresman Exp $
+    $Id: htdrv_dropdown.c,v 1.20 2002/07/09 14:09:04 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.20  2002/07/09 14:09:04  lkehresman
+    Added first revision of the datetime widget.  No form interatction, and no
+    time setting functionality, only date.  This has been on my laptop for a
+    while and I wanted to get it into CVS for backup purposes.  More functionality
+    to come soon.
+
     Revision 1.19  2002/06/26 00:46:17  lkehresman
     * Added keyhandler to dropdown (you can type the first letter of options
       to jump to that option and bounce around)
@@ -434,6 +440,7 @@ int htddRender(pHtSession s, pObject w_obj, int z, char* parentname, char* paren
 	"function dd_init(l, clr_b, clr_h, fn, disp) {\n"
 	"   l.numItems = 0;\n"
 	"   l.numDispElements = disp;\n"
+	"   if (l.numDispElements < 4) l.numDispElements = 4;"
 	"   l.fieldname = fn;\n"
 	"   l.colorBack = clr_b;\n"
 	"   l.colorHilight = clr_h;\n"

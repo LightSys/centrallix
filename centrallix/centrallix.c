@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.2 2002/06/19 23:29:33 gbeeley Exp $
+    $Id: centrallix.c,v 1.3 2002/07/09 14:09:03 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.3  2002/07/09 14:09:03  lkehresman
+    Added first revision of the datetime widget.  No form interatction, and no
+    time setting functionality, only date.  This has been on my laptop for a
+    while and I wanted to get it into CVS for backup purposes.  More functionality
+    to come soon.
+
     Revision 1.2  2002/06/19 23:29:33  gbeeley
     Misc bugfixes, corrections, and 'workarounds' to keep the compiler
     from complaining about local variable initialization, among other
@@ -329,6 +335,7 @@ cxHtInit()
 	htspnrInitialize();			/* spinner box module*/
 	htfsInitialize();			/* form status module */
 	htddInitialize();			/* dropdown htdrv module */
+	htdtInitialize();			/* datetime htdrv module */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
