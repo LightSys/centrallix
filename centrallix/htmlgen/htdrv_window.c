@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.39 2004/08/04 20:03:11 mmcgill Exp $
+    $Id: htdrv_window.c,v 1.40 2004/08/15 02:08:38 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.40  2004/08/15 02:08:38  gbeeley
+    - fixing lots of geometry and functionality issues for IE and Moz for the
+      window widget.
+
     Revision 1.39  2004/08/04 20:03:11  mmcgill
     Major change in the way the client-side widget tree works/is built.
     Instead of overlaying a tree structure on top of the global widget objects,
@@ -359,11 +363,18 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
     int is_dialog_style = 0;
     int gshade = 0;
     int closetype = 0;
+    int box_offset = 1;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
 	    mssError(1,"HTWIN","Netscape DOM support or W3C DOM Level 1 support required");
 	    return -1;
+	    }
+
+	/** IE puts css box borders inside box width/height **/
+	if (!s->Capabilities.CSSBox)
+	    {
+	    box_offset = 0;
 	    }
 
     	/** Get an id for this. **/
@@ -389,30 +400,14 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	name[63]=0;
 
 	/** Check background color **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
-	    sprintf(bgnd,"bgcolor='%.40s'",ptr);
-	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
-	    sprintf(bgnd_style,"background-color: %.40s;",ptr);
-	    sprintf(hdr_bgnd_style,"background-color: %.40s;",ptr);
-	}
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0) {
-	    sprintf(bgnd,"background='%.100s'",ptr);
-	    sprintf(hdr_bgnd,"background='%.100s'",ptr);
-	    sprintf(bgnd_style,"background-image: %.100s;",ptr);
-	    sprintf(hdr_bgnd_style,"background-image: %.100s;",ptr);
-	}
+	htrGetBackground(tree, NULL, 1, bgnd_style, sizeof(bgnd_style));
+	htrGetBackground(tree, NULL, 0, bgnd, sizeof(bgnd));
 
 	/** Check header background color/image **/
-	if (wgtrGetPropertyValue(tree,"hdr_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    sprintf(hdr_bgnd,"bgcolor='%.40s'",ptr);
-	    sprintf(hdr_bgnd_style,"background-color: %.40s;",ptr);
-	    }
-	else if (wgtrGetPropertyValue(tree,"hdr_background",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    sprintf(hdr_bgnd,"background='%.100s'",ptr);
-	    sprintf(hdr_bgnd_style,"background-image: %.100s;",ptr);
-	    }
+	if (htrGetBackground(tree, "hdr", 1, hdr_bgnd_style, sizeof(hdr_bgnd_style)) < 0)
+	    strcpy(hdr_bgnd_style, bgnd_style);
+	if (htrGetBackground(tree, "hdr", 0, hdr_bgnd, sizeof(hdr_bgnd)) < 0)
+	    strcpy(hdr_bgnd, bgnd);
 
 	/** Check title text color. **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -456,7 +451,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	if (has_titlebar)
 	    {
 	    tbw = w-2;
-	    if (is_dialog_style)
+	    if (is_dialog_style || !s->Capabilities.Dom0NS)
 	        tbh = 24;
 	    else
 	        tbh = 23;
@@ -478,26 +473,52 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	else
 	    {
 	    bx = 2;
-	    by = 1+tbh;
 	    bw = w-4;
-	    bh = h-tbh-3;
+	    if (has_titlebar)
+		{
+		by = 1+tbh;
+		bh = h-tbh-3;
+		}
+	    else
+		{
+		by = 2;
+		bh = h-4;
+		}
 	    }
 
 	if(s->Capabilities.HTML40 && s->Capabilities.CSS2)
 	    {
-	    /** Ok, write the style header items. **/
-	    htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; overflow: hidden; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; %s}\n",
-		    id,visible?"inherit":"hidden",x,y,w,h, w+2, h+2, z, bgnd_style);
+	    /** Draw the main window layer and outer edge. **/
+	    htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; overflow: hidden; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d;}\n",
+		    id,visible?"inherit":"hidden",x,y,w-2*box_offset,h-2*box_offset, w, h, z+100);
 	    htrAddStylesheetItem_va(s,"\t#wn%dbase { border-style: solid; border-width: 1px; border-color: white gray gray white; }\n", id);
-	    htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %dpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %d; text-color: %s; %s}\n", id, tbh, z+1, txtcolor, hdr_bgnd_style);
-	    htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%dpx; WIDTH: %dpx; HEIGHT:%dpx; overflow: hidden; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; }\n",
-		    id, tbh, w-2, h-tbh-2, w, h-tbh, z+1);
-	    htrAddStylesheetItem_va(s,"\t#wn%dmain { border-style: solid; border-width: 1px; border-color: gray white white gray; }\n", id);
-	    htrAddStylesheetItem_va(s,"\t#wn%dclose { vertical-align: middle; }\n",id);
+
+	    /** draw titlebar div **/
+	    if (has_titlebar)
+		{
+		htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %dpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %d; text-color: %s; %s}\n", id, tbh-1-box_offset, z+1, txtcolor, hdr_bgnd_style);
+		htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { border-style: solid; border-width: 0px 0px 1px 0px; border-color: gray; }\n", id);
+		}
+
+	    /** inner structure depends on dialog vs. window style **/
+	    if (is_dialog_style)
+		{
+		/** window inner container -- dialog **/
+		htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%dpx; WIDTH: %dpx; HEIGHT:%dpx; overflow: hidden; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; %s}\n",
+			id, tbh?(tbh-1):0, w-2, h-tbh-1, w, h-tbh+1, z+1, bgnd_style);
+		htrAddStylesheetItem_va(s,"\t#wn%dmain { border-style: solid; border-width: %dpx 0px 0px 0px; border-color: white; }\n", id, has_titlebar?1:0);
+		}
+	    else
+		{
+		/** window inner container -- window **/
+		htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%dpx; WIDTH: %dpx; HEIGHT:%dpx; overflow: hidden; clip:rect(0px, %dpx, %dpx, 0px); Z-INDEX:%d; %s}\n",
+			id, tbh?(tbh-1):0, w-2-2*box_offset, h-tbh-(has_titlebar?1:2)-(has_titlebar?1:2)*box_offset, w, h-tbh+(has_titlebar?1:0)-2*box_offset, z+1, bgnd_style);
+		htrAddStylesheetItem_va(s,"\t#wn%dmain { border-style: solid; border-width: %dpx 1px 1px 1px; border-color: gray white white gray; }\n", id, has_titlebar?0:1);
+		}
 	    }
 	else
 	    {
-	    /** Ok, write the style header items. **/
+	    /** Write the style header items for NS4 type browsers. **/
 	    htrAddStylesheetItem_va(s,"\t#wn%dbase { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(%dpx, %dpx); Z-INDEX:%d; }\n",
 		    id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	    htrAddStylesheetItem_va(s,"\t#wn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(%dpx,%dpx); Z-INDEX:%d; }\n",
@@ -524,47 +545,53 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
 	
 
-	/** Event handler for mousedown -- initial click **/
+	/** Event handler for mousedown/up/click/etc **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "wn", "wn_mousedown");
-
-	/** Mouse up event handler -- when user releases the button **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "wn", "wn_mouseup");
+	htrAddEventHandlerFunction(s, "document", "DBLCLICK", "wn", "wn_dblclick");
+
 
 	/** Mouse move event handler -- when user drags the window **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "wn", "wn_mousemove");
-
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "wn", "wn_mouseover");
-
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "wn", "wn_mouseout");
 
 	if(s->Capabilities.Dom1HTML)
 	    {
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s,"    %s = wn_init(document.getElementById('wn%dbase'),document.getElementById('wn%dmain'),%d,%d, document.getElementById('wn%dtitlebar'));\n", 
-		    name,id,id,gshade,closetype, id);
+	    if (has_titlebar)
+		{
+		htrAddScriptInit_va(s,"    %s = wn_init(document.getElementById('wn%dbase'),document.getElementById('wn%dmain'),%d,%d, document.getElementById('wn%dtitlebar'));\n", 
+			name,id,id,gshade,closetype, id);
+		}
+	    else
+		{
+		htrAddScriptInit_va(s,"    %s = wn_init(document.getElementById('wn%dbase'),document.getElementById('wn%dmain'),%d,%d, null);\n", 
+			name,id,id,gshade,closetype);
+		}
 	    }
 	else if(s->Capabilities.Dom0NS)
 	    {
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d,%d);\n", 
+	    htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d,%d,null);\n", 
 		    name,parentname,id,parentname,id,id,gshade,closetype);
 	    }
 
 	/** HTML body <DIV> elements for the layers. **/
-	/** This is the top white edge of the window **/
 	if(s->Capabilities.HTML40 && s->Capabilities.CSS2) 
 	    {
 	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dbase\">\n",id);
 	    if (has_titlebar)
 		{
 		htrAddBodyItem_va(s,"<DIV ID=\"wn%dtitlebar\">\n",id);
-		htrAddBodyItem_va(s,"<img id=\"wn%dclose\" name=\"close\" src=\"/sys/images/01close.gif\"/> <span style=\"position: absolute; bottom: 0px; font-weight: 600;\">%s</span>\n", id, title);
+		htrAddBodyItem_va(s,"<table border=0 cellspacing=0 cellpadding=0 height=%d><tr><td valign=middle align=center width=26><img name=\"close\" src=\"/sys/images/01close.gif\"/></td><td valign=middle align=left nobreak><b>%s</b></td></tr></table>\n", tbh-1, title);
 		htrAddBodyItem_va(s,"</DIV>\n");
 		}
 	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\">\n",id);
 	    }
 	else
 	    {
+	    /** This is the top white edge of the window **/
 	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dbase\"><TABLE border=\"0\" cellspacing=\"0\" cellpadding=\"0\">\n",id);
 	    htrAddBodyItem_va(s,"<TR><TD><IMG src=\"/sys/images/white_1x1.png\" \"width=\"1\" height=\"1\"></TD>\n");
 	    if (!is_dialog_style)
@@ -677,11 +704,11 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	htrAddBodyItem(s,"</DIV></DIV>\n");
 
-	if(visible==1)
+	/*if(visible==1)
 	    htrAddScriptInit(s,
 		    "    for (var t in window_current.osrc)\n"
 		    "        setTimeout(window_current.osrc[t].osrcname+'.InitQuery();',1);\n"
-		    );
+		    );*/
 	htrAddScriptInit(s,"    window_current = window_current.oldwin;\n");
 
     return 0;
