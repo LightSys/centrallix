@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.15 2002/07/19 21:17:49 mcancel Exp $
+    $Id: htdrv_imagebutton.c,v 1.16 2002/07/24 15:14:28 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.16  2002/07/24 15:14:28  pfinley
+    added more actions
+
     Revision 1.15  2002/07/19 21:17:49  mcancel
     Changed widget driver allocation to use the nifty function htrAllocDriver instead of calling nmMalloc.
 
@@ -269,6 +272,13 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (e.target != null && e.target.kind=='ib' && e.target.layer.enabled==true)\n"
 		"        {\n"
 		"        e.target.src = e.target.layer.cImage.src;\n"
+		"        if (e.target.layer.EventMouseDown != null)\n"
+		"            {\n"
+		"            var eparam = new Object();\n"
+		"            eparam.Caller = e.target.layer;\n"
+		"            cn_activate(e.target.layer, 'MouseDown', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","ib",
@@ -298,12 +308,38 @@ htibtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
 		"        {\n"
 		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.pImage.src;\n"
+		"        if (ly.EventMouseOver != null)\n"
+		"            {\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
+		"            cn_activate(ly, 'MouseOver', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
 		"        }\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","ib",
 		"    if (e.target != null && e.target.kind == 'ib' && e.target.enabled == true)\n"
 		"        {\n"
 		"        if (e.target.img && (e.target.img.src != e.target.cImage.src)) e.target.img.src = e.target.nImage.src;\n"
+		"        if (ly.EventMouseOut != null)\n"
+		"            {\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
+		"            cn_activate(ly, 'MouseOut', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
+		"        }\n");
+
+	htrAddEventHandler(s, "document","MOUSEMOVE","ib",
+		"    if (e.target != null && e.target.kind == 'ib' && ly.enabled == true)\n"
+		"        {\n"
+		"        if (ly.EventMouseMove != null)\n"
+		"            {\n"
+		"            eparam = new Object();\n"
+		"            eparam.Caller = ly;\n"
+		"            cn_activate(ly, 'MouseMove', eparam);\n"
+		"            delete eparam;\n"
+		"            }\n"
 		"        }\n");
 
 	/** Check for more sub-widgets within the imagebutton. **/
@@ -345,6 +381,10 @@ htibtnInitialize()
 	
 	/** Add the 'click' event **/
 	htrAddEvent(drv,"Click");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
