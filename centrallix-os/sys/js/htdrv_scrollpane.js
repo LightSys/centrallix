@@ -137,17 +137,17 @@ function do_mv()
 	if(incr < 0 && scrolled<-incr) 
 	    incr=-scrolled;
 
-	var layers = pg_layers(ti.pane);
+	/*var layers = pg_layers(ti.pane);
 	for(var i=0;i<layers.length;i++)
 	    {
 	    if(layers[i] != ti.thum)
 		{
 		layers[i].y-=incr;
 		}
-	    }
+	    }*/
 
 	/** actually move the displayed content **/
-	//ti.area.y-=incr;
+	ti.area.y-=incr;
 	}
     else
 	{
@@ -159,7 +159,8 @@ function do_mv()
 
 function tm_mv()
     {
+    sp_mv_timeout=null;
     do_mv();
-    sp_mv_timeout=setTimeout(tm_mv,50);
+    if (!sp_mv_timeout) sp_mv_timeout=setTimeout(tm_mv,50);
     return false;
     }
