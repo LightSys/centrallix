@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.20 2004/02/24 20:21:57 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.21 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.21  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.20  2004/02/24 20:21:57  gbeeley
     - hints .js file inclusion on form, osrc, and editbox
     - htrParamValue and htrGetBoolean utility functions
@@ -199,7 +207,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
     char bcolor[64] = "";
     char bimage[64] = "";
 
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE &&!(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
 	    mssError(1,"HTSPANE","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
 	    return -1;
@@ -339,13 +347,13 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"        {\n"
 		"        sp_click_x = e.pageX;\n"
 		"        sp_click_y = e.pageY;\n"
-		"        sp_thum_y = sp_target_img.thum.pageY;\n"
+		"        sp_thum_y = getPageY(sp_target_img.thum);\n"
 		"        return false;\n"
 		"        }\n"
 		"    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='b')\n"
 		"        {\n"
 		"        sp_mv_incr=sp_target_img.height+36;\n"
-		"        if (e.pageY < sp_target_img.thum.pageY+9) sp_mv_incr = -sp_mv_incr;\n"
+		"        if (e.pageY < getPageY(sp_target_img.thum)+9) sp_mv_incr = -sp_mv_incr;\n"
 		"        do_mv();\n"
 		"        if (!sp_mv_timeout) sp_mv_timeout = setTimeout(tm_mv,300);\n"
 		"        return false;\n"
@@ -362,13 +370,13 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 		"    var ti=sp_target_img;\n"
 		"    if (ti != null && ti.kind=='sp' && ti.name=='t')\n"
 		"        {\n"
-		"        var v=ti.pane.clip.height-(3*18);\n"
+		"        var v=getClipHeight(ti.pane)-(3*18);\n"
 		"        var new_y=sp_thum_y + (e.pageY-sp_click_y);\n"
-		"        if (new_y > ti.pane.pageY+18+v) new_y=ti.pane.pageY+18+v;\n"
-		"        if (new_y < ti.pane.pageY+18) new_y=ti.pane.pageY+18;\n"
-		"        ti.thum.pageY=new_y;\n"
-		"        var h=ti.area.clip.height;\n"
-		"        var d=h-ti.pane.clip.height;\n"
+		"        if (new_y > getPageY(ti.pane)+18+v) new_y=getPageY(ti.pane)+18+v;\n"
+		"        if (new_y < getPageY(ti.pane)+18) new_y=getPageY(ti.pane)+18;\n"
+		"        setPageY(ti.thum,new_y);\n"
+		"        var h=getClipHeight(ti.area);\n"
+		"        var d=h-getClipHeight(ti.pane);\n"
 		"        if (d<0) d=0;\n"
 		"        var yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;\n"
 		"        ti.area.y+=yincr;\n"

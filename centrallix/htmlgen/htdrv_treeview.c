@@ -41,10 +41,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.23 2004/02/24 20:21:57 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.24 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.24  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.23  2004/02/24 20:21:57  gbeeley
     - hints .js file inclusion on form, osrc, and editbox
     - htrParamValue and htrGetBoolean utility functions
@@ -202,7 +210,7 @@ httreeRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     char* nptr;
     int show_root = 1;
 
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
 	    mssError(1,"HTTREE","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
 	    return -1;

@@ -41,10 +41,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.21 2003/07/28 22:26:20 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.22 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.22  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.21  2003/07/28 22:26:20  gbeeley
     Minor geometry fixes to the pane widget.
 
@@ -259,7 +267,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 	if (style == 1) /* raised */
 	    {
-	    if(s->Capabilities.Dom0NS)
+	    if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 		{
 		c1 = "white_1x1.png";
 		c2 = "dkgrey_1x1.png";
@@ -276,7 +284,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 	else if (style == 0) /* lowered */
 	    {
-	    if(s->Capabilities.Dom0NS)
+	    if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 		{
 		c1 = "dkgrey_1x1.png";
 		c2 = "white_1x1.png";
@@ -293,7 +301,7 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 
 	/** Ok, write the style header items. **/
-	if(s->Capabilities.Dom0NS)
+	if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
@@ -352,11 +360,27 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseMove');\n"
 	    "\n");
 
-	if(s->Capabilities.Dom0NS)
+	if(s->Capabilities.Dom0NS || (s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
+	    if(s->Capabilities.Dom0NS)
+	        {
+	    	htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
 		    nptr, parentname, id, parentname, id, id);
+		}
+	    else
+	        {
+	        if(strstr(parentname, "document") != NULL)
+	            {
+	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.getElementById(\"pn%dbase\"), %s.getElementById(\"pn%dbase\").document.getElementById(\"pn%dmain\"));\n",
+		        nptr, parentname, id, parentname, id, id);
+		    }
+		else
+		    {
+	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.document.getElementById(\"pn%dbase\"), %s.document.getElementById(\"pn%dbase\").document.getElementById(\"pn%dmain\"));\n",
+		        nptr, parentname, id, parentname, id, id);		    	
+		    }
+	        }
 
 	    /** HTML body <DIV> element for the base layer. **/
 	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
@@ -386,20 +410,6 @@ htpnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	    /** End the containing layer. **/
 	    htrAddBodyItem(s, "</td></tr></table></DIV></DIV>\n");
-	    }
-	else if(s->Capabilities.CSS1)
-	    {
-	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    %s = pn_init(document.getElementById('pn%dmain'));\n", nptr, id);
-
-	    /** HTML body <DIV> element for the base layer. **/
-	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\">",id);
-
-	    /** Check for objects within the pane. **/
-	    htrRenderSubwidgets(s, w_obj, nptr, nptr, z+2);
-
-	    /** End the containing layer. **/
-	    htrAddBodyItem(s, "</DIV>\n");
 	    }
 	else
 	    {

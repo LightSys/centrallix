@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,10 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.60 2004/02/24 20:21:57 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.61 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.61  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.60  2004/02/24 20:21:57  gbeeley
     - hints .js file inclusion on form, osrc, and editbox
     - htrParamValue and htrGetBoolean utility functions
@@ -496,7 +504,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    memccpy(dtfocus2,ptr,0,63);
 	    dtfocus2[63]=0;
 	    }
-   
+
 	/** Cx windows attract to browser edges? if so, by how much **/
 	if (objGetAttrValue(w_obj,"attract",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    attract = (int)ptr;
@@ -535,7 +543,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "pg_username", "null", 0);
 
 	/** Add script include to get function declarations **/
-	if(s->Capabilities.Dom1HTML)
+	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
 	    {
 	    htrAddScriptInclude(s, "/sys/js/htdrv_page_js15.js", 0);
 	    }
@@ -582,7 +590,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	else
 	    {
 	    /** Add focus box **/
-	    htrAddStylesheetItem(s, 
+	    htrAddStylesheetItem(s,
 		    "\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
 		    "\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
 		    "\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
@@ -614,7 +622,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddBodyItem(s, "<DIV ID=\"pgkbtm\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	
+
 	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
@@ -653,7 +661,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        pg_curlayer = pg_curkbdlayer;\n"
 		"        pg_curarea = pg_curkbdarea;\n"
 		"        return false;\n"
-		"        }\n" 
+		"        }\n"
 		"    if (e.target == pg_curlayer) pg_curlayer = null;\n"
 		"    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) || (e.target == pg_curarea.layer)))\n"
 		"        {\n"
@@ -669,8 +677,8 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        pg_curlayer = pg_curkbdlayer;\n"
 		"        pg_curarea = pg_curkbdarea;\n"
 		"        return false;\n"
-		"        }\n" 
-		"    if (e.target != null && e.target.pageX != null)\n"
+		"        }\n"
+		"    if (e.target != null && getPageX(e.target) != null)\n"
 		"        {\n"
 		"        pg_curlayer = e.target;\n"
 		"        if (pg_curlayer.mainlayer != null) pg_curlayer = pg_curlayer.mainlayer;\n"
@@ -692,7 +700,7 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"        {\n"
 		"        if (pg_curlayer != pg_curkbdlayer)\n"
 		"            if (!pg_removekbdfocus()) return true;\n"
-		"        pg_setkbdfocus(pg_curlayer, pg_curarea, e.pageX - pg_curarea.layer.pageX, e.pageY-pg_curarea.layer.pageY);\n"
+		"        pg_setkbdfocus(pg_curlayer, pg_curarea, e.pageX - getPageX(pg_curarea.layer), e.pageY-getPageY(pg_curarea.layer));\n"
 		"        }\n"
 		"    else if (!ly.keep_kbd_focus)\n"
 		"        {\n"
@@ -725,24 +733,46 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptInit(s, "    pg_togglecursor();\n");
 
 
-	htrAddEventHandler(s, "document", "KEYDOWN", "pg",
+	if(!s->Capabilities.Dom0IE)
+	    {
+	    htrAddEventHandler(s, "document", "KEYDOWN", "pg",
 		"    k = e.which;\n"
 		"    if (k > 65280) k -= 65280;\n"
 		"    if (k >= 128) k -= 128;\n"
 		"    if (k == pg_lastkey) return false;\n"
 		"    pg_lastkey = k;\n"
-		"    /*pg_togglecursor();*/\n"
 		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
 		"    pg_addsched(\"pg_keytimeoutid = setTimeout(pg_keytimeout, 200)\",window);\n"
 		"    return pg_keyhandler(k, e.modifiers, e);\n");
 
-	htrAddEventHandler(s, "document", "KEYUP", "pg",
+	    htrAddEventHandler(s, "document", "KEYUP", "pg",
 		"    k = e.which;\n"
 		"    if (k > 65280) k -= 65280;\n"
 		"    if (k >= 128) k -= 128;\n"
 		"    if (k == pg_lastkey) pg_lastkey = -1;\n"
 		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
 		"    pg_keytimeoutid = null;\n");
+	    }
+	else
+	    {
+	    htrAddEventHandler(s, "document", "KEYDOWN", "pg",
+		"    k = e.keyCode;\n"
+		"    if (k > 65280) k -= 65280;\n"
+		"    if (k >= 128) k -= 128;\n"
+		"    if (k == pg_lastkey) return false;\n"
+		"    pg_lastkey = k;\n"
+		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
+		"    pg_addsched(\"pg_keytimeoutid = setTimeout(pg_keytimeout, 200)\",window);\n"
+		"    return pg_keyhandler(k, e.modifiers, e);\n");
+
+	    htrAddEventHandler(s, "document", "KEYUP", "pg",
+		"    k = e.keyCode;\n"
+		"    if (k > 65280) k -= 65280;\n"
+		"    if (k >= 128) k -= 128;\n"
+		"    if (k == pg_lastkey) pg_lastkey = -1;\n"
+		"    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);\n"
+		"    pg_keytimeoutid = null;\n");
+	    }
 
 	/** Check for more sub-widgets within the page. **/
 	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
@@ -804,7 +834,7 @@ htpageInitialize()
 	htrAddParam(drv, "Launch", "Width", DATA_T_INTEGER);
 	htrAddParam(drv, "Launch", "Height", DATA_T_INTEGER);
 	htrAddParam(drv, "Launch", "Name", DATA_T_STRING);
-	
+
 	/** Register. **/
 	htrRegisterDriver(drv);
 

@@ -41,10 +41,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.30 2004/02/24 20:21:56 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.31 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.31  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.30  2004/02/24 20:21:56  gbeeley
     - hints .js file inclusion on form, osrc, and editbox
     - htrParamValue and htrGetBoolean utility functions
@@ -195,7 +203,7 @@
  **END-CVSDATA***********************************************************/
 
 /** globals **/
-static struct 
+static struct
     {
     int		idcnt;
     }
@@ -233,9 +241,9 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     pObject sub_w_obj;
     pObjQuery qy;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE)
 	    {
-	    mssError(1,"HTEB","Netscape DOM support required");
+	    mssError(1,"HTEB","Netscape or Internet Explorer DOM support required");
 	    return -1;
 	    }
 
@@ -245,7 +253,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     	/** Get x,y,w,h of this object **/
 	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTEB","Editbox widget must have a 'width' property");
 	    return -1;
@@ -255,7 +263,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    mssError(1,"HTEB","Editbox widget must have a 'height' property");
 	    return -1;
 	    }
-	
+
 	/** Maximum characters to accept from the user **/
 	if (objGetAttrValue(w_obj,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
 
@@ -264,7 +272,16 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 
 	/** Background color/image? **/
 	if (objGetAttrValue(w_obj,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgColor='%.40s'",ptr);
+	    {
+	    if (!s->Capabilities.Dom0IE)
+	        {
+	        sprintf(main_bg,"bgColor='%.40s'",ptr);
+		}
+	    else
+	        {
+	        sprintf(main_bg,"%.40s",ptr);
+	        }
+	    }
 	else if (objGetAttrValue(w_obj,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(main_bg,"background='%.110s'",ptr);
 	else
@@ -288,17 +305,21 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    c2 = "white_1x1.png";
 	    }
 
-	if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
+	if (objGetAttrValue(w_obj,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
 	    }
-	else 
-	    { 
+	else
+	    {
 	    fieldname[0]='\0';
-	    } 
+	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	if (s->Capabilities.Dom1HTML)
+	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; overflow:hidden }\n",id,x,y,w,z);
+	else if (s->Capabilities.Dom0NS)
+	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+
 	htrAddStylesheetItem_va(s,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
 	htrAddStylesheetItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
 
@@ -317,42 +338,53 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
-	htrAddEventHandler(s, "document","MOUSEUP", "eb", 
+	htrAddEventHandler(s, "document","MOUSEUP", "eb",
 	    "\n"
 	    "    if (ly.kind == 'eb') cn_activate(ly, 'Click');\n"
 	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseUp');\n"
 	    "\n");
 
-	htrAddEventHandler(s, "document","MOUSEDOWN", "eb", 
+	htrAddEventHandler(s, "document","MOUSEDOWN", "eb",
 	    "\n"
 	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseDown');\n"
 	    "\n");
 
-	htrAddEventHandler(s, "document","MOUSEOVER", "eb", 
+	htrAddEventHandler(s, "document","MOUSEOVER", "eb",
 	    "\n"
 	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseOver');\n"
 	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEOUT", "eb", 
+
+	htrAddEventHandler(s, "document","MOUSEOUT", "eb",
 	    "\n"
 	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseOut');\n"
 	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEMOVE", "eb", 
+
+	htrAddEventHandler(s, "document","MOUSEMOVE", "eb",
 	    "\n"
 	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseMove');\n"
 	    "\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\", %d, \"%s\");\n",
-		nptr, parentname, id, 
-		parentname, id, id, 
+	if (s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s, "    %s = eb_init(%s.getElementById(\"eb%dbase\"), %s.getElementById(\"eb%dbase\").document.getElementById(\"eb%dcon1\"),%s.getElementById(\"eb%dbase\").document.getElementById(\"eb%dcon2\"),\"%s\", %d, \"%s\");\n",
+		nptr, parentname, id,
+		parentname, id, id,
 		parentname, id, id,
 		fieldname, is_readonly, main_bg);
+	    }
+	else if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\", %d, \"%s\");\n",
+		nptr, parentname, id,
+		parentname, id, id,
+		parentname, id, id,
+		fieldname, is_readonly, main_bg);
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\"><BODY %s>\n",id, main_bg);
-	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);
+	htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
 	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
@@ -384,7 +416,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 	    }
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</BODY></DIV>\n");
+	htrAddBodyItem(s, "</DIV>\n");
 
     return 0;
     }
@@ -407,7 +439,7 @@ htebInitialize()
 	drv->Render = htebRender;
 	drv->Verify = htebVerify;
 
-	/** Events **/ 
+	/** Events **/
 	htrAddEvent(drv,"Click");
 	htrAddEvent(drv,"MouseUp");
 	htrAddEvent(drv,"MouseDown");

@@ -42,10 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.2 2003/07/15 01:59:50 gbeeley Exp $
+    $Id: htdrv_scrollbar.c,v 1.3 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.3  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.2  2003/07/15 01:59:50  gbeeley
     Fixing bug with the low-value limiter on dragging the thumb around.
 
@@ -91,9 +99,9 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
     int is_horizontal = 0;
     pExpression code;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE)
 	    {
-	    mssError(1,"HTSB","Netscape 4.x DOM support required");
+	    mssError(1,"HTSB","Netscape 4.x or IE DOM support required");
 	    return -1;
 	    }
 
@@ -247,14 +255,14 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        {\n"
 		"        sb_click_x = e.pageX;\n"
 		"        sb_click_y = e.pageY;\n"
-		"        sb_thum_x = sb_target_img.thum.pageX;\n"
-		"        sb_thum_y = sb_target_img.thum.pageY;\n"
+		"        sb_thum_x = getPageX(sb_target_img.thum);\n"
+		"        sb_thum_y = getPageY(sb_target_img.thum);\n"
 		"        }\n"
 		"    else if (sb_target_img != null && sb_target_img.kind=='sb' && sb_target_img.name=='b')\n"
 		"        {\n"
 		"        sb_mv_incr=sb_target_img.mainlayer.controlsize + (18*3);\n"
-		"        if (!sb_target_img.mainlayer.is_horizontal && e.pageY < sb_target_img.thum.pageY+9) sb_mv_incr = -sb_mv_incr;\n"
-		"        if (sb_target_img.mainlayer.is_horizontal && e.pageX < sb_target_img.thum.pageX+9) sb_mv_incr = -sb_mv_incr;\n"
+		"        if (!sb_target_img.mainlayer.is_horizontal && e.pageY < getPageY(sb_target_img.thum)+9) sb_mv_incr = -sb_mv_incr;\n"
+		"        if (sb_target_img.mainlayer.is_horizontal && e.pageX < getPageX(sb_target_img.thum)+9) sb_mv_incr = -sb_mv_incr;\n"
 		"        sb_do_mv();\n"
 		"        sb_mv_timeout = setTimeout(sb_tm_mv,300);\n"
 		"        }\n"
@@ -267,18 +275,18 @@ htsbRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        if (ti.mainlayer.is_horizontal)\n"
 		"            {\n"
 		"            var new_x=sb_thum_x + (e.pageX-sb_click_x);\n"
-		"            if (new_x > ti.pane.pageX+18+ti.mainlayer.controlsize) new_x=ti.pane.pageX+18+ti.mainlayer.controlsize;\n"
-		"            if (new_x < ti.pane.pageX+18) new_x=ti.pane.pageX+18;\n"
-		"            ti.thum.pageX=new_x;\n"
-		"            ti.mainlayer.value = Math.round((new_x - (ti.pane.pageX+18))*ti.mainlayer.range/ti.mainlayer.controlsize);\n"
+		"            if (new_x > getPageX(ti.pane)+18+ti.mainlayer.controlsize) new_x=getPageX(ti.pane)+18+ti.mainlayer.controlsize;\n"
+		"            if (new_x < getPageX(ti.pane)+18) new_x=getPageX(ti.pane)+18;\n"
+		"            setPageX(ti.thum,new_x);\n"
+		"            ti.mainlayer.value = Math.round((new_x - (getPageX(ti.pane)+18))*ti.mainlayer.range/ti.mainlayer.controlsize);\n"
 		"            }\n"
 		"        else\n"
 		"            {\n"
 		"            var new_y=sb_thum_y + (e.pageY-sb_click_y);\n"
-		"            if (new_y > ti.pane.pageY+18+ti.mainlayer.controlsize) new_y=ti.pane.pageY+18+ti.mainlayer.controlsize;\n"
-		"            if (new_y < ti.pane.pageY+18) new_y=ti.pane.pageY+18;\n"
-		"            ti.thum.pageY=new_y;\n"
-		"            ti.mainlayer.value = Math.round((new_y - (ti.pane.pageY+18))*ti.mainlayer.range/ti.mainlayer.controlsize);\n"
+		"            if (new_y > getPageY(ti.pane)+18+ti.mainlayer.controlsize) new_y=getPageY(ti.pane)+18+ti.mainlayer.controlsize;\n"
+		"            if (new_y < getPageY(ti.pane)+18) new_y=getPageY(ti.pane)+18;\n"
+		"            setPageY(ti.thum,new_y);\n"
+		"            ti.mainlayer.value = Math.round((new_y - (getPageY(ti.pane)+18))*ti.mainlayer.range/ti.mainlayer.controlsize);\n"
 		"            }\n"
 		"        return false;\n"
 		"        }\n"

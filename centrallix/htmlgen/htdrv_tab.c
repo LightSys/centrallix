@@ -41,10 +41,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.19 2003/12/01 19:04:40 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.20 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.20  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.19  2003/12/01 19:04:40  gbeeley
     - fixed error in drawing tabs which was causing a minor visual issue
       when tabs are on the righthand side of the tab control.
@@ -149,7 +157,7 @@
  **END-CVSDATA***********************************************************/
 
 /** globals **/
-static struct 
+static struct
     {
     int		idcnt;
     }
@@ -194,7 +202,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     char* bg;
     char* tabname;
 
-	if(!s->Capabilities.Dom0NS && (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS))
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE &&(!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS))
 	    {
 	    mssError(1,"HTTAB","NS4 or W3C DOM Support required");
 	    return -1;
@@ -211,7 +219,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
     	/** Get x,y,w,h of this object **/
 	if (objGetAttrValue(w_obj,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (objGetAttrValue(w_obj,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (objGetAttrValue(w_obj,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(0,"HTTAB","Tab widget must have a 'width' property");
 	    return -1;
@@ -255,7 +263,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Which tab is selected? **/
-	if (objGetAttrType(w_obj,"selected") == DATA_T_STRING && 
+	if (objGetAttrType(w_obj,"selected") == DATA_T_STRING &&
 		objGetAttrValue(w_obj,"selected",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    snprintf(sel,128,"%s",ptr);
@@ -294,7 +302,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** Ok, write the style header items. **/
-	if (s->Capabilities.Dom0NS)
+	if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 	    htrAddStylesheetItem_va(s,"\t#tc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x+xoffset,y+yoffset,w,z+1);
 	else if (s->Capabilities.Dom2CSS)
 	    htrAddStylesheetItem_va(s,"\t#tc%dbase { %s }\n", id, main_bg);
@@ -361,7 +369,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			objGetAttrValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
 
 		    /** Add stylesheet headers for the layers (tab and tabpage) **/
-		    if (s->Capabilities.Dom0NS) 
+		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 			{
 			htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; Z-INDEX:%d; }\n",
 				id,tabcnt,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
@@ -370,14 +378,14 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			}
 
 		    /** Generate the tabs along the edge of the control **/
-		    if (s->Capabilities.Dom0NS)
+		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 			{
 			htrAddBodyItem_va(s,"<DIV ID=\"tc%dtab%d\" %s>\n",id,tabcnt,bg);
 			if (tab_width == 0)
 			    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0>\n");
 			else
 			    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 width=%d>\n", tab_width);
-			if (tloc != Bottom) 
+			if (tloc != Bottom)
 			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
 			htrAddBodyItem(s,"        <TR>");
 			if (tloc != Right)
@@ -402,14 +410,14 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 			if (tloc != Left)
 			    htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>");
 			htrAddBodyItem(s,"</TR>\n");
-			if (tloc != Top) 
+			if (tloc != Top)
 			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
 			htrAddBodyItem(s,"    </TABLE>\n");
 			htrAddBodyItem(s, "</DIV>\n");
 			}
 		    else if (s->Capabilities.Dom2CSS)
 			{
-			htrAddStylesheetItem_va(s, "\t#tc%dtab%d { %s }\n", 
+			htrAddStylesheetItem_va(s, "\t#tc%dtab%d { %s }\n",
 				id, tabcnt, bg);
 			if (tab_width <= 0)
 			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; top:%dpx; left:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
@@ -438,7 +446,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	if (s->Capabilities.Dom0NS)
+	if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 	    {
 	    htrAddBodyItem_va(s,"<DIV ID=\"tc%dbase\">\n",id);
 	    htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
@@ -455,7 +463,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	else
 	    {
 	    /** h-2 and w-2 because w3c dom borders add to actual width **/
-	    htrAddBodyItem_va(s,"<div id=\"tc%dbase\" style=\"position:absolute; overflow:hidden; height:%dpx; width:%dpx; left:%dpx; top:%dpx; z-index:%d;\" ><table cellspacing=0 cellpadding=0 style=\"border-width: 1px; border-style:solid; border-color: white gray gray white;\"><tr><td height=%d width=%d>&nbsp;</td></tr></table>\n", 
+	    htrAddBodyItem_va(s,"<div id=\"tc%dbase\" style=\"position:absolute; overflow:hidden; height:%dpx; width:%dpx; left:%dpx; top:%dpx; z-index:%d;\" ><table cellspacing=0 cellpadding=0 style=\"border-width: 1px; border-style:solid; border-color: white gray gray white;\"><tr><td height=%d width=%d>&nbsp;</td></tr></table>\n",
 		    id, h, w, x+xoffset, y+yoffset, z+1,
 		    h-2,w-2);
 	    }
@@ -485,7 +493,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 		    htrAddScriptGlobal(s, subnptr, "null", HTR_F_NAMEALLOC);
 
 		    /** Add DIV section for the tabpage. **/
-		    if (s->Capabilities.Dom0NS)
+		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 			htrAddBodyItem_va(s,"<DIV ID=\"tc%dpane%d\">\n",id,tabcnt);
 		    else
 			htrAddBodyItem_va(s,"<div id=\"tc%dpane%d\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:1px; TOP:1px; WIDTH:%dpx; Z-INDEX:%d;\">\n",

@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.23 2003/11/18 05:58:00 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.24 2004/03/10 10:51:09 jasonyip Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.24  2004/03/10 10:51:09  jasonyip
+
+    These are the latest IE-Port files.
+    -Modified the browser check to support IE
+    -Added some else-if blocks to support IE
+    -Added support for geometry library
+    -Beware of the document.getElementById to check the parentname does not contain a substring of 'document', otherwise there will be an error on doucument.document
+
     Revision 1.23  2003/11/18 05:58:00  gbeeley
     - attempting to fix text centering
 
@@ -217,7 +225,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
     int is_enabled = 1;
     pExpression code;
 
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
 	    mssError(1,"HTTBTN","Netscape DOM or (W3C DOM1 HTML and W3C DOM2 CSS) support required");
 	    return -1;
@@ -310,7 +318,7 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
 
-	if(s->Capabilities.Dom0NS)
+	if(s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 	    {
 	    /** Ok, write the style header items. **/
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
@@ -322,9 +330,27 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	    htrAddStylesheetItem_va(s,"\t#tb%dlft { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
-	    htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dpane3,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
+	    if(s->Capabilities.Dom0NS)
+	        {
+	    	htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
+	    	htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dpane3,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
 		    nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
+		}
+	    else if(s->Capabilities.Dom0IE)
+	        {
+		if(strstr(parentname,"document")!=NULL)
+		    {
+		    htrAddScriptInit_va(s, "    %s = %s.getElementById(\"tb%dpane\");\n",nptr, parentname, id);
+		      htrAddScriptInit_va(s, "    tb_init(%s,%s.document.getElementById(\"tb%dpane2\"),%s.document.getElementById(\"tb%dpane3\"),%s.document.getElementById(\"tb%dtop\"),%s.document.getElementById(\"tb%dbtm\"),%s.document.getElementById(\"tb%drgt\"),%s.document.getElementById(\"tb%dlft\"),%d,%d,%s,%d,\"%s\");\n",
+					  nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
+		    }
+		else
+		    {
+		      htrAddScriptInit_va(s, "    %s = %s.document.getElementById(\"tb%dpane\");\n",nptr, parentname, id);
+		      htrAddScriptInit_va(s, "    tb_init(%s,%s.document.getElementById(\"tb%dpane2\"),%s.document.getElementById(\"tb%dpane3\"),%s.document.getElementById(\"tb%dtop\"),%s.document.getElementById(\"tb%dbtm\"),%s.document.getElementById(\"tb%drgt\"),%s.document.getElementById(\"tb%dlft\"),%d,%d,%s,%d,\"%s\");\n",
+					  nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
+		    }
+	        }
 
 	    /** HTML body <DIV> elements for the layers. **/
 	    if (h >= 0)
@@ -388,11 +414,10 @@ httbtnRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 		"    if (ly.kind == 'tb' && ly.enabled)\n"
 		"        {\n"
 		"        ly.moveBy(-1,-1);\n"
-		"        //alert(e.pageX + ' -- ' + ly.pageX + ' -- ' + ly.clip.width);\n"
-		"        if (e.pageX >= ly.pageX &&\n"
-		"            e.pageX < ly.pageX + ly.clip.width &&\n"
-		"            e.pageY >= ly.pageY &&\n"
-		"            e.pageY < ly.pageY + ly.clip.height)\n"
+		"        if (e.pageX >= getPageX(ly) &&\n"
+		"            e.pageX < getPageX(ly) + getClipWidth(ly) &&\n"
+		"            e.pageY >= getPageY(ly) &&\n"
+		"            e.pageY < getPageY(ly) + getClipHeight(ly))\n"
 		"            {\n"
 		"            tb_setmode(ly,1);\n"
 		"            cn_activate(ly, 'Click');\n"
