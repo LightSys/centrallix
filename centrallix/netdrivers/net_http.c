@@ -52,10 +52,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.17 2002/05/03 03:52:43 gbeeley Exp $
+    $Id: net_http.c,v 1.18 2002/05/06 22:46:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.18  2002/05/06 22:46:55  gbeeley
+    Updating net_http a bit to properly return OK on a ping.
+
     Revision 1.17  2002/05/03 03:52:43  gbeeley
     Added preliminary session watchdog support to the net_http module.
     The watchdog timer parameters are controllable via the config file.
@@ -2173,6 +2176,16 @@ nht_internal_ConnHandler(void* conn_v)
 				 "Server: %s\r\n"
 				 "\r\n"
 				 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
+		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
+		    netCloseTCP(conn,1000,0);
+		    thExit();
+		    }
+		else
+		    {
+		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
+				 "Server: %s\r\n"
+				 "\r\n"
+				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
 		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 		    netCloseTCP(conn,1000,0);
 		    thExit();
