@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.7 2002/07/15 18:16:39 lkehresman Exp $
+    $Id: htdrv_datetime.c,v 1.8 2002/07/15 20:36:32 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.8  2002/07/15 20:36:32  lkehresman
+    Added another check for blank or invalid dates
+
     Revision 1.7  2002/07/15 18:16:39  lkehresman
     * Removed some flickering
     * Fixed a couple minor bugs with invalid dates
@@ -384,7 +387,7 @@ htdtRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    l.ld.hdr3 = new Layer(1024, l.ld);\n"
 		"    l.ld.hdr4 = new Layer(1024, l.ld);\n"
 		"    dt_drawmonth(l.ld, l.tmpdate);\n"
-		"    dt_drawdate(l.lbdy, l.tmpdate);\n"
+		"    if (l.initialdateStr) dt_drawdate(l.lbdy, l.tmpdate);\n"
 		"    dt_drawtime(l, l.tmpdate);\n"
 		"    if (fm_current) fm_current.Register(l);\n"
 		"    }\n" ,0);
