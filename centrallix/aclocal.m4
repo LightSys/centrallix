@@ -468,17 +468,26 @@ AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
 	ENABLE_DBL="no"
  
 	if test "$WITH_DBL" = "yes"; then
-	    AC_DEFINE(USE_DBL)
 	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		AC_DEFINE(USE_DBL)
 		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_dbl.so"
 	    else
+		AC_DEFINE(USE_DBL,CX_STATIC)
 		OBJDRIVERS="$OBJDRIVERS objdrv_dbl.o"
 	    fi
 	    ENABLE_DBL="yes"
 	    AC_MSG_RESULT(yes)
 	    CENTRALLIX_ADD_DRIVER(dbl, DBL)
 	else
-	    AC_MSG_RESULT(no)
+	    if test "$WITH_DBL" = "static"; then
+		AC_DEFINE(USE_DBL,CX_STATIC)
+		OBJDRIVERS="$OBJDRIVERS objdrv_dbl.o"
+		ENABLE_DBL="yes"
+		AC_MSG_RESULT(yes)
+		CENTRALLIX_ADD_DRIVER(dbl, DBL)
+	    else
+		AC_MSG_RESULT(no)
+	    fi
 	fi
 	AC_SUBST(ENABLE_DBL)
     ]
@@ -549,6 +558,99 @@ AC_DEFUN(CENTRALLIX_CHECK_SHELL_OS,
 	AC_SUBST(ENABLE_SHELL)
     ]
 )
+
+dnl Test for the SNMP os driver.
+dnl AC_DEFUN(CENTRALLIX_CHECK_SNMP_OS,
+dnl     [
+dnl 	AC_MSG_CHECKING(if SNMP osdriver support is desired)
+dnl 
+dnl 	AC_ARG_ENABLE(snmp-os,
+dnl 	    AC_HELP_STRING([--enable-snmp-os],
+dnl 		[enable SNMP osdriver support]
+dnl 	    ),
+dnl 	    WITH_SNMP="$enableval",
+dnl 	    WITH_SNMP="no"
+dnl 	)
+dnl 
+dnl 	ENABLE_SNMP="no"
+dnl 
+dnl 	if test "$WITH_SNMP" = "yes"; then
+dnl 	    AC_MSG_RESULT(yes)
+dnl 	    dnl check for alternate locations for includes
+dnl 	    AC_ARG_WITH(ucd-snmp,
+dnl 		AC_HELP_STRING([--with-ucd-snmp=PATH],
+dnl 		    [library path for ucd-snmp library (default is /usr/lib)]
+dnl 		),
+dnl 		snmp_libdir="$withval",
+dnl 		snmp_libdir="/usr/lib",
+dnl 	    )
+dnl 
+dnl 	    dnl check for alternate locations for libs
+dnl 	    AC_ARG_WITH(ucd-snmp-inc,
+dnl 		AC_HELP_STRING([--with-ucd-snmp-inc=PATH],
+dnl 		    [include path for ucd-snmp headers (default is /usr/include)]
+dnl 		),
+dnl 		snmp_incdir="-I$withval",
+dnl 		snmp_incdir="/usr/include"
+dnl 	    )
+dnl 
+dnl 	    dnl make sure the headers are there.
+dnl 	    temp=$CPPFLAGS
+dnl 	    CPPFLAGS="$CPPFLAGS $snmp_incdir"
+dnl 	    tempC=$CFLAGS
+dnl 	    CFLAGS="$CFLAGS $snmp_incdir"
+dnl 	    AC_CHECK_HEADER(ucd-snmp/snmp_api.h, 
+dnl 		WITH_SNMP="yes",
+dnl 		WITH_SNMP="no",
+dnl 		[#include <sys/types.h>
+dnl 		 #include <netinet/in.h>
+dnl 		 #include <sys/time.h>
+dnl 		 #include <ucd-snmp/asn1.h>
+dnl 		 #include <ucd-snmp/snmp_impl.h>
+dnl 		 #include <ucd-snmp/snmp.h>
+dnl 		]
+dnl 	    )
+dnl 	    CPPFLAGS="$temp"
+dnl 	    CFLAGS="$tempC"
+dnl 
+dnl 	    dnl if we're still ok, make sure the library is there and useable.
+dnl 	    if test "$WITH_SNMP" = "yes"; then
+dnl 		SNMP_CFLAGS="-I$snmp_incdir"
+dnl 		temp=$LIBS
+dnl 		LIBS="$LIBS -L$snmp_libdir -lsnmp -lcrypto"
+dnl 		AC_CHECK_LIB(snmp, snmp_sess_init, WITH_SNMP_LIBSNMP="yes", WITH_SNMP_LIBSNMP="no", -lsnmp)
+dnl 		if test "$WITH_SNMP_LIBSNMP" = "no"; then
+dnl 		    WITH_SNMP="no"
+dnl 		else
+dnl 		    SNMP_LIBS="-L$snmp_libdir -lsnmp -lcrypto"
+dnl 		fi
+dnl 		LIBS="$temp"
+dnl 	    fi
+dnl 	else
+dnl 	    AC_MSG_RESULT(no)
+dnl 	fi
+dnl 
+dnl 	dnl ok, if snmp is wanted and available, build it.
+dnl 	AC_MSG_CHECKING(if we can enable SNMP support)
+dnl 	if test "$WITH_SNMP" = "yes"; then
+dnl 	    AC_DEFINE(USE_SNMP)
+dnl 	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+dnl 		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_snmp.so"
+dnl 	    else
+dnl 		OBJDRIVERS="$OBJDRIVERS objdrv_snmp.o"
+dnl 	    fi
+dnl 	    ENABLE_SNMP="yes"
+dnl 	    AC_MSG_RESULT(yes)
+dnl 	    CENTRALLIX_ADD_DRIVER(snmp, snmp)
+dnl 	else
+dnl 	    AC_MSG_RESULT(no)
+dnl 	fi
+dnl 
+dnl 	AC_SUBST(ENABLE_SNMP)
+dnl 	AC_SUBST(SNMP_CFLAGS)
+dnl 	AC_SUBST(SNMP_LIBS)
+dnl     ]
+dnl )
 
 dnl Test for the BerkeleyDB os driver.
 AC_DEFUN(CENTRALLIX_CHECK_BERK_OS,

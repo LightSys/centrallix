@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.31 2004/08/28 06:27:13 jorupp Exp $
+    $Id: centrallix.c,v 1.32 2004/12/31 04:35:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.32  2004/12/31 04:35:14  gbeeley
+    - Adding the Object Canvas widget, an objectsource client which allows
+      data to be displayed visually on a canvas (useful with maps and diagrams
+      and such).  Link a form to the osrc as well and have some fun :)
+
     Revision 1.31  2004/08/28 06:27:13  jorupp
      * the widget drivers are all initialized in wgtrInitialize()
 
@@ -588,13 +593,13 @@ cxInitialize(void* v)
 	/** Initialize the Interface module **/
 	ifcInitialize();
 
-#ifndef WITH_DYNAMIC_LOAD
 	/** Init the modules being used if dynamic loading is disabled **/
 	
-#ifdef USE_DBL
+#if (USE_DBL == CX_STATIC)
 	dblInitialize();
 #endif
 
+#ifndef WITH_DYNAMIC_LOAD
 #ifdef USE_HTTP
 	httpInitialize();
 #endif
@@ -657,6 +662,7 @@ cxHtInit()
 	htsbInitialize();			/* scrollbar module */
 	htimgInitialize();			/* image widget */
 	htfbInitialize();			/* form bar composite widget test */
+	htocInitialize();			/* object canvas widget */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */

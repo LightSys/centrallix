@@ -1008,6 +1008,7 @@ wgtrInitialize()
 	wgtimgInitialize();
 	wgtlblInitialize();
 	wgtmenuInitialize();
+	wgtocInitialize();
 	wgtosrcInitialize();
 	wgtpageInitialize();
 	wgtpnInitialize();

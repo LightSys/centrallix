@@ -128,6 +128,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_image.o \
 	wgtdrv_label.o \
 	wgtdrv_menu.o \
+	wgtdrv_objcanvas.o \
 	wgtdrv_osrc.o \
 	wgtdrv_page.o \
 	wgtdrv_pane.o \
@@ -189,6 +190,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_image.o \
 	   htdrv_hints.o \
 	   htdrv_formbar.o \
+	   htdrv_objcanvas.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS))
 
@@ -359,7 +361,7 @@ clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
 	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) -o clog $(LIBS)
 
 .c.so:	$<
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) -shared -fPIC $< -o $@
 
 
 jsengine: $(JSVM)
@@ -442,6 +444,9 @@ osdrivers/objdrv_gzip.so: osdrivers/objdrv_gzip.c
 
 osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
 	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@
+
+#osdrivers/objdrv_snmp.so: osdrivers/objdrv_snmp.c
+#	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SNMP_LIBS@ -o $@
 
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@

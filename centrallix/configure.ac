@@ -34,7 +34,7 @@ dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h unistd.h readline/readline.h readline/history.h libgen.h png.h)
+AC_CHECK_HEADERS(fcntl.h unistd.h readline/readline.h readline/history.h libgen.h png.h stdarg.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_STRUCT_TM
@@ -48,6 +48,8 @@ dnl Readline support
 CENTRALLIX_CHECK_READLINE
 
 dnl Dynamically loaded modules
+AH_TEMPLATE([CX_STATIC])
+AC_DEFINE(CX_STATIC,2)
 BUILD_DYNAMIC
 
 dnl Centrallix specific tests.
@@ -108,6 +110,10 @@ CENTRALLIX_CHECK_SHELL_OS
 dnl BerkeleyDB osdriver support.
 AH_TEMPLATE([USE_BERK], [Define for BerkeleyDB osdriver support])
 CENTRALLIX_CHECK_BERK_OS
+
+dnl SNMP client objectsystem driver support.
+dnl AH_TEMPLATE([USE_SNMP], [Define for SNMP Client osdriver support])
+dnl CENTRALLIX_CHECK_SNMP_OS
 
 dnl NFS netdriver support.
 AH_TEMPLATE([USE_NETNFS], [Define for NFS netdriver support])
