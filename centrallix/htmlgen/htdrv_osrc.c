@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.31 2002/06/03 05:10:56 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.32 2002/06/03 05:45:35 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.32  2002/06/03 05:45:35  jorupp
+     * removing alerts
+
     Revision 1.31  2002/06/03 05:10:56  jorupp
      * removed a debugging message -- not needed
 
@@ -1021,7 +1024,6 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "    {\n"
       "    this.moveop=false;\n"
       "    this.TargetRecord=recnum;\n"
-      "    alert('scrolling to '+recnum);\n"
       "    if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)\n"
       "        {\n"
       "        this.TellAllReplicaMoved();\n"
@@ -1040,7 +1042,6 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       "                {\n"
       "                this.startat=this.TargetRecord;\n"
       "                }\n"
-      "            alert('scrolling back, startat:'+this.startat);\n"
       "            this.onload=osrc_open_query_startat;\n"
       "            if(this.qid)\n"
       "                {\n"
