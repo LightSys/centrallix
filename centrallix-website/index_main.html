@@ -5,9 +5,9 @@
 </head>
 <body bgcolor="white">
     <table border="0" cellspacing="0" cellpadding="12">
-        <tr><td width="180">
+        <tr><td width="240">
 
-	    <table border="0" cellspacing="1" cellpadding="4" width="180">
+	    <table border="0" cellspacing="1" cellpadding="4" width="240">
 	        <tr><th background="hdr_bgnd.png">
 
 		    <p>NEWS</p>
@@ -65,7 +65,7 @@
               contributions include an Etherboot 3C905B-TX driver, the LinuxConf 
               Virtual Registry, and a TCP/IP fix for the Linux kernel. LightSys 
               is a charitable non-profit organization.</p>
-            <p><b>Taylor University</b> (<a href="http://www.tayloru.edu/">http://www.tayloru.edu/</a>) 
+            <p><b>Taylor University</b> (<a href="http://www.tayloru.edu/" target="_top">http://www.tayloru.edu/</a>) 
               has been involved in providing needed human resources to help work 
               on this project. Taylor University recently created a course dealing 
               with opensource development and chose the Centrallix/Kardia project 
@@ -81,16 +81,15 @@
 	    <table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
 
 	    
-      <p>Welcome to the website for the Centrallix application server! Centrallix 
+      <p>Welcome to the website for the Centrallix(tm) application server! Centrallix 
         is a web-based app server and data management engine featuring data abstraction, 
         structural embedding, "pro"-DHTML generation, a SQL engine for multi-source 
         queries, and object-based development. That's the official definition... 
         unofficially, we're attempting to build the ultimate web-based application 
         server in terms of flexibility, structure, extensibility, usability for 
-        real-world business applications (as opposed to just websites), security, 
-        and perhaps more.... Right now we have managed to enable Centrallix to 
-        mediate between a web-based platform (consisting mostly of JavaScript) 
-        and at least 2 different database back ends.</p>
+        real-world business applications (as opposed to just websites), and 
+	perhaps more....
+        </p>
 
 	    <br>
 
@@ -100,14 +99,27 @@
 	    
       <p>Centrallix currently consists of over 100,000 lines of highly modular 
         C code, and depends heavily on JavaScript for the operation of the generated 
-        web pages. The system has many working components; Good enough for a small 
-        demo that won the ICCM Technology for Missions (TFM), but is still lacking 
+        web pages. The system has many working components -- good enough for a small 
+        demo that won the ICCM Technology for Missions (TFM contest), but is still lacking 
         in some important areas. The project was conceptualized in 1997 and has 
-        been underway off and on since late 1998. The main development platform 
-        is Linux, although it has been successfully run on non-*NIX platforms 
-        via support libraries and/or emulation. If there is a great deal of interest 
-        we will try to port it to other platforms. The code is mostly standard 
-        C so there should be no unexpected suprises.</p>
+        been underway off and on since late 1998, with a particularly concentrated 
+	development effort since February 2002.
+        </p>
+	<ul>
+	    <li>Tested platforms:  RedHat&reg; Linux&reg; 6.2 on x86, RedHat Linux 7.3 on x86,
+		Cygwin(tm) on Microsoft&reg; Windows XP&reg;, MacOS X(tm) on PPC, RedHat
+		Linux 6.2 on SPARC(tm).
+	    <li>Server-side network drivers:  HTTP, (BDQS under development).
+	    <li>Content and client connectivity support:  XML, Sybase&reg;, CSV, HTTP, MIME, mailbox
+		file, shell command, report writer, query tree, local filesystem, "lpr" printers, 
+		Centrallix structure files, gzipped content, Linux /dev/dsp.
+	    <li>User interface widgets: checkbox, clock, connector (nonvisual), date-time, dropdown list,
+		edit box (single line), server method exec (nonvisual), form (nonvisual, for field 
+		grouping), form status, frameset, html area, image button, label, menu, objectsource
+		(nonvisual, for server-side data integration), page, pane, radiobutton, scrollpane,
+		spinner, tab control, table, textarea (multiline), text button, timer, treeview, 
+		variable (nonvisual), window.
+	</ul>
 
 	    <br>
 
@@ -115,28 +127,32 @@
 	    <table border="0" cellspacing="0" cellpadding="0" width="100%"><tr><td background="gradient02.png"><img border="0" height="2" width="1" src="gradient02.png"></td></tr></table>
 
 	    
-      <p>Below are some resources related to Centrallix....</p>
+      <p>More About Centrallix....</p>
       <ul>
-        <li><a href="howto.htm">How to get Centrallix running on your system</a></li>
-        <li><a href="features.html">Features, Benefits, and the Ce</a><a href="features.html">ntrallix 
-          Name</a></li>
         <li><a href="demos.html">Screen Shots, Demos, and Preliminary Examples</a></li>
-        <li><a href="license.html">Centrallix Licensing (Free and Open-Source)</a></li>
+        <li><a href="features.html">Features, Benefits, and the Centrallix Name</a></li>
+        <li><a href="details.html">Detailed Centrallix Feature List</a></li>
         <li><a href="status.html">Detailed Status</a></li>
-        <li><a href="http://sourceforge.net/projects/centrallix">SourceForge Project 
-          Page</a>, <a href="http://sourceforge.net/project/showfiles.php?group_id=33299">Downloads 
-          page</a>, <a href="http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/centrallix/">CVS Web Interface</a></li>
+        <li><a href="lightsys.html">Centrallix's History, and LightSys' Current Role</a></li>
         <li><a href="mailinglists.html">Centrallix Mailing Lists</a></li>
-        <li><a href="lightsys.html">Centrallix's History, and LightSys' Current 
-          Role</a></li>
-        <li><a href="details.html">Detailed Centrallix Features</a></li>
-        <li><a href="developers.html">For Centrallix System Developers....</a></li>
-        <li><a href="http://kardia.sourceforge.net" target="_top">Kardia Website</a><br>
-        </li>
+      </ul>
+      <p>Getting Centrallix....</p>
+      <ul>
+        <li><a href="http://sourceforge.net/projects/centrallix">SourceForge Project Page</a>, 
+	    <a href="http://sourceforge.net/project/showfiles.php?group_id=33299">Downloads page</a>, 
+	    <a href="http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/centrallix/">CVS Web Interface</a></li>
+        <li><a href="license.html">Centrallix Licensing (Free and Open-Source)</a></li>
         <li><a href="md5sums.html">MD5 Checksums....</a></li>
+        <li><a href="howto.htm">How to get Centrallix running on your system</a></li>
+        <li><a href="http://kardia.sourceforge.net" target="_top">Kardia Website</a></li>
+      </ul>
+      <p>For Developers....</p>
+      <ul>
+        <li><a href="developers.html">For Centrallix System Developers....</a></li>
+        <li><a href="http://bojangles.sourceforge.net/" target="_top">Bojangles project (an IDE for creating Centrallix-based applications)</a></li>
       </ul>
 
-	<hr><i><small>(c) 2001-2002 LightSys Technology Services, Inc.  See <a href="LICENSE.txt">LICENSE.txt</a> for redistribution conditions.</small></i>
+	<hr><i><small>(c) 2001-2002 LightSys Technology Services, Inc.  See <a href="LICENSE.txt">LICENSE.txt</a> for redistribution conditions.  All trademarks are property of their respective owners.</small></i>
 
 	</td></tr>
     </table>
