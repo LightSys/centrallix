@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.10 2002/08/01 14:48:46 pfinley Exp $
+    $Id: htdrv_scrollpane.c,v 1.11 2002/08/01 18:24:44 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.11  2002/08/01 18:24:44  pfinley
+    Added a table to the body of the sparea layer so that it would span the
+    entire height and width of the widget (-2 for the border).  Prior it was
+    cutting off the pgarea boxes of text areas.
+
     Revision 1.10  2002/08/01 14:48:46  pfinley
     Added events to the scrollpane widget:
        MouseUp,MouseDown,MouseOver,MouseOut,MouseMove
@@ -216,7 +221,7 @@ htspaneRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parent
 	htrAddBodyItem_va(s,"<TR><TD align=right><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR><TR><TD align=right>");
 	htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=%d width=18 name='b'>",h-36);
 	htrAddBodyItem_va(s,"</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR></TABLE>\n");
-	htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\">",id,id);
+	htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>\n<DIV ID=\"sp%darea\"><table border=0 cellpadding=0 cellspacing=0 width=%d height=%d><tr><td></td></tr></table>",id,id,w-2,h-2);
 
 	/** Add the event handling scripts **/
 
