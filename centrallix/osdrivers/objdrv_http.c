@@ -80,7 +80,7 @@ typedef struct
 
     
 #define HTTP(x) ((pHttpData)(x))
-#define HTTP_OS_DEBUG 1
+#define HTTP_OS_DEBUG 0
 
 /*** Structure used by queries for this driver. ***/
 typedef struct
