@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.37 2002/07/26 16:57:44 lkehresman Exp $
+    $Id: htdrv_page.c,v 1.38 2002/07/29 18:21:52 pfinley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.38  2002/07/29 18:21:52  pfinley
+    Changed a static while loop conditional to be an if statement.  This was
+    causing an infinite loop when e.target pointed to an object.
+
     Revision 1.37  2002/07/26 16:57:44  lkehresman
     a couple bugfixes to the scrollbar detection
 
@@ -490,7 +494,7 @@ htpageRenderNtsp47xDefault(pHtSession s, pObject w_obj, int z, char* parentname,
 		"    if (e.target != null && e.target.pageX != null)\n"
 		"        {\n"
 		"        pg_curlayer = e.target;\n"
-		"        while(pg_curlayer.mainlayer != null) pg_curlayer = pg_curlayer.mainlayer;\n"
+		"        if (pg_curlayer.mainlayer != null) pg_curlayer = pg_curlayer.mainlayer;\n"
 		"        }\n" );
 
 	/** CLICK event handler is for making mouse focus the keyboard focus **/
