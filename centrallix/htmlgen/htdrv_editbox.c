@@ -41,10 +41,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.6 2002/03/02 03:06:50 jorupp Exp $
+    $Id: htdrv_editbox.c,v 1.7 2002/03/05 01:22:26 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.7  2002/03/05 01:22:26  lkehresman
+    Changed where the DataNotify form method is getting called.  Previously it
+    would only get called when the edit box lost focus.  This was bad because
+    clicking a button doesn't make the edit box lose focus.  Now DataNotify is
+    getting called on key events.  Much better, and more of what you would expect.
+
     Revision 1.6  2002/03/02 03:06:50  jorupp
     * form now has basic QBF functionality
     * fixed function-building problem with radiobutton
@@ -314,6 +320,7 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"        l.HiddenLayer.pageX += adj;\n"
 		"        }\n"
 		"    eb_ibeam.visibility = 'inherit';\n"
+		"    if(eb_current.form) eb_current.form.DataNotify(eb_current);\n"
 		"    return false;\n"
 		"    }\n", 0);
 
@@ -343,7 +350,6 @@ htebRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj
 		"    if (eb_current) eb_current.cursorlayer = null;\n"
 		"    if(eb_current && eb_current.changed)\n"
 		"        {\n"
-		"        if(eb_current.form) eb_current.form.DataNotify(eb_current);\n"
 		"        eb_current.changed=false;\n"
 		"        }\n"
 		"    eb_current = null;\n"
