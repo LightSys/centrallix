@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.15 2002/06/02 22:13:21 jorupp Exp $
+    $Id: htdrv_table.c,v 1.16 2002/06/03 18:43:45 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.16  2002/06/03 18:43:45  jorupp
+     * fixed a bug with the handling of empty fields in the dynamic table
+
     Revision 1.15  2002/06/02 22:13:21  jorupp
      * added disable functionality to image button (two new Actions)
      * bugfixes
@@ -235,6 +238,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    this.windowsize=(this.osrc.LastRecord-this.osrc.FirstRecord+1)<this.maxwindowsize?this.osrc.LastRecord-this.osrc.FirstRecord+1:this.maxwindowsize;\n"
 		"    if(this.startat+this.windowsize-1>this.osrc.LastRecord)\n"
 		"        this.startat=this.osrc.LastRecord-this.windowsize+1;\n"
+		"    if(this.startat<1) this.startat=1;\n"
 		"    if(t.m.length\%t.q==12) for(var j=t.m.length;j>0;j--) t.m=t.m.replace(' ','');\n"
 		"    if(this.cr!=this.osrc.CurrentRecord && this.followcurrent)\n"
 		"        {\n" /* the osrc has changed the current record, make sure we can see it */
@@ -265,6 +269,9 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"        t.m=t.m.substring(0,j-2)+'\%'+t.m.substring(j-2);\n"
 		"    for(var i=1;i<this.windowsize+1;i++)\n"
 		"        {\n"
+		"        if(this.osrc.FirstRecord>this.SlotToRecnum(i) || this.osrc.LastRecord<this.SlotToRecnum(i))\n"
+		"            confirm('oops... '+this.SlotToRecnum(i)+'('+i+') is not in the replica');\n"
+		"        \n"
 		/*  This would move them gradually, but netscape doesn't redraw fast enough....
 		"        var start=this.rows[i].fg.y;\n"
 		"        var end=this.rowheight+((this.rowheight+this.cellvspacing)*(this.SlotToRecnum(i)-this.start));\n"
@@ -288,6 +295,8 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"                    if(this.osrc.replica[this.rows[i].fg.recnum][k].oid==this.cols[j][0])\n"
 		"                        {\n"
 		"                        this.rows[i].fg.cols[j].data=this.osrc.replica[this.rows[i].fg.recnum][k].value;\n"
+		"                        if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)\n"
+		"                            this.rows[i].fg.cols[j].data='';\n"
 		"                        if(this.textcolor)\n"
 		"                            this.rows[i].fg.cols[j].document.write('<font color='+this.textcolor+'>'+this.rows[i].fg.cols[j].data+'<font>');\n"
 		"                        else\n"
@@ -299,7 +308,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"            }\n"
 		"        else\n"
 		"            {\n"
-		"            //confirm('(skipped)'+i+':'+this.rows[i].fg.recnum)\n"
+		"            //confirm('(skipped)'+i+':'+this.rows[i].fg.recnum);\n"
 		"            }\n"
 		"        if(this.rows[i].fg.recnum==this.osrc.CurrentRecord)\n"
 		"            this.rows[i].fg.select();\n"
@@ -455,6 +464,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 	htrAddScriptFunction(s,"tbld_init","\n"
 		"function tbld_init(t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,followcurrent,cols)"
 		"    {\n"
+		"    //alert('table init start');\n"
 		"    t.startat=1;\n"
 		"    t.cr=1;\n"
 		"    t.followcurrent=followcurrent>0?true:false;\n"
@@ -599,6 +609,7 @@ httblRenderDynamic(pHtSession s, pObject w_obj, int z, char* parentname, char* p
 		"    t.RecnumToSlot=tbld_recnum_to_slot\n"
 		"    t.SlotToRecnum=tbld_slot_to_recnum\n"
 		"    \n"
+		"    //alert('table init end');\n"
 		"    return t;\n"
 		"    }\n",0);
 
