@@ -1005,7 +1005,6 @@ wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
     int i;
     pWgtrDriver drv;
 
-    fprintf(stderr, "Registering widget driver '%s'\n", name);
 	/** make sure it's not already there **/
 	for (i=0;i<xaCount(&(WGTR.Drivers));i++)
 	    {
@@ -1042,7 +1041,6 @@ wgtrAddType(char* name, char* type_name)
     pWgtrDriver drv;
     int i;
 
-    fprintf(stderr, "Adding type '%s' to widget driver '%s'\n", type_name, name);
 	for (i=0;i<xaCount(&(WGTR.Drivers));i++)
 	    {
 	    drv = xaGetItem(&(WGTR.Drivers), i);
