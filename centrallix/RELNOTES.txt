@@ -1,5 +1,74 @@
 Centrallix Release Notes
 -------------------------------------------------------------------------------
+Version 0.7.4, (unreleased)
+
+This is a major development release of Centrallix.  See the release notes for
+the previous versions for further details.
+
+1.  Be sure to download at least centrallix, centrallix-lib, and centrallix-os.
+    Without those three packages, things will not work.
+
+2.  This version should not be considered secure enough to run on a computer
+    that can be accessed by a non-trusted network (internet, etc.).  Please
+    firewall your running Centrallix binary from such networks.
+
+3.  We have some support for Mozilla and IE6 now; however it is not complete.
+    Your mileage may vary.... but Netscape 4.80 does work.
+
+4.  "makedepend" is REQUIRED for the build to work.  You can get it by 
+    installing your XFree86-devel or Xorg-devel package if you haven't already.
+
+5.  To be able to use 'altpasswd' authentication, you need to have a working
+    htpasswd command on your system - it comes with the httpd or apache
+    package.
+
+6.  Some incompatible changes were made since 0.7.3.  In particular, there is
+    now a 'fieldname' attribute on table-column widgets, the report writer
+    spec has changed significantly, and enforcement of unique widget names
+    in a .app file is now performed.
+
+7.  If you intend to use Centrallix with Sybase ASE, install your Sybase ASE
+    packages first (including the OCSD).  On newer systems, Sybase ASE 11.0.3
+    does not grok locales like "en_US.utf8".  Change it to just "en_US" and you
+    will be fine.
+
+8.  See the 0.7.3 release notes for some brief installation instructions when
+    building and installing as "root".  To install as a "normal user" in your
+    own home directory:
+
+	$ cd ~
+	$ mkdir centrallix
+	$ mkdir cxinst
+	$ cd centrallix
+	$ tar -xzvf /usr/local/archive/centrallix-0.7.4.tgz
+	$ tar -xzvf /usr/local/archive/centrallix-lib-0.7.4.tgz
+	$ tar -xzvf /usr/local/archive/centrallix-os-0.7.4.tgz
+	$ tar -xzvf /usr/local/archive/centrallix-doc-0.7.4.tgz
+	$ tar -xzvf /usr/local/archive/centrallix-sysdoc-0.7.4.tgz
+	$ cd centrallix-lib
+	$ ./configure --prefix=~/cxinst
+	$ make install
+	$ cd ../centrallix
+	$ ./configure --prefix=~/cxinst
+	$ make install
+	$ make modules_install
+	$ make config
+	$ vi ~/cxinst/etc/centrallix.conf
+	    (change the port to something non-privileged, like 8800)
+	    (switch to altpasswd auth and set altpasswd file)
+	$ htpasswd -c ~/etc/cxpasswd yourusername
+	    (enter a password to access centrallix with)
+	    (only use the -c flag the first time you do this)
+	$ vi ~/cxinst/etc/rootnode
+	    (change the path to /home/yourusername/centrallix/centrallix-os)
+	$ vi ~/.bashrc
+	    (add ~/cxinst/sbin to $PATH, ~/cxinst/lib to $LD_LIBRARY_PATH)
+	$ . ~/.bashrc
+	$ centrallix
+	    (now point your browser to http://localhost:8800/samples/ors.app
+	     or some similar test application).
+
+-------------------------------------------------------------------------------
 Version 0.7.3, 19-Jun-2003 
 
 This is a major development release of Centrallix.  See the release notes for

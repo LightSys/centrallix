@@ -54,11 +54,17 @@ Jason Yip
 		Added much support for IE55 and IE60 to the HTMLGen subsystem,
 		including the cross-browser geometry JS library modules.
 
-Taylor University CSS Department
+Matt McGill
+		Added a basic POP3 objectsystem driver, implemented the wgtr
+		(widget tree) module for pre-generation of a page, and 
+		implemented the ifc (interface) module which will be used in
+		component-driven development.
 
+Taylor University CSS Department
 		Luke, Jonathan, Joe, John, and Josh all worked on Centrallix as
 		a part of Taylor's computer science department's new open
 		source development class.  Special thanks to Taylor for their
 		contribution to the project!
     
 -------------------------------------------------------------------------------
+

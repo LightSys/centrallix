@@ -1,5 +1,55 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
+0.7.3 --> 0.7.4	    (unreleased)    MAJOR DEVELOPMENT RELEASE
+
+    Once again, this is a major development release - including a lot of new
+    features and a lot of bug fixes.
+
+    Changes:
+
+	1.  Moderate Mozilla 1.x support and IE6 support now implemented, as
+	    well as some user agent detection logic, capabilities matrix, and
+	    browser compatibility layer.
+	2.  Image widget added.
+	3.  Obscure/Reveal subsystem for automatically managing the issue of
+	    window or tab closure while data is unsaved, etc.
+	4.  Serialization of loading of data from server to browser provides
+	    a great deal more robustness.
+	5.  V3 prtmgmt subsystem is now operational.
+	6.  Report writer revamped; support for far more complex report outputs
+	    including graphics, borders, etc.  
+	    NOTE: incompatible changes made in report spec format ( .rpt file).
+	7.  Matt McGill added a POP3 driver.
+	8.  New scrollbar widget.
+	9.  Widgets such as datetime, dropdown, checkbox, etc., can all receive
+	    keyboard focus and participate in the tabbing order.
+	10. Time-setting controls added to datetime widget
+	11. Datetime, dropdown, and checkbox now allow NULL values.
+	12. Presentation hints:  delivery to client working; some support for
+	    certain hints on the client (such as allowchars/badchars, defaults,
+	    etc.).  Also added 'alwaysdef' style hint for resetting the default
+	    value on all modifications.  Better support for presentation hints
+	    in sybase driver.
+	13. objInfo() mechanism for obtaining metadata about an object.
+	14. "widget tree" module added (MJM) - allows for three-step generation
+	    process for apps, which allows composite widgets and in the near
+	    future, component widgets.  Delivery of the entire structural
+	    widget tree to the client is now supported.
+	15. "widget/formbar" widget added to demonstrate the composite widget
+	    approach (basically a hardcoded component of sorts).
+	16. "interface" module added to support interfaces to components and
+	    proper versioning on those interfaces.  Delivery of interface data
+	    to the client is supported.
+	17. Efficiency enhancements to the osrc (objectsource) widget.
+	18. NOTE: incompatible change made to widget/table "column" object - 
+	    the field name is now determined from the 'fieldname' attribute
+	    rather than from the column object's name.
+	19. NOTE: enforcement of unique namespace for widgets is now performed,
+	    so apps that reused names for things like connectors will have to
+	    be modified before use with 0.7.4.
+
+
+-------------------------------------------------------------------------------
 0.7.2 --> 0.7.3	    19-Jun-2003	    MAJOR DEVELOPMENT RELEASE
 
     This is a major development release.  As before, we've added a lot of
