@@ -51,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.8 2002/08/13 14:11:36 lkehresman Exp $
+    $Id: obj_datatypes.c,v 1.9 2004/02/24 20:11:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.9  2004/02/24 20:11:00  gbeeley
+    - fixing some date/time related problems
+    - efficiency improvement for net_http allowing browser to actually
+      cache .js files and images.
+
     Revision 1.8  2002/08/13 14:11:36  lkehresman
     * silenced some more unnecessarily verbose output in the makefile
     * removed an unused variable in obj_datatypes.c
@@ -834,6 +839,30 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		    *(ptr++) = quote;
 		    while(*tmpptr)
 		        {
+			if (flags & DATA_F_CONVSPECIAL)
+			    {
+			    if (*tmpptr == '\t')
+				{
+				tmpptr++;
+				*(ptr++) = '\\';
+				*(ptr++) = 't';
+				continue;
+				}
+			    else if (*tmpptr == '\n')
+				{
+				tmpptr++;
+				*(ptr++) = '\\';
+				*(ptr++) = 'n';
+				continue;
+				}
+			    else if (*tmpptr == '\r')
+				{
+				tmpptr++;
+				*(ptr++) = '\\';
+				*(ptr++) = 'r';
+				continue;
+				}
+			    }
 			if (flags & DATA_F_SYBQUOTE)
 			    {
 			    if (*tmpptr == quote) 
@@ -972,6 +1001,9 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	origptr = startptr;
 	while(*startptr)
 	    {
+	    /** Skip whitespace **/
+	    while(*startptr == ' ' || *startptr == '\t' || *startptr == ',') startptr++;
+
 	    /** Try to convert a number. **/
 	    last_num = strtol(startptr, &endptr, 10);
 	    if (endptr != startptr)
@@ -1084,6 +1116,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 			got_hr = got_day;
 			got_day = -1;
 			if (got_hr == 12) got_hr = 0;
+			endptr = startptr + 2;
 			}
 		    else if (!strncasecmp(startptr,"PM",2) && got_hr == -1 && got_day != -1 && got_mo == -1)
 		        {
@@ -1091,16 +1124,26 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 			got_hr = got_day;
 			got_day = -1;
 			if (got_hr < 12) got_hr += 12;
+			endptr = startptr + 2;
 			}
 		    }
 
 		/** Still nothing?  Ignore it if so. **/
-		while((*startptr >= 'A' && *startptr <= 'Z') || (*startptr >= 'a' && *startptr <= 'z')) startptr++;
+		if (startptr == endptr) 
+		    {
+		    while((*endptr >= 'A' && *endptr <= 'Z') || (*endptr >= 'a' && *endptr <= 'z')) 
+			endptr++;
+		    }
+
+		/** Not even an alpha item? **/
+		if (startptr == endptr && *startptr)
+		    {
+		    endptr++;
+		    }
 		}
 
 	    /** Next item. **/
 	    startptr = endptr;
-	    while(*startptr == ' ' || *startptr == '\t' || *startptr == ',') startptr++;
 	    }
 
 	/** Get the current date/time to fill in some (possibly) blank values **/
@@ -1642,5 +1685,53 @@ objDataToWords(int data_type, void* data_ptr)
 	    }
 
     return tmpbuf.String;
+    }
+
+
+/*** objCopyData() - copies from one POD to another, based on type.
+ ***/
+int
+objCopyData(pObjData src, pObjData dst, int type)
+    {
+
+	/** Copy the ObjData raw **/
+	switch(type)
+	    {
+	    case DATA_T_INTEGER:
+	    case DATA_T_STRING:
+	    case DATA_T_DOUBLE:
+	    case DATA_T_MONEY:
+	    case DATA_T_DATETIME:
+	    case DATA_T_INTVEC:
+	    case DATA_T_STRINGVEC:
+		memcpy(dst,src,sizeof(ObjData));
+		break;
+		
+	    default:
+		return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** objDebugDate() - prints date/time value on stdout in various 
+ *** formats.
+ ***/
+int
+objDebugDate(pDateTime dt)
+    {
+    int i;
+	
+	printf("Parts:  %4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d\n",
+		dt->Part.Year+1900, dt->Part.Month+1, dt->Part.Day+1,
+		dt->Part.Hour, dt->Part.Minute, dt->Part.Second);
+	printf("Value:  %16.16llx\n", dt->Value);
+	printf("Binary: ");
+	for(i=63;i>=0;i--)
+	    printf("%d", (dt->Value>>i)&1);
+	printf("\n");
+
+    return 0;
     }
 

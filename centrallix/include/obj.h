@@ -35,10 +35,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.23 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: obj.h,v 1.24 2004/02/24 20:11:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.24  2004/02/24 20:11:01  gbeeley
+    - fixing some date/time related problems
+    - efficiency improvement for net_http allowing browser to actually
+      cache .js files and images.
+
     Revision 1.23  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -261,6 +266,7 @@ extern char* obj_default_null_fmt;
 #define DATA_F_SINGLE		2
 #define DATA_F_NORMALIZE	4
 #define DATA_F_SYBQUOTE		8	/* use '' to quote a ', etc */
+#define DATA_F_CONVSPECIAL	16	/* convert literal CR LF and TAB to \r \n and \t */
 
 
 /** Presentation Hints structure ---
@@ -292,10 +298,11 @@ typedef struct _PH
     }
     ObjPresentationHints, *pObjPresentationHints;
 
+/*** Hints style info - keep in sync with ht_utils_hints.js in centrallix-os ***/
 #define OBJ_PH_STYLE_BITMASK	1	/* items from EnumQuery or EnumList are bitmasked */
 #define OBJ_PH_STYLE_LIST	2	/* use a list style presentation for enum types */
 #define OBJ_PH_STYLE_BUTTONS	4	/* use radio button or checkboxes for enum types */
-#define OBJ_PH_STYLE_ALLOWNULL	8	/* field allows nulls */
+#define OBJ_PH_STYLE_NOTNULL	8	/* field does not allow nulls */
 #define OBJ_PH_STYLE_STRNULL	16	/* empty string == null */
 #define OBJ_PH_STYLE_GROUPED	32	/* check GroupID for grouping fields together */
 #define OBJ_PH_STYLE_READONLY	64	/* user can't modify */
@@ -307,6 +314,7 @@ typedef struct _PH
 #define OBJ_PH_STYLE_UPPERCASE	4096	/* This attribute is uppercase-only */
 #define OBJ_PH_STYLE_TABPAGE	8192	/* Prefer tabpage layout for grouped fields */
 #define OBJ_PH_STYLE_SEPWINDOW	16384	/* Prefer separate windows for grouped fields */
+#define OBJ_PH_STYLE_ALWAYSDEF	32768	/* Always reset default value on any modify */
 
 
 /** objectsystem driver **/
@@ -710,6 +718,9 @@ int objDataToMoney(int data_type, void* data_ptr, pMoneyType m);
 char* objDataToStringTmp(int data_type, void* data_ptr, int flags);
 int objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_ptr_2);
 char* objDataToWords(int data_type, void* data_ptr);
+int objCopyData(pObjData src, pObjData dst, int type);
+int objTypeID(char* name);
+int objDebugDate(pDateTime dt);
 
 /** objectsystem event handler stuff -- for os drivers etc **/
 int objRegisterEventHandler(char* class_code, int (*handler_function)());

@@ -61,10 +61,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.38 2003/11/30 02:09:40 gbeeley Exp $
+    $Id: net_http.c,v 1.39 2004/02/24 20:11:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.39  2004/02/24 20:11:00  gbeeley
+    - fixing some date/time related problems
+    - efficiency improvement for net_http allowing browser to actually
+      cache .js files and images.
+
     Revision 1.38  2003/11/30 02:09:40  gbeeley
     - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
       oneachreveal)
@@ -330,6 +335,9 @@ typedef struct
     char	Username[32];
     char	Password[32];
     char	Cookie[32];
+    char	HTTPVer[16];
+    int		ver_10:1;	/* is HTTP/1.0 compatible */
+    int		ver_11:1;	/* is HTTP/1.1 compatible */
     void*	Session;
     int		IsNewCookie;
     pObjSession	ObjSess;
@@ -377,11 +385,12 @@ struct
     int		InactivityTime;
     regex_t*	reNet47;
     int		EnableGzip;
+    int		CondenseJS;
     }
     NHT;
 
 int nht_internal_UnConvertChar(int ch, char** bufptr, int maxlen);
-extern int htrRender(pFile, pObject);
+extern int htrRender(pFile, pObject, pStruct);
 int nht_internal_RemoveWatchdog(handle_t th);
 
 
@@ -840,6 +849,7 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	    {
 	    fdPrintf(net_conn,"HTTP/1.0 200 OK\r\n"
 			 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 	    return -1;
@@ -852,6 +862,7 @@ nht_internal_ErrorHandler(pNhtSessionData nsess, pFile net_conn)
 	/** Format the error and print it as HTML. **/
 	fdPrintf(net_conn,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "<HTML><BODY><PRE><A NAME=\"Message\">",NHT.ServerString);
 	fdWrite(net_conn,errmsg->String,strlen(errmsg->String),0,0);
@@ -1155,7 +1166,6 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
     ObjData od;
     char* dptr;
     int type,rval;
-    char sbuf[128];
     XString xs, hints;
     pObjPresentationHints ph;
     static char* coltypenames[] = {"unknown","integer","string","double","datetime","intvec","stringvec","money",""};
@@ -1176,37 +1186,11 @@ nht_internal_WriteOneAttr(pNhtSessionData sess, pObject obj, pFile conn, handle_
 	/** Presentation Hints **/
 	xsInit(&hints);
 	ph = objPresentationHints(obj, attrname);
-	/* Needed: Constraints */
-	/* Needed: DefaultExpr */
-	/* Needed: MinValue */
-	/* Needed: MaxValue */
-	/* Needed: EnumList */
-	if (ph->EnumQuery != NULL)
-	    xsConcatPrintf(&hints, "%sEnumQuery=%s", (strlen(hints.String)?"&":""), ph->EnumQuery);
-	if (ph->Format != NULL)
-	    xsConcatPrintf(&hints, "%sFormat=%s", (strlen(hints.String)?"&":""), ph->Format);
-	if (ph->Length > 0)
-	    xsConcatPrintf(&hints, "%sLength=%d", (strlen(hints.String)?"&":""), ph->Length);
-	if (ph->VisualLength > 0)
-	    xsConcatPrintf(&hints, "%sVisualLength=%d", (strlen(hints.String)?"&":""), ph->VisualLength);
-	if (ph->VisualLength2 > 0)
-	    xsConcatPrintf(&hints, "%sVisualLength2=%d", (strlen(hints.String)?"&":""), ph->VisualLength2);
-	if (ph->BitmaskRO > 0)
-	    xsConcatPrintf(&hints, "%sBitmaskRO=%d", (strlen(hints.String)?"&":""), ph->BitmaskRO);
-	if (ph->Style > 0)
-	    xsConcatPrintf(&hints, "%sStyle=%d", (strlen(hints.String)?"&":""), ph->Style);
-	if (ph->GroupID > 0)
-	    xsConcatPrintf(&hints, "%sGroupID=%d", (strlen(hints.String)?"&":""), ph->GroupID);
-	if (ph->GroupName != NULL)
-	    xsConcatPrintf(&hints, "%sGroupName=%s", (strlen(hints.String)?"&":""), ph->GroupName);
-	if (ph->OrderID > 0)
-	    xsConcatPrintf(&hints, "%sOrderID=%d", (strlen(hints.String)?"&":""), ph->OrderID);
-	if (ph->FriendlyName != NULL)
-	    xsConcatPrintf(&hints, "%sFriendlyName=%s", (strlen(hints.String)?"&":""), ph->FriendlyName);
+	hntEncodeHints(ph, &hints);
 
 	/** Write the HTML output. **/
-	snprintf(sbuf,sizeof(sbuf),"<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>",tgt,attrname,hints.String,coltypenames[type]);
-	xsCopy(&xs,sbuf,-1);
+	xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>", 
+		tgt, attrname, hints.String, coltypenames[type]);
 	if (encode)
 	    nht_internal_Escape(&xs, dptr);
 	else
@@ -1857,7 +1841,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
  *** attribute list, etc.
  ***/
 int
-nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
+nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_modified_since)
     {
     int cnt;
     pStruct find_inf,find_inf2;
@@ -1873,6 +1857,13 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     int tid = -1;
     int convert_text = 0;
     int encode_attrs = 0;
+    pDateTime dt = NULL;
+    DateTime dtval;
+    DateTime ims_dtval;
+    struct tm systime;
+    struct tm* thetime;
+    time_t tval;
+    char tbuf[32];
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -1890,6 +1881,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    nht_internal_GenerateError(nsess);
 	    fdPrintf(conn,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    mssPrintError(conn);
@@ -1915,19 +1907,54 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		}
 	    }
 
+	/** Check object's modification time **/
+	if (objGetAttrValue(target_obj, "last_modification", DATA_T_DATETIME, POD(&dt)) == 0)
+	    {
+	    memcpy(&dtval, dt, sizeof(DateTime));
+	    dt = &dtval;
+	    }
+	else
+	    {
+	    dt = NULL;
+	    }
+
+	/** Should we bother comparing if-modified-since? **/
+	/** FIXME - GRB this is not working yet **/
+#if 0
+	if (dt && *if_modified_since)
+	    {
+	    /** ims is in GMT; convert it **/
+	    strptime(if_modified_since, "%a, %d %b %Y %T", &systime);
+
+	    if (objDataToDateTime(DATA_T_STRING, if_modified_since, &ims_dtval, NULL) == 0)
+		{
+		printf("comparing %lld to %lld\n", dtval.Value, ims_dtval.Value);
+		}
+	    }
+#endif
+
+	/** Get the current date/time **/
+	tval = time(NULL);
+	thetime = gmtime(&tval);
+	strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
+
 	/** Ok, issue the HTTP header for this one. **/
+	fdSetOptions(conn, FD_UF_WRBUF);
 	if (nsess->IsNewCookie)
 	    {
 	    fdPrintf(conn,"HTTP/1.0 200 OK\r\n"
+		     "Date: %s GMT\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s; path=/\r\n", 
-		     NHT.ServerString,nsess->Cookie);
+		     tbuf, NHT.ServerString, nsess->Cookie);
 	    nsess->IsNewCookie = 0;
 	    }
 	else
 	    {
 	    fdPrintf(conn,"HTTP/1.0 200 OK\r\n"
-		     "Server: %s\r\n",NHT.ServerString);
+		     "Date: %s GMT\r\n"
+		     "Server: %s\r\n",
+		     tbuf, NHT.ServerString);
 	    }
 
 	/** Exit now if wait trigger. **/
@@ -1938,27 +1965,43 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    return 0;
 	    }
 
+	/** Add last modified information if we can. **/
+	if (dt)
+	    {
+	    systime.tm_sec = dt->Part.Second;
+	    systime.tm_min = dt->Part.Minute;
+	    systime.tm_hour = dt->Part.Hour;
+	    systime.tm_mday = dt->Part.Day + 1;
+	    systime.tm_mon = dt->Part.Month;
+	    systime.tm_year = dt->Part.Year;
+	    systime.tm_isdst = -1;
+	    tval = mktime(&systime);
+	    thetime = gmtime(&tval);
+	    strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T", thetime);
+	    fdPrintf(conn, "Last-Modified: %s GMT\r\n", tbuf);
+	    }
+
 	/** GET CONTENT mode. **/
 	if (!find_inf || !strcmp(find_inf->StrVal, "content"))
 	    {
 	    /** Check the object type. **/
 	    objGetAttrValue(target_obj, "outer_type", DATA_T_STRING,POD(&ptr));
-	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset"))
+	    if (!strcmp(ptr,"widget/page") || !strcmp(ptr,"widget/frameset") ||
+		    !strcmp(ptr,"widget/component-decl"))
 	        {
 		int gzip=0;
 #ifdef HAVE_LIBZ
 		if(NHT.EnableGzip && acceptencoding && strstr(acceptencoding,"gzip"))
 		    gzip=1; /* enable gzip for this request */
 #endif
-		/*fdSetOptions(conn, FD_UF_WRCACHE);*/
 		if(gzip==1)
-		{
+		    {
 		    fdPrintf(conn,"Content-Encoding: gzip\r\n");
-		}
+		    }
 		fdPrintf(conn,"Content-Type: text/html\r\n\r\n");
 		if(gzip==1)
 		    fdSetOptions(conn, FD_UF_GZIP);
-	        htrRender(conn, target_obj);
+	        htrRender(conn, target_obj, url_inf);
 	        }
 	    else
 	        {
@@ -1986,9 +2029,9 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    }
 #endif
 		if(gzip==1)
-		{
+		    {
 		    fdPrintf(conn,"Content-Encoding: gzip\r\n");
-		}
+		    }
 		fdPrintf(conn,"Content-Type: %s\r\n\r\n", ptr);
 		if(gzip==1)
 		    {
@@ -2141,6 +2184,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    {
 	    snprintf(sbuf,160,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2215,6 +2259,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s; path=/\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
 		}
@@ -2223,6 +2268,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s; path=/\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, url_inf->StrVal);
 		}
@@ -2234,6 +2280,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
 		}
@@ -2241,6 +2288,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,url_inf->StrVal);
 		}
@@ -2268,6 +2316,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    {
 	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>404 Source Not Found</H1><HR><PRE>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2297,6 +2346,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    {
 	    snprintf(sbuf,256,"HTTP/1.0 404 Not Found\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>404 Target Not Found</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2331,6 +2381,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	        snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s; path=/\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
 		}
@@ -2339,6 +2390,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	        snprintf(sbuf,256,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
 		     "Set-Cookie: %s; path=/\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,nsess->Cookie, dest);
 		}
@@ -2350,6 +2402,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	        {
 	        snprintf(sbuf,256,"HTTP/1.0 200 OK\r\n"
 		     "Server: %s\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,dest);
 		}
@@ -2357,6 +2410,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	        {
 	        snprintf(sbuf,256,"HTTP/1.0 201 Created\r\n"
 		     "Server: %s\r\n"
+		     "Content-Type: text/html\r\n"
 		     "\r\n"
 		     "%s\r\n", NHT.ServerString,dest);
 		}
@@ -2385,6 +2439,8 @@ nht_internal_ConnHandler(void* conn_v)
     char* useragent = 0;
     char dest[256] = "";
     char hdr[64];
+    char if_modified_since[64] = "";
+    char http_ver[16];
     char* msg = "";
     char* ptr;
     char* usrname;
@@ -2415,7 +2471,8 @@ nht_internal_ConnHandler(void* conn_v)
 	/*strcpy(url,mlxStringVal(s,NULL));*/
 	did_alloc = 1;
 	urlptr = mlxStringVal(s, &did_alloc);
-	mlxNextToken(s);
+	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected HTTP version after url"; goto error; }
+	mlxCopyToken(s,http_ver,16);
 	if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after version"; goto error; }
 	mlxUnsetOptions(s,MLX_F_IFSONLY);
 
@@ -2511,6 +2568,14 @@ nht_internal_ConnHandler(void* conn_v)
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
 		//printf("accept-encoding: %s\n",acceptencoding);
 		}
+	    else if (!strcmp(hdr,"if-modified-since"))
+		{
+		mlxSetOptions(s,MLX_F_LINEONLY);
+		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected date after If-Modified-Since:"; goto error; }
+		mlxCopyToken(s,if_modified_since, sizeof(if_modified_since));
+		mlxUnsetOptions(s,MLX_F_LINEONLY);
+		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after If-Modified-Since: header"; goto error; }
+		}
 	    else
 	        {
 		/** Don't know what it is.  Just skip to end-of-line. **/
@@ -2533,6 +2598,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
 	    		 "Server: %s\r\n"
 			 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	    //printf("%s",sbuf);
@@ -2548,6 +2614,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    {
 	    snprintf(sbuf,160,"HTTP/1.0 400 Bad Request\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>400 Bad Request</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2567,6 +2634,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    	    snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
 		    		 "Server: %s\r\n"
 				 "WWW-Authenticate: Basic realm=\"%s\"\r\n"
+				 "Content-Type: text/html\r\n"
 				 "\r\n"
 				 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	            fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2595,6 +2663,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    //printf("ping request ERR\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
+				 "Content-Type: text/html\r\n"
 				 "\r\n"
 				 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		    fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2606,6 +2675,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    //printf("ping request OK\n");
 		    snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 				 "Server: %s\r\n"
+				 "Content-Type: text/html\r\n"
 				 "\r\n"
 				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
 		    //printf("%s",sbuf);
@@ -2623,6 +2693,7 @@ nht_internal_ConnHandler(void* conn_v)
 		//printf("ping request ERR -- NO SESSION\n");
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
+			     "Content-Type: text/html\r\n"
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2637,6 +2708,7 @@ nht_internal_ConnHandler(void* conn_v)
 		{
 		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
 			     "Server: %s\r\n"
+			     "Content-Type: text/html\r\n"
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2652,6 +2724,7 @@ nht_internal_ConnHandler(void* conn_v)
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
 			     "Server: %s\r\n"
+			     "Content-Type: text/html\r\n"
 			     "WWW-Authenticate: Basic realm=\"%s\"\r\n"
 			     "\r\n"
 			     "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
@@ -2680,6 +2753,27 @@ nht_internal_ConnHandler(void* conn_v)
 	//printf("%s\n",urlptr);
 	nht_internal_LinkSess(nsess);
 
+	/** Set nht session http ver **/
+	memccpy(nsess->HTTPVer, http_ver, 0, sizeof(nsess->HTTPVer)-1);
+	nsess->HTTPVer[sizeof(nsess->HTTPVer)-1] = '\0';
+
+	/** Version compatibility **/
+	if (!strcmp(nsess->HTTPVer, "HTTP/1.0"))
+	    {
+	    nsess->ver_10 = 1;
+	    nsess->ver_11 = 0;
+	    }
+	else if (!strcmp(nsess->HTTPVer, "HTTP/1.1"))
+	    {
+	    nsess->ver_10 = 1;
+	    nsess->ver_11 = 1;
+	    }
+	else
+	    {
+	    nsess->ver_10 = 0;
+	    nsess->ver_11 = 0;
+	    }
+
 	/** Set the session's UserAgent if one was found in the headers. **/
 	if (useragent && *useragent)
 	    mssSetParam("User-Agent", useragent);
@@ -2695,6 +2789,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    {
 	    snprintf(sbuf,160,"HTTP/1.0 500 Internal Server Error\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2715,7 +2810,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    {
 	    if (!strcasecmp(find_inf->StrVal,"get"))
 	        {
-	        nht_internal_GET(nsess,conn,url_inf);
+	        nht_internal_GET(nsess,conn,url_inf,if_modified_since);
 		}
 	    else if (!strcasecmp(find_inf->StrVal,"copy"))
 	        {
@@ -2724,6 +2819,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    {
 	            snprintf(sbuf,160,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>400 Method Error - include ls__destination for copy</H1>\r\n",NHT.ServerString);
 	            fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2741,6 +2837,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    {
 	            snprintf(sbuf,160,"HTTP/1.0 400 Method Error\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>400 Method Error - include ls__content for put</H1>\r\n",NHT.ServerString);
 	            fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2758,7 +2855,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    /** Which method was used? **/
 	    if (!strcmp(method,"get"))
 	        {
-	        nht_internal_GET(nsess,conn,url_inf);
+	        nht_internal_GET(nsess,conn,url_inf,if_modified_since);
 	        }
 	    else if (!strcmp(method,"put"))
 	        {
@@ -2772,6 +2869,7 @@ nht_internal_ConnHandler(void* conn_v)
 	        {
 	        snprintf(sbuf,160,"HTTP/1.0 501 Not Implemented\r\n"
 	    		 "Server: %s\r\n"
+			 "Content-Type: text/html\r\n"
 			 "\r\n"
 			 "<H1>501 Method Not Implemented</H1>\r\n",NHT.ServerString);
 	        fdWrite(conn,sbuf,strlen(sbuf),0,0);
@@ -2867,6 +2965,7 @@ nht_internal_Handler(void* v)
 #ifdef HAVE_LIBZ
 	    stAttrValue(stLookup(my_config, "enable_gzip"), &(NHT.EnableGzip), NULL, 0);
 #endif
+	    stAttrValue(stLookup(my_config, "condense_js"), &(NHT.CondenseJS), NULL, 0);
 
 	    /** Get the timer settings **/
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
@@ -2925,6 +3024,7 @@ nhtInitialize()
 	xaInit(&(NHT.Timers),512);
 	NHT.WatchdogTime = 180;
 	NHT.InactivityTime = 1800;
+	NHT.CondenseJS = 1; /* not yet implemented */
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));

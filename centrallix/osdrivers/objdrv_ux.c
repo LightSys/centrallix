@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.11 2003/11/12 22:21:39 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.12 2004/02/24 20:10:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.12  2004/02/24 20:10:59  gbeeley
+    - fixing some date/time related problems
+    - efficiency improvement for net_http allowing browser to actually
+      cache .js files and images.
+
     Revision 1.11  2003/11/12 22:21:39  gbeeley
     - addition of delete support to osml, mq, datafile, and ux modules
     - added objDeleteObj() API call which will replace objDelete()
@@ -1171,7 +1176,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		inf->MTime.Part.Second = t->tm_sec;
 		inf->MTime.Part.Minute = t->tm_min;
 		inf->MTime.Part.Hour = t->tm_hour;
-		inf->MTime.Part.Day = t->tm_mday;
+		inf->MTime.Part.Day = t->tm_mday - 1;
 		inf->MTime.Part.Month = t->tm_mon;
 		inf->MTime.Part.Year = t->tm_year;
 		}
@@ -1191,7 +1196,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		inf->CTime.Part.Second = t->tm_sec;
 		inf->CTime.Part.Minute = t->tm_min;
 		inf->CTime.Part.Hour = t->tm_hour;
-		inf->CTime.Part.Day = t->tm_mday;
+		inf->CTime.Part.Day = t->tm_mday - 1;
 		inf->CTime.Part.Month = t->tm_mon;
 		inf->CTime.Part.Year = t->tm_year;
 		}
@@ -1211,7 +1216,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 		inf->ATime.Part.Second = t->tm_sec;
 		inf->ATime.Part.Minute = t->tm_min;
 		inf->ATime.Part.Hour = t->tm_hour;
-		inf->ATime.Part.Day = t->tm_mday;
+		inf->ATime.Part.Day = t->tm_mday - 1;
 		inf->ATime.Part.Month = t->tm_mon;
 		inf->ATime.Part.Year = t->tm_year;
 		}
