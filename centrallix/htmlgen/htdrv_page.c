@@ -42,10 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.58 2003/11/12 22:15:56 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.59 2003/11/30 02:09:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.59  2003/11/30 02:09:40  gbeeley
+    - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
+      oneachreveal)
+    - adding serialized loader queue for preventing communcations with the
+      server from interfering with each other (netscape bug)
+    - pg_debug() writes to a "debug:" dynamic html widget via AddText()
+    - obscure/reveal subsystem initial implementation
+
     Revision 1.58  2003/11/12 22:15:56  gbeeley
     Formal Launch action declaration
 
@@ -512,6 +520,9 @@ htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
 	htrAddScriptGlobal(s, "window_current","null",0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
+	htrAddScriptGlobal(s, "pg_loadqueue", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_loadqueue_busy", "false", 0);
+	htrAddScriptGlobal(s, "pg_debug_log", "null", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.Dom1HTML)

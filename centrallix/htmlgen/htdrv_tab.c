@@ -41,10 +41,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.17 2003/11/18 05:59:40 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.18 2003/11/30 02:09:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.18  2003/11/30 02:09:40  gbeeley
+    - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
+      oneachreveal)
+    - adding serialized loader queue for preventing communcations with the
+      server from interfering with each other (netscape bug)
+    - pg_debug() writes to a "debug:" dynamic html widget via AddText()
+    - obscure/reveal subsystem initial implementation
+
     Revision 1.17  2003/11/18 05:59:40  gbeeley
     - mozilla support
     - inactive tab background image/colors
@@ -302,7 +310,7 @@ httabRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentob
 	/** Event handler for click-on-tab **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tc",
 		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"    if (ly.kind == 'tc') ly.makeCurrent();\n");
+		"    if (ly.kind == 'tc') ly.tabctl.ChangeSelection1(ly.tabpage);\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","tc",
 		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseUp');\n");

@@ -61,10 +61,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.37 2003/11/12 22:18:42 gbeeley Exp $
+    $Id: net_http.c,v 1.38 2003/11/30 02:09:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.38  2003/11/30 02:09:40  gbeeley
+    - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
+      oneachreveal)
+    - adding serialized loader queue for preventing communcations with the
+      server from interfering with each other (netscape bug)
+    - pg_debug() writes to a "debug:" dynamic html widget via AddText()
+    - obscure/reveal subsystem initial implementation
+
     Revision 1.37  2003/11/12 22:18:42  gbeeley
     - Begin addition of generalized server->client messages
     - Addition of delete support for osml-over-http
@@ -2681,6 +2689,7 @@ nht_internal_ConnHandler(void* conn_v)
 	    mssSetParam("Accept-Encoding", acceptencoding);
 
 	/** Parse out the requested url **/
+	/*printf("debug: %s\n",urlptr);*/
 	url_inf = htsParseURL(urlptr);
 	if (!url_inf)
 	    {

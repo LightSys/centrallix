@@ -43,10 +43,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.50 2003/07/27 03:24:53 jorupp Exp $
+    $Id: htdrv_osrc.c,v 1.51 2003/11/30 02:09:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.51  2003/11/30 02:09:40  gbeeley
+    - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
+      oneachreveal)
+    - adding serialized loader queue for preventing communcations with the
+      server from interfering with each other (netscape bug)
+    - pg_debug() writes to a "debug:" dynamic html widget via AddText()
+    - obscure/reveal subsystem initial implementation
+
     Revision 1.50  2003/07/27 03:24:53  jorupp
      * added Mozilla support for:
      	* connector
@@ -290,6 +298,8 @@ static struct {
    int     idcnt;
 } HTOSRC;
 
+enum htosrc_autoquery_types { Never=0, OnLoad=1, OnFirstReveal=2, OnEachReveal=3  };
+
 /* 
    htosrcVerify - not written yet.
 */
@@ -308,7 +318,6 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    int id;
    char name[40];
    char *ptr;
-   char *sbuf3;
    char *nptr;
    int readahead;
    int scrollahead;
@@ -318,6 +327,7 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    char *baseobj;
    pObject sub_w_obj;
    pObjQuery qy;
+   enum htosrc_autoquery_types aq;
 
    if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
@@ -325,8 +335,6 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
        return -1;
        }
 
-   sbuf3 = nmMalloc(200);
-   
    /** Get an id for this. **/
    id = (HTOSRC.idcnt++);
 
@@ -352,6 +360,24 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
       {
       mssError(1,"HTOSRC","You must give positive integer for replicasize and readahead");
       return -1;
+      }
+
+   /** Query autostart types **/
+   if (objGetAttrValue(w_obj,"autoquery",DATA_T_STRING,POD(&ptr)) == 0)
+      {
+      if (!strcasecmp(ptr,"onLoad")) aq = OnLoad;
+      else if (!strcasecmp(ptr,"onFirstReveal")) aq = OnFirstReveal;
+      else if (!strcasecmp(ptr,"onEachReveal")) aq = OnEachReveal;
+      else if (!strcasecmp(ptr,"never")) aq = Never;
+      else
+	 {
+	 mssError(1,"HTOSRC","Invalid autostart type '%s' for objectsource '%s'",ptr,name);
+	 return -1;
+	 }
+      }
+   else
+      {
+      aq = OnFirstReveal;
       }
 
    if (objGetAttrValue(w_obj,"sql",DATA_T_STRING,POD(&ptr)) == 0)
@@ -401,13 +427,13 @@ htosrcRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
    /** Script initialization call. **/
    if(s->Capabilities.Dom0NS)
       {
-      htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\");\n",
-	    name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name);
+      htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d);\n",
+	    name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq);
       }
    else if(s->Capabilities.Dom1HTML)
       {
-      htrAddScriptInit_va(s,"    %s=osrc_init(document.getElementById('osrc%dloader'),%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\");\n",
-	    name, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name);
+      htrAddScriptInit_va(s,"    %s=osrc_init(document.getElementById('osrc%dloader'),%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d);\n",
+	    name, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq);
       }
    else
       {

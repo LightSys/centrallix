@@ -42,10 +42,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.16 2003/11/12 22:17:24 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.17 2003/11/30 02:09:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.17  2003/11/30 02:09:40  gbeeley
+    - adding autoquery modes to OSRC (never, onload, onfirstreveal, or
+      oneachreveal)
+    - adding serialized loader queue for preventing communcations with the
+      server from interfering with each other (netscape bug)
+    - pg_debug() writes to a "debug:" dynamic html widget via AddText()
+    - obscure/reveal subsystem initial implementation
+
     Revision 1.16  2003/11/12 22:17:24  gbeeley
     Declaring dependency on strings htutils module
 
@@ -265,7 +273,7 @@ hthtmlRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parento
             }
 
         /** If source is an objectsystem entry... **/
-        if (src[0] && strncmp(src,"http:",5))
+        if (src[0] && strncmp(src,"http:",5) && strncmp(src,"debug:",6))
             {
             content_obj = objOpen(w_obj->Session,src,O_RDONLY,0600,"text/html");
             if (content_obj)
