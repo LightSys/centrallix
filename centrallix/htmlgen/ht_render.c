@@ -46,12 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.21 2002/07/18 14:54:06 pfinley Exp $
+    $Id: ht_render.c,v 1.22 2002/07/18 15:17:44 lkehresman Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
-    Revision 1.21  2002/07/18 14:54:06  pfinley
-    save a few characters :)
+    Revision 1.22  2002/07/18 15:17:44  lkehresman
+    Ok, I got caught being lazy.  I used snprintf and the string sbuf to
+    help me count the number of characters in the string I modified.  But
+    sbuf was being used elsewhere and I messed it up.  Fixed it so it isn't
+    using sbuf any more.  I broke down and counted the characters.
+    (how many times can we modify this line in one hour?? SHEESH!
 
     Revision 1.20  2002/07/18 14:31:05  lkehresman
     Whoops!  I was sending the wrong string size to fdWrite.  Fixed it.
@@ -1056,8 +1060,7 @@ htrRender(pFile output, pObject appstruct)
 	        n = *(int*)ptr;
 	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	        }
-	    snprintf(sbuf, HT_SBUF_SIZE, " onResize=\"location.reload()\" onLoad=\"startup();\" onUnload=\"cleanup();\">\n"); 
-	    fdWrite(output, sbuf, sizeof(sbuf),0,FD_U_PACKET);
+	    fdWrite(output, " onResize=\"location.reload()\" onLoad=\"startup();\" onUnload=\"cleanup();\">\n",73,0,FD_U_PACKET);
 	    }
 	else
 	    {
