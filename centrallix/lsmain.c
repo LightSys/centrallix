@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.12 2002/03/13 19:48:46 gbeeley Exp $
+    $Id: lsmain.c,v 1.13 2002/03/16 02:54:59 bones120 Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.13  2002/03/16 02:54:59  bones120
+    This might help...
+
     Revision 1.12  2002/03/13 19:48:46  gbeeley
     Fixed a window-dragging issue with nested html windows.  Added the
     dropdown widget to lsmain.c.  Updated changelog.
@@ -232,7 +235,7 @@ start(void* v)
 	htebInitialize();			/* editbox module */
 	httmInitialize();			/* timer nonvisual module */
 	htexInitialize();			/* method exec module */
-	htspInitialize();			/* spinner box module*/
+	htspnrInitialize();			/* spinner box module*/
 	htfsInitialize();			/* form status module */
 	htddInitialize();			/* dropdown htdrv module */
 
