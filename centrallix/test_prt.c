@@ -58,10 +58,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_prt.c,v 1.7 2002/10/22 04:12:55 gbeeley Exp $
+    $Id: test_prt.c,v 1.8 2003/02/19 22:53:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_prt.c,v $
 
     $Log: test_prt.c,v $
+    Revision 1.8  2003/02/19 22:53:52  gbeeley
+    Page break now somewhat operational, both with hard breaks (form feeds)
+    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
+    places the text on pages after a soft break (but the PCL seems to look
+    correct), and in how word wrapping is done just after a page break has
+    occurred.  Use "printfile" command in test_prt to test this.
+
     Revision 1.7  2002/10/22 04:12:55  gbeeley
     Added justification (left/center/right) support.  Full justification
     does not yet work.  Also, attempted a screen-based color text output
@@ -300,7 +307,7 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
 		printf("session: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (prtsession) 
 		    {
@@ -316,7 +323,7 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
 		printf("printfile: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (!prtsession)
 		    {
@@ -338,7 +345,7 @@ start(void* v)
 		    }
 		pagehandle = prtGetPageRef(prtsession);
 		printf("printfile: prtGetPageRef returned page handle %d\n", pagehandle);
-		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, PRT_OBJ_U_REPEAT);
+		areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, 0, 0, 80, 60, PRT_OBJ_U_ALLOWBREAK);
 		printf("printfile: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
 			areahandle);
 		while((rcnt = fdRead(fd, sbuf, 255, 0, 0)) > 0)
@@ -361,7 +368,7 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
 		printf("text: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (!prtsession)
 		    {
@@ -420,7 +427,7 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
 		printf("colors: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (!prtsession)
 		    {
@@ -463,7 +470,7 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
 		printf("fonts: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (!prtsession)
 		    {
@@ -509,7 +516,7 @@ start(void* v)
 		    continue;
 		    }
 		ptr = mlxStringVal(ls,NULL);
-		prtsession= prtOpenSession(ptr, outputfn, outputarg);
+		prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
 		printf("justify: prtOpenSession returned %8.8X\n", (int)prtsession);
 		if (!prtsession)
 		    {

@@ -49,10 +49,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.5 2002/10/22 04:12:56 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.6 2003/02/19 22:53:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.6  2003/02/19 22:53:53  gbeeley
+    Page break now somewhat operational, both with hard breaks (form feeds)
+    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
+    places the text on pages after a soft break (but the PCL seems to look
+    correct), and in how word wrapping is done just after a page break has
+    occurred.  Use "printfile" command in test_prt to test this.
+
     Revision 1.5  2002/10/22 04:12:56  gbeeley
     Added justification (left/center/right) support.  Full justification
     does not yet work.  Also, attempted a screen-based color text output
@@ -599,6 +606,10 @@ prtWriteString(int handle_id, char* str)
 	    string_obj->Height = prt_internal_GetFontHeight(string_obj);
 	    string_obj->YBase = prt_internal_GetFontBaseline(string_obj);
 	    rval = obj->LayoutMgr->AddObject(obj,string_obj);
+	    if (rval < 0) break;
+
+	    /** Handle might have changed - check it **/
+	    obj = prtHandlePtr(handle_id);
 
 	    /** Skipping over a special char? **/
 	    if (special_char_ptr)
@@ -606,17 +617,23 @@ prtWriteString(int handle_id, char* str)
 		str = special_char_ptr+1;
 		if (*special_char_ptr == '\n')
 		    {
-		    prtWriteNL(handle_id);
+		    rval = prtWriteNL(handle_id);
+		    if (rval < 0) break;
 		    }
 		else if (*special_char_ptr == '\t')
 		    {
 		    x = floor(floor((obj->ContentTail->X + obj->ContentTail->Width)/8.0 + 0.00000001)*8.0 + 8.00000001);
-		    prtSetHPos(handle_id, x);
+		    rval = prtSetHPos(handle_id, x);
+		    if (rval < 0) break;
 		    }
 		else if (*special_char_ptr == '\14')
 		    {
-		    prtWriteFF(handle_id);
+		    rval = prtWriteFF(handle_id);
+		    if (rval < 0) break;
 		    }
+
+		/** Handle might have changed - check it **/
+		obj = prtHandlePtr(handle_id);
 		}
 	    else
 		{
@@ -672,6 +689,7 @@ prtWriteFF(int handle_id)
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
 	/** Request a break operation on the object. **/
+	if (!(obj->Flags & PRT_OBJ_F_ALLOWHARDBREAK)) return -1;
 	rval = obj->LayoutMgr->Break(obj, &new_obj);
 
     return rval;

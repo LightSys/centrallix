@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.6 2002/10/22 04:12:56 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.7 2003/02/19 22:53:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.7  2003/02/19 22:53:54  gbeeley
+    Page break now somewhat operational, both with hard breaks (form feeds)
+    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
+    places the text on pages after a soft break (but the PCL seems to look
+    correct), and in how word wrapping is done just after a page break has
+    occurred.  Use "printfile" command in test_prt to test this.
+
     Revision 1.6  2002/10/22 04:12:56  gbeeley
     Added justification (left/center/right) support.  Full justification
     does not yet work.  Also, attempted a screen-based color text output
@@ -124,31 +131,50 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	if (this->LinkNext)
 	    {
 	    *new_this = this->LinkNext;
+
+	    /** Update the handle so that later adds go to the correct place. **/
+	    prtUpdateHandleByPtr(this, *new_this);
 	    }
 	else
 	    {
-	    /** Request break from parent first. **/
-	    if (this->Parent->LayoutMgr->ChildBreakReq(this->Parent, this, &new_container) < 0)
-		{
-		return -1;
-		}
-
 	    /** Duplicate the object... without the content. **/
 	    new_object = prt_internal_AllocObjByID(this->ObjType->TypeID);
 	    prt_internal_CopyAttrs(this, new_object);
 	    prt_internal_CopyGeom(this, new_object);
 	    new_object->Session = this->Session;
+	    new_object->Flags = this->Flags;
+
+	    /** Update the handle so that later adds go to the correct place. **/
+	    prtUpdateHandleByPtr(this, new_object);
+
+	    /** Request break from parent, which may eject the page...
+	     ** (which is why we copied our data from 'this' ahead of time) 
+	     **/
+	    if (this->Parent->LayoutMgr->ChildBreakReq(this->Parent, this, &new_container) < 0)
+		{
+		/** Oops - put the handle back and get rid of new_object **/
+		prtUpdateHandleByPtr(new_object, this);
+		prt_internal_FreeObj(new_object);
+
+		return -1;
+		}
+
+	    /** Init the new object. **/
 	    new_object->LayoutMgr->InitContainer(new_object);
 
 	    /** Add the new object to the new parent container, and set the linkages **/
 	    new_container->LayoutMgr->AddObject(new_container, new_object);
 	    *new_this = new_object;
-	    this->LinkNext = new_object;
-	    new_object->LinkPrev = this;
-	    }
 
-	/** Update the handle so that later adds go to the correct place. **/
-	prtUpdateHandleByPtr(this, *new_this);
+	    /** Was page ejected?  If LinkPrev on our container is set, then the page
+	     ** is still valid.
+	     **/
+	    if (new_container->LinkPrev)
+		{
+		this->LinkNext = new_object;
+		new_object->LinkPrev = this;
+		}
+	    }
 
     return 0;
     }
@@ -567,7 +593,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    new_parent = NULL;
 	    if (objptr->Y + objptr->Height > this->Height - this->MarginTop - this->MarginBottom)
 	        {
-		/** Request the additional space **/
+		/** Request the additional space, if allowed **/
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom) < 0)
 		    {
 		    /** Resize denied.  If container is empty, we can't continue on, so error out here. **/
@@ -582,7 +608,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 			}
 
 		    /** Try a break operation. **/
-		    if (this->LayoutMgr->Break(this, &new_parent) < 0)
+		    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
 			{
 			/** Break also denied?  Fail if so. **/
 			if (split_obj) 

@@ -52,10 +52,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.1 2002/01/27 22:50:06 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.2 2003/02/19 22:53:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.2  2003/02/19 22:53:54  gbeeley
+    Page break now somewhat operational, both with hard breaks (form feeds)
+    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
+    places the text on pages after a soft break (but the PCL seems to look
+    correct), and in how word wrapping is done just after a page break has
+    occurred.  Use "printfile" command in test_prt to test this.
+
     Revision 1.1  2002/01/27 22:50:06  gbeeley
     Untested and incomplete print formatter version 3 files.
     Initial checkin.
@@ -72,6 +79,8 @@ int
 prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
     {
     pPrtObjStream next_page;
+    int page_handle_id;
+    pPrtHandle h;
 
 	/** Need to create the next page? **/
 	if (!this->Next)
@@ -85,12 +94,28 @@ prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
 	    prt_internal_CopyAttrs(this, next_page);
 	    prt_internal_CopyGeom(this, next_page);
 	    next_page->Session = this->Session;
+	    next_page->Flags = this->Flags;
 	    prt_internal_Add(this->Parent, next_page);
+
+	    /** Increment the page number **/
 	    next_page->ObjID = this->ObjID + 1;
 	    }
 	else
 	    {
 	    next_page = this->Next;
+	    }
+
+	/** Can we emit the previous page? **/
+	if (this->nOpens == 0)
+	    {
+	    if (prt_internal_GeneratePage(PRTSESSION(this), this) >= 0)
+		{
+		/** Bump the handle **/
+		prtUpdateHandleByPtr((void*)this, (void*)next_page);
+
+		/** Free the page data **/
+		prt_internal_FreeTree(this);
+		}
 	    }
 
 	/** Set the new container to the next page **/
@@ -118,21 +143,19 @@ prt_pagelm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream 
  *** layout manager a chance to prevent the resize operation (return -1).  
  *** If the OK is given (return 0), a ChildResized method call will occur
  *** shortly thereafter (once the resize of the child has completed).
+ ***
+ *** GRB 10/23/02 - removed the logic to request a break if the resize
+ *** could not be done.  The textlm code already does a break if the resize
+ *** fails.
  ***/
 int
-prt_pagelm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height, pPrtObjStream *new_container)
+prt_pagelm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
 
 	/** Is the resize still within the bounds of the page?  Allow if so. **/
 	if (req_height <= this->Height - this->MarginTop - this->MarginBottom) return 0;
 
-	/** Can this object repeat on multiple pages?  If not, deny resize. **/
-	if (!(child->Flags & PRT_OBJ_F_REPEAT)) return -1;
-
-	/** Request the break **/
-	prt_pagelm_ChildBreakReq(this, child, new_container);
-
-    return 0;
+    return -1;
     }
 
 

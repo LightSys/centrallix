@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_main.c,v 1.2 2002/04/25 04:30:14 gbeeley Exp $
+    $Id: prtmgmt_v3_main.c,v 1.3 2003/02/19 22:53:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_main.c,v $
 
     $Log: prtmgmt_v3_main.c,v $
+    Revision 1.3  2003/02/19 22:53:54  gbeeley
+    Page break now somewhat operational, both with hard breaks (form feeds)
+    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
+    places the text on pages after a soft break (but the PCL seems to look
+    correct), and in how word wrapping is done just after a page break has
+    occurred.  Use "printfile" command in test_prt to test this.
+
     Revision 1.2  2002/04/25 04:30:14  gbeeley
     More work on the v3 print formatting subsystem.  Subsystem compiles,
     but report and uxprint have not been converted yet, thus problems.
@@ -402,7 +409,7 @@ prtRegisterFormatter(pPrtFormatter fmt)
 	ASSERTMAGIC(fmt, MGK_PRTFMTR);
 
 	/** Add it to the list of formatters **/
-	xaAddItemSorted(&(PRTMGMT.FormatterList), (void*)fmt, ((char*)&(fmt->Priority)) - (char*)fmt, sizeof(int));
+	xaAddItemSortedInt32(&(PRTMGMT.FormatterList), (void*)fmt, ((char*)&(fmt->Priority)) - (char*)fmt);
 
     return 0;
     }

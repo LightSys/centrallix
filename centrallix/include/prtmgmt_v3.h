@@ -35,10 +35,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.5 2002/11/22 19:29:37 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.6 2003/02/19 22:53:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.6  2003/02/19 22:53:53  gbeeley
+    Page break now somewhat operational, both with hard breaks (form feeds)
+    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
+    places the text on pages after a soft break (but the PCL seems to look
+    correct), and in how word wrapping is done just after a page break has
+    occurred.  Use "printfile" command in test_prt to test this.
+
     Revision 1.5  2002/11/22 19:29:37  gbeeley
     Fixed some integer return value checking so that it checks for failure
     as "< 0" and success as ">= 0" instead of "== -1" and "!= -1".  This
@@ -364,7 +371,7 @@ pPrtFormatter prtAllocFormatter();
 int prtRegisterFormatter(pPrtFormatter fmt);
 
 /*** Session-level functions ***/
-pPrtSession prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg);
+pPrtSession prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_flags);
 int prtCloseSession(pPrtSession s);
 int prtSetPageGeometry(pPrtSession s, double width, double height);
 int prtGetPageGeometry(pPrtSession s, double *width, double *height);

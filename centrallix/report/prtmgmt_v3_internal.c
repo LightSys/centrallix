@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "barcode.h"
 #include "report.h"
 #include "mtask.h"
@@ -47,10 +48,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.5 2002/10/21 22:55:11 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.6 2003/02/19 22:53:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.6  2003/02/19 22:53:54  gbeeley
+    Page break now somewhat operational, both with hard breaks (form feeds)
+    and with soft breaks (page wrapping).  Some bugs in how my printer (870c)
+    places the text on pages after a soft break (but the PCL seems to look
+    correct), and in how word wrapping is done just after a page break has
+    occurred.  Use "printfile" command in test_prt to test this.
+
     Revision 1.5  2002/10/21 22:55:11  gbeeley
     Added font/size test in test_prt to test the alignment of different fonts
     and sizes on one line or on separate lines.  Fixed lots of bugs in the
@@ -399,6 +407,31 @@ prt_internal_YSort(pPrtObjStream obj)
     }
 
 
+/*** prt_internal_MakeOrphan() - deletes an object from its parent's list of
+ *** child objects.
+ ***/
+int
+prt_internal_MakeOrphan(pPrtObjStream obj)
+    {
+
+	/** Make sure there is a parent before unlinking **/
+	if (obj->Parent)
+	    {
+	    if (obj->Prev) obj->Prev->Next = obj->Next;
+	    if (obj->Next) obj->Next->Prev = obj->Prev;
+	    if (obj->Parent->ContentHead == obj) obj->Parent->ContentHead = obj->Next;
+	    if (obj->Parent->ContentTail == obj) obj->Parent->ContentTail = obj->Prev;
+	    }
+
+	/** Clear the prev/next pointers locally **/
+	obj->Parent = NULL;
+	obj->Next = NULL;
+	obj->Prev = NULL;
+
+    return 0;
+    }
+
+
 /*** prt_internal_FreeTree() - releases memory and resources used by an entire
  *** subtree.
  ***/
@@ -424,6 +457,17 @@ prt_internal_FreeTree(pPrtObjStream obj)
 	/** Now, free any content, if need be **/
 	if (obj->Content) nmSysFree(obj->Content);
 	obj->Content = NULL;
+
+	/** Disconnect from linknext/linkprev **/
+	if (obj->LinkNext) 
+	    {
+	    ASSERTMAGIC(obj->LinkNext, MGK_PRTOBJSTRM);
+	    obj->LinkNext->LinkPrev = NULL;
+	    obj->LinkNext = NULL;
+	    }
+
+	/** Disconnect from parent **/
+	prt_internal_MakeOrphan(obj);
 
 	/** De-init the container via the layout manager **/
 	if (obj->LayoutMgr) obj->LayoutMgr->DeinitContainer(obj);
@@ -560,3 +604,44 @@ prt_internal_Dump(pPrtObjStream obj)
     {
     return prt_internal_Dump_r(obj,0);
     }
+
+
+/*** prt_internal_Duplicate() - duplicate an entire object, including
+ *** its content etc if "with_content" is set.
+ ***/
+pPrtObjStream
+prt_internal_Duplicate(pPrtObjStream obj, int with_content)
+    {
+    pPrtObjStream new_obj = NULL;
+    return new_obj;
+    }
+
+
+/*** prt_internal_AdjustOpenCount() - adjust the nOpens counter
+ *** on the parent container(s) up the tree from the given object.
+ *** This is used to keep track of the number of "REQCOMPLETE"
+ *** open containers within the tree, so we know when a page is
+ *** ready to be emitted.
+ ***
+ *** Entry: obj == an objstrm object that has been added to the tree.
+ ***        adjustment == pos/neg to incr/decr nOpens respectively
+ *** Exit:  nOpens adjusted in this and all parent/grandparent/etc 
+ ***        containers.
+ ***/
+int
+prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment)
+    {
+
+	/** Trace the object up the tree... **/
+	while(obj)
+	    {
+	    ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+	    assert(obj->nOpens >= 0);
+	    obj->nOpens += adjustment;
+	    assert(obj->nOpens >= 0);
+	    obj = obj->Parent;
+	    }
+
+    return 0;
+    }
+
