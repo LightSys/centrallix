@@ -52,7 +52,7 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_shell.c,v 1.8 2002/12/23 06:31:06 jorupp Exp $
+    $Id: objdrv_shell.c,v 1.9 2002/12/24 09:28:53 jorupp Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_shell.c,v $
 
  **END-CVSDATA***********************************************************/
@@ -161,9 +161,11 @@ shl_internal_Launch(pShlData inf)
 	char* p;
 	name=(char*)xaGetItem(&inf->envList,i);
 	pEV=(pEnvVar)xhLookup(&inf->envHash,name);
-	p = (char*)malloc(strlen(name)+2+pEV->value?strlen(pEV->value):0);
-	sprintf(p,"%s=%s",name,pEV->value?pEV->value:"");
-	xaAddItem(&inf->envArray,p);
+	if(pEV)
+	    {
+	    p = (char*)malloc(strlen(name)+2+(pEV->value?strlen(pEV->value):0));
+	    xaAddItem(&inf->envArray,p);
+	    }
 	}
 
     
@@ -228,9 +230,6 @@ shl_internal_Launch(pShlData inf)
 	if(SHELL_DEBUG & SHELL_DEBUG_FORK)
 	    printf("in child\n");
 
-	//if(SHELL_DEBUG * SHELL_DEBUG_EXEC)
-	    //printf("exec: %s %p\n",inf->program,inf->args);
-
 	/** security issue: when centrallix runs as root with system
 	 ** authentication, the threads run with ruid=root, euid=user,
 	 ** and we need to get rid of the ruid=root here so that the
@@ -274,11 +273,35 @@ shl_internal_Launch(pShlData inf)
 	/** close old copy of FD **/
 	close(fd);
 
+
 	/** make the exec() call **/
 	execve(inf->program,(char**)(inf->argArray.Items),(char**)(inf->envArray.Items));
 
 	/** if exec() is successfull, this is never reached **/
 	warn("execve() failed");
+
+	    {
+	    /** execve shouldn't fail -- dump the args for debugging **/
+	    char **ptr;
+	    int i=0;
+	    printf("program: %s\n",inf->program);
+
+	    ptr=(char**)(inf->argArray.Items);
+	    do
+		{
+		printf("arg: %p: %s\n",ptr,*ptr);
+		}
+	    while(*(ptr++));
+
+	    ptr=(char**)(inf->envArray.Items);
+	    do
+		{
+		printf("env: %p: %s\n",ptr,*ptr);
+		}
+	    while(*(ptr++));
+	    
+	    }
+
 	_exit(1);
 	}
     /** parent -- centrallix **/
@@ -418,39 +441,42 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 	changeStruct=stLookup(node->Data,"changeable");
 
-	if(changeStruct->Value->NodeType == EXPR_N_LIST)
+	if(changeStruct)
 	    {
-	    /** 'arg' value is present and is a list -- parameters > 1 **/
-	    int i;
-	    pXArray values;
-	    pEnvVar pEV=NULL;
-	    values = &argStruct->Value->Children;
-	    for(i=0;i<values->nItems;i++)
+	    if(changeStruct->Value->NodeType == EXPR_N_LIST)
 		{
-		pEV=(pEnvVar)xhLookup(&inf->envHash,((pExpression)(values->Items[i]))->String);
+		/** 'arg' value is present and is a list -- parameters > 1 **/
+		int i;
+		pXArray values;
+		pEnvVar pEV=NULL;
+		values = &argStruct->Value->Children;
+		for(i=0;i<values->nItems;i++)
+		    {
+		    pEV=(pEnvVar)xhLookup(&inf->envHash,((pExpression)(values->Items[i]))->String);
+		    if(pEV)
+			{
+			pEV->changeable = 1;
+			}
+		    else
+			mssError(0,"SHL","can't find %s to mark changeable\n",((pExpression)(values->Items[i]))->String);
+		    }
+		}
+	    else
+		{
+		char *ptr;
+		pEnvVar pEV=NULL;
+		/** 'arg' value is present and is exactly one value -- 1 parameter **/
+		if(stAttrValue(changeStruct,NULL,&ptr,0)<0)
+		    ptr=NULL;
+		if(ptr)
+		    pEV=(pEnvVar)xhLookup(&inf->envHash,ptr);
 		if(pEV)
 		    {
 		    pEV->changeable = 1;
 		    }
 		else
-		    mssError(0,"SHL","can't find %s to mark changeable\n",((pExpression)(values->Items[i]))->String);
+		    mssError(0,"SHL","can't find %s to mark changeable\n",ptr);
 		}
-	    }
-	else
-	    {
-	    char *ptr;
-	    pEnvVar pEV=NULL;
-	    /** 'arg' value is present and is exactly one value -- 1 parameter **/
-	    if(stAttrValue(changeStruct,NULL,&ptr,0)<0)
-		ptr=NULL;
-	    if(ptr)
-		pEV=(pEnvVar)xhLookup(&inf->envHash,ptr);
-	    if(pEV)
-		{
-		pEV->changeable = 1;
-		}
-	    else
-		mssError(0,"SHL","can't find %s to mark changeable\n",ptr);
 	    }
 
 
