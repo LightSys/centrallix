@@ -34,8 +34,8 @@ Samples "system/report"
 	}
     
     // Summary data...
-    report_total1 "report/comment" { text="TOTAL BYTES = " autonewline=no }
+    report_total1 "report/comment" { xpos=44 text="TOTAL BYTES = " autonewline=no }
     report_total2 "report/data" { xpos=68 value="ralign(convert(string,:samples_query:sizetotal),9)" autonewline=yes }
-    report_total3 "report/comment" { text="\nTOTAL FILES =" autonewline=no }
+    report_total3 "report/comment" { xpos=44 text="TOTAL FILES =" autonewline=no }
     report_total4 "report/data" { xpos=68 value="ralign(convert(string,:samples_query:filecount),9)" autonewline=yes }
     }
