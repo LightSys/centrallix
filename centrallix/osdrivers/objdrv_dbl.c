@@ -10,6 +10,8 @@
 #include <regex.h>
 #include <ctype.h>
 #include <sys/times.h>
+#include <math.h>
+
 #include "obj.h"
 #include "mtask.h"
 #include "xarray.h"
@@ -59,10 +61,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_dbl.c,v 1.5 2004/12/31 04:24:16 gbeeley Exp $
+    $Id: objdrv_dbl.c,v 1.6 2005/01/22 06:14:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_dbl.c,v $
 
     $Log: objdrv_dbl.c,v $
+    Revision 1.6  2005/01/22 06:14:41  gbeeley
+    - don't depend on obj->Type during the open process, use systype passed
+      in to driver->Open.
+
     Revision 1.5  2004/12/31 04:24:16  gbeeley
     - DBL ISAM osdriver now can run SQL queries (readonly, no locking)
       against the .ISM/.IS1 files.
@@ -905,6 +911,7 @@ dbl_internal_LoadDef(pDblData inf, pDblTableInf tdata, pLxSession lxs)
     char* format_ptr = NULL;
     char* format_end_ptr;
     char* x_ptr;
+    char* decimal_ptr;
     int in_overlay = 0;
     int cur_offset = 0;
     int cur_col = 0;
@@ -1035,6 +1042,12 @@ dbl_internal_LoadDef(pDblData inf, pDblTableInf tdata, pLxSession lxs)
 			if (format_end_ptr - format_ptr >= sizeof(column->Format)) format_end_ptr = format_ptr + sizeof(column->Format)-1;
 			memcpy(column->Format, format_ptr+1, format_end_ptr - (format_ptr+1));
 			column->Format[format_end_ptr - (format_ptr+1)] = '\0';
+
+			/** Is there a decimal point? **/
+			if ((decimal_ptr = strrchr(column->Format, '.')))
+			    {
+			    column->DecimalOffset = strlen(decimal_ptr+1);
+			    }
 			}
 		    if (column->Flags & DBL_COL_F_VIRTUAL)
 			{
@@ -1101,7 +1114,7 @@ dbl_internal_LoadDef(pDblData inf, pDblTableInf tdata, pLxSession lxs)
 			{
 			column->Type = DATA_T_MONEY;
 			}
-		    else if (strchr(column->Format, '.'))
+		    else if (column->DecimalOffset > 0)
 			{
 			column->Type = DATA_T_DOUBLE;
 			}
@@ -1424,7 +1437,7 @@ dbl_internal_DetermineNodeType(pDblData inf, pContentType systype)
  *** containing the definitions for this table.
  ***/
 pDblNode
-dbl_internal_OpenNode(pDblData inf)
+dbl_internal_OpenNode(pDblData inf, pContentType systype)
     {
     pDblNode node;
     /*int i;
@@ -1456,7 +1469,7 @@ dbl_internal_OpenNode(pDblData inf)
 	    is_new_node = 1;
 
 	    /** Determine its type **/
-	    node->Type = dbl_internal_DetermineNodeType(inf, inf->Obj->Type);
+	    node->Type = dbl_internal_DetermineNodeType(inf, systype);
 	    if (node->Type != DBL_NODE_T_NODE)
 		{
 		mssError(0, "DBL", "Direct OSML access to DBL files not currently supported.");
@@ -1662,8 +1675,10 @@ dbl_internal_MappedCopy(char* target, int target_size, pDblColInf column, char* 
 int
 dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_data)
     {
-    char ibuf[16];
+    char ibuf[32];
     char dtbuf[32];
+    unsigned long long v;
+    int i,f;
 
 	switch(column->Type)
 	    {
@@ -1679,6 +1694,25 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 		pod->DateTime = (pDateTime)data;
 		if (dbl_internal_MappedCopy(dtbuf, sizeof(dtbuf), column, row_data) < 0) return -1;
 		if (objDataToDateTime(DATA_T_STRING, dtbuf, pod->DateTime, NULL) < 0) return -1;
+		break;
+	    case DATA_T_DOUBLE:
+		if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
+		pod->Double = strtol(ibuf, NULL, 10);
+		if (column->DecimalOffset) pod->Double /= pow(10, column->DecimalOffset);
+		break;
+	    case DATA_T_MONEY:
+		if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
+		v = strtol(ibuf, NULL, 10);
+		f = 1;
+		for(i=0;i<column->DecimalOffset;i++) f *= 10;
+		pod->Money = (pMoneyType)data;
+		pod->Money->WholePart = v/f;
+		v = (v/f)*f;
+		if (column->DecimalOffset <= 4)
+		    for(i=column->DecimalOffset;i<4;i++) v *= 10;
+		else
+		    for(i=4;i<column->DecimalOffset;i++) v /= 10;
+		pod->Money->FractionPart = v;
 		break;
 	    default:
 		mssError(1, "DBL", "Bark!  Unhandled data type for column '%s'", column->Name);
@@ -1827,7 +1861,7 @@ dblOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    }
 
 	/** Open the node object **/
-	inf->Node = dbl_internal_OpenNode(inf);
+	inf->Node = dbl_internal_OpenNode(inf,systype);
 	if (!inf->Node)
 	    {
 	    nmFree(inf,sizeof(DblData));
