@@ -150,11 +150,12 @@ function dd_unhilight_item(l,i)
 
 function dd_select_item(l,i)
     {
-    l.HidLayer.document.write("<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle>");
+    l.HidLayer.document.write("<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>");
     if (i!=null) l.HidLayer.document.write(l.Values[i][0]);
     l.HidLayer.document.write("</TD></TR></TABLE>");
     l.HidLayer.document.close();
     l.HidLayer.visibility = 'inherit';
+    l.HidLayer.clip.width = l.w-21;
     l.HidLayer.index = i;
     l.VisLayer.visibility = 'hide';
     var t=l.VisLayer;
