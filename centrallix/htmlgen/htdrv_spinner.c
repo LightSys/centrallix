@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.16 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_spinner.c,v 1.17 2005/06/23 22:08:00 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.17  2005/06/23 22:08:00  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.16  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -337,7 +344,7 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		"\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = spnr_init(%s.layers.spnr%dmain, %s.layers.spnr%dmain.layers.spnr%dbase, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon1, %s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon2);\n",
+	htrAddScriptInit_va(s,"    %s = spnr_init({main:%s.layers.spnr%dmain, layer:%s.layers.spnr%dmain.layers.spnr%dbase, c1:%s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon1, c2:%s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon2});\n",
 		nptr, parentname, id, 
                 parentname, id, id,
 		parentname, id, id, id, 

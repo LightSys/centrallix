@@ -201,11 +201,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = dt_init("
-	                       "%s.layers.dt%dbtn, "
-	                       "%s.layers.dt%dbtn.document.layers.dt%dcon1, "
-	                       "%s.layers.dt%dbtn.document.layers.dt%dcon2, "
-	                       "\"%s\",\"%s\",\"%s\",\"%s\", %d, %d, %d, %d)\n",
+	htrAddScriptInit_va(s, "    %s = dt_init({layer:%s.layers.dt%dbtn,c1:%s.layers.dt%dbtn.document.layers.dt%dcon1,c2:%s.layers.dt%dbtn.document.layers.dt%dcon2,id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
 			nptr,
 			parentname,id, 
 			parentname,id,id, 
@@ -314,10 +310,17 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.32 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.33 2005/06/23 22:07:58 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.33  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.32  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.

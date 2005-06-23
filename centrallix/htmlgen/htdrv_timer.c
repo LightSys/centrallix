@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.13 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_timer.c,v 1.14 2005/06/23 22:08:01 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.14  2005/06/23 22:08:01  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.13  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -259,7 +266,7 @@ httmRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,200,"    %s = tm_init(%d, %d, %d);\n", nptr, msec, auto_reset, auto_start);
+	snprintf(sbuf,200,"    %s = tm_init({time:%d, autoreset:%d, autostart:%d});\n", nptr, msec, auto_reset, auto_start);
 	htrAddScriptInit(s, sbuf);
 
 	/** Check for objects within the timer. **/

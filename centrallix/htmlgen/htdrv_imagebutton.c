@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.32 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.33 2005/06/23 22:07:59 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.33  2005/06/23 22:07:59  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.32  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -445,7 +452,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    mssError(1,"HTIBTN","Cannot render for this browser");
 	    }
 
-	htrAddScriptInit_va(s,"    ib_init(%s,'%s','%s','%s','%s',%d,%d,%s,'%s',%d);\n",
+	htrAddScriptInit_va(s,"    ib_init({layer:%s, n:'%s', p:'%s', c:'%s', d:'%s', width:%d, height:%d, parentobj:%s, name:'%s', enable:%d});\n",
 	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr,is_enabled);
 
 	/** HTML body <DIV> elements for the layers. **/

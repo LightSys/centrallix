@@ -277,7 +277,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	return -1;
     }
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    %s = dd_init(%s.layers.dd%dbtn,%s.layers.dd%dbtn.document.layers.dd%dcon1,%s.layers.dd%dbtn.document.layers.dd%dcon2,'%s','%s','%s',%d,%d,'%s',%d,%d);\n", nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
+
+    htrAddScriptInit_va(s,"    %s = dd_init({layer:%s.layers.dd%dbtn, c1:%s.layers.dd%dbtn.document.layers.dd%dcon1, c2:%s.layers.dd%dbtn.document.layers.dd%dcon2, background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
 
     /** Set object parent **/
     htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
@@ -434,10 +435,17 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.49 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.50 2005/06/23 22:07:58 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.50  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.49  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.

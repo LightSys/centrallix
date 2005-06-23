@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.8 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_scrollbar.c,v 1.9 2005/06/23 22:08:00 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.9  2005/06/23 22:08:00  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.8  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -318,7 +325,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s=sb_init(%s.layers.sb%dpane,\"sb%dthum\",%s,%d,%d);\n", name, parentname,id,id,parentobj,is_horizontal,r);
+	htrAddScriptInit_va(s,"    %s=sb_init({layer:%s.layers.sb%dpane, tname:\"sb%dthum\", parent:%s, isHorizontal:%d, range:%d});\n", name, parentname,id,id,parentobj,is_horizontal,r);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"sb%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);

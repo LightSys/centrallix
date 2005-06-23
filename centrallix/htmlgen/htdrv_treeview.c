@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.33 2005/02/26 06:34:24 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.34 2005/06/23 22:08:01 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.34  2005/06/23 22:08:01  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.33  2005/02/26 06:34:24  gbeeley
     - fix for Mozilla re. Click events.
 
@@ -399,13 +406,13 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	if(s->Capabilities.Dom0NS)
 	    {
 	    htrAddScriptInit_va(s,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
-	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",%s.layers.tv%dload,%s,%d,%s,null,%d);\n",
+	    htrAddScriptInit_va(s,"    tv_init({layer:%s, fname:\"%s\", loader:%s.layers.tv%dload, pdoc:%s, width:%d, parent:%s, newroot:null, branches:%d});\n",
 		    nptr, src, parentname, id, parentname, w, parentobj, show_branches);
 	    }
 	else if(s->Capabilities.Dom1HTML)
 	    {
 	    htrAddScriptInit_va(s,"    %s = document.getElementById('tv%droot');\n",nptr, id);
-	    htrAddScriptInit_va(s,"    tv_init(%s,\"%s\",document.getElementById('tv%dload'),%s,%d,%s,null,%d);\n",
+	    htrAddScriptInit_va(s,"    tv_init({layer:%s, fname:\"%s\", loader:document.getElementById('tv%dload'), pdoc:%s, width:%d, parent:%s, newroot:null, branches:%d);\n",
 		    nptr, src, id, parentname, w, parentobj, show_branches);
 	    }
 	else

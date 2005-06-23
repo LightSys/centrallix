@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.25 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.26 2005/06/23 22:08:00 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.26  2005/06/23 22:08:00  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.25  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -369,7 +376,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 	    {
 	    mssError(1,"HTSPANE","Cannot render for this browser");
 	    }
-	htrAddScriptInit_va(s,"    sp_init(%s,\"sp%darea\",\"sp%dthum\",%s);\n", name,id,id,parentobj);
+	htrAddScriptInit_va(s,"    sp_init({layer:%s, aname:\"sp%darea\", tname:\"sp%dthum\", parent:%s});\n", name,id,id,parentobj);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if(s->Capabilities.Dom0NS)

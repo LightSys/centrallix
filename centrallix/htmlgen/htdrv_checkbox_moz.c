@@ -50,7 +50,7 @@ int htcbMozDefRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char
       "\n");
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init(%s.getElementById('cb%dmain'),\"%s\",%d);\n", parentname, id,fieldname,checked);
+   htrAddScriptInit_va(s,"    checkbox_init({layer:%s.getElementById('cb%dmain'),fieldname:\"%s\",checked:%d});\n", parentname, id,fieldname,checked);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItem_va(s,"   <DIV ID=\"cb%dmain\">\n",id);

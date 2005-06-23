@@ -41,15 +41,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.33 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.34 2005/06/23 22:07:58 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.34  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.33  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
     - Moved all config files (except centrallix.conf) to a subdir in /etc.
-    - Moved centrallix modules to a subdir in /usr/lib.
+    - Moved centrallix modules to a subdir in /usr/lib.    
 
     Revision 1.32  2004/08/04 20:03:07  mmcgill
     Major change in the way the client-side widget tree works/is built.
@@ -371,11 +378,11 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    /** Script initialization call. **/
    if(s->Capabilities.Dom1HTML)
        {
-       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.getElementById('cb%dmain'),\"%s\",%d,%d);\n", nptr, parentname, id,fieldname,checked,enabled);
+       htrAddScriptInit_va(s,"    %s=checkbox_init({layer:%s.getElementById('cb%dmain'), fieldname:\"%s\", checked: %d, enabled:%d});\n", nptr, parentname, id,fieldname,checked,enabled);
        }
    else if(s->Capabilities.Dom0NS)
        {
-       htrAddScriptInit_va(s,"    %s=checkbox_init(%s.layers.cb%dmain,\"%s\",%d,%d);\n", nptr, parentname, id,fieldname,checked,enabled);
+       htrAddScriptInit_va(s,"    %s=checkbox_init({layer:%s.layers.cb%dmain, fieldname:\"%s\", checked:%d, enabled:%d});\n", nptr, parentname, id,fieldname,checked,enabled);
        }
 
    /** HTML body <DIV> element for the layers. **/

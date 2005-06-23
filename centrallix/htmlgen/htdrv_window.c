@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.43 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.44 2005/06/23 22:08:01 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.44  2005/06/23 22:08:01  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.43  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -588,19 +595,19 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    /** Script initialization call. **/
 	    if (has_titlebar)
 		{
-		htrAddScriptInit_va(s,"    %s = wn_init(document.getElementById('wn%dbase'),document.getElementById('wn%dmain'),%d,%d, document.getElementById('wn%dtitlebar'));\n", 
+		htrAddScriptInit_va(s,"    %s = wn_init({layer:document.getElementById('wn%dbase'), mainlayer:document.getElementById('wn%dmain'), gshade:%d, closetype:%d, titlebar:document.getElementById('wn%dtitlebar')});\n", 
 			name,id,id,gshade,closetype, id);
 		}
 	    else
 		{
-		htrAddScriptInit_va(s,"    %s = wn_init(document.getElementById('wn%dbase'),document.getElementById('wn%dmain'),%d,%d, null);\n", 
+		htrAddScriptInit_va(s,"    %s = wn_init({layer:document.getElementById('wn%dbase'), mainlayer:document.getElementById('wn%dmain'), gshade:%d, closetype:%d, titlebar:null});\n", 
 			name,id,id,gshade,closetype);
 		}
 	    }
 	else if(s->Capabilities.Dom0NS)
 	    {
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s,"    %s = wn_init(%s.layers.wn%dbase,%s.layers.wn%dbase.document.layers.wn%dmain,%d,%d,null);\n", 
+	    htrAddScriptInit_va(s,"    %s = wn_init({layer:%s.layers.wn%dbase, mainlayer:%s.layers.wn%dbase.document.layers.wn%dmain, gshade:%d, closetype:%d, titlebar:null});\n", 
 		    name,parentname,id,parentname,id,id,gshade,closetype);
 	    }
 

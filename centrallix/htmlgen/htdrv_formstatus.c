@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.20 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.21 2005/06/23 22:07:59 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.21  2005/06/23 22:07:59  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.20  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -295,11 +302,11 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    /** Script initialization call. **/
    if(s->Capabilities.Dom0NS)
      {
-     htrAddScriptInit_va(s,"    %s = fs_init(%s.layers.fs%dmain,\"%s\");\n", nptr, parentname, id, style);
+     htrAddScriptInit_va(s,"    %s = fs_init({layer:%s.layers.fs%dmain, style:\"%s\"});\n", nptr, parentname, id, style);
      }
    else if(s->Capabilities.Dom1HTML)
      {
-     htrAddScriptInit_va(s,"    %s = fs_init(document.getElementById('fs%dmain'),\"%s\");\n", nptr, id, style);
+     htrAddScriptInit_va(s,"    %s = fs_init({layer:document.getElementById('fs%dmain'), style:\"%s\"});\n", nptr, id, style);
      }
    else
      {

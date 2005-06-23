@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.31 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.32 2005/06/23 22:08:01 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.32  2005/06/23 22:08:01  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.31  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -445,7 +452,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    if(s->Capabilities.Dom0NS)
 	        {
 	    	htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
-	    	htrAddScriptInit_va(s, "    tb_init(%s,%s.document.layers.tb%dpane2,%s.document.layers.tb%dpane3,%s.document.layers.tb%dtop,%s.document.layers.tb%dbtm,%s.document.layers.tb%drgt,%s.document.layers.tb%dlft,%d,%d,%s,%d,\"%s\");\n",
+	    	htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:%s.document.layers.tb%dpane2, layer3:%s.document.layers.tb%dpane3, top:%s.document.layers.tb%dtop, bottom:%s.document.layers.tb%dbtm, right:%s.document.layers.tb%drgt, left:%s.document.layers.tb%dlft, width:%d, height:%d, parent:%s, tristate:%d, name:\"%s\"});\n",
 		    nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
 		}
 	    /*else if(s->Capabilities.Dom0IE)
@@ -508,7 +515,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	    /** Script initialization call. **/
 	    htrAddScriptInit_va(s, "    %s = document.getElementById('tb%dpane');\n",nptr, id);
-	    htrAddScriptInit_va(s, "    tb_init(%s,document.getElementById('tb%dpane2'),document.getElementById('tb%dpane3'),null,null,null,null,%d,%d,%s,%d,\"%s\");\n",
+	    htrAddScriptInit_va(s, "    tb_init({layer:%s,layer2:document.getElementById('tb%dpane2'), layer3:document.getElementById('tb%dpane3'), top:null, bottom:null, right:null, left:null, width:%d, height:%d, parent:%s, tristate;%d, name:\"%s\"});\n",
 		    nptr, id, id, w, h, parentobj,is_ts, nptr);
 	    }
 	else

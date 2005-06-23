@@ -44,6 +44,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.57  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.56  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -492,7 +499,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    %s=form_init(%i,%i,%i,%i,%i,%i,'%s',%s,%i);\n",
+	htrAddScriptInit_va(s,"\n    %s=form_init({aq:%i, an:%i, am:%i, av:%i, and:%i, me:%i, name:'%s', _3b:%s, ro:%i});\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
 		_3bconfirmwindow,readonly);
 	htrAddScriptInit_va(s,"    %s.ChangeMode('NoData');\n",name);

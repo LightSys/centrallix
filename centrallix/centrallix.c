@@ -53,10 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.35 2005/03/01 07:14:59 gbeeley Exp $
+    $Id: centrallix.c,v 1.36 2005/06/23 22:07:58 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.36  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.35  2005/03/01 07:14:59  gbeeley
     - RPM build fixes.  The deployment root may not be the same as the build
       root, so we need to adjust the paths in the generated configuration
@@ -327,6 +334,7 @@ int cx__build = BUILD;
 int cx__subbuild = SUBBUILD;
 char* cx__stability = STABILITY;
 char* cx__years = YEARS;
+
 
 
 /*** Instantiate the globals from centrallix.h 

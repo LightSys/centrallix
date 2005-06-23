@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.58 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.59 2005/06/23 22:07:59 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.59  2005/06/23 22:07:59  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.58  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -544,12 +551,12 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
    /** Script initialization call. **/
    if(s->Capabilities.Dom0NS)
       {
-      htrAddScriptInit_va(s,"    %s=osrc_init(%s.layers.osrc%dloader,%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d,%d);\n",
+      htrAddScriptInit_va(s,"    %s=osrc_init({loader:%s.layers.osrc%dloader, readahead:%i, scrollahead:%i, replicasize:%i, sql:\"%s\", filter:\"%s\", baseobj:\"%s\", name:\"%s\", autoquery:%d, requestupdates:%d});\n",
 	    name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq,receive_updates);
       }
    else if(s->Capabilities.Dom1HTML)
       {
-      htrAddScriptInit_va(s,"    %s=osrc_init(document.getElementById('osrc%dloader'),%i,%i,%i,\"%s\",\"%s\",\"%s\",\"%s\",%d,%d);\n",
+      htrAddScriptInit_va(s,"    %s=osrc_init({loader:document.getElementById('osrc%dloader'), readahead:%i, scrollahead:%i, replicasize:%i, sql:\"%s\", filter:\"%s\", baseobj:\"%s\", name:\"%s\", autoquery:%d, requestupdates:%d});\n",
 	    name, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq,receive_updates);
       }
    else

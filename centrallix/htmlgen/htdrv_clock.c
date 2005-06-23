@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.15 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.16 2005/06/23 22:07:58 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.16  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.15  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -392,7 +399,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		parentname, id, nptr, parentobj);
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = cl_init(%s.layers.cl%dbase, %s.layers.cl%dbase.document.layers.cl%dcon1, %s.layers.cl%dbase.document.layers.cl%dcon2,\"%s\",\"%s\",%d,\"%s\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d);\n",
+	htrAddScriptInit_va(s, "    %s = cl_init({layer:%s.layers.cl%dbase, c1:%s.layers.cl%dbase.document.layers.cl%dcon1, c2:%s.layers.cl%dbase.document.layers.cl%dcon2, fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
 		nptr, parentname, id,
 		parentname, id, id,
 		parentname, id, id,

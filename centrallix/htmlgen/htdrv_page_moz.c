@@ -39,7 +39,7 @@ htpageRenderMozDefault(pHtSession s, pWgtrNode tree, int z, char* parentname, ch
 
 	
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
-	htrAddScriptInit_va(s,"    pg_ping_init(%s.getElementById('pgping'),%i);\n",parentname,watchdogtimer/2*1000);
+	htrAddScriptInit_va(s,"    pg_ping_init({layer:%s.getElementById('pgping'), i:%i});\n",parentname,watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandler(s, "document", "MOUSEMOVE","pg",

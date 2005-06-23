@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.40 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.41 2005/06/23 22:07:58 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.41  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.40  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -476,7 +483,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Script initialization call. **/
 	if (s->Capabilities.Dom1HTML)
 	    {
-	    htrAddScriptInit_va(s, "    %s = eb_init(document.getElementById(\"eb%dbase\"), document.getElementById(\"eb%dcon1\"), document.getElementById(\"eb%dcon2\"),\"%s\", %d, \"%s\");\n",
+	    htrAddScriptInit_va(s, "    %s = eb_init({layer:document.getElementById(\"eb%dbase\"), c1:document.getElementById(\"eb%dcon1\"), c2:document.getElementById(\"eb%dcon2\"), fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
 		nptr, id,
 		id,
 		id,
@@ -484,7 +491,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    }
 	else if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddScriptInit_va(s, "    %s = eb_init(%s.layers.eb%dbase, %s.layers.eb%dbase.document.layers.eb%dcon1,%s.layers.eb%dbase.document.layers.eb%dcon2,\"%s\", %d, \"%s\");\n",
+	    htrAddScriptInit_va(s, "    %s = eb_init({layer:%s.layers.eb%dbase, c1:%s.layers.eb%dbase.document.layers.eb%dcon1, c2:%s.layers.eb%dbase.document.layers.eb%dcon2, fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
 		nptr, parentname, id,
 		parentname, id, id,
 		parentname, id, id,

@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.26 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.27 2005/06/23 22:08:00 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.27  2005/06/23 22:08:00  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.26  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -420,21 +427,21 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
    /** Script initialization call. **/
    if (strlen(main_bgcolor) > 0) {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(\n"
-        "    %s.layers.radiobuttonpanel%dparentpane,\"%s\",1,\n"
-        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
-        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
-        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
-	"    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
+      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init({\n"
+        "    parentPane:%s.layers.radiobuttonpanel%dparentpane, fieldname:\"%s\", flag:1,\n"
+        "    borderPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
+        "    coverPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
+        "    titlePane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
+	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
    } else if (strlen(main_background) > 0) {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(\n"
-        "    %s.layers.radiobuttonpanel%dparentpane,\"%s\",2,\n"
-        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
-        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
-        "    %s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
-	"    \"%s\",\"%s\");\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
+      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init({\n"
+        "    parentPane:%s.layers.radiobuttonpanel%dparentpane, fieldname:\"%s\", flag:2,\n"
+        "    borderPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
+        "    coverPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
+        "    titlePane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
+	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
    } else {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init(%s.layers.radiobuttonpanel%dparentpane,\"%s\",0,0,0,0,0,0);\n", nptr, parentname, id,fieldname);
+      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init({parentPane:%s.layers.radiobuttonpanel%dparentpane, fieldname:\"%s\", flag:0, borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0});\n", nptr, parentname, id,fieldname);
    }
 
    htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"

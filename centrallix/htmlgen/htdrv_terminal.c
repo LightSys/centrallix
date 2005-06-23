@@ -43,6 +43,13 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_terminal.c,v $
+    Revision 1.8  2005/06/23 22:08:01  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.7  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -285,14 +292,14 @@ httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddStylesheetItem_va(s,"        .fixed%d {font-family: fixed; }\n",id);
 
 	/** init line **/
-	htrAddScriptInit_va(s,"    %s=terminal_init(%s,%d,'%s',%d,%d,new Array(",name,parentname,id,source.String,rows,cols);
+	htrAddScriptInit_va(s,"    %s=terminal_init({parent:%s, id:%d, source:'%s', rows:%d, cols:%d, colors:new Array(",name,parentname,id,source.String,rows,cols);
 	for(i=0;i<MAX_COLORS;i++)
 	    {
 	    if(i!=0)
 		htrAddScriptInit(s,",");
 	    htrAddScriptInit_va(s,"'%s'",colors[i]);
 	    }
-	htrAddScriptInit(s,"));\n");
+	htrAddScriptInit(s,")});\n");
 
 
 

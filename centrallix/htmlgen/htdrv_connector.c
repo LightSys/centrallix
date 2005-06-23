@@ -45,10 +45,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.18 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.19 2005/06/23 22:07:58 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.19  2005/06/23 22:07:58  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.18  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -315,7 +322,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "eparam", "null", 0);*/
 
 	/** Add a script init to install the connector **/
-	htrAddScriptInit_va(s,"    %s = new cn_init(%s,cn_%d);\n", nptr, parentobj, id);
+	htrAddScriptInit_va(s,"    %s = new cn_init({parent:%s, f:cn_%d});\n", nptr, parentobj, id);
 //	htrAddScriptInit_va(s,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
 	htrAddScriptInit_va(s,"    %s.Add('%s');\n", nptr, event);
 

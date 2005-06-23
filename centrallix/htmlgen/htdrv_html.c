@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.24 2005/02/26 06:32:21 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.25 2005/06/23 22:07:59 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.25  2005/06/23 22:07:59  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.24  2005/02/26 06:32:21  gbeeley
     - Get HTML widget working in Mozilla.
 
@@ -388,11 +395,11 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
             /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s,"    %s = ht_init(%s.cxSubElement(\"ht%dpane\"),%s.cxSubElement(\"ht%dpane2\"),%s.cxSubElement(\"ht%dfader\"),\"%s\",%s,%d,%d,%s,null);\n",
+		htrAddScriptInit_va(s,"    %s = ht_init({layer:%s.cxSubElement(\"ht%dpane\"), layer2:%s.cxSubElement(\"ht%dpane2\"), faderLayer:%s.cxSubElement(\"ht%dfader\"), source:\"%s\", pdoc:%s, width:%d, height:%d, parent:%s, loader:null});\n",
                     nptr, parentname, id, parentname, id, parentname, id, 
 		    src, parentname, w,h, parentobj);
 	    else
-		htrAddScriptInit_va(s,"    %s = ht_init(%s.cxSubElement(\"ht%dpane\"),%s.cxSubElement(\"ht%dpane2\"),%s.cxSubElement(\"ht%dfader\"),\"%s\",%s,%d,%d,%s,%s.cxSubElement(\"ht%dloader\"));\n",
+		htrAddScriptInit_va(s,"    %s = ht_init({layer:%s.cxSubElement(\"ht%dpane\"), layer2:%s.cxSubElement(\"ht%dpane2\"), faderLayer:%s.cxSubElement(\"ht%dfader\"), source:\"%s\", pdoc:%s, width:%d, height:%d, parent:%s, loader:%s.cxSubElement(\"ht%dloader\")});\n",
                     nptr, parentname, id, parentname, id, parentname, id, 
 		    src, parentname, w,h, parentobj, parentname, id);
     

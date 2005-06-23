@@ -41,10 +41,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.28 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.29 2005/06/23 22:08:00 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.29  2005/06/23 22:08:00  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.28  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -534,7 +541,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	/** Script initialization call. **/
 	/*htrAddScriptInit_va(s,"    %s = tc_init(%s.layers.tc%dbase, %d, \"%s\", \"%s\");\n",
 		nptr, parentname, id, tloc, main_bg, inactive_bg);*/
-	htrAddScriptInit_va(s,"    %s = tc_init(%s.cxSubElement(\"tc%dbase\"), %d, \"%s\", \"%s\");\n",
+	htrAddScriptInit_va(s,"    %s = tc_init({layer:%s.cxSubElement(\"tc%dbase\"), tloc:%d, mainBackground:\"%s\", inactiveBackground:\"%s\"});\n",
 		nptr, parentname, id, tloc, main_bg, inactive_bg);
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/

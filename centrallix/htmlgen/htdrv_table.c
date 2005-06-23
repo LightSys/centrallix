@@ -59,10 +59,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.45 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.46 2005/06/23 22:08:01 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.46  2005/06/23 22:08:01  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.45  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -505,7 +512,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
-	htrAddScriptInit_va(s,"    %s = tbld_init('%s',%s.layers.tbld%dpane,%s.layers.tbld%dscroll,\"tbld%dbox\",\"%s\",%d,%d,%d,%d,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%i,%i,%i,%i,new Array(",
+	htrAddScriptInit_va(s,"    %s = tbld_init({tablename:'%s', table:%s.layers.tbld%dpane, scroll:%s.layers.tbld%dscroll, boxname:\"tbld%dbox\", name:\"%s\", height:%d, width:%d, innerpadding:%d, innerborder:%d, windowsize:%d, rowheight:%d, cellhspacing:%d, cellvspacing:%d, textcolor:\"%s\", textcolorhighlight:\"%s\", titlecolor:\"%s\", rowbgnd1:\"%s\", rowbgnd2:\"%s\", rowbgndhigh:\"%s\", hdrbgnd:\"%s\", followcurrent:%i, dragcols:%i, colsep:%i, gridinemptyrows:%i, cols:new Array(",
 		t->name,t->name,parentname,t->id,parentname,t->id,t->id,t->name,t->h,t->w-18,t->inner_padding,
 		t->inner_border,t->windowsize,t->rowheight,t->cellvspacing, t->cellhspacing,t->textcolor, 
 		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,t->row_bgndhigh,t->hdr_bgnd,
@@ -518,7 +525,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 	    htrAddScriptInit_va(s,"new Array(\"%s\",\"%s\",%d),",t->col_infs[colid]->Name,coltitle,colw);
 	    }
 
-	htrAddScriptInit(s,"null));\n");
+	htrAddScriptInit(s,"null)});\n");
 
 
 
@@ -880,7 +887,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* p
 
 	
 	/** Call init function **/
- 	htrAddScriptInit_va(s,"    tbls_init(%s.layer,\"%s\",%d,%d,%d);\n",parentname,t->name,t->w,t->inner_padding,t->inner_border);
+ 	htrAddScriptInit_va(s,"    tbls_init({parentLayer:%s.layer, name:\"%s\", width:%d, cp:%d, cs:%d});\n",parentname,t->name,t->w,t->inner_padding,t->inner_border);
 
 
 

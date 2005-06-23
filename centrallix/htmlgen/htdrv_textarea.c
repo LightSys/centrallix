@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.21 2005/02/26 06:33:29 gbeeley Exp $
+    $Id: htdrv_textarea.c,v 1.22 2005/06/23 22:08:01 ncolson Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.22  2005/06/23 22:08:01  ncolson
+    Modified *_init JavaScript function call here in the HTML generator so that
+    when it is executed in the generated page it no longer passes parameters as
+    individual variables, but as properties of a single object, which are position
+    independent. Made corresponding changes in the *.js file to pick apart the
+    object once it is passed.
+
     Revision 1.21  2005/02/26 06:33:29  gbeeley
     - just some brainstorming.  Thinking of multiple data formats.
 
@@ -369,13 +376,13 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Script initialization call. **/
 	if (s->Capabilities.Dom1HTML)
 	    {
-	    htrAddScriptInit_va(s, "    %s = tx_init(document.getElementById(\"tx%dbase\"), \"%s\", %d, %d, \"%s\");\n",
+	    htrAddScriptInit_va(s, "    %s = tx_init({layer:document.getElementById(\"tx%dbase\"), fieldname:\"%s\", isReadonly:%d, mode:%d, mainBackground:\"%s\"});\n",
 		nptr, id, 
 		fieldname, is_readonly, mode, main_bg);
 	    }
 	else if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddScriptInit_va(s, "    %s = tx_init(%s.layers.tx%dbase, \"%s\", %d, %d, \"%s\");\n",
+	    htrAddScriptInit_va(s, "    %s = tx_init({layer:%s.layers.tx%dbase, fieldname:\"%s\", isReadonly:%d, mode:%d, mainBackground:\"%s\"});\n",
 		nptr, parentname, id, 
 		fieldname, is_readonly, mode, main_bg);
 	    }
