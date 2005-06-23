@@ -106,18 +106,22 @@ function add_radiobutton(optionPane, parentPane, selected, ml) {
 	}
 }
 
-function radiobuttonpanel_init(parentPane,fieldname,flag,borderpane,coverpane,titlepane,main_bg,outline_bg) {
-	if(flag==1) {
-		parentPane.bgColor=main_bg;
-		borderpane.bgColor=outline_bg;
-		coverpane.bgColor=main_bg;
-		titlepane.bgColor=main_bg;
+function radiobuttonpanel_init(param) {
+	var parentPane = param.parentPane;
+	var borderpane = param.borderPane;
+	var coverpane = param.coverPane;
+	var titlepane = param.titlePane;
+	if(param.flag==1) {
+		parentPane.bgColor=param.mainBackground;
+		borderpane.bgColor=param.outlineBackground;
+		coverpane.bgColor=param.mainBackground;
+		titlepane.bgColor=param.mainBackground;
 	}
-	if(flag==2) {
-		parentPane.background.src=main_bg;
-		borderpane.background.src=outline_bg;
-		coverpane.background.src=main_bg;
-		titlepane.background.src=main_bg;
+	if(param.flag==2) {
+		parentPane.background.src=param.mainBackground;
+		borderpane.background.src=param.outlineBackground;
+		coverpane.background.src=param.mainBackground;
+		titlepane.background.src=param.mainBackground;
 	}
 	parentPane.buttonList = new Array();
 	parentPane.setvalue = rb_setvalue;
@@ -128,7 +132,7 @@ function radiobuttonpanel_init(parentPane,fieldname,flag,borderpane,coverpane,ti
 	parentPane.enable = rb_enable;
 	parentPane.disable = rb_disable;
 	parentPane.readonly = rb_readonly;
-	parentPane.fieldname = fieldname;
+	parentPane.fieldname = param.fieldname;
 	parentPane.form = fm_current;
 	parentPane.document.layer = parentPane;
 	parentPane.mainlayer = parentPane;

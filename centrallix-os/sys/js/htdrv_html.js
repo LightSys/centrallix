@@ -158,36 +158,40 @@ function ht_click(e)
     return false;
     }
 
-function ht_init(l,l2,fl,source,pdoc,w,h,p,ld)
+
+function ht_init(param)
     {
+    var l = param.layer;
+    var l2 = param.layer2;
+    var source = param.source;
     htr_init_layer(l,l,'ht');
     htr_init_layer(l2,l,'ht');
-    htr_init_layer(fl,l,'ht');
-    if (ld) htr_init_layer(ld, l, 'ht');
-    l.loader = ld;
-    l2.loader = ld;
-    l.pdoc = pdoc;
-    l2.pdoc = pdoc;
+    htr_init_layer(param.faderLayer,l,'ht');
+    if (param.loader) htr_init_layer(param.loader, l, 'ht');
+    l.loader = param.loader;
+    l2.loader = param.loader;
+    l.pdoc = param.pdoc;
+    l2.pdoc = param.pdoc;
     l.curLayer = l;
     l.altLayer = l2;
-    l.faderLayer = fl;
-    l.LSParent = p;
+    l.faderLayer = param.faderLayer;
+    l.LSParent = param.parent;
     l.content = '';
     l.content_type = 'text/html';
-    if (h != -1)
+    if (param.height != -1)
 	{
-	setClipHeight(l, h);
-	setClipHeight(l2, h);
+	setClipHeight(l, param.height);
+	setClipHeight(l2, param.height);
 	}
     else
 	{
 	setClipHeight(l, getdocHeight(l));
 	}
     pg_set_style(l, 'height', getdocHeight(l));
-    if (w != -1)
+    if (param.width != -1)
 	{
-	setClipWidth(l, w);
-	setClipWidth(l2, w);
+	setClipWidth(l, param.width);
+	setClipWidth(l2, param.width);
 	}
     else
 	{
@@ -214,5 +218,4 @@ function ht_init(l,l2,fl,source,pdoc,w,h,p,ld)
     htr_watch(l, 'source', 'ht_sourcechanged');
     pg_resize(l.parentLayer);
     return l;
-    }
-
+    }    

@@ -59,8 +59,15 @@ function dt_disable() {
 }
 
 // Date/Time Functions
-
-function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
+function dt_init(param){
+	var l = param.layer;
+	var c1 = param.c1;
+	var c2 = param.c2;
+	var bg = param.background;
+	var w = param.width;
+	var w2 = param.width2;
+	var h = param.height;
+	var h2 = param.height2;
 	l.enabled = 'full';
 	l.mainlayer = l;
 	c1.mainlayer = l;
@@ -72,7 +79,7 @@ function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	l.disable    = dt_disable;
 	l.clearvalue = dt_clearvalue;
 	l.resetvalue = dt_resetvalue;
-	l.fieldname  = fn;
+	l.fieldname  = param.fieldname;
 	l.getfocushandler  = dt_getfocus;
 	l.losefocushandler = dt_losefocus;
 	l.keyhandler = dt_keyhandler;
@@ -82,17 +89,17 @@ function dt_init(l,c1,c2,id,bg,fg,fn,w,h,w2,h2) {
 	l.w = w; l.h = h;
 	l.bg = htr_extract_bgcolor(bg);
 	l.ubg = bg;
-	l.fg = fg;
+	l.fg = param.foreground;
 	l.w2 = w2;
 	l.h2 = h2;
 	l.form = fm_current;
-	l.DateStr = id;
+	l.DateStr = param.id;
 	l.MonthsAbbrev = Array('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
 	l.VisLayer = c1;
 	l.HidLayer = c2;
-	if (id) {
-		l.DateObj = new Date(id);
-		l.TmpDateObj = new Date(id);
+	if (param.id) {
+		l.DateObj = new Date(param.id);
+		l.TmpDateObj = new Date(param.id);
 		dt_drawdate(l, l.DateObj);
 	} else {
 		l.DateObj = new Date();

@@ -362,20 +362,21 @@ function term_deselect()
     }
 
 /** Terminal initializer **/
-function terminal_init(parent,id,source,rows,cols,colors)
+function terminal_init(param)
     {
-    var term = parent.getElementById('term'+id+'base');
-    term.id = id;
-    term.reader = parent.getElementById('term'+id+'reader');
+    var parent = param.parent;
+    var term = parent.getElementById('term'+param.id+'base');
+    term.id = param.id;
+    term.reader = parent.getElementById('term'+param.id+'reader');
     term.reader.term = term;
-    term.writer = parent.getElementById('term'+id+'writer');
+    term.writer = parent.getElementById('term'+param.id+'writer');
     term.writer.term = term;
     term.kind = 'term';
 
-    term.source = source;
-    term.rows = rows;
-    term.cols = cols;
-    term.colors = colors;
+    term.source = param.source;
+    term.rows = param.rows;
+    term.cols = param.cols;
+    term.colors = param.colors;
 
     term.blocksize = 2048;
     term.tabstop = 8;

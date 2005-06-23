@@ -9,10 +9,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function wn_init(l,ml,gs,ct,titlebar)
+function wn_init(param)
     {
+    var l = param.layer;
+    var titlebar = param.titlebar;
     htr_init_layer(l,l,"wn");
-    htr_init_layer(ml,l,"wn");
+    htr_init_layer(param.mainlayer,l,"wn");
     /** NS4 version doesn't use a separate div for the title bar **/
     if(cx__capabilities.Dom1HTML && titlebar)
 	{
@@ -34,7 +36,7 @@ function wn_init(l,ml,gs,ct,titlebar)
 	l.osrc.push(t);
 	t=t.oldosrc;
 	}
-    l.ContentLayer = ml;
+    l.ContentLayer = param.mainlayer;
     l.ContentLayer.maxheight = l.ContentLayer.minheight = getClipHeight(l.ContentLayer);
     l.ContentLayer.maxwidth = l.ContentLayer.minwidth = getClipWidth(l.ContentLayer);
 
@@ -45,8 +47,8 @@ function wn_init(l,ml,gs,ct,titlebar)
     l.orig_bottom = pg_get_style(l,'clip.bottom');
     l.orig_top = pg_get_style(l,'clip.top');
 
-    l.gshade = gs;
-    l.closetype = ct;
+    l.gshade = param.gshade;
+    l.closetype = param.closetype;
     l.working = false;
     l.shaded = false;
 

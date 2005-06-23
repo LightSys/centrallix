@@ -449,14 +449,14 @@ function dd_add_items(l,ary)
     l.Values = ary;
     }
 
-
-function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
+function dd_init(param)
     {
-    l.NumDisplay = d;
-    l.Mode = m;
-    l.SQL = s;
-    l.VisLayer = c1;
-    l.HidLayer = c2;
+    var l = param.layer;
+    l.NumDisplay = param.numDisplay;
+    l.Mode = param.mode;
+    l.SQL = param.sql;
+    l.VisLayer = param.c1;
+    l.HidLayer = param.c2;
     htr_init_layer(l.VisLayer, l, 'ddtxt');
     htr_init_layer(l.HidLayer, l, 'ddtxt');
     l.VisLayer.index = null;
@@ -476,10 +476,10 @@ function dd_init(l,c1,c2,bg,hl,fn,d,m,s,w,h)
     l.keyhandler = dd_keyhandler;
     l.losefocushandler = dd_losefocus;
     l.getfocushandler = dd_getfocus;
-    l.bg = bg;
-    l.hl = hl;
-    l.w = w; l.h = h;
-    l.fieldname = fn;
+    l.bg = param.background;
+    l.hl = param.highlight;
+    l.w = param.width; l.h = param.height;
+    l.fieldname = param.fieldname;
     l.enabled = 'full';
     l.form = fm_current;
     htr_init_layer(l,l,'dd');

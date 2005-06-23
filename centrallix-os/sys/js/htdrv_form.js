@@ -875,10 +875,10 @@ function form_cb_reveal(element,event)
  ** _3b - three-button confirm window
  ** ro - is the form readonly?
  **/
-function form_init(aq,an,am,av,and,me,name,_3b,ro)
+function form_init(param)
     {
     var form = new Object();
-    form.readonly=ro;
+    form.readonly=param.ro;
     form.elements = new Array();
     form.statuswidgets = new Array();
     form.mode = 'NoData';
@@ -893,7 +893,7 @@ function form_init(aq,an,am,av,and,me,name,_3b,ro)
 	form.osrc.Register(form);
 	}
     form.IsUnsaved = false;
-    form.name = name;
+    form.name = param.name;
     form.Pending = false;
 /** remember what to do after callbacks.... **/
     form.cb = new Array();
@@ -919,14 +919,14 @@ function form_init(aq,an,am,av,and,me,name,_3b,ro)
     form.lastrecid = null;
 
 /** initialize params from .app file **/
-    form.allowquery = aq;
-    form.allownew = an;
-    form.allowmodify = am;
-    form.allowview = av;
-    form.allownodata = and;
-    form.multienter = me;
+    form.allowquery = param.aq;
+    form.allownew = param.an;
+    form.allowmodify = param.am;
+    form.allowview = param.av;
+    form.allownodata = param.and;
+    form.multienter = param.me;
 /** initialize actions and callbacks **/
-    form._3bconfirmwindow = _3b;
+    form._3bconfirmwindow = param._3b;
     form._3bconfirm_discard = form_3bconfirm_discard;
     form._3bconfirm_cancel = form_3bconfirm_cancel;
     form._3bconfirm_save = form_3bconfirm_save;

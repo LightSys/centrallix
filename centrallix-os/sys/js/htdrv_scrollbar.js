@@ -9,13 +9,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function sb_init(l,tname,p,is_h,r)
+function sb_init(param)
     {
     var tlayer=null;
+    var l = param.layer;
     for(i=0;i<l.layers.length;i++)
 	{
 	var ml=l.layers[i];
-	if(ml.name==tname) tlayer=ml;
+	if(ml.name==param.tname) tlayer=ml;
 	}
     for(i=0;i<l.document.images.length;i++)
 	{
@@ -42,11 +43,11 @@ function sb_init(l,tname,p,is_h,r)
     l.document.layer = l;
     l.mainlayer = l;
     l.kind = 'sb';
-    l.LSParent = p;
-    l.range = r;
+    l.LSParent = param.parent;
+    l.range = param.range;
     l.value = 0;
-    l.is_horizontal = is_h;
-    l.controlsize = is_h?(getClipWidth(l) - 18*3):(getClipHeight(l) - 18*3);
+    l.is_horizontal = param.isHorizontal;
+    l.controlsize = param.isHorizontal?(getClipWidth(l) - 18*3):(getClipHeight(l) - 18*3);
     htr_watch(l,'range','sb_range_changed');
     l.ActionMoveTo = sb_action_move_to;
     l.SetThumb = sb_set_thumb;

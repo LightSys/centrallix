@@ -269,21 +269,23 @@ function tbld_cb_reveal(event)
     }
 
 
-function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborder,windowsize,rowheight,cellhspacing,cellvspacing,textcolor,textcolorhighlight, titlecolor,row_bgnd1,row_bgnd2,row_bgndhigh,hdr_bgnd,followcurrent,dragcols,colsep,gridinemptyrows,cols)
+function tbld_init(param)
     {
+    var t = param.table;
+    var scroll = param.scroll;
     t.startat=1;
-    t.tablename=nm;
-    t.dragcols=dragcols;
-    t.colsep=colsep;
-    t.gridinemptyrows;
-    t.cr=1;
-    t.followcurrent=followcurrent>0?true:false;
-    t.hdr_bgnd=hdr_bgnd;
-    t.scrolldoc=scroll.document;
+    t.tablename = param.tablename;
+    t.dragcols = param.dragcols;
+    t.colsep = param.colsep;
+    t.gridinemptyrows;	//should equal param.gridinemptyrows perhaps?
+    t.cr = 1;
+    t.followcurrent = param.followcurrent>0?true:false;
+    t.hdr_bgnd = param.hdrbgnd;
+    t.scrolldoc = scroll.document;
     t.scrolldoc.Click=tbld_bar_click;
     t.up=scroll.document.u;
     t.down=scroll.document.d;
-    t.box=scroll.layers[boxname];
+    t.box=scroll.layers[param.boxname];
     t.box.document.layer=t.box;
     t.scrolldoc.b=t.box;
     t.up.Click=tbld_up_click;
@@ -301,19 +303,19 @@ function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborde
     t.scrolldoc.subkind='bar';
     
     t.down.m+='436c617=3732c 2053=7072696=e672032';
-    t.rowheight=rowheight>0?rowheight:15;
-    t.innerpadding=innerpadding;
-    t.cellhspacing=cellhspacing>0?cellhspacing:1;
-    t.cellvspacing=cellvspacing>0?cellvspacing:1;
-    t.textcolor=textcolor;
-    t.textcolorhighlight=textcolorhighlight?textcolorhighlight:textcolor;
+    t.rowheight=param.rowheight>0?param.rowheight:15;
+    t.innerpadding=param.innerpadding;
+    t.cellhspacing=param.cellhspacing>0?param.cellhspacing:1;
+    t.cellvspacing=param.cellvspacing>0?param.cellvspacing:1;
+    t.textcolor=param.textcolor;
+    t.textcolorhighlight=param.textcolorhighlight?param.textcolorhighlight:param.textcolor;
     t.down.m+='3030=323a 0d4a 6f736=82056 616e6=465';
-    t.titlecolor=titlecolor;
-    t.row_bgnd1=row_bgnd1
-    t.row_bgnd2=row_bgnd2?row_bgnd2:row_bgnd1;
-    t.row_bgndhigh=row_bgndhigh?row_bgndhigh:'bgcolor=black';
+    t.titlecolor=param.titlecolor;
+    t.row_bgnd1=param.rowbgnd1
+    t.row_bgnd2=param.rowbgnd2?param.rowbgnd2:param.rowbgnd1;
+    t.row_bgndhigh=param.rowbgndhigh?param.rowbgndhigh:'bgcolor=black';
     t.down.m+='727=7616c6 b65720=d4a6f 686e2=05065';
-    t.cols=cols;
+    t.cols=param.cols;
     t.colcount=0;
     for(var i in t.cols)
 	{
@@ -331,18 +333,18 @@ function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborde
     osrc_current.Register(t);
     t.osrc = osrc_current;
     t.down.m+='65626c=6573 0d4a6=f6e2 05275=70700d';
-    t.windowsize = windowsize > 0 ? windowsize : t.osrc.replicasize;
+    t.windowsize = param.windowsize > 0 ? param.windowsize : t.osrc.replicasize;
 
     // Sanity bounds checks on visible records
-    if (t.windowsize > height/t.rowheight)
-	t.windowsize = Math.floor(height/t.rowheight);
+    if (t.windowsize > param.height/t.rowheight)
+	t.windowsize = Math.floor(param.height/t.rowheight);
     if (t.windowsize > t.osrc.replicasize)
 	t.windowsize = t.osrc.replicasize;
 
     t.maxwindowsize = t.windowsize;
     t.rows=new Array(t.windowsize+1);
-    t.clip.width=width;
-    t.clip.height=height;
+    t.clip.width=param.width;
+    t.clip.height=param.height;
     t.kind='tabledynamic';
     t.subkind='table';
     t.document.layer=t;
@@ -351,14 +353,14 @@ function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborde
 /** build layers **/
     for(var i=0;i<t.windowsize+1;i++)
 	{
-	t.rows[i]=new Layer(width,t);
+	t.rows[i]=new Layer(param.width,t);
 
-	t.rows[i].fg=new Layer(width,t.rows[i]);
+	t.rows[i].fg=new Layer(param.width,t.rows[i]);
 	t.rows[i].fg.bg=t.rows[i];
 	t.rows[i].fg.x=t.cellhspacing;
 	t.rows[i].fg.y=t.cellvspacing;
 	t.rows[i].fg.visibility='show';
-	t.rows[i].fg.clip.width=width-t.cellhspacing*2;
+	t.rows[i].fg.clip.width=param.width-t.cellhspacing*2;
 	t.rows[i].fg.clip.height=t.rowheight-t.cellvspacing*2;
 	t.rows[i].fg.kind='tabledynamic';
 	t.rows[i].fg.subkind='row';
@@ -376,14 +378,14 @@ function tbld_init(nm,t,scroll,boxname,name,height,width,innerpadding,innerborde
 
 	t.rows[i].x=0;
 	t.rows[i].y=voffset;
-	t.rows[i].clip.width=width;
+	t.rows[i].clip.width=param.width;
 	t.rows[i].clip.height=t.rowheight;
 	t.rows[i].visibility='inherit';
 	t.rows[i].fg.cols=new Array(t.colcount);
 	var hoffset=0;
 	for(var j=0;j<t.colcount;j++)
 	    {
-	    t.rows[i].fg.cols[j]=new Layer(width,t.rows[i].fg);
+	    t.rows[i].fg.cols[j]=new Layer(param.width,t.rows[i].fg);
 	    var l = t.rows[i].fg.cols[j];
 	    l.ChangeWidth = tbld_change_width;
 	    l.row=t.rows[i].fg;
@@ -485,8 +487,13 @@ function tbls_rowunclick()
     }
 
 /** Function to enable clickable table rows **/
-function tbls_init(pl, nm, w, cp, cs)
+function tbls_init(param)
     {
+    var pl = param.parentLayer;
+    var nm = param.name;
+    var w = param.width;
+    var cp = param.cp;
+    var cs = param.cs; 
     if (w == -1) w = pl.clip.width;
     ox = -1;
     oy = -1;

@@ -407,4 +407,3 @@ function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfi
 
     return l;
     }
-

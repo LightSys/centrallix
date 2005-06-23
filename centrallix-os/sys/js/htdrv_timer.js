@@ -37,16 +37,16 @@ function tm_action_canceltimer(aparam)
     this.timerid = null;
     }
 
-function tm_init(t,ar,as)
+function tm_init(param)
     {
     tm = new Object();
-    tm.autostart = as;
-    tm.autoreset = ar;
-    tm.msec = t;
+    tm.autostart = param.autostart;
+    tm.autoreset = param.autoreset;
+    tm.msec = param.time;
     tm.ActionSetTimer = tm_action_settimer;
     tm.ActionCancelTimer = tm_action_canceltimer;
-    if (as)
-	tm.timerid = setTimeout(tm_expire,t,tm);
+    if (param.autostart)
+	tm.timerid = setTimeout(tm_expire, param.time, tm);
     else
 	tm.timerid = null;
     return tm;

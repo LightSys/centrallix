@@ -44,10 +44,10 @@ function cn_add(e)
     this.LSParent['Event' + e][this.LSParent['Event' + e].length] = this.RunEvent;
     }
 
-function cn_init(p,f)
+function cn_init(param)
     {
     this.Add = cn_add;
     this.type = 'cn';
-    this.LSParent = p;
-    this.RunEvent = f;
+    this.LSParent = param.parent;
+    this.RunEvent = param.f;
     }

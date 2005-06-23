@@ -9,38 +9,44 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function cl_init(l,c1,c2,f,bg,s,fg1,fg2,fs,m,b,sox,soy,sf,apf,mt) {
-	c1.document.layer = c1;
-	c2.document.layer = c2;
-	c1.mainlayer=l;
-	c2.mainlayer=l;
-	l.mainlayer=l;
-	c1.kind='cl';
-	c2.kind='cl';
-	l.kind='cl';
-	l.contentLayer = c1;
-	l.hiddenLayer = c2;
-	l.shadowed = s;
-	l.moveable = m;
-	l.bold = b;
-	l.fgColor1 = fg1;
-	l.fgColor2 = fg2;
-	l.fontSize = fs;
-	l.showSecs = sf;
-	l.showAmPm = apf;
-	l.milTime = mt;
-	if (s==1) {
-		l.contentLayer.shadowLayer = new Layer(l.document.width-sox,l);
-		l.contentLayer.shadowLayer.moveTo(sox,soy);
-		l.contentLayer.shadowLayer.zIndex = l.contentLayer.zIndex-1;
-		l.contentLayer.shadowLayer.visibility = 'inherit';
-		l.hiddenLayer.shadowLayer = new Layer(l.document.width-sox,l);
-		l.hiddenLayer.shadowLayer.moveTo(sox,soy);
-		l.hiddenLayer.shadowLayer.zIndex = l.hiddenLayer.zIndex-1;
-		l.hiddenLayer.shadowLayer.visibility = 'hidden';
-	}
-	cl_update_time(l);
-	return l;
+function cl_init(param){
+	var l = param.layer;	
+	var c1 = param.c1;
+	var c2 = param.c2;
+	var f = param.fieldname;
+	var bg = param.background;
+
+        c1.document.layer = c1;
+        c2.document.layer = c2;
+        c1.mainlayer=l;
+        c2.mainlayer=l;
+        l.mainlayer=l;
+        c1.kind='cl';
+        c2.kind='cl';
+        l.kind='cl';
+        l.contentLayer = c1;
+        l.hiddenLayer = c2;
+        l.shadowed = param.shadowed;
+        l.moveable = param.moveable;
+        l.bold = param.bold;
+        l.fgColor1 = param.foreground1;
+        l.fgColor2 = param.foreground2;
+        l.fontSize = param.fontsize;
+        l.showSecs = param.showSecs;
+        l.showAmPm = param.showAmPm;
+        l.milTime = param.milTime;
+        if (param.shadowed==1) {
+                l.contentLayer.shadowLayer = new Layer(l.document.width-param.sox,l);
+                l.contentLayer.shadowLayer.moveTo(param.sox,param.soy);
+                l.contentLayer.shadowLayer.zIndex = l.contentLayer.zIndex-1;
+                l.contentLayer.shadowLayer.visibility = 'inherit';
+                l.hiddenLayer.shadowLayer = new Layer(l.document.width-param.sox,l);
+                l.hiddenLayer.shadowLayer.moveTo(param.sox,param.soy);
+                l.hiddenLayer.shadowLayer.zIndex = l.hiddenLayer.zIndex-1;
+                l.hiddenLayer.shadowLayer.visibility = 'hidden';
+        }
+        cl_update_time(l);
+        return l;
 }
 
 function cl_get_time(l) {

@@ -95,7 +95,7 @@ function tv_action_setroot(aparam)
     // Set the root
     if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
     if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init(this.root,aparam.NewRoot,this.root.ld,this.root.pdoc,getClipWidth(this.root),this.root.LSParent,aparam.NewRootObj,this.show_branches);
+    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, pdoc:this.root.pdoc, width:getClipWidth(this.root), parent:this.root.LSParent, newroot:aparam.NewRootObj, branches:this.show_branches});
     if (aparam.Expand == 'yes') this.root.expand();
     }
 
@@ -596,11 +596,13 @@ function tv_loaded(e)
     return false;
     }
 
-function tv_init(l,fname,loader,pdoc,w,p,newroot,b)
+function tv_init(param)
     {
-    l.LSParent = p;
-    l.fname = fname;
-    l.show_branches = b;
+    var l = param.layer;
+    var pdoc = param.pdoc;
+    l.LSParent = param.parent;
+    l.fname = param.fname;
+    l.show_branches = param.branches;
     if (htr_getvisibility(l) == 'inherit')
 	{
 	l.tree_depth = 0;
@@ -614,7 +616,7 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot,b)
     var t;
     if(!l.is_initialized)
 	{ /* not re-init */
-	if(t=(/javascript:([a-zA-Z0-9_]*)/).exec(fname))
+	if(t=(/javascript:([a-zA-Z0-9_]*)/).exec(param.fname))
 	   {
 	   l.isjs=true;
 	   if(t[1])
@@ -630,9 +632,9 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot,b)
     else
 	{ /* re-init */
 	tv_build_layer(l,"/sys/images/ico02b.gif","",l.fname,false,null);
-	if (newroot)
-	    l.objptr = newroot;
-	else if (t=(/javascript:([a-zA-Z0-9_]*)/).exec(fname))
+	if (param.newroot)
+	    l.objptr = param.newroot;
+	else if (t=(/javascript:([a-zA-Z0-9_]*)/).exec(param.fname))
 	    l.objptr = eval(t[1]);
 	else
 	    l.objptr = window;
@@ -645,7 +647,7 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot,b)
     l.img.kind = 'tv';
     l.kind = 'tv';
     l.pdoc = pdoc;
-    l.ld = loader;
+    l.ld = param.loader;
     htr_init_layer(l,l,'tv');
     l.mainlayer = l;
     //l.ld.parent = l;
@@ -663,8 +665,8 @@ function tv_init(l,fname,loader,pdoc,w,p,newroot,b)
 	{
 	alert('browser not supported');
 	}
-    setClipWidth(l, w);
-    l.setwidth = w;
+    setClipWidth(l, param.width);
+    l.setwidth = param.width;
     l.childimgs = '';
     l.collapse=tv_collapse;
     l.expand=tv_expand;

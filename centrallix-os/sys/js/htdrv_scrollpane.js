@@ -9,8 +9,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function sp_init(l,aname,tname,p)
+function sp_init(param)
     {
+    var l = param.layer; 
     var alayer=null;
     var tlayer=null;
     var ml;
@@ -22,14 +23,14 @@ function sp_init(l,aname,tname,p)
 	for(i=0;i<layers.length;i++)
 	    {
 	    ml=layers[i];
-	    if(ml.name==aname) alayer=ml;
-	    if(ml.name==tname) tlayer=ml;
+	    if(ml.name==param.aname) alayer=ml;
+	    if(ml.name==param.tname) tlayer=ml;
 	    }
 	}
     else if(cx__capabilities.Dom1HTML)
 	{
-	alayer = document.getElementById(aname);
-	tlayer = document.getElementById(tname);
+	alayer = document.getElementById(param.aname);
+	tlayer = document.getElementById(param.tname);
 	}
     else
 	{
@@ -64,7 +65,7 @@ function sp_init(l,aname,tname,p)
     htr_init_layer(l,l,"sp");
     htr_init_layer(tlayer,l,"sp");
     htr_init_layer(alayer,l,"sp");
-    l.LSParent = p;
+    l.LSParent = param.parent;
     l.thum = tlayer;
     l.area = alayer;
     l.UpdateThumb = sp_UpdateThumb;

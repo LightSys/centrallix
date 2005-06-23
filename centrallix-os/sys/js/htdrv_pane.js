@@ -9,8 +9,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function pn_init(l,ml)
+function pn_init(param)
     {
+    var l = param.layer;
+    var ml = param.mainlayer;
     if((!cx__capabilities.Dom0NS) && cx__capabilities.CSS1)
 	{
 	ml = l;

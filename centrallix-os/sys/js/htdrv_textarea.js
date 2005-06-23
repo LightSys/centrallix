@@ -561,9 +561,10 @@ function tx_deselect()
     }
 
 /** Textarea initializer **/
-function tx_init(l,fieldname,is_readonly,mode,main_bg)
+function tx_init(param)
     {
-    if (!main_bg)
+    var l = param.layer;
+    if (!param.mainBackground)
 	{
 	if (cx__capabilities.Dom0NS)
 	    {
@@ -580,7 +581,7 @@ function tx_init(l,fieldname,is_readonly,mode,main_bg)
 	}
     htutil_tag_images(l.document,'tx',l,l);
     htr_init_layer(l,l,'tx');
-    l.fieldname = fieldname;
+    l.fieldname = param.fieldname;
     ibeam_init();
     l.rowCharLimit = Math.floor((getClipWidth(l)-2)/text_metric.charWidth);
     l.cursorPos = 0;
@@ -596,7 +597,7 @@ function tx_init(l,fieldname,is_readonly,mode,main_bg)
     l.enablenew = tx_enable;
     l.disable = tx_disable;
     l.readonly = tx_readonly;
-    if (is_readonly)
+    if (param.isReadonly)
         {
         l.enablemodify = tx_disable;
         l.enabled = 'disable';
@@ -606,12 +607,12 @@ function tx_init(l,fieldname,is_readonly,mode,main_bg)
         l.enablemodify = tx_enable;
         l.enabled = 'full';
         }
-    l.mode = mode; // 0=text, 1=html, 2=wiki
+    l.mode = param.mode; // 0=text, 1=html, 2=wiki
     l.isFormStatusWidget = false;
     if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'tbox', 'tbox', is_readonly?0:3);
+	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'tbox', 'tbox', param.isReadonly?0:3);
     else
-	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'tbox', 'tbox', is_readonly?0:3);
+	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'tbox', 'tbox', param.isReadonly?0:3);
     if (fm_current) fm_current.Register(l);
     l.form = fm_current;
     l.changed = false;

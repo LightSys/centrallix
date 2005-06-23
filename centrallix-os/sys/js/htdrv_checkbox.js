@@ -117,13 +117,15 @@ function checkbox_hintschanged()
 
 // checked: -1 = null, 0 = unchecked, 1 = checked.
 // enabled: 0 = disabled, 1 = enabled
-function checkbox_init(l,fieldname,checked,enabled) 
+
+function checkbox_init(param)
     {
+    var l = param.layer;
     htr_init_layer(l, l, 'checkbox');
-    l.fieldname = fieldname;
-    l.is_checked = checked;
-    l.is_checked_initial = checked;
-    l.enabled = enabled;
+    l.fieldname = param.fieldname;
+    l.is_checked = param.checked;
+    l.is_checked_initial = param.checked;
+    l.enabled = param.enabled;
     l.form = fm_current;
     var imgs = pg_images(l);
     imgs[0].kind = 'checkbox';

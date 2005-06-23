@@ -10,8 +10,10 @@
 // GNU Lesser General Public License for more details.
 
 
-function pg_ping_init(l,i)
+function pg_ping_init(param)
     {
+    var l = param.layer;
+    var i = param.i;
     l.tid=setInterval(pg_ping_send,i,l);
     }
 

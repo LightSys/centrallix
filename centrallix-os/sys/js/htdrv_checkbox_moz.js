@@ -89,10 +89,11 @@ function checkbox_disable()
     }
 
 /** Checkbox initializer **/
-function checkbox_init(l,fieldname,checked) {
+function checkbox_init(param){
+   var l = param.layer;
    l.kind = 'checkbox';
-   l.fieldname = fieldname;
-   l.is_checked = checked;
+   l.fieldname = param.fieldname;
+   l.is_checked = param.checked;
    l.enabled = true;
    l.form = fm_current;
    var img=l.getElementsByTagName('img')[0];

@@ -34,9 +34,12 @@ function ib_setenable(prop,oldval,newval)
     return newval;
     }
 
-function ib_init(l,n,p,c,d,w,h,po,nm,enable)
+function ib_init(param)
     {
-    l.LSParent = po;
+    var l = param.layer;
+    var w = param.width;
+    var h = param.height;
+    l.LSParent = param.parentobj;
     l.nofocus = true;
     if(cx__capabilities.Dom0NS)
 	{
@@ -57,19 +60,19 @@ function ib_init(l,n,p,c,d,w,h,po,nm,enable)
     l.mainlayer = l;
     setClipWidth(l, w);
 
-    l.buttonName = nm;
+    l.buttonName = param.name;
     if (h == -1) l.nImage = new Image();
     else l.nImage = new Image(w,h);
-    pg_set(l.nImage,'src',n);
+    pg_set(l.nImage,'src',param.n);
     if (h == -1) l.pImage = new Image();
     else l.pImage = new Image(w,h);
-    pg_set(l.pImage,'src',p);
+    pg_set(l.pImage,'src',param.p);
     if (h == -1) l.cImage = new Image();
     else l.cImage = new Image(w,h);
-    pg_set(l.cImage,'src',c);
+    pg_set(l.cImage,'src',param.c);
     if (h == -1) l.dImage = new Image();
     else l.dImage = new Image(w,h);
-    pg_set(l.dImage,'src',d);
+    pg_set(l.dImage,'src',param.d);
     l.ActionEnable = ib_enable;
     l.ActionDisable = ib_disable;
     l.enabled = null;
@@ -81,5 +84,5 @@ function ib_init(l,n,p,c,d,w,h,po,nm,enable)
     	{
 	l.watch("enabled",ib_setenable);
 	}
-    l.enabled = enable;
+    l.enabled = param.enable;
     }

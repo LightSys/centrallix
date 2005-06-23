@@ -22,12 +22,12 @@ function ex_action_domethod(aparam)
     }
 
 /** Timer initializer **/
-function ex_init(o,m,p)
+function ex_init(param)
     {
     var ex = new Object();
-    ex.Objname = o;
-    ex.Methodname = m;
-    ex.Methodparam = p;
+    ex.Objname = param.objname;
+    ex.Methodname = param.methname;
+    ex.Methodparam = param.methparam;
     ex.ActionExecuteMethod = ex_action_domethod;
     ex.HiddenLayer = new Layer(64);
     return ex;

@@ -121,8 +121,12 @@ function spnr_deselect()
     }
 
 /** Spinner box initializer **/
-function spnr_init(main,l,c1,c2)
+function spnr_init(param)
     {
+    var main = param.main;
+    var l = param.layer;
+    var c1 = param.c1;
+    var c2 = param.c2;
     l.content = 0;
     l.mainlayer=main;
     l.document.Layer = l;

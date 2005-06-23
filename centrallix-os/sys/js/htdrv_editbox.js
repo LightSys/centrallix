@@ -206,9 +206,12 @@ function eb_deselect()
 * is_readonly - if the editbox is read only
 * main_bg - background color
 **/
-function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
+function eb_init(param)
     {
-    if (!main_bg)
+    var l = param.layer;
+    var c1 = param.c1;
+    var c2 = param.c2; 
+    if (!param.mainBackground)
 	{
 	if (cx__capabilities.Dom0NS)
 	    {
@@ -221,7 +224,7 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	}
     else
 	{
-	l.bg = main_bg;
+	l.bg = param.mainBackground;
 	}
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
@@ -229,7 +232,7 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
     l.ActionSetValue = eb_actionsetvalue;
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
-    l.fieldname = fieldname;
+    l.fieldname = param.fieldname;
     l.is_busy = false;
     ibeam_init();
     l.charWidth = Math.floor((getClipWidth(l)-3)/text_metric.charWidth);
@@ -245,7 +248,7 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
     l.enablenew = eb_enable;  // We have added enablenew and enablemodify.  See docs
     l.disable = eb_disable;
     l.readonly = eb_readonly;
-    if (is_readonly)
+    if (param.isReadOnly)
 	{
 	l.enablemodify = eb_disable;
 	l.enabled = 'disable';
@@ -257,9 +260,9 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
 	}
     l.isFormStatusWidget = false;
     if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1,-1,getClipWidth(l)+3,getClipHeight(l)+3, 'ebox', 'ebox', is_readonly?0:3);
+	pg_addarea(l, -1,-1,getClipWidth(l)+3,getClipHeight(l)+3, 'ebox', 'ebox', param.isReadOnly?0:3);
     else
-	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', is_readonly?0:3);
+	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
     setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     if (fm_current) fm_current.Register(l);
@@ -267,4 +270,3 @@ function eb_init(l,c1,c2,fieldname,is_readonly,main_bg)
     l.changed = false;
     return l;
     }
-

@@ -1061,17 +1061,18 @@ function osrc_cb_control_msg(m)
     }
 
 /**  OSRC Initializer **/
-function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name,aq,ru)
+function osrc_init(param)
     {
-    loader.osrcname=name;
-    loader.readahead=ra;
-    loader.scrollahead=sa;
-    loader.replicasize=rs;
-    loader.sql=sql;
-    loader.filter=filter;
-    loader.baseobj=baseobj;
+    var loader = param.loader;
+    loader.osrcname=param.name;
+    loader.readahead=param.readahead;
+    loader.scrollahead=param.scrollahead;
+    loader.replicasize=param.replicasize;
+    loader.sql=param.sql;
+    loader.filter=param.filter;
+    loader.baseobj=param.baseobj;
     loader.readonly = false;
-    loader.autoquery = aq;
+    loader.autoquery = param.autoquery;
     loader.revealed_children = 0;
 
     // autoquery types - must match htdrv_osrc.c's enum declaration
@@ -1128,8 +1129,8 @@ function osrc_init(loader,ra,sa,rs,sql,filter,baseobj,name,aq,ru)
     loader.cleanup = osrc_cleanup;
 
     // Request replication messages
-    loader.request_updates = ru?1:0;
-    if (ru) pg_msg_request(loader, pg_msg.MSG_REPMSG);
+    loader.request_updates = param.requestupdates?1:0;
+    if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
     loader.ControlMsg = osrc_cb_control_msg;
 
     // Autoquery on load?

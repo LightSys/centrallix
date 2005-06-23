@@ -67,7 +67,8 @@ function fs_cb_reveal(e) {
     return true;
 }
 
-function fs_init(l,s) {
+function fs_init(param) {
+    var l = param.layer;
     l.kind = 'formstatus';
     l.mainlayer = l;
     if(cx__capabilities.Dom0NS) {
@@ -84,7 +85,7 @@ function fs_init(l,s) {
     l.currentMode = 'NoData';
     l.isFormStatusWidget = true;
     l.setvalue = fs_setvalue;
-    l.imagestyle = s;
+    l.imagestyle = param.style;
     if (fm_current) {
 	fm_current.Register(l);
 	l.form = fm_current;

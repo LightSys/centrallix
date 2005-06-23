@@ -188,23 +188,24 @@ function tc_showcontainer()
     return true;
     }
 
-function tc_init(l,tloc,mb,ib)
+function tc_init(param)
     {
     // Basic stuff...
+    var l = param.layer; 
     htr_init_layer(l,l,'tc');
     l.tabs = new Array();
     l.addTab = tc_addtab;
     l.current_tab = null;
     l.init_tab = null;
-    l.tloc = tloc;
+    l.tloc = param.tloc;
     if (tc_tabs == null) tc_tabs = new Array();
     tc_tabs[tc_tabs.length++] = l;
 
     // Background color/image selection...
-    l.main_bgColor = htr_extract_bgcolor(mb);
-    l.main_bgnd = htr_extract_bgimage(mb);
-    l.inactive_bgColor = htr_extract_bgcolor(ib);
-    l.inactive_bgnd = htr_extract_bgimage(ib);
+    l.main_bgColor = htr_extract_bgcolor(param.mainBackground);
+    l.main_bgnd = htr_extract_bgimage(param.mainBackground);
+    l.inactive_bgColor = htr_extract_bgcolor(param.inactiveBackground);
+    l.inactive_bgnd = htr_extract_bgimage(param.inactiveBackground);
 
     // Properties available to other widgets, that can be used to
     // change current tab index as well.

@@ -9,9 +9,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
+function tb_init(param)
     {
-    l.LSParent = p;
+    var l = param.layer;
+    var l2 = param.layer2;
+    var l3 = param.layer3;
+    l.LSParent = param.parent;
     l.nofocus = true;
     l2.nofocus = true;
     htr_init_layer(l,l,'tb');
@@ -19,19 +22,19 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     htr_init_layer(l3,l,'tb');
     if(!cx__capabilities.Dom2CSS && !cx__capabilities.Dom0IE)
 	{
-	top.nofocus = true;
-	rgt.nofocus = true;
-	btm.nofocus = true;
-	lft.nofocus = true;
+	param.top.nofocus = true;
+	param.right.nofocus = true;
+	param.bottom.nofocus = true;
+	param.left.nofocus = true;
 	}
-    l.buttonName = nm;
+    l.buttonName = param.name;
 
     l.l2 = l2;
     l.l3 = l3;
-    l.tp = top;
-    l.btm = btm;
-    l.lft = lft;
-    l.rgt = rgt;
+    l.tp = param.top;
+    l.btm = param.bottom;
+    l.lft = param.left;
+    l.rgt = param.right;
     l.orig_x = getRelativeX(l);
     l.orig_y = getRelativeY(l);
     l.orig_ct = parseInt(getClipTop(l));
@@ -42,18 +45,18 @@ function tb_init(l,l2,l3,top,btm,rgt,lft,w,h,p,ts,nm)
     l.darkBorderColor = '#7A7A7A';
     if(cx__capabilities.Dom0NS)
 	{
-	setClipWidth(l, w);
-	if (h != -1) setClipHeight(l, h);
-	pg_set_style(top,'bgColor',l.lightBorderColor);
-	pg_set_style(lft,'bgColor',l.lightBorderColor);
-	pg_set_style(btm,'bgColor',l.darkBorderColor);
-	pg_set_style(rgt,'bgColor',l.darkBorderColor);
-	setClipHeight(lft, getClipHeight(l));
-	setClipHeight(rgt, getClipHeight(l));
-	setPageX(rgt,getPageX(l)+getClipWidth(l)-2);
-	setPageY(btm,getPageY(l)+getClipHeight(l)-2);
+	setClipWidth(l, param.width);
+	if (param.height != -1) setClipHeight(l, param.height);
+	pg_set_style(param.top,'bgColor',l.lightBorderColor);
+	pg_set_style(param.left,'bgColor',l.lightBorderColor);
+	pg_set_style(param.bottom,'bgColor',l.darkBorderColor);
+	pg_set_style(param.right,'bgColor',l.darkBorderColor);
+	setClipHeight(param.left, getClipHeight(l));
+	setClipHeight(param.right, getClipHeight(l));
+	setPageX(param.right,getPageX(l)+getClipWidth(l)-2);
+	setPageY(param.bottom,getPageY(l)+getClipHeight(l)-2);
 	}
-    l.tristate = ts;
+    l.tristate = param.tristate;
     l.mode = -1;
     tb_setmode(l,0);
     if (htr_getvisibility(l3) == 'inherit' || htr_getvisibility(l3) == 'visible')
