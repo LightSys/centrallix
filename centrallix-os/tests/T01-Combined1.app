@@ -19,7 +19,8 @@ Page1 "widget/page"
     {
     title="Test #01 - 1st Combined Page";
     background="/sys/images/wood.png";
-
+    x=0; y=0; width=450; height=300;
+    
     TextButton3 "widget/textbutton"
 	{
 	x=10; y=10; height=25; width=60;

@@ -14,6 +14,7 @@ Page1 "widget/page"
     {
     title="Centrallix HTML Generator Test Suite";
     background="/sys/images/slate2.gif";
+    x=0; y=0; width=330; height=384;
 
     Label1 "widget/label"
 	{

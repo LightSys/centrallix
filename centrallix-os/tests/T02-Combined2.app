@@ -19,7 +19,7 @@ Page1 "widget/page"
     title="Test #02 - 2nd Combined Page";
     bgcolor="#546140";
     loadstatus="true";
-
+    x=0; y=0; height=230; width=310;
     TextButton1 "widget/textbutton"
 	{
 	x=10; y=10; height=25; width=60;

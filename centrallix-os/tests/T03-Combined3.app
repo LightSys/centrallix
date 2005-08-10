@@ -10,7 +10,8 @@ Page1 "widget/page"
     {
     title="Test #03 - 1st Simple Widget Page";
     bgcolor="#4386a8";
-
+    x=0; y=0; width=400; height=480;
+    
     Textbutton1 "widget/textbutton"
 	{
 	x=10; y=10; width=90; height=30;
