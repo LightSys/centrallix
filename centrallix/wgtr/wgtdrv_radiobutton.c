@@ -61,7 +61,10 @@ wgtrbVerify(pWgtrVerifySession s)
  ***/
 int
 wgtrbNew(pWgtrNode node)
-    {
+    {   
+	if(node->fl_width < 0) node->fl_width = 0;
+	if(node->fl_height < 0) node->fl_height = 0;
+	
     return 0;
     }
 

@@ -50,6 +50,13 @@
 int
 wgtpageVerify(pWgtrVerifySession s)
     {
+    if((s->CurrWidget->r_x < 0) || (s->CurrWidget->r_y < 0) || 
+        (s->CurrWidget->r_width < 0) || (s->CurrWidget->r_height < 0))
+        {
+	mssError(1, "WGTR", "wgtpageVerify(): The x, y, width, or height of the page '%s' was not specified", s->CurrWidget->Name);
+	return -1;
+	}
+	
     return 0;
     }
 
@@ -62,6 +69,10 @@ wgtpageVerify(pWgtrVerifySession s)
 int
 wgtpageNew(pWgtrNode node)
     {
+	node->Flags |= WGTR_F_CONTAINER;   
+	if(node->fl_width < 0) node->fl_width = 100;
+	if(node->fl_height < 0) node->fl_height = 100;
+	
     return 0;
     }
 

@@ -63,7 +63,11 @@ wgtibtnVerify(pWgtrVerifySession s)
 int
 wgtibtnNew(pWgtrNode node)
     {
+	if(node->fl_width < 0) node->fl_width = 0;
+	if(node->fl_height < 0) node->fl_height = 0;
+	
 	return wgtrImplementsInterface(node, "net/centrallix/button.ifc?cx__version=1.1");
+	
     }
 
 

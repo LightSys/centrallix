@@ -4,6 +4,7 @@
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/datatypes.h"
 #include "wgtr.h"
 
 /************************************************************************/
@@ -50,6 +51,18 @@
 int
 wgtfsVerify(pWgtrVerifySession s)
     {
+    ObjData val;
+	
+	wgtrGetPropertyValue(s->CurrWidget, "style", DATA_T_STRING, &val);
+	
+	s->CurrWidget->height = s->CurrWidget->r_height = 20;
+	
+	
+	if((val.String == NULL) || !strcmp(val.String, "small")) 
+	    s->CurrWidget->width = s->CurrWidget->r_width = 30;
+	else 
+	    s->CurrWidget->width = s->CurrWidget->r_width = 88;
+	    
     return 0;
     }
 
@@ -62,6 +75,9 @@ wgtfsVerify(pWgtrVerifySession s)
 int
 wgtfsNew(pWgtrNode node)
     {
+	if(node->fl_width < 0) node->fl_width = 0;
+	if(node->fl_height < 0) node->fl_height = 0;
+	
     return 0;
     }
 

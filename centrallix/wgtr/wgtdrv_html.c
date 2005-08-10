@@ -4,6 +4,7 @@
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/datatypes.h"
 #include "wgtr.h"
 
 /************************************************************************/
@@ -50,6 +51,33 @@
 int
 wgthtmlVerify(pWgtrVerifySession s)
     {
+    /** This sets the flexibility of the html widget based on whether
+    *** it is static or dynamic, unless the user has already specified
+    *** a flexibility in which case it is left alone. This process
+    *** would usually be done in the wgthtmlNew function, but that's 
+    *** not possible in this case because the static/dynamic property 
+    *** isn't set until after the wgthtmlNew function has been run. 
+    **/
+    ObjData val;
+    wgtrGetPropertyValue(s->CurrWidget, "mode", DATA_T_STRING, &val);
+    int Static = ((val.String == NULL) || !strcmp(val.String, "static"));
+    
+    if(s->CurrWidget->fl_width < 0)
+        {
+            if(Static)
+                s->CurrWidget->fl_width = 0;
+            else
+                s->CurrWidget->fl_width = 100;
+	}
+    
+    if(s->CurrWidget->fl_height < 0)
+        {
+            if(Static)
+                s->CurrWidget->fl_height = 0;
+            else
+                s->CurrWidget->fl_height = 100;
+	}
+	
     return 0;
     }
 

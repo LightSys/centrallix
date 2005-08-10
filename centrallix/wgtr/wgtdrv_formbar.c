@@ -277,7 +277,12 @@ int wgtfbVerify(pWgtrVerifySession s)
  ***/
 int
 wgtfbNew(pWgtrNode node)
-    {
+    {   
+	if(node->fl_width < 0) node->fl_width = 0;
+	if(node->fl_height < 0) node->fl_height = 0;
+	node->width = node->r_width = 240;
+	node->height = node->r_height = 30;
+	
     return 0;
     }
 

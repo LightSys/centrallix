@@ -62,6 +62,9 @@ wgtspnrVerify(pWgtrVerifySession s)
 int
 wgtspnrNew(pWgtrNode node)
     {
+        if(node->fl_width < 0) node->fl_width = 25;
+        if(node->fl_height < 0) node->fl_height = 25;
+	
     return 0;
     }
 

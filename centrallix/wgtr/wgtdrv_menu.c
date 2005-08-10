@@ -61,7 +61,10 @@ wgtmenuVerify(pWgtrVerifySession s)
  ***/
 int
 wgtmenuNew(pWgtrNode node)
-    {
+    {   
+	if(node->fl_width < 0) node->fl_width = 25;
+	if(node->fl_height < 0) node->fl_height = 0;
+	
     return 0;
     }
 

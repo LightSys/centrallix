@@ -61,7 +61,10 @@ wgttreeVerify(pWgtrVerifySession s)
  ***/
 int
 wgttreeNew(pWgtrNode node)
-    {
+    {   
+	if(node->fl_width < 0) node->fl_width = 30;
+	if(node->fl_height < 0) node->fl_height = 50;
+	
     return 0;
     }
 

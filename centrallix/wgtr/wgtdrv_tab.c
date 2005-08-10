@@ -50,6 +50,33 @@
 int
 wgttabVerify(pWgtrVerifySession s)
     {
+    /*** Loops through the tabpage children of the tab widget and
+     *** initializes the requested and actual geometry of each 
+     *** one to match that of the tab widget itself, minus a few
+     *** pixels to account for the border. Necessary for auto-
+     *** positioning.
+     ***/
+    pWgtrNode tab = s->CurrWidget;
+    pWgtrNode tabpage;
+    int i=0;
+    int count = xaCount(&(tab->Children));
+    
+	if(!strcmp(tab->Type, "widget/tab"))
+	    for(i=0; i<count; ++i)	//loop through tabpage children
+	        {
+		    tabpage = (pWgtrNode)(xaGetItem(&(tab->Children), i));
+		    if(!strcmp(tabpage->Type, "widget/tabpage"))
+		        {
+			    tabpage->r_x = tabpage->r_y = 0;
+			    tabpage->r_width = tab->r_width;
+			    tabpage->r_height = tab->r_height;
+			
+			    tabpage->x = tabpage->y = 0;
+			    tabpage->width = tab->width;
+			    tabpage->height = tab->height;
+		        }
+		}
+	    
     return 0;
     }
 
@@ -62,6 +89,10 @@ wgttabVerify(pWgtrVerifySession s)
 int
 wgttabNew(pWgtrNode node)
     {
+	node->Flags |= WGTR_F_CONTAINER;
+	if(node->fl_width < 0) node->fl_width = 100;
+	if(node->fl_height < 0) node->fl_height = 100;
+	
     return 0;
     }
 
