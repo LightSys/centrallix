@@ -6,7 +6,8 @@ objcanvas_test "widget/page"
     background="/sys/images/slate2.gif";
     //datafocus1="white";
     //datafocus2="white";
-
+    x=0; y=0; width=640; height=480;
+    
     osrc1 "widget/osrc"
 	{
 	sql = "select :x, :y, :width, :height, :color, :image, :type, :description from /samples/CanvasObjects.csv/rows";

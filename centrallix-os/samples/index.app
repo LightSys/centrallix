@@ -3,7 +3,8 @@ index "widget/page"
     {
     title = "Index of Sample Applications";
     bgcolor = "#ffffff";
-
+    x=0; y=0; width=630; height=476;
+    
     cximg "widget/image"
 	{
 	x=0; y=0; height=66; width=374; 

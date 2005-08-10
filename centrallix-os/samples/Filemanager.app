@@ -2,6 +2,8 @@ Filemanager "widget/page"
     {
     title = "DHTML Filemanager by Centrallix"
     bgcolor = "#c0c0c0"
+    x=0 y=0 width=705 height=517
+    
     Treeview_pane "widget/pane"
         {
 	x=8 y=8 width=200 height=500

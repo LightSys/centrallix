@@ -1,7 +1,8 @@
 $Version=2$
 in_main "widget/page" {
     bgcolor="#195173";
-
+    x=0; y=0; width=640; height=480;
+    
     alerter "widget/alerter" {}
     form1 "widget/form" {
 	mn "widget/menu" {

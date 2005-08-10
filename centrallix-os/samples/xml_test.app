@@ -4,7 +4,8 @@ wholePage "widget/page"
     title = "XML & HTTP Test page";
     background="/sys/images/slate2.gif";
     textcolor = black;
-
+    x=0; y=0; width=640; height=480;
+    
     btnDebug "widget/textbutton" {
 	x=710; y=10; width=90; height=25;
 	fgcolor1 = "#000000"; fgcolor2 = "#cfcfcf";

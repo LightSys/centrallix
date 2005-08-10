@@ -3,7 +3,8 @@ pane_test "widget/page"
     {
     title = "Test of the pane widget";
     background = "/sys/images/test_background.png";
-
+    x=0; y=0; width=300; height=310;
+    
     raisedpane "widget/pane"
 	{
 	x=16; y=16; width=128; height=128;

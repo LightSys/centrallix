@@ -4,7 +4,8 @@ ors "widget/page"
     title = "Obscure/Reveal Subsystem Demonstration App";
     bgcolor='#606060';
     //background='/sys/images/test_background.png';
-
+    x=0; y=0; width=800; height=500;
+    
     ConfirmWindow "widget/htmlwindow"
 	{
 	title = "Data Was Modified!";

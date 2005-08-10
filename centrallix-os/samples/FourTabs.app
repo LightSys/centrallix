@@ -3,7 +3,8 @@ FourTabs "widget/page"
     {
     title = "Four Tabs demonstration app";
     bgcolor = "#c0c0c0";
-
+    x=0; y=0; width=630; height=275;
+    
     TabCtlOne "widget/tab"
 	{
 	tab_location = top;

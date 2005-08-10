@@ -4,7 +4,8 @@ $Version=2$
 // Main page widget is at top-level.
 editbox_test "widget/page" {
     background="/sys/images/slate2.gif";
-
+    x=0; y=0; width=200; height=130;
+    
     testradio "widget/radiobuttonpanel" {
 	x=20;
 	y=20;

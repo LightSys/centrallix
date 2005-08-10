@@ -3,7 +3,8 @@ window_test "widget/page"
     {
     alerter "widget/alerter" {}
     background="/sys/images/slate2.gif";
-
+    x=0; y=0; width=640; height=480;
+    
     button1 "widget/textbutton"
         {
 	x=8; y=8; width=100; height=32;

@@ -4,7 +4,8 @@ timer_test "widget/page"
     {
     title = "Timer Test";
     bgcolor=gray;
-
+    x=0; y=0; width=640; height=480;
+    
     tmr "widget/timer"
         {
 	msec=1000;

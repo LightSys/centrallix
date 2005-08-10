@@ -4,7 +4,8 @@ basicform "widget/page"
     title = "Basic Data-driven Maintenance Form";
     bgcolor = "#e0e0e0";
     textcolor = black;
-
+    x=0; y=0; width=650; height=370;
+    
     ConfirmWindow "widget/htmlwindow"
 	{
 	title = "Data Was Modified!";

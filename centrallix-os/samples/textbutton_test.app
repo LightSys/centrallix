@@ -2,7 +2,8 @@ $Version=2$
 textbutton_test "widget/page"
     {
     background="/sys/images/test_background.png";
-
+    x=0; y=0; width=350; height=350;
+    
     enabbutton "widget/textbutton"
         {
 	x=8; y=8; width=100; height=32;

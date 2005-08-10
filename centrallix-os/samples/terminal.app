@@ -5,7 +5,8 @@ $Version=2$
 editbox_test "widget/page"
     {
     background="/sys/images/slate2.gif";
-
+    x=0; y=0; width=640; height=480;
+    
     term1 "widget/terminal"
 	{
 	x=0; y=100; rows=24; cols=80;

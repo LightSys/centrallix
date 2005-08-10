@@ -17,7 +17,8 @@ ReportingSystem "widget/page"
     //kbdfocus2=black;
     datafocus1='#2020a0';
     datafocus2='#2020a0';
-
+    x=0; y=0; width=1024; height=480;
+    
     // Here's a dialog box to select a report
     dlgSelectReport "widget/htmlwindow"
         {

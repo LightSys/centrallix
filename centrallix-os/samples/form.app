@@ -5,7 +5,8 @@ wholePage "widget/page"
     title = "Form, osrc, and widget test page";
     bgcolor = "#1f1f1f";
     textcolor = black;
-
+    x=0; y=0; width=900; height=400;
+    
     _3bConfirmWindow "widget/htmlwindow"
 	{
 	title = "Confirm something please";

@@ -4,7 +4,8 @@ Page "widget/page"
     title = "Month CSV Test Application";
     bgcolor = "#7f7f7f";
     textcolor = "#000000";
-
+    x=0; y=0; width=640; height=480;
+    
     objsrc1 "widget/osrc"
 	{
 	replicasize=12;

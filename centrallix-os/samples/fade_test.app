@@ -3,7 +3,8 @@ fade_test "widget/page"
     {
     title = "Fader Test";
     background = "/sys/images/slate2.gif";
-
+    x=0; y=0; width=600; height=560;
+    
     pane "widget/pane"
         {
 	x=100; y=30; width=400; height=400;

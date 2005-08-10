@@ -3,6 +3,8 @@ Filemanager "widget/page"
     {
     title = "DHTML DOM viewer by Centrallix";
     bgcolor = "#c0c0c0";
+    x=0; y=0; width=640; height=480;
+    
     Treeview_pane "widget/pane"
         {
 	x=8; y=8; width=800; height=500;

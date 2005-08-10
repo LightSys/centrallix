@@ -2,7 +2,8 @@ $Version=2$
 main "widget/page"
     {
     bgcolor="#213e87";
-
+    x=0; y=0; width=640; height=480;
+    
     clock1 "widget/clock"
 	{
 	x=65; y=15; width=80; height=20;

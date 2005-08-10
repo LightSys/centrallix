@@ -3,7 +3,8 @@ $Version=2$
 window_test "widget/page"
     {
     background="/sys/images/slate2.gif";
-
+    x=0; y=0; width=640; height=480;
+    
     window1 "widget/htmlwindow"
 	{
 	bgcolor="#c0c0c0";

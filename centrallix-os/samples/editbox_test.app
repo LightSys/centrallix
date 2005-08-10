@@ -5,7 +5,8 @@ $Version=2$
 editbox_test "widget/page"
     {
     background="/sys/images/slate2.gif";
-
+    x=0; y=0; width=330; height=610;
+    
     // Test putting em in a tab control.
     tabctl "widget/tab"
         {

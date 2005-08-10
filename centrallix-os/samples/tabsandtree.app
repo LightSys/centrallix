@@ -4,7 +4,8 @@ tabsandtree "widget/page"
     // my first app
     title = "A plain ol' app";
     bgcolor="#c0c0c0";
-
+    x=0; y=0; width=700; height=480;
+    
     myWin "widget/htmlwindow"
         {
 	x = 50; y=100; width=500; height=400;

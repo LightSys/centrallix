@@ -2,7 +2,8 @@ $Version=2$
 main "widget/page"
     {
     bgcolor="#213e87";
-
+    x=0; y=0; width=340; height=340;
+    
     window1 "widget/htmlwindow"
     	{
 	bgcolor="#c0c0c0";
