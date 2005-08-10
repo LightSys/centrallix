@@ -152,7 +152,8 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_treeview.o \
 	wgtdrv_variable.o \
 	wgtdrv_window.o \
-	wgtr.o
+	wgtr.o \
+	apos.o
 
 WGTRDRIVERS=$(patsubst %,wgtr/%,$(XWGTRDRIVERS))
 
