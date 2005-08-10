@@ -39,6 +39,7 @@
 #include <string.h>
 #include "obj.h"
 #include "wgtr.h"
+#include "apos.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/magic.h"
@@ -161,7 +162,7 @@ wgtrParseOpenObject(pObject obj)
 
 	/** create this node **/
 	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
-	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, 100, 100)) == NULL)
+	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, -1, -1)) == NULL)
 	    {
 	    mssError(0, "WGTR", "Couldn't create node %s", name);
 	    return NULL;
@@ -929,7 +930,14 @@ wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh)
 		}
 	    else vs.CurrWidget->Verified = 1;
 	    }
-
+	
+	/** Auto-position the widget tree **/
+	if(aposAutoPositionWidgetTree(tree) < 0)
+	    {
+	    mssError(0, "WGTR", "Couldn't auto-position widget tree");
+	    goto error;
+	    }
+	
 	/** free up data structures **/
 	xaDeInit(&(vs.VerifyQueue));
 
@@ -982,7 +990,10 @@ wgtrInitialize()
 	/** init datastructures for handling drivers **/
 	xaInit(&(WGTR.Drivers), 64);
 	xhInit(&(WGTR.Methods), 5, 0);
-
+	
+	/** init datastructures for auto-positioning **/
+	aposInit();
+	
 	/** call the initialization routines of all the widget drivers. I suppose it's a
 	 ** little weird to do things this way - if they're going to be init'ed from here,
 	 ** why have 'drivers'? Why not just hard-code them? Well, maybe later on they'll

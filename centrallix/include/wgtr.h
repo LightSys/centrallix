@@ -44,7 +44,7 @@
 
 
 #define WGTR_F_NONVISUAL    1		/** a widget is visual by default, non-visual if this is set **/
-
+#define WGTR_F_CONTAINER    2		/** set for container widgets **/
 
 typedef struct
     {
