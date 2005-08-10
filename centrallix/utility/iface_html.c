@@ -352,7 +352,9 @@ ifcHtmlInit(pHtSession s, pWgtrNode tree)
 	xsConcatenate(&func, "\n    }\n", -1);
 
 	/** print the generated function **/
-	fnbuf = nmSysStrdup(func.String);
+	fnbuf = nmMalloc(strlen(func.String)+1);
+	if (!fnbuf) return -1;
+	strcpy(fnbuf, func.String);
 	htrAddScriptFunction(s, "init_inline_interfaces", fnbuf, HTR_F_VALUEALLOC);
 	xsDeInit(&func);
 	xaDeInit(&AlreadyProcessed);
