@@ -63,10 +63,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.54 2005/02/26 06:35:53 gbeeley Exp $
+    $Id: net_http.c,v 1.55 2005/09/17 02:58:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.55  2005/09/17 02:58:39  gbeeley
+    - change order of property detection since innerHeight seems more
+      reliable on mozilla.  document.body.clientHeight reflects actual
+      <body> tag height, not window height, evidently.  Another approach
+      would be to set css height on <body> to 100%.
+
     Revision 1.54  2005/02/26 06:35:53  gbeeley
     - pass URL params in the OpenCtl parameters.
 
@@ -2308,11 +2314,16 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 			 "        loc += '&';\n"
 			 "    else\n"
 			 "        loc += '?';\n"
-			 "    if (window.document.body && window.document.body.clientWidth)\n"
-			 "        loc += 'cx__width=' + window.document.body.clientWidth + '&cx__height=' + window.document.body.clientHeight;\n"
-			 "    else\n"
+			 "    if (window.innerHeight)\n"
+			 "        {\n"
 			 "        loc += 'cx__width=' + window.innerWidth + '&cx__height=' + window.innerHeight;\n"
-			 "    window.location.replace(loc);\n"
+			 "        window.location.replace(loc);\n"
+			 "        }\n"
+			 "    else if (window.document.body && window.document.body.clientWidth)\n"
+			 "        {\n"
+			 "        loc += 'cx__width=' + window.document.body.clientWidth + '&cx__height=' + window.document.body.clientHeight;\n"
+			 "        window.location.replace(loc);\n"
+			 "        }\n"
 			 "    }\n");
 	fdPrintf(output, "</script><body %s onload='startup();'><img src='/sys/images/loading.gif'></body></html>\n", bgnd);
 
