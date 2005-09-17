@@ -53,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.36 2005/06/23 22:07:58 ncolson Exp $
+    $Id: centrallix.c,v 1.37 2005/09/17 01:23:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.37  2005/09/17 01:23:50  gbeeley
+    - Adding sysinfo objectsystem driver, which is roughly analogous to
+      the /proc filesystem in Linux.
+
     Revision 1.36  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -594,6 +598,7 @@ cxInitialize(void* v)
 	mqjInitialize();			/* join query module */
 
 	/** Init the objectsystem drivers **/
+	sysInitialize();			/* Sys info driver */
 	uxdInitialize();			/* UNIX filesystem driver */
 #if 0
 	sybdInitialize();			/* Sybase CT-lib driver */

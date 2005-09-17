@@ -91,4 +91,33 @@ int cxInitialize();
 int cxHtInit();
 int cxNetworkInit();
 
+
+/*** Sys Info data structure for object/tree additions ***/
+typedef struct _CXSI
+    {
+    char*	Path;			/* Path under /sys/cx.sysinfo/ */
+    char*	Name;			/* name of this particular object. */
+    pXArray	(*AttrEnumFn)(void*, char*);	/* Attribute enumerator */
+    pXArray	Attrs;			/* -or- Hardcoded list of attrs */
+    pXArray	(*ObjEnumFn)(void*);		/* Subobject name enumerator */
+    pXArray	Objs;			/* -or- Hardcoded list of object names */
+    int		(*GetAttrTypeFn)(void*, char*, char*);	/* func to get one attribute type */
+    pXArray	AttrTypes;		/* -or- if Attrs given, we can specify AttrTypes */
+    int		(*GetAttrValueFn)(void*, char*, char*, void*);	/* func to get one attribute value */
+    int		AdminOnly;		/* only allow "root" to see it.  N.B.: change this once the sec model is in! */
+    void*	Context;
+    pXArray	Subtree;
+    }
+    SysInfoData, *pSysInfoData;
+
+/*** Sys Info driver functions for registering subtrees and objects.
+ *** Enum funcs must return an XArray to be freed by the func's caller!!
+ *** objname = NULL on funcs to get stuff on subtree root
+ *** void* value is a pObjData (see datatypes.h).
+ ***/
+pSysInfoData sysAllocData(char* path, pXArray (*attrfn)(void*, char* objname), pXArray (*objfn)(void*), int (*getfn)(void*, char* objname, char* attrname), int (*valuefn)(void*, char* objname, char* attrname, void* value), int admin_only);
+int sysRegister(pSysInfoData, void* context);
+int sysAddAttrib(pSysInfoData, char*, int);
+int sysAddObj(pSysInfoData, char*);
+
 #endif

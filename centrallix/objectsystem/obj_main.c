@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.12 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_main.c,v 1.13 2005/09/17 01:23:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.13  2005/09/17 01:23:51  gbeeley
+    - Adding sysinfo objectsystem driver, which is roughly analogous to
+      the /proc filesystem in Linux.
+
     Revision 1.12  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -258,6 +262,28 @@ int obj_internal_GetFnName(void* obj, char* name, int type, pObjData val)
 int obj_internal_SetFnName(void* obj, char* name, int type, pObjData val) { return -1; }
 
 
+int 
+obj_types_GetAttrValue(void* ct_v, char* name, char* attrname, void* val_v)
+    {
+    pContentType ct = (pContentType)ct_v;
+    pObjData pod = POD(val_v);
+
+	if (!strcmp(attrname, "type_name")) 
+	    pod->String = ct->Name;
+	else if (!strcmp(attrname, "type_description")) 
+	    pod->String = ct->Description;
+	else if (!strcmp(attrname, "parent_type")) 
+	    {
+	    if (ct->Flags & CT_F_TOPLEVEL)
+		return 1;
+	    pod->String = ((pContentType)(ct->IsA.Items[0]))->Name;
+	    }
+	else
+	    return -1;
+
+    return 0;
+    }
+
 
 /*** objInitialize -- start up the objectsystem and initialize the various
  *** components thereof.
@@ -271,6 +297,8 @@ objInitialize()
     pContentType ct,parent_ct;
     char* ptr;
     char* filename;
+    char sysbuf[64];
+    pSysInfoData si;
 
 	/** Zero the globals **/
 	memset(&OSYS, 0, sizeof(OSYS));
@@ -454,6 +482,15 @@ objInitialize()
 		{
 		xhAdd(&(OSYS.TypeExtensions),(char*)(ct->Extensions.Items[i]),(char*)ct);
 		}
+
+	    /** Add to the /sys/cx.sysinfo directory **/
+	    snprintf(sysbuf, sizeof(sysbuf), "/osml/types/%d", OSYS.TypeList.nItems);
+	    si = sysAllocData(sysbuf, NULL, NULL, NULL, obj_types_GetAttrValue, 0);
+	    sysAddAttrib(si, "type_name", DATA_T_STRING);
+	    sysAddAttrib(si, "type_description", DATA_T_STRING);
+	    sysAddAttrib(si, "parent_type", DATA_T_STRING);
+	    sysRegister(si, (void*)ct);
+
 	    if (t == MLX_TOK_EOF) break;
 	    }
 

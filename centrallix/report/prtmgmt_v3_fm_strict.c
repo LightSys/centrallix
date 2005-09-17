@@ -12,6 +12,7 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -49,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.9 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.10 2005/09/17 01:23:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.10  2005/09/17 01:23:51  gbeeley
+    - Adding sysinfo objectsystem driver, which is roughly analogous to
+      the /proc filesystem in Linux.
+
     Revision 1.9  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -137,16 +142,38 @@ typedef struct _PSFI
     PrtStrictfmInf, *pPrtStrictfmInf;
 
 
+int
+prt_strictfm_GetType(void* drv_v, char* objname, char* attrname, void* val_v)
+    {
+    POD(val_v)->String = ((pPrtOutputDriver)drv_v)->ContentType;
+    return 0;
+    }
+
+
 /*** prt_strictfm_RegisterDriver() - register an output content driver with
  *** the strict formatter.
  ***/
 int
 prt_strictfm_RegisterDriver(pPrtOutputDriver drv)
     {
+    char* ptr;
+    char buf[64];
+    pSysInfoData si;
 
 	/** Add to the list **/
 	ASSERTMAGIC(drv,MGK_PRTOUTDRV);
 	xaAddItem(&PRT_STRICTFM.DriverList, (void*)drv);
+
+	/** Add the driver's type to the /sys/cx.sysinfo directory **/
+	ptr = strchr(drv->ContentType,'/');
+	if (!ptr)
+	    ptr = drv->ContentType;
+	else
+	    ptr = ptr + 1;
+	snprintf(buf, sizeof(buf), "/prtmgmt/output_types/%s", ptr);
+	si = sysAllocData(buf, NULL, NULL, NULL, prt_strictfm_GetType, 0);
+	sysAddAttrib(si, "type", DATA_T_STRING);
+	sysRegister(si, (void*)drv);
 
     return 0;
     }

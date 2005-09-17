@@ -15,6 +15,7 @@
 #include "prtmgmt_v3/ht_font_metrics.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -52,10 +53,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_html.c,v 1.4 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_html.c,v 1.5 2005/09/17 01:23:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html.c,v $
 
     $Log: prtmgmt_v3_fm_html.c,v $
+    Revision 1.5  2005/09/17 01:23:51  gbeeley
+    - Adding sysinfo objectsystem driver, which is roughly analogous to
+      the /proc filesystem in Linux.
+
     Revision 1.4  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -760,6 +765,14 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     }
 
 
+int
+prt_htmlfm_GetType(void* ctx, char* objname, char* attrname, void* val_v)
+    {
+    POD(val_v)->String = "text/html";
+    return 0;
+    }
+
+
 /*** prt_htmlfm_Initialize() - init this module and register with the main
  *** print management system.
  ***/
@@ -767,6 +780,7 @@ int
 prt_htmlfm_Initialize()
     {
     pPrtFormatter fmtdrv;
+    pSysInfoData si;
 
 	/** Init our globals **/
 	memset(&PRT_HTMLFM, 0, sizeof(PRT_HTMLFM));
@@ -785,6 +799,11 @@ prt_htmlfm_Initialize()
 
 	/** Register with the main prtmgmt system **/
 	prtRegisterFormatter(fmtdrv);
+
+	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
+	si = sysAllocData("/prtmgmt/output_types/html", NULL, NULL, NULL, prt_htmlfm_GetType, 0);
+	sysAddAttrib(si, "type", DATA_T_STRING);
+	sysRegister(si, NULL);
 
     return 0;
     }
