@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.10 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.11 2005/09/17 01:28:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.11  2005/09/17 01:28:19  gbeeley
+    - Some fixes for handling of direct object attributes in expressions,
+      such as /path/to/object:attributename.
+
     Revision 1.10  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -322,7 +326,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    {
 				    if (etmp->Children.nItems != 1)
 					{
-					mssError(1,"EXP","%s() takes exactly one argument, %d supplied", etmp->Name, etmp->Children.nItems);
+					mssError(0,"EXP","%s() takes exactly one argument, %d supplied", etmp->Name, etmp->Children.nItems);
 					err = 1;
 					}
 				    else

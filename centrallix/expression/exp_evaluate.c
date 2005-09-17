@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.12 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.13 2005/09/17 01:28:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.13  2005/09/17 01:28:19  gbeeley
+    - Some fixes for handling of direct object attributes in expressions,
+      such as /path/to/object:attributename.
+
     Revision 1.12  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -1042,6 +1046,13 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    /** If unset, but direct objsys reference using pathname, look it up **/
 	    if (tree->Parent->Name[0] == '.' || tree->Parent->Name[0] == '/')
 		{
+		if (!objlist->Session)
+		    {
+		    /** Null if no context to eval a filename obj yet **/
+		    tree->Flags |= EXPR_F_NULL;
+		    tree->DataType = DATA_T_INTEGER;
+		    return 0;
+		    }
 		obj = objOpen(objlist->Session, tree->Parent->Name, O_RDONLY, 0600, "system/object");
 		if (!obj) 
 		    {

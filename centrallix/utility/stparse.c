@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.10 2005/02/26 06:42:41 gbeeley Exp $
+    $Id: stparse.c,v 1.11 2005/09/17 01:28:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.11  2005/09/17 01:28:19  gbeeley
+    - Some fixes for handling of direct object attributes in expressions,
+      such as /path/to/object:attributename.
+
     Revision 1.10  2005/02/26 06:42:41  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -1096,7 +1100,7 @@ stParseMsg(pFile inp_fd, int flags)
     pLxSession s;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxOpenSession(inp_fd, MLX_F_CPPCOMM | MLX_F_DBLBRACE);
+	s = mlxOpenSession(inp_fd, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
@@ -1123,7 +1127,7 @@ stParseMsgGeneric(void* src, int (*read_fn)(), int flags)
     pLxSession s;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxGenericSession(src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE);
+	s = mlxGenericSession(src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
