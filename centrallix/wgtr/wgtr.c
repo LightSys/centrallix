@@ -1116,7 +1116,7 @@ wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, char
     {
     int	    (*Render)(pFile, pObjSession, pWgtrNode, pStruct);
 
-	if ( ((void*)Render = xhLookup(&(WGTR.Methods), method)) == NULL)
+	if ( (Render = (void*)xhLookup(&(WGTR.Methods), method)) == NULL)
 	    {
 	    mssError(1, "WGTR", "Couldn't render widget tree '%s': no render function for '%s'", tree->Name, method);
 	    return -1;

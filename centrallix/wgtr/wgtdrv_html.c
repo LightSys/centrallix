@@ -59,8 +59,9 @@ wgthtmlVerify(pWgtrVerifySession s)
     *** isn't set until after the wgthtmlNew function has been run. 
     **/
     ObjData val;
+    int Static;
     wgtrGetPropertyValue(s->CurrWidget, "mode", DATA_T_STRING, &val);
-    int Static = ((val.String == NULL) || !strcmp(val.String, "static"));
+    Static = ((val.String == NULL) || !strcmp(val.String, "static"));
     
     if(s->CurrWidget->fl_width < 0)
         {
