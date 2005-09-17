@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.32 2005/06/23 22:08:01 ncolson Exp $
+    $Id: htdrv_textbutton.c,v 1.33 2005/09/17 02:55:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.33  2005/09/17 02:55:55  gbeeley
+    - fix regressions in moz/ie support with regard to new init function
+      call protocol.
+
     Revision 1.32  2005/06/23 22:08:01  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -515,7 +519,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	    /** Script initialization call. **/
 	    htrAddScriptInit_va(s, "    %s = document.getElementById('tb%dpane');\n",nptr, id);
-	    htrAddScriptInit_va(s, "    tb_init({layer:%s,layer2:document.getElementById('tb%dpane2'), layer3:document.getElementById('tb%dpane3'), top:null, bottom:null, right:null, left:null, width:%d, height:%d, parent:%s, tristate;%d, name:\"%s\"});\n",
+	    htrAddScriptInit_va(s, "    tb_init({layer:%s,layer2:document.getElementById('tb%dpane2'), layer3:document.getElementById('tb%dpane3'), top:null, bottom:null, right:null, left:null, width:%d, height:%d, parent:%s, tristate:%d, name:\"%s\"});\n",
 		    nptr, id, id, w, h, parentobj,is_ts, nptr);
 	    }
 	else

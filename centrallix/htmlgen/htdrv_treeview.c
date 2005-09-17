@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.34 2005/06/23 22:08:01 ncolson Exp $
+    $Id: htdrv_treeview.c,v 1.35 2005/09/17 02:55:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.35  2005/09/17 02:55:55  gbeeley
+    - fix regressions in moz/ie support with regard to new init function
+      call protocol.
+
     Revision 1.34  2005/06/23 22:08:01  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -412,7 +416,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	else if(s->Capabilities.Dom1HTML)
 	    {
 	    htrAddScriptInit_va(s,"    %s = document.getElementById('tv%droot');\n",nptr, id);
-	    htrAddScriptInit_va(s,"    tv_init({layer:%s, fname:\"%s\", loader:document.getElementById('tv%dload'), pdoc:%s, width:%d, parent:%s, newroot:null, branches:%d);\n",
+	    htrAddScriptInit_va(s,"    tv_init({layer:%s, fname:\"%s\", loader:document.getElementById('tv%dload'), pdoc:%s, width:%d, parent:%s, newroot:null, branches:%d});\n",
 		    nptr, src, id, parentname, w, parentobj, show_branches);
 	    }
 	else
