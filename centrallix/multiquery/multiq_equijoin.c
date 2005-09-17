@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.6 2005/09/17 01:31:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.6  2005/09/17 01:31:33  gbeeley
+    - Proper error return values from queries containing joins when one of
+      the join halves doesn't open correctly.
+
     Revision 1.5  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -474,7 +478,7 @@ mqjStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 
 	/** Start the query on the master side. **/
 	master = (pQueryElement)(qe->Children.Items[0]);
-	master->Driver->Start(master, mq, NULL);
+	if (master->Driver->Start(master, mq, NULL) < 0) return -1;
 
     return 0;
     }
@@ -531,7 +535,8 @@ mqjNextItem(pQueryElement qe, pMultiQuery mq)
 		expFreezeEval(qe->Constraint, mq->QTree->ObjList, slave->SrcIndex);
 		if (mq->QTree->ObjList->Objects[qe->SrcIndex] != NULL)
 		    {
-		    slave->Driver->Start(slave, mq, qe->Constraint);
+		    if (slave->Driver->Start(slave, mq, qe->Constraint) < 0)
+			return -1;
 		    qe->Flags |= MQ_EF_SLAVESTART;
 		    }
 	        }
