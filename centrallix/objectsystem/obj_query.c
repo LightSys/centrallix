@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.11 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_query.c,v 1.12 2005/09/17 01:35:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.12  2005/09/17 01:35:10  gbeeley
+    - preset default values for SubPtr and SubCnt for child objects
+      returned from objQueryFetch()
+
     Revision 1.11  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -633,6 +637,8 @@ objQueryFetch(pObjQuery this, int mode)
 	    /** setup the new pathname. **/
 	    obj_internal_CopyPath(obj->Pathname,this->Obj->Pathname);
 	    obj->Pathname->LinkCnt = 1;
+	    obj->SubPtr = this->Obj->SubPtr;
+	    obj->SubCnt = this->Obj->SubCnt+1;
 
 	    /** Fetch next from driver. **/
             obj_data = this->Obj->Driver->QueryFetch(this->Data, obj, mode, &(obj->Session->Trx));
