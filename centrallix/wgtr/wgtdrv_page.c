@@ -50,12 +50,35 @@
 int
 wgtpageVerify(pWgtrVerifySession s)
     {
-    if((s->CurrWidget->r_x < 0) || (s->CurrWidget->r_y < 0) || 
-        (s->CurrWidget->r_width < 0) || (s->CurrWidget->r_height < 0))
-        {
-	mssError(1, "WGTR", "wgtpageVerify(): The x, y, width, or height of the page '%s' was not specified", s->CurrWidget->Name);
-	return -1;
-	}
+    int i;
+    pWgtrNode cld;
+    int maxw, maxh;
+
+	/** force these for now **/
+	s->CurrWidget->r_x = 0;
+	s->CurrWidget->r_y = 0;
+
+	if((s->CurrWidget->r_width < 0) || (s->CurrWidget->r_height < 0))
+	    {
+	    /** Absolute minimum size **/
+	    maxw = 1;
+	    maxh = 1;
+
+	    /** Scan child widgets to determine width and height **/
+	    for(i=0;i<s->CurrWidget->Children.nItems;i++)
+		{
+		cld = (pWgtrNode)(s->CurrWidget->Children.Items[i]);
+		if (cld->r_x + cld->r_width > maxw)
+		    maxw = cld->r_x + cld->r_width;
+		if (cld->r_y + cld->r_height > maxh)
+		    maxh = cld->r_y + cld->r_height;
+		}
+
+	    /*mssError(1, "WGTR", "wgtpageVerify(): The design 'width' and/or 'height' of the page '%s' were not specified", s->CurrWidget->Name);
+	    return -1;*/
+	    if (s->CurrWidget->r_width < 0) s->CurrWidget->r_width = maxw;
+	    if (s->CurrWidget->r_height < 0) s->CurrWidget->r_height = maxh;
+	    }
 	
     return 0;
     }

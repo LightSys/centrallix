@@ -62,7 +62,8 @@ wgtlblVerify(pWgtrVerifySession s)
 int
 wgtlblNew(pWgtrNode node)
     {
-	if(node->fl_width < 0) node->fl_width = 0;
+
+	if(node->fl_width < 0) node->fl_width = 1;
 	if(node->fl_height < 0) node->fl_height = 0;
 	
     return 0;
