@@ -49,10 +49,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.22 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_object.c,v 1.23 2005/09/24 20:15:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.23  2005/09/24 20:15:43  gbeeley
+    - Adding objAddVirtualAttr() to the OSML API, which can be used to add
+      an attribute to an object which invokes callback functions to get the
+      attribute values, etc.
+    - Changing objLinkTo() to return the linked-to object (same thing that
+      got passed in, but good for style in reference counting).
+    - Cleanup of some memory leak issues in objOpenQuery()
+
     Revision 1.22  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -418,6 +426,7 @@ obj_internal_AllocObj()
 	this->Data = NULL;
 	this->Type = NULL;
 	this->NotifyItem = NULL;
+	this->VAttrs = NULL;
 	memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
 	xaInit(&(this->Attrs),16);
 
@@ -1353,6 +1362,7 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 int 
 objClose(pObject this)
     {
+    pObjVirtualAttr va, del;
 
 	ASSERTMAGIC(this,MGK_OBJECT);
 
@@ -1385,6 +1395,16 @@ objClose(pObject this)
 	        nmFree(this->ContentPtr, sizeof(XString));
 	        this->ContentPtr = NULL;
 	        }
+
+	    /** Release virtual attrs **/
+	    for(va = this->VAttrs; va;)
+		{
+		del = va;
+		va = va->Next;
+		del->FinalizeFn(this->Session, this, del->Name, del->Context);
+		nmFree(del, sizeof(ObjVirtualAttr));
+		}
+	    this->VAttrs = NULL;
 	    }
 	obj_internal_FreeObj(this);
 
@@ -1396,19 +1416,23 @@ objClose(pObject this)
  *** count.  The object must then be objClose()ed one more time before the
  *** close actually processes.
  ***/
-int
+pObject
 objLinkTo(pObject this)
     {
+    pObject search;
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objLinkTo(%p/%3.3s/%s) (LinkCnt now %d)\n", this, this->Driver->Name, this->Pathname->Pathbuf, this->LinkCnt+1);
 
-    while(this) 
-        {
-	ASSERTMAGIC(this,MGK_OBJECT);
-	this->LinkCnt++;
-	this = this->Prev;
-	}
-    return 0;
+	/** Link to each object in chain **/
+	search = this;
+	while(search) 
+	    {
+	    ASSERTMAGIC(search,MGK_OBJECT);
+	    search->LinkCnt++;
+	    search = search->Prev;
+	    }
+
+    return this;
     }
 
 

@@ -48,10 +48,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.10 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_attr.c,v 1.11 2005/09/24 20:15:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.11  2005/09/24 20:15:43  gbeeley
+    - Adding objAddVirtualAttr() to the OSML API, which can be used to add
+      an attribute to an object which invokes callback functions to get the
+      attribute values, etc.
+    - Changing objLinkTo() to return the linked-to object (same thing that
+      got passed in, but good for style in reference counting).
+    - Cleanup of some memory leak issues in objOpenQuery()
+
     Revision 1.10  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -144,12 +152,51 @@
 
  **END-CVSDATA***********************************************************/
 
+
+/*** objAddVirtualAttr() - adds a virtual attribute to an open object.  The
+ *** virtual attribute only persists during the time the object is open,
+ *** and is managed via external functions.
+ ***/
+int
+objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(), int (*get_fn)(), int (*set_fn)(), int (*finalize_fn)())
+    {
+    pObjVirtualAttr va;
+
+	ASSERTMAGIC(this, MGK_OBJECT);
+
+	/** Must not already exist **/
+	if (objGetAttrType(this, attrname) >= 0)
+	    {
+	    mssError(1, "OSML", "Virtual Attribute '%s' already exists in object.", attrname);
+	    return -1;
+	    }
+
+	/** Set it up **/
+	va = (pObjVirtualAttr)nmMalloc(sizeof(ObjVirtualAttr));
+	if (!va) return -1;
+	memccpy(va->Name, attrname, 0, 32);
+	va->Name[31] = '\0';
+	va->Context = context;
+	va->TypeFn = type_fn;
+	va->GetFn = get_fn;
+	va->SetFn = set_fn;
+	va->FinalizeFn = finalize_fn;
+
+	/** Link in with existing vattrs **/
+	va->Next = this->VAttrs;
+	this->VAttrs = va;
+
+    return 0;
+    }
+
+
 /*** objGetAttrType -- returns the data type of a particular attribute.
  *** Data types are DATA_T_xxx, as defined in obj.h
  ***/
 int
 objGetAttrType(pObject this, char* attrname)
     {
+    pObjVirtualAttr va;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -162,6 +209,12 @@ objGetAttrType(pObject this, char* attrname)
 		!strcmp(attrname,"outer_type")) return DATA_T_STRING;
 	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
 
+	/** Virtual attrs **/
+	for(va=this->VAttrs; va; va=va->Next)
+	    {
+	    if (!strcmp(attrname, va->Name))
+		return va->TypeFn(this->Session, this, attrname, va->Context);
+	    }
 
     return this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
     }
@@ -177,6 +230,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     char readbuf[256];
     char* ptr;
     int rval;
+    pObjVirtualAttr va;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -232,6 +286,13 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    return 0;
 	    }
 
+	/** Virtual attrs **/
+	for(va=this->VAttrs; va; va=va->Next)
+	    {
+	    if (!strcmp(attrname, va->Name))
+		return va->GetFn(this->Session, this, attrname, va->Context, data_type, val);
+	    }
+
 	/** Call the driver. **/
 	rval = this->Driver->GetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
 
@@ -279,6 +340,7 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     {
     int rval;
     TObjData tod;
+    pObjVirtualAttr va;
     
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -289,6 +351,13 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    data_type = objGetAttrType(this, attrname);
 	    }
 #endif
+
+	/** Virtual attrs **/
+	for(va=this->VAttrs; va; va=va->Next)
+	    {
+	    if (!strcmp(attrname, va->Name))
+		return va->SetFn(this->Session, this, attrname, va->Context, data_type, val);
+	    }
 
 	rval = this->Driver->SetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
 	if (rval >= 0) 
@@ -347,6 +416,7 @@ objOpenAttr(pObject this, char* attrname, int mode)
 	/** Allocate memory and initialize the object descriptor **/
 	obj = (pObject)nmMalloc(sizeof(Object));
 	if (!obj) return NULL;
+	obj->VAttrs = NULL;
 	obj->Data = obj_data;
 	obj->Obj = this;
 	obj->Magic = MGK_OBJECT;

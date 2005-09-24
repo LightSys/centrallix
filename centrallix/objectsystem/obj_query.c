@@ -47,10 +47,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.12 2005/09/17 01:35:10 gbeeley Exp $
+    $Id: obj_query.c,v 1.13 2005/09/24 20:15:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.13  2005/09/24 20:15:43  gbeeley
+    - Adding objAddVirtualAttr() to the OSML API, which can be used to add
+      an attribute to an object which invokes callback functions to get the
+      attribute values, etc.
+    - Changing objLinkTo() to return the linked-to object (same thing that
+      got passed in, but good for style in reference counting).
+    - Cleanup of some memory leak issues in objOpenQuery()
+
     Revision 1.12  2005/09/17 01:35:10  gbeeley
     - preset default values for SubPtr and SubCnt for child objects
       returned from objQueryFetch()
@@ -287,7 +295,7 @@ objMultiQuery(pObjSession session, char* query)
 pObjQuery 
 objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orderby_exp_v)
     {
-    pObjQuery this;
+    pObjQuery this = NULL;
     pExpression tree = (pExpression)tree_v;
     pExpression *orderbyexp = (pExpression*)orderby_exp_v;
     int i,n,len,j;
@@ -298,6 +306,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     char* ptr;
     char* start_ptr;
     char dbuf[8];
+    pObject linked_obj = NULL;
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
@@ -305,16 +314,19 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 
 	/** Allocate a query object **/
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
-	if (!this) return NULL;
+	if (!this) 
+	    goto error_return;
 	this->QyText = query;
 	this->Drv = NULL;
 	this->Flags = 0;
 	this->SortInf = NULL;
 	this->Magic = MGK_OBJQUERY;
+	this->ObjList = NULL;
+	this->Tree = NULL;
 
 	/** Ok, first parse the query. **/
-	objLinkTo(obj);
-	this->Obj = obj;
+	linked_obj = objLinkTo(obj);
+	this->Obj = linked_obj;
         this->ObjList = (void*)expCreateParamList();
 	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, 0);
 	if (query && *query)
@@ -322,10 +334,9 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    this->Tree = (void*)expCompileExpression(query, (pParamObjects)(this->ObjList), MLX_F_ICASE | MLX_F_FILENAMES, 0);
 	    if (!(this->Tree))
 	        {
-	        nmFree(this,sizeof(ObjQuery));
 		mssError(0,"OSML","Query search criteria is invalid");
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
-	        return NULL;
+		goto error_return;
 		}
 	    this->Flags |= OBJ_QY_F_ALLOCTREE;
 	    }
@@ -365,20 +376,17 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    }
 
 	/** Issue to driver **/
-	this->Data = obj->Driver->OpenQuery(obj->Data,this,&(obj->Session->Trx));
+	this->Data = linked_obj->Driver->OpenQuery(linked_obj->Data,this,&(linked_obj->Session->Trx));
 
 	if (!(this->Data))
 	    {
-	    if (this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
-	    if (this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
-	    nmFree(this,sizeof(ObjQuery));
 	    mssError(0,"OSML","Either queries not supported on this object or query failed");
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
-	    return NULL;
+	    goto error_return;
 	    }
 
 	/** Add to session open queries... **/
-	xaAddItem(&(obj->Session->OpenQueries),(void*)this);
+	xaAddItem(&(linked_obj->Session->OpenQueries),(void*)this);
 	
 	/** If sort requested and driver no support, set from sort flag and start the sort **/
 	if (this->SortBy[0] && !(this->Flags & OBJ_QY_F_FULLSORT))
@@ -508,6 +516,16 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8X\n", (int)this);
 
     return this;
+
+    error_return:
+
+	if (this && order_by && !orderbyexp) for(i=0;this->SortBy[i];i++) expFreeExpression(this->SortBy[i]);
+	if (linked_obj) objClose(linked_obj); /* unlink */
+	if (this && this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
+	if (this && this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
+	if (this) nmFree(this,sizeof(ObjQuery));
+
+    return NULL;
     }
 
 
@@ -585,6 +603,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    obj->Next = NULL;
 	    obj->Type = NULL;
 	    obj->NotifyItem = NULL;
+	    obj->VAttrs = NULL;
 	    xaInit(&obj->Attrs,4);
             xaAddItem(&(this->QySession->OpenObjects),(void*)obj);
 	    obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
@@ -630,6 +649,7 @@ objQueryFetch(pObjQuery this, int mode)
 	obj->Flags = 0;
 	obj->Type = NULL;
 	obj->NotifyItem = NULL;
+	obj->VAttrs = NULL;
 
 	/** Scan objects til we find one matching the query. **/
 	while(1)
@@ -742,6 +762,7 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	new_obj->Flags = 0;
 	new_obj->Type = NULL;
 	new_obj->NotifyItem = NULL;
+	new_obj->VAttrs = NULL;
 
 	/** Does driver support QueryCreate? **/
 	if (new_obj->Driver->QueryCreate && 

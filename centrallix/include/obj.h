@@ -35,10 +35,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.31 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: obj.h,v 1.32 2005/09/24 20:15:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.32  2005/09/24 20:15:42  gbeeley
+    - Adding objAddVirtualAttr() to the OSML API, which can be used to add
+      an attribute to an object which invokes callback functions to get the
+      attribute values, etc.
+    - Changing objLinkTo() to return the linked-to object (same thing that
+      got passed in, but good for style in reference counting).
+    - Cleanup of some memory leak issues in objOpenQuery()
+
     Revision 1.31  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -563,6 +571,24 @@ typedef struct _OA
 #define OBJ_INFO_F_SUPPORTS_INHERITANCE	(1<<14)	/* object can support inheritance attr cx__inherit, etc. */
 
 
+/** object virtual attribute - these are attributes which persist only while
+ ** the object is open, and whose values and types are obtained by invoking
+ ** external function calls.  Can be used to dynamically add an attribute to
+ ** an open object.
+ **/
+typedef struct _OVA
+    {
+    struct _OVA*	Next;		/* next virtual attr in the list */
+    char		Name[32];	/* name of the attribute */
+    void*		Context;	/* arbitrary data from addvirtualattr() caller */
+    int			(*TypeFn)();	/* GetAttrType */
+    int			(*GetFn)();	/* GetAttrValue */
+    int			(*SetFn)();	/* SetAttrValue */
+    int			(*FinalizeFn)(); /* called when about to close the object */
+    }
+    ObjVirtualAttr, *pObjVirtualAttr;
+
+
 /** objectsystem open fd **/
 typedef struct _OF
     {
@@ -586,6 +612,7 @@ typedef struct _OF
     struct _OF*	Next;		/* next object for intermediate opens chain */
     ObjectInfo	AdditionalInfo;	/* see ObjectInfo definition above */
     void*	NotifyItem;	/* pObjReqNotifyItem; not-null when notifies are active on this */
+    pObjVirtualAttr VAttrs;	/* virtual attributes - call external fn()'s to obtain the data */
     }
     Object, *pObject;
 
@@ -806,7 +833,7 @@ int objClose(pObject this);
 int objCreate(pObjSession session, char* path, int permission_mask, char* type);
 int objDelete(pObjSession session, char* path);
 int objDeleteObj(pObject this);
-int objLinkTo(pObject this);
+pObject objLinkTo(pObject this);
 pObjectInfo objInfo(pObject this);
 
 /** objectsystem directory/query functions **/
@@ -837,6 +864,7 @@ pObject objOpenAttr(pObject this, char* attrname, int mode);
 int objAddAttr(pObject this, char* attrname, int type, pObjData val);
 pObjPresentationHints objPresentationHints(pObject this, char* attrname);
 int objFreeHints(pObjPresentationHints ph);
+int objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(), int (*get_fn)(), int (*set_fn)(), int (*finalize_fn)());
 
 /** objectsystem method functions **/
 char* objGetFirstMethod(pObject this);
