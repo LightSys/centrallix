@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.17 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: multiquery.c,v 1.18 2005/09/24 20:19:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.18  2005/09/24 20:19:18  gbeeley
+    - Adding "select ... from subtree /path" support to the SQL engine,
+      allowing the retrieval of an entire subtree with one query.  Uses
+      the new virtual attr support to supply the relative path of each
+      retrieved object.  Much the reverse of what a querytree object can
+      do.
+    - Memory leak fixes in multiquery.c
+    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
+
     Revision 1.17  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -615,7 +624,7 @@ mq_internal_SyntaxParse(pLxSession lxs)
     pQueryStructure limit_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel;
+    int t,parenlevel,subtr;
     char* ptr;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
@@ -1160,6 +1169,12 @@ mq_internal_SyntaxParse(pLxSession lxs)
 
 		case FromItem:
 		    t = mlxNextToken(lxs);
+		    subtr = 0;
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("subtree", ptr))
+			{
+			t = mlxNextToken(lxs);
+			subtr = 1;
+			}
 		    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
 		        {
 			next_state = ParseError;
@@ -1170,6 +1185,7 @@ mq_internal_SyntaxParse(pLxSession lxs)
 		    new_qs = mq_internal_AllocQS(MQ_T_FROMSOURCE);
 		    new_qs->Presentation[0] = 0;
 		    new_qs->Name[0] = 0;
+		    if (subtr) new_qs->Flags |= MQ_SF_FROMSUBTREE;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;
 		    mlxCopyToken(lxs,new_qs->Source,256);
@@ -1570,6 +1586,7 @@ mqStartQuery(pObjSession session, char* query_text)
 	    if (qdrv->Analyze(this) < 0)
 	        {
 	        mq_internal_FreeQS(this->QTree);
+		if (this->Tree) mq_internal_FreeQE(this->Tree);
 	        nmFree(this,sizeof(MultiQuery));
 	        return NULL;
 		}
@@ -1578,7 +1595,12 @@ mqStartQuery(pObjSession session, char* query_text)
 	/** Have the MQ drivers start the query. **/
 	if (this->Tree->Driver->Start(this->Tree, this, NULL) < 0)
 	    {
+	    if (this->WhereClause && !(this->WhereClause->Flags & EXPR_F_CVNODE)) 
+		expFreeExpression(this->WhereClause);
+	    if (this->HavingClause) 
+		expFreeExpression(this->HavingClause);
 	    mq_internal_FreeQS(this->QTree);
+	    mq_internal_FreeQE(this->Tree);
 	    nmFree(this,sizeof(MultiQuery));
 	    mssError(0,"MQ","Could not start the query");
 	    return NULL;
@@ -2139,10 +2161,7 @@ mqCommit(void* inf_v, pObjTrxTree* oxt)
 	mq_internal_CkSetObjList(p->Query, p);
 
 	/** Commit each underlying object **/
-	for(i=0;i<p->Query->QTree->ObjList->nObjects;i++)
-	    {
-	    objCommit(p->Query->QTree->ObjList->Objects[i]);
-	    }
+	objCommit(p->Query->SessionID);
 
     return 0;
     }

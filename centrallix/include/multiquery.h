@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.6 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: multiquery.h,v 1.7 2005/09/24 20:19:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.7  2005/09/24 20:19:18  gbeeley
+    - Adding "select ... from subtree /path" support to the SQL engine,
+      allowing the retrieval of an entire subtree with one query.  Uses
+      the new virtual attr support to supply the relative path of each
+      retrieved object.  Much the reverse of what a querytree object can
+      do.
+    - Memory leak fixes in multiquery.c
+    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
+
     Revision 1.6  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -133,6 +142,7 @@ typedef struct _QE
 #define MQ_EF_OUTERJOIN		2		/* if join, this is an outerjoin. */
 #define MQ_EF_CONSTEXP		4		/* constraint expression supplied in QE */
 #define MQ_EF_SLAVESTART	8		/* slave side of join was started */
+#define MQ_EF_FROMSUBTREE	16		/* SELECT ... FROM SUBTREE /path/name */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -158,6 +168,7 @@ typedef struct _QS
 
 #define MQ_SF_USED		1		/* QS has been used by another q-drv. */
 #define MQ_SF_FORUPDATE		2		/* SELECT query results can be updated */
+#define MQ_SF_FROMSUBTREE	4		/* SELECT ... FROM SUBTREE /path/name */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1

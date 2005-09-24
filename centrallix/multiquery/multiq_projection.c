@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.5 2005/09/24 20:19:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.5  2005/09/24 20:19:18  gbeeley
+    - Adding "select ... from subtree /path" support to the SQL engine,
+      allowing the retrieval of an entire subtree with one query.  Uses
+      the new virtual attr support to supply the relative path of each
+      retrieved object.  Much the reverse of what a querytree object can
+      do.
+    - Memory leak fixes in multiquery.c
+    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
+
     Revision 1.4  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -91,6 +100,257 @@ struct
     }
     MQPINF;
 
+/*** used by subtree projections to remember what depth objects were at, etc. ***/
+typedef struct _MSI
+    {
+    int		Depth;
+    char	Path[OBJSYS_MAX_PATH+1];
+    int		LinkCnt;
+    struct _MSI* Parent;
+    }
+    MqpSbtInf, *pMqpSbtInf;
+
+#define MQP_MAX_SUBTREE	    64
+    
+/*** used by subtree projections to store the open query and object stack ***/
+typedef struct
+    {
+    pObject	ObjStack[MQP_MAX_SUBTREE];
+    pObjQuery	QueryStack[MQP_MAX_SUBTREE];
+    int		nStacked;
+    pMqpSbtInf	CtxStack[MQP_MAX_SUBTREE];
+    pMqpSbtInf	CtxCurrent;
+    }
+    MqpSubtrees, *pMqpSubtrees;
+
+
+int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
+
+
+/*** mqp_internal_GetSbtAttrType() - get the data type of one of the
+ *** "special" subtree select attributes:
+ ***
+ ***    __cx_path (string)
+ ***	__cx_parentpath (string)
+ ***	__cx_parentname (string)
+ ***	__cx_depth (integer)
+ ***/
+int
+mqp_internal_GetSbtAttrType(pObjSession s, pObject obj, char* attrname, void* ctx)
+    {
+
+	/** Choose it **/
+	if (!strcmp(attrname,"__cx_path"))
+	    return DATA_T_STRING;
+	else if (!strcmp(attrname,"__cx_parentpath"))
+	    return DATA_T_STRING;
+	else if (!strcmp(attrname,"__cx_parentname"))
+	    return DATA_T_STRING;
+	else if (!strcmp(attrname,"__cx_depth"))
+	    return DATA_T_INTEGER;
+
+    return -1;
+    }
+
+
+/*** mqp_internal_GetSbtAttrValue() - get the value of one of the special
+ *** subtree select attrs.
+ ***/
+int
+mqp_internal_GetSbtAttrValue(pObjSession s, pObject obj, char* attrname, void* ctx_v, int type, pObjData val)
+    {
+    pMqpSbtInf ctx = (pMqpSbtInf)ctx_v;
+    char* ptr;
+
+	/** Path... **/
+	if (!strcmp(attrname, "__cx_path"))
+	    {
+	    val->String = ctx->Path;
+	    return 0;
+	    }
+
+	/** Parent's Path... **/
+	if (!strcmp(attrname, "__cx_parentpath"))
+	    {
+	    if (!ctx->Parent) return 1;
+	    val->String = ctx->Parent->Path;
+	    return 0;
+	    }
+
+	/** Parent's Name... **/
+	if (!strcmp(attrname, "__cx_parentname"))
+	    {
+	    if (!ctx->Parent) return 1;
+	    ptr = strrchr(ctx->Parent->Path, '/');
+	    if (ptr)
+		val->String = ptr+1;
+	    else
+		val->String = ctx->Parent->Path;
+	    return 0;
+	    }
+
+	/** Depth **/
+	if (!strcmp(attrname, "__cx_depth"))
+	    {
+	    val->Integer = ctx->Depth;
+	    return 0;
+	    }
+
+    return -1;
+    }
+
+
+/*** mqp_internal_SetSbtAttrValue() - set the value of one of the special
+ *** subtree select attributes.  Not currently supported.
+ ***/
+int
+mqp_internal_SetSbtAttrValue(pObjSession s, pObject obj, char* attrname, void* ctx, int type, pObjData val)
+    {
+    return -1;
+    }
+
+
+/*** mqp_internal_UnlinkSbt() - unlink a subtree context data structure, and free
+ *** if ready to do so.
+ ***/
+int
+mqp_internal_UnlinkSbt(pMqpSbtInf* sbtctx)
+    {
+
+	if (--(*sbtctx)->LinkCnt <= 0)
+	    {
+	    if ((*sbtctx)->Parent) mqp_internal_UnlinkSbt(&((*sbtctx)->Parent));
+	    nmFree((*sbtctx), sizeof(MqpSbtInf));
+	    *sbtctx = NULL;
+	    }
+
+    return 0;
+    }
+
+
+/*** mqp_internal_FinalizeSbt() - when object with vattrs is finally closed, this is
+ *** called so that the context structure can be cleaned up.
+ ***/
+int
+mqp_internal_FinalizeSbt(pObjSession s, pObject obj, char* attrname, void* ctx_v)
+    {
+    pMqpSbtInf ctx = (pMqpSbtInf)ctx_v;
+
+	mqp_internal_UnlinkSbt(&ctx);
+
+    return 0;
+    }
+
+
+/*** mqp_internal_Recurse() - attempt to recurse down into subobjects for a
+ *** subtree type projection.  Returns a subobject if one is found, NULL
+ *** otherwise.
+ ***/
+pObject
+mqp_internal_Recurse(pQueryElement qe, pMultiQuery mq, pObject obj)
+    {
+    pObjectInfo oi;
+    pObjQuery newqy;
+    pObject newobj;
+    pMqpSubtrees ms = (pMqpSubtrees)(qe->PrivateData);
+
+	/** Too many levels of recursion? **/
+	if (ms->nStacked >= MQP_MAX_SUBTREE) return NULL;
+
+	/** First, can we discern subobjs w/o running a query? **/
+	oi = objInfo(obj);
+	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
+
+	/** Try running the query. **/
+	newqy = objOpenQuery(obj, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	if (!newqy) return NULL;
+	objUnmanageQuery(mq->SessionID, newqy);
+	newobj = objQueryFetch(newqy, O_RDONLY);
+	if (!newobj)
+	    {
+	    objQueryClose(newqy);
+	    return NULL;
+	    }
+	objUnmanageObject(mq->SessionID, newobj);
+
+	/** Stack em. **/
+	ms->ObjStack[ms->nStacked] = qe->LLSource;
+	ms->QueryStack[ms->nStacked] = qe->LLQuery;
+	ms->CtxStack[ms->nStacked] = ms->CtxCurrent;
+	ms->nStacked++;
+	qe->LLSource = obj;
+	qe->LLQuery = newqy;
+
+	mqp_internal_SetupSubtreeAttrs(qe, newobj);
+
+    return newobj;
+    }
+
+
+/*** mqp_internal_Return() - reverse of the above.
+ ***/
+pObject
+mqp_internal_Return(pQueryElement qe, pMultiQuery mq, pObject obj)
+    {
+    pMqpSubtrees ms = (pMqpSubtrees)(qe->PrivateData);
+    pObject oldobj;
+
+	/** Nothing to return from? **/
+	if (ms->nStacked == 0) return NULL;
+
+	/** Close the qy and obj **/
+	objQueryClose(qe->LLQuery);
+	if (obj) objClose(obj);
+	oldobj = qe->LLSource;
+
+	/** Remove original data from stack **/
+	ms->nStacked--;
+	qe->LLSource = ms->ObjStack[ms->nStacked];
+	qe->LLQuery = ms->QueryStack[ms->nStacked];
+	ms->CtxCurrent = ms->CtxStack[ms->nStacked];
+
+    return oldobj;
+    }
+
+
+/*** mqp_internal_SetupSubtreeAttrs() - set up the four special subtree select
+ *** attributes on a newly opened object.
+ ***/
+int
+mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj)
+    {
+    pMqpSubtrees ms = (pMqpSubtrees)(qe->PrivateData);
+    pMqpSbtInf ctx;
+
+	/** Build the context structure **/
+	ctx = (pMqpSbtInf)nmMalloc(sizeof(MqpSbtInf));
+	if (!ctx) return -1;
+	ctx->Depth = ms->nStacked+1;
+	strcpy(ctx->Path, obj_internal_PathPart(obj->Pathname, obj->Pathname->nElements - ctx->Depth, ctx->Depth));
+	if (ms->nStacked > 0)
+	    {
+	    ctx->Parent = ms->CtxStack[ms->nStacked-1];
+	    ctx->Parent->LinkCnt++;
+	    }
+	else
+	    {
+	    ctx->Parent = NULL;
+	    }
+	ctx->LinkCnt = 4; /* four attributes will be set up. */
+	ms->CtxCurrent = ctx;
+
+	/** Set up the attributes **/
+	objAddVirtualAttr(obj, "__cx_path", ctx, mqp_internal_GetSbtAttrType, mqp_internal_GetSbtAttrValue,
+		mqp_internal_SetSbtAttrValue, mqp_internal_FinalizeSbt);
+	objAddVirtualAttr(obj, "__cx_parentpath", ctx, mqp_internal_GetSbtAttrType, mqp_internal_GetSbtAttrValue,
+		mqp_internal_SetSbtAttrValue, mqp_internal_FinalizeSbt);
+	objAddVirtualAttr(obj, "__cx_parentname", ctx, mqp_internal_GetSbtAttrType, mqp_internal_GetSbtAttrValue,
+		mqp_internal_SetSbtAttrValue, mqp_internal_FinalizeSbt);
+	objAddVirtualAttr(obj, "__cx_depth", ctx, mqp_internal_GetSbtAttrType, mqp_internal_GetSbtAttrValue,
+		mqp_internal_SetSbtAttrValue, mqp_internal_FinalizeSbt);
+
+    return 0;
+    }
 
 
 /*** mqpAnalyze - take a given query syntax structure (qs) and scan it
@@ -255,7 +515,15 @@ mqpAnalyze(pMultiQuery mq)
 
 	    /** Setup the object that this will use. **/
 	    qe->SrcIndex = src_idx;
+	    if (from_qs->Flags & MQ_SF_FROMSUBTREE) qe->Flags |= MQ_EF_FROMSUBTREE;
 	    from_qs->Flags |= MQ_SF_USED;
+
+	    /** Setup private data if needed **/
+	    if (qe->Flags & MQ_EF_FROMSUBTREE)
+		{
+		qe->PrivateData = (pMqpSubtrees)nmMalloc(sizeof(MqpSubtrees));
+		memset(qe->PrivateData, 0, sizeof(MqpSubtrees));
+		}
 	    }
 
     return 0;
@@ -276,12 +544,12 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDWR, 0600, "system/directory");
 	else
 	    qe->LLSource = objOpen(mq->SessionID, ((pQueryStructure)qe->QSLinkage)->Source, O_RDONLY, 0600, "system/directory");
-	objUnmanageObject(mq->SessionID, qe->LLSource);
 	if (!qe->LLSource) 
 	    {
 	    mssError(0,"MQP","Could not open source object for SQL projection");
 	    return -1;
 	    }
+	objUnmanageObject(mq->SessionID, qe->LLSource);
 
 	/** Additional expression supplied?? **/
 	if (additional_expr) qe->Flags |= MQ_EF_ADDTLEXP;
@@ -302,7 +570,7 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	if (!qe->LLQuery) 
 	    {
-	    objClose(qe->LLSource);
+	    mqpFinish(qe,mq);
 	    mssError(0,"MQP","Could not query source object for SQL projection");
 	    return -1;
 	    }
@@ -322,20 +590,52 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
     {
     pObject obj;
 
-    	/** Close the previous fetched object? **/
-	if (mq->QTree->ObjList->Objects[qe->SrcIndex])
+	/** Attempt to recurse a subtree? **/
+	if (qe->Flags & MQ_EF_FROMSUBTREE && mq->QTree->ObjList->Objects[qe->SrcIndex])
 	    {
-	    objClose(mq->QTree->ObjList->Objects[qe->SrcIndex]);
-	    mq->QTree->ObjList->Objects[qe->SrcIndex] = NULL;
+	    obj = mqp_internal_Recurse(qe, mq, mq->QTree->ObjList->Objects[qe->SrcIndex]);
+	    if (obj)
+		{
+		expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
+		return 1;
+		}
 	    }
 
-    	/** Fetch the next item and set the object... **/
-	obj = objQueryFetch(qe->LLQuery, O_RDONLY);
-	if (!obj) return 0;
-	objUnmanageObject(mq->SessionID, obj);
-	expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
+	/** Loop is for when we are returning from deep recursion **/
+	while(1)
+	    {
+	    /** Close the previous fetched object? **/
+	    if (mq->QTree->ObjList->Objects[qe->SrcIndex])
+		{
+		objClose(mq->QTree->ObjList->Objects[qe->SrcIndex]);
+		mq->QTree->ObjList->Objects[qe->SrcIndex] = NULL;
+		}
 
-    return 1;
+	    /** Fetch the next item and set the object... **/
+	    obj = objQueryFetch(qe->LLQuery, O_RDONLY);
+	    if (obj)
+		{
+		/** Got one. **/
+		objUnmanageObject(mq->SessionID, obj);
+		expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
+		if (qe->Flags & MQ_EF_FROMSUBTREE) mqp_internal_SetupSubtreeAttrs(qe, obj);
+		return 1;
+		}
+
+	    /** No more objects - return from a subtree? **/
+	    if (qe->Flags & MQ_EF_FROMSUBTREE)
+		{
+		obj = mqp_internal_Return(qe, mq, NULL);
+		if (!obj) return 0;
+		expModifyParam(mq->QTree->ObjList, mq->QTree->ObjList->Names[qe->SrcIndex], obj);
+		}
+	    else
+		{
+		return 0;
+		}
+	    }
+
+    return 0;
     }
 
 
@@ -346,7 +646,6 @@ int
 mqpFinish(pQueryElement qe, pMultiQuery mq)
     {
     pExpression del_exp;
-
 
     	/** Close the previous fetched object? **/
 	if (mq->QTree->ObjList->Objects[qe->SrcIndex])
@@ -372,8 +671,8 @@ mqpFinish(pQueryElement qe, pMultiQuery mq)
 	    }
 
     	/** Close the source object and the query. **/
-	objQueryClose(qe->LLQuery);
-	objClose(qe->LLSource);
+	if (qe->LLQuery) objQueryClose(qe->LLQuery);
+	if (qe->LLSource) objClose(qe->LLSource);
 
     return 0;
     }
@@ -393,6 +692,10 @@ mqpRelease(pQueryElement qe, pMultiQuery mq)
 	    expFreeExpression(qe->OrderBy[i]);
 	    qe->OrderBy[i] = NULL;
 	    }
+
+	/** Release private data if needed **/
+	if (qe->Flags & MQ_EF_FROMSUBTREE)
+	    nmFree(qe->PrivateData, sizeof(MqpSubtrees));
 
     return 0;
     }

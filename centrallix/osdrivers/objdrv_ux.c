@@ -54,10 +54,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_ux.c,v 1.15 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: objdrv_ux.c,v 1.16 2005/09/24 20:19:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_ux.c,v $
 
     $Log: objdrv_ux.c,v $
+    Revision 1.16  2005/09/24 20:19:18  gbeeley
+    - Adding "select ... from subtree /path" support to the SQL engine,
+      allowing the retrieval of an entire subtree with one query.  Uses
+      the new virtual attr support to supply the relative path of each
+      retrieved object.  Much the reverse of what a querytree object can
+      do.
+    - Memory leak fixes in multiquery.c
+    - Fix for objdrv_ux regarding fetched objects and the obj->Pathname.
+
     Revision 1.15  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -986,7 +995,7 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    }
 
 	/** Build the filename. **/
-	if (strlen(d->d_name) + 1 + strlen(qy->File->RealPathname) >= OBJSYS_MAX_PATH) 
+	if (obj_internal_AddToPath(obj->Pathname, d->d_name) < 0)
 	    {
 	    mssError(1,"UXD","Query result pathname exceeds internal limits");
 	    return NULL;
