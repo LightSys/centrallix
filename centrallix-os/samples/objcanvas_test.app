@@ -7,6 +7,8 @@ objcanvas_test "widget/page"
     //datafocus1="white";
     //datafocus2="white";
     x=0; y=0; width=640; height=480;
+
+    widget_template = "/samples/objcanvas_test.tpl";
     
     osrc1 "widget/osrc"
 	{
@@ -73,65 +75,53 @@ objcanvas_test "widget/page"
 		    }
 		btnSearch "widget/textbutton"
 		    {
-		    x=250; y=10; width=60; height=21;
+		    x=250; y=10;
 		    text="Search";
-		    tristate=no;
-		    fgcolor1=black;fgcolor2=white;
-		    background="/sys/images/grey_gradient.png";
 		    enabled = runclient(:form1:is_queryable or :form1:is_queryexecutable);
 		    cnSearch "widget/connector" { event="Click"; target="form1"; action="QueryToggle"; }
 		    }
 		btnEdit "widget/textbutton"
 		    {
-		    x=314; y=10; width=60; height=21;
+		    x=314; y=10;
 		    text="Edit";
-		    tristate=no;
-		    fgcolor1=black;fgcolor2=white;
-		    background="/sys/images/grey_gradient.png";
 		    enabled = runclient(:form1:is_editable);
 		    cnEdit "widget/connector" { event="Click"; target="form1"; action="Edit"; }
 		    }
 		btnSave "widget/textbutton"
 		    {
-		    x=378; y=10; width=60; height=21;
+		    x=378; y=10;
 		    text="Save";
-		    tristate=no;
-		    fgcolor1=black;fgcolor2=white;
-		    background="/sys/images/grey_gradient.png";
 		    enabled = runclient(:form1:is_savable);
 		    cnSave "widget/connector" { event="Click"; target="form1"; action="Save"; }
 		    }
 		btnCancel "widget/textbutton"
 		    {
-		    x=442; y=10; width=60; height=21;
+		    x=442; y=10;
 		    text="Cancel";
-		    tristate=no;
-		    fgcolor1=black;fgcolor2=white;
-		    background="/sys/images/grey_gradient.png";
 		    enabled = runclient(:form1:is_discardable);
 		    cnCancel "widget/connector" { event="Click"; target="form1"; action="Discard"; }
 		    }
 
-		lblMapX "widget/label" { x=4; y=40; width=80; height=20; text="Map X:"; align=right; }
-		ebMapX "widget/editbox" { x=90; y=40; width=60; height=20; bgcolor=white; fieldname="x"; }
+		lblMapX "widget/label" { x=4; y=40; text="Map X:"; }
+		ebMapX "widget/editbox" { x=90; y=40; width=60; fieldname="x"; }
 
-		lblMapY "widget/label" { x=4; y=64; width=80; height=20; text="Map Y:"; align=right; }
-		ebMapY "widget/editbox" { x=90; y=64; width=60; height=20; bgcolor=white; fieldname="y"; }
+		lblMapY "widget/label" { x=4; y=64; text="Map Y:"; }
+		ebMapY "widget/editbox" { x=90; y=64; width=60; fieldname="y"; }
 
-		lblMapWidth "widget/label" { x=4; y=88; width=80; height=20; text="Map Width:"; align=right; }
-		ebMapWidth "widget/editbox" { x=90; y=88; width=60; height=20; bgcolor=white; fieldname="width"; }
+		lblMapWidth "widget/label" { x=4; y=88; text="Map Width:"; }
+		ebMapWidth "widget/editbox" { x=90; y=88; width=60; fieldname="width"; }
 
-		lblMapHeight "widget/label" { x=4; y=112; width=80; height=20; text="Map Height:"; align=right; }
-		ebMapHeight "widget/editbox" { x=90; y=112; width=60; height=20; bgcolor=white; fieldname="height"; }
+		lblMapHeight "widget/label" { x=4; y=112; text="Map Height:"; }
+		ebMapHeight "widget/editbox" { x=90; y=112; width=60; fieldname="height"; }
 
-		lblMapImage "widget/label" { x=160; y=40; width=80; height=20; text="Map Image:"; align=right; }
-		ebMapImage "widget/editbox" { x=250; y=40; width=250; height=20; bgcolor=white; fieldname="image"; }
+		lblMapImage "widget/label" { x=160; y=40; text="Map Image:"; }
+		ebMapImage "widget/editbox" { x=250; y=40; width=250; fieldname="image"; }
 
-		lblMapColor "widget/label" { x=160; y=64; width=80; height=20; text="Map Color:"; align=right; }
-		ebMapColor "widget/editbox" { x=250; y=64; width=250; height=20; bgcolor=white; fieldname="color"; }
+		lblMapColor "widget/label" { x=160; y=64; text="Map Color:"; }
+		ebMapColor "widget/editbox" { x=250; y=64; width=250; fieldname="color"; }
 
-		lblObjType "widget/label" { x=160; y=88; width=80; height=20; text="Type:"; align=right; }
-		//ebObjType "widget/editbox" { x=250; y=88; width=250; height=20; bgcolor=white; fieldname="type"; }
+		lblObjType "widget/label" { x=160; y=88; text="Type:"; }
+		//ebObjType "widget/editbox" { x=250; y=88; width=250; fieldname="type"; }
 		ddObjType "widget/dropdown"
 		    {
 		    x=250;y=88;width=250;height=20;
@@ -145,8 +135,8 @@ objcanvas_test "widget/page"
 		    dd_road "widget/dropdownitem" { label = "Road or Highway"; value = "road"; }
 		    }
 
-		lblObjDesc "widget/label" { x=160; y=112; width=80; height=20; text="Description:"; align=right; }
-		ebObjDesc "widget/editbox" { x=250; y=112; width=250; height=20; bgcolor=white; fieldname="description"; }
+		lblObjDesc "widget/label" { x=160; y=112; text="Description:"; }
+		ebObjDesc "widget/editbox" { x=250; y=112; width=250; fieldname="description"; }
 		}
 	    }
 
