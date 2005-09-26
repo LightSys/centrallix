@@ -390,9 +390,9 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 	    }
 	else
 	    {
-	    if (getPageY(sl) >= getPageY(tv_tgt_layer) + 20 && sl != tv_tgt_layer && sl.visibility == 'inherit')
+	    if (getRelativeY(sl) >= getRelativeY(tv_tgt_layer) + 20 && sl != tv_tgt_layer && sl.visibility == 'inherit')
 		{
-		setPageY(sl, getPageY(sl) + 20*(linkcnt));
+		setRelativeY(sl, getRelativeY(sl) + 20*(linkcnt));
 		}
 	    }
 	}
@@ -779,9 +779,9 @@ function tv_collapse()
 	{
 	sl = lyrs[j];
 	var visibility = pg_get_style(sl,'visibility');
-	if (getPageY(sl) > getPageY(l) && (visibility == 'inherit' || visibility == 'visible') )
+	if (getRelativeY(sl) > getRelativeY(l) && (visibility == 'inherit' || visibility == 'visible') )
 	    {
-	    setPageY(sl, getPageY(sl)-20*cnt);
+	    setRelativeY(sl, getRelativeY(sl)-20*cnt);
 	    }
 	}
     if(cx__capabilities.Dom0NS)

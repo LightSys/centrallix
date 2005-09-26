@@ -11,7 +11,6 @@
 
 function osrc_init_query()
     {
-    //alert();
     if(this.init==true)
 	return;
     this.init=true;

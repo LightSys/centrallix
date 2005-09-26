@@ -13,6 +13,7 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 			    is_visual	    // is the node a visual node?
 			)
     {
+	if (!obj) alert(name);
 	obj.WgtrType = type;
 	obj.WgtrVisual = is_visual;
 	obj.WgtrChildren = new Array();

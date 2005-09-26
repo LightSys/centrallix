@@ -543,7 +543,7 @@ function tx_select(x,y,l,c,n)
     if (cx__capabilities.Dom1HTML)
 	l.appendChild(ibeam_current);
     moveAbove(ibeam_current,l);
-    moveToAbsolute(ibeam_current,l.rows[0].contentLayer.pageX + tx_xpos(l,l.cursorRow,l.cursorCol), l.rows[0].contentLayer.pageY + tx_ypos(l,l.cursorRow,l.cursorCol));
+    moveToAbsolute(ibeam_current,getPageX(l.rows[0].contentLayer) + tx_xpos(l,l.cursorRow,l.cursorCol), getPageY(l.rows[0].contentLayer) + tx_ypos(l,l.cursorRow,l.cursorCol));
     htr_setzindex(ibeam_current, htr_getzindex(l)+2);
     pg_set_style(ibeam_current,'visibility','inherit');
     cn_activate(l, 'GetFocus');

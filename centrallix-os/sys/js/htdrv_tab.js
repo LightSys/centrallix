@@ -38,8 +38,7 @@ function tc_makecurrent()
 	    htr_setzindex(t.tabpage,htr_getzindex(this.tabctl) - 1);
 	    htr_setvisibility(t.tabpage,'hidden');
 	    t.marker_image.src = '/sys/images/tab_lft3.gif';
-	    setPageY(t, getPageY(t)+this.tabctl.yo);
-	    setPageX(t, getPageX(t)+this.tabctl.xo);
+	    moveBy(t, this.tabctl.xo, this.tabctl.yo);
 	    setClipItem(t,t.tabctl.cl, getClipItem(t,t.tabctl.cl) + t.tabctl.ci);
 	    if (this.tabctl.inactive_bgColor) htr_setbgcolor(t,this.tabctl.inactive_bgColor);
 	    if (this.tabctl.inactive_bgnd) htr_setbgimage(t,this.tabctl.inactive_bgnd);
@@ -51,8 +50,7 @@ function tc_makecurrent()
     htr_setzindex(this.tabpage, htr_getzindex(this.tabctl) + 1);
     htr_setvisibility(this.tabpage,'inherit');
     this.marker_image.src = '/sys/images/tab_lft2.gif';
-    setPageY(this, getPageY(this)-this.tabctl.yo);
-    setPageX(this, getPageX(this)-this.tabctl.xo);
+    moveBy(this, -this.tabctl.xo, -this.tabctl.yo);
     setClipItem(this,this.tabctl.cl, getClipItem(this,this.tabctl.cl) - this.tabctl.ci);
     this.setTabUnwatched();
     }

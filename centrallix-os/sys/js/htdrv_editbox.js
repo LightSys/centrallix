@@ -150,8 +150,8 @@ function eb_keyhandler(l,e,k)
 	}
     pg_set_style(ibeam_current, 'visibility', 'hidden');
     eb_settext(l,newtxt);
-    setPageX(l.ContentLayer, getPageX(l.ContentLayer) + adj);
-    setPageX(l.HiddenLayer, getPageX(l.HiddenLayer)+ adj);
+    setRelativeX(l.ContentLayer, getRelativeX(l.ContentLayer) + adj);
+    setRelativeX(l.HiddenLayer, getRelativeX(l.HiddenLayer)+ adj);
     moveToAbsolute(ibeam_current, getPageX(l.ContentLayer) + l.cursorCol*text_metric.charWidth, getPageY(l.ContentLayer));
     pg_set_style(ibeam_current,'visibility', 'inherit');
     l.changed=true;

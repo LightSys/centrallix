@@ -329,8 +329,8 @@ function moveTo(l, x, y)
 
 function moveBy(l, x, y)
     {
-    setPageX(l, getPageX(l)+x);
-    setPageY(l, getPageY(l)+y);
+    setRelativeX(l, getRelativeX(l)+x);
+    setRelativeY(l, getRelativeY(l)+y);
     }
     
 function resizeTo(l, w, h)
