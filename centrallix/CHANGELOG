@@ -1,6 +1,25 @@
 Centrallix ChangeLog
 -------------------------------------------------------------------------------
-0.7.4 --> 0.7.5	    (unreleased)
+0.7.4 --> 0.7.5	    (unreleased)    MAJOR DEVELOPMENT RELEASE
+
+    Changes:
+
+	1.  Centrallix-lib: added shared memory malloc, smmalloc, module and
+	    a corresponding test suite [Greg]
+	2.  Changed the calling convention on the *_init javascript functions
+	    for widgets to be parameter order and number independent via the
+	    use of inline static objects [Nathaniel]
+	3.  Added an autolayout module to automatically size an application
+	    for the target browser window [Nathaniel]
+	4.  Some efficiency improvements in the javascript code [Greg]
+	5.  Added SysInfo objectsystem driver, similar to /proc filesystem in
+	    Linux [Greg]
+	6.  Added "SELECT ... FROM SUBTREE /path/name" support to allow the
+	    retrieval of an entire subtree of objects with one select
+	    statement.
+	7.  Added templating mechanism for applications to allow the
+	    application of a "style" to an application, and reducing a lot of
+	    cut-and-paste repetition for widget properties.
 
 -------------------------------------------------------------------------------
 0.7.3 --> 0.7.4	    01-Mar-2005     MAJOR DEVELOPMENT RELEASE

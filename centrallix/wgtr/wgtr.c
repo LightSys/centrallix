@@ -106,6 +106,77 @@ wgtr_internal_LookupDriver(pWgtrNode node)
     }
 
 
+int
+wgtrCopyInTemplate(pWgtrNode tree, pWgtrNode template, char* class)
+    {
+    pWgtrNode match, search;
+    char* tpl_class;
+    pObjProperty p;
+    int t,i;
+    ObjData val;
+
+	/** Search through the template and see if we have a match. **/
+	match = NULL;
+	for (i=0;i<xaCount(&(template->Children));i++) 
+	    {
+	    search = (pWgtrNode)xaGetItem(&(template->Children), i);
+	    if (!strcmp(search->Type, tree->Type))
+		{
+		tpl_class = NULL;
+		wgtrGetPropertyValue(search, "widget_class", DATA_T_STRING, POD(&tpl_class));
+		if ((!tpl_class && !class) || (tpl_class && class && !strcmp(tpl_class, class)))
+		    {
+		    match = search;
+		    break;
+		    }
+		}
+	    }
+
+	/** Did we find one? **/
+	if (match)
+	    {
+	    /** Copy in standard geometry properties **/
+	    tree->r_x = match->r_x;
+	    tree->r_y = match->r_y;
+	    tree->r_width = match->r_width;
+	    tree->r_height = match->r_height;
+	    tree->fl_x = match->fl_x;
+	    tree->fl_y = match->fl_y;
+	    tree->fl_width = match->fl_width;
+	    tree->fl_height = match->fl_height;
+
+	    /** Copy in additional properties **/
+	    for (i=0;i<xaCount(&(match->Properties));i++)
+		{
+		p = (pObjProperty)xaGetItem(&(match->Properties), i);
+		t = wgtrGetPropertyType(match, p->Name);
+		wgtrGetPropertyValue(match, p->Name, t, &val);
+		wgtrAddProperty(tree, p->Name, t, &val);
+		}
+	    }
+
+    return 0;
+    }
+
+
+pWgtrNode
+wgtrLoadTemplate(pObjSession s, char* path)
+    {
+    pWgtrNode template;
+
+	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure");
+	if (!template) return NULL;
+	if (strcmp(template->Type, "widget/template"))
+	    {
+	    wgtrFree(template);
+	    mssError(1, "WGTR", "Object '%s' does not appear to be a widget template.", path);
+	    return NULL;
+	    }
+
+    return template;
+    }
+
+
 pWgtrNode 
 wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type)
     {
@@ -120,23 +191,25 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
 	    }
 
 	/** call wgtrParseOpenObject and return results **/
-	results = wgtrParseOpenObject(obj);
+	results = wgtrParseOpenObject(obj, NULL);
 	objClose(obj);
         return results;
     }
 
 
 pWgtrNode 
-wgtrParseOpenObject(pObject obj)
+wgtrParseOpenObject(pObject obj, pWgtrNode template)
     {
     pWgtrNode	this_node, child_node;
     char   name[64], type[64], * prop_name;
     int rx, ry, rwidth, rheight;
     int flx, fly, flwidth, flheight;
     int prop_type;
+    char* class;
     ObjData	val;
     pObject child_obj;
     pObjQuery qy;
+    pWgtrNode my_template = template;
 
 	/** check the outer_type of obj tobe sure it's a widget **/
 	if (objGetAttrValue(obj, "outer_type", DATA_T_STRING, &val) < 0)
@@ -160,6 +233,17 @@ wgtrParseOpenObject(pObject obj)
 	    }
 	strncpy(name, val.String, 64);
 
+	/** Load a new template? **/
+	if (objGetAttrValue(obj, "widget_template", DATA_T_STRING, &val) == 0)
+	    {
+	    my_template = wgtrLoadTemplate(obj->Session, val.String);
+	    if (!my_template)
+		{
+		mssError(0, "WGTR", "Could not load widget_template '%s'", val.String);
+		return NULL;
+		}
+	    }
+
 	/** create this node **/
 	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
 	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, -1, -1)) == NULL)
@@ -168,6 +252,12 @@ wgtrParseOpenObject(pObject obj)
 	    return NULL;
 	    }
 
+	/** Copy in template data **/
+	class = NULL;
+	objGetAttrValue(obj, "widget_class", DATA_T_STRING, POD(&class));
+	if (my_template)
+	    wgtrCopyInTemplate(this_node, my_template, class);
+	
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
 	while (prop_name)
@@ -211,13 +301,13 @@ wgtrParseOpenObject(pObject obj)
 	this_node->y = this_node->r_y;
 	this_node->width = this_node->r_width;
 	this_node->height = this_node->r_height;
-	
+
 	/** loop through subobjects, and call ourselves recursively to add child nodes **/
 	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
 	    {
 	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
 		{
-		if ( (child_node = wgtrParseOpenObject(child_obj)) != NULL) wgtrAddChild(this_node, child_node);
+		if ( (child_node = wgtrParseOpenObject(child_obj,my_template)) != NULL) wgtrAddChild(this_node, child_node);
 		else
 		    {
 		    mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
@@ -229,10 +319,17 @@ wgtrParseOpenObject(pObject obj)
 		}
 	    objQueryClose(qy);
 	    }
+
+	/** Free the template if we created it here. **/
+	if (my_template != template)
+	    wgtrFree(my_template);
+
 	/** return the struct **/
 	return this_node;
 
     error:
+	if (my_template != template)
+	    wgtrFree(my_template);
 	wgtrFree(this_node);
 	return NULL;
     }
@@ -414,7 +511,8 @@ int
 wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
     /** XXX Should this check for duplicates? **/
     {
-    pObjProperty prop;
+    pObjProperty prop, old_prop;
+    int i;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	/** Get the memory **/
@@ -458,6 +556,19 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 		prop->Val.Generic = (void*)expDuplicateExpression((pExpression)val->Generic);    
 		break;
 	    }
+
+	/** Remove existing property? **/
+	for (i=0;i<xaCount(&(widget->Properties));i++)
+	    {
+	    old_prop = xaGetItem(&(widget->Properties), i);
+	    if (old_prop && !strcmp(name, old_prop->Name))
+		{
+		xaRemoveItem(&(widget->Properties), i);
+		wgtr_internal_FreeProperty(old_prop);
+		break;
+		}
+	    }
+
 	/** Assign the property to the node **/
 	xaAddItem(&(widget->Properties), prop);
 	return 0;
@@ -792,7 +903,9 @@ wgtrWgtToHints(pWgtrNode widget)
 	    {
 	    if (wgtrGetPropertyValue(widget, "style", t, &od) != 0) t = -1;
 	    }
-	if (1 == DATA_T_STRING || t == DATA_T_STRINGVEC)
+	i=0;
+	if (t == DATA_T_STRING || t == DATA_T_STRINGVEC)
+	    {
 	    while (1)
 		{
 		/** String or StringVec? **/
@@ -811,6 +924,7 @@ wgtrWgtToHints(pWgtrNode widget)
 		if (t == DATA_T_STRING || i >= od.StringVec->nStrings-1); break;
 		i++;
 		}
+	    }
 
 	return ph;
     }
@@ -1038,6 +1152,7 @@ wgtrInitialize()
 	wgttreeInitialize();
 	wgtvblInitialize();
 	wgtwinInitialize();
+	wgttplInitialize();
 
     return 0;
     }

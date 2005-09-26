@@ -96,7 +96,7 @@ typedef struct
 
 /** wgtr creation and destruction **/
 pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type);  /** parse osml object **/
-pWgtrNode wgtrParseOpenObject(pObject obj);	/** parses an open OSML object into a widget tree **/
+pWgtrNode wgtrParseOpenObject(pObject obj, pWgtrNode template);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,

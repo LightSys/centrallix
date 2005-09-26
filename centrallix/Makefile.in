@@ -145,6 +145,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_sys_osml.o \
 	wgtdrv_tab.o \
 	wgtdrv_table.o \
+	wgtdrv_template.o \
 	wgtdrv_templatefile.o \
 	wgtdrv_terminal.o \
 	wgtdrv_textarea.o \

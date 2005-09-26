@@ -70,10 +70,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.21 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.22 2005/09/26 06:24:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.22  2005/09/26 06:24:04  gbeeley
+    - (major feature) Added templating mechanism via the wgtr module.
+      To use a widget template on an app, specify widget_template= in the
+      app.  See the objcanvas_test sample for an example of this.
+    - (bugfix) Fixed a null value issue in the sybase driver
+    - (bugfix) Fixed a wgtr issue on handling presentation hints settings.
+
     Revision 1.21  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -3578,7 +3585,7 @@ int
 sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
-    int i,t,minus,n;
+    int i,t,minus,n,rval;
     unsigned int msl,lsl,divtmp;
     pSybdTableInf tdata;
     char* ptr;
@@ -3741,13 +3748,13 @@ sybdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 		if (datatype == DATA_T_DATETIME) val->DateTime = &(inf->Types.Date);
 		else if (datatype == DATA_T_MONEY) val->Money = &(inf->Types.Money);
-		if (sybd_internal_GetCxValue(ptr, t, val, datatype) < 0)
+		if ((rval = sybd_internal_GetCxValue(ptr, t, val, datatype)) < 0)
 		    {
 		    mssError(1, "SYBD", "Couldn't get value for %s.", attrname);
 		    return -1;
 		    }
 
-		return 0;
+		return rval;
 		}
 	    }
 

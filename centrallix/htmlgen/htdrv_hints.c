@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_hints.c,v 1.4 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_hints.c,v 1.5 2005/09/26 06:24:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_hints.c,v $
 
     $Log: htdrv_hints.c,v $
+    Revision 1.5  2005/09/26 06:24:04  gbeeley
+    - (major feature) Added templating mechanism via the wgtr module.
+      To use a widget template on an app, specify widget_template= in the
+      app.  See the objcanvas_test sample for an example of this.
+    - (bugfix) Fixed a null value issue in the sybase driver
+    - (bugfix) Fixed a wgtr issue on handling presentation hints settings.
+
     Revision 1.4  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -166,6 +173,9 @@ hthintRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptInit_va(s, "    cx_set_hints(%s, '%s', 'app');\n",
 		parentobj, xs.String);
 	xsDeInit(&xs);
+
+	/** mark this node as not being associated with a DHTML object **/
+	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
 	/** Release the hints data structure **/
 	objFreeHints(hints);

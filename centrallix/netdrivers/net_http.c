@@ -63,10 +63,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.55 2005/09/17 02:58:39 gbeeley Exp $
+    $Id: net_http.c,v 1.56 2005/09/26 06:24:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.56  2005/09/26 06:24:04  gbeeley
+    - (major feature) Added templating mechanism via the wgtr module.
+      To use a widget template on an app, specify widget_template= in the
+      app.  See the objcanvas_test sample for an example of this.
+    - (bugfix) Fixed a null value issue in the sybase driver
+    - (bugfix) Fixed a wgtr issue on handling presentation hints settings.
+
     Revision 1.55  2005/09/17 02:58:39  gbeeley
     - change order of property detection since innerHeight seems more
       reliable on mozilla.  document.body.clientHeight reflects actual
@@ -2567,9 +2574,9 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 		    fdSetOptions(conn, FD_UF_GZIP);
 
 		/** Read the app spec, verify it, and generate it to DHTML **/
-		if ( (widget_tree = wgtrParseOpenObject(target_obj)) == NULL)
+		if ( (widget_tree = wgtrParseOpenObject(target_obj, NULL)) == NULL)
 		    {
-		    mssError(1, "HTTP", "Couldn't parse %s of type %s", url_inf->StrVal, ptr);
+		    mssError(0, "HTTP", "Couldn't parse %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn,"<h1>An error occurred while constructing the application:</h1><pre>");
 		    mssPrintError(conn);
 		    objClose(target_obj);
