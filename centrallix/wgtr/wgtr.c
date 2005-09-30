@@ -107,13 +107,91 @@ wgtr_internal_LookupDriver(pWgtrNode node)
 
 
 int
-wgtrCopyInTemplate(pWgtrNode tree, pWgtrNode template, char* class)
+wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base_name)
+    {
+    pObjProperty p;
+    int t,i,j;
+    ObjData val;
+    char* subst_props[16];
+    int n_subst = 0;
+    char* prop;
+    pWgtrNode subtree,new_node;
+    char new_name[64];
+
+	/** Copy in standard geometry properties **/
+	tree->r_x = match->r_x;
+	tree->r_y = match->r_y;
+	tree->r_width = match->r_width;
+	tree->r_height = match->r_height;
+	tree->fl_x = match->fl_x;
+	tree->fl_y = match->fl_y;
+	tree->fl_width = match->fl_width;
+	tree->fl_height = match->fl_height;
+
+	/** Check for substitutions **/
+	for(prop=objGetFirstAttr(tree_obj);prop;prop=objGetNextAttr(tree_obj))
+	    {
+	    if (!strncmp(prop,"template_",9))
+		{
+		subst_props[n_subst++] = prop;
+		if (n_subst==16) break;
+		}
+	    }
+
+	/** Copy in additional properties **/
+	for (i=0;i<xaCount(&(match->Properties));i++)
+	    {
+	    p = (pObjProperty)xaGetItem(&(match->Properties), i);
+	    t = wgtrGetPropertyType(match, p->Name);
+	    wgtrGetPropertyValue(match, p->Name, t, &val);
+
+	    /** Convert templated expression and string values, if needed **/
+	    if (t == DATA_T_STRING)
+		{
+		for(j=0;j<n_subst;j++)
+		    {
+		    if (!strcmp(val.String, subst_props[j]))
+			{
+			objGetAttrValue(tree_obj, subst_props[j], DATA_T_STRING, &val);
+			break;
+			}
+		    }
+		}
+	    else if (t == DATA_T_CODE)
+		{
+		for(j=0;j<n_subst;j++)
+		    {
+		    objGetAttrValue(tree_obj, subst_props[j], DATA_T_STRING, POD(&prop));
+		    expReplaceString(val.Generic, subst_props[j], prop);
+		    }
+		}
+
+	    wgtrAddProperty(tree, p->Name, t, &val);
+	    }
+
+	/** Subobjects of the template match **/
+	for(i=0;i<xaCount(&(match->Children));i++)
+	    {
+	    subtree = (pWgtrNode)(xaGetItem(&(match->Children), i));
+	    snprintf(new_name, sizeof(new_name), "%s_%s", base_name, subtree->Name);
+	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession, 
+			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height, 
+			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
+		return -1;
+
+	    wgtrCopyInTemplate(new_node, tree_obj, subtree, base_name);
+	    wgtrAddChild(tree, new_node);
+	    }
+
+    return 0;
+    }
+
+int
+wgtrCheckTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode template, char* class)
     {
     pWgtrNode match, search;
     char* tpl_class;
-    pObjProperty p;
-    int t,i;
-    ObjData val;
+    int i;
 
 	/** Search through the template and see if we have a match. **/
 	match = NULL;
@@ -134,26 +212,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pWgtrNode template, char* class)
 
 	/** Did we find one? **/
 	if (match)
-	    {
-	    /** Copy in standard geometry properties **/
-	    tree->r_x = match->r_x;
-	    tree->r_y = match->r_y;
-	    tree->r_width = match->r_width;
-	    tree->r_height = match->r_height;
-	    tree->fl_x = match->fl_x;
-	    tree->fl_y = match->fl_y;
-	    tree->fl_width = match->fl_width;
-	    tree->fl_height = match->fl_height;
-
-	    /** Copy in additional properties **/
-	    for (i=0;i<xaCount(&(match->Properties));i++)
-		{
-		p = (pObjProperty)xaGetItem(&(match->Properties), i);
-		t = wgtrGetPropertyType(match, p->Name);
-		wgtrGetPropertyValue(match, p->Name, t, &val);
-		wgtrAddProperty(tree, p->Name, t, &val);
-		}
-	    }
+	    return wgtrCopyInTemplate(tree, tree_obj, match, tree->Name);
 
     return 0;
     }
@@ -256,7 +315,7 @@ wgtrParseOpenObject(pObject obj, pWgtrNode template)
 	class = NULL;
 	objGetAttrValue(obj, "widget_class", DATA_T_STRING, POD(&class));
 	if (my_template)
-	    wgtrCopyInTemplate(this_node, my_template, class);
+	    wgtrCheckTemplate(this_node, obj, my_template, class);
 	
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
@@ -646,7 +705,7 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 	return 0;
     }
 
-    
+
 pWgtrNode 
 wgtrNewNode(	char* name, char* type, pObjSession s,
 		int rx, int ry, int rwidth, int rheight,
