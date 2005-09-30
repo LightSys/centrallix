@@ -35,43 +35,27 @@ objcanvas_test "widget/page"
 		    }
 		btnFirst "widget/imagebutton"
 		    {
-		    x=11; y=11; width=18; height=18;
-		    image="/sys/images/ico16aa.gif";
-		    pointimage="/sys/images/ico16ab.gif";
-		    clickimage="/sys/images/ico16ac.gif";
-		    disabledimage="/sys/images/ico16ad.gif";
-		    enabled = runclient(:form1:recid > 1);
-		    cnFirst "widget/connector" { event="Click"; target=form1; action="First"; }
+		    widget_class="FirstRecord";
+		    x=11; y=11;
+		    template_form = form1;
 		    }
 		btnBack "widget/imagebutton"
 		    {
-		    x=31; y=11; width=18; height=18;
-		    image="/sys/images/ico16ba.gif";
-		    pointimage="/sys/images/ico16bb.gif";
-		    clickimage="/sys/images/ico16bc.gif";
-		    disabledimage="/sys/images/ico16bd.gif";
-		    enabled = runclient(:form1:recid > 1);
-		    cnBack "widget/connector" { event="Click"; target=form1; action="Prev"; }
+		    widget_class="PrevRecord";
+		    x=31; y=11;
+		    template_form = form1;
 		    }
 		btnNext "widget/imagebutton"
 		    {
-		    x=147; y=11; width=18; height=18;
-		    image="/sys/images/ico16ca.gif";
-		    pointimage="/sys/images/ico16cb.gif";
-		    clickimage="/sys/images/ico16cc.gif";
-		    disabledimage="/sys/images/ico16cd.gif";
-		    enabled = runclient(not(:form1:recid == :form1:lastrecid));
-		    cnNext "widget/connector" { event="Click"; target=form1; action="Next"; }
+		    widget_class="NextRecord";
+		    x=147; y=11; 
+		    template_form = form1;
 		    }
 		btnLast "widget/imagebutton"
 		    {
-		    x=169; y=11; width=18; height=18;
-		    image="/sys/images/ico16da.gif";
-		    pointimage="/sys/images/ico16db.gif";
-		    clickimage="/sys/images/ico16dc.gif";
-		    disabledimage="/sys/images/ico16dd.gif";
-		    enabled = runclient(not(:form1:recid == :form1:lastrecid));
-		    cnLast "widget/connector" { event="Click"; target=form1; action="Last"; }
+		    widget_class="LastRecord";
+		    x=169; y=11; 
+		    template_form = form1;
 		    }
 		btnSearch "widget/textbutton"
 		    {
@@ -161,4 +145,5 @@ objcanvas_test "widget/page"
 		}
 	    }
 	}
+
     }
