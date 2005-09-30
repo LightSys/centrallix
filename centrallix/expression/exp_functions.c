@@ -56,10 +56,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.8 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: exp_functions.c,v 1.9 2005/09/30 04:37:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.9  2005/09/30 04:37:10  gbeeley
+    - (change) modified expExpressionToPod to take the type.
+    - (feature) got eval() working
+    - (addition) added expReplaceString() to search-and-replace in an
+      expression tree.
+
     Revision 1.8  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -994,8 +1000,29 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    mssError(1,"EXP","eval() function not supported.");
-    return -1;
+    pExpression eval_exp, parent;
+    int rval;
+    if (i0 && !i1 && i0->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i0 || i0->DataType != DATA_T_STRING || i1)
+        {
+	mssError(1,"EXP","eval() requires one string parameter");
+	return -1;
+	}
+    for(parent=tree;parent->Parent;parent=parent->Parent);
+    eval_exp = expCompileExpression(i0->String, objlist, parent->LxFlags, parent->CmpFlags);
+    if (!eval_exp) return -1;
+    if ((rval=expEvalTree(eval_exp, objlist)) < 0)
+	{
+	expFreeExpression(eval_exp);
+	return -1;
+	}
+    expCopyValue(eval_exp, tree, 1);
+    expFreeExpression(eval_exp);
+    return rval;
     }
 
 

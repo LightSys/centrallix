@@ -34,10 +34,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.11 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: expression.h,v 1.12 2005/09/30 04:37:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.12  2005/09/30 04:37:10  gbeeley
+    - (change) modified expExpressionToPod to take the type.
+    - (feature) got eval() working
+    - (addition) added expReplaceString() to search-and-replace in an
+      expression tree.
+
     Revision 1.11  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -182,6 +188,8 @@ typedef struct _ET
     unsigned int	ListCount;
     unsigned int	ListTrackCnt;
     unsigned int	LinkCnt;
+    unsigned int	LxFlags;
+    unsigned int	CmpFlags;
     }
     Expression, *pExpression;
 
@@ -292,8 +300,9 @@ pExpression expCompileExpression(char* text, pParamObjects objlist, int lxflags,
 pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags);
 pExpression expLinkExpression(pExpression this);
 pExpression expPodToExpression(pObjData pod, int type);
-int expExpressionToPod(pExpression this, pObjData pod);
+int expExpressionToPod(pExpression this, int type, pObjData pod);
 pExpression expDuplicateExpression(pExpression this);
+int expReplaceString(pExpression this, char* oldstr, char* newstr);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language);

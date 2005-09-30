@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.5 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: exp_params.c,v 1.6 2005/09/30 04:37:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.6  2005/09/30 04:37:10  gbeeley
+    - (change) modified expExpressionToPod to take the type.
+    - (feature) got eval() working
+    - (addition) added expReplaceString() to search-and-replace in an
+      expression tree.
+
     Revision 1.5  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -171,6 +177,10 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	    if (flags & EXPR_O_PARENT) this->ParentID = i;
 	    if (flags & EXPR_O_CURRENT) this->CurrentID = i;
 	    if (this->nObjects == 1) this->CurrentID = i;
+
+	    /** Set modified. **/
+	    this->ModCoverageMask |= (1<<i);
+
 	    break;
 	    }
 

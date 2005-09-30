@@ -47,10 +47,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.11 2005/09/17 01:28:19 gbeeley Exp $
+    $Id: stparse.c,v 1.12 2005/09/30 04:37:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.12  2005/09/30 04:37:10  gbeeley
+    - (change) modified expExpressionToPod to take the type.
+    - (feature) got eval() working
+    - (addition) added expReplaceString() to search-and-replace in an
+      expression tree.
+
     Revision 1.11  2005/09/17 01:28:19  gbeeley
     - Some fixes for handling of direct object attributes in expressions,
       such as /path/to/object:attributename.
@@ -498,7 +504,7 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 	/** Correct type requested? **/
 	if (type != DATA_T_ANY && type != find_exp->DataType) return -1;
 
-    return expExpressionToPod(find_exp, pod);
+    return expExpressionToPod(find_exp, find_exp->DataType, pod);
     }
 
 

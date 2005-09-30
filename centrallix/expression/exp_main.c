@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.5 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: exp_main.c,v 1.6 2005/09/30 04:37:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.6  2005/09/30 04:37:10  gbeeley
+    - (change) modified expExpressionToPod to take the type.
+    - (feature) got eval() working
+    - (addition) added expReplaceString() to search-and-replace in an
+      expression tree.
+
     Revision 1.5  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -566,14 +572,14 @@ expPodToExpression(pObjData pod, int type)
  *** pointer to object data (pod).
  ***/
 int
-expExpressionToPod(pExpression this, pObjData pod)
+expExpressionToPod(pExpression this, int type, pObjData pod)
     {
 
 	/** Null? **/
 	if (this->Flags & EXPR_F_NULL) return 1;
 
 	/** Based on data type. **/
-	switch(this->DataType)
+	switch(type)
 	    {
 	    case DATA_T_INTEGER:
 		pod->Integer = this->Integer;
@@ -590,10 +596,52 @@ expExpressionToPod(pExpression this, pObjData pod)
 	    case DATA_T_DOUBLE:
 		pod->Double = this->Types.Double;
 		break;
+	    case DATA_T_CODE:
+		pod->Generic = this;
+		break;
 	    default:
 		return -1;
 	    }
     
+    return 0;
+    }
+
+
+/*** expReplaceString - replace all occurrences of a given string in the
+ *** expression tree.  This includes string values, function names, object
+ *** names, and property names.  The match must be exact - this does not
+ *** do substring replacement.  It also does not replace computed values
+ *** or property values - just constants.
+ ***/
+int
+expReplaceString(pExpression tree, char* oldstr, char* newstr)
+    {
+    int i;
+    pExpression subtree;
+   
+	/** constant string values **/
+	if (tree->NodeType == EXPR_N_STRING && !(tree->Flags & EXPR_F_NULL) && !strcmp(oldstr, tree->String))
+	    {
+	    if (tree->Alloc) nmSysFree(tree->String);
+	    tree->Alloc = 1;
+	    tree->String = nmSysStrdup(newstr);
+	    }
+
+	/** names of functions, objects, and properties **/
+	if ((tree->NodeType == EXPR_N_FUNCTION || tree->NodeType == EXPR_N_PROPERTY || tree->NodeType == EXPR_N_OBJECT) && tree->Name && !strcmp(oldstr, tree->Name))
+	    {
+	    if (tree->NameAlloc) nmSysFree(tree->Name);
+	    tree->NameAlloc = 1;
+	    tree->Name = nmSysStrdup(newstr);
+	    }
+
+	/** handle subtrees **/
+	for(i=0;i<tree->Children.nItems;i++)
+	    {
+	    subtree = (pExpression)(tree->Children.Items[i]);
+	    expReplaceString(subtree, oldstr, newstr);
+	    }
+
     return 0;
     }
 

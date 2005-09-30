@@ -66,10 +66,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.13 2005/09/17 01:28:19 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.14 2005/09/30 04:37:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.14  2005/09/30 04:37:10  gbeeley
+    - (change) modified expExpressionToPod to take the type.
+    - (feature) got eval() working
+    - (addition) added expReplaceString() to search-and-replace in an
+      expression tree.
+
     Revision 1.13  2005/09/17 01:28:19  gbeeley
     - Some fixes for handling of direct object attributes in expressions,
       such as /path/to/object:attributename.
@@ -617,6 +623,11 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 	if (exp_internal_EvalTree(i0,objlist) <0) return -1;
 	if (exp_internal_EvalTree(i1,objlist) <0) return -1;
 
+	/** Determine data type - fixme this has some problems, e.g.,
+	 ** "1 + 1.0" -> DATA_T_INTEGER
+	 **/
+	tree->DataType = i0->DataType;
+
 	/** If either is NULL, result is NULL. **/
 	if ((i0->Flags | i1->Flags) & EXPR_F_NULL)
 	    {
@@ -644,11 +655,9 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 	    {
 	    case DATA_T_INTEGER:
 	        tree->Integer = i0->Integer + objDataToInteger(i1->DataType, dptr, NULL);
-		tree->DataType = DATA_T_INTEGER;
 		break;
 
 	    case DATA_T_STRING:
-	        tree->DataType = DATA_T_STRING;
 		ptr = objDataToStringTmp(i1->DataType, dptr, 0);
 	        if (tree->Alloc && tree->String)
 	            {
@@ -669,12 +678,10 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 
 	    case DATA_T_DOUBLE:
 	        tree->Types.Double = i0->Types.Double + objDataToDouble(i1->DataType, dptr);
-		tree->DataType = DATA_T_DOUBLE;
 		break;
 
 	    case DATA_T_MONEY:
 	        objDataToMoney(i1->DataType, dptr, &m);
-		tree->DataType = DATA_T_MONEY;
 		tree->Types.Money.WholePart = i0->Types.Money.WholePart + m.WholePart;
 		tree->Types.Money.FractionPart = i0->Types.Money.FractionPart + m.FractionPart;
 		if (tree->Types.Money.FractionPart >= 10000)
