@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.44 2005/06/23 22:08:01 ncolson Exp $
+    $Id: htdrv_window.c,v 1.45 2005/10/01 00:23:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.45  2005/10/01 00:23:46  gbeeley
+    - (change) renamed 'htmlwindow' to 'childwindow' to remove the terminology
+      dependence on the dhtml/http app delivery mechanism
+
     Revision 1.44  2005/06/23 22:08:01  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -762,8 +766,8 @@ htwinInitialize()
 	if (!drv) return -1;
 
 	/** Fill in the structure. **/
-	strcpy(drv->Name,"HTML 'Window' Widget Driver");
-	strcpy(drv->WidgetName,"htmlwindow");
+	strcpy(drv->Name,"Child Window Widget Driver");
+	strcpy(drv->WidgetName,"childwindow");
 	drv->Render = htwinRender;
 
 	/** Add the 'click' event **/

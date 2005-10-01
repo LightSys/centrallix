@@ -76,7 +76,7 @@ wgtwinInitialize()
     char* name = "Window Widget Driver";
 
 	wgtrRegisterDriver(name, wgtwinVerify, wgtwinNew);
-	wgtrAddType(name, "htmlwindow");
+	wgtrAddType(name, "childwindow");
 
 	return 0;
     }

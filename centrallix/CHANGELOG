@@ -20,6 +20,8 @@ Centrallix ChangeLog
 	7.  Added templating mechanism for applications to allow the
 	    application of a "style" to an application, and reducing a lot of
 	    cut-and-paste repetition for widget properties.
+	8.  Changed name of 'htmlwindow' to 'childwindow' to remove the
+	    terminology dependence on the DHTML/HTTP app delivery mechanism.
 
 -------------------------------------------------------------------------------
 0.7.3 --> 0.7.4	    01-Mar-2005     MAJOR DEVELOPMENT RELEASE

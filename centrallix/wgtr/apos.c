@@ -30,10 +30,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.1 2005/08/10 16:26:49 ncolson Exp $
+    $Id: apos.c,v 1.2 2005/10/01 00:23:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.2  2005/10/01 00:23:46  gbeeley
+    - (change) renamed 'htmlwindow' to 'childwindow' to remove the terminology
+      dependence on the dhtml/http app delivery mechanism
+
     Revision 1.1  2005/08/10 16:26:49  ncolson
     Initial commit of the auto-positioning module.
     This code is run during the verification of the widget tree in wgtr.c. It's
@@ -111,7 +115,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	        aposPatchNegativeHeight(Child, PatchedWidgets);
 	    
 	    /** If child is a container but not a window, recursively prepare it as well **/
-	    if((Child->Flags & WGTR_F_CONTAINER) && strcmp(Child->Type, "widget/htmlwindow"))
+	    if((Child->Flags & WGTR_F_CONTAINER) && strcmp(Child->Type, "widget/childwindow"))
 		aposPrepareTree(Child, PatchedWidgets);
 	}
     
@@ -236,7 +240,7 @@ ObjData val;
     if(isSP) *isSP = (!strcmp(W->Type, "widget/scrollpane"));
     
     /**set isWin to compensate windows' titlebars, if any**/
-    if(isWin && !strcmp(W->Type, "widget/htmlwindow"))
+    if(isWin && !strcmp(W->Type, "widget/childwindow"))
         {
 	    if(wgtrGetPropertyValue(W, "titlebar", DATA_T_STRING, &val) < 0)
 	        *isWin = 1;	//if property not found, assume it has a titlebar
@@ -312,7 +316,7 @@ int i=0, j=0, grandchildCount=0, childCount = xaCount(&(Parent->Children));
 			    GrandChild = (pWgtrNode)xaGetItem(&(Child->Children), j);
 			    if((GrandChild->Flags & WGTR_F_CONTAINER) &&
 			        !(GrandChild->Flags & WGTR_F_NONVISUAL) &&
-				strcmp(GrandChild->Type, "widget/htmlwindow"))
+				strcmp(GrandChild->Type, "widget/childwindow"))
 				if(aposAutoPositionContainers(GrandChild) < 0)
 				    {
 					mssError(0, "APOS", "aposAutoPositionContainers: Couldn't auto-position contents of '%s'", GrandChild->Name);
@@ -323,7 +327,7 @@ int i=0, j=0, grandchildCount=0, childCount = xaCount(&(Parent->Children));
 	    /**auto-positions subsequent visual container**/
 	    else if( (Child->Flags & WGTR_F_CONTAINER) &&
 	        !(Child->Flags & WGTR_F_NONVISUAL) &&
-		strcmp(Child->Type, "widget/htmlwindow"))
+		strcmp(Child->Type, "widget/childwindow"))
 		if(aposAutoPositionContainers(Child) < 0)
 		    {
 			mssError(0, "APOS", "aposAutoPositionContainers: Couldn't auto-position contents of '%s'", Child->Name);
@@ -440,7 +444,7 @@ pWgtrNode C;
 	    *** and not a window, just add 4 lines for it **/
 	    if((C->Flags & WGTR_F_NONVISUAL) && (C->Flags & WGTR_F_CONTAINER))
 		aposAddLinesForChildren(C, HLines, VLines);
-	    else if(!(C->Flags & WGTR_F_NONVISUAL) && strcmp(C->Type, "widget/htmlwindow"))
+	    else if(!(C->Flags & WGTR_F_NONVISUAL) && strcmp(C->Type, "widget/childwindow"))
 	        {
 		    /**add horizontal lines, unless parent is a scrollpane**/
 		    if(strcmp(Parent->Type, "widget/scrollpane"))
@@ -850,7 +854,7 @@ pWgtrNode Child;
     for(i=0; i<childCount; ++i)
 	{
 	    Child = (pWgtrNode)(xaGetItem(&(Parent->Children), i));
-	    if(!strcmp(Child->Type, "widget/htmlwindow"))
+	    if(!strcmp(Child->Type, "widget/childwindow"))
 		{
 		    /**if it's outside the top left corner pull the whole window in**/
 		    if(Child->x < 0) Child->x = 0;
