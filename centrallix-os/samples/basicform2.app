@@ -6,7 +6,7 @@ basicform2 "widget/page"
     textcolor = black;
     x=0; y=0; width=640; height=420;
     
-    ConfirmWindow "widget/htmlwindow"
+    ConfirmWindow "widget/childwindow"
 	{
 	title = "Data Was Modified!";
 	titlebar = yes;
@@ -320,7 +320,7 @@ basicform2 "widget/page"
 	    }
 	}
 
-//    stupidwin "widget/htmlwindow"
+//    stupidwin "widget/childwindow"
 //	{
 //	x=40; y=40; width=700; height=450;
 //	hdr_bgcolor="#a0a0a0";
@@ -335,7 +335,7 @@ basicform2 "widget/page"
 //	    }
 //	}
 
-    debugwin "widget/htmlwindow"
+    debugwin "widget/childwindow"
 	{
 	x=20;y=220;width=600;height=330;
 	visible=false;

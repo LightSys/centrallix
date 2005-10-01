@@ -4,7 +4,7 @@ main "widget/page"
     bgcolor="#213e87";
     x=0; y=0; width=340; height=340;
     
-    window1 "widget/htmlwindow"
+    window1 "widget/childwindow"
     	{
 	bgcolor="#c0c0c0";
 	x=20; y=20; width=300; height=300;
@@ -18,5 +18,4 @@ main "widget/page"
 	    bgcolor="white";
 	    }
 	}
-
-}
+    }

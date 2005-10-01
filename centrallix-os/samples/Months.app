@@ -21,7 +21,7 @@ Page "widget/page"
 	    AllowNoData = 1;
 	    ReadOnly = 1;
 
-	    Window1 "widget/htmlwindow"
+	    Window1 "widget/childwindow"
 		{
 		x=100; y=100;
 		width=220; height=200;

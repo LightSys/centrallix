@@ -10,7 +10,7 @@
 //  and viewing in different form elements.
 //
 //  Widgets Used:
-//    page, osrc, form, pane, table, htmlwindow, editbox,
+//    page, osrc, form, pane, table, childwindow, editbox,
 //    label, connector
 //
 
@@ -38,58 +38,59 @@ Page1 "widget/page"
 	replicasize=50;
 	readahead=15;
 	sql="SELECT :id,:full_name,:abbrev FROM /tests/States.csv/rows";
+	autoquery = onload;
 
-	Form1 "widget/form"
+	Pane1 "widget/pane"
 	    {
+	    x=10; y=40; width=406; height=224;
+	    background="/sys/images/slate2.gif";
+	    style="raised";
 
-	    Pane1 "widget/pane"
+	    Pane2 "widget/pane"
 		{
-		x=10; y=40; width=406; height=224;
-		background="/sys/images/slate2.gif";
-		style="raised";
+		x=10; y=10; width=384; height=202;
+		style="lowered";
+		bgcolor="#c0c0c0";
 
-		Pane2 "widget/pane"
+		Table1 "widget/table"
 		    {
-		    x=10; y=10; width=384; height=202;
-		    style="lowered";
+		    mode="dynamicrow";
+		    x=0; y=0; width=382; height=200;
+		    windowsize=9;
+		    cellhspacing=0;
+		    cellvspacing=0;
+		    rowheight=20;
+		    inner_border=0;
+		    inner_padding=2;
 		    bgcolor="#c0c0c0";
+		    row_bgcolor1="#a0a0a0";
+		    row_bgcolor2="#a0a0a0";
+		    row_bgcolorhighlight="#909090";
+		    hdr_bgcolor="#c0c0c0";
+		    textcolor="black";
+		    textcolorhighlight="black";
+		    titlecolor="#000000";
 
-		    Table1 "widget/table"
-			{
-			mode="dynamicrow";
-			x=0; y=0; width=382; height=200;
-			windowsize=10;
-			cellhspacing=0;
-			cellvspacing=0;
-			rowheight=20;
-			inner_border=0;
-			inner_padding=2;
-			bgcolor="#c0c0c0";
-			row_bgcolor1="#a0a0a0";
-			row_bgcolor2="#a0a0a0";
-			row_bgcolorhighlight="#909090";
-			hdr_bgcolor="#c0c0c0";
-			textcolor="black";
-			textcolorhighlight="black";
-			titlecolor="#000000";
+		    id "widget/table-column" { fieldname="id"; title="<b>ID</b>"; width=50; }
+		    abbrev "widget/table-column" { fieldname="abbrev"; title="<b>Abbrev.</b>"; width=60; }
+		    full_name "widget/table-column" { fieldname="full_name"; title="<b>Full State Name</b>"; width=250; }
 
-			id "widget/table-column" { fieldname="id"; title="<b>ID</b>"; width=50; }
-			abbrev "widget/table-column" { fieldname="abbrev"; title="<b>Abbrev.</b>"; width=60; }
-			full_name "widget/table-column" { fieldname="full_name"; title="<b>Full State Name</b>"; width=250; }
-
-			Connector1 "widget/connector" { event="DblClick"; target="Window1"; action="SetVisibility"; IsVisible=1; }
-			}
+		    Connector1 "widget/connector" { event="DblClick"; target="Window1"; action="SetVisibility"; IsVisible=1; }
 		    }
 		}
-	
-	    Window1 "widget/htmlwindow"
+	    }
+    
+	Window1 "widget/childwindow"
+	    {
+	    x=60; y=60; height=110; width=280;
+	    hdr_bgcolor="#ffcc00";
+	    bgcolor="#c0c0c0";
+	    style="dialog";
+	    visible="false";
+	    title="State Information";
+
+	    Form1 "widget/form"
 		{
-		x=60; y=60; height=110; width=280;
-		hdr_bgcolor="#ffcc00";
-		bgcolor="#c0c0c0";
-		style="dialog";
-		visible="false";
-		title="State Information";
 
 		// State Name
 		Label1 "widget/label"

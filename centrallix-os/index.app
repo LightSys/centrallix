@@ -3,6 +3,7 @@ index "widget/page"
     {
     title = "Welcome to Centrallix 0.7.4";
     bgcolor = "#ffffff";
+    height = 400;
 
     cximg "widget/image"
 	{
@@ -20,7 +21,7 @@ index "widget/page"
 
     pnOptions "widget/pane"
 	{
-	x=16;y=160;width=580;height=74;
+	x=16;y=150;width=588;height=74;
 	bgcolor="#c0c0c0";
 	style=raised;
 

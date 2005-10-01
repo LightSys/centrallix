@@ -15,7 +15,7 @@ wholePage "widget/page"
 	}
     }
 
-    navWindow "widget/htmlwindow"
+    navWindow "widget/childwindow"
 	{
 	title="FreeBSD Page";
 	height=500;
@@ -46,7 +46,7 @@ wholePage "widget/page"
 	    }
 	}
 
-    selectWindow "widget/htmlwindow" 
+    selectWindow "widget/childwindow" 
 	{
 	title = "XML & HTTP Test page";
 	height=210;
@@ -104,7 +104,7 @@ wholePage "widget/page"
 		}
 	    }
 	}
-    debugWindow "widget/htmlwindow"
+    debugWindow "widget/childwindow"
 	{
 	x=100;y=100;width=800;height=530;
 	visible=false;

@@ -6,7 +6,7 @@ basicform "widget/page"
     textcolor = black;
     x=0; y=0; width=650; height=370;
     
-    ConfirmWindow "widget/htmlwindow"
+    ConfirmWindow "widget/childwindow"
 	{
 	title = "Data Was Modified!";
 	titlebar = yes;
@@ -54,6 +54,7 @@ basicform "widget/page"
 	baseobj = "/samples/Months.csv/rows";
 	readahead=1;
 	replicasize=4;
+	autoquery = oneachreveal;
 	form1 "widget/form"
 	    {
 	    _3bconfirmwindow = "ConfirmWindow";
@@ -251,12 +252,23 @@ basicform "widget/page"
 		    text="Days:";
 		    align=right;
 		    }
-		days "widget/editbox"
+//		days "widget/editbox"
+//		    {
+//		    style=lowered;
+//		    bgcolor=white;
+//		    x=240;y=129;width=100;height=20;
+//		    fieldname="num_days";
+//		    }
+		days_dd "widget/dropdown"
 		    {
-		    style=lowered;
-		    bgcolor=white;
+		    mode=static;
+		    bgcolor="#c0c0c0";
 		    x=240;y=129;width=100;height=20;
+		    hilight="#000080";
 		    fieldname="num_days";
+		    days_dd_1 "widget/dropdownitem" { label="28 Days"; value="28"; }
+		    days_dd_2 "widget/dropdownitem" { label="30 Days"; value="30"; }
+		    days_dd_3 "widget/dropdownitem" { label="31 Days"; value="31"; }
 		    }
 
 		ldays_label "widget/label"
@@ -275,7 +287,7 @@ basicform "widget/page"
 	        }
 	    }
 	}
-    debugwin "widget/htmlwindow"
+    debugwin "widget/childwindow"
 	{
 	x=20;y=220;width=600;height=330;
 	visible=true;

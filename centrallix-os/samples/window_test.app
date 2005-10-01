@@ -13,7 +13,7 @@ window_test "widget/page"
 	tristate=no;
 	}
 
-    notitle_win1 "widget/htmlwindow"
+    notitle_win1 "widget/childwindow"
 	{
 	style=window;
 	titlebar=no;
@@ -21,7 +21,7 @@ window_test "widget/page"
 	x=450; y=32; width=200; height=200;
 	}
 
-    notitle_win2 "widget/htmlwindow"
+    notitle_win2 "widget/childwindow"
 	{
 	style=dialog;
 	titlebar=no;
@@ -29,7 +29,7 @@ window_test "widget/page"
 	x=450; y=240; width=200; height=200;
 	}
 
-    window1 "widget/htmlwindow"
+    window1 "widget/childwindow"
 	{
 	//bgcolor="#c0c0c0";
 	background="/sys/images/test_background_light.png";
@@ -45,7 +45,7 @@ window_test "widget/page"
 	    tristate=no;
 	    }
 
-	window2 "widget/htmlwindow"
+	window2 "widget/childwindow"
 	    {
 	    bgcolor="#e0e0e0";
 	    hdr_bgcolor="white";
@@ -62,7 +62,7 @@ window_test "widget/page"
 		    x=0; y=0; width=308; height=204;
 		    Tree "widget/treeview"
 			{
-			x=0; y=1; width=288;
+			x=0; y=1; width=188;
 			//if there is a javascript: in front, the DOM Viewer mode is used
 			//  if not, it's a normal treeview widget
 			//directly after the javascript:, put the object you want the root to be

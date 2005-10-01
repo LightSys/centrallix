@@ -18,7 +18,7 @@ objcanvas_test "widget/page"
 	readahead = 1;
 	autoquery = onload;
 
-	win1 "widget/htmlwindow"
+	win1 "widget/childwindow"
 	    {
 	    x=60; y=280; height=170; width=520;
 	    visible=yes;

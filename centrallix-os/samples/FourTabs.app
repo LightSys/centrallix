@@ -31,7 +31,7 @@ FourTabs "widget/page"
 	TabTwo2 "widget/tabpage" { }
 	TabThree2 "widget/tabpage" { }
 	}
-    TabWindow "widget/htmlwindow"
+    TabWindow "widget/childwindow"
 	{
 	x = 320; y = 10; width=300; height=124;
 	title="Tab Number Three";

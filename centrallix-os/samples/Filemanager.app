@@ -14,6 +14,7 @@ Filemanager "widget/page"
 	    x=0 y=0 width=198 height=498
 	    Tree "widget/treeview"
 	        {
+		show_branches=yes
 		x=0 y=1 width=178
 		source = "/"
 		}

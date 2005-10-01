@@ -6,7 +6,7 @@ tabsandtree "widget/page"
     bgcolor="#c0c0c0";
     x=0; y=0; width=700; height=480;
     
-    myWin "widget/htmlwindow"
+    myWin "widget/childwindow"
         {
 	x = 50; y=100; width=500; height=400;
 	style=dialog;
@@ -110,7 +110,7 @@ tabsandtree "widget/page"
 		}
 	    }
 	}
-    debugwin "widget/htmlwindow"
+    debugwin "widget/childwindow"
 	{
 	x=20;y=220;width=600;height=330;
 	visible=true;

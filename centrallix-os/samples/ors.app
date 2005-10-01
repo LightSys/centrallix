@@ -6,7 +6,7 @@ ors "widget/page"
     //background='/sys/images/test_background.png';
     x=0; y=0; width=800; height=500;
     
-    ConfirmWindow "widget/htmlwindow"
+    ConfirmWindow "widget/childwindow"
 	{
 	title = "Data Was Modified!";
 	titlebar = yes;
@@ -68,7 +68,7 @@ ors "widget/page"
 	fgcolor2='white';
 	cn2 "widget/connector" { event=Click; target=win2; action=SetVisibility; }
 	}
-    win1 "widget/htmlwindow"
+    win1 "widget/childwindow"
 	{
 	x=80;y=10;width=350;height=250;
 	hdr_bgcolor='#e0e0e0';
@@ -317,7 +317,7 @@ ors "widget/page"
 	    }
 	}
 
-    win2 "widget/htmlwindow"
+    win2 "widget/childwindow"
 	{
 	x=440;y=10;width=320;height=250;
 	hdr_bgcolor='#e0e0e0';
@@ -354,7 +354,7 @@ ors "widget/page"
 	    }
 	}
 
-    debugwin "widget/htmlwindow"
+    debugwin "widget/childwindow"
 	{
 	x=30;y=440;width=600;height=434;
 	hdr_bgcolor='#e0e0e0';

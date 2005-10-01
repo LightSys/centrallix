@@ -22,7 +22,7 @@ Page1 "widget/page"
 	text="<b>Centrallix Test Application Suite</b>";
 	}
 
-    Window1 "widget/htmlwindow"
+    Window1 "widget/childwindow"
 	{
 	x=10; y=40; height=334; width=310;
 	hdr_bgcolor="#880000";

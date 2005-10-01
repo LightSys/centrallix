@@ -783,7 +783,7 @@ function pg_isvisible(l)
     }
 
 /// This routine searches for the 'windowing container' of a widget, such
-/// as an htmlwindow or the main document itself.
+/// as an childwindow or the main document itself.
 function pg_searchwin(l)
     {
     if (l.kind && l.kind == 'wn') return l.mainlayer;

@@ -21,7 +21,7 @@ timer_test "widget/page"
 	c3 "widget/connector" { target=dlg1; event=Expire; action=SetVisibility; IsVisible=0; }
 	c4 "widget/connector" { target=tmr; event=Expire; action=SetTimer; Time=500; }
 	}
-    dlg1 "widget/htmlwindow"
+    dlg1 "widget/childwindow"
 	{
 	x = 40; y=40; width=200; height=200;
 	visible=false;

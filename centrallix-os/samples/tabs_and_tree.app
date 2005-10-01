@@ -6,7 +6,7 @@ tabs_and_tree "widget/page"
     bgcolor="#c0c0c0";
     x=0; y=0; width=700; height=600;
     
-    myWin "widget/htmlwindow"
+    myWin "widget/childwindow"
         {
 	x = 100; y=100; width=500; height=400;
 	style=dialog;

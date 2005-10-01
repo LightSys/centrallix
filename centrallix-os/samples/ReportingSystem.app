@@ -20,7 +20,7 @@ ReportingSystem "widget/page"
     x=0; y=0; width=1024; height=480;
     
     // Here's a dialog box to select a report
-    dlgSelectReport "widget/htmlwindow"
+    dlgSelectReport "widget/childwindow"
         {
 	x=100; y=100; width=440; height=240;
 	title="&nbsp;<B>Select Report</B>";
@@ -82,7 +82,7 @@ ReportingSystem "widget/page"
 	}
 
     // This dialog is used for selecting a printer for the report
-    dlgSelectPrinter "widget/htmlwindow"
+    dlgSelectPrinter "widget/childwindow"
         {
 	x=120; y=120; width=440; height=240;
 	title="&nbsp;<B>Print Report...</B>";
@@ -142,7 +142,7 @@ ReportingSystem "widget/page"
 	}
 
     // This window views the report.
-    dlgViewReport "widget/htmlwindow"
+    dlgViewReport "widget/childwindow"
         {
 	x=20; y=100; width=600; height=360;
 	style=window;
@@ -164,7 +164,7 @@ ReportingSystem "widget/page"
 	}
 
     // This window is for editing the source.
-    dlgEditSource "widget/htmlwindow"
+    dlgEditSource "widget/childwindow"
         {
 	x=20; y=100; width=600; height=360;
 	style=window;
@@ -180,7 +180,7 @@ ReportingSystem "widget/page"
 	}
 
     // This window is for browsing the source code and structure
-    dlgViewSource "widget/htmlwindow"
+    dlgViewSource "widget/childwindow"
         {
 	x=20; y=100; width=600; height=360;
 	style=window;
@@ -314,7 +314,7 @@ ReportingSystem "widget/page"
 	    style=raised;
 	    }
 	}
-    debugwin "widget/htmlwindow"
+    debugwin "widget/childwindow"
 	{
 	x=100;y=100;width=800;height=530;
 	visible=false;

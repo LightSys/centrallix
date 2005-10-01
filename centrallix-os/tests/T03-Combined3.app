@@ -63,7 +63,7 @@ Page1 "widget/page"
 	Connector5 "widget/connector" { event="Click"; target="Window5"; action="ToggleVisibility"; }
 	}
 
-    Window1 "widget/htmlwindow"
+    Window1 "widget/childwindow"
 	{
 	x=10; y=50; width=160; height=105;
 	title="Checkbox Test";
@@ -81,7 +81,7 @@ Page1 "widget/page"
 	Label3    "widget/label"    { x=25; y=50; width=100; height=15; text="Third Option"; }
 	}
 
-    Window2 "widget/htmlwindow"
+    Window2 "widget/childwindow"
 	{
 	x=153; y=105; width=180; height=160;
 	title="RadioButton Test";
@@ -104,7 +104,7 @@ Page1 "widget/page"
 	    }
 	}
 
-    Window3 "widget/htmlwindow"
+    Window3 "widget/childwindow"
 	{
 	x=310; y=170; width=150; height=120;
 	title="Clock Test";
@@ -139,7 +139,7 @@ Page1 "widget/page"
 	    }
 	}
 
-    Window4 "widget/htmlwindow"
+    Window4 "widget/childwindow"
 	{
 	x=20; y=220; width=172; height=83;
 	title="D* Test";
@@ -172,7 +172,7 @@ Page1 "widget/page"
 	    }
 	}
 
-    Window5 "widget/htmlwindow"
+    Window5 "widget/childwindow"
 	{
 	x=80; y=280; width=250; height=200;
 	title="Boxes Test";

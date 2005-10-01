@@ -7,7 +7,7 @@ wholePage "widget/page"
     textcolor = black;
     x=0; y=0; width=640; height=480;
     
-    _3bConfirmWindow "widget/htmlwindow"
+    _3bConfirmWindow "widget/childwindow"
 	{
 	title = "Confirm something please";
 	titlebar = yes;
@@ -32,7 +32,7 @@ wholePage "widget/page"
 	    }
 	}
 
-    navWindow "widget/htmlwindow" 
+    navWindow "widget/childwindow" 
 	{
 	title = "Left Nav Window";
 	bgcolor = "#b0b0b0";
@@ -73,7 +73,7 @@ wholePage "widget/page"
 		x=4;y=100;width=80;height=15;
 	    }
 	}
-    mainWindow "widget/htmlwindow" 
+    mainWindow "widget/childwindow" 
 	{
 	title = "Main";
 	bgcolor = "#b0b0b0";
@@ -512,7 +512,7 @@ wholePage "widget/page"
 	        }
 	    }	//end of osrc
 	}
-    rightNavWindow "widget/htmlwindow" 
+    rightNavWindow "widget/childwindow" 
 	{
 	title = "Right Nav Window";
 	bgcolor = "#b0b0b0";
