@@ -26,10 +26,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: t_driver.c,v 1.1 2005/03/14 20:41:25 gbeeley Exp $
+    $Id: t_driver.c,v 1.2 2005/10/08 23:59:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/tests/t_driver.c,v $
 
     $Log: t_driver.c,v $
+    Revision 1.2  2005/10/08 23:59:57  gbeeley
+    - (change) modify timing in test driver to reflect actual cpu and child
+      process cpu utilization
+
     Revision 1.1  2005/03/14 20:41:25  gbeeley
     - changed configuration to allow different levels of hardening (mainly, so
       asserts can be enabled without enabling the ds checksum stuff).
@@ -68,9 +72,11 @@ main(int argc, char* argv[])
 
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
-	start = times(&t);
+	times(&t);
+	start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	rval = test(&tname);
-	end = times(&t);
+	times(&t);
+	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	if (rval < 0)
 	    printf("%-64.64s  FAIL\n", tname);
 	else
