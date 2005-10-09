@@ -53,6 +53,7 @@ function htr_event(e)
 	{
 	cx__event.Dom2Event = e;
 	cx__event.type = e.type;
+	cx__event.which = e.button+1;
 
 	// move up from text nodes and spans to containers
 	var t = e.target;
@@ -428,7 +429,7 @@ function htr_getzindex(l)
 	return l.zIndex;
     else if (cx__capabilities.Dom0IE)
 	return parseInt(l.currentStyle.zIndex);
-    else if (cx__capabilities.Dom1HTML && l.style.zIndex)
+    else if (cx__capabilities.Dom1HTML && l.style && l.style.zIndex)
 	return parseInt(l.style.zIndex);
     else if (cx__capabilities.Dom1HTML)
 	return pg_get_style(l, 'z-index');
