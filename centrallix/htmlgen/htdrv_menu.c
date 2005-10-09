@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2000-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2000-2005 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -34,345 +34,386 @@
 /* distribution in the file "COPYING".					*/
 /* 									*/
 /* Module:      htdrv_menu.c                                            */
-/* Author:      Luke Ehresman (LME)                                     */
-/* Creation:    Mar. 5, 2002                                            */
-/* Description: HTML Widget driver for a drop down list                 */
+/* Author:      Greg Beeley (GRB)                                       */
+/* Creation:    Oct. 7, 2005                                            */
+/* Description: HTML Widget driver for the menu, popup, dropdown,	*/
+/*		vertical, or horizontal.				*/
 /************************************************************************/
 
 /** globals **/
-static struct {
-   int     idcnt;
-} HTMN;
+static struct 
+    {
+    int     idcnt;
+    }
+    HTMN;
 
 
-/* 
-   htmenuRender - generate the HTML code for the menu widget.
-*/
-int htmenuRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
-   char bgstr[HT_SBUF_SIZE];
-   char hilight[HT_SBUF_SIZE];
-   char string[HT_SBUF_SIZE];
-   char name[64];
-   char *ptr, *nptr;
-   int flag=0;
-   int x,y,w,h;
-   int id, i;
-   pWgtrNode sub_tree;
-   XString xs;
+int
+htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
+    {
+    /*if (is_horizontal)*/
+	htrAddBodyItem_va(s,"<td valign=\"%s\"><img align=\"%s\" name=\"xy_%s%d\" width=\"1\" height=\"%d\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
+    /*else
+	htrAddBodyItem_va(s,"<tr><td colspan=\"4\" align=\"%s\"><img align=\"top\" name=\"xy_%s%d\" width=\"1\" height=\"%d\" src=\"/sys/images/trans_1.gif\"></td></tr>", (mcnt&1)?"left":"right", nptr, mcnt, row_height?row_height:1);*/
+    return 0;
+    }
 
-   if(!s->Capabilities.Dom0NS)
-       {
-       mssError(1,"HTMENU","Netscape DOM support required");
-       return -1;
-       }
+int
+htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, int is_popup, int is_submenu, int is_onright, int row_h, int mcnt, char* nptr, pXString xs)
+    {
+    char* ptr;
+    int rval;
 
-   /** Get an id for this. **/
-   id = (HTMN.idcnt++);
+	xsPrintf(xs, "enabled:1, onright:%d", is_onright);
 
-   /** Get x,y,height,& width of this object **/
-   if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
-   if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-   if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h=20;
-   if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) {
-	mssError(1,"HTMN","Menu widget must have a 'width' property");
-	return -1;
-   }
+	if (!is_horizontal)
+	    htrAddBodyItem_va(s, "<tr>");
 
+	/** image used to track position **/
+	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
 
-   if (wgtrGetPropertyValue(tree,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
-	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
-   } else {
-	mssError(1,"HTMN","Menu widget must have a 'hilight' property");
-	return -1;
-   }
-
-   if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
-	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
-   } else {
-	mssError(1,"HTMN","Menu widget must have a 'bgcolor' property");
-	return -1;
-   }
-
-
-    /** Get name **/
-    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-    memccpy(name,ptr,0,63);
-    name[63] = 0;
-    nptr = (char*)nmMalloc(strlen(name)+1);
-    strcpy(nptr,name);
-
-    /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-
-
-    htrAddScriptGlobal(s, "mn_current", "null", 0);
-    htrAddScriptGlobal(s, "mn_lastkey", "null", 0);
-    htrAddScriptGlobal(s, "mn_target_img", "null", 0);
-    htrAddScriptGlobal(s, "mn_thum_y","0",0);
-    htrAddScriptGlobal(s, "mn_timeout","null",0);
-    htrAddScriptGlobal(s, "mn_click_x","0",0);
-    htrAddScriptGlobal(s, "mn_click_y","0",0);
-    htrAddScriptGlobal(s, "mn_incr","0",0);
-    htrAddScriptGlobal(s, "mn_cur_mainlayer","null",0);
-    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
-
-    htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
-    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-    htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
-
-    htrAddEventHandler(s, "document","MOUSEMOVE", "mn", 
-	"\n"
-	// I think has to do with scrolling...
-	"    ti=mn_target_img;\n"
-	"    if (ti != null && ti.name == 't' && mn_current && mn_current.enabled!='disabled')\n"
-	"        {\n"
-	"        var pl=ti.mainlayer.PaneLayer;\n"
-	"        v=pl.clip.height-(3*18)-4;\n"
-	"        new_y=mn_thum_y+(e.pageY-mn_click_y)\n"
-	"        if (new_y > pl.pageY+20+v) new_y=pl.pageY+20+v;\n"
-	"        if (new_y < pl.pageY+20) new_y=pl.pageY+20;\n"
-	"        ti.thum.pageY=new_y;\n"
-	"        h=mn_current.PaneLayer.h;\n"
-	"        d=h-pl.clip.height+4;\n"
-	"        if (d<0) d=0;\n"
-	"        mn_incr = (((ti.thum.y-22)/(v-4))*-d)-mn_current.PaneLayer.ScrLayer.y;\n"
-	"        mn_scroll(0);\n"
-	"        return false;\n"
-	"        }\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind != 'mn')\n"
-	"        {\n"
-	"        cn_activate(ly.mainlayer, 'MouseMove');\n"
-	"        mn_cur_mainlayer = null;\n"
-	"        }\n"
-	"\n");
-
-    htrAddEventHandler(s, "document","MOUSEOVER", "mn", 
-	"\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind == 'mn')\n"
-	"        {\n"
-	"        cn_activate(ly.mainlayer, 'MouseOver');\n"
-	"        mn_cur_mainlayer = ly.mainlayer;\n"
-	"        }\n"
-	"    if (ly.kind == 'mn_itm')\n" 
-	"        {\n"
-	"        mn_lastkey = null;\n"
-	"        mn_toggle_item(mn_current, ly.index);\n"
-	"        }\n"
-	"    if (ly.kind == 'mn_itm' && mn_current && mn_current.enabled=='full')\n"
-	"        {\n"
-	"        mn_lastkey = null;\n"
-	"        mn_hilight_item(mn_current, ly.index);\n"
-	"        }\n"
-	"\n");
-
-    htrAddEventHandler(s, "document","MOUSEUP", "mn", 
-	"\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind == 'mn')\n"
-	"        {\n"
-	"        cn_activate(ly.mainlayer, 'MouseUp');\n"
-	"        }\n"
-	"    if (mn_timeout != null)\n"
-	"        {\n"
-	"        clearTimeout(mn_timeout);\n"
-	"        mn_timeout = null;\n"
-	"        mn_incr = 0;\n"
-	"        }\n"
-	"    if (mn_target_img != null)\n"
-	"        {\n"
-	"        if (mn_target_img.name != 'b' && mn_target_img.src && mn_target_img.kind.substr(0,2) == 'mn')\n"
-	"            mn_target_img.src = htutil_subst_last(mn_target_img.src,\"b.gif\");\n"
-	"        mn_target_img = null;\n"
-	"        }\n"
-	"    if (ly.kind == 'mn' && ly.enabled != 'disabled')\n"
-	"        {\n"
-	"        mn_toggle(ly);\n"
-	"        }\n"
-	"\n");
-
-    htrAddEventHandler(s, "document","MOUSEDOWN", "mn", 
-	"\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind == 'mn') cn_activate(ly.mainlayer, 'MouseDown');\n"
-	"    if (ly.kind == 'mn_itm')\n"
-	"        {\n"
-	"        mn_show_menu(ly.mainlayer,ly.index);\n"
-	"        }\n"
-	"    mn_target_img = e.target;\n"
-	"    if (ly.kind == 'mn' && ly.enabled != 'disabled')\n"
-	"        {\n"
-	"        if (mn_current)\n"
-	"            {\n"
-	"            mn_current.PaneLayer.visibility = 'hide';\n"
-	"            mn_current = null;\n"
-	"            }\n"
-	"        else\n"
-	"            {\n"
-	"            ly.PaneLayer.pageX = ly.pageX;\n"
-	"            ly.PaneLayer.pageY = ly.pageY+20;\n"
-	"            ly.PaneLayer.visibility = 'inherit';\n"
-	"            if(ly.form)\n"
-	"                ly.form.FocusNotify(ly);\n"
-	"            mn_current = ly;\n"
-	"            }\n"
-	"            mn_toggle(ly);\n"
-	"        }\n"
-	"    else if (ly.kind == 'mn_itm' && mn_current && mn_current.enabled == 'full')\n"
-	"        {\n"
-	"        mn_select_item(mn_current, ly.index);\n"
-	"        }\n"
-	"    else if (ly.kind == 'mn_sc')\n"
-	"        {\n"
-	"        switch(ly.name)\n"
-	"            {\n"
-	"            case 'u':\n"
-	"                ly.src = '/sys/images/ico13c.gif';\n"
-	"                mn_incr = 8;\n"
-	"                mn_scroll();\n"
-	"                mn_timeout = setTimeout(mn_scroll_tm,300);\n"
-	"                break;\n"
-	"            case 'd':\n"
-	"                ly.src = '/sys/images/ico12c.gif';\n"
-	"                mn_incr = -8;\n"
-	"                mn_scroll();\n"
-	"                mn_timeout = setTimeout(mn_scroll_tm,300);\n"
-	"                break;\n"
-	"            case 'b':\n"
-	"                mn_incr = mn_target_img.height+36;\n"
-	"                if (e.pageY > mn_target_img.thum.pageY+9) mn_incr = -mn_incr;\n"
-	"                mn_scroll();\n"
-	"                mn_timeout = setTimeout(mn_scroll_tm,300);\n"
-	"                break;\n"
-	"            case 't':\n"
-	"                mn_click_x = e.pageX;\n"
-	"                mn_click_y = e.pageY;\n"
-	"                mn_thum_y = mn_target_img.thum.pageY;\n"
-	"                break;\n"
-	"            }\n"
-	"        }\n"
-	"    if (mn_current && mn_current != ly && mn_current.PaneLayer != ly && (!ly.mainlayer || mn_current != ly.mainlayer))\n"
-	"        {\n"
-	"        mn_current.PaneLayer.visibility = 'hide';\n"
-	"        mn_current = null;\n"
-	"        }\n"
-	"\n");
-
-    /** Get the mode (default to 1, dynamicpage) **/
-
-    /** Script initialization call. **/
-
-    htrAddScriptInit_va(s,"    %s = mn_init(%s.layers.mn%dmain,'%s','%s',%d,%d);\n", nptr, parentname, id, bgstr, hilight, w, h);
-
-    /** HTML body <DIV> element for the layers. **/
-    htrAddBodyItem_va(s,"<DIV ID=\"mn%dmain\"><BODY bgcolor=\"%s\">\n", id,bgstr);
-    htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
-    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
-    htrAddBodyItem_va(s,"       <TD></TD>\n");
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
-    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-    htrAddBodyItem_va(s,"</TABLE>\n");
-    htrAddBodyItem_va(s,"</BODY></DIV>\n");
-   
-
-
-
-    /* Read and initialize the menu items */
-    flag=0;
-    for (i=0;i<xaCount(&(tree->Children));i++)
-	{
-	sub_tree = xaGetItem(&(tree->Children), i);
-	wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
-	if (!strcmp(ptr,"widget/menuitem")) 
+	/** icon **/
+	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
-	    if (wgtrGetPropertyValue(sub_tree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
+	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%s\"></td>", ptr);
+	    xsConcatPrintf(xs, ", icon:'%s'", ptr);
+	    }
+	else
+	    htrAddBodyItem_va(s, "<td>&nbsp;</td>");
+
+	/** checkbox **/
+	if ( (rval=htrGetBoolean(menu_item, "checked", -1)) >= 0)
+	    {
+	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img name=\"cb_%d\" src=\"/sys/images/checkbox_%s.gif\"></td>", mcnt, rval?"checked":"unchecked");
+	    xsConcatPrintf(xs, ", check:%s", rval?"true":"false");
+	    }
+	else
+	    htrAddBodyItem_va(s, "<td></td>");
+
+	/** Text **/
+	if (wgtrGetPropertyValue(menu_item,"label",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    htrAddBodyItem_va(s, "<td valign=\"middle\">%s</td>", ptr);
+	    xsConcatPrintf(xs, ", value:'%s'", ptr);
+	    }
+	else
+	    htrAddBodyItem_va(s, "<td></td>");
+
+	/** Submenu arrow **/
+	if (is_submenu && !is_horizontal)
+	    {
+	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"/sys/images/menu_arrow.gif\"></td>");
+	    }
+	else
+	    htrAddBodyItem_va(s, "<td>&nbsp;</td>");
+	if (is_submenu)
+	    {
+	    wgtrGetPropertyValue(menu_item,"name",DATA_T_STRING,POD(&ptr));
+	    xsConcatPrintf(xs, ", submenu:'%s'", ptr);
+	    }
+
+	if (!is_horizontal)
+	    htrAddBodyItem_va(s, "</tr>");
+
+	htrAddScriptInit_va(s, "    %s.AddItem({%s});\n", nptr, xs->String);
+
+    return 0;
+    }
+
+
+/*** htmenuRender - generate the HTML code for the menu widget.
+ ***/
+int 
+htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parentobj) 
+    {
+    char bgstr[80];
+    char highlight[80];
+    char active[80];
+    char textcolor[80];
+    char name[64];
+    char *ptr, *nptr;
+    int x,y,w,h;
+    int col_w, row_h;
+    int id, i, cnt, mcnt;
+    int is_horizontal;
+    int is_popup;
+    int is_submenu;
+    pWgtrNode sub_tree;
+    pXString xs;
+    int bx = 0;
+
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.CSS2)
+	    {
+	    mssError(1,"HTMENU","Netscape 4 DOM or W3C CSS2 support required");
+	    return -1;
+	    }
+	if (s->Capabilities.CSS2) bx = 1;
+
+	/** Get an id for this. **/
+	id = (HTMN.idcnt++);
+
+	/** Get x,y,height,& width of this object **/
+	if (wgtrGetPropertyValue(menu,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
+	if (wgtrGetPropertyValue(menu,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
+	if (wgtrGetPropertyValue(menu,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
+	if (wgtrGetPropertyValue(menu,"width",DATA_T_INTEGER,POD(&w)) != 0) w = -1;
+	if (wgtrGetPropertyValue(menu,"column_width",DATA_T_INTEGER,POD(&col_w)) != 0) col_w = 0;
+	if (wgtrGetPropertyValue(menu,"row_height",DATA_T_INTEGER,POD(&row_h)) != 0) row_h = 0;
+
+	/** Colors/Backgrounds **/
+	if (htrGetBackground(menu, NULL, s->Capabilities.CSS2, bgstr, sizeof(bgstr)) < 0)
+	    strcpy(bgstr, "");
+	if (htrGetBackground(menu, "highlight", s->Capabilities.CSS2, highlight, sizeof(highlight)) < 0)
+	    strcpy(highlight, bgstr);
+	if (htrGetBackground(menu, "active", s->Capabilities.CSS2, active, sizeof(highlight)) < 0)
+	    strcpy(active, highlight);
+	if (wgtrGetPropertyValue(menu, "textcolor", DATA_T_STRING, POD(&ptr)) != 0)
+	    strcpy(textcolor, "black");
+	else
+	    memccpy(textcolor, ptr, 0, sizeof(textcolor)-1);
+	textcolor[sizeof(textcolor)-1] = '\0';
+
+	/** Mode of operation (popup/bar, horiz/vert) **/
+	if (wgtrGetPropertyValue(menu, "direction", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"vertical"))
+	    is_horizontal = 0;
+	else
+	    is_horizontal = 1;
+	is_popup = htrGetBoolean(menu, "popup", 0);
+	if (is_popup < 0) is_popup = 0;
+
+	/** Write the main style header item. **/
+	if (h != -1 && w == -1)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit", x,y,h-2*bx,z);
+	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; HEIGHT:%dpx; Z-INDEX:%d; }\n", id, h, z+1);
+	    }
+	else if (h == -1 && w != -1)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit",x,y,w-2*bx,z);
+	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d; }\n", id, w, z+1);
+	    }
+	else if (h != -1 && w != -1)
+	    {
+	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(0px,%dpx,%dpx,0px); }\n",
+		    id,is_popup?"hidden":"inherit",x,y,w-2*bx,h-2*bx,z,w,h);
+	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n", 
+		    id, w,h, z+1);
+	    }
+	else
+	    {
+	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit",x,y,z);
+	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; Z-INDEX:%d; }\n", id, z+1);
+	    }
+	if (s->Capabilities.CSS2)
+	    htrAddStylesheetItem_va(s,"\t#mn%dmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; %s }\n", id, bgstr);
+
+	/** content layer **/
+	if (s->Capabilities.CSS2)
+	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { overflow:hidden; cursor:default; }\n", id );
+
+	/** highlight bar **/
+	htrAddStylesheetItem_va(s, "\t#mn%dhigh { POSITION:absolute; VISIBILITY: hidden; LEFT:0px; TOP:0px; Z-INDEX:%d; }\n", id, z);
+	if (s->Capabilities.CSS2)
+	    htrAddStylesheetItem_va(s,"\t#mn%dhigh { overflow:hidden; }\n", id );
+
+	/** Get name **/
+	if (wgtrGetPropertyValue(menu,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	memccpy(name,ptr,0,63);
+	name[63] = 0;
+	nptr = (char*)nmMalloc(strlen(name)+1);
+	strcpy(nptr,name);
+
+	/** Globals **/
+	htrAddScriptGlobal(s, "mn_active", "new Array()", 0);
+	htrAddScriptGlobal(s, "mn_current", "null", 0);
+	htrAddScriptGlobal(s, "mn_tmout", "null", 0);
+	htrAddScriptGlobal(s, "mn_pop_x", "0", 0);
+	htrAddScriptGlobal(s, "mn_pop_y", "0", 0);
+	htrAddScriptGlobal(s, "mn_mouseangle", "0", 0);
+	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
+	/** Scripts **/
+	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
+
+	/** Initialization **/
+	if (s->Capabilities.Dom0NS)
+	    htrAddScriptInit_va(s,"    %s = mn_init({layer:%s.layers.mn%dmain, clayer:%s.layers.mn%dmain.document.layers.mn%dcontent, hlayer:%s.layers.mn%dmain.document.layers.mn%dhigh, bgnd:\"%s\", high:\"%s\", actv:\"%s\", txt:\"%s\", w:%d, h:%d, horiz:%d, pop:%d, name:\"%s\"});\n", 
+		    nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, highlight, active, textcolor, w, h, is_horizontal, is_popup, nptr);
+	else
+	    htrAddScriptInit_va(s,"    %s = mn_init({layer:document.getElementById('mn%dmain'), clayer:document.getElementById('mn%dcontent'), hlayer:document.getElementById('mn%dhigh'), bgnd:\"%s\", high:\"%s\", actv:\"%s\", txt:\"%s\", w:%d, h:%d, horiz:%d, pop:%d, name:\"%s\"});\n", 
+		    nptr, id, id, id, bgstr, highlight, active, textcolor, w, h, is_horizontal, is_popup, nptr);
+
+	/** Set object parent **/
+	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
+		nptr, nptr, parentobj);
+
+	/** Event handlers **/
+	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "mn", "mn_mousemove");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "mn", "mn_mouseout");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "mn", "mn_mouseover");
+	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "mn", "mn_mousedown");
+
+	/** Beginning of code for menu **/
+	htrAddBodyItem_va(s,"<div id=\"mn%dmain\">", id);
+	if (s->Capabilities.Dom0NS)
+	    htrAddBodyItem_va(s,"<body %s>",bgstr);
+	htrAddBodyItem_va(s,"<div id=\"mn%dcontent\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %s>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
+
+	/** Only draw border if it is NS4 **/
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+	    if (w != -1)
+		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%d\"></td>", w-2);
+	    else
+		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+	    htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+	    if (h != -1)
+		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%d\" width=\"1\"></td><td>", h-2);
+	    else
+		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td><td>");
+	    }
+	else
+	    htrAddBodyItem_va(s,"<tr><td valign=\"middle\">");
+
+	/** Add 'meat' of menu... **/
+	xs = (pXString)nmMalloc(sizeof(XString));
+	xsInit(xs);
+	mcnt=0;
+	htrAddBodyItem_va(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%%\"><tr><td align=\"left\" valign=\"middle\">\n");
+	htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%s\n", is_horizontal?"<tr>":"");
+	cnt = xaCount(&(menu->Children));
+	for (i=0;i<cnt;i++)
+	    {
+	    sub_tree = xaGetItem(&(menu->Children), i);
+	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	    if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
 		{
-		mssError(1,"HTMN","Menu Item  widget must have a 'label' property");
-		return -1;
+		is_submenu = !strcmp(ptr,"widget/menu");
+		if (!(is_horizontal && htrGetBoolean(sub_tree, "onright", 0) == 1))
+		    {
+		    htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 0, row_h, mcnt, nptr, xs);
+		    mcnt++;
+		    }
 		}
-	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	    if (flag) //create mn_add_top_layer function call...
+	    }
+	if (is_horizontal)
+	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
+	else
+	    {
+	    htrAddBodyItem_va(s, "<tr>");
+	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
+	    htrAddBodyItem_va(s, "<td colspan=\"4\"></td></tr>");
+	    }
+	mcnt++;
+	htrAddBodyItem_va(s,"%s</table></td>", is_horizontal?"</tr>":"");
+	if (is_horizontal)
+	    {
+	    htrAddBodyItem_va(s,"<td align=\"right\" valign=\"middle\">\n");
+	    htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\"><tr>\n");
+	    for (i=0;i<cnt;i++)
 		{
-		xsConcatPrintf(&xs, ",");
+		sub_tree = xaGetItem(&(menu->Children), i);
+		wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+		if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
+		    {
+		    is_submenu = !strcmp(ptr,"widget/menu");
+		    if ((is_horizontal && htrGetBoolean(sub_tree, "onright", 0) == 1))
+			{
+			htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 1, row_h, mcnt, nptr, xs);
+			mcnt++;
+			}
+		    }
+		}
+	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
+	    mcnt++;
+	    htrAddBodyItem_va(s,"</tr></table></td>\n");
+	    }
+	htrAddBodyItem_va(s,"</tr></table>\n");
+
+	/** closing border for NS4 **/
+	if (s->Capabilities.Dom0NS)
+	    {
+	    if (h != -1)
+		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%d\" width=\"1\"></td></tr>\n", h-2);
+	    else
+		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+	    htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+	    if (w != -1)
+		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%d\"></td>", w-2);
+	    else
+		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+	    htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+	    }
+	else
+	    htrAddBodyItem_va(s,"</td></tr>");
+
+	/** Ending of layer **/
+	if (s->Capabilities.Dom0NS)
+	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%dhigh\"></div></body></div>", id);
+	else
+	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%dhigh\"></div></div>\n", id);
+
+	xsDeInit(xs);
+	nmFree(xs, sizeof(XString));
+
+	/* Read and initialize the menu items */
+	cnt = xaCount(&(menu->Children));
+	for (i=0;i<cnt;i++)
+	    {
+	    sub_tree = xaGetItem(&(menu->Children), i);
+	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	    if (!strcmp(ptr,"widget/menuitem")) 
+		{
+		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 		} 
 	    else 
 		{
-		xsInit(&xs);
-		xsConcatPrintf(&xs, "    mn_add_top_layer_items(%s.layers.mn%dmain, Array(", parentname, id);
-		flag=1;
+		htrRenderWidget(s, sub_tree, z+1, parentname, nptr);
 		}
-	    xsConcatPrintf(&xs,"Array('%s',", string); //fill in the menu items parameters for the function...
-
-	    if (wgtrGetPropertyValue(sub_tree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
-		{
-		mssError(1,"HTMN","Menu Item widget must have a 'value' property");
-		return -1;
-		}
-	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	    xsConcatPrintf(&xs,"'%s',", string);
-
-	    if (wgtrGetPropertyValue(sub_tree,"width",DATA_T_STRING,POD(&ptr)) != 0)
-		{
-		mssError(1,"HTMN","Menu Item widget must have a 'width' property");
-		return -1;
-		}
-		memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-		xsConcatPrintf(&xs,"%s)", string);
-
-	    } 
-	else 
-	    {
-	    htrRenderWidget(s, sub_tree, z+1, parentname, nptr);
 	    }
-	}
-	if (flag)
-	    {
-	    xsConcatPrintf(&xs, "));\n");
-	    htrAddScriptInit(s,xs.String);
-	    xsDeInit(&xs);
-	    }
-    
 
     return 0;
-}
+    }
 
 
 /* 
    htmenuInitialize - register with the ht_render module.
 */
-int htmenuInitialize() {
-   pHtDriver drv;
+int 
+htmenuInitialize() 
+    {
+    pHtDriver drv;
 
-   /** Allocate the driver **/
-   drv = htrAllocDriver();
-   if (!drv) return -1;
+	/** Allocate the driver **/
+	drv = htrAllocDriver();
+	if (!drv) return -1;
 
-   /** Fill in the structure. **/
-   strcpy(drv->Name,"DHTML Menu Widget Driver");
-   strcpy(drv->WidgetName,"menu");
-   drv->Render = htmenuRender;
+	/** Fill in the structure. **/
+	strcpy(drv->Name,"DHTML Menu Widget Driver");
+	strcpy(drv->WidgetName,"menu");
+	drv->Render = htmenuRender;
 
-   /** Register events **/
-   htrAddEvent(drv,"MouseUp");
-   htrAddEvent(drv,"MouseDown");
-   htrAddEvent(drv,"MouseOver");
-   htrAddEvent(drv,"MouseOut");
-   htrAddEvent(drv,"MouseMove");
-   htrAddEvent(drv,"DataChange");
-   htrAddEvent(drv,"GetFocus");
-   htrAddEvent(drv,"LoseFocus");
+	/** Register events **/
+	htrAddEvent(drv,"MouseUp");
+	htrAddEvent(drv,"MouseDown");
+	htrAddEvent(drv,"MouseOver");
+	htrAddEvent(drv,"MouseOut");
+	htrAddEvent(drv,"MouseMove");
+	htrAddEvent(drv,"DataChange");
+	htrAddEvent(drv,"GetFocus");
+	htrAddEvent(drv,"LoseFocus");
 
-   /** Register. **/
-   htrRegisterDriver(drv);
+	/** Register. **/
+	htrRegisterDriver(drv);
 
-   htrAddSupport(drv, "dhtml");
+	htrAddSupport(drv, "dhtml");
 
-   HTMN.idcnt = 0;
+	HTMN.idcnt = 0;
 
-   return 0;
-}
+    return 0;
+    }
 
 
