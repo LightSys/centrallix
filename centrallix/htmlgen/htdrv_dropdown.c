@@ -117,9 +117,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
     strcpy(nptr,name);
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%dbtn { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; HEIGHT:18; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-    htrAddStylesheetItem_va(s,"\t#dd%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:1024; HEIGHT:%d; Z-INDEX:%d; }\n",id,h-2,z+1);
-    htrAddStylesheetItem_va(s,"\t#dd%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:1024; HEIGHT:%d; Z-INDEX:%d; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%dbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:20px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+    htrAddStylesheetItem_va(s,"\t#dd%dcon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%dcon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,h-2,z+1);
 
     htrAddScriptGlobal(s, "dd_current", "null", 0);
     htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
@@ -277,16 +277,22 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	return -1;
     }
     /** Script initialization call. **/
-
-    htrAddScriptInit_va(s,"    %s = dd_init({layer:%s.layers.dd%dbtn, c1:%s.layers.dd%dbtn.document.layers.dd%dcon1, c2:%s.layers.dd%dbtn.document.layers.dd%dcon2, background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
+    if (s->Capabilities.Dom0NS)
+	{
+	htrAddScriptInit_va(s,"    %s = dd_init({layer:%s.layers.dd%dbtn, c1:%s.layers.dd%dbtn.document.layers.dd%dcon1, c2:%s.layers.dd%dbtn.document.layers.dd%dcon2, background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
+	}
+    else if (s->Capabilities.Dom1HTML)
+	{
+	htrAddScriptInit_va(s,"    %s = dd_init({layer:document.getElementById(\"dd%dbtn\"), c1:document.getElementById(\"dd%dcon1\"), c2:document.getElementById(\"dd%dcon2\"), background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", nptr, id, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
+	}
 
     /** Set object parent **/
     htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
 	    nptr, nptr, parentobj);
 
     /** HTML body <DIV> element for the layers. **/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%dbtn\"><BODY bgcolor=\"%s\">\n", id,bgstr);
-    htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%dbtn\">\n", id);
+    htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0 bgcolor=\"%s\">\n",w, bgstr);
     htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
@@ -299,13 +305,13 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
     htrAddBodyItem_va(s,"</TABLE>\n");
     htrAddBodyItem_va(s,"<DIV ID=\"dd%dcon1\"></DIV>\n",id);
     htrAddBodyItem_va(s,"<DIV ID=\"dd%dcon2\"></DIV>\n",id);
-    htrAddBodyItem_va(s,"</BODY></DIV>\n");
+    htrAddBodyItem_va(s,"</DIV>\n");
     
     /* Read and initialize the dropdown items */
     if (mode == 1) {
 	if ((qy = objMultiQuery(s->ObjSession, sql))) {
 	    flag=0;
-	    htrAddScriptInit_va(s,"    dd_add_items(%s.layers.dd%dbtn, Array(",parentname,id);
+	    htrAddScriptInit_va(s,"    dd_add_items(%s, Array(",nptr);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
 		// Label
 		attr = objGetFirstAttr(qy_obj);
@@ -367,7 +373,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	    else 
 		{
 		xsInit(&xs);
-		xsConcatPrintf(&xs, "    dd_add_items(%s.layers.dd%dbtn, Array(", parentname, id);
+		xsConcatPrintf(&xs, "    dd_add_items(%s, Array(", nptr, id);
 		flag=1;
 		}
 	    xsConcatPrintf(&xs,"Array('%s',", string);
@@ -435,10 +441,13 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.50 2005/06/23 22:07:58 ncolson Exp $
+    $Id: htdrv_dropdown.c,v 1.51 2005/10/09 07:46:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.51  2005/10/09 07:46:47  gbeeley
+    - (change) continued work porting dropdown to IE/Moz
+
     Revision 1.50  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
