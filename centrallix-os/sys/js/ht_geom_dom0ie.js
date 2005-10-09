@@ -101,7 +101,7 @@ function getClipTop(l)
     { 
     var rval = parseInt(l.currentStyle.clipTop); 
     if (isNaN(rval))
-	return l.offsetTop;
+	return /*l.offsetTop*/ 0;
     else
 	return rval;
     }
@@ -115,7 +115,9 @@ function setClipTop(l, value)
 // Clip Bottom
 function getClipBottom(l) 
     { 
-    return parseInt(l.currentStyle.clipBottom);
+    var rval = parseInt(l.currentStyle.clipBottom);
+    if (isNaN(rval)) return l.offsetHeight;
+    return rval;
     }
 
 function setClipBottom(l, value) 
@@ -136,7 +138,9 @@ function setClipBottom(l, value)
 // Clip Left
 function getClipLeft(l) 
     { 
-    return parseInt(l.currentStyle.clipLeft);
+    var rval = parseInt(l.currentStyle.clipLeft);
+    if (isNaN(rval)) return 0;
+    return rval;
     }
 
 function setClipLeft(l, value) 
@@ -148,7 +152,9 @@ function setClipLeft(l, value)
 // Clip Right
 function getClipRight(l) 
     { 
-    return parseInt(l.currentStyle.clipRight);
+    var rval = parseInt(l.currentStyle.clipRight);
+    if (isNaN(rval)) return l.offsetWidth;
+    return rval;
     }
 
 function setClipRight(l, value) 
