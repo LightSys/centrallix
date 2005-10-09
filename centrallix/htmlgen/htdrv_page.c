@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.70 2005/03/01 07:08:26 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.71 2005/10/09 07:48:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.71  2005/10/09 07:48:54  gbeeley
+    - (change) allow contextmenu event to trigger RightClick
+    - fix image-in-table problem on Moz
+
     Revision 1.70  2005/03/01 07:08:26  gbeeley
     - don't activate the serialized loading until after startup() finishes
       running.
@@ -646,6 +650,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "pg_explist", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeout", "null", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeoutlist", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_schedtimeoutid", "0", 0);
 	htrAddScriptGlobal(s, "fm_current", "null", 0);
 	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
@@ -675,7 +680,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	memccpy(name,ptr,'\0',63);
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	htrAddScriptGlobal(s, nptr, "document", HTR_F_NAMEALLOC);
 
 	if(s->Capabilities.Dom1HTML)
 	    {
@@ -695,6 +700,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	if(s->Capabilities.HTML40)
 	    {
 	    /** Add focus box **/
+	    htrAddStylesheetItem(s,"\ttd img { display: block; }\n");
 	    htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
 	    htrAddStylesheetItem(s,"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
 	    htrAddStylesheetItem(s,"\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
@@ -767,6 +773,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "pg", "pg_mouseover");
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "pg", "pg_mousedown");
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "pg", "pg_mouseup");
+	if (s->Capabilities.Dom1HTML)
+	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "pg", "pg_contextmenu");
 
 	/** W3C DOM Level 2 Event model doesn't require a textbox to get keystrokes **/
 	if(s->Capabilities.Dom0NS)
