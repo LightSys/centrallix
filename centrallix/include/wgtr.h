@@ -45,8 +45,9 @@
 
 #define WGTR_F_NONVISUAL    1		/** a widget is visual by default, non-visual if this is set **/
 #define WGTR_F_CONTAINER    2		/** set for container widgets **/
+#define WGTR_F_FLOATING	    4		/** widgets that 'float' - childwindows and popup menus **/
 
-typedef struct
+typedef struct _WN
     {
     int		Magic;
     void*	reserved;
@@ -61,6 +62,7 @@ typedef struct
     int		top, bottom, left, right;	/** container offsets **/
     XArray	Properties;			/** Array of widget properties **/
     XArray	Children;			/** Array of child widgets **/
+    struct _WN* Parent;
     int		CurrProperty;			/** Property to return on next call to wgtNextProperty **/
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/
     int		Verified;			/** Was the node verified? **/

@@ -50,6 +50,32 @@
 int
 wgtmenuVerify(pWgtrVerifySession s)
     {
+    pWgtrNode menu = s->CurrWidget;
+    char* str;
+    int i;
+
+	if (menu->Parent && !strcmp(menu->Parent->Type, "widget/menu"))
+	    {
+	    menu->Flags |= WGTR_F_FLOATING;
+	    if (wgtrGetPropertyType(menu, "popup") < 0)
+		{
+		str = "yes";
+		wgtrAddProperty(menu, "popup", DATA_T_STRING, POD(&str));
+		}
+	    if (wgtrGetPropertyType(menu, "direction") < 0)
+		{
+		str = "vertical";
+		wgtrAddProperty(menu, "direction", DATA_T_STRING, POD(&str));
+		}
+	    }
+	if (wgtrGetPropertyValue(menu, "popup", DATA_T_STRING, POD(&str)) == 0)
+	    {
+	    if (!strcasecmp(str,"yes") || !strcasecmp(str,"true") || !strcasecmp(str,"on"))
+		menu->Flags |= WGTR_F_FLOATING;
+	    }
+	else if (wgtrGetPropertyValue(menu, "popup", DATA_T_INTEGER, POD(&i)) == 0 && i)
+	    menu->Flags |= WGTR_F_FLOATING;
+
     return 0;
     }
 
@@ -61,7 +87,8 @@ wgtmenuVerify(pWgtrVerifySession s)
  ***/
 int
 wgtmenuNew(pWgtrNode node)
-    {   
+    {
+
 	if(node->fl_width < 0) node->fl_width = 25;
 	if(node->fl_height < 0) node->fl_height = 0;
 	

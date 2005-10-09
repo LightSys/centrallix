@@ -30,10 +30,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.2 2005/10/01 00:23:46 gbeeley Exp $
+    $Id: apos.c,v 1.3 2005/10/09 07:51:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.3  2005/10/09 07:51:29  gbeeley
+    - (change) popup menus are floating objects like windows.
+    - (change) allow geometry values to be unset
+    - (change) add Parent property to WgtrNode
+
     Revision 1.2  2005/10/01 00:23:46  gbeeley
     - (change) renamed 'htmlwindow' to 'childwindow' to remove the terminology
       dependence on the dhtml/http app delivery mechanism
@@ -115,7 +120,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	        aposPatchNegativeHeight(Child, PatchedWidgets);
 	    
 	    /** If child is a container but not a window, recursively prepare it as well **/
-	    if((Child->Flags & WGTR_F_CONTAINER) && strcmp(Child->Type, "widget/childwindow"))
+	    if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_FLOATING))
 		aposPrepareTree(Child, PatchedWidgets);
 	}
     
@@ -316,7 +321,7 @@ int i=0, j=0, grandchildCount=0, childCount = xaCount(&(Parent->Children));
 			    GrandChild = (pWgtrNode)xaGetItem(&(Child->Children), j);
 			    if((GrandChild->Flags & WGTR_F_CONTAINER) &&
 			        !(GrandChild->Flags & WGTR_F_NONVISUAL) &&
-				strcmp(GrandChild->Type, "widget/childwindow"))
+				!(GrandChild->Flags & WGTR_F_FLOATING))
 				if(aposAutoPositionContainers(GrandChild) < 0)
 				    {
 					mssError(0, "APOS", "aposAutoPositionContainers: Couldn't auto-position contents of '%s'", GrandChild->Name);
@@ -327,7 +332,7 @@ int i=0, j=0, grandchildCount=0, childCount = xaCount(&(Parent->Children));
 	    /**auto-positions subsequent visual container**/
 	    else if( (Child->Flags & WGTR_F_CONTAINER) &&
 	        !(Child->Flags & WGTR_F_NONVISUAL) &&
-		strcmp(Child->Type, "widget/childwindow"))
+		!(Child->Flags & WGTR_F_FLOATING))
 		if(aposAutoPositionContainers(Child) < 0)
 		    {
 			mssError(0, "APOS", "aposAutoPositionContainers: Couldn't auto-position contents of '%s'", Child->Name);
@@ -444,7 +449,7 @@ pWgtrNode C;
 	    *** and not a window, just add 4 lines for it **/
 	    if((C->Flags & WGTR_F_NONVISUAL) && (C->Flags & WGTR_F_CONTAINER))
 		aposAddLinesForChildren(C, HLines, VLines);
-	    else if(!(C->Flags & WGTR_F_NONVISUAL) && strcmp(C->Type, "widget/childwindow"))
+	    else if(!(C->Flags & WGTR_F_NONVISUAL) && !(C->Flags & WGTR_F_FLOATING))
 	        {
 		    /**add horizontal lines, unless parent is a scrollpane**/
 		    if(strcmp(Parent->Type, "widget/scrollpane"))
@@ -854,7 +859,7 @@ pWgtrNode Child;
     for(i=0; i<childCount; ++i)
 	{
 	    Child = (pWgtrNode)(xaGetItem(&(Parent->Children), i));
-	    if(!strcmp(Child->Type, "widget/childwindow"))
+	    if(Child->Flags & WGTR_F_FLOATING)
 		{
 		    /**if it's outside the top left corner pull the whole window in**/
 		    if(Child->x < 0) Child->x = 0;

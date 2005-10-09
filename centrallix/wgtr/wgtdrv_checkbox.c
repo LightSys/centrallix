@@ -62,6 +62,8 @@ wgtcbVerify(pWgtrVerifySession s)
 int
 wgtcbNew(pWgtrNode node)
     {   
+	if(node->r_width < 0) node->r_width = 12;
+	if(node->r_height < 0) node->r_height = 12;
 	if(node->fl_width < 0) node->fl_width = 0;
 	if(node->fl_height < 0) node->fl_height = 0;
     return 0;

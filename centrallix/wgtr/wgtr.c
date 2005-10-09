@@ -505,10 +505,10 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 	/** first check for values we have aliased **/
 	if (datatype == DATA_T_INTEGER)
 	    {
-	    if (!strcmp(name, "x")) { val->Integer = widget->x; return 0; }
-	    if (!strcmp(name, "y")) { val->Integer = widget->y; return 0; }
-	    if (!strcmp(name, "width")) { val->Integer = widget->width; return 0; }
-	    if (!strcmp(name, "height")) { val->Integer = widget->height; return 0; }
+	    if (!strcmp(name, "x")) { val->Integer = widget->x; return (val->Integer == -1)?1:0; }
+	    if (!strcmp(name, "y")) { val->Integer = widget->y; return (val->Integer == -1)?1:0; }
+	    if (!strcmp(name, "width")) { val->Integer = widget->width; return (val->Integer == -1)?1:0; }
+	    if (!strcmp(name, "height")) { val->Integer = widget->height; return (val->Integer == -1)?1:0; }
 	    if (!strncmp(name, "r_", 2))
 		{
 		if (!strcmp(name+2, "x")) { val->Integer = widget->r_x; return 0; }
@@ -733,6 +733,7 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
 	node->ObjSession = s;
+	node->Parent = NULL;
 
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
@@ -780,6 +781,7 @@ wgtrAddChild(pWgtrNode widget, pWgtrNode child)
     {
 	ASSERTMAGIC(widget, MGK_WGTR);
 	xaAddItem(&(widget->Children), child);
+	child->Parent = widget;
 	return 0;
     }
 
@@ -999,7 +1001,7 @@ wgtrPrint(pWgtrNode tree, int indent)
 	ASSERTMAGIC(tree, MGK_WGTR);
 	/** first print the object name **/
 	wgtr_internal_Indent(indent);
-	fprintf(stderr, "Widget: %s Type: %s\n", tree->Name, tree->Type);
+	fprintf(stderr, "Widget: %s Type: %s (%d,%d %dx%d)\n", tree->Name, tree->Type, tree->x, tree->y, tree->width, tree->height);
 
 	/** now print the properties **/
 	name = wgtrFirstPropertyName(tree);
