@@ -41,10 +41,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.34 2005/06/23 22:07:58 ncolson Exp $
+    $Id: htdrv_checkbox.c,v 1.35 2005/10/09 07:44:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.35  2005/10/09 07:44:48  gbeeley
+    - (bugfix) allow checkbox to work properly inside other layers on Moz
+
     Revision 1.34  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -378,7 +381,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    /** Script initialization call. **/
    if(s->Capabilities.Dom1HTML)
        {
-       htrAddScriptInit_va(s,"    %s=checkbox_init({layer:%s.getElementById('cb%dmain'), fieldname:\"%s\", checked: %d, enabled:%d});\n", nptr, parentname, id,fieldname,checked,enabled);
+       htrAddScriptInit_va(s,"    %s=checkbox_init({layer:document.getElementById('cb%dmain'), fieldname:\"%s\", checked: %d, enabled:%d});\n", nptr, id,fieldname,checked,enabled);
        }
    else if(s->Capabilities.Dom0NS)
        {
