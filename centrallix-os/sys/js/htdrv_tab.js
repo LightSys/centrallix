@@ -32,26 +32,32 @@ function tc_makecurrent()
     for(var i=0;i<this.tabctl.tabs.length;i++)
 	{
 	t = this.tabctl.tabs[i];
-	if (t != this && htr_getzindex(t) > htr_getzindex(this))
+	if (t != this && (t.tabctl.tloc == 4 || htr_getzindex(t) > htr_getzindex(this)))
 	    {
-	    htr_setzindex(t,htr_getzindex(this.tabctl) - 1);
 	    htr_setzindex(t.tabpage,htr_getzindex(this.tabctl) - 1);
 	    htr_setvisibility(t.tabpage,'hidden');
-	    t.marker_image.src = '/sys/images/tab_lft3.gif';
-	    moveBy(t, this.tabctl.xo, this.tabctl.yo);
-	    setClipItem(t,t.tabctl.cl, getClipItem(t,t.tabctl.cl) + t.tabctl.ci);
-	    if (this.tabctl.inactive_bgColor) htr_setbgcolor(t,this.tabctl.inactive_bgColor);
-	    if (this.tabctl.inactive_bgnd) htr_setbgimage(t,this.tabctl.inactive_bgnd);
+	    if (t.tabctl.tloc != 4)
+		{
+		htr_setzindex(t,htr_getzindex(this.tabctl) - 1);
+		t.marker_image.src = '/sys/images/tab_lft3.gif';
+		moveBy(t, this.tabctl.xo, this.tabctl.yo);
+		setClipItem(t,t.tabctl.cl, getClipItem(t,t.tabctl.cl) + t.tabctl.ci);
+		if (this.tabctl.inactive_bgColor) htr_setbgcolor(t,this.tabctl.inactive_bgColor);
+		if (this.tabctl.inactive_bgnd) htr_setbgimage(t,this.tabctl.inactive_bgnd);
+		}
 	    }
 	}
-    if (this.tabctl.main_bgColor) htr_setbgcolor(this,this.tabctl.main_bgColor);
-    if (this.tabctl.main_bgnd) htr_setbgimage(this,this.tabctl.main_bgnd);
-    htr_setzindex(this, htr_getzindex(this.tabctl) + 1);
     htr_setzindex(this.tabpage, htr_getzindex(this.tabctl) + 1);
     htr_setvisibility(this.tabpage,'inherit');
-    this.marker_image.src = '/sys/images/tab_lft2.gif';
-    moveBy(this, -this.tabctl.xo, -this.tabctl.yo);
-    setClipItem(this,this.tabctl.cl, getClipItem(this,this.tabctl.cl) - this.tabctl.ci);
+    if (this.tabctl.tloc != 4)
+	{
+	if (this.tabctl.main_bgColor) htr_setbgcolor(this,this.tabctl.main_bgColor);
+	if (this.tabctl.main_bgnd) htr_setbgimage(this,this.tabctl.main_bgnd);
+	htr_setzindex(this, htr_getzindex(this.tabctl) + 1);
+	this.marker_image.src = '/sys/images/tab_lft2.gif';
+	moveBy(this, -this.tabctl.xo, -this.tabctl.yo);
+	setClipItem(this,this.tabctl.cl, getClipItem(this,this.tabctl.cl) - this.tabctl.ci);
+	}
     this.setTabUnwatched();
     }
 
@@ -61,49 +67,61 @@ function tc_addtab(l_tab, l_page, l, nm)
     {
     var newx;
     var newy;
+    if (!l_tab) l_tab = new Object();
     l_tab.tabname = nm;
     l_tab.tabindex = this.tabs.length+1;
     htr_init_layer(l_page,l,'tc_pn');
-    htr_init_layer(l_tab,l,'tc');
-    if (l.tloc == 0 || l.tloc == 1) // top or bottom
+    if (l.tloc != 4) 
 	{
-	if (this.tabs.length > 0)
+	htr_init_layer(l_tab,l,'tc');
+	if (l.tloc == 0 || l.tloc == 1) // top or bottom
 	    {
-	    newx = getPageX(this.tabs[this.tabs.length-1]) + htr_getphyswidth(this.tabs[this.tabs.length-1]) + 1;
-	    if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newx += l.xo;
+	    if (this.tabs.length > 0)
+		{
+		newx = getPageX(this.tabs[this.tabs.length-1]) + htr_getphyswidth(this.tabs[this.tabs.length-1]) + 1;
+		if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newx += l.xo;
+		}
+	    else
+		newx = getPageX(this);
 	    }
-	else
-	    newx = getPageX(this);
-	}
-    else if (l.tloc == 2) // left
-	newx = getPageX(this)- htr_getviswidth(l_tab) + 1;
-    else if (l.tloc == 3) // right
-	newx = getPageX(this) + htr_getviswidth(this) - 1;
+	else if (l.tloc == 2) // left
+	    newx = getPageX(this)- htr_getviswidth(l_tab) + 1;
+	else if (l.tloc == 3) // right
+	    newx = getPageX(this) + htr_getviswidth(this) - 1;
 
-    if (l.tloc == 2 || l.tloc == 3) // left or right
-	{
-	if (this.tabs.length > 0)
+	if (l.tloc == 2 || l.tloc == 3) // left or right
 	    {
-	    newy = getPageY(this.tabs[this.tabs.length-1]) + 26;
-	    if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newy += l.yo;
+	    if (this.tabs.length > 0)
+		{
+		newy = getPageY(this.tabs[this.tabs.length-1]) + 26;
+		if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newy += l.yo;
+		}
+	    else
+		newy = getPageY(this);
 	    }
-	else
-	    newy = getPageY(this);
+	else if (l.tloc == 1) // bottom
+	    newy = getPageY(this)+ htr_getvisheight(this) - 1;
+	else // top
+	    newy = getPageY(this) - 24;
 	}
-    else if (l.tloc == 1) // bottom
-	newy = getPageY(this)+ htr_getvisheight(this) - 1;
-    else // top
-	newy = getPageY(this) - 24;
+    else
+	{
+	newx = 0;
+	newy = 0;
+	}
 
     if (htr_getvisibility(l_page) != 'inherit')
 	{
-	newx += l.xo;
-	newy += l.yo;
-	setClipItem(l_tab, l.cl, getClipItem(l_tab, l.cl) + l.ci);
-	if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
-	else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
-	if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
-	else if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
+	if (l.tloc != 4)
+	    {
+	    newx += l.xo;
+	    newy += l.yo;
+	    setClipItem(l_tab, l.cl, getClipItem(l_tab, l.cl) + l.ci);
+	    if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
+	    else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
+	    if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
+	    else if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
+	    }
 	}
     else
 	{
@@ -113,26 +131,34 @@ function tc_addtab(l_tab, l_page, l, nm)
 	l.selected_index = l_tab.tabindex;
 	l.current_tab = l_tab;
 	l.init_tab = l_tab;
-	pg_addsched_fn(window,"pg_reveal_event",new Array(l_page,l_page,'Reveal'));
+	pg_addsched_fn(window,"pg_reveal_event",new Array(l_page,l_page,'Reveal'), 0);
 	htr_watch(l,"selected", "tc_selection_changed");
 	htr_watch(l,"selected_index", "tc_selection_changed");
-	if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
-	if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
+	if (l.tloc != 4)
+	    {
+	    if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
+	    if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
+	    }
 	}
-    var images = pg_images(l_tab);
-    for(var i=0;i<images.length;i++)
+    if (l.tloc != 4)
 	{
-	images[i].layer = l_tab;
-	images[i].kind = 'tc';
-	if  (images[i].width == 5) l_tab.marker_image = images[i];
+	var images = pg_images(l_tab);
+	for(var i=0;i<images.length;i++)
+	    {
+	    images[i].layer = l_tab;
+	    images[i].kind = 'tc';
+	    if  (images[i].width == 5) l_tab.marker_image = images[i];
+	    }
 	}
     this.tabs[this.tabs.length++] = l_tab;
     l_tab.tabpage = l_page;
     l_tab.tabctl = this;
     l_tab.makeCurrent = tc_makecurrent;
     l_tab.setTabUnwatched = tc_set_tab_unwatched;
-    setPageX(l_tab, newx);
-    setPageY(l_tab, newy);
+    if (l.tloc != 4)
+	{
+	moveToAbsolute(l_tab, newx, newy);
+	}
     l_page.tabctl = this;
     l_page.tab = l_tab;
     setClipWidth(l_page, getClipWidth(this)-2);
@@ -169,7 +195,7 @@ function tc_selection_changed(prop,o,n)
 
     // okay to change tab.
     //this.tabs[tabindex-1].makeCurrent();
-    pg_addsched_fn(this,"ChangeSelection1", new Array(this.tabs[tabindex-1].tabpage));
+    pg_addsched_fn(this,"ChangeSelection1", new Array(this.tabs[tabindex-1].tabpage), 0);
     return n;
     }
 
@@ -246,6 +272,12 @@ function tc_init(param)
 	    l.yo = +1;
 	    l.cl = "left";
 	    l.ci = +2;
+	    break;
+	case 4: // none
+	    l.xo = 0;
+	    l.yo = 0;
+	    l.cl = "bottom";
+	    l.ci = 0;
 	    break;
 	}
     return l;
