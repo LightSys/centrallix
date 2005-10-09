@@ -1,36 +1,79 @@
 $Version=2$
-in_main "widget/page" {
+in_main "widget/page" 
+    {
     bgcolor="#195173";
-    x=0; y=0; width=640; height=480;
+    width=640; height=480;
     
-    alerter "widget/alerter" {}
-    form1 "widget/form" {
-	mn "widget/menu" {
-	    x=15;y=15;
-	    width=400;
-	    bgcolor="#afafaf";
-	    hilight="#cfcfcf";
+    mn "widget/menu" 
+	{
+	x=0;y=0;
+	width=640;
+	//height=30;
+	bgcolor="#afafaf";
+	highlight_bgcolor="#cfcfcf";
+	active_bgcolor="#efefef";
 
-	    mna "widget/menuitem" {
-	        label="File";
-	        value="1";
-	        width="120";
+	mna "widget/menu" 
+	    { 
+	    icon="/sys/images/ico02a.gif"; 
+	    label="File";
+	    bgcolor="#afafaf";
+	    highlight_bgcolor="#cfcfcf";
+	    active_bgcolor="#efefef";
+	    row_height=18;
+	    mnaa "widget/menuitem" { label="New..."; }
+	    mnab "widget/menuitem" { label="Open..."; }
+	    mnac "widget/menuitem" { label="Quit"; }
+	    mnad "widget/menu" 
+		{ 
+		label="Recent Files"; 
+		bgcolor="#afafaf";
+		highlight_bgcolor="#cfcfcf";
+		active_bgcolor="#efefef";
+		row_height=18;
+		file1 "widget/menuitem" { icon="/sys/images/ico01a.gif"; label="SomeFile.txt"; }
+		file2 "widget/menuitem" { icon="/sys/images/ico01a.gif"; label="A_Document.sdw"; }
+		file3 "widget/menuitem" { icon="/sys/images/ico01a.gif"; label="A_Presentation.sdd"; }
 		}
-	    mnb "widget/menuitem" {
-	        label="Edit";
-	        value="2";
-	        width="120";
-		level="0";
 	    }
-	    mnc "widget/menuitem" {
-	        label="View";
-	        value="3";
-	        width="120";
-		level="0";
+	mnb "widget/menu" 
+	    { 
+	    icon="/sys/images/ico01a.gif"; 
+	    label="Edit";
+	    bgcolor="#afafaf";
+	    highlight_bgcolor="#cfcfcf";
+	    active_bgcolor="#efefef";
+	    row_height=18;
+	    mnba "widget/menuitem" { label="Cut"; }
+	    mnbb "widget/menuitem" { label="Copy"; }
+	    mnbc "widget/menuitem" { label="Paste"; }
 	    }
+	mnc "widget/menuitem" { checked=yes; label="View"; }
+	mnd "widget/menuitem" { label="Help"; onright=yes; }
+	}
+
+    mn2 "widget/menu"
+	{
+	x=100;y=100;
+	width=100;
+	row_height=18;
+	direction=vertical;
+	popup=no;
+	bgcolor="#afafaf";
+	highlight_bgcolor="#cfcfcf";
+	active_bgcolor="#efefef";
+	mn1a "widget/menuitem" { icon="/sys/images/ico02a.gif"; label="File"; }
+	mn1b "widget/menuitem" { icon="/sys/images/ico01a.gif"; label="Edit"; }
+	mn1c "widget/menuitem" { checked=yes; label="View"; }
+	mn1d "widget/menuitem" { label="Help"; onright=yes; }
+	}
+
+    cn1 "widget/connector"
+	{
+	event="RightClick";
+	target=mna;
+	action="Popup";
+	X=runclient(:X);
+	Y=runclient(:Y);
 	}
     }
-}
-
-
-
