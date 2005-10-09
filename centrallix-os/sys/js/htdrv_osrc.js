@@ -1035,9 +1035,9 @@ function osrc_cb_reveal(child)
 
     // User requested onReveal?  If so, do that here.
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
-	pg_addsched_fn(this,'InitQuery');
+	pg_addsched_fn(this,'InitQuery',0);
     else if (this.autoquery == this.AQonEachReveal)
-	pg_addsched_fn(this,'ActionQueryObject', new Array(null,null,this.readonly));
+	pg_addsched_fn(this,'ActionQueryObject', new Array(null,null,this.readonly),0);
     return 0;
     }
 
@@ -1134,7 +1134,7 @@ function osrc_init(param)
 
     // Autoquery on load?
     if (loader.autoquery == loader.AQonLoad) 
-	pg_addsched("InitQuery()", loader);
+	pg_addsched("InitQuery()", loader, 0);
 
     return loader;
     }

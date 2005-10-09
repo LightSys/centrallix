@@ -287,7 +287,7 @@ function ca_cb_data_available()
 // (request is ususally getfirst/getnext).
 function ca_cb_object_available(obj)
     {
-    if (!this.init) pg_addsched("Redraw()",this);
+    if (!this.init) pg_addsched("Redraw()",this, 0);
     this.init = true;
     this.Refocus(obj);
     return true;

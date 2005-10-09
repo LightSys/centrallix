@@ -74,7 +74,7 @@ function wn_init(param)
     pg_reveal_register_triggerer(l);
     if (htr_getvisibility(l) == 'inherit')
 	{
-	pg_addsched_fn(window, "pg_reveal_event", new Array(l,l,'Reveal'));
+	pg_addsched_fn(window, "pg_reveal_event", new Array(l,l,'Reveal'), 0);
 	}
 
     // Show container API
