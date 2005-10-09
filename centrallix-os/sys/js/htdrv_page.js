@@ -651,16 +651,30 @@ function pg_area(pl,x,y,w,h,cls,nm,f)
     }
 
 /** Function to resize a given page area **/
-function pg_resize_area(a,w,h)
+function pg_resize_area(a,w,h,xo,yo)
     {
-    var x=getPageX(a.layer)+a.x;
-    var y=getPageY(a.layer)+a.y;
-    var tl=document.layers.pgtop;
-    var bl=document.layers.pgbtm;
-    var ll=document.layers.pglft;
-    var rl=document.layers.pgrgt;
+    if (xo == null) xo = a.x;
+    if (yo == null) yo = a.y;
+    var x=getPageX(a.layer)+xo;
+    var y=getPageY(a.layer)+yo;
+    if (cx__capabilities.Dom0NS)
+	{
+	var tl=document.layers.pgtop;
+	var bl=document.layers.pgbtm;
+	var ll=document.layers.pglft;
+	var rl=document.layers.pgrgt;
+	}
+    else if (cx__capabilities.Dom1HTML)
+	{
+	var tl=document.getElementById("pgtop");
+	var bl=document.getElementById("pgbtm");
+	var ll=document.getElementById("pglft");
+	var rl=document.getElementById("pgrgt");
+	}
     a.width = w;
     a.height = h;
+    a.x = xo;
+    a.y = yo;
     if (tl.visibility == 'inherit')
 	{
 	resizeTo(tl, w,1);
@@ -672,10 +686,20 @@ function pg_resize_area(a,w,h)
 	moveToAbsolute(ll, x,y);
 	moveToAbsolute(rl, x+w,y);
 	}
-    tl=document.layers.pgktop;
-    bl=document.layers.pgkbtm;
-    ll=document.layers.pgklft;
-    rl=document.layers.pgkrgt;
+    if (cx__capabilities.Dom0NS)
+	{
+	tl=document.layers.pgktop;
+	bl=document.layers.pgkbtm;
+	ll=document.layers.pgklft;
+	rl=document.layers.pgkrgt;
+	}
+    else
+	{
+	tl=document.getElementById("pgktop");
+	bl=document.getElementById("pgkbtm");
+	ll=document.getElementById("pgklft");
+	rl=document.getElementById("pgkrgt");
+	}
     if (tl.visibility == 'inherit')
 	{
 	resizeTo(tl, w,1);
@@ -783,7 +807,7 @@ function pg_isvisible(l)
     }
 
 /// This routine searches for the 'windowing container' of a widget, such
-/// as an childwindow or the main document itself.
+/// as a childwindow or the main document itself.
 function pg_searchwin(l)
     {
     if (l.kind && l.kind == 'wn') return l.mainlayer;
@@ -799,25 +823,27 @@ function pg_searchwin(l)
 function pg_stackpopup(p,l)
     {
     var win = pg_searchwin(l);
+    var doclayers = pg_layers(document);
+    var found_win = null;
+    var min_z = 1000;
+    for(var i = 0; i < doclayers.length; i++)
+	{
+	if (doclayers[i].kind == 'wn' && htr_getzindex(doclayers[i]) > min_z)
+	    {
+	    found_win = doclayers[i];
+	    min_z = htr_getzindex(doclayers[i]);
+	    }
+	}
+
     if (win == window || win == document)
 	{
-	var doclayers = pg_layers(document);
-	var found_win = null;
-	var min_z = 1000;
 	moveAbove(p,doclayers[0]);
-	for(var i = 0; i < doclayers.length; i++)
-	    {
-	    if (doclayers[i].kind == 'wn' && doclayers[i].zIndex < min_z)
-		{
-		found_win = doclayers[i];
-		min_z = doclayers[i].zIndex;
-		}
-	    }
-	p.zIndex = min_z - 1;
+	htr_setzindex(p, min_z + 1);
 	}
     else
 	{
 	moveAbove(p,win);
+	htr_setzindex(p, min_z + 1);
 	}
     }
 
@@ -1017,7 +1043,7 @@ function pg_init(l,a,gs,ct)
     htr_init_layer(window,window,"window");
     pg_reveal_register_triggerer(window);
     pg_reveal_event(window,null,'Reveal');
-    pg_addsched('pg_msg_init()', window);
+    pg_addsched('pg_msg_init()', window,0);
     return l;
     }
 
@@ -1068,30 +1094,65 @@ function pg_mvpginpt(ly)
     }
 
 
-function pg_addsched(e,o)
+function pg_addschedtolist(s)
     {
-    var sched = {exp:e, obj:o};
-    pg_schedtimeoutlist.push(sched);
-    if(!pg_schedtimeout) 
+    var insert = pg_schedtimeoutlist.length;
+    for(var i=0;i<pg_schedtimeoutlist.length;i++)
 	{
-	if (window.pg_isloaded)
-	    pg_schedtimeout = setTimeout(pg_dosched, 0);
-	else
-	    pg_schedtimeout = setTimeout(pg_dosched, 100);
+	if (s.tm < pg_schedtimeoutlist[i].tm)
+	    {
+	    insert = i;
+	    break;
+	    }
 	}
+    if (insert == pg_schedtimeoutlist.length)
+	pg_schedtimeoutlist.push(s);
+    else
+	pg_schedtimeoutlist.splice(insert, 0, s);
     }
 
-function pg_addsched_fn(o,f,p)
+function pg_addsched(e,o,t)
     {
-    var sched = {func:f, obj:o, param:p};
-    pg_schedtimeoutlist.push(sched);
+    var sched = {exp:e, obj:o, tm:t, id:pg_schedtimeoutid++};
+    pg_addschedtolist(sched);
     if(!pg_schedtimeout) 
 	{
 	if (window.pg_isloaded)
-	    pg_schedtimeout = setTimeout(pg_dosched, 0);
+	    pg_schedtimeout = setTimeout(pg_dosched, pg_schedtimeoutlist[0].tm);
 	else
-	    pg_schedtimeout = setTimeout(pg_dosched, 100);
+	    pg_schedtimeout = setTimeout(pg_dosched, Math.max(pg_schedtimeoutlist[0].tm,100));
 	}
+    return sched.id;
+    }
+
+function pg_addsched_fn(o,f,p,t)
+    {
+    var sched = {func:f, obj:o, param:p, tm:t, id:pg_schedtimeoutid++};
+    pg_addschedtolist(sched);
+    if(!pg_schedtimeout) 
+	{
+	if (window.pg_isloaded)
+	    pg_schedtimeout = setTimeout(pg_dosched, pg_schedtimeoutlist[0].tm);
+	else
+	    pg_schedtimeout = setTimeout(pg_dosched, Math.max(pg_schedtimeoutlist[0].tm,100));
+	}
+    return sched.id;
+    }
+
+function pg_delsched(id)
+    {
+    for(var i=0;i<pg_schedtimeoutlist.length;i++)
+	{
+	if (pg_schedtimeoutlist[i].id == id)
+	    {
+	    pg_schedtimeoutlist.splice(i, 1);
+	    if (pg_schedtimeoutlist.length == 0)
+		clearTimeout(pg_schedtimeout);
+	    pg_schedtimeout = null;
+	    return true;
+	    }
+	}
+    return false;
     }
 
 function pg_expchange(p,o,n)
@@ -1106,7 +1167,7 @@ function pg_expchange(p,o,n)
 	    if (this == item[2] && p == item[1])
 		{
 		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
-		pg_addsched(exp.Objname + "." + exp.Propname + " = " + exp.Expression, window);
+		pg_addsched(exp.Objname + "." + exp.Propname + " = " + exp.Expression, window, 0);
 		}
 	    }
 	}
@@ -1121,7 +1182,11 @@ function pg_dosched()
     window.pg_isloaded = true;
     if (pg_schedtimeoutlist.length > 0)
     	{
-	sched_item = pg_schedtimeoutlist.splice(0,1)[0];
+	sched_item = pg_schedtimeoutlist.shift();
+	if (sched_item.tm) for(var i=0;i<pg_schedtimeoutlist.length;i++)
+	    {
+	    pg_schedtimeoutlist[i].tm -= sched_item.tm;
+	    }
 	if (sched_item.exp)
 	    {
 	    // evaluate expression
@@ -1137,7 +1202,7 @@ function pg_dosched()
 
     if (pg_schedtimeoutlist.length > 0)
 	{
-	pg_schedtimeout = setTimeout(pg_dosched,0);
+	pg_schedtimeout = setTimeout(pg_dosched,pg_schedtimeoutlist[0].tm);
 	}
     else
 	{
@@ -1423,7 +1488,7 @@ function pg_serialized_load_doone()
 	    }
 	if (one_item.lyr.__pg_onload) one_item.lyr.__pg_onload();
 	pg_loadqueue_busy = false;
-	if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
+	if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
 	}
     }
 
@@ -1433,7 +1498,7 @@ function pg_serialized_load_cb()
     if (this.__pg_onload) this.__pg_onload();
     pg_loadqueue_busy = false;
     pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': ' + this.name + '\n');
-    if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
+    if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
     }
 
 
@@ -1520,7 +1585,7 @@ function pg_reveal_internal(e)
 	our_e.origName = null;   // not needed
 	our_e.triggerer_c = null;   // not needed
 	pg_debug('reveal_internal: passing it on down to ' + this.__pg_reveal[0].name + '\n');
-	pg_addsched_fn(this.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(our_e));
+	pg_addsched_fn(this.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(our_e), 0);
 	}
     return true;
     }
@@ -1546,14 +1611,14 @@ function pg_reveal_event(l,c,e_name)
 	{
 	var e = {eventName:'RevealOK', c:c};
 	l.__pg_reveal_visible = true;
-	pg_addsched_fn(l, "Reveal", new Array(e));
+	pg_addsched_fn(l, "Reveal", new Array(e), 0);
 	return true;
 	}
     if (e_name == 'ObscureCheck' && (l.__pg_reveal.length == 0 || !l.__pg_reveal_visible || !l.__pg_reveal_parent_visible))
 	{
 	var e = {eventName:'ObscureOK', c:c};
 	l.__pg_reveal_visible = false;
-	pg_addsched_fn(l, "Reveal", new Array(e));
+	pg_addsched_fn(l, "Reveal", new Array(e), 0);
 	return true;
 	}
 
@@ -1566,7 +1631,7 @@ function pg_reveal_event(l,c,e_name)
     e.parent_e = null;   // not needed
     e.triggerer_c = c;
     e.listener_num = 0;
-    pg_addsched_fn(l.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(e));
+    pg_addsched_fn(l.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(e), 0);
 
     return true;
     }
@@ -1579,7 +1644,7 @@ function pg_reveal_check_ok(e)
     if (e.triggerer.__pg_reveal.length > e.listener_num)
 	{
 	pg_debug('    -- passing it on down to ' + e.triggerer.__pg_reveal[e.listener_num].name + '\n');
-	pg_addsched_fn(e.triggerer.__pg_reveal[e.listener_num], "__pg_reveal_listener_fn", new Array(e));
+	pg_addsched_fn(e.triggerer.__pg_reveal[e.listener_num], "__pg_reveal_listener_fn", new Array(e), 0);
 	}
     else
 	{
@@ -1603,7 +1668,7 @@ function pg_reveal_check_ok(e)
 	    if (e.origName == 'RevealCheck') triggerer_e.eventName = 'RevealOK';
 	    else triggerer_e.eventName = 'ObscureOK';
 	    triggerer_e.c = e.triggerer_c;
-	    pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e));
+	    pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e), 0);
 	    e.triggerer.__pg_reveal_busy = false;
 	    }
 	}
@@ -1626,7 +1691,7 @@ function pg_reveal_check_veto(e)
 	if (e.origName == 'Reveal') triggerer_e.eventName = 'RevealFailed';
 	else triggerer_e.eventName = 'ObscureFailed';
 	triggerer_e.c = e.triggerer_c;
-	pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e));
+	pg_addsched_fn(e.triggerer, "Reveal", new Array(triggerer_e), 0);
 	e.triggerer.__pg_reveal_busy = false;
 	}
     return true;
@@ -1643,7 +1708,7 @@ function pg_reveal_send_events(t, e)
 	if ((e == 'Reveal') == t.__pg_reveal[i].__pg_reveal_listener_visible) continue;
 	t.__pg_reveal[i].__pg_reveal_listener_visible = (e == 'Reveal');
 	pg_debug('    -- sending ' + e + ' to ' + t.__pg_reveal[i].name + '\n');
-	pg_addsched_fn(t.__pg_reveal[i], "__pg_reveal_listener_fn", new Array(listener_e));
+	pg_addsched_fn(t.__pg_reveal[i], "__pg_reveal_listener_fn", new Array(listener_e), 0);
 	}
     return true;
     }
@@ -1824,7 +1889,28 @@ function pg_mousedown(e)
         pg_curkbdarea = null;
         pg_curkbdlayer = null;
         }
+    if (e.target == window || e.target == document)
+	{
+	if (cx__capabilities.Dom0NS && (e.which == 3 || e.which == 2))
+	    {
+	    if (cn_activate(document, 'RightClick', {X:e.pageX, Y:e.pageY}) != false)
+		{
+		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+		}
+	    }
+	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function pg_contextmenu(e)
+    {
+    if (e.target == window || e.target == document)
+	{
+	if (cn_activate(document, 'RightClick', {X:e.pageX, Y:e.pageY}) != false)
+	    {
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	    }
+	}
     }
 
 function pg_mouseup(e)
@@ -1850,7 +1936,7 @@ function pg_keydown(e)
         if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window);
+        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
         if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
@@ -1864,7 +1950,7 @@ function pg_keydown(e)
         if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window);
+        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
         if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
@@ -1876,7 +1962,7 @@ function pg_keydown(e)
         if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window);
+        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
         if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
