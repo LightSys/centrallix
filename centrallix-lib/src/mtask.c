@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.30 2005/03/14 20:33:35 gbeeley Exp $
+    $Id: mtask.c,v 1.31 2005/10/09 00:01:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.31  2005/10/09 00:01:05  gbeeley
+    - (bugfix) better protection against "deadlocks" caused by clock skew.
+
     Revision 1.30  2005/03/14 20:33:35  gbeeley
     - changing the interface to the get thread list function so that we can
       better identify a specific thread from one call to another.
@@ -923,6 +926,7 @@ mtSched()
 
 	/** Build select() criteria based on system event wait table **/
 	/** Also look for EV_T_MT_TIMER events and start building the select() timeout **/
+    RETRY_SELECT:
 	FD_ZERO(&readfds);
 	FD_ZERO(&writefds);
 	FD_ZERO(&exceptfds);
@@ -1038,7 +1042,11 @@ mtSched()
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
 		printf("IO select done (no timeout) rval=%i errno=%i\n",rval,errno);
 #endif
-	    if (rval == -1 && (errno == EINTR || errno == EAGAIN)) goto REISSUE_SELECT;
+	    if (rval == -1)
+		{
+		if (errno == EINTR || errno == EAGAIN) goto REISSUE_SELECT;
+		perror("MTASK: non-timeout select() failed");
+		}
 	    }
 	else
 	    {
@@ -1077,7 +1085,11 @@ mtSched()
 		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
 		    printf("non-IO select done (%i,%i) rval=%i errno=%i\n",(int)tmout.tv_sec,(int)tmout.tv_usec,rval,errno);
 #endif
-	        if (rval == -1 && (errno == EINTR || errno == EAGAIN)) goto REISSUE_SELECT2;
+	        if (rval == -1)
+		    {
+		    if (errno == EINTR || errno == EAGAIN) goto REISSUE_SELECT2;
+		    perror("MTASK: timeout select() failed");
+		    }
 		}
 	    }
 
@@ -1092,10 +1104,10 @@ mtSched()
 	    printf("ticks used: %i\n", tx2-tx);
 	    }
 
-	if (n_runnable+n_timerblock == 0 && highest_cntdn > 0) t = mtTicks();
+	if (n_runnable == 0 && highest_cntdn > 0) t = mtTicks();
 	if (tx2 - tx > 0)
 	    {
-	    if ((n_runnable+n_timerblock) && highest_cntdn > 0)
+	    if (n_timerblock && highest_cntdn > 0)
 	        {
 		cnt=i=0;
 		while(cnt<n_runnable)
@@ -1210,6 +1222,7 @@ mtSched()
 			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTED)
 			    printf("Timer completed for %s\n",event->Thr->Name);
 #endif
+			n_timerblock--;
 			event->Thr->Status = THR_S_RUNNABLE;
 			event->Status = EV_S_COMPLETE;
 			}
@@ -1254,6 +1267,13 @@ mtSched()
 		    if (MTASK.ThreadTable[i]->CntDown >=0) MTASK.ThreadTable[i]->CntDown -= lowest_cntdn;
 		    }
 		}
+	    }
+
+	/** Didn't quite sleep long enough? <yuck> **/
+	if (!lowest_run_thr && n_timerblock)
+	    {
+	    tx = tx2;
+	    goto RETRY_SELECT;
 	    }
 
 	/** Detect a deadlock, exit the program for now. **/
