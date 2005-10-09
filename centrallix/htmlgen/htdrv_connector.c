@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.19 2005/06/23 22:07:58 ncolson Exp $
+    $Id: htdrv_connector.c,v 1.20 2005/10/09 07:45:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.20  2005/10/09 07:45:36  gbeeley
+    - (change) don't pollute the globals.
+    - (change) return value that the action function returned.
+
     Revision 1.19  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -337,7 +341,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	xsConcatPrintf(&xs, "\n"
 		     	"function cn_%d(eparam)\n"
 		     	"    {\n" ,id);
-	xsConcatenate(&xs,"    aparam = new Object();\n",-1);
+	xsConcatenate(&xs,"    var aparam = new Object();\n",-1);
 	for(ptr = wgtrFirstPropertyName(tree); ptr; ptr = wgtrNextPropertyName(tree))
 	    {
 	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action")) continue;
@@ -376,8 +380,9 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		    break;
 		}
 	    }
-	xsConcatPrintf(&xs,"    %s.Action%s(aparam);\n", target, action);
+	xsConcatPrintf(&xs,"    var rval = %s.Action%s(aparam);\n", target, action);
 	xsConcatenate(&xs,"    delete aparam;\n",-1);
+	xsConcatenate(&xs,"    return rval;\n",-1);
 	xsConcatenate(&xs,"    }\n\n",7);
 	snprintf(fnname, HT_SBUF_SIZE, "cn_%d",id);
 	fnbuf = (char*)nmMalloc(strlen(xs.String)+1);
