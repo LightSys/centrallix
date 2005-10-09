@@ -193,8 +193,8 @@ function dd_collapse(l)
     {
     if (l && l.PaneLayer && htr_getvisibility(l.PaneLayer) == 'inherit')
 	{
-	setClipHeight(l, getClipHeight(l) - getClipHeight(l.PaneLayer));
-	pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1);
+	//setClipHeight(l, getClipHeight(l) - getClipHeight(l.PaneLayer));
+	pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1, -1, -1);
 	htr_setvisibility(l.PaneLayer, 'hidden');
 	dd_current = null;
 	}
@@ -202,6 +202,7 @@ function dd_collapse(l)
 
 function dd_expand(l)
     {
+    var offs;
     if (l && !l.PaneLayer) 
 	l.PaneLayer = dd_create_pane(l);
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
@@ -210,8 +211,14 @@ function dd_expand(l)
 	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), 20, getClipWidth(l));
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
-	setClipHeight(l, getClipHeight(l) + getClipHeight(l.PaneLayer));
-	pg_resize_area(l.area, getClipWidth(l)+1, getClipHeight(l)+1);
+	if (getPageY(l.PaneLayer) < getPageY(l))
+	    offs = getPageY(l.PaneLayer) - getPageY(l) - 1;
+	else
+	    offs = getPageY(l.PaneLayer) - getPageY(l) - 1 - getClipHeight(l);
+	//setClipHeight(l, getClipHeight(l) + getClipHeight(l.PaneLayer));
+	pg_resize_area(l.area, getClipWidth(l)+1, getClipHeight(l)+1+getClipHeight(l.PaneLayer),
+	    getPageX(l.PaneLayer) - getPageX(l) - 1,
+	    offs);
 	dd_hilight_item(l,l.VisLayer.index);
 	}
     }
@@ -235,6 +242,10 @@ function dd_select_item(l,i)
     var t=l.VisLayer;
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
+    if (i != null)
+	l.value = l.Values[l.VisLayer.index][1];
+    else
+	l.value = null;
     if(l.form)
 	{
 	l.form.DataNotify(l);
@@ -362,14 +373,13 @@ function dd_create_pane(l)
     c += "</TABLE>";
     c += "</BODY>";
     htr_write_content(p, c);
-    htutil_tag_images(p.document,'dt_pn',p,l);
+    htutil_tag_images(p,'dt_pn',p,l);
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
 
     /**  Create scroll background layer  **/
     p.ScrLayer = htr_new_layer(1024, p);
-    p.ScrLayer.document.layer = p;
-    p.ScrLayer.mainlayer = l;
+    htr_init_layer(p.ScrLayer, p, "dd_sc");
     moveTo(p.ScrLayer, 2, 2);
     setClipHeight(p.ScrLayer, l.h2);
     if (l.NumDisplay < l.NumElements)
@@ -482,8 +492,9 @@ function dd_init(param)
     l.fieldname = param.fieldname;
     l.enabled = 'full';
     l.form = fm_current;
+    l.value = null;
     htr_init_layer(l,l,'dd');
-    htutil_tag_images(l.document,'dd',l,l);
+    htutil_tag_images(l,'dd',l,l);
     var imgs = pg_images(l);
     for(var i = 0; i<imgs.length; i++)
 	{
