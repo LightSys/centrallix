@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.59 2005/06/23 22:07:59 ncolson Exp $
+    $Id: htdrv_osrc.c,v 1.60 2005/10/09 07:48:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.60  2005/10/09 07:48:03  gbeeley
+    - (bugfix) osrc was being noisy on mozilla
+
     Revision 1.59  2005/06/23 22:07:59  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -546,7 +549,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
    //htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"        #osrc%dloader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:1;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
+   htrAddStylesheetItem_va(s,"        #osrc%dloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
    if(s->Capabilities.Dom0NS)
