@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.29 2005/06/23 22:08:00 ncolson Exp $
+    $Id: htdrv_tab.c,v 1.30 2005/10/09 07:49:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.30  2005/10/09 07:49:30  gbeeley
+    - (feature) allow tab control to be configured to not display the tabs
+      at all.
+
     Revision 1.29  2005/06/23 22:08:00  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -350,7 +354,7 @@ static struct
     HTTAB;
 
 
-enum httab_locations { Top=0, Bottom=1, Left=2, Right=3 };
+enum httab_locations { Top=0, Bottom=1, Left=2, Right=3, None=4 };
 
 
 /*** httabRender - generate the HTML code for the page.
@@ -414,6 +418,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    else if (!strcasecmp(ptr,"bottom")) tloc = Bottom;
 	    else if (!strcasecmp(ptr,"left")) tloc = Left;
 	    else if (!strcasecmp(ptr,"right")) tloc = Right;
+	    else if (!strcasecmp(ptr,"none")) tloc = None;
 	    else
 		{
 		mssError(1,"HTTAB","%s: '%s' is not a valid tab_location",name,ptr);
@@ -492,6 +497,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    case Bottom: xoffset = 0;         yoffset = 0;  xtoffset = 0; ytoffset = h; break;
 	    case Right:  xoffset = 0;         yoffset = 0;  xtoffset = w; ytoffset = 0; break;
 	    case Left:   xoffset = tab_width; yoffset = 0;  xtoffset = 0; ytoffset = 0; break;
+	    case None:   xoffset = 0;         yoffset = 0;  xtoffset = 0; ytoffset = 0;
 	    }
 
 	/** Ok, write the style header items. **/
@@ -515,7 +521,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	/** Event handler for click-on-tab **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","tc",
 		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"    if (ly.kind == 'tc') ly.tabctl.ChangeSelection1(ly.tabpage);\n");
+		"    if (ly.kind == 'tc' && ly.tabctl) ly.tabctl.ChangeSelection1(ly.tabpage);\n");
 
 	htrAddEventHandler(s, "document","MOUSEUP","tc",
 		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseUp');\n");
@@ -545,90 +551,91 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		nptr, parentname, id, tloc, main_bg, inactive_bg);
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
-	tabcnt = 0;
-	for (i=0;i<xaCount(&(tree->Children));i++)
+	if (tloc != None)
 	    {
-	    tabpage_obj = xaGetItem(&(tree->Children), i);
-	    wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-	    if (!strcmp(ptr,"widget/tabpage"))
+	    tabcnt = 0;
+	    for (i=0;i<xaCount(&(tree->Children));i++)
 		{
-		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
-		tabcnt++;
-		is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
-		bg = is_selected?main_bg:inactive_bg;
-		if (wgtrGetPropertyValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
-		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
+		tabpage_obj = xaGetItem(&(tree->Children), i);
+		wgtrGetPropertyValue(tabpage_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+		if (!strcmp(ptr,"widget/tabpage"))
+		    {
+		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
+		    tabcnt++;
+		    is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+		    bg = is_selected?main_bg:inactive_bg;
+		    if (wgtrGetPropertyValue(tabpage_obj,"title",DATA_T_STRING,POD(&tabname)) != 0)
+			wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&tabname));
 
-		/** Add stylesheet headers for the layers (tab and tabpage) **/
-		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		    {
-		    htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; Z-INDEX:%d; }\n",
-			    id,tabcnt,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
-		    htrAddStylesheetItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:%s; LEFT:1px; TOP:1px; WIDTH:%dpx; Z-INDEX:%d; }\n",
-			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
-		    }
+		    /** Add stylesheet headers for the layers (tab and tabpage) **/
+		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+			{
+			htrAddStylesheetItem_va(s,"\t#tc%dtab%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; Z-INDEX:%d; }\n",
+				id,tabcnt,x+xtoffset,y+ytoffset,is_selected?(z+2):z);
+			}
 
-		/** Generate the tabs along the edge of the control **/
-		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
-		    {
-		    htrAddBodyItem_va(s,"<DIV ID=\"tc%dtab%d\" %s>\n",id,tabcnt,bg);
-		    if (tab_width == 0)
-			htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0>\n");
-		    else
-			htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 width=%d>\n", tab_width);
-		    if (tloc != Bottom)
-			htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
-		    htrAddBodyItem(s,"        <TR>");
-		    if (tloc != Right)
+		    /** Generate the tabs along the edge of the control **/
+		    if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 			{
-			htrAddBodyItem(s,"<TD width=6><IMG SRC=/sys/images/white_1x1.png height=24 width=1>");
-			if (is_selected)
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24></TD>\n");
+			htrAddBodyItem_va(s,"<DIV ID=\"tc%dtab%d\" %s>\n",id,tabcnt,bg);
+			if (tab_width == 0)
+			    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0>\n");
 			else
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24></TD>\n");
+			    htrAddBodyItem_va(s,"    <TABLE cellspacing=0 cellpadding=0 border=0 width=%d>\n", tab_width);
+			if (tloc != Bottom)
+			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/white_1x1.png><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
+			htrAddBodyItem(s,"        <TR>");
+			if (tloc != Right)
+			    {
+			    htrAddBodyItem(s,"<TD width=6><IMG SRC=/sys/images/white_1x1.png height=24 width=1>");
+			    if (is_selected)
+				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24></TD>\n");
+			    else
+				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24></TD>\n");
+			    }
+			htrAddBodyItem_va(s,"            <TD valign=middle align=center><FONT COLOR=%s><b>&nbsp;%s&nbsp;</b></FONT></TD>\n", tab_txt, tabname);
+			if (tloc != Left && tloc != Right)
+			    htrAddBodyItem(s,"           <TD align=right>");
+			if (tloc == Right)
+			    {
+			    htrAddBodyItem(s,"           <TD align=right width=6>");
+			    if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
+				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24>");
+			    else
+				htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24>");
+			    }
+			if (tloc != Left)
+			    htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>");
+			htrAddBodyItem(s,"</TR>\n");
+			if (tloc != Top)
+			    htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
+			htrAddBodyItem(s,"    </TABLE>\n");
+			htrAddBodyItem(s, "</DIV>\n");
 			}
-		    htrAddBodyItem_va(s,"            <TD valign=middle align=center><FONT COLOR=%s><b>&nbsp;%s&nbsp;</b></FONT></TD>\n", tab_txt, tabname);
-		    if (tloc != Left && tloc != Right)
-			htrAddBodyItem(s,"           <TD align=right>");
-		    if (tloc == Right)
+		    else if (s->Capabilities.Dom2CSS)
 			{
-			htrAddBodyItem(s,"           <TD align=right width=6>");
-			if ((!*sel && tabcnt == 1) || !strcmp(sel,ptr))
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft2.gif name=tb height=24>");
-			else
-			    htrAddBodyItem(s,"<IMG SRC=/sys/images/tab_lft3.gif name=tb height=24>");
-			}
-		    if (tloc != Left)
-			htrAddBodyItem(s,"<IMG SRC=/sys/images/dkgrey_1x1.png width=1 height=24></TD>");
-		    htrAddBodyItem(s,"</TR>\n");
-		    if (tloc != Top)
-			htrAddBodyItem_va(s,"        <TR><TD colspan=%d background=/sys/images/dkgrey_1x1.png><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n", (tloc == Top || tloc == Bottom)?3:2);
-		    htrAddBodyItem(s,"    </TABLE>\n");
-		    htrAddBodyItem(s, "</DIV>\n");
-		    }
-		else if (s->Capabilities.Dom2CSS)
-		    {
-		    htrAddStylesheetItem_va(s, "\t#tc%dtab%d { %s }\n",
-			    id, tabcnt, bg);
-		    if (tab_width <= 0)
-			htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
-		    else
-			htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; width:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
-		    if (tloc != Right)
-			{
+			htrAddStylesheetItem_va(s, "\t#tc%dtab%d { %s }\n",
+				id, tabcnt, bg);
 			if (tab_width <= 0)
-			    htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
-				(tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
+			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);
 			else
-			    htrAddBodyItem_va(s, "    <table width=%d style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
-				tab_width, (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
+			    htrAddBodyItem_va(s, "<div id=\"tc%dtab%d\" style=\"position:absolute; visibility:inherit; left:%dpx; top:%dpx; width:%dpx; overflow:hidden; z-index:%d; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, tab_width, is_selected?(z+2):z);
+			if (tloc != Right)
+			    {
+			    if (tab_width <= 0)
+				htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
+				    (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
+			    else
+				htrAddBodyItem_va(s, "    <table width=%d style=\"border-style:solid; border-width: %dpx %dpx %dpx %dpx; border-color: white gray gray white;\" border=0 cellspacing=0 cellpadding=0><tr><td><img align=left src=/sys/images/tab_lft%d.gif width=5 height=24></td><td align=center><b>&nbsp;%s&nbsp;</b></td></tr></table>\n",
+				    tab_width, (tloc!=Bottom)?1:0, (tloc!=Left)?1:0, (tloc!=Top)?1:0, (tloc!=Right)?1:0, is_selected?2:3, tabname);
+			    }
+			else
+			    {
+			    htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: 1px 1px 1px 0px; border-color: white gray gray white;\" width=%d border=0 cellspacing=0 cellpadding=0><tr><td valign=middle align=center><b>&nbsp;%s&nbsp;</b></td><td><img src=/sys/images/tab_lft%d.gif align=right width=5 height=24></td></tr></table>\n",
+				    tab_width, tabname, is_selected?2:3);
+			    }
+			htrAddBodyItem(s, "</div>\n");
 			}
-		    else
-			{
-			htrAddBodyItem_va(s, "    <table style=\"border-style:solid; border-width: 1px 1px 1px 0px; border-color: white gray gray white;\" width=%d border=0 cellspacing=0 cellpadding=0><tr><td valign=middle align=center><b>&nbsp;%s&nbsp;</b></td><td><img src=/sys/images/tab_lft%d.gif align=right width=5 height=24></td></tr></table>\n",
-				tab_width, tabname, is_selected?2:3);
-			}
-		    htrAddBodyItem(s, "</div>\n");
 		    }
 		}
 	    }
@@ -672,9 +679,20 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		tabcnt++;
 		is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
 
+		/** Add the pane **/
+		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
+		    {
+		    htrAddStylesheetItem_va(s,"\t#tc%dpane%d { POSITION:absolute; VISIBILITY:%s; LEFT:1px; TOP:1px; WIDTH:%dpx; Z-INDEX:%d; }\n",
+			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
+		    }
+
 		/** Add script initialization to add a new tabpage **/
-		htrAddScriptInit_va(s,"    %s = %s.addTab(%s.cxSubElement(\"tc%dtab%d\"),%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",
-		    ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt, nptr, ptr);
+		if (tloc == None)
+		    htrAddScriptInit_va(s,"    %s = %s.addTab(null,%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",
+			ptr, nptr, nptr, id, tabcnt, nptr, ptr);
+		else
+		    htrAddScriptInit_va(s,"    %s = %s.addTab(%s.cxSubElement(\"tc%dtab%d\"),%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",
+			ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt, nptr, ptr);
 
 		/** Add named global for the tabpage **/
 		subnptr = (char*)nmMalloc(strlen(ptr)+1);
@@ -689,7 +707,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
 
 		/** Now look for sub-items within the tabpage. **/
-		snprintf(sbuf,160,"%s.tabpage.document",subnptr);
+		if (s->Capabilities.Dom0NS)
+		    snprintf(sbuf,160,"%s.tabpage.document",subnptr);
+		else if (s->Capabilities.Dom1HTML)
+		    snprintf(sbuf,160,"%s.tabpage",subnptr);
 		snprintf(name,64,"%s.tabpage",subnptr);
 		for (j=0;j<xaCount(&(tabpage_obj->Children));j++)
 		    htrRenderWidget(s, xaGetItem(&(tabpage_obj->Children), j), z+3, sbuf, name);
@@ -697,7 +718,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		}
 	    else if (!strcmp(ptr,"widget/connector"))
 		{
-		snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+		if (s->Capabilities.Dom0NS)
+		    snprintf(sbuf,160,"%s.mainlayer.document",nptr);
+		else
+		    snprintf(sbuf,160,"%s.mainlayer",nptr);
 		snprintf(name,64,"%s.mainlayer",nptr);
 		htrRenderWidget(s, tabpage_obj, z+2, sbuf, name);
 		}
