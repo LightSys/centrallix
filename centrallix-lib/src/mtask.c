@@ -50,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.31 2005/10/09 00:01:05 gbeeley Exp $
+    $Id: mtask.c,v 1.32 2005/10/12 03:40:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.32  2005/10/12 03:40:16  gbeeley
+    - (bugfix) don't linger for 100 sec when asked to do so for 1 sec!
+    - (bugfix) if select()ing with no timeout, make sure it is really
+      0 seconds / 0 usec - code was wasting a tick here and there.
+
     Revision 1.31  2005/10/09 00:01:05  gbeeley
     - (bugfix) better protection against "deadlocks" caused by clock skew.
 
@@ -1070,7 +1075,7 @@ mtSched()
 		    }
 #endif
 		/** if we need 4.5 ticks, we need to select for at least 5 to make sure we don't get 4 and 'deadlock' **/
-		tmout.tv_usec= (tmout.tv_usec/ticklen)*ticklen+ticklen;
+		tmout.tv_usec= ((tmout.tv_usec+(ticklen-1))/ticklen)*ticklen;
 		if(tmout.tv_usec>=1000000)
 		    {
 		    tmout.tv_usec-=1000000;
@@ -3288,7 +3293,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 
 	/** Now we set linger on the fd. **/
 	l.l_onoff = 1;
-	l.l_linger = linger_msec / 10;
+	l.l_linger = (linger_msec) / 1000;
 	setsockopt(net_filedesc->FD, SOL_SOCKET, SO_LINGER, &l, sizeof(struct linger));
 
 	/** Shutdown read and write sides of the connection. **/
