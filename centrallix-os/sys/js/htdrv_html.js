@@ -11,6 +11,7 @@
 
 function ht_loadpage(aparam)
     {
+    //alert(aparam.Source);
     this.transition = aparam.Transition;
     this.mode = aparam.Mode;
     this.source = aparam.Source;
@@ -178,6 +179,7 @@ function ht_init(param)
     l.LSParent = param.parent;
     l.content = '';
     l.content_type = 'text/html';
+    l.ht_sourcechanged = ht_sourcechanged;
     if (param.height != -1)
 	{
 	setClipHeight(l, param.height);
@@ -200,22 +202,29 @@ function ht_init(param)
     pg_set_style(l, 'width', getdocWidth(l));
     if (source.substr(0,5) == 'http:')
 	{
-	pg_serialized_load(l, source, ht_reloaded);
+	//pg_serialized_load(l, source, ht_reloaded);
+	htr_watch(l, 'source', 'ht_sourcechanged');
+	l.source = source;
 	//l.onload = ht_reloaded;
 	//l.load(source,w);
 	}
     else if (source.substr(0,6) == 'debug:')
 	{
+	l.source = source;
+	htr_watch(l, 'source', 'ht_sourcechanged');
 	pg_debug_register_log(l);
 	}
-    l.source = source;
+    else
+	{
+	l.source = source;
+	htr_watch(l, 'source', 'ht_sourcechanged');
+	//htr_watch(l, 'source', 'ht_sourcechanged');
+	}
     l.ActionLoadPage = ht_loadpage;
     l.ActionAddText = ht_addtext;
     l.ActionShowText = ht_showtext;
     l.ActionSetValue = ht_setvalue;
     //l.watch('source', ht_sourcechanged);
-    l.ht_sourcechanged = ht_sourcechanged;
-    htr_watch(l, 'source', 'ht_sourcechanged');
     pg_resize(l.parentLayer);
     return l;
     }    
