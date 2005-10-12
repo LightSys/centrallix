@@ -70,10 +70,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.22 2005/09/26 06:24:04 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.23 2005/10/12 23:00:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.23  2005/10/12 23:00:49  gbeeley
+    - (bugfix) added some checks to the code that loads the types list from
+      Sybase.
+
     Revision 1.22  2005/09/26 06:24:04  gbeeley
     - (major feature) Added templating mechanism via the wgtr module.
       To use a widget template on an app, specify widget_template= in the
@@ -293,6 +297,7 @@ typedef struct
 
 
 #define SYBD_MAX_NUM_TYPES	81
+#define SYBD_MAX_TYPE_LEN	31
 /*** Structure for directory entry nodes ***/
 typedef struct
     {
@@ -306,7 +311,7 @@ typedef struct
     XArray	Conns;
     XHashTable	TableInf;
     int		LastAccess;
-    char	Types[81][14];
+    char	Types[SYBD_MAX_NUM_TYPES][SYBD_MAX_TYPE_LEN];
     XHashTable	TypeNameToID;					/** for figuring out id from name **/
     pObjPresentationHints	TypeHints[SYBD_MAX_NUM_TYPES];		/** for storing hint info about each type **/
     }
@@ -1172,11 +1177,17 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 			TypeNum = (int*)malloc(4);
 			*TypeNum=0;
 			ct_get_data(cmd, 1, TypeNum, 4, (CS_INT*)&i);
-			if (i==0) continue;
-			TypeName = (char*)malloc(14);
-			ct_get_data(cmd, 2, TypeName, 13, (CS_INT*)&i);
+			if (i<=0) 
+			    { free(TypeNum); continue; }
+			if (*TypeNum < 0 || *TypeNum >= SYBD_MAX_NUM_TYPES) 
+			    { free(TypeNum); continue; }
+			TypeName = (char*)malloc(SYBD_MAX_TYPE_LEN);
+			ct_get_data(cmd, 2, TypeName, SYBD_MAX_TYPE_LEN-1, (CS_INT*)&i);
+			if (i <= 0 || i > SYBD_MAX_TYPE_LEN-1)
+			    { free(TypeName); free(TypeNum); continue; }
 			TypeName[i]='\0';
 			memcpy(db_node->Types[*TypeNum], TypeName, strlen(TypeName)+1);
+			length = is_variable = 0;
 			ct_get_data(cmd, 3, &length, 1, (CS_INT*)&i);
 			ct_get_data(cmd, 4, &is_variable, 1, (CS_INT*)&i);
 			
