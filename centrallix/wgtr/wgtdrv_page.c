@@ -5,6 +5,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "wgtr.h"
+#include "apos.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -76,8 +77,8 @@ wgtpageVerify(pWgtrVerifySession s)
 
 	    /*mssError(1, "WGTR", "wgtpageVerify(): The design 'width' and/or 'height' of the page '%s' were not specified", s->CurrWidget->Name);
 	    return -1;*/
-	    if (s->CurrWidget->r_width < 0) s->CurrWidget->r_width = maxw;
-	    if (s->CurrWidget->r_height < 0) s->CurrWidget->r_height = maxh;
+	    if (s->CurrWidget->r_width < 0) s->CurrWidget->r_width = maxw+APOS_MINSPACE;
+	    if (s->CurrWidget->r_height < 0) s->CurrWidget->r_height = maxh+APOS_MINSPACE;
 	    }
 	
     return 0;
