@@ -1210,6 +1210,11 @@ function pg_dosched()
 	}
     }
 
+function pg_timestamp()
+    {
+    return (new Date()).valueOf();
+    }
+
 function pg_expression(o,p,e,l)
     {
     var expobj = new Object();
