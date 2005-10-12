@@ -62,7 +62,9 @@ int
 htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, int is_popup, int is_submenu, int is_onright, int row_h, int mcnt, char* nptr, pXString xs)
     {
     char* ptr;
-    int rval;
+    int rval, n;
+    pExpression code;
+    char name[64];
 
 	xsPrintf(xs, "enabled:1, onright:%d", is_onright);
 
@@ -71,6 +73,10 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 
 	/** image used to track position **/
 	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+
+	wgtrGetPropertyValue(menu_item,"name", DATA_T_STRING, POD(&ptr));
+	memccpy(name, ptr, '\0', sizeof(name));
+	name[sizeof(name)-1] = '\0';
 
 	/** icon **/
 	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
@@ -86,6 +92,13 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	    {
 	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img name=\"cb_%d\" src=\"/sys/images/checkbox_%s.gif\"></td>", mcnt, rval?"checked":"unchecked");
 	    xsConcatPrintf(xs, ", check:%s", rval?"true":"false");
+
+	    /** User requesting expression for value? **/
+	    if (wgtrGetPropertyType(menu_item,"value") == DATA_T_CODE)
+		{
+		wgtrGetPropertyValue(menu_item,"value",DATA_T_CODE,POD(&code));
+		htrAddExpression(s, name, "value", code);
+		}
 	    }
 	else
 	    htrAddBodyItem_va(s, "<td></td>");
@@ -94,10 +107,14 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	if (wgtrGetPropertyValue(menu_item,"label",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
 	    htrAddBodyItem_va(s, "<td valign=\"middle\">%s</td>", ptr);
-	    xsConcatPrintf(xs, ", value:'%s'", ptr);
+	    xsConcatPrintf(xs, ", label:'%s'", ptr);
 	    }
 	else
 	    htrAddBodyItem_va(s, "<td></td>");
+	if (wgtrGetPropertyValue(menu_item, "value", DATA_T_STRING, POD(&ptr)) == 0)
+	    xsConcatPrintf(xs, ", value:'%s'", ptr);
+	else if (wgtrGetPropertyValue(menu_item, "value", DATA_T_INTEGER, POD(&n)) == 0)
+	    xsConcatPrintf(xs, ", value:%d", n);
 
 	/** Submenu arrow **/
 	if (is_submenu && !is_horizontal)
@@ -106,16 +123,15 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	    }
 	else
 	    htrAddBodyItem_va(s, "<td>&nbsp;</td>");
-	if (is_submenu)
-	    {
-	    wgtrGetPropertyValue(menu_item,"name",DATA_T_STRING,POD(&ptr));
-	    xsConcatPrintf(xs, ", submenu:'%s'", ptr);
-	    }
 
 	if (!is_horizontal)
 	    htrAddBodyItem_va(s, "</tr>");
 
-	htrAddScriptInit_va(s, "    %s.AddItem({%s});\n", nptr, xs->String);
+	if (is_submenu)
+	    {
+	    xsConcatPrintf(xs, ", submenu:'%s'", name);
+	    }
+	htrAddScriptInit_va(s, "    %s = %s.AddItem({%s});\n", name, nptr, xs->String);
 
     return 0;
     }
@@ -185,19 +201,19 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	if (h != -1 && w == -1)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit", x,y,h-2*bx,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; HEIGHT:%dpx; Z-INDEX:%d; }\n", id, h, z+1);
+	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; HEIGHT:%dpx; Z-INDEX:%d; }\n", id, h-2*bx, z+1);
 	    }
 	else if (h == -1 && w != -1)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit",x,y,w-2*bx,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d; }\n", id, w, z+1);
+	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d; }\n", id, w-2*bx, z+1);
 	    }
 	else if (h != -1 && w != -1)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(0px,%dpx,%dpx,0px); }\n",
 		    id,is_popup?"hidden":"inherit",x,y,w-2*bx,h-2*bx,z,w,h);
 	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n", 
-		    id, w,h, z+1);
+		    id, w-2*bx,h-2*bx, z+1);
 	    }
 	else
 	    {
@@ -226,7 +242,8 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	/** Globals **/
 	htrAddScriptGlobal(s, "mn_active", "new Array()", 0);
 	htrAddScriptGlobal(s, "mn_current", "null", 0);
-	htrAddScriptGlobal(s, "mn_tmout", "null", 0);
+	htrAddScriptGlobal(s, "mn_deactivate_tmout", "null", 0);
+	htrAddScriptGlobal(s, "mn_submenu_tmout", "null", 0);
 	htrAddScriptGlobal(s, "mn_pop_x", "0", 0);
 	htrAddScriptGlobal(s, "mn_pop_y", "0", 0);
 	htrAddScriptGlobal(s, "mn_mouseangle", "0", 0);
@@ -367,7 +384,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/menuitem")) 
 		{
-		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
+		/*sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;*/
 		} 
 	    else 
 		{
