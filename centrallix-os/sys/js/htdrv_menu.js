@@ -16,6 +16,7 @@ function mn_additem(param)
     var item = new Object();
     var id;
     item.value = param.value;
+    item.label = param.label;
     item.check = param.check;
     item.submenu = param.submenu;
     item.icon = param.icon;
@@ -34,6 +35,7 @@ function mn_additem(param)
     if (item.check != null) 
 	{
 	item.ckbox = this.ckboxs[id];
+	item.value = item.check?1:0;
 	}
     if (this.horiz)
 	{
@@ -50,7 +52,22 @@ function mn_additem(param)
 	item.y = this.coords[id].y - 1;
 	}
     this.items.push(item);
+
+    // Make the value a 'hot' property
+    item.mn_ckbox_change = mn_ckbox_change;
+    htr_watch(item, 'value', 'mn_ckbox_change');
     return item;
+    }
+
+
+function mn_ckbox_change(prop, oldv, newv)
+    {
+    this.check = newv?true:false;
+    if (this.check)
+	this.ckbox.src = "/sys/images/checkbox_checked.gif";
+    else
+	this.ckbox.src = "/sys/images/checkbox_unchecked.gif";
+    return newv;
     }
 
 
@@ -72,6 +89,11 @@ function mn_highlight(item, actv)
     resizeTo(this.hlayer, item.width, item.height);
     moveTo(this.hlayer, item.x, item.y);
     htr_setvisibility(this.hlayer,"inherit");
+
+    if (item.submenu && !mn_submenu_tmout)
+	{
+	mn_submenu_tmout = pg_addsched_fn(this, "ActivateItem", [item], 750);
+	}
     }
 
 
@@ -81,6 +103,8 @@ function mn_unhighlight()
     if (this.nextActive) return;
     htr_setvisibility(this.hlayer, "hidden");
     this.cur_highlight = null;
+    if (mn_submenu_tmout) pg_delsched(mn_submenu_tmout);
+    mn_submenu_tmout = null;
     }
 
 
@@ -94,31 +118,37 @@ function mn_check_unhighlight()
 function mn_popup(aparam)
     {
     this.DeactivateAll();
-    this.Activate(aparam.X, aparam.Y, document);
+    if (this.Activate(aparam.X, aparam.Y, document))
+	{ 
+	var found = false;
+	for(var i=0;i<mn_active.length;i++)
+	    {
+	    if (mn_active[i] == this)
+		{
+		found = true;
+		break;
+		}
+	    }
+	if (!found) mn_active.push(this);
+	}
     return true;
     }
 
 
 function mn_activate(x,y,p)
     {
-    if (!this.popup) return;
-    var found = false;
-    for(var i=0;i<mn_active.length;i++)
-	{
-	if (mn_active[i] == this)
-	    {
-	    found = true;
-	    break;
-	    }
-	}
-    if (!found) mn_active.push(this);
+    if (!this.popup) return false;
     moveTo(this, x, y);
     pg_stackpopup(this, p);
     this.nextActive = null;
     if (p.kind == "mn") p.nextActive = this;
     htr_setvisibility(this, "inherit");
     if (!mn_current) mn_current = this;
-    return;
+    this.act_ts = pg_timestamp();
+    cn_activate(this, 'Activate', {X:x, Y:y});
+    if (mn_submenu_tmout) pg_delsched(mn_submenu_tmout);
+    mn_submenu_tmout = null;
+    return true;
     }
 
 
@@ -127,6 +157,8 @@ function mn_activate_item(item)
     this.Highlight(item, true);
     if (item.submenu)
 	{
+	cn_activate(item, 'Select', {Value:item.value, Label:item.label});
+	cn_activate(this, 'SelectItem', {Value:item.value, Label:item.label});
 	if (this.VChildren[item.submenu])
 	    {
 	    if (this.horiz)
@@ -144,16 +176,27 @@ function mn_activate_item(item)
 	}
     else if (item.check != null)
 	{
+	cn_activate(item, 'Select', {Value:item.value, Label:item.label});
+	cn_activate(this, 'SelectItem', {Value:item.value, Label:item.label});
 	item.check = !item.check;
 	if (item.check)
 	    item.ckbox.src = "/sys/images/checkbox_checked.gif";
 	else
 	    item.ckbox.src = "/sys/images/checkbox_unchecked.gif";
+	htr_unwatch(item, 'value', 'mn_ckbox_change');
+	item.value = item.check?1:0;
+	htr_watch(item, 'value', 'mn_ckbox_change');
+	cn_activate(item, 'DataChange', {Value:item.check, Label:item.label});
 	if (this.popup) pg_addsched_fn(this, "Deactivate", [],0);
 	}
     else
 	{
-	if (!mn_tmout) mn_tmout = pg_addsched_fn(this, "DeactivateAll", [], 300);
+	if (!mn_deactivate_tmout) 
+	    mn_deactivate_tmout = pg_addsched_fn(this, "DeactivateAll", [], 300);
+	pg_addsched_fn(window, "cn_activate", 
+		[item, 'Select', {Value:item.value, Label:item.label}], 301);
+	pg_addsched_fn(window, "cn_activate", 
+		[this, 'SelectItem', {Value:item.value, Label:item.label}], 302);
 	}
     }
 
@@ -175,6 +218,7 @@ function mn_deactivate()
 	    break;
 	    }
 	}
+    cn_activate(this, 'Deactivate', {});
     return;
     }
 
@@ -189,17 +233,36 @@ function mn_deactivate_all()
 function mn_mousemove(e)
     {
     var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (mn_current)
+    var mn = mn_current;
+    while (mn && mn.VParent.kind == "mn" && mn.VParent.cur_highlight) mn = mn.VParent;
+    while (mn)
 	{
 	var found = false;
-	ly = mn_current;
+	ly = mn;
 	var x = e.pageX - getPageX(ly);
 	var y = e.pageY - getPageY(ly);
+	if (ly.prevX)
+	    {
+	    if (!ly.mouseangle) ly.mouseangle = 0;
+	    ly.mouseangle = (ly.mouseangle*6.0 + (Math.abs(x - ly.prevX)-Math.abs(y - ly.prevY)))/7.0;
+	    }
 	for(var i = 0; i < ly.items.length; i++)
 	    {
 	    if (x >= ly.items[i].x && x <= ly.items[i].x + ly.items[i].width && y >= ly.items[i].y && y <= ly.items[i].y + ly.items[i].height)
 		{
-		if (ly.cur_highlight != ly.items[i])
+		if (ly.cur_highlight && ly.cur_highlight.submenu && ly.mouseangle && x >= ly.cur_highlight.x - ly.cur_highlight.width && x <= ly.cur_highlight.x + 2*ly.cur_highlight.width && y >= ly.cur_highlight.y - ly.cur_highlight.height && y <= ly.cur_highlight.y + 2*ly.cur_highlight.height && ((ly.horiz && ly.mouseangle < 0.5) || (!ly.horiz && ly.mouseangle > 0.5)))
+		    {
+		    // don't deactivate - user is moving towards
+		    // the submenu but might be a little out of line
+		    //
+		    // if *strong* mouseangle, activate now.
+		    if (!ly.nextActive && ((ly.horiz && ly.mouseangle < 1.5) || (!ly.horiz && ly.mouseangle > 1.5)))
+			{
+			// user *wants* the menu.  Now.
+			ly.ActivateItem(ly.cur_highlight);
+			}
+		    }
+		else if (ly.cur_highlight != ly.items[i])
 		    {
 		    var activated = false;
 		    if (ly.nextActive) 
@@ -211,19 +274,23 @@ function mn_mousemove(e)
 		    ly.UnHighlight();
 		    ly.cur_highlight = ly.items[i];
 		    ly.Highlight(ly.items[i], false);
-		    if (mn_tmout) pg_delsched(mn_tmout);
-		    mn_tmout = null;
+		    if (mn_deactivate_tmout) pg_delsched(mn_deactivate_tmout);
+		    mn_deactivate_tmout = null;
 		    if (activated && ly.items[i].submenu)
 			ly.ActivateItem(ly.items[i]);
 		    }
 		found = true;
+		mn_current = mn;
 		break;
 		}
 	    }
+	ly.prevX = x;
+	ly.prevY = y;
 	if (!found) 
 	    {
 	    ly.UnHighlight();
 	    }
+	mn = mn.nextActive;
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -231,14 +298,14 @@ function mn_mousemove(e)
 function mn_mouseout(e)
     {
     var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == "mn")
+    if (ly.kind == "mn" && e.target.constructor != Image)
 	{
 	ly = ly.mainlayer;
 	if (mn_current == ly)
 	    {
 	    mn_current = null;
 	    pg_addsched_fn(ly, "CkUnHighlight", [],0);
-	    //if (!mn_tmout) mn_tmout = pg_addsched_fn(ly, "DeactivateAll", [], 300);
+	    //if (!mn_deactivate_tmout) mn_deactivate_tmout = pg_addsched_fn(ly, "DeactivateAll", [], 300);
 	    }
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -251,8 +318,8 @@ function mn_mouseover(e)
 	{
 	ly = ly.mainlayer;
 	mn_current = ly;
-	if (mn_tmout) pg_delsched(mn_tmout);
-	mn_tmout = null;
+	if (mn_deactivate_tmout) pg_delsched(mn_deactivate_tmout);
+	mn_deactivate_tmout = null;
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -260,13 +327,17 @@ function mn_mouseover(e)
 function mn_mousedown(e)
     {
     var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (mn_current && mn_current.cur_highlight && (mn_current == ly.mainlayer || ly == document))
+    if (mn_current && mn_current.cur_highlight && (mn_current == ly.mainlayer || (ly == document && e.pageX >= getPageX(mn_current) && e.pageX <= getPageX(mn_current) + mn_current.act_w && e.pageY >= getPageY(mn_current) && e.pageY <= getPageY(mn_current) + mn_current.act_h)))
 	{
+	var ts = pg_timestamp();
 	if (mn_current.nextActive)
 	    {
-	    mn_current.nextActive.Deactivate();
-	    mn_current.nextActive = null;
-	    mn_current.Highlight(mn_current.cur_highlight, false);
+	    if ((ts - mn_current.nextActive.act_ts) > 300)
+		{
+		mn_current.nextActive.Deactivate();
+		mn_current.nextActive = null;
+		mn_current.Highlight(mn_current.cur_highlight, false);
+		}
 	    }
 	else
 	    mn_current.ActivateItem(mn_current.cur_highlight);
@@ -274,6 +345,7 @@ function mn_mousedown(e)
     else
 	{
 	mn_deactivate_all();
+	mn_current = null;
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }

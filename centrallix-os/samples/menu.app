@@ -48,7 +48,7 @@ in_main "widget/page"
 	    mnbb "widget/menuitem" { label="Copy"; }
 	    mnbc "widget/menuitem" { label="Paste"; }
 	    }
-	mnc "widget/menuitem" { checked=yes; label="View"; }
+	mnc "widget/menuitem" { value=runclient(:mn1c:value); checked=yes; label="View"; }
 	mnd "widget/menuitem" { label="Help"; onright=yes; }
 	}
 
@@ -64,7 +64,7 @@ in_main "widget/page"
 	active_bgcolor="#efefef";
 	mn1a "widget/menuitem" { icon="/sys/images/ico02a.gif"; label="File"; }
 	mn1b "widget/menuitem" { icon="/sys/images/ico01a.gif"; label="Edit"; }
-	mn1c "widget/menuitem" { checked=yes; label="View"; }
+	mn1c "widget/menuitem" { value=runclient(:mnc:value); checked=yes; label="View"; }
 	mn1d "widget/menuitem" { label="Help"; onright=yes; }
 	}
 
