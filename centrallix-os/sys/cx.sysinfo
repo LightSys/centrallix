@@ -1,0 +1,5 @@
+$Version=2$
+cx "application/x-sysinfo"
+    {
+    verify_path = "/sys/cx.sysinfo";
+    }
