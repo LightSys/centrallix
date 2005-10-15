@@ -24,7 +24,7 @@ function pg_get_style(element,attr)
     {
     if(!element)
 	{
-	alert("NULL ELEMENT, attr " + attr + "is unknow.");
+	alert("NULL ELEMENT, attr " + attr + "is unknown.");
 	return null;
 	}
     if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
@@ -2047,3 +2047,4 @@ function pg_keypress(e)
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
+

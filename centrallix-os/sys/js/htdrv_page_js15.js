@@ -123,15 +123,15 @@ HTMLElement.prototype.clip getter = function ()
 
 function Element_MoveBy(x,y)
     {
-    pg_set_style(this,'left',pg_get_style(this,'left')+x);
-    pg_set_style(this,'top',pg_get_style(this,'top')+y);
+    this.x = this.x + x;
+    this.y = this.y + y;
     }
 
 function Element_MoveTo (x,y)
     {
     pg_set_style_string(this,'position','absolute');
-    pg_set_style(this,'left',parseInt(x));
-    pg_set_style(this,'top',parseInt(y));
+    this.x = x;
+    this.y = y;
     }
 
 function Element_MoveToAbsolute(x,y)
@@ -174,58 +174,92 @@ HTMLElement.prototype.moveBelow = Element_MoveBelow;
 
 HTMLElement.prototype.x getter = function ()
     {
+    if (this.__pg_left != null) return this.__pg_left;
     return parseInt(pg_get_style(this,'left'));
     }
 
 HTMLElement.prototype.x setter = function (x)
     {
-    pg_set_style(this,'left',parseInt(x));
+    pg_set_style(this,'left',(this.__pg_left =parseInt(x)));
     }
 
 HTMLElement.prototype.y getter = function ()
     {
+    if (this.__pg_top != null) return this.__pg_top;
     return parseInt(pg_get_style(this,'top'));
     }
 
 HTMLElement.prototype.y setter = function (y)
     {
-    pg_set_style(this,'top',parseInt(y));
+    pg_set_style(this,'top',(this.__pg_top = parseInt(y)));
     }
 
 function Element_PageXGetter()
     {
-    if(this.nodeName == "BODY")
-	return 0;
-    var left = pg_get_style(this,'left');
-    left = parseInt(left);
-    if(isNaN(left))
-	left = 0;
-    return this.parentNode.pageX + left;
+    var pn = this;
+    var left;
+    var rval = 0;
+    while(pn.tagName != "BODY")
+	{
+	if (pn.__pg_left == null)
+	    {
+	    left = pg_get_style(pn,'left');
+	    left = parseInt(left);
+	    if(isNaN(left))
+		pn.__pg_left = 0;
+	    else
+		pn.__pg_left = left;
+	    }
+	rval += pn.__pg_left;
+	do  {
+	    pn = pn.parentNode;
+	    }
+	    while(pn.tagName != "DIV" && pn.tagName != "IMG" && pn.tagName != "BODY")
+	}
+    return rval;
     }
 
 function Element_PageXSetter(val)
     {
     if(this.nodeName == "BODY")
 	return;
-    pg_set_style(this,'left', val - this.parentNode.pageX);
+    var pval = this.parentNode.pageX;
+    this.__pg_left = val - pval;
+    this.x = val - pval;
     }
 
 function Element_PageYGetter()
     {
-    if(this.nodeName == "BODY")
-	return 0;
-    var top = pg_get_style(this,'top');
-    top = parseInt(top);
-    if(isNaN(top))
-	top = 0;
-    return this.parentNode.pageY + top;
+    var pn = this;
+    var top;
+    var rval = 0;
+    while(pn.tagName != "BODY")
+	{
+	if (pn.__pg_top == null)
+	    {
+	    top = pg_get_style(pn,'top');
+	    top = parseInt(top);
+	    if(isNaN(top))
+		pn.__pg_top = 0;
+	    else
+		pn.__pg_top = top;
+	    }
+	rval += pn.__pg_top;
+	do  {
+	    pn = pn.parentNode;
+	    }
+	    while(pn.tagName != "DIV" && pn.tagName != "IMG" && pn.tagName != "BODY")
+	}
+    return rval;
     }
 
 function Element_PageYSetter(val)
     {
     if(this.nodeName == "BODY")
 	return;
-    pg_set_style(this,'top', val - this.parentNode.pageY);
+    var pval = this.parentNode.pageY;
+    this.__pg_top = val - pval;
+    this.y = val - pval;
     }
 
 function _Layer_open()

@@ -373,7 +373,7 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
     if (window != tv_tgt_layer.pdoc.tv_layer_tgt)
 	setClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt,getClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt)+ 20*(linkcnt));
 
-    var tgtTop = pg_get_style(tv_tgt_layer,"top");
+    var tgtTop = getRelativeY(tv_tgt_layer);
     var layers = pg_layers(tv_tgt_layer.pdoc);
     for (var j=0;j<layers.length;j++)
 	{
@@ -381,11 +381,11 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 	if(cx__capabilities.Dom2CSS)
 	    {
 	    /** much faster code for DOM2CSS1 compliant browsers **/
-	    var slTop = pg_get_style(sl,"top");
+	    var slTop = getRelativeY(sl);
 	    var visibility = pg_get_style(sl,'visibility');
 	    if (slTop >= tgtTop + 20 && sl != tv_tgt_layer && (visibility == 'inherit' || visibility == 'visible') )
 		{
-		pg_set_style(sl,"top",slTop+20*linkcnt);
+		setRelativeY(sl, slTop+20*linkcnt);
 		}
 	    }
 	else
