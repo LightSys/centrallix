@@ -117,6 +117,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
     char* prop;
     pWgtrNode subtree,new_node;
     char new_name[64];
+    pExpression code;
 
 	/** Copy in standard geometry properties **/
 	tree->r_x = match->r_x;
@@ -146,6 +147,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	    wgtrGetPropertyValue(match, p->Name, t, &val);
 
 	    /** Convert templated expression and string values, if needed **/
+	    code = NULL;
 	    if (t == DATA_T_STRING)
 		{
 		for(j=0;j<n_subst;j++)
@@ -159,14 +161,17 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 		}
 	    else if (t == DATA_T_CODE)
 		{
+		code = expDuplicateExpression((pExpression)val.Generic);
+		val.Generic = code;
 		for(j=0;j<n_subst;j++)
 		    {
 		    objGetAttrValue(tree_obj, subst_props[j], DATA_T_STRING, POD(&prop));
-		    expReplaceString(val.Generic, subst_props[j], prop);
+		    expReplaceString(code, subst_props[j], prop);
 		    }
 		}
 
 	    wgtrAddProperty(tree, p->Name, t, &val);
+	    if (code) expFreeExpression(code);
 	    }
 
 	/** Subobjects of the template match **/
