@@ -340,7 +340,14 @@ function dt_keyhandler(l,e,k) {
 		if (dt_current) {
 			dt_collapse(dt);
 			dt_current = null;
-			dt_setdata(dt,dt.DateObj);
+			if (dt.typed_content) {
+				var d = new Date(dt.typed_content);
+				if (d.getFullYear() < (new Date()).getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0)
+					d.setFullYear(d.getFullYear() + 100);
+				dt_setdata(dt,d);
+			} else {
+				dt_setdata(dt,dt.TmpDateObj);
+			}
 			if (dt.form) dt.form.TabNotify(dt);
 		} else {
 			if (dt.form) dt.form.TabNotify(dt);
@@ -363,6 +370,8 @@ function dt_keyhandler(l,e,k) {
 		if (dt_current) {
 			dt_collapse(dt);
 			dt_current = null;
+			dt_setdata(dt,new Date());
+		} else {
 			dt_setdata(dt,new Date());
 		}
 	} else if (k >= 48 && k < 58) { // 0 - 9

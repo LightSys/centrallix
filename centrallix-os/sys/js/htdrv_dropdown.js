@@ -75,7 +75,7 @@ function dd_keyhandler(l,e,k)
     if (dd.enabled != 'full') return 1;
     if ((k >= 65 && k <= 90) || (k >= 97 && k <= 122))
 	{
-	if (htr_getvisibility(dd.PaneLayer) != 'inherit')
+	if (!dd.PaneLayer || htr_getvisibility(dd.PaneLayer) != 'inherit')
 	    dd_expand(dd);
 	if (k < 97) 
 	    {
@@ -134,7 +134,7 @@ function dd_keyhandler(l,e,k)
 	}
     else if (k == 13)
 	{
-	if (htr_getvisibility(this.PaneLayer) != 'inherit')
+	if (!this.PaneLayer || htr_getvisibility(this.PaneLayer) != 'inherit')
 	    {
 	    if (this.form) this.form.RetNotify(this);
 	    }
@@ -147,7 +147,16 @@ function dd_keyhandler(l,e,k)
 	}
     else if (k == 9)
 	{
-	if (this.form) this.form.TabNotify(this);
+	if (this.form)
+	    {
+	    if (htr_getvisibility(this.PaneLayer) == 'inherit' && this.SelectedItem)
+		{
+		dd_select_item(this,this.SelectedItem);
+		dd_collapse(this);
+		dd_unhilight_item(this,this.SelectedItem);
+		}
+	    this.form.TabNotify(this);
+	    }
 	}
     else if (k == 27)
 	{
