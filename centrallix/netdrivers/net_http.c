@@ -63,10 +63,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.56 2005/09/26 06:24:04 gbeeley Exp $
+    $Id: net_http.c,v 1.57 2005/10/18 22:49:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.57  2005/10/18 22:49:33  gbeeley
+    - (bugfix) always attempt to use autoname; let the OSML figure out whether
+      autoname can be used for an object or not.
+
     Revision 1.56  2005/09/26 06:24:04  gbeeley
     - (major feature) Added templating mechanism via the wgtr module.
       To use a widget template on an app, specify widget_template= in the
@@ -2049,9 +2053,10 @@ nht_internal_OSML(pNhtSessionData sess, pFile conn, pObject target_obj, char* re
 		if (!strcmp(request,"create"))
 		    {
 		    len = strlen(req_inf->StrVal);
-		    if (len < 1 || req_inf->StrVal[len-1] != '*' || (len >= 2 && req_inf->StrVal[len-2] != '/'))
+		    /* let osml determine whether or not it is autoname - it is in a much better position to do so. */
+		    /*if (len < 1 || req_inf->StrVal[len-1] != '*' || (len >= 2 && req_inf->StrVal[len-2] != '/'))
 			obj = objOpen(objsess, req_inf->StrVal, O_CREAT | O_RDWR, 0600, "system/object");
-		    else
+		    else*/
 			obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
 		    if (!obj)
 			{
