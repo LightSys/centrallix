@@ -91,7 +91,10 @@ function osrc_make_filter(q)
 		switch(q[i].type)
 		    {
 		    case 'integer':
-			str=':'+q[i].oid+'='+val;
+			if (val == null)
+			    str=':'+q[i].oid+' is null ';
+			else
+			    str=':'+q[i].oid+'='+val;
 			break;
 		    default:
 			if(val.substring(0,2)=='>=')
@@ -109,7 +112,12 @@ function osrc_make_filter(q)
 			//else if((/\\*/).test(val))
 			//    str=':'+q[i].oid+' LIKE "'+val+'"';
 			else
-			    str=':'+q[i].oid+'='+'"'+val+'"';
+			    {
+			    if (val == null)
+				str=':'+q[i].oid+' is null ';
+			    else
+				str=':'+q[i].oid+'='+'"'+val+'"';
+			    }
 			break;
 		    }
 		}
@@ -967,15 +975,26 @@ function osrc_action_sync(param)
 	this.ChildKey[i]=eval('param.ChildKey'+i);
 	if(this.ParentKey[i])
 	    {
-	    for(var j in this.parentosrc.replica[p])
+	    if (!this.parentosrc.replica[p])
 		{
-		if(this.parentosrc.replica[p][j].oid==this.ParentKey[i] && this.parentosrc.replica[p][j].value != null)
+		var t = new Object();
+		t.oid = this.ChildKey[i];
+		t.value = null;
+		t.type = 'integer'; // type doesn't matter if it is null.
+		query.push(t);
+		}
+	    else
+		{
+		for(var j in this.parentosrc.replica[p])
 		    {
-		    var t = new Object();
-		    t.oid=this.ChildKey[i];
-		    t.value=this.parentosrc.replica[p][j].value;
-		    t.type=this.parentosrc.replica[p][j].type;
-		    query.push(t);
+		    if(this.parentosrc.replica[p][j].oid==this.ParentKey[i])
+			{
+			var t = new Object();
+			t.oid=this.ChildKey[i];
+			t.value=this.parentosrc.replica[p][j].value;
+			t.type=this.parentosrc.replica[p][j].type;
+			query.push(t);
+			}
 		    }
 		}
 	    }
