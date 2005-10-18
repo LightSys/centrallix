@@ -73,20 +73,25 @@ function dd_keyhandler(l,e,k)
     //if (!dd_current) return;
     var dd = this.mainlayer;
     if (dd.enabled != 'full') return 1;
-    if ((k >= 65 && k <= 90) || (k >= 97 && k <= 122))
+    if ((k >= 65 && k <= 90) || (k >= 97 && k <= 122) || (k >= 48 && k <= 57))
 	{
 	if (!dd.PaneLayer || htr_getvisibility(dd.PaneLayer) != 'inherit')
 	    dd_expand(dd);
-	if (k < 97) 
+	if (k < 97 && k > 57) 
 	    {
 	    var k_lower = k + 32;
 	    var k_upper = k;
 	    k = k + 32;
 	    }
-	else
+	else if (k > 57)
 	    {
 	    var k_lower = k;
 	    var k_upper = k - 32;
+	    }
+	else
+	    {
+	    var k_lower = k;
+	    var k_upper = k;
 	    }
 	if (!dd_lastkey || dd_lastkey != k)
 	    {
