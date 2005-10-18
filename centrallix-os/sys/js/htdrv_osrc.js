@@ -237,6 +237,15 @@ function osrc_action_create(up,formobj)
 	this.qid=null;
 	return 0;
 	}
+    else if (!this.sid)
+	{
+	this.replica=new Array();
+	this.LastRecord=0;
+	this.FirstRecord=1;
+	this.CurrentRecord=1;
+	this.OpenSession(this.ActionCreateCB2);
+	return 0;
+	}
     this.ActionCreateCB2();
     return 0;
     }
@@ -244,6 +253,7 @@ function osrc_action_create(up,formobj)
 function osrc_action_create_cb2()
     {
     //Create an object through OSML
+    if(!this.sid) this.sid=pg_links(this)[0].target;
     var src = this.baseobj + '/*?ls__mode=osml&ls__req=create&ls__sid=' + this.sid;
     for(var i in this.createddata) if(i!='oid')
 	{
@@ -257,17 +267,26 @@ function osrc_action_create_cb()
     var links = pg_links(this);
     if(links[0].target != 'ERR')
 	{
+	this.LastRecord++;
+	this.CurrentRecord = this.LastRecord;
 	var recnum=this.CurrentRecord;
 	var cr=this.replica[this.CurrentRecord];
-	if(cr)
+	if(!cr) cr = new Array();
+
+	for(var i in this.createddata) // update replica
 	    {
-	    for(var i in this.createddata) // update replica
-		for(var j in cr)
-		    if(cr[j].oid==this.createddata[i].oid)
-			cr[j].value=this.createddata[i].value;
-	    cr.oid = links[0].target;
+	    /*for(var j in cr)
+		if(cr[j].oid==this.createddata[i].oid)
+		    cr[j].value=this.createddata[i].value;*/
+	    cr[i] = new Array();
+	    cr[i].oid = this.createddata[i].oid;
+	    cr[i].value = this.createddata[i].value;
+	    cr[i].id = i;
 	    }
-	
+	cr.oid = links[0].target;
+	this.replica[this.CurrentRecord] = cr;
+
+	//alert(this.replica[this.CurrentRecord].oid);
 	this.formobj.OperationComplete(true);
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum);
@@ -370,7 +389,7 @@ function osrc_cb_query_continue(o)
 	this.FirstRecord=1;
 	this.moveop=true;
 
-	this.OpenSession();
+	this.OpenSession(this.OpenQuery);
 	}
     else
 	{ // movement
@@ -401,18 +420,19 @@ function osrc_cb_register(aparam)
     this.child.push(aparam);
     }
 
-function osrc_open_session()
+function osrc_open_session(cb)
     {
     //Open Session
     //alert('open');
     if(this.sid)
 	{
-	this.OpenQuery();
+	this.__osrc_cb = cb;
+	this.__osrc_cb();
 	}
     else
 	{
 	//alert(this.name + ' query open session');
-	pg_serialized_load(this, '/?ls__mode=osml&ls__req=opensession', osrc_open_query);
+	pg_serialized_load(this, '/?ls__mode=osml&ls__req=opensession', cb);
 	//this.onload = osrc_open_query;
 	//pg_set(this,'src','/?ls__mode=osml&ls__req=opensession');
 	}
@@ -440,9 +460,18 @@ function osrc_get_qid()
     {
     //return;
     this.qid=pg_links(this)[0].target;
-    for(var i in this.child)
-	this.child[i].DataAvailable();
-    this.ActionFirst();
+    //confirm(this.baseobj + " ==> " + this.qid);
+    if (!this.qid)
+	{
+	this.pending=false;
+	this.GiveAllCurrentRecord();
+	}
+    else
+	{
+	for(var i in this.child)
+	    this.child[i].DataAvailable();
+	this.ActionFirst();
+	}
 /** normally don't actually load the data...just let children know that the data is available **/
     }
 
@@ -451,11 +480,13 @@ function osrc_fetch_next()
     //alert('fetching....');
     if(!this.qid)
 	{
-	alert('something is wrong...');
+	confirm("ERR: " + this.baseobj + " ==> " + this.qid);
+	//alert('something is wrong...');
 	//alert(this.src);
 	}
     var lnk=pg_links(this);
     var lc=lnk.length;
+    //confirm(this.baseobj + " ==> " + lc + " links");
     if(lc < 2)
 	{ // query over
 	//this.formobj.OperationComplete(); /* don't need this...I think....*/
@@ -603,6 +634,7 @@ function osrc_close_query()
     this.qid=null;
     this.onload=osrc_oldoid_cleanup;
     this.onload();
+    //confirm("closing " + this.baseobj);
     //this.onload = osrc_close_session;
     //pg_set(this,'src','/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid);
     }
@@ -770,6 +802,7 @@ function osrc_move_to_record_cb(recnum)
 function osrc_open_query_startat()
     {
     //confirm('mq startat');
+    //confirm(this.baseobj + " mq startat " + this.startat);
     pg_serialized_load(this, "/?ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql="+this.query, osrc_get_qid_startat);
     //this.onload = osrc_get_qid_startat;
     //pg_set(this,'src',"/?ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql=" + this.query);
@@ -778,6 +811,13 @@ function osrc_open_query_startat()
 function osrc_get_qid_startat()
     {
     this.qid=pg_links(this)[0].target;
+    if (!this.qid)
+	{
+	this.startat = null;
+	this.pending=false;
+	this.GiveAllCurrentRecord();
+	return;
+	}
     this.OSMLRecord=this.startat-1;
     this.onload=osrc_fetch_next;
     //this.FirstRecord=this.startat;
@@ -836,7 +876,6 @@ function osrc_scroll_next_page()
 
 function osrc_scroll_to(recnum)
     {
-//    alert("osrc scrolling to " + recnum);
     this.moveop=false;
     this.TargetRecord=recnum;
     if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)
@@ -930,7 +969,7 @@ function osrc_action_sync(param)
 	    {
 	    for(var j in this.parentosrc.replica[p])
 		{
-		if(this.parentosrc.replica[p][j].oid==this.ParentKey[i])
+		if(this.parentosrc.replica[p][j].oid==this.ParentKey[i] && this.parentosrc.replica[p][j].value != null)
 		    {
 		    var t = new Object();
 		    t.oid=this.ChildKey[i];
@@ -1085,6 +1124,8 @@ function osrc_init(param)
     loader.MoveToRecordCB=osrc_move_to_record_cb;
     loader.child = new Array();
     loader.oldoids = new Array();
+    loader.sid = null;
+    loader.qid = null;
     
     //loader.ActionClear=osrc_action_clear;
     loader.ActionQuery=osrc_action_query;
