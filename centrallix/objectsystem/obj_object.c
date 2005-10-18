@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.23 2005/09/24 20:15:43 gbeeley Exp $
+    $Id: obj_object.c,v 1.24 2005/10/18 22:48:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.24  2005/10/18 22:48:59  gbeeley
+    - (bugfix) logic for autoname detection of "*" should be done after
+      the path is parsed into path elements.
+
     Revision 1.23  2005/09/24 20:15:43  gbeeley
     - Adding objAddVirtualAttr() to the OSML API, which can be used to add
       an attribute to an object which invokes callback functions to get the
@@ -558,6 +562,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pXHQElement xe;
     char prevname[256];
     int used_openas;
+    int len;
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -597,6 +602,21 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	        {
 	        inf = pathinfo->OpenCtl[j]->SubInf[i];
 	        if (inf->StrVal) inf->StrVal = pathinfo->OpenCtlBuf + (((int)(inf->StrVal)) - 1);
+		}
+	    }
+
+	/** Make sure supplied name is "*" if using autokeying **/
+	if (mode & OBJ_O_AUTONAME)
+	    {
+	    if (strcmp(pathinfo->Elements[pathinfo->nElements-1],"*") || !(mode & OBJ_O_CREAT))
+		{
+		/** name isn't *, or mode didn't have O_CREAT, then no autoname. **/
+		mode &= ~OBJ_O_AUTONAME;
+		}
+	    else
+		{
+		/** This is inherent with autoname **/
+		mode |= OBJ_O_EXCL;
 		}
 	    }
 
@@ -1315,19 +1335,6 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%p, \"%s\") = ", session, path);
-
-	/** Make sure supplied name is "*" if using autokeying **/
-	if (mode & OBJ_O_AUTONAME)
-	    {
-	    len = strlen(path);
-	    if (len < 1 || path[len-1] != '*' || (len >= 2 && path[len-2] != '/'))
-		{
-		mssError(1,"OSML","When creating an object using autokeying, name must be '*'");
-		return NULL;
-		}
-	    /** These are inherent with autoname **/
-	    mode |= (OBJ_O_CREAT | OBJ_O_EXCL);
-	    }
 
 	/** Lookup the path, etc. **/
 	/*this = obj_internal_ProcessPath(session, path, mode, type);*/
