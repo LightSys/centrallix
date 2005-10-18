@@ -54,7 +54,7 @@ function form_cb_focus_notify(control)
 /** the tab key was pressed in child 'control' **/
 function form_cb_tab_notify(control)
     {
-    var ctrlnum;
+    var ctrlnum = 0;
     var origctrl;
     for(var i=0;i<this.elements.length;i++)
 	{
@@ -504,9 +504,12 @@ function form_change_mode(newmode)
     // Set focus to initial control
     if ((newmode == 'Query' || newmode == 'New' || newmode == 'Modify') && this.elements[0] && !pg_curkbdlayer)
 	{
-	if (pg_removekbdfocus())
+	for(var i = 0; i < this.elements.length; i++)
 	    {
-	    pg_setkbdfocus(this.elements[0], null, 0, 0);
+	    if (pg_removekbdfocus())
+		{
+		if (pg_setkbdfocus(this.elements[i], null, 0, 0)) break;
+		}
 	    }
 	}
 
@@ -707,7 +710,10 @@ function form_build_dataobj()
 	    dataobj.push(t);
 	    }
 	}
-    dataobj.oid=this.data.oid;
+    if (this.mode == "New")
+	dataobj.oid = 0;
+    else
+	dataobj.oid=this.data.oid;
     return dataobj;
     }
 
