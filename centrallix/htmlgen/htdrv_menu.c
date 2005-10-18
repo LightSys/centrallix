@@ -150,11 +150,11 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
     char *ptr, *nptr;
     int x,y,w,h;
     int col_w, row_h;
-    int id, i, cnt, mcnt;
+    int id, i, cnt, mcnt, j, subcnt;
     int is_horizontal;
     int is_popup;
     int is_submenu;
-    pWgtrNode sub_tree;
+    pWgtrNode sub_tree, item_sub_tree;
     pXString xs;
     int bx = 0;
 
@@ -384,6 +384,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/menuitem")) 
 		{
+		htrRenderSubwidgets(s, sub_tree, z+1, parentname, nptr);
 		/*sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;*/
 		} 
 	    else 
