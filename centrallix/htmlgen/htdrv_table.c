@@ -59,10 +59,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.46 2005/06/23 22:08:01 ncolson Exp $
+    $Id: htdrv_table.c,v 1.47 2005/10/18 22:51:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.47  2005/10/18 22:51:44  gbeeley
+    - (bugfix) correct deletion of orderby items.
+
     Revision 1.46  2005/06/23 22:08:01  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -658,7 +661,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 		"                {\n"
 		"                for(i in neworder)\n"
 		"                    if(neworder[i]==':'+colname+' asc' || neworder[i]==':'+colname+' desc')\n"
-		"                        delete neworder[i];\n"
+		"                        neworder.splice(i,1);\n"
 		"                neworder.unshift(':'+colname+' asc');\n"
 		"                }\n"
 		"            ly.row.table.osrc.ActionOrderObject(neworder);\n"
