@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.5 2005/09/24 20:19:18 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.6 2005/10/18 22:51:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.6  2005/10/18 22:51:06  gbeeley
+    - (bugfix) request writability on objects when query open for update.
+
     Revision 1.5  2005/09/24 20:19:18  gbeeley
     - Adding "select ... from subtree /path" support to the SQL engine,
       allowing the retrieval of an entire subtree with one query.  Uses
@@ -265,7 +268,7 @@ mqp_internal_Recurse(pQueryElement qe, pMultiQuery mq, pObject obj)
 	newqy = objOpenQuery(obj, NULL, NULL, qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
 	if (!newqy) return NULL;
 	objUnmanageQuery(mq->SessionID, newqy);
-	newobj = objQueryFetch(newqy, O_RDONLY);
+	newobj = objQueryFetch(newqy, (mq->Flags & MQ_F_ALLOWUPDATE)?O_RDWR:O_RDONLY);
 	if (!newobj)
 	    {
 	    objQueryClose(newqy);
@@ -612,7 +615,7 @@ mqpNextItem(pQueryElement qe, pMultiQuery mq)
 		}
 
 	    /** Fetch the next item and set the object... **/
-	    obj = objQueryFetch(qe->LLQuery, O_RDONLY);
+	    obj = objQueryFetch(qe->LLQuery, (mq->Flags & MQ_F_ALLOWUPDATE)?O_RDWR:O_RDONLY);
 	    if (obj)
 		{
 		/** Got one. **/
