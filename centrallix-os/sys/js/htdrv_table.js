@@ -17,7 +17,7 @@ function tbld_update(p1)
 	this.startat=this.osrc.LastRecord-this.windowsize+1;
     if(this.startat<1) this.startat=1;
     if(t.m.length%t.q==12) for(var j=t.m.length;j>0;j--) t.m=t.m.replace(' ','');
-    if(this.cr!=this.osrc.CurrentRecord && this.followcurrent)
+    if(this.windowsize && this.cr!=this.osrc.CurrentRecord && this.followcurrent)
 	{ /* the osrc has changed the current record, make sure we can see it */
 	this.cr=this.osrc.CurrentRecord;
 	if(this.cr<this.startat)
@@ -359,7 +359,7 @@ function tbld_init(param)
 	t.rows[i].fg.bg=t.rows[i];
 	t.rows[i].fg.x=t.cellhspacing;
 	t.rows[i].fg.y=t.cellvspacing;
-	t.rows[i].fg.visibility='show';
+	t.rows[i].fg.visibility='inherit';
 	t.rows[i].fg.clip.width=param.width-t.cellhspacing*2;
 	t.rows[i].fg.clip.height=t.rowheight-t.cellvspacing*2;
 	t.rows[i].fg.kind='tabledynamic';
