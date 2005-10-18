@@ -30,10 +30,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.3 2005/10/09 07:51:29 gbeeley Exp $
+    $Id: apos.c,v 1.4 2005/10/18 22:47:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.4  2005/10/18 22:47:12  gbeeley
+    - (change) use r_width/r_height instead of the minimums if possible
+
     Revision 1.3  2005/10/09 07:51:29  gbeeley
     - (change) popup menus are floating objects like windows.
     - (change) allow geometry values to be unset
@@ -832,13 +835,17 @@ pWgtrNode Widget;
 			{
 			    if((CurrLine->Loc - Widget->y - isTopTab*24) > APOS_MINWIDTH)
 				Widget->height = CurrLine->Loc - Widget->y - isTopTab*24;
-			    else Widget->height = APOS_MINWIDTH;
+			    else 
+				/*Widget->height = APOS_MINWIDTH;*/
+				Widget->height = Widget->r_height;
 			}
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
 		        {
 			    if((CurrLine->Loc - Widget->x - isSideTab*tabWidth) > APOS_MINWIDTH)
 				Widget->width = CurrLine->Loc - Widget->x - isSideTab*tabWidth;
-			    else Widget->width = APOS_MINWIDTH;
+			    else
+				/*Widget->width = APOS_MINWIDTH;*/
+				Widget->width = Widget->r_width;
 			}
 		}
 	}
