@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.18 2005/09/24 20:19:18 gbeeley Exp $
+    $Id: multiquery.c,v 1.19 2005/10/18 22:50:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.19  2005/10/18 22:50:33  gbeeley
+    - (bugfix) properly detect which object to go to for presentation hints,
+      and if it is a composite property (computed), just return default hints
+      for now since we'd have to do some fancy stuff with the hints values.
+
     Revision 1.18  2005/09/24 20:19:18  gbeeley
     - Adding "select ... from subtree /path" support to the SQL engine,
       allowing the retrieval of an entire subtree with one query.  Uses
@@ -319,6 +324,21 @@ mq_internal_AllocQS(int type)
 	xsInit(&this->RawData);
 
     return this;
+    }
+
+
+/*** mq_internal_SetChainedReferences - for order by and group by clauses, the
+ *** field lists might reference the result set column names rather than the
+ *** source object attributes.  Here, we set those up so that the REFERENCED
+ *** flag reflects the actual underlying objects.
+ ***/
+int
+mq_internal_SetChainedReferences(pQueryStructure qs, pQueryStructure clause)
+    {
+    pQueryStructure clause_item;
+    int i,cnt,j;
+
+    return 0;
     }
 
 
@@ -2195,20 +2215,49 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
     pPseudoObject p = (pPseudoObject)inf_v;
     pObjPresentationHints ph;
     pObject obj;
-    int i;
+    int i, id;
+    pExpression e;
 
-    for (i=0; i < p->ObjList.nObjects; i++)
-	{
-	if (p->ObjList.Objects[i]->Driver->PresentationHints != NULL)
+    	/** Request for ls__rowid? **/
+	if (!strcmp(attrname,"ls__rowid")) return NULL;
+
+    	/** Check to see whether we're on current object. **/
+	mq_internal_CkSetObjList(p->Query, p);
+
+	/** Figure out which attribute... **/
+	id = -1;
+	for(i=0;i<p->Query->Tree->AttrNames.nItems;i++)
 	    {
-	    obj = p->ObjList.Objects[i];
-	    ph = obj->Driver->PresentationHints(obj->Data, attrname);
-	    return ph;
+	    if (!strcmp(attrname,p->Query->Tree->AttrNames.Items[i]))
+	        {
+		id = i;
+		break;
+		}
 	    }
-	}
+	if (id == -1) 
+	    {
+	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
+	        return NULL;
+	    mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
+	    return NULL;
+	    }
+
+	/** Evaluate the expression to get the data type **/
+	p->Query->QTree->ObjList->Session = p->Query->SessionID;
+	e = (pExpression)p->Query->Tree->AttrCompiledExpr.Items[id];
+	if (e->NodeType == EXPR_N_PROPERTY || e->NodeType == EXPR_N_OBJECT)
+	    {
+	    if (e->ObjID >= 0)
+		{
+		obj = p->Query->QTree->ObjList->Objects[e->ObjID];
+		ph = objPresentationHints(obj, attrname);
+		return ph;
+		}
+	    }
 
     return NULL;
     }
+
 
 /*** mqInitialize - initialize the multiquery module and link in with the
  *** objectsystem management layer, registering as the multiquery module.
