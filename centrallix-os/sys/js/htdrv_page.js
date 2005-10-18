@@ -838,12 +838,12 @@ function pg_stackpopup(p,l)
     if (win == window || win == document)
 	{
 	moveAbove(p,doclayers[0]);
-	htr_setzindex(p, min_z + 1);
+	htr_setzindex(p, min_z + 1000);
 	}
     else
 	{
 	moveAbove(p,win);
-	htr_setzindex(p, min_z + 1);
+	htr_setzindex(p, min_z + 1000);
 	}
     }
 
@@ -1358,6 +1358,13 @@ function pg_setdatafocus(a)
 
 function pg_setkbdfocus(l, a, xo, yo)
     {
+    var from_kbd = false;
+    if (xo == null && yo == null)
+	{
+	xo = 0;
+	yo = 0;
+	from_kbd = true;
+	}
     if (!a)
 	{
 	a = pg_findfocusarea(l, xo, yo);
@@ -1375,7 +1382,7 @@ function pg_setkbdfocus(l, a, xo, yo)
 
     if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
 	{
-	v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a);
+	v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a,from_kbd);
 	if (v & 1)
 	    {
 	    // mk box for kbd focus
