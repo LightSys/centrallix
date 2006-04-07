@@ -1119,6 +1119,7 @@ wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh)
 	    }
 	
 	/** free up data structures **/
+	xaDeInit(&Names);
 	xaDeInit(&(vs.VerifyQueue));
 
 	return 0;
