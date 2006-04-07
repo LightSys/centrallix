@@ -65,11 +65,23 @@ function sp_init(param)
     htr_init_layer(l,l,"sp");
     htr_init_layer(tlayer,l,"sp");
     htr_init_layer(alayer,l,"sp");
+    ifc_init_widget(l);
     l.LSParent = param.parent;
     l.thum = tlayer;
     l.area = alayer;
     l.UpdateThumb = sp_UpdateThumb;
-    l.ActionScrollTo = sp_action_scrollto;
+
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("ScrollTo", sp_action_scrollto);
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
 
     if(cx__capabilities.Dom0IE)
         {
