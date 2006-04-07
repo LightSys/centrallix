@@ -18,6 +18,7 @@ function oc_init(param)
     {
     var l = param.layer;
     htr_init_layer(l,l,"oc");
+    ifc_init_widget(l);
     l.w = getdocWidth(l);
 
     // params from user
@@ -105,9 +106,11 @@ function oc_add_osrc_object(o)
     if (c == '') c = null;
     var i = oc_get_osrc_property(o, 'image');
     if (i == '') i = null;
-    if (w == null || h == null || (c == null && i == null)) return false;
-    w = parseInt(w);
-    h = parseInt(h);
+    var lbl = oc_get_osrc_property(o, 'label');
+    if (lbl == '') lbl = null;
+    if ((lbl == null && c == null && i == null)) return false;
+    if (w != null) w = parseInt(w);
+    if (h != null) h = parseInt(h);
     x = parseInt(x);
     y = parseInt(y);
 
@@ -117,9 +120,12 @@ function oc_add_osrc_object(o)
     l.osrc_oid = o.oid;
     l.osrc_id = o.id;
     moveTo(l, x, y);
-    resizeTo(l, w, h);
-    setClipWidth(l, w);
-    setClipHeight(l, h);
+    if (w && h)
+	{
+	resizeTo(l, w, h);
+	setClipWidth(l, w);
+	setClipHeight(l, h);
+	}
 
     //alert('color = ' + c + ', image = ' + i);
     //htr_alert(o, 2);
