@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.30 2005/06/23 22:07:59 ncolson Exp $
+    $Id: htdrv_pane.c,v 1.31 2006/04/07 06:51:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.31  2006/04/07 06:51:41  gbeeley
+    - (bugfix) make sure events get activated on the main object rather than
+      on sublayers.
+
     Revision 1.30  2005/06/23 22:07:59  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -459,28 +463,28 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Event Handlers **/
 	htrAddEventHandler(s, "document","MOUSEUP", "pn", 
 	    "\n"
-	    "    if (ly.kind == 'pn') cn_activate(ly, 'Click');\n"
-	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseUp');\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly.mainlayer, 'Click');\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly.mainlayer, 'MouseUp');\n"
 	    "\n");
 
 	htrAddEventHandler(s, "document","MOUSEDOWN", "pn", 
 	    "\n"
-	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseDown');\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly.mainlayer, 'MouseDown');\n"
 	    "\n");
 
 	htrAddEventHandler(s, "document","MOUSEOVER", "pn", 
 	    "\n"
-	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseOver');\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly.mainlayer, 'MouseOver');\n"
 	    "\n");
    
 	htrAddEventHandler(s, "document","MOUSEOUT", "pn", 
 	    "\n"
-	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseOut');\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly.mainlayer, 'MouseOut');\n"
 	    "\n");
    
 	htrAddEventHandler(s, "document","MOUSEMOVE", "pn", 
 	    "\n"
-	    "    if (ly.kind == 'pn') cn_activate(ly, 'MouseMove');\n"
+	    "    if (ly.kind == 'pn') cn_activate(ly.mainlayer, 'MouseMove');\n"
 	    "\n");
 
 	if(s->Capabilities.Dom0NS || (s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
