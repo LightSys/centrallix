@@ -360,7 +360,16 @@ function ifEvent()
 	    if (p.type == 'int' || p.type == 'str' || p.type == 'dbl')
 		ap[pn] = p.value;
 	    else if (p.type == 'sym' || p.type == 'exp')
-		ap[pn] = ep.eval(p.value);
+		{
+		if (cx__capabilities.Dom0IE) // restriction, not capability!!!
+		    {
+		    with (ep) ap[pn] = eval(p.value);
+		    }
+		else
+		    {
+		    ap[pn] = ep.eval(p.value);
+		    }
+		}
 	    }
 	return ai.Invoke(this.action, ap);
 	}
