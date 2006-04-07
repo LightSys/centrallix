@@ -339,7 +339,7 @@ mods: $(MODULES)
 modules: mods
 	@echo "*** Be sure to do a 'make modules_install'"
 
-modules_install: mods config_install
+modules_install: mods
 	@mkdir -p $(libdir)/centrallix
 	$(if $(strip ${MODULES}),@$(INSTALL) $(MODULES) $(libdir)/centrallix)
 	@echo ""
