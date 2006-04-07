@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.71 2005/10/09 07:48:54 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.72 2006/04/07 06:34:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.72  2006/04/07 06:34:13  gbeeley
+    - (change) adding show_diagnostics attribute to page widget to allow
+      wgtr et al warning messages to be un-suppressed
+
     Revision 1.71  2005/10/09 07:48:54  gbeeley
     - (change) allow contextmenu event to trigger RightClick
     - fix image-in-table problem on Moz
@@ -543,6 +547,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     char msfocus2[64];
     char dtfocus1[64];	/* dt focus = navyblue rectangle */
     char dtfocus2[64];
+    int show_diag = 0;
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -629,6 +634,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	if (wgtrGetPropertyValue(tree,"attract",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    attract = (int)ptr;
 
+	show_diag = htrGetBoolean(tree, "show_diagnostics", 0);
+
 	/** Add global for page metadata **/
 	htrAddScriptGlobal(s, "page", "new Object()", 0);
 
@@ -666,6 +673,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "pg_msg_handlers", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_msg_layer", "null", 0);
 	htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0);
+	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
