@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.20 2005/10/09 07:45:36 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.21 2006/04/07 06:28:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.21  2006/04/07 06:28:25  gbeeley
+    - (change) convert widgets to new inter-widget interface mechanism rather
+      than direct callbacks for Events and Actions
+    - (change) get rid of cn_123() type functions, using a much cleaner way
+      of handling the passing of values from events to actions.
+
     Revision 1.20  2005/10/09 07:45:36  gbeeley
     - (change) don't pollute the globals.
     - (change) return value that the action function returned.
@@ -278,6 +284,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     char* nptr;
     XString xs;
     pExpression code;
+    int first;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
 	    {
@@ -325,19 +332,61 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	/*htrAddScriptGlobal(s, "aparam", "null", 0);
 	htrAddScriptGlobal(s, "eparam", "null", 0);*/
 
+	/** Build the param list **/
+	xsInit(&xs);
+	first = 1;
+	for(ptr = wgtrFirstPropertyName(tree); ptr; ptr = wgtrNextPropertyName(tree))
+	    {
+	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action")) continue;
+	    if (!first) xsConcatenate(&xs, ",", 1);
+	    first = 0;
+	    switch(wgtrGetPropertyType(tree, ptr))
+	        {
+		case DATA_T_CODE:
+		    wgtrGetPropertyValue(tree, ptr, DATA_T_CODE, POD(&code));
+		    xsConcatPrintf(&xs,"%s:{type:'exp', value:'", ptr);
+		    expGenerateText(code, NULL, xsWrite, &xs, '\\', "javascript");
+		    xsConcatenate(&xs,"'}",2);
+		    break;
+		case DATA_T_INTEGER:
+	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_INTEGER,POD(&vint));
+		    xsConcatPrintf(&xs,"%s:{type:'int', value:%d}",ptr,vint);
+		    break;
+		case DATA_T_DOUBLE:
+		    wgtrGetPropertyValue(tree, ptr, DATA_T_DOUBLE,POD(&vdbl));
+		    snprintf(sbuf, HT_SBUF_SIZE, "%s:{type:'dbl', value:%f}",ptr,vdbl);
+		    xsConcatenate(&xs,sbuf,-1);
+		    break;
+		case DATA_T_STRING:
+	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_STRING,POD(&vstr));
+		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
+		        {
+			xsConcatPrintf(&xs, "%s:{type:'sym', value:'%s'}", ptr, vstr);
+			}
+		    else
+		        {
+			xsConcatPrintf(&xs, "%s:{type:'str', value:'%s'}", ptr, vstr);
+			}
+		    break;
+		}
+	    }
+
 	/** Add a script init to install the connector **/
-	htrAddScriptInit_va(s,"    %s = new cn_init({parent:%s, f:cn_%d});\n", nptr, parentobj, id);
+	//htrAddScriptInit_va(s,"    %s = new cn_init({parent:%s, f:cn_%d});\n", nptr, parentobj, id);
 //	htrAddScriptInit_va(s,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
-	htrAddScriptInit_va(s,"    %s.Add('%s');\n", nptr, event);
+	//htrAddScriptInit_va(s,"    %s.Add('%s');\n", nptr, event);
+	htrAddScriptInit_va(s, "    %s.ifcProbe(ifEvent).Connect('%s', '%s', '%s', {%s});\n",
+		parentobj, event, target, action, xs.String);
+	xsDeInit(&xs);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 
 	/** Set object parent **/
-	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
-		nptr, nptr, parentobj);
+	/*htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
+		nptr, nptr, parentobj);*/
 
 	/** Add the connector function **/
-	xsInit(&xs);
+	/*xsInit(&xs);
 	xsConcatPrintf(&xs, "\n"
 		     	"function cn_%d(eparam)\n"
 		     	"    {\n" ,id);
@@ -390,9 +439,9 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	fnnamebuf = (char*)nmMalloc(strlen(fnname)+1);
 	strcpy(fnnamebuf, fnname);
 	htrAddScriptFunction(s, fnnamebuf, fnbuf, HTR_F_NAMEALLOC | HTR_F_VALUEALLOC);
-	xsDeInit(&xs);
+	xsDeInit(&xs);*/
 
-
+	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
 
 	/** Check for more sub-widgets within the conn entity. **/
