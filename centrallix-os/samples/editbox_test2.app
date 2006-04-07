@@ -41,10 +41,10 @@ editbox_test2 "widget/page"
 	bgcolor="#e0e0e0";
 	}
 
-    ebautoh "widget/editbox"
-	{
-	x=8; y=8 + 320; width=128;
-	style=lowered;
-	bgcolor="#e0e0e0";
-	}
+    //ebautoh "widget/editbox"
+//	{
+//	x=8; y=8 + 320; width=128;
+//	style=lowered;
+//	bgcolor="#e0e0e0";
+//	}
     }
