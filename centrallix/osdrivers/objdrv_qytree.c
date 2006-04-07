@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_qytree.c,v 1.14 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: objdrv_qytree.c,v 1.15 2006/04/07 06:47:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_qytree.c,v $
 
     $Log: objdrv_qytree.c,v $
+    Revision 1.15  2006/04/07 06:47:23  gbeeley
+    - (bugfix) Don't try to compile the expression if we don't have any objects
+      open in the first place.
+    - (bugfix) memory_leaks -= 5;
+
     Revision 1.14  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -512,7 +517,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         expr = NULL;
                         exprval = NULL;
                         stAttrValue(stLookup(find_inf, "where"),NULL,&exprval,0);
-                        if (exprval) 
+                        if (exprval && !no_open) 
 			    {
 			    objlist->Names[(signed char)(objlist->CurrentID)] = find_inf->Name;
 			    expr = (pExpression)expCompileExpression(exprval, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -590,6 +595,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	    if (!next_inf) 
 	        {
 		/** Ok, close up the structure table. **/
+		xhClear(&struct_table, NULL, NULL);
 		xhDeInit(&struct_table);
 		nmFree(inf,sizeof(QytData));
 		inf->LLObj = NULL;
@@ -604,8 +610,10 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	    subref++;
 	    }
 	inf->NodeData = dptr;
+	xhClear(&struct_table, NULL, NULL);
 	xhDeInit(&struct_table);
 	for(i=0;i<objlist->nObjects-1;i++) if (objlist->Objects[i]) objClose(objlist->Objects[i]);
+	expFreeParamList(objlist);
 
     return inf;
     }
@@ -1113,6 +1121,7 @@ qytOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	/** Get the next subinf ready for retrieval. **/
 	if (qyt_internal_GetQueryItem(qy) < 0)
 	    {
+	    xhClear(&qy->StructTable, NULL, NULL);
 	    xhDeInit(&qy->StructTable);
 	    nmFree(qy, sizeof(QytQuery));
 	    return NULL;
@@ -1216,6 +1225,7 @@ qytQueryClose(void* qy_v, pObjTrxTree* oxt)
 	if (qy->LLQueryObj) objClose(qy->LLQueryObj);
 
 	/** Free the structure **/
+	xhClear(&qy->StructTable, NULL, NULL);
 	xhDeInit(&qy->StructTable);
 	nmFree(qy_v,sizeof(QytQuery));
 
