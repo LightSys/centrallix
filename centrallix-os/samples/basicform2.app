@@ -58,13 +58,13 @@ basicform2 "widget/page"
 	syncconn "widget/connector"
 	    {
 	    event = "DataFocusChanged";
-	    target = "osrc2";
+	    target = osrc2;
 	    action = "Sync";
 
 	    // action parameters
-	    ParentOSRC = "(osrc1)";
-	    ParentKey1 = "'first_name'";
-	    ChildKey1 = "'first_name'";
+	    ParentOSRC = osrc1;
+	    ParentKey1 = runclient("first_name");
+	    ChildKey1 = runclient("first_name");
 	    }
 	mainpane "widget/pane"
 	    {

@@ -56,7 +56,7 @@ ors "widget/page"
 	bgcolor='#e0e0e0';
 	fgcolor1='black';
 	fgcolor2='white';
-	cn1 "widget/connector" { event=Click; target=win1; action=SetVisibility; }
+	cn1 "widget/connector" { event=Click; target=win1; action=Open; }
 	}
     win2btn "widget/textbutton"
 	{
@@ -66,7 +66,7 @@ ors "widget/page"
 	bgcolor='#e0e0e0';
 	fgcolor1='black';
 	fgcolor2='white';
-	cn2 "widget/connector" { event=Click; target=win2; action=SetVisibility; }
+	cn2 "widget/connector" { event=Click; target=win2; action=Open; }
 	}
     win1 "widget/childwindow"
 	{
@@ -245,7 +245,7 @@ ors "widget/page"
 	fgcolor1=black;
 	fgcolor2=white;
 	enabled=runclient(:tab1:selected_index != 1);
-	cnt1 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageOne'"; }
+	cnt1 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab=runclient("PageOne"); }
 	}
     tabtextbtn2 "widget/textbutton"
 	{
@@ -256,7 +256,7 @@ ors "widget/page"
 	fgcolor1=black;
 	fgcolor2=white;
 	enabled=runclient(:tab1:selected_index != 2);
-	cnt2 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageTwo'"; }
+	cnt2 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab=runclient("PageTwo"); }
 	}
     tabtextbtn3 "widget/textbutton"
 	{
@@ -267,7 +267,7 @@ ors "widget/page"
 	fgcolor1=black;
 	fgcolor2=white;
 	enabled=runclient(:tab1:selected_index != 3);
-	cnt3 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab="'PageThree'"; }
+	cnt3 "widget/connector" { event=Click; target=tab1; action=SetTab; Tab=runclient("PageThree"); }
 	}
 
     tab1 "widget/tab"
