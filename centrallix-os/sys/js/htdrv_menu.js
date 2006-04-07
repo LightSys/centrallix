@@ -15,6 +15,7 @@ function mn_additem(param)
     {
     var item = new Object();
     var id;
+    ifc_init_widget(item);
     item.value = param.value;
     item.label = param.label;
     item.check = param.check;
@@ -32,6 +33,7 @@ function mn_additem(param)
 	id = this.n_first;
 	this.n_first++;
 	}
+    if (param.sep) return item;
     if (item.check != null) 
 	{
 	item.ckbox = this.ckboxs[id];
@@ -52,6 +54,12 @@ function mn_additem(param)
 	item.y = this.coords[id].y - 1;
 	}
     this.items.push(item);
+
+    // Events for menu items
+    var ie = item.ifcProbeAdd(ifEvent);
+    ie.Add("Select");
+    if (item.check != null)
+	ie.Add("DataChange");
 
     // Make the value a 'hot' property
     item.mn_ckbox_change = mn_ckbox_change;
@@ -145,7 +153,7 @@ function mn_activate(x,y,p)
     htr_setvisibility(this, "inherit");
     if (!mn_current) mn_current = this;
     this.act_ts = pg_timestamp();
-    cn_activate(this, 'Activate', {X:x, Y:y});
+    this.ifcProbe(ifEvent).Activate('Activate', {X:x, Y:y});
     if (mn_submenu_tmout) pg_delsched(mn_submenu_tmout);
     mn_submenu_tmout = null;
     return true;
@@ -157,8 +165,8 @@ function mn_activate_item(item)
     this.Highlight(item, true);
     if (item.submenu)
 	{
-	cn_activate(item, 'Select', {Value:item.value, Label:item.label});
-	cn_activate(this, 'SelectItem', {Value:item.value, Label:item.label});
+	item.ifcProbe(ifEvent).Activate('Select', {Value:item.value, Label:item.label});
+	this.ifcProbe(ifEvent).Activate('SelectItem', {Value:item.value, Label:item.label});
 	if (this.VChildren[item.submenu])
 	    {
 	    if (this.horiz)
@@ -176,8 +184,8 @@ function mn_activate_item(item)
 	}
     else if (item.check != null)
 	{
-	cn_activate(item, 'Select', {Value:item.value, Label:item.label});
-	cn_activate(this, 'SelectItem', {Value:item.value, Label:item.label});
+	item.ifcProbe(ifEvent).Activate('Select', {Value:item.value, Label:item.label});
+	this.ifcProbe(ifEvent).Activate('SelectItem', {Value:item.value, Label:item.label});
 	item.check = !item.check;
 	if (item.check)
 	    item.ckbox.src = "/sys/images/checkbox_checked.gif";
@@ -186,17 +194,18 @@ function mn_activate_item(item)
 	htr_unwatch(item, 'value', 'mn_ckbox_change');
 	item.value = item.check?1:0;
 	htr_watch(item, 'value', 'mn_ckbox_change');
-	cn_activate(item, 'DataChange', {Value:item.check, Label:item.label});
+	if (item.ifcProbe(ifEvent).Exists('DataChange'))
+	    item.ifcProbe(ifEvent).Activate('DataChange', {Value:item.value, Label:item.label});
 	if (this.popup) pg_addsched_fn(this, "Deactivate", [],0);
 	}
     else
 	{
 	if (!mn_deactivate_tmout) 
 	    mn_deactivate_tmout = pg_addsched_fn(this, "DeactivateAll", [], 300);
-	pg_addsched_fn(window, "cn_activate", 
-		[item, 'Select', {Value:item.value, Label:item.label}], 301);
-	pg_addsched_fn(window, "cn_activate", 
-		[this, 'SelectItem', {Value:item.value, Label:item.label}], 302);
+	pg_addsched_fn(item.ifcProbe(ifEvent), "Activate", 
+		['Select', {Value:item.value, Label:item.label}], 301);
+	pg_addsched_fn(this.ifcProbe(ifEvent), "Activate", 
+		['SelectItem', {Value:item.value, Label:item.label}], 302);
 	}
     }
 
@@ -218,7 +227,7 @@ function mn_deactivate()
 	    break;
 	    }
 	}
-    cn_activate(this, 'Deactivate', {});
+    this.ifcProbe(ifEvent).Activate('Deactivate', {});
     return;
     }
 
@@ -360,6 +369,7 @@ function mn_init(param)
     htr_init_layer(menu, menu, "mn");
     htr_init_layer(menu.clayer, menu, "mn");
     htr_init_layer(menu.hlayer, menu, "mn");
+    ifc_init_widget(menu);
     menu.main_bgimage = htr_extract_bgimage(param.bgnd);
     menu.main_bgcolor = htr_extract_bgcolor(param.bgnd);
     menu.highlight_bgimage = htr_extract_bgimage(param.high);
@@ -419,7 +429,14 @@ function mn_init(param)
     menu.CkUnHighlight = mn_check_unhighlight;
 
     // Actions
-    menu.ActionPopup = mn_popup;
+    var ia = menu.ifcProbeAdd(ifAction);
+    ia.Add("Popup", mn_popup);
+
+    // Events
+    var ie = menu.ifcProbeAdd(ifEvent);
+    ie.Add("SelectItem");
+    ie.Add("Activate");
+    ie.Add("Deactivate");
 
     menu.nextActive = null;
     if (!menu.popup)

@@ -405,5 +405,14 @@ function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfi
     l.osrc = osrc_current;
     l.osrc.Register(l);
 
+    // Events
+    ifc_init_widget(l);
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseUp");
+    ie.Add("MouseDown");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+
     return l;
     }

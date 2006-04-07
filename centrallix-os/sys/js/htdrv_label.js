@@ -13,5 +13,16 @@
 function lbl_init(l)
     {
     htr_init_layer(l,l,'lbl');
+    ifc_init_widget(l);
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("Click");
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+
     return l;
     }

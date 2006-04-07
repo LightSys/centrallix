@@ -1035,8 +1035,6 @@ function pg_status_close()
 // tc_init(document.cxSubElement("tc0base"), 0, "background='sys/images/slate2.gif'", "");
 function pg_init(l,a,gs,ct)
     {
-    l.ActionLoadPage = pg_load_page;
-    l.ActionLaunch = pg_launch;
     window.windowlist = new Object();
     pg_attract = a;
     if (cx__capabilities.Dom0NS) pg_set_emulation(document);
@@ -1044,7 +1042,18 @@ function pg_init(l,a,gs,ct)
     pg_reveal_register_triggerer(window);
     pg_reveal_event(window,null,'Reveal');
     pg_addsched('pg_msg_init()', window,0);
-    return l;
+    ifc_init_widget(window);
+
+    // Actions
+    var ia = window.ifcProbeAdd(ifAction);
+    ia.Add("LoadPage", pg_load_page);
+    ia.Add("Launch", pg_launch);
+
+    // Events
+    var ie = window.ifcProbeAdd(ifEvent);
+    ie.Add("RightClick");
+
+    return window;
     }
 
 function pg_load_page(aparam)
@@ -1735,7 +1744,7 @@ function pg_debug_register_log(l)
 // send debug msg
 function pg_debug(msg)
     {
-    if (pg_debug_log) pg_debug_log.ActionAddText({Text:msg, ContentType:'text/plain'});
+    if (pg_debug_log) pg_debug_log.ifcProbe(ifAction).Invoke("AddText", {Text:msg, ContentType:'text/plain'});
     }
 
 // log function calls and return values.
@@ -1905,7 +1914,7 @@ function pg_mousedown(e)
 	{
 	if (cx__capabilities.Dom0NS && (e.which == 3 || e.which == 2))
 	    {
-	    if (cn_activate(document, 'RightClick', {X:e.pageX, Y:e.pageY}) != false)
+	    if (window.ifcProbe(ifEvent).Activate('RightClick', {X:e.pageX, Y:e.pageY}) != null)
 		{
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 		}
@@ -1918,7 +1927,7 @@ function pg_contextmenu(e)
     {
     if (e.target == window || e.target == document)
 	{
-	if (cn_activate(document, 'RightClick', {X:e.pageX, Y:e.pageY}) != false)
+	if (window.ifcProbe(ifEvent).Activate('RightClick', {X:e.pageX, Y:e.pageY}) != null)
 	    {
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }

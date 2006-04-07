@@ -20,6 +20,7 @@ function tb_init(param)
     htr_init_layer(l,l,'tb');
     htr_init_layer(l2,l,'tb');
     htr_init_layer(l3,l,'tb');
+    ifc_init_widget(l);
     if(!cx__capabilities.Dom2CSS && !cx__capabilities.Dom0IE)
 	{
 	param.top.nofocus = true;
@@ -71,6 +72,15 @@ function tb_init(param)
     	//alert("watch is not supported!");
     	l.onpropertychange = tb_propchange;
 	}
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("Click");
+    ie.Add("MouseUp");
+    ie.Add("MouseDown");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
     }
 
 function tb_propchange(prop, oldv, newv)
@@ -240,7 +250,7 @@ function tb_mousedown(e)
     if (ly.kind == 'tb' && ly.enabled)
         {
         tb_setmode(ly,2);
-        cn_activate(ly, 'MouseDown');
+	ly.ifcProbe(ifEvent).Activate('MouseDown', {});
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -257,8 +267,8 @@ function tb_mouseup(e)
             e.pageY < getPageY(ly) + getClipHeight(ly))
             {
             tb_setmode(ly,1);
-            cn_activate(ly, 'Click');
-            cn_activate(ly, 'MouseUp');
+	    ly.ifcProbe(ifEvent).Activate('Click', {});
+	    ly.ifcProbe(ifEvent).Activate('MouseUp', {});
             }
         else
             {
@@ -275,7 +285,7 @@ function tb_mouseover(e)
     if (ly.kind == 'tb' && ly.enabled)
         {
 	if (ly.mode != 2) tb_setmode(ly,1);
-        cn_activate(ly, 'MouseOver');
+	ly.ifcProbe(ifEvent).Activate('MouseOver', {});
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -287,7 +297,7 @@ function tb_mouseout(e)
     if (ly.kind == 'tb' && ly.enabled)
         {
 	if (ly.mode != 2) tb_setmode(ly,0);
-        cn_activate(ly, 'MouseOut');
+	ly.ifcProbe(ifEvent).Activate('MouseOut', {});
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -298,7 +308,7 @@ function tb_mousemove(e)
     if (ly.mainlayer) ly = ly.mainlayer;
     if (ly.kind == 'tb' && ly.enabled)
         {
-        cn_activate(ly, 'MouseMove');
+	ly.ifcProbe(ifEvent).Activate('MouseMove', {});
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }

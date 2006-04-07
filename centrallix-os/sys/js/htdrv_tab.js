@@ -217,6 +217,7 @@ function tc_init(param)
     // Basic stuff...
     var l = param.layer; 
     htr_init_layer(l,l,'tc');
+    ifc_init_widget(l);
     l.tabs = new Array();
     l.addTab = tc_addtab;
     l.current_tab = null;
@@ -239,7 +240,17 @@ function tc_init(param)
     htr_watch(l,"selected_index", "tc_selection_changed");
     l.tc_selection_changed = tc_selection_changed;
 
-    l.ActionSetTab = tc_action_set_tab;
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetTab", tc_action_set_tab);
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
 
     // Reveal/Obscure mechanism
     l.ChangeSelection1 = tc_changeselection_1;

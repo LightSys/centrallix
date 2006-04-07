@@ -155,11 +155,10 @@ function spnr_init(param)
         spnr_ibeam.document.close();
         spnr_ibeam.resizeTo(1,spnr_metric.charHeight);
         }
-    c1.mainlayer = main;
-    c2.mainlayer = main;
-    c1.kind = 'spinner';
-    c2.kind = 'spinner';
-    main.kind = 'spinner';
+    htr_init_layer(c1,main,'spinner');
+    htr_init_layer(c2,main,'spinner');
+    htr_init_layer(main,main,'spinner');
+    ifc_init_widget(main);
     main.layers.spnr_button_up.document.images[0].kind='spinner';
     main.layers.spnr_button_down.document.images[0].kind='spinner';
     main.layers.spnr_button_up.document.images[0].subkind='up';

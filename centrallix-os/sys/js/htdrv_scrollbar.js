@@ -36,20 +36,29 @@ function sb_init(param)
     tlayer.document.images[0].thum=tlayer;
     tlayer.document.images[0].pane=l;
     tlayer.nofocus = true;
-    tlayer.document.layer = tlayer;
-    tlayer.mainlayer = l;
-    tlayer.kind = 'sb';
+    htr_init_layer(tlayer, l, 'sb');
+    htr_init_layer(l, l, 'sb');
+    ifc_init_widget(l);
     l.thum = tlayer;
-    l.document.layer = l;
-    l.mainlayer = l;
-    l.kind = 'sb';
     l.LSParent = param.parent;
     l.range = param.range;
     l.value = 0;
     l.is_horizontal = param.isHorizontal;
     l.controlsize = param.isHorizontal?(getClipWidth(l) - 18*3):(getClipHeight(l) - 18*3);
     htr_watch(l,'range','sb_range_changed');
-    l.ActionMoveTo = sb_action_move_to;
+
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("MoveTo", sb_action_move_to);
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+
     l.SetThumb = sb_set_thumb;
     return l;
     }

@@ -14,7 +14,18 @@
 function im_init(l)
     {
     htr_init_layer(l,l,"im");
+    ifc_init_widget(l);
     var imgs = pg_images(l);
     l.img = imgs[0];
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("Click");
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+
     return l;
     }

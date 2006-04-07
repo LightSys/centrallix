@@ -224,3 +224,183 @@ function ifcInitialize(ifc_base_dir)
 
 	IFC.BaseDir = ifc_base_dir;
     }
+
+
+
+// The following are routines for internal interfaces within the javascript
+// client widgets
+
+function ClientInterface(obj, i)
+    {
+    i.call(this);
+    this.obj = obj;
+    }
+
+function ifc_init_widget(w)
+    {
+    w.__ifc = new Array();
+    w.ifcProbe = ifc_probe;
+    w.ifcProbeAdd = ifc_probe_add;
+    return;
+    }
+
+function ifc_probe_add(i)
+    {
+    if (!this.ifcProbe(i))
+	this.__ifc[i.name] = new ClientInterface(this,i);
+    return this.__ifc[i.name];
+    }
+
+function ifc_probe(i)
+    {
+    if (this.__ifc[i.name]) 
+	return this.__ifc[i.name];
+    else
+	return null;
+    }
+
+
+// the Action interface - allows outside objects to invoke actions
+// on a given widget.
+//
+function ifAction()
+    {
+    function ifaction_invoke(a,ap)
+	{
+	if (this.Actions[a]) 
+	    return this.Actions[a].call(this.obj, ap);
+	else if (pg_diag)
+	    alert("Invoke action: " + this.obj.id + " does not implement action " + a);
+	return null;
+	}
+    function ifaction_schedinvoke(a,ap,d)
+	{
+	if (this.Actions[a])
+	    {
+	    pg_addsched_fn(this, "Invoke", [a, ap], d);
+	    }
+	else
+	    {
+	    alert("SchedInvoke action: " + this.obj.id + " does not implement action " + a);
+	    }
+	}
+    function ifaction_add(a, f)
+	{
+	this.Actions[a] = f;
+	}
+    function ifaction_exists(a)
+	{
+	return (this.Actions[a])?true:false;
+	}
+    this.Actions = new Array();
+    this.Add = ifaction_add;
+    this.Exists = ifaction_exists;
+    this.Invoke = ifaction_invoke;
+    this.SchedInvoke = ifaction_schedinvoke;
+    }
+
+
+// Event interface - allows outside objects to hook into events which
+// occur on the widget.
+//
+function ifEvent()
+    {
+    function ifevent_add(e)
+	{
+	this.Events[e] = new Array();
+	}
+    function ifevent_clear(e)
+	{
+	if (this.Events[e])
+	    this.Events[e] = new Array();
+	else if (pg_diag)
+	    alert("Clear events: " + this.obj.id + " does not implement event " + e);
+	}
+    function ifevent_hook(e,f)
+	{
+	if (this.Events[e])
+	    this.Events[e].push({fn:f, name:e});
+	else if (pg_diag)
+	    alert("Hook event: " + this.obj.id + " does not implement event " + e);
+	}
+    function ifevent_activate(e,ep)
+	{
+	var rval = null;
+	if (this.Events[e])
+	    {
+	    for(var ev=0; ev<this.Events[e].length;ev++)
+		{
+		if ((this.Events[e][ev]).fn == ifevent_connect_exec)
+		    rval = (this.Events[e][ev]).fn(ep);
+		else
+		    rval = (this.Events[e][ev]).fn.call(this.obj, ep);
+		}
+	    }
+	else if (pg_diag)
+	    {
+	    alert("Activate event: " + this.obj.id + " does not implement event " + e);
+	    }
+	return rval;
+	}
+    function ifevent_connect_exec(ep)
+	{
+	var t = eval(this.target);
+	if (!t || !t.ifcProbe) 
+	    {
+	    if (pg_diag)
+		alert("Event " + this.name + " -> Action " + this.action + ": target '" + this.target + "' not a widget");
+	    return null;
+	    }
+	var ai = t.ifcProbe(ifAction);
+	if (!ai) return null;
+	var ap = new Object;
+	for(var pn in this.paramlist)
+	    {
+	    var p = this.paramlist[pn];
+	    if (p.type == 'int' || p.type == 'str' || p.type == 'dbl')
+		ap[pn] = p.value;
+	    else if (p.type == 'sym' || p.type == 'exp')
+		ap[pn] = ep.eval(p.value);
+	    }
+	return ai.Invoke(this.action, ap);
+	}
+    function ifevent_connect(e,t,a,pl)
+	{
+	if (this.Events[e])
+	    this.Events[e].push({fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e});
+	else if (pg_diag)
+	    alert("Connect event: " + this.obj.id + " does not implement event " + e);
+	}
+    function ifevent_exists(e)
+	{
+	return (this.Events[e])?true:false;
+	}
+    this.Events = new Array();
+    this.Add = ifevent_add;
+    this.Hook = ifevent_hook;
+    this.Activate = ifevent_activate;
+    this.Connect = ifevent_connect;
+    this.Exists = ifevent_exists;
+    this.Clear = ifevent_clear;
+    }
+
+
+// Form Element interface
+function ifFormElement(field)
+    {
+    function iffe_getvalue()
+	{
+	return this.Value;
+	}
+    this.Field = field;
+    this.Value = null;
+    this.PrivSetValue = iffe_priv_setvalue;
+    this.PrivSetValueChangeCallback = iffe_priv_setvaluechangecallback;
+    this.SetValue = iffe_setvalue;
+    this.SetValueChangeCallback = iffe_setvaluechangecallback;
+    this.GetValue = iffe_getvalue;
+    this.SetFocus = iffe_setfocus;
+    this.SetEnabled = iffe_setenabled;
+    this.SetReadOnly = iffe_setr
+    this.KeyInput = iffe_keyinput;
+    }

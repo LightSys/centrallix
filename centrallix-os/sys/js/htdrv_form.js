@@ -72,7 +72,7 @@ function form_cb_tab_notify(control)
 	    {
 	    if (pg_removekbdfocus())
 		{
-		if (pg_setkbdfocus(this.elements[ctrlnum], null, 0, 0)) break;
+		if (pg_setkbdfocus(this.elements[ctrlnum], null, null, null)) break;
 		}
 	    }
 	if (ctrlnum == origctrl) break;
@@ -90,7 +90,7 @@ function form_cb_esc_notify(control)
     {
     /** Do a discard **/
     if (control == pg_curkbdlayer && pg_removekbdfocus())
-	this.ActionDiscard();
+	this.ifcProbe(ifAction).Invoke("Discard");
     }
 
 /** User pressed RETURN key **/
@@ -100,7 +100,7 @@ function form_cb_ret_notify(control)
     if (this.mode == 'Query')
 	{
 	if (control == pg_curkbdlayer && pg_removekbdfocus())
-	    return this.ActionQueryExec();
+	    return this.ifcProbe(ifAction).Invoke("QueryExec");
 	}
     /** In new or modify mode, do a save **/
     if (this.mode == 'New' || this.mode == 'Modify')
@@ -108,9 +108,9 @@ function form_cb_ret_notify(control)
 	if (control == pg_curkbdlayer && pg_removekbdfocus())
 	    {
 	    if (this.is_savable)
-		return this.ActionSave();
+		return this.ifcProbe(ifAction).Invoke("Save");
 	    else
-		return this.ActionDiscard();
+		return this.ifcProbe(ifAction).Invoke("Discard");
 	    }
 	}
     }
@@ -129,7 +129,7 @@ function form_cb_is_discard_ready()
 	this.osrc.QueryContinue(this);
 	return 0;
 	}
-    var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('this.osrc.QueryContinue(this);'));this.cb['OperationCompleteFail'].add(this,new Function('this.osrc.QueryCancel(this);'));this.ActionSave();");
+    var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('this.osrc.QueryContinue(this);'));this.cb['OperationCompleteFail'].add(this,new Function('this.osrc.QueryCancel(this);'));this.ifcProbe(ifAction).Invoke(\"Save\");");
     this.cb['_3bConfirmSave'].add(this,savefunc);
     this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.QueryContinue(this);'));
     this.cb['_3bConfirmCancel'].add(this,new Function('this.osrc.QueryCancel(this);'));
@@ -142,7 +142,7 @@ function form_cb_is_discard_ready()
 	    { /* save */
 	    this.cb["OperationCompleteSuccess"].add(this,new Function("this.osrc.QueryContinue(this);"))
 	    this.cb["OperationCompleteFail"].add(this,new Function("this.osrc.QueryCancel(this);"))
-	    this.ActionSave();
+	    this.ifcProbe(ifAction).Invoke("Save");
 	    }
 	else
 	    { /* cancel (discard) */
@@ -245,8 +245,8 @@ function form_action_clear(aparam)
 	    {
 	    if(confirm("OK to save changes, CANCEL to discard them."))
 		{ /* save */
-		this.cb["OperationCompleteSuccess"].add(this,new Function("this.ActionClear();"));
-		this.ActionSave();
+		this.cb["OperationCompleteSuccess"].add(this,new Function("this.ifcProbe(ifAction).Invoke(\"Clear\");"));
+		this.ifcProbe(ifAction).Invoke("Save");
 		return 0;
 		}
 	    else
@@ -274,7 +274,7 @@ function form_action_delete(aparam)
 	    break;
 	case "View":
 	    dataobj = this.BuildDataObj();
-	    this.osrc.ActionDelete(dataobj,this);
+	    this.osrc.ifcProbe(ifAction).Invoke("Delete", {data:dataobj, client:this});
 	    break;
 	case "Query":
 	    this.ClearAll();
@@ -359,12 +359,19 @@ function form_show_3bconfirm()
     save._form_form=this;
     discard._form_form=this;
     cancel._form_form=this;
-    save.EventClick=this._3bconfirm_save;
-    discard.EventClick=this._3bconfirm_discard;
-    cancel.EventClick=this._3bconfirm_cancel;
+    
+    save.ifcProbe(ifEvent).Clear("Click");
+    save.ifcProbe(ifEvent).Hook("Click", this._3bconfirm_save);
+    discard.ifcProbe(ifEvent).Clear("Click");
+    discard.ifcProbe(ifEvent).Hook("Click", this._3bconfirm_discard);
+    cancel.ifcProbe(ifEvent).Clear("Click");
+    cancel.ifcProbe(ifEvent).Hook("Click", this._3bconfirm_cancel);
+    //save.EventClick=this._3bconfirm_save;
+    //discard.EventClick=this._3bconfirm_discard;
+    //cancel.EventClick=this._3bconfirm_cancel;
     
     var funclate=new Function("this.cb['_3bConfirmCancel'].clear();this.cb['_3bConfirmDiscard'].clear();this.cb['_3bConfirmSave'].clear();");
-    var func=new Function("pg_setmodal(null);var v=new Object();v.IsVisible=0;this._3bconfirmwindow.ActionSetVisibility(v);");
+    var func=new Function("pg_setmodal(null);var v=new Object();v.IsVisible=0;this._3bconfirmwindow.ifcProbe(ifAction).Invoke(\"Close\", {});");
     
 /** funclate will fire last (or very close, with a level of 1000) **/
     this.cb['_3bConfirmCancel'].add(this,funclate,null,1000);
@@ -378,7 +385,7 @@ function form_show_3bconfirm()
     
 /** set modal and make the user do something
  **   modal will be unset and we'll get control back via callbacks **/
-    this._3bconfirmwindow.ActionSetVisibility(1);
+    this._3bconfirmwindow.ifcProbe(ifAction).Invoke("Open", {});
     pg_setmodal(this._3bconfirmwindow.ContentLayer)
     
     }
@@ -435,7 +442,7 @@ function form_action_view(aparam)
 /** tell osrc to go to first record **/
 function form_action_first(aparam)
     {
-    this.osrc.ActionFirst();
+    this.osrc.ifcProbe(ifAction).Invoke("First", {});
     return 0;
     }
 
@@ -444,7 +451,7 @@ function form_action_last(aparam)
     {
     this.didsearchlast = true;
     this.didsearch = true;
-    this.osrc.ActionLast();
+    this.osrc.ifcProbe(ifAction).Invoke("Last", {});
     return 0;
     }
 
@@ -452,14 +459,14 @@ function form_action_last(aparam)
 function form_action_next(aparam)
     {
     this.didsearch = true;
-    this.osrc.ActionNext();
+    this.osrc.ifcProbe(ifAction).Invoke("Next", {});
     return 0;
     }
 
 /** Save changed data, move the osrc **/
 function form_action_prev(aparam)
     {
-    this.osrc.ActionPrev();
+    this.osrc.ifcProbe(ifAction).Invoke("Prev", {});
     return 0;
     }
 
@@ -489,7 +496,7 @@ function form_change_mode(newmode)
     //confirm('Form is going from '+this.mode+' to '+newmode+' mode.');
     if(this.mode=='Modify' && this.IsUnsaved)
 	{
-	var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('this.Action"+newmode+"();'));this.ActionSave();");
+	var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('this.ifcProbe(ifAction).Invoke(\""+newmode+"\", {});'));this.ifcProbe(ifAction).Invoke(\"Save\", {});");
 	var discardfunc=new Function("this.IsUnsaved=false;this.is_savable=false;this.ChangeMode('"+newmode+"');");
 	this.cb['_3bConfirmDiscard'].add(this,discardfunc);
 	this.cb['_3bConfirmSave'].add(this,savefunc);
@@ -508,7 +515,7 @@ function form_change_mode(newmode)
 	    {
 	    if (pg_removekbdfocus())
 		{
-		if (pg_setkbdfocus(this.elements[i], null, 0, 0)) break;
+		if (pg_setkbdfocus(this.elements[i], null, null, null)) break;
 		}
 	    }
 	}
@@ -573,7 +580,8 @@ function form_change_mode(newmode)
 function form_send_event(event)
     {
     //confirm(eval('this.Event'+event));
-    if(!eval('this.Event'+event)) return 1;
+    if (!this.ifcProbe(ifEvent).Exists(event)) return 1;
+    //if(!eval('this.Event'+event)) return 1;
     var evobj = new Object();
     evobj.Caller = this;
     evobj.Status = this.mode;
@@ -593,7 +601,7 @@ function form_clear_all()
 	}
     this.IsUnsaved=false;
     this.is_savable = false;
-    //this.osrc.ActionClear();
+    //this.osrc.ifcProbe(ifAction).Invoke("Clear");
     }
 
 /** Disables all children **/
@@ -650,9 +658,9 @@ function form_action_query()
 function form_action_querytoggle()
     {
     if(this.mode=='Query')
-	return this.ActionQueryExec();
+	return this.ifcProbe(ifAction).Invoke("QueryExec");
     else
-	return this.ActionQuery();
+	return this.ifcProbe(ifAction).Invoke("Query");
     }
 
 /** Execute query **/
@@ -690,8 +698,8 @@ function form_action_queryexec()
 	this.Pending=true;
 	this.IsUnsaved=false;
 	this.is_savable = false;
-	//this.cb['DataAvailable'].add(this,new Function('this.osrc.ActionFirst(this)'));
-	this.osrc.ActionQueryObject(query, this, this.readonly);
+	//this.cb['DataAvailable'].add(this,new Function('this.osrc.ifcProbe(ifAction).Invoke("First", this)'));
+	this.osrc.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:this, ro:this.readonly});
 	}
     delete query;
     }
@@ -724,7 +732,7 @@ function form_action_save()
 	return 0;
 	}
     this.cb['OperationCompleteSuccess'].add(this,
-	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ActionView();this.cb['OperationCompleteFail'].clear();"),null,-100);
+	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ifcProbe(ifAction).Invoke(\"View\");this.cb['OperationCompleteFail'].clear();"),null,-100);
      this.cb['OperationCompleteFail'].add(this,
 	   new Function("this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
     
@@ -733,9 +741,9 @@ function form_action_save()
     this.DisableAll();
     this.Pending=true;
     if (this.mode == 'New')
-	this.osrc.ActionCreate(dataobj,this);
+	this.osrc.ifcProbe(ifAction).Invoke("Create", {data:dataobj, client:this});
     else
-	this.osrc.ActionModify(dataobj,this);
+	this.osrc.ifcProbe(ifAction).Invoke("Modify", {data:dataobj, client:this});
     }
 
 /** Helper function to build a query */
@@ -854,15 +862,15 @@ function form_cb_reveal(element,event)
 	    if (this.IsUnsaved)
 		{
 		this._orsevent = event;
-		var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ActionSave();");
+		var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ifcProbe(ifAction).Invoke(\"Save\");");
 		this.cb['_3bConfirmSave'].add(this,savefunc);
-		this.cb['_3bConfirmDiscard'].add(this,new Function('this.ActionDiscard();pg_reveal_check_ok(this._orsevent);'));
+		this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard");pg_reveal_check_ok(this._orsevent);'));
 		this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
 		this.show3bconfirm();
 		}
 	    else
 		{
-		this.ActionDiscard();
+		this.ifcProbe(ifAction).Invoke("Discard");
 		pg_reveal_check_ok(event);
 		}
 	    break;
@@ -884,6 +892,7 @@ function form_cb_reveal(element,event)
 function form_init(param)
     {
     var form = new Object();
+    ifc_init_widget(form);
     form.readonly=param.ro;
     form.elements = new Array();
     form.statuswidgets = new Array();
@@ -937,21 +946,6 @@ function form_init(param)
     form._3bconfirm_cancel = form_3bconfirm_cancel;
     form._3bconfirm_save = form_3bconfirm_save;
     form.show3bconfirm = form_show_3bconfirm;
-    form.Actiontest3bconfirm = form_test_3bconfirm;
-    form.ActionClear = form_action_clear;
-    form.ActionDelete = form_action_delete;
-    form.ActionDiscard = form_action_discard;
-    form.ActionEdit = form_action_edit;
-    form.ActionView = form_action_view;
-    form.ActionFirst = form_action_first;
-    form.ActionLast = form_action_last;
-    form.ActionNew = form_action_new;
-    form.ActionPrev = form_action_prev;
-    form.ActionNext = form_action_next;
-    form.ActionQuery = form_action_query;
-    form.ActionQueryExec = form_action_queryexec;
-    form.ActionQueryToggle = form_action_querytoggle;
-    form.ActionSave = form_action_save;
     form.IsDiscardReady = form_cb_is_discard_ready;
     form.DataAvailable = form_cb_data_available;
     form.ObjectAvailable = form_cb_object_available;
@@ -977,5 +971,34 @@ function form_init(param)
     form.BuildDataObj = form_build_dataobj;
     form.Reveal = form_cb_reveal;
     //form.InitQuery = form_init_query;
+
+    // Actions
+    var ia = form.ifcProbeAdd(ifAction);
+    ia.Add("test3bconfirm", form_test_3bconfirm);
+    ia.Add("Clear", form_action_clear);
+    ia.Add("Delete", form_action_delete);
+    ia.Add("Discard", form_action_discard);
+    ia.Add("Edit", form_action_edit);
+    ia.Add("View", form_action_view);
+    ia.Add("First", form_action_first);
+    ia.Add("Last", form_action_last);
+    ia.Add("New", form_action_new);
+    ia.Add("Prev", form_action_prev);
+    ia.Add("Next", form_action_next);
+    ia.Add("Query", form_action_query);
+    ia.Add("QueryExec", form_action_queryexec);
+    ia.Add("QueryToggle", form_action_querytoggle);
+    ia.Add("Save", form_action_save);
+
+    // Events
+    var ie = form.ifcProbeAdd(ifEvent);
+    ie.Add("StatusChange");
+    ie.Add("DataChange");
+    ie.Add("NoData");
+    ie.Add("View");
+    ie.Add("New");
+    ie.Add("Modify");
+    ie.Add("Search");
+
     return form;
     }

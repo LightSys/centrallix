@@ -564,6 +564,7 @@ function tx_deselect()
 function tx_init(param)
     {
     var l = param.layer;
+    ifc_init_widget(l);
     if (!param.mainBackground)
 	{
 	if (cx__capabilities.Dom0NS)
@@ -616,5 +617,17 @@ function tx_init(param)
     if (fm_current) fm_current.Register(l);
     l.form = fm_current;
     l.changed = false;
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+    ie.Add("GetFocus");
+    ie.Add("LoseFocus");
+    ie.Add("DataChange");
+
     return l;
     }

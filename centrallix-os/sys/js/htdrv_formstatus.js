@@ -69,16 +69,9 @@ function fs_cb_reveal(e) {
 
 function fs_init(param) {
     var l = param.layer;
-    l.kind = 'formstatus';
-    l.mainlayer = l;
-    if(cx__capabilities.Dom0NS) {
-	l.document.layer = l;
-    } else if(cx__capabilities.Dom1HTML) {
-	l.layer = l;
-    } else {
-	alert('browser not supported');
-    }
     var images = pg_images(l);
+    htr_init_layer(l,l,"formstatus");
+    ifc_init_widget(l);
     images[0].layer = l;
     images[0].mainlayer = l;
     images[0].kind = 'formstatus';
@@ -97,6 +90,14 @@ function fs_init(param) {
 	// already visible
 	l.form.Reveal(l,{ eventName:'Reveal' });
     }
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
 
     return l;
 }

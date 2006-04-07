@@ -158,6 +158,16 @@ function checkbox_init(param)
     l.disable    = checkbox_disable;
     if (fm_current) fm_current.Register(l);
 
+    // Events
+    ifc_init_widget(l);
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("DataChange");
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+
     return l;
     }
 

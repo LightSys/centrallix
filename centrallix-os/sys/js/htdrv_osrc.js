@@ -14,17 +14,21 @@ function osrc_init_query()
     if(this.init==true)
 	return;
     this.init=true;
-    this.ActionQueryObject(null,null,this.readonly);
+    this.ifcProbe(ifAction).Invoke("QueryObject", {qy:null, client:null, ro:this.readonly});
     }
 
-function osrc_action_order_object(order)
+function osrc_action_order_object(aparam) //order)
     {
-    this.pendingorderobject=order;
-    this.ActionQueryObject(this.queryobject,null,this.readonly);
+    this.pendingorderobject=aparam.orderobj;
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
     }
 
-function osrc_action_query_object(q, formobj, readonly)
+function osrc_action_query_object(aparam) //q, formobj, readonly)
     {
+    var q = aparam.query;
+    var formobj = aparam.client;
+    var readonly = aparam.ro;
+
     if(this.pending)
 	{
 	alert('There is already a query or movement in progress...');
@@ -68,7 +72,7 @@ function osrc_action_query_object(q, formobj, readonly)
     if (!readonly)
 	statement += ' FOR UPDATE'
     //statement+=';';
-    this.ActionQuery(statement,formobj);
+    this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj});
     
     }
 
@@ -136,8 +140,11 @@ function osrc_make_filter(q)
     }
 
 
-function osrc_action_query(q, formobj)
+function osrc_action_query(aparam) //q, formobj)
     {
+    var q = aparam.query;
+    var formobj = aparam.client;
+
     //Is discard ready
     //if(!formobj.IsDiscardReady()) return 0;
     //Send query as GET request
@@ -171,8 +178,11 @@ function osrc_action_query(q, formobj)
     this.QueryContinue(this.child[0]);
     }
 
-function osrc_action_delete(up,formobj)
+function osrc_action_delete(aparam) //up,formobj)
     {
+    var up = aparam.dataobj;
+    var formobj = aparam.client;
+
     //Delete an object through OSML
     var src = this.baseobj + '?ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
     this.formobj = formobj;
@@ -234,8 +244,11 @@ function osrc_action_delete_cb()
     return 0;
     }
 
-function osrc_action_create(up,formobj)
+function osrc_action_create(aparam) //up,formobj)
     {
+    var up = aparam.dataobj;
+    var formobj = aparam.client;
+
     this.formobj=formobj;
     this.createddata=up;
     //First close the currently open query
@@ -251,10 +264,10 @@ function osrc_action_create(up,formobj)
 	this.LastRecord=0;
 	this.FirstRecord=1;
 	this.CurrentRecord=1;
-	this.OpenSession(this.ActionCreateCB2);
+	this.OpenSession(this.CreateCB2);
 	return 0;
 	}
-    this.ActionCreateCB2();
+    this.CreateCB2();
     return 0;
     }
 
@@ -307,8 +320,11 @@ function osrc_action_create_cb()
     delete this.createddata;
     }
 
-function osrc_action_modify(up,formobj)
+function osrc_action_modify(aparam) //up,formobj)
     {
+    var up = aparam.dataobj;
+    var formobj = aparam.client;
+
     //Modify an object through OSML
     //aparam[adsf][value];
     
@@ -478,7 +494,7 @@ function osrc_get_qid()
 	{
 	for(var i in this.child)
 	    this.child[i].DataAvailable();
-	this.ActionFirst();
+	this.ifcProbe(ifAction).Invoke("First", {});
 	}
 /** normally don't actually load the data...just let children know that the data is available **/
     }
@@ -513,7 +529,7 @@ function osrc_fetch_next()
 	    }
 	this.pending=false;
 	if(this.doublesync)
-	    this.ActionDoubleSyncCB();
+	    this.DoubleSyncCB();
 	if(qid)
 	    {
 	    //confirm('close query');
@@ -597,7 +613,7 @@ function osrc_fetch_next()
 	else
 	    {
 	    if(this.doublesync)
-		this.ActionDoubleSyncCB();
+		this.DoubleSyncCB();
 	    if(this.moveop)
 		this.GiveAllCurrentRecord();
 	    else
@@ -667,7 +683,7 @@ function osrc_close_session()
     }
 
 
-function osrc_move_first(formobj)
+function osrc_move_first(aparam)
     {
     this.MoveToRecord(1);
     }
@@ -845,17 +861,17 @@ function osrc_get_qid_startat()
     }
 
 
-function osrc_move_next(formobj)
+function osrc_move_next(aparam)
     {
     this.MoveToRecord(this.CurrentRecord+1);
     }
 
-function osrc_move_prev(formobj)
+function osrc_move_prev(aparam)
     {
     this.MoveToRecord(this.CurrentRecord-1);
     }
 
-function osrc_move_last(formobj)
+function osrc_move_last(aparam)
     {
     this.MoveToRecord(Number.MAX_VALUE); /* FIXME */
     //alert("do YOU know where the end is? I sure don't.");
@@ -999,7 +1015,7 @@ function osrc_action_sync(param)
 		}
 	    }
 	}
-    this.ActionQueryObject(query,null,this.readonly);
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null,ro:this.readonly});
     }
 
 function osrc_action_double_sync(param)
@@ -1038,7 +1054,7 @@ function osrc_action_double_sync(param)
 		}
 	    }
 	}
-    this.ActionQueryObject(query,null,this.readonly);
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null, ro:this.readonly});
     }
 
 function osrc_action_double_sync_cb()
@@ -1080,7 +1096,7 @@ function osrc_action_double_sync_cb()
 	}
     
     this.doublesync=false;
-    this.childosrc.ActionQueryObject(query,null,this.readonly);
+    this.childosrc.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null, ro:this.readonly});
     }
 
 /** called by child when all or part of the child is shown to the user **/
@@ -1095,7 +1111,9 @@ function osrc_cb_reveal(child)
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery',0);
     else if (this.autoquery == this.AQonEachReveal)
-	pg_addsched_fn(this,'ActionQueryObject', new Array(null,null,this.readonly),0);
+	{
+	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:null, client:null, ro:this.readonly}, 0);
+	}
     return 0;
     }
 
@@ -1121,6 +1139,7 @@ function osrc_cb_control_msg(m)
 function osrc_init(param)
     {
     var loader = param.loader;
+    ifc_init_widget(loader);
     loader.osrcname=param.name;
     loader.readahead=param.readahead;
     loader.scrollahead=param.scrollahead;
@@ -1145,16 +1164,29 @@ function osrc_init(param)
     loader.oldoids = new Array();
     loader.sid = null;
     loader.qid = null;
-    
+   
+    // Actions
+    var ia = loader.ifcProbeAdd(ifAction);
     //loader.ActionClear=osrc_action_clear;
-    loader.ActionQuery=osrc_action_query;
-    loader.ActionQueryObject=osrc_action_query_object;
-    loader.ActionOrderObject=osrc_action_order_object;
-    loader.ActionDelete=osrc_action_delete;
-    loader.ActionCreate=osrc_action_create;
-    loader.ActionCreateCB2 = osrc_action_create_cb2;
-    loader.ActionModify=osrc_action_modify;
+    ia.Add("Query", osrc_action_query);
+    ia.Add("QueryObject", osrc_action_query_object);
+    ia.Add("OrderObject", osrc_action_order_object);
+    ia.Add("Delete", osrc_action_delete);
+    ia.Add("Create", osrc_action_create);
+    ia.Add("Modify", osrc_action_modify);
+    ia.Add("First", osrc_move_first);
+    ia.Add("Next", osrc_move_next);
+    ia.Add("Prev", osrc_move_prev);
+    ia.Add("Last", osrc_move_last);
+    ia.Add("Sync", osrc_action_sync);
+    ia.Add("DoubleSync", osrc_action_double_sync);
 
+    // Events
+    var ie = loader.ifcProbeAdd(ifEvent);
+    ie.Add("DataFocusChanged");
+
+    loader.CreateCB2 = osrc_action_create_cb2;
+    loader.DoubleSyncCB = osrc_action_double_sync_cb;
     loader.OpenSession=osrc_open_session;
     loader.OpenQuery=osrc_open_query;
     loader.CloseQuery=osrc_close_query;
@@ -1167,11 +1199,6 @@ function osrc_init(param)
     loader.Register = osrc_cb_register;
     loader.Reveal = osrc_cb_reveal;
     loader.Obscure = osrc_cb_obscure;
-  
-    loader.ActionFirst = osrc_move_first;
-    loader.ActionNext = osrc_move_next;
-    loader.ActionPrev = osrc_move_prev;
-    loader.ActionLast = osrc_move_last;
 
     loader.ScrollTo = osrc_scroll_to;
     loader.ScrollPrev = osrc_scroll_prev;
@@ -1181,9 +1208,6 @@ function osrc_init(param)
 
     loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;
 
-    loader.ActionSync = osrc_action_sync;
-    loader.ActionDoubleSync = osrc_action_double_sync;
-    loader.ActionDoubleSyncCB = osrc_action_double_sync_cb;
     loader.InitQuery = osrc_init_query;
     loader.cleanup = osrc_cleanup;
 

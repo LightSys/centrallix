@@ -108,6 +108,20 @@ function dt_init(param){
 	}
 	if (fm_current) fm_current.Register(l);
 	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dt', 'dt', 3);
+
+	// Events
+	ifc_init_widget(l);
+	var ie = l.ifcProbeAdd(ifEvent);
+	ie.Add('DataChange');
+	ie.Add('GetFocus');
+	ie.Add('LoseFocus');
+	ie.Add('Click');
+	ie.Add('MouseDown');
+	ie.Add('MouseUp');
+	ie.Add('MouseOver');
+	ie.Add('MouseOut');
+	ie.Add('MouseMove');
+
 	return l;
 }
 

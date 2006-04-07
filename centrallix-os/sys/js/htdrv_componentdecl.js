@@ -14,6 +14,15 @@ function cmpd_init(is_visual)
     // component is access point for stuff inside, shell is access point for stuff outside.
     var component = new Object();
     var shell = new Object();
+
+    // interface init
+    ifc_init_widget(component);
+    ifc_init_widget(shell);
+    component.ifcProbeAdd(ifAction);
+    component.ifcProbeAdd(ifEvent);
+    shell.ifcProbeAdd(ifAction);
+    shell.ifcProbeAdd(ifEvent);
+
     shell.setContext = cmpd_shell_set_context;
     shell.handleAction = cmpd_shell_handle_action;
     shell.context = null;
@@ -21,7 +30,8 @@ function cmpd_init(is_visual)
     component.addEvent = cmpd_add_event;
     component.addProp = cmpd_add_prop;
     component.handleAction = cmpd_handle_action;
-    component.ActionModifyProperty = cmpd_action_modify_property;
+    component.ifcProbe(ifAction).Add('ModifyProperty', cmpd_action_modify_property);
+    shell.ifcProbe(ifEvent).Add('ModifyProperty');
     component.shell = shell;
     component.is_visual = is_visual;
     shell.component = component;
@@ -35,13 +45,15 @@ function cmpd_endinit(c)
 
 function cmpd_add_action(a)
     {
-    this.shell["Action" + a] = new Function('aparam','this.handleAction("' + a + '",aparam);');
+    this.shell.ifcProbe(ifAction).Add(a, new Function('aparam','this.handleAction("' + a + '",aparam);'));
+    this.ifcProbe(ifEvent).Add(a);
     return;
     }
 
 function cmpd_add_event(e)
     {
-    this["Action" + e] = new Function('aparam','this.handleAction("' + e + '",aparam);');
+    this.ifcProbe(ifAction).Add(e, new Function('aparam','this.handleAction("' + e + '",aparam);'));
+    this.shell.ifcProbe(ifEvent).Add(e);
     return;
     }
 
@@ -49,6 +61,7 @@ function cmpd_add_prop(p)
     {
     this.shell[p] = null;
     htr_watch(this.shell, p, cmpd_shell_prop_change);
+    this.ifcProbe(ifEvent).Add('MODIFY' + p);
     return;
     }
 

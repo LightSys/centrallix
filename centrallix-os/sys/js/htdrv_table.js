@@ -273,6 +273,7 @@ function tbld_init(param)
     {
     var t = param.table;
     var scroll = param.scroll;
+    ifc_init_widget(t);
     t.startat=1;
     t.tablename = param.tablename;
     t.dragcols = param.dragcols;
@@ -462,6 +463,11 @@ function tbld_init(param)
     t.Update=tbld_update;
     t.RecnumToSlot=tbld_recnum_to_slot
     t.SlotToRecnum=tbld_slot_to_recnum
+
+    // Events
+    var ie = t.ifcProbeAdd(ifEvent);
+    ie.Add("Click");
+    ie.Add("DblClick");
 
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;

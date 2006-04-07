@@ -15,13 +15,7 @@ function tm_expire(tm)
 	tm.timerid = setTimeout(tm_expire,tm.msec,tm);
     else
 	tm.timerid = null;
-    if (tm.EventExpire != null)
-	{
-	eparam = new Object();
-	eparam.Caller = tm;
-	cn_activate(tm, 'Expire', eparam);
-	delete eparam;
-	}
+    tm.ifcProbe(ifEvent).Activate('Expire', {Caller:tm});
     }
 
 function tm_action_settimer(aparam)
@@ -40,11 +34,20 @@ function tm_action_canceltimer(aparam)
 function tm_init(param)
     {
     tm = new Object();
+    ifc_init_widget(tm);
     tm.autostart = param.autostart;
     tm.autoreset = param.autoreset;
     tm.msec = param.time;
-    tm.ActionSetTimer = tm_action_settimer;
-    tm.ActionCancelTimer = tm_action_canceltimer;
+
+    // Actions
+    var ia = tm.ifcProbeAdd(ifAction);
+    ia.Add("SetTimer", tm_action_settimer);
+    ia.Add("CancelTimer", tm_action_canceltimer);
+
+    // Events
+    var ie = tm.ifcProbeAdd(ifEvent);
+    ie.Add("Expire");
+
     if (param.autostart)
 	tm.timerid = setTimeout(tm_expire, param.time, tm);
     else

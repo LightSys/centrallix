@@ -49,20 +49,7 @@ function tv_new_layer(width,pdoc,l)
 	    }
 	tv_alloc_cnt++;
 	}
-    nl.kind = 'tv';
-    if(cx__capabilities.Dom0NS)
-	{
-	nl.document.layer = l;
-	}
-    else if(cx__capabilities.Dom1HTML)
-	{
-	nl.layer = l;
-	}
-    else
-	{
-	alert('treeview: browser not supported');
-	}
-    nl.mainlayer = l;
+    htr_init_layer(nl, l, 'tv');
     return nl;
     }
 
@@ -142,7 +129,7 @@ function tv_click(e)
 			    nr = "javascript:"+l.parent.objptr[l.objn].name;
 			else
 			    nr = "javascript:"+l.objn;
-			l.mainlayer.ActionSetRoot({NewRoot:nr, NewRootObj:l.parent.objptr[l.objn]});
+			l.mainlayer.ifcProbe(ifAction).Invoke("SetRoot", {NewRoot:nr, NewRootObj:l.parent.objptr[l.objn]});
 			//else tv_init(l.root,"javascript:"+l.objn,l.root.ld,l.root.pdoc,l.root.clip.width,l.root.LSParent,l.parent.objptr[l.objn]);
 			}
 		    break;
@@ -154,15 +141,11 @@ function tv_click(e)
 	{
 	if (e.target.layer && e.target.layer.link_href)
 	    {
-	    eparam = new Object();
-	    eparam.Pathname = e.target.layer.fname;
-	    if (eparam.Pathname.lastIndexOf('/') == eparam.Pathname.length-1)
-		eparam.Pathname = eparam.Pathname.substring(0,eparam.Pathname.length-1);
-	    eparam.HRef = e.target.layer.link_href;
-	    eparam.Caller = e.target.layer.root;
-	    if (e.target.layer.root.EventClickItem != null)
-		cn_activate(e.target.layer.root,'ClickItem', eparam);
-	    delete eparam;
+	    var path = e.target.layer.fname;
+	    var r = e.target.layer.root;
+	    if (path.lastIndexOf('/') == path.length-1)
+		path = path.substring(0,path.length-1);
+	    r.ifcProbe(ifEvent).Activate('ClickItem', {Pathname:path, HRef:e.target.layer.link_href, Caller:r});
 	    }
 	return false;
 	}
@@ -202,19 +185,10 @@ function tv_rclick(e)
 	    }
 	else
 	    {
-	    hr = e.target.layer.document.links[0].href;
-	    eparam = new Object();
-	    eparam.Pathname = hr;
-	    eparam.Caller = e.target.layer.root;
-	    eparam.X = e.pageX;
-	    eparam.Y = e.pageY;
-	    if (e.target.layer.root.EventRightClickItem != null)
-		{
-		cn_activate(e.target.layer.root, 'RightClickItem', eparam);
-		delete eparam;
+	    var hr = e.target.layer.document.links[0].href;
+	    var r = e.target.layer.root;
+	    if (r.ifcProbe(ifEvent).Activate('RightClickItem', {Pathname:hr, Caller:r, X:e.pageX, Y:e.pageY}) != null)
 		return false;
-		}
-	    delete eparam;
 	    }
 	}
     return true;
@@ -645,11 +619,10 @@ function tv_init(param)
     l.img = pg_images(l)[0];
     l.img.layer = l;
     l.img.kind = 'tv';
-    l.kind = 'tv';
     l.pdoc = pdoc;
     l.ld = param.loader;
     htr_init_layer(l,l,'tv');
-    l.mainlayer = l;
+    ifc_init_widget(l);
     //l.ld.parent = l;
     l.root = l;
     if (!pdoc.tv_layer_cache) pdoc.tv_layer_cache = new Array();
@@ -672,8 +645,20 @@ function tv_init(param)
     l.expand=tv_expand;
 
     // Actions
-    l.ActionSetRoot = tv_action_setroot;
-    l.ActionSetFocus = tv_action_setfocus;
+    var ia=l.ifcProbeAdd(ifAction);
+    ia.Add("SetRoot", tv_action_setroot);
+    ia.Add("SetFocus", tv_action_setfocus);
+
+    // Events
+    var ie=l.ifcProbeAdd(ifEvent);
+    ie.Add("Click");
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+    ie.Add("ClickItem");
+    ie.Add("RightClickItem");
 
     l.is_initialized = true;
 

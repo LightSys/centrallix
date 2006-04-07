@@ -11,6 +11,13 @@
 
 function cn_activate(t,f,eparam)
     {
+    if (eparam == null) eparam = {};
+    if (!t.ifcProbe(ifEvent)) alert('ifEvent not defined on ' + t.id + ' for event ' + f);
+    return t.ifcProbe(ifEvent).Activate(f,eparam);
+    }
+
+/*function cn_activate(t,f,eparam)
+    {
     if (!t || !t['Event'+f]) return false;
     if (!eparam)
 	{
@@ -32,7 +39,7 @@ function cn_activate(t,f,eparam)
 	if(d) delete eparam;
 	return t['Event' + f](eparam);
 	}
-    }
+    }*/
 
 // would be nice if this could go through the wgtr module, but the
 // sequence of events at startup makes that tricky - this gets called

@@ -169,6 +169,7 @@ function ht_init(param)
     htr_init_layer(l2,l,'ht');
     htr_init_layer(param.faderLayer,l,'ht');
     if (param.loader) htr_init_layer(param.loader, l, 'ht');
+    ifc_init_widget(l);
     l.loader = param.loader;
     l2.loader = param.loader;
     l.pdoc = param.pdoc;
@@ -220,10 +221,22 @@ function ht_init(param)
 	htr_watch(l, 'source', 'ht_sourcechanged');
 	//htr_watch(l, 'source', 'ht_sourcechanged');
 	}
-    l.ActionLoadPage = ht_loadpage;
-    l.ActionAddText = ht_addtext;
-    l.ActionShowText = ht_showtext;
-    l.ActionSetValue = ht_setvalue;
+
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("LoadPage", ht_loadpage);
+    ia.Add("AddText", ht_addtext);
+    ia.Add("ShowText", ht_showtext);
+    ia.Add("SetValue", ht_setvalue);
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+    
     //l.watch('source', ht_sourcechanged);
     pg_resize(l.parentLayer);
     return l;

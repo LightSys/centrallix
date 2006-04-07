@@ -25,11 +25,16 @@ function ex_action_domethod(aparam)
 function ex_init(param)
     {
     var ex = new Object();
+    ifc_init_widget(ex);
     ex.Objname = param.objname;
     ex.Methodname = param.methname;
     ex.Methodparam = param.methparam;
-    ex.ActionExecuteMethod = ex_action_domethod;
     ex.HiddenLayer = new Layer(64);
+
+    // Actions
+    var ia = ex.ifcProbeAdd(ifAction);
+    ia.Add("ExecuteMethod", ex_action_domethod);
+
     return ex;
     }
 

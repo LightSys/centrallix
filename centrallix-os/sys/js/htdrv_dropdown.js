@@ -483,6 +483,7 @@ function dd_init(param)
     l.HidLayer = param.c2;
     htr_init_layer(l.VisLayer, l, 'ddtxt');
     htr_init_layer(l.HidLayer, l, 'ddtxt');
+    ifc_init_widget(l);
     l.VisLayer.index = null;
     l.HidLayer.index = null;
     l.Items = new Array();
@@ -519,5 +520,16 @@ function dd_init(param)
 	}
     l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dd', 'dd', 3);
     if (fm_current) fm_current.Register(l);
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseMove");
+    ie.Add("DataChange");
+    ie.Add("GetFocus");
+    ie.Add("LoseFocus");
+
     return l;
     }

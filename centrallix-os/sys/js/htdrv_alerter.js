@@ -24,8 +24,10 @@ function alrt_action_confirm(sendthis)
 function alrt_init()
     {
     alrt = new Object();
-    alrt.ActionAlert = alrt_action_alert;
-    alrt.ActionConfirm = alrt_action_confirm;
+    ifc_init_widget(alrt);
+    var ai = alrt.ifcProbeAdd(ifAction);
+    ai.Add("Alert", alrt_action_alert);
+    ai.Add("Confirm", alrt_action_confirm);
     //alrt.ActionViewDOM = alrt_action_view_DOM;
     //alrt.ActionViewTreeDOM = alrt_action_view_tree_DOM;
     return alrt;

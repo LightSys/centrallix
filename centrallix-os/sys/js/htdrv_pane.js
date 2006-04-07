@@ -20,22 +20,21 @@ function pn_init(param)
 
     htr_init_layer(ml,ml,"pn");
     if (ml != l) htr_init_layer(l,ml,"pn");
-    
+    ifc_init_widget(ml);
+
     ml.maxheight = getClipHeight(l)-2;
     ml.maxwidth = getClipWidth(l)-2;
 
-    if(cx__capabilities.Dom0NS)
-	{
-	htutil_tag_images(l,'pn',ml,ml);
-	}
-    else if(cx__capabilities.Dom1HTML)
-	{
-	htutil_tag_images(l,'pn',ml,ml);
-	}
-    else
-	{
-	alert('browser not supported');
-	}
+    htutil_tag_images(l,'pn',ml,ml);
 
-    return l;
+    // Events
+    var ie = ml.ifcProbeAdd(ifEvent);
+    ie.Add("Click");
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+
+    return ml;
     }
