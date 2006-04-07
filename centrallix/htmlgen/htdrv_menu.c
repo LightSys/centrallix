@@ -137,6 +137,30 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
     }
 
 
+int
+htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, char* nptr)
+    {
+
+	if (!is_horizontal)
+	    htrAddBodyItem_va(s, "<tr>");
+
+	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+
+	/** If vertical, add a separating line.  If horiz, just add some space **/
+	if (is_horizontal)  
+	    {
+	    htrAddBodyItem_va(s, "<td>&nbsp;&nbsp;&nbsp;</td>");
+	    }
+	else
+	    {
+	    htrAddBodyItem_va(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
+	    }
+	htrAddScriptInit_va(s, "    %s.AddItem({sep:true});\n", nptr);
+
+    return 0;
+    }
+
+
 /*** htmenuRender - generate the HTML code for the menu widget.
  ***/
 int 
@@ -147,6 +171,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
     char active[80];
     char textcolor[80];
     char name[64];
+    char pdoc[80];
     char *ptr, *nptr;
     int x,y,w,h;
     int col_w, row_h;
@@ -315,6 +340,11 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 		    mcnt++;
 		    }
 		}
+	    else if (!strcmp(ptr,"widget/menusep"))
+		{
+		htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, nptr);
+		mcnt++;
+		}
 	    }
 	if (is_horizontal)
 	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
@@ -342,6 +372,11 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 			htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 1, row_h, mcnt, nptr, xs);
 			mcnt++;
 			}
+		    }
+		else if (!strcmp(ptr,"widget/menusep"))
+		    {
+		    htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, nptr);
+		    mcnt++;
 		    }
 		}
 	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
@@ -384,9 +419,15 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/menuitem")) 
 		{
-		htrRenderSubwidgets(s, sub_tree, z+1, parentname, nptr);
+		wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
+		snprintf(pdoc, sizeof(pdoc), "%s", ptr);
+		htrRenderSubwidgets(s, sub_tree, parentname, pdoc, z+1);
 		/*sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;*/
 		} 
+	    else if (!strcmp(ptr,"widget/menusep"))
+		{
+		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
+		}
 	    else 
 		{
 		htrRenderWidget(s, sub_tree, z+1, parentname, nptr);
