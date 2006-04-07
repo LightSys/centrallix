@@ -15,6 +15,8 @@ function wn_init(param)
     var titlebar = param.titlebar;
     htr_init_layer(l,l,"wn");
     htr_init_layer(param.mainlayer,l,"wn");
+    ifc_init_widget(l);
+
     /** NS4 version doesn't use a separate div for the title bar **/
     if(cx__capabilities.Dom1HTML && titlebar)
 	{
@@ -63,8 +65,21 @@ function wn_init(param)
 	}
 
     wn_bring_top(l);
-    l.ActionSetVisibility = wn_setvisibility;
-    l.ActionToggleVisibility = wn_togglevisibility;
+
+    // Actions
+    l.ifcProbeAdd(ifAction).Add("SetVisibility", wn_setvisibility);
+    l.ifcProbe(ifAction).Add("ToggleVisibility", wn_togglevisibility);
+    l.ifcProbe(ifAction).Add("Open", wn_openwin);
+    l.ifcProbe(ifAction).Add("Close", wn_closewin);
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("MouseMove");
+
     l.RegisterOSRC = wn_register_osrc;
 
     // Register as a triggerer of reveal/obscure events
@@ -131,6 +146,7 @@ function wn_setvisibility_bh(v)
 	pg_reveal_event(this, v, 'Reveal');
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
+	if (this.is_modal) pg_setmodal(this);
 	}
     }
 
@@ -247,7 +263,9 @@ function wn_graphical_shade(l,to,speed,size)
 
 function wn_close(l)
     {
-    if (l.closetype == 0)
+    if (l.is_modal) pg_setmodal(null);
+    l.is_modal = false;
+    if (l.closetype == 0 || !cx__capabilities.Dom0NS)
 	{
 	htr_setvisibility(l,'hidden');
 	}
@@ -324,6 +342,18 @@ function wn_togglevisibility(aparam)
 	}
     }
 
+function wn_closewin(aparam)
+    {
+    aparam.IsVisible = 0;
+    return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
+    }
+
+function wn_openwin(aparam)
+    {
+    aparam.IsVisible = 1;
+    return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
+    }
+
 function wn_setvisibility(aparam)
     {
     if (aparam.IsVisible == null || aparam.IsVisible == 1 || aparam.IsVisible == '1')
@@ -335,6 +365,7 @@ function wn_setvisibility(aparam)
 	    for (var t in this.osrc)
 		this.osrc[t].InitQuery();
 	    }*/
+	this.is_modal = aparam.IsModal;
 	this.SetVisibilityTH(true);
 	}
     else
