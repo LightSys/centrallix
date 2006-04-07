@@ -30,10 +30,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.4 2005/10/18 22:47:12 gbeeley Exp $
+    $Id: apos.c,v 1.5 2006/04/07 06:48:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.5  2006/04/07 06:48:34  gbeeley
+    - (feature) if a floating object (window) is centered in the original
+      layout, re-center it when resizing things.
+
     Revision 1.4  2005/10/18 22:47:12  gbeeley
     - (change) use r_width/r_height instead of the minimums if possible
 
@@ -868,6 +872,19 @@ pWgtrNode Child;
 	    Child = (pWgtrNode)(xaGetItem(&(Parent->Children), i));
 	    if(Child->Flags & WGTR_F_FLOATING)
 		{
+
+		    /** auto-detect centered floating objects **/
+		    if (abs(Child->r_x - (VisualRef->r_width - (Child->r_x + Child->r_width))) < 10)
+			{
+			    Child->x = (VisualRef->width - Child->width)/2;
+			    changed = 1;
+			}
+		    if (abs(Child->r_y - (VisualRef->r_height - (Child->r_y + Child->r_height))) < 10)
+			{
+			    Child->y = (VisualRef->height - Child->height)/2;
+			    changed = 1;
+			}
+
 		    /**if it's outside the top left corner pull the whole window in**/
 		    if(Child->x < 0) Child->x = 0;
 		    if(Child->y < 0) Child->y = 0;
