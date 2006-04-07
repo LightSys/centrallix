@@ -114,7 +114,7 @@ cxsecUpdateDS(unsigned long* start, unsigned long* end, char* file, int line)
  ***     ^[A-Za-z_][A-Za-z0-9_]*$
  ***/
 int
-cxsecVerifySymbol(char* sym)
+cxsecVerifySymbol(const char* sym)
     {
 
 	/** First char must be alpha or underscore, and must exist (len >= 1).

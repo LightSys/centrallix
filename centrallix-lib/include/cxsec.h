@@ -26,7 +26,7 @@ void cxsecVerifyDS(unsigned long* start, unsigned long* end, char* filename, int
 void cxsecUpdateDS(unsigned long* start, unsigned long* end, char* filename, int linenum);
 void cxsecInitialize();
 
-int cxsecVerifySymbol(char* sym);
+int cxsecVerifySymbol(const char* sym);
 
 #ifndef __GNUC__
 #define __attribute__(a) /* hide function attributes from non-GCC compilers */
