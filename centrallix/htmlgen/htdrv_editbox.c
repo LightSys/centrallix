@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.41 2005/06/23 22:07:58 ncolson Exp $
+    $Id: htdrv_editbox.c,v 1.42 2006/04/07 06:30:42 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.42  2006/04/07 06:30:42  gbeeley
+    - (feature) show small arrowheads at left and right edges of editbox when
+      text overflows the left or right side.
+
     Revision 1.41  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -436,8 +440,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	else if (s->Capabilities.Dom0NS)
 	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
-	htrAddStylesheetItem_va(s,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
-	htrAddStylesheetItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -456,28 +460,28 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	htrAddEventHandler(s, "document","MOUSEUP", "eb",
 	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly, 'Click');\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseUp');\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'Click');\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseUp');\n"
 	    "\n");
 
 	htrAddEventHandler(s, "document","MOUSEDOWN", "eb",
 	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseDown');\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseDown');\n"
 	    "\n");
 
 	htrAddEventHandler(s, "document","MOUSEOVER", "eb",
 	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseOver');\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseOver');\n"
 	    "\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT", "eb",
 	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseOut');\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseOut');\n"
 	    "\n");
 
 	htrAddEventHandler(s, "document","MOUSEMOVE", "eb",
 	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly, 'MouseMove');\n"
+	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseMove');\n"
 	    "\n");
 
 	/** Script initialization call. **/
@@ -515,7 +519,6 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		htrAddStylesheetItem_va(s,"\t#eb%dbase { border-style:solid; border-width:1px; border-color: gray white white gray; %s }\n",id, main_bg);
 	    if (h >= 0)
 		htrAddStylesheetItem_va(s,"\t#eb%dbase { height:%dpx; }\n", id, h-2*box_offset);
-	    htrAddBodyItem_va(s, "&nbsp;\n");
 	    }
 	else
 	    {
@@ -524,7 +527,12 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
 	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
 	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	    htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
+	    htrAddBodyItem_va(s, "            <TD>");
+	    }
+	htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%d'><tr><td align='left' valign='middle' height='%d'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
+	if (!s->Capabilities.CSS2)
+	    {
+	    htrAddBodyItem_va(s, "</TD>\n");
 	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
 	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
 	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
