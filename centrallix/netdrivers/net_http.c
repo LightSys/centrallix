@@ -63,10 +63,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.57 2005/10/18 22:49:33 gbeeley Exp $
+    $Id: net_http.c,v 1.58 2006/04/07 06:42:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.58  2006/04/07 06:42:30  gbeeley
+    - (bugfix) memory_leaks -= 2;
+    - (bugfix) be graceful if netAcceptTCP() returns NULL.
+
     Revision 1.57  2005/10/18 22:49:33  gbeeley
     - (bugfix) always attempt to use autoname; let the OSML figure out whether
       autoname can be used for an object or not.
@@ -2555,6 +2559,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* if_mo
 		    /** Deploy snippet to get geom from browser **/
 		    fdPrintf(conn,"Content-Type: text/html\r\n\r\n");
 		    nht_internal_GetGeom(target_obj, conn);
+		    objClose(target_obj);
 		    return 0;
 		    }
 		client_w = strtol(wptr,NULL,10);
@@ -3076,8 +3081,8 @@ nht_internal_ConnHandler(void* conn_v)
     char sbuf[160];
     char auth[160] = "";
     char cookie[160] = "";
-    char* acceptencoding=0;
-    char* useragent = 0;
+    char* acceptencoding = NULL;
+    char* useragent = NULL;
     char dest[256] = "";
     char hdr[64];
     char if_modified_since[64] = "";
@@ -3202,7 +3207,7 @@ nht_internal_ConnHandler(void* conn_v)
 		    {
 		    if(toktype == MLX_TOK_STRING && strlen(useragent)<158)
 			{
-			strcat(useragent+strlen(useragent)," ");
+			strcat(useragent," ");
 			mlxCopyToken(s,useragent+strlen(useragent),160-strlen(useragent));
 			}
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
@@ -3436,12 +3441,18 @@ nht_internal_ConnHandler(void* conn_v)
 	    }
 
 	/** Set the session's UserAgent if one was found in the headers. **/
-	if (useragent && *useragent)
-	    mssSetParam("User-Agent", useragent);
+	if (useragent)
+	    {
+	    if (*useragent) mssSetParam("User-Agent", useragent);
+	    nmFree(useragent, 160);
+	    }
 
 	/** Set the session's AcceptEncoding if one was found in the headers. **/
-	if (acceptencoding && *acceptencoding)
-	    mssSetParam("Accept-Encoding", acceptencoding);
+	if (acceptencoding)
+	    {
+	    if (*acceptencoding) mssSetParam("Accept-Encoding", acceptencoding);
+	    nmFree(acceptencoding, 160);
+	    }
 
 	/** Parse out the requested url **/
 	/*printf("debug: %s\n",urlptr);*/
@@ -3652,6 +3663,11 @@ nht_internal_Handler(void* v)
 	/** Loop, accepting requests **/
 	while((connection_socket = netAcceptTCP(listen_socket,0)))
 	    {
+	    if (!connection_socket)
+		{
+		thSleep(10);
+		continue;
+		}
 	    if (!thCreate(nht_internal_ConnHandler, 0, connection_socket))
 	        {
 		mssError(1,"NHT","Could not create thread to handle connection!");
