@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.33 2005/06/23 22:07:59 ncolson Exp $
+    $Id: htdrv_imagebutton.c,v 1.34 2006/04/07 06:31:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.34  2006/04/07 06:31:08  gbeeley
+    - (change) move event scripts to .js file.
+
     Revision 1.33  2005/06/23 22:07:59  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -468,56 +471,11 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\" width=\"%d\" height=\"%d\"></DIV>\n",id,d_img,w,h);
 
 	/** Add the event handling scripts **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","ib",
-		"    if (ly.kind=='ib' && ly.enabled==true)\n"
-		"        {\n"
-		"        pg_set(ly.img,'src',ly.layer.cImage.src);\n"
-		"        cn_activate(ly, 'MouseDown');\n"
-		"        ib_cur_img = ly.img;\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEUP","ib",
-		"    if (ib_cur_img)\n"
-		"        {\n"
-		"        if (e.pageX >= getPageX(ib_cur_img.layer) &&\n"
-		"            e.pageX < getPageX(ib_cur_img.layer) + getClipWidth(ib_cur_img.layer) &&\n"
-		"            e.pageY >= getPageY(ib_cur_img.layer) &&\n"
-		"            e.pageY < getPageY(ib_cur_img.layer) + getClipHeight(ib_cur_img.layer))\n"
-		"            {\n"
-		"            cn_activate(ly, 'Click');\n"
-		"            cn_activate(ly, 'MouseUp');\n"
-		"            pg_set(ib_cur_img,'src',ib_cur_img.layer.pImage.src);\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            pg_set(ib_cur_img,'src',ib_cur_img.layer.nImage.src);\n"
-		"            }\n"
-		"        ib_cur_img = null;\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER","ib",
-		"    if (ly.kind == 'ib' && ly.enabled == true)\n"
-		"        {\n"
-		"        if (ly.img && (ly.img.src != ly.cImage.src)) pg_set(ly.img,'src',ly.pImage.src);\n"
-		"        cn_activate(ly, 'MouseOver');\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEOUT","ib",
-		"    if (ly.kind == 'ib' && ly.enabled == true)\n"
-		"        {\n"
-		"        if (ly.img && (ly.img.src != ly.cImage.src)) pg_set(ly.img,'src',ly.nImage.src);\n"
-		"        cn_activate(ly, 'MouseOut');\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEMOVE","ib",
-		"    if (ly.kind == 'ib' && ly.enabled == true)\n"
-		"        {\n"
-		"        if (ly.img && ly.img.src != ly.cImage.src) pg_set(ly.img,'src',ly.pImage.src);\n"
-		"        cn_activate(ly, 'MouseMove');\n"
-		"        }\n");
-
-
-
+	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "ib", "ib_mousedown");
+	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "ib", "ib_mouseup");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "ib", "ib_mouseover");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "ib", "ib_mouseout");
+	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "ib", "ib_mousemove");
 
 	/** Check for more sub-widgets within the imagebutton. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
