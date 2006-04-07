@@ -112,16 +112,16 @@ function radiobuttonpanel_init(param) {
 	var coverpane = param.coverPane;
 	var titlepane = param.titlePane;
 	if(param.flag==1) {
-		parentPane.bgColor=param.mainBackground;
-		borderpane.bgColor=param.outlineBackground;
-		coverpane.bgColor=param.mainBackground;
-		titlepane.bgColor=param.mainBackground;
+		htr_setbgcolor(parentPane, param.mainBackground);
+		htr_setbgcolor(borderpane, param.outlineBackground);
+		htr_setbgcolor(coverpane, param.mainBackground);
+		htr_setbgcolor(titlepane, param.mainBackground);
 	}
 	if(param.flag==2) {
-		parentPane.background.src=param.mainBackground;
-		borderpane.background.src=param.outlineBackground;
-		coverpane.background.src=param.mainBackground;
-		titlepane.background.src=param.mainBackground;
+		htr_setbgimage(parentPane, param.mainBackground);
+		htr_setbgimage(borderpane, param.outlineBackground);
+		htr_setbgimage(coverpane, param.mainBackground);
+		htr_setbgimage(titlepane, param.mainBackground);
 	}
 	parentPane.buttonList = new Array();
 	parentPane.setvalue = rb_setvalue;
@@ -134,25 +134,29 @@ function radiobuttonpanel_init(param) {
 	parentPane.readonly = rb_readonly;
 	parentPane.fieldname = param.fieldname;
 	parentPane.form = fm_current;
-	parentPane.document.layer = parentPane;
-	parentPane.mainlayer = parentPane;
-	parentPane.kind = 'radiobutton';
+	htr_init_layer(parentPane, parentPane, 'radiobutton');
 	if (borderpane) {
-		borderpane.document.layer = borderpane;
-		borderpane.mainlayer = parentPane;
-		borderpane.kind = 'radiobutton';
+		htr_init_layer(borderpane, parentPane, 'radiobutton');
 	}
 	if (coverpane) {
-		coverpane.document.layer = coverpane;
-		coverpane.mainlayer = parentPane;
-		coverpane.kind = 'radiobutton';
+		htr_init_layer(coverpane, parentPane, 'radiobutton');
 	}
 	if (titlepane) {
-		titlepane.document.layer = titlepane;
-		titlepane.mainlayer = parentPane;
-		titlepane.kind = 'radiobutton';
+		htr_init_layer(titlepane, parentPane, 'radiobutton');
 	}
 	if (fm_current) fm_current.Register(parentPane);
+
+	// Events
+	ifc_init_widget(parentPane);
+	var ie = parentPane.ifcProbeAdd(ifEvent);
+	ie.Add("Click");
+	ie.Add("MouseDown");
+	ie.Add("MouseUp");
+	ie.Add("MouseOver");
+	ie.Add("MouseOut");
+	ie.Add("MouseMove");
+	ie.Add("DataChange");
+	
 	return parentPane;
 }
 
