@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.16 2005/06/23 22:07:58 ncolson Exp $
+    $Id: htdrv_clock.c,v 1.17 2006/04/07 06:21:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.17  2006/04/07 06:21:18  gbeeley
+    - (feature) port to Mozilla
+
     Revision 1.16  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -239,9 +242,9 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     char* nptr;
     char fieldname[HT_FIELDNAME_SIZE];
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 	    {
-	    mssError(1,"HTCL","Netscape DOM support required");
+	    mssError(1,"HTCL","Netscape 4 or W3C DOM support required");
 	    return -1;
 	    }
 
@@ -333,9 +336,9 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    fieldname[0]='\0';
 
 	/** Write Style header items. **/
-	htrAddStylesheetItem_va(s,"\t#cl%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#cl%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,0,0,w,z+2);
-	htrAddStylesheetItem_va(s,"\t#cl%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,0,0,w,z+2);
+	htrAddStylesheetItem_va(s,"\t#cl%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#cl%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,0,0,w,z+2);
+	htrAddStylesheetItem_va(s,"\t#cl%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,0,0,w,z+2);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
@@ -390,7 +393,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    "    if (ly.kind == 'cl')\n"
 	    "        {\n"
 	    "        cn_activate(ly.mainlayer, 'MouseMove');\n"
-	    "        if (ly.mainlayer.moveable && cl_move) ly.mainlayer.moveToAbsolute(e.pageX-cl_xOffset, e.pageY-cl_yOffset);\n"
+	    "        if (ly.mainlayer.moveable && cl_move) moveToAbsolute(ly.mainlayer, e.pageX-cl_xOffset, e.pageY-cl_yOffset);\n"
 	    "        }\n"
 	    "\n");
 
@@ -399,7 +402,9 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		parentname, id, nptr, parentobj);
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = cl_init({layer:%s.layers.cl%dbase, c1:%s.layers.cl%dbase.document.layers.cl%dcon1, c2:%s.layers.cl%dbase.document.layers.cl%dcon2, fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s, "    %s = cl_init({layer:%s.layers.cl%dbase, c1:%s.layers.cl%dbase.document.layers.cl%dcon1, c2:%s.layers.cl%dbase.document.layers.cl%dcon2, fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
 		nptr, parentname, id,
 		parentname, id, id,
 		parentname, id, id,
@@ -408,6 +413,19 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		size, moveable, bold,
 		shadowx, shadowy,
 		showsecs, showampm, miltime);
+	    }
+	else
+	    {
+	    htrAddScriptInit_va(s, "    %s = cl_init({layer:document.getElementById(\"cl%dbase\"), c1:document.getElementById(\"cl%dcon1\"), c2:document.getElementById(\"cl%dcon2\"), fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
+		nptr, id,
+		id,
+		id,
+		fieldname, main_bg, shadowed,
+		fgcolor1, fgcolor2,
+		size, moveable, bold,
+		shadowx, shadowy,
+		showsecs, showampm, miltime);
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"cl%dbase\">\n",id);
