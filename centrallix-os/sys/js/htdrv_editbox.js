@@ -9,25 +9,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function eb_mkkeyboard(p)
-    {
-    }
-
 function eb_getvalue()
     {
     return this.content;
-    }
-
-function eb_update_cursor(eb,val)
-    {
-    if(eb.cursorCol>val.length);
-	{
-	eb.cursorCol=0;
-	}
-    if(eb.cursorlayer == ibeam_current)
-	{
-	moveToAbsolute(ibeam_current, getPageX(eb.ContentLayer) + eb.cursorCol*text_metric.charWidth, getPageY(eb.ContentLayer));
-	}
     }
 
 function eb_actionsetvalue(aparam)
@@ -37,14 +21,17 @@ function eb_actionsetvalue(aparam)
 
 function eb_setvalue(v,f)
     {
-    eb_settext(this,String(v));
-    eb_update_cursor(this,String(v));
+    this.Update(v, 0);
     }
 
 function eb_clearvalue()
     {
-    eb_settext(this,new String(''));
-    eb_update_cursor(this,String(''));
+    // fake it by just making the content invisible - much faster :)
+    this.content = '';
+    this.tmpcontent = '';
+    this.charOffset = 0;
+    this.cursorCol = 0;
+    htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
     }
 
 function eb_enable()
@@ -73,6 +60,9 @@ function eb_settext_cb()
     {
     htr_setvisibility(this.mainlayer.HiddenLayer, 'inherit');
     htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
+    setRelativeX(this.mainlayer.ContentLayer, getRelativeX(this.mainlayer.HiddenLayer));
+    setClipLeft(this.mainlayer.ContentLayer, getClipLeft(this.mainlayer.HiddenLayer));
+    setClipWidth(this.mainlayer.ContentLayer, getClipWidth(this.mainlayer.HiddenLayer));
     
     var tmp = this.mainlayer.ContentLayer;
     this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
@@ -89,42 +79,106 @@ function eb_settext(l,txt)
 	{
 	l.is_busy = true;
 	l.content=txt;
-	pg_serialized_write(l.HiddenLayer, '<PRE style="padding:0px; margin:0px;">' + htutil_encode(txt) + '</PRE> ', eb_settext_cb);
+	pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(txt) + '</pre> ', eb_settext_cb);
 	}
     }
+
+
+// Grab the ibeam and own it
+function eb_grab_ibeam()
+    {
+    htr_setvisibility(ibeam_current, 'hidden');
+    if (cx__capabilities.Dom1HTML)
+	eb_current.appendChild(ibeam_current);
+    moveAbove(ibeam_current,eb_current);
+    htr_setzindex(ibeam_current, htr_getzindex(eb_current) + 2);
+    }
+
+
+function eb_set_l_img(l, stat)
+    {
+    if (l.l_img_on && !stat)
+	l.l_img.src = "/sys/images/eb_edg.gif";
+    else if (!l.l_img_on && stat)
+	l.l_img.src = "/sys/images/eb_lft.gif";
+    l.l_img_on = stat;
+    }
+
+
+function eb_set_r_img(l, stat)
+    {
+    if (l.r_img_on && !stat)
+	l.r_img.src = "/sys/images/eb_edg.gif";
+    else if (!l.r_img_on && stat)
+	l.r_img.src = "/sys/images/eb_rgt.gif";
+    l.r_img_on = stat;
+    }
+
+
+// Update the text, cursor, and left/right edge arrows
+function eb_update(txt, cursor)
+    {
+    var newx;
+    var newclipl, newclipw;
+    var diff = cursor - this.cursorCol;
+    txt = String(txt);
+    this.cursorCol = cursor;
+    if (this.cursorCol < 0) this.cursorCol = 0;
+    if (this.cursorCol > this.charWidth + this.charOffset)
+	{
+	this.charOffset = this.cursorCol - this.charWidth;
+	}
+    if (this.cursorCol < this.charOffset)
+	{
+	this.charOffset = this.cursorCol;
+	}
+    if (eb_current == this)
+	pg_set_style(ibeam_current, 'visibility', 'hidden');
+    newx = 5 - this.charOffset*text_metric.charWidth;
+    newclipl = this.charOffset*text_metric.charWidth;
+    newclipw = this.charWidth*text_metric.charWidth;
+    setRelativeX(this.HiddenLayer, newx);
+    setClipLeft(this.HiddenLayer, newclipl);
+    setClipWidth(this.HiddenLayer, newclipw);
+    if (eb_current == this)
+	moveToAbsolute(ibeam_current, getPageX(this.HiddenLayer) + this.cursorCol*text_metric.charWidth, getPageY(this.HiddenLayer));
+    eb_settext(this, txt);
+    eb_set_l_img(this, this.charOffset > 0);
+    eb_set_r_img(this, this.charOffset + this.charWidth < txt.length);
+    if (eb_current == this)
+	pg_set_style(ibeam_current,'visibility', 'inherit');
+    }
+
 
 function eb_keyhandler(l,e,k)
     {
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
     if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) eb_current.form.DataNotify(eb_current);
-    var adj = 0;
     var txt = l.content;
     var newtxt;
-    var charClip = Math.ceil((getPageX(l) - getPageX(l.ContentLayer)) / text_metric.charWidth);
-    var relPos = l.cursorCol - charClip;
+    var cursoradj = 0;
     if (k == 9)
 	{
 	if(l.form) l.form.TabNotify(this);
-	cn_activate(l,'TabPressed');
+	cn_activate(l,'TabPressed', {});
 	}
     if (k == 10 || k == 13)
 	{
 	if(l.form) l.form.RetNotify(this);
-	cn_activate(l,'ReturnPressed');
+	cn_activate(l,'ReturnPressed', {});
 	}
     if (k == 27)
 	{
 	if (l.form) l.form.EscNotify(this);
-	cn_activate(l,'EscapePressed');
+	cn_activate(l,'EscapePressed', {});
 	}
     if (k >= 32 && k < 127)
 	{
 	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length), l._form_type);
 	if (newtxt != txt)
 	    {
-	    l.cursorCol++;
-	    if (relPos >= l.charWidth) adj = -text_metric.charWidth; 
+	    cursoradj = 1;
 	    }
 	}
     else if (k == 8 && l.cursorCol > 0)
@@ -132,12 +186,7 @@ function eb_keyhandler(l,e,k)
 	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol,txt.length));
 	if (newtxt != txt)
 	    {
-	    l.cursorCol--;
-	    if (relPos <= 1 && charClip > 0)
-		{
-		if (charClip < l.charWidth) adj = charClip * text_metric.charWidth;
-		else adj = l.charWidth * text_metric.charWidth;
-		}
+	    cursoradj = -1;
 	    }
 	}
     else if (k == 127 && l.cursorCol < txt.length)
@@ -148,22 +197,17 @@ function eb_keyhandler(l,e,k)
 	{
 	return true;
 	}
-    pg_set_style(ibeam_current, 'visibility', 'hidden');
-    eb_settext(l,newtxt);
-    setRelativeX(l.ContentLayer, getRelativeX(l.ContentLayer) + adj);
-    setRelativeX(l.HiddenLayer, getRelativeX(l.HiddenLayer)+ adj);
-    moveToAbsolute(ibeam_current, getPageX(l.ContentLayer) + l.cursorCol*text_metric.charWidth, getPageY(l.ContentLayer));
-    pg_set_style(ibeam_current,'visibility', 'inherit');
+    l.Update(newtxt, l.cursorCol + cursoradj);
     l.changed=true;
-    cn_activate(l,"DataChange");
+    cn_activate(l,"DataChange", {});
     return false;
     }
 
-function eb_select(x,y,l,c,n)
+function eb_select(x,y,l,c,n,a,k)
     {
     if(l.enabled != 'full') return 0;
     if(l.form) l.form.FocusNotify(l);
-    if (x == null && y == null)
+    if (k)
 	l.cursorCol = l.content.length;
     else
 	l.cursorCol = Math.round((x + getPageX(l) - getPageX(l.ContentLayer))/text_metric.charWidth);
@@ -171,29 +215,25 @@ function eb_select(x,y,l,c,n)
     if (eb_current) eb_current.cursorlayer = null;     
     eb_current = l;    
     eb_current.cursorlayer = ibeam_current;    
-    setPageX(eb_current.ContentLayer, getPageX(eb_current)+1);
-    setPageX(eb_current.HiddenLayer, getPageX(eb_current)+1);
-    htr_setvisibility(ibeam_current, 'hidden');
-    if (cx__capabilities.Dom1HTML)
-	l.appendChild(ibeam_current);
-    moveAbove(ibeam_current,eb_current);
-    moveToAbsolute(ibeam_current, getPageX(eb_current.ContentLayer) + eb_current.cursorCol*text_metric.charWidth, getPageY(eb_current.ContentLayer));    
-    htr_setzindex(ibeam_current, htr_getzindex(eb_current) + 2);
+    eb_grab_ibeam();
+    eb_current.Update(eb_current.content, eb_current.cursorCol);
     htr_setvisibility(ibeam_current, 'inherit');
-    cn_activate(l,"GetFocus");
+    cn_activate(l,"GetFocus", {});
     return 1;
     }
 
 function eb_deselect()
     {
     htr_setvisibility(ibeam_current, 'hidden');
-    cn_activate(eb_current,"LoseFocus");
     if (eb_current)
 	{
+	cn_activate(eb_current,"LoseFocus", {});
 	eb_current.cursorlayer = null;
 	if (eb_current.changed) eb_current.changed=false;
-	setPageX(eb_current.ContentLayer, getPageX(eb_current)+1);
-	setPageX(eb_current.HiddenLayer, getPageX(eb_current)+1);
+	eb_current.charOffset=0;
+	eb_current.cursorCol=0;
+	eb_current.Update(eb_current.content, eb_current.cursorCol);
+	htr_setvisibility(ibeam_current, 'hidden');
 	eb_current = null;
 	}
     return true;
@@ -229,15 +269,32 @@ function eb_init(param)
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
     htr_init_layer(c2,l,'eb');
-    l.ActionSetValue = eb_actionsetvalue;
+    ifc_init_widget(l);
+    l.fieldname = param.fieldname;
+    ibeam_init();
+
+    // Left/Right arrow images
+    var imgs = pg_images(l);
+    for(var i=0;i<imgs.length;i++)
+	{
+	if (imgs[i].name == 'l') l.l_img = imgs[i];
+	else if (imgs[i].name == 'r') l.r_img = imgs[i];
+	}
+    l.l_img_on = false;
+    l.r_img_on = false;
+
+    // Set up params for displaying the content.
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
-    l.fieldname = param.fieldname;
     l.is_busy = false;
-    ibeam_init();
-    l.charWidth = Math.floor((getClipWidth(l)-3)/text_metric.charWidth);
+    l.charWidth = Math.floor((getClipWidth(l)-10)/text_metric.charWidth);
+    l.cursorCol = 0;
+    l.charOffset = 0;
     l.content = '';
     l.tmpcontent = '';
+    l.Update = eb_update;
+
+    // Callbacks
     l.keyhandler = eb_keyhandler;
     l.getfocushandler = eb_select;
     l.losefocushandler = eb_deselect;
@@ -268,5 +325,25 @@ function eb_init(param)
     if (fm_current) fm_current.Register(l);
     l.form = fm_current;
     l.changed = false;
+
+    // Events
+    var ie = l.ifcProbeAdd(ifEvent);
+    ie.Add("Click");
+    ie.Add("MouseDown");
+    ie.Add("MouseUp");
+    ie.Add("MouseMove");
+    ie.Add("MouseOver");
+    ie.Add("MouseOut");
+    ie.Add("GetFocus");
+    ie.Add("LoseFocus");
+    ie.Add("DataChange");
+    ie.Add("TabPressed");
+    ie.Add("ReturnPressed");
+    ie.Add("EscapePressed");
+
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetValue", eb_actionsetvalue);
+
     return l;
     }
