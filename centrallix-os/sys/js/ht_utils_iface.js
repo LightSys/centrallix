@@ -361,14 +361,9 @@ function ifEvent()
 		ap[pn] = p.value;
 	    else if (p.type == 'sym' || p.type == 'exp')
 		{
-		if (cx__capabilities.Dom0IE) // restriction, not capability!!!
-		    {
-		    with (ep) ap[pn] = eval(p.value);
-		    }
-		else
-		    {
-		    ap[pn] = ep.eval(p.value);
-		    }
+		if (typeof ep.eval != 'function')
+		    ep.eval = eval;
+		ap[pn] = ep.eval(p.value);
 		}
 	    }
 	return ai.Invoke(this.action, ap);
