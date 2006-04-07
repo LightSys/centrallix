@@ -104,6 +104,7 @@ wgtmenuInitialize()
 	wgtrRegisterDriver(name, wgtmenuVerify, wgtmenuNew);
 	wgtrAddType(name, "menu");
 	wgtrAddType(name, "menuitem");
+	wgtrAddType(name, "menusep");
 
 	return 0;
     }
