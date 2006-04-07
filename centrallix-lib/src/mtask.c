@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.32 2005/10/12 03:40:16 gbeeley Exp $
+    $Id: mtask.c,v 1.33 2006/04/07 06:14:21 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.33  2006/04/07 06:14:21  gbeeley
+    - (bugfix) memory_leaks -= 2;
+
     Revision 1.32  2005/10/12 03:40:16  gbeeley
     - (bugfix) don't linger for 100 sec when asked to do so for 1 sec!
     - (bugfix) if select()ing with no timeout, make sure it is really
@@ -2856,6 +2859,7 @@ fdClose(pFile filedesc, int flags)
 	    close(filedesc->FD);
 	    if (filedesc->WrCacheBuf) nmFree(filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	    if (filedesc->RdCacheBuf) nmFree(filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
+	    if (filedesc->PrintfBuf) nmSysFree(filedesc->PrintfBuf);
             nmFree(filedesc,sizeof(File));
 	    }
 	else
@@ -3336,6 +3340,7 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	/** Now we destroy the structure. **/
 	if (net_filedesc->WrCacheBuf) nmFree(net_filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	if (net_filedesc->RdCacheBuf) nmFree(net_filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
+	if (net_filedesc->PrintfBuf) nmSysFree(net_filedesc->PrintfBuf);
 	nmFree(net_filedesc,sizeof(File));
 
     return 0;
