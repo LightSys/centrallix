@@ -41,10 +41,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.35 2005/09/17 02:55:55 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.36 2006/04/07 06:36:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.36  2006/04/07 06:36:33  gbeeley
+    - (bugfix) make sure treeview events occur on main treeview object rather
+      than on sub-layers
+
     Revision 1.35  2005/09/17 02:55:55  gbeeley
     - fix regressions in moz/ie support with regard to new init function
       call protocol.
@@ -448,7 +452,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddEventHandler(s, "document","CLICK","tv",
 		"    if (e.target != null && e.target.kind == 'tv' && e.target.href != null)\n"
 		"        {\n"
-		"        cn_activate(ly, 'Click');\n"
+		"        cn_activate(ly.mainlayer, 'Click');\n"
 		"        return tv_click(e);\n"
 		"        }\n");
 	    }
@@ -457,7 +461,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddEventHandler(s, "document","CLICK","tv",
 		"    if (e.target != null && e.target.kind == 'tv' && (e.target.nodeName == 'A' || e.target.nodeName == 'DIV'))\n"
 		"        {\n"
-		"        cn_activate(ly, 'Click');\n"
+		"        cn_activate(ly.mainlayer, 'Click');\n"
 		"        return tv_click(e);\n"
 		"        }\n");
 	    }
@@ -466,7 +470,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	if (s->Capabilities.Dom0NS)
 	    {
 	    htrAddEventHandler(s, "document","MOUSEDOWN","tv",
-		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseDown');\n"
+		"    if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseDown');\n"
 		"    if (e.target != null && e.target.kind=='tv' && e.target.href == null)\n"
 		"        {\n"
 		"        if (e.which == 3)\n"
@@ -483,7 +487,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	else
 	    {
 	    htrAddEventHandler(s, "document","MOUSEDOWN","tv",
-		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseDown');\n"
+		"    if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseDown');\n"
 		"    if (e.target != null && e.target.kind=='tv' && e.target.nodeName != 'A' && e.target.nodeName != 'DIV')\n"
 		"        {\n"
 		"        if (e.which == 3)\n"
@@ -499,7 +503,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    }
 
 	htrAddEventHandler(s, "document","MOUSEUP","tv",
-		"    if (ly.kind == 'tv') cn_activate(ly, 'MouseUp');\n"
+		"    if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseUp');\n"
 		"    if (e.target != null && e.target.kind == 'tv' && e.which == 3) return false;\n"
 		"    if (tv_target_img != null && tv_target_img.kind == 'tv')\n"
 		"        {\n"
@@ -515,9 +519,9 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		"            }\n"
 		"        }\n");
 
-	htrAddEventHandler(s,"document","MOUSEOVER","tv","   if (ly.kind == 'tv') cn_activate(ly, 'MouseOver');\n");
-	htrAddEventHandler(s,"document","MOUSEMOVE","tv","   if (ly.kind == 'tv') cn_activate(ly, 'MouseMove');\n");
-	htrAddEventHandler(s,"document","MOUSEOUT","tv", "   if (ly.kind == 'tv') cn_activate(ly, 'MouseOut');\n");
+	htrAddEventHandler(s,"document","MOUSEOVER","tv","   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseOver');\n");
+	htrAddEventHandler(s,"document","MOUSEMOVE","tv","   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseMove');\n");
+	htrAddEventHandler(s,"document","MOUSEOUT","tv", "   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
 
 
