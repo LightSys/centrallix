@@ -142,22 +142,22 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	"    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')\n"
 	"        {\n"
 	"        var pl=ti.mainlayer.PaneLayer;\n"
-	"        var v=pl.clip.height-(3*18)-4;\n"
+	"        var v=getClipHeight(pl)-(3*18)-4;\n"
 	"        var new_y=dd_thum_y+(e.pageY-dd_click_y)\n"
-	"        if (new_y > pl.pageY+20+v) new_y=pl.pageY+20+v;\n"
-	"        if (new_y < pl.pageY+20) new_y=pl.pageY+20;\n"
-	"        ti.thum.pageY=new_y;\n"
+	"        if (new_y > getPageY(pl)+20+v) new_y=getPageY(pl)+20+v;\n"
+	"        if (new_y < getPageY(pl)+20) new_y=getPageY(pl)+20;\n"
+	"        setPageY(ti.thum,new_y);\n"
 	"        var h=dd_current.PaneLayer.h;\n"
-	"        var d=h-pl.clip.height+4;\n"
+	"        var d=h-getClipHeight(pl)+4;\n"
 	"        if (d<0) d=0;\n"
-	"        dd_incr = (((ti.thum.y-22)/(v-4))*-d)-dd_current.PaneLayer.ScrLayer.y;\n"
+	"        dd_incr = (((getRelativeY(ti.thum)-22)/(v-4))*-d)-getRelativeY(dd_current.PaneLayer.ScrLayer);\n"
 	"        dd_scroll(0);\n"
 	"        return false;\n"
 	"        }\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind != 'dd')\n"
+	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd')\n"
 	"        {\n"
 	"        cn_activate(ly.mainlayer, 'MouseMove');\n"
-	"        tc_cur_mainlayer = null;\n"
+	"        dd_cur_mainlayer = null;\n"
 	"        }\n"
 	"\n");
 
@@ -190,7 +190,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	"    if (dd_target_img != null)\n"
 	"        {\n"
 	"        if (dd_target_img.kind && dd_target_img.kind.substr(0,2) == 'dd' && (dd_target_img.name == 'u' || dd_target_img.name == 'd'))\n"
-	"            dd_target_img.src = htutil_subst_last(dd_target_img.src,\"b.gif\");\n"
+	"            pg_set(dd_target_img,'src',htutil_subst_last(dd_target_img.src,\"b.gif\"));\n"
 	"        dd_target_img = null;\n"
 	"        }\n"
 	"    if ((ly.kind == 'dd' || ly.kind == 'ddtxt') && ly.mainlayer.enabled != 'disabled')\n"
@@ -213,27 +213,27 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	"        switch(ly.name)\n"
 	"            {\n"
 	"            case 'u':\n"
-	"                ly.src = '/sys/images/ico13c.gif';\n"
+	"                pg_set(ly,'src','/sys/images/ico13c.gif');\n"
 	"                dd_incr = 8;\n"
 	"                dd_scroll();\n"
 	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
 	"                break;\n"
 	"            case 'd':\n"
-	"                ly.src = '/sys/images/ico12c.gif';\n"
+	"                pg_set(ly, 'src', '/sys/images/ico12c.gif');\n"
 	"                dd_incr = -8;\n"
 	"                dd_scroll();\n"
 	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
 	"                break;\n"
 	"            case 'b':\n"
 	"                dd_incr = dd_target_img.height+36;\n"
-	"                if (e.pageY > dd_target_img.thum.pageY+9) dd_incr = -dd_incr;\n"
+	"                if (e.pageY > getPageY(dd_target_img.thum)+9) dd_incr = -dd_incr;\n"
 	"                dd_scroll();\n"
 	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
 	"                break;\n"
 	"            case 't':\n"
 	"                dd_click_x = e.pageX;\n"
 	"                dd_click_y = e.pageY;\n"
-	"                dd_thum_y = dd_target_img.thum.pageY;\n"
+	"                dd_thum_y = getPageY(dd_target_img.thum);\n"
 	"                break;\n"
 	"            }\n"
 	"        }\n"
@@ -316,6 +316,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 		// Label
 		attr = objGetFirstAttr(qy_obj);
 		if (!attr) {
+		    objClose(qy_obj);
+		    objQueryClose(qy);
 		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
 		    return -1;
 		}
@@ -331,6 +333,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 		// Value
 		attr = objGetNextAttr(qy_obj);
 		if (!attr) {
+		    objClose(qy_obj);
+		    objQueryClose(qy);
 		    mssError(1, "HTDD", "SQL query must have two attributes: label and value.");
 		    return -1;
 		}
@@ -441,10 +445,13 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.51 2005/10/09 07:46:47 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.52 2006/06/19 15:03:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.52  2006/06/19 15:03:02  gbeeley
+    - Mozilla port.
+
     Revision 1.51  2005/10/09 07:46:47  gbeeley
     - (change) continued work porting dropdown to IE/Moz
 
