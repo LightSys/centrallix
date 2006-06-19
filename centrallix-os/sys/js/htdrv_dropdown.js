@@ -186,7 +186,7 @@ function dd_hilight_item(l,i)
     if (l.SelectedItem != null)
 	dd_unhilight_item(l,l.SelectedItem);
     l.SelectedItem = i;
-    l.Items[i].bgColor=l.hl;
+    htr_setbgcolor(l.Items[i], l.hl);
     dd_scroll_to(l,i);
     }
 
@@ -200,7 +200,7 @@ function dd_unhilight_item(l,i)
 	    return;
 	}
     l.SelectedItem = null;
-    l.Items[i].bgColor=l.bg;
+    htr_setbgcolor(l.Items[i], l.bg);
     }
 
 function dd_collapse(l)
@@ -386,10 +386,12 @@ function dd_create_pane(l)
     c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>";
     c += "</TABLE>";
     c += "</BODY>";
+    htr_setbgcolor(p, l.bg);
     htr_write_content(p, c);
     htutil_tag_images(p,'dt_pn',p,l);
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
+    setClipWidth(p, l.w);
 
     /**  Create scroll background layer  **/
     p.ScrLayer = htr_new_layer(1024, p);
@@ -448,6 +450,7 @@ function dd_create_pane(l)
 	moveTo(l.Items[i], 0, i*16);
 	setClipWidth(l.Items[i], getClipWidth(p.ScrLayer));
 	setClipHeight(l.Items[i], 16);
+	resizeTo(l.Items[i], getClipWidth(p.ScrLayer), 16);
 	if (i==0 && l.Values[i][1] == null)
 	    htr_write_content(l.Items[i], '<i>' + l.Values[i][0] + '</i>');
 	else
