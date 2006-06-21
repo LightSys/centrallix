@@ -18,7 +18,7 @@ function fs_setvalue(m) {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstatL02.png');
 	} else if (this.currentMode == 'New') {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstatL03.png');
-	} else if (this.currentMode == 'Query') {
+	} else if (this.currentMode == 'Query' || this.currentMode == 'QueryExec') {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstatL04.png');
 	} else {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstatL05.png');
@@ -32,6 +32,8 @@ function fs_setvalue(m) {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstatLF03.png');
 	} else if (this.currentMode == 'Query') {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstatLF04.png');
+	} else if (this.currentMode == 'QueryExec') {
+		pg_set(pg_images(this)[0],'src','/sys/images/searchingLF.gif');
 	} else {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstatLF05.png');
 	}
@@ -42,7 +44,7 @@ function fs_setvalue(m) {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstat02.gif');
 	} else if (this.currentMode == 'New') {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstat03.gif');
-	} else if (this.currentMode == 'Query') {
+	} else if (this.currentMode == 'Query' || this.currentMode == 'QueryExec') {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstat04.gif');
 	} else {
 		pg_set(pg_images(this)[0],'src','/sys/images/formstat05.gif');

@@ -58,7 +58,7 @@ function form_cb_tab_notify(control)
     var origctrl;
     for(var i=0;i<this.elements.length;i++)
 	{
-	if(this.elements[i].name==control.name)
+	if(this.elements[i].id==control.id)
 	    {
 	    ctrlnum=i;
 	    break;
@@ -677,6 +677,10 @@ function form_action_queryexec()
     this.recid = 1;
     this.lastrecid = null;
     
+    for(var i in this.statuswidgets)
+	{
+	this.statuswidgets[i].setvalue('QueryExec');
+	}
     for(var i in this.elements)
 	{
 	if(this.elements[i]._form_IsChanged)
@@ -718,7 +722,7 @@ function form_build_dataobj()
 	    dataobj.push(t);
 	    }
 	}
-    if (this.mode == "New")
+    if (this.mode == "New" || !this.data)
 	dataobj.oid = 0;
     else
 	dataobj.oid=this.data.oid;
@@ -740,10 +744,18 @@ function form_action_save()
     dataobj = this.BuildDataObj();
     this.DisableAll();
     this.Pending=true;
-    if (this.mode == 'New')
-	this.osrc.ifcProbe(ifAction).Invoke("Create", {data:dataobj, client:this});
+    if (this.osrc)
+	{
+	if (this.mode == 'New')
+	    this.osrc.ifcProbe(ifAction).Invoke("Create", {data:dataobj, client:this});
+	else
+	    this.osrc.ifcProbe(ifAction).Invoke("Modify", {data:dataobj, client:this});
+	}
     else
-	this.osrc.ifcProbe(ifAction).Invoke("Modify", {data:dataobj, client:this});
+	{
+	this.Pending=false;
+	this.ChangeMode('View');
+	}
     }
 
 /** Helper function to build a query */
@@ -859,18 +871,25 @@ function form_cb_reveal(element,event)
 	    break;
 	case 'ObscureCheck':
 	    // unsaved data?
-	    if (this.IsUnsaved)
+	    if (!this.allowobscure)
 		{
-		this._orsevent = event;
-		var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ifcProbe(ifAction).Invoke(\"Save\");");
-		this.cb['_3bConfirmSave'].add(this,savefunc);
-		this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard");pg_reveal_check_ok(this._orsevent);'));
-		this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
-		this.show3bconfirm();
+		if (this.IsUnsaved)
+		    {
+		    this._orsevent = event;
+		    var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ifcProbe(ifAction).Invoke(\"Save\");");
+		    this.cb['_3bConfirmSave'].add(this,savefunc);
+		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard");pg_reveal_check_ok(this._orsevent);'));
+		    this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
+		    this.show3bconfirm();
+		    }
+		else
+		    {
+		    this.ifcProbe(ifAction).Invoke("Discard");
+		    pg_reveal_check_ok(event);
+		    }
 		}
 	    else
 		{
-		this.ifcProbe(ifAction).Invoke("Discard");
 		pg_reveal_check_ok(event);
 		}
 	    break;
@@ -902,6 +921,7 @@ function form_init(param)
     form.didsearchlast = false;
     form.didsearch = false;
     form.revealed_elements = 0;
+    form.osrc = null;
     if(osrc_current)
 	{
 	form.osrc = osrc_current;
@@ -940,6 +960,7 @@ function form_init(param)
     form.allowview = param.av;
     form.allownodata = param.and;
     form.multienter = param.me;
+    form.allowobscure = param.ao;
 /** initialize actions and callbacks **/
     form._3bconfirmwindow = param._3b;
     form._3bconfirm_discard = form_3bconfirm_discard;
