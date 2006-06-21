@@ -137,3 +137,29 @@ cxsecVerifySymbol(const char* sym)
     return 0;
     }
 
+int
+cxsecVerifySymbol_n(const char* sym, size_t n)
+    {
+
+	/** First char must be alpha or underscore, and must exist (len >= 1).
+	 ** We don't use isalpha() et al here because symbols need to conform to
+	 ** the normal 'C' locale ascii charset!!!  To do otherwise can cause
+	 ** significant security risks in the event of a locale mismatch!!
+	 **/
+	if (n <= 0 || (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z')))
+	    return -1;
+	n--;
+
+	/** Next chars may be 1) end of string, 2) digits, 3) alpha, or 4) underscore **/
+	sym++;
+	while(n)
+	    {
+	    if (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z') && (*sym < '0' || *sym > '9'))
+		return -1;
+	    sym++;
+	    n--;
+	    }
+
+    return 0;
+    }
+

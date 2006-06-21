@@ -1,6 +1,8 @@
 #ifndef _CXSEC_H
 #define _CXSEC_H
 
+#include <stddef.h>
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -27,6 +29,7 @@ void cxsecUpdateDS(unsigned long* start, unsigned long* end, char* filename, int
 void cxsecInitialize();
 
 int cxsecVerifySymbol(const char* sym);
+int cxsecVerifySymbol_n(const char* sym, size_t n);
 
 #ifndef __GNUC__
 #define __attribute__(a) /* hide function attributes from non-GCC compilers */
