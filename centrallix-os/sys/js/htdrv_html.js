@@ -59,6 +59,8 @@ function ht_showtext(aparam)
 	}
     htr_write_content(this, newtxt);
     setClipHeight(this, getdocHeight(this));
+    setClipWidth(this, getdocWidth(this));
+    resizeTo(this, getdocWidth(this), getdocHeight(this));
     pg_resize(this.mainlayer.parentLayer);
     }
 
@@ -136,6 +138,7 @@ function ht_reloaded(e)
 	}
     htr_watch(this.mainlayer, 'source', 'ht_sourcechanged');
     setClipHeight(this.mainlayer.curLayer, getdocHeight(this.mainlayer.curLayer));
+    resizeTo(this.mainlayer.curLayer, getdocWidth(this.mainlayer.curLayer), getdocHeight(this.mainlayer.curLayer));
     moveAbove(this.mainlayer.faderLayer, this.mainlayer.curLayer);
     htr_setvisibility(this.mainlayer.curLayer, 'inherit');
     if (htutil_url_cmp(this.mainlayer.source, document.location.href))
