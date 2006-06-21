@@ -246,15 +246,23 @@ function ifc_init_widget(w)
 
 function ifc_probe_add(i)
     {
+    if (typeof i.name != 'undefined')
+	var nm = i.name;
+    else
+	var nm = i.toString().substr(9,100).split('(')[0];
     if (!this.ifcProbe(i))
-	this.__ifc[i.name] = new ClientInterface(this,i);
-    return this.__ifc[i.name];
+	this.__ifc[nm] = new ClientInterface(this,i);
+    return this.__ifc[nm];
     }
 
 function ifc_probe(i)
     {
-    if (this.__ifc[i.name]) 
-	return this.__ifc[i.name];
+    if (typeof i.name != 'undefined')
+	var nm = i.name;
+    else
+	var nm = i.toString().substr(9,100).split('(')[0];
+    if (this.__ifc[nm]) 
+	return this.__ifc[nm];
     else
 	return null;
     }
@@ -319,7 +327,11 @@ function ifEvent()
     function ifevent_hook(e,f)
 	{
 	if (this.Events[e])
-	    this.Events[e].push({fn:f, name:e});
+	    {
+	    eo = {fn:f, name:e};
+	    eo.eo = this.obj;
+	    this.Events[e].push(eo);
+	    }
 	else if (pg_diag)
 	    alert("Hook event: " + this.obj.id + " does not implement event " + e);
 	}
@@ -330,10 +342,15 @@ function ifEvent()
 	    {
 	    for(var ev=0; ev<this.Events[e].length;ev++)
 		{
-		if ((this.Events[e][ev]).fn == ifevent_connect_exec)
+		rval = this.Events[e][ev].fn.call(this.Events[e][ev].eo, ep);
+		/*if ((this.Events[e][ev]).fn == ifevent_connect_exec)
+		    {
 		    rval = (this.Events[e][ev]).fn(ep);
+		    }
 		else
+		    {
 		    rval = (this.Events[e][ev]).fn.call(this.obj, ep);
+		    }*/
 		}
 	    }
 	else if (pg_diag)
@@ -371,7 +388,11 @@ function ifEvent()
     function ifevent_connect(e,t,a,pl)
 	{
 	if (this.Events[e])
-	    this.Events[e].push({fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e});
+	    {
+	    eo = {fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e};
+	    eo.eo = eo;
+	    this.Events[e].push(eo);
+	    }
 	else if (pg_diag)
 	    alert("Connect event: " + this.obj.id + " does not implement event " + e);
 	}
@@ -408,3 +429,4 @@ function ifFormElement(field)
     this.SetReadOnly = iffe_setr
     this.KeyInput = iffe_keyinput;
     }
+
