@@ -335,14 +335,16 @@ function moveTo(l, x, y)
 
 function moveBy(l, x, y)
     {
-    setRelativeX(l, getRelativeX(l)+x);
-    setRelativeY(l, getRelativeY(l)+y);
+    if (x) setRelativeX(l, getRelativeX(l)+x);
+    if (y) setRelativeY(l, getRelativeY(l)+y);
     }
     
 function resizeTo(l, w, h)
     {
-    setClipRight(l, w);
-    setClipBottom(l, h);
+    //setClipRight(l, w);
+    //setClipBottom(l, h);
+    l.runtimeStyle.width = w + 'px';
+    l.runtimeStyle.height = h + 'px';
     }
     
 function moveAbove(lt, lb) 
