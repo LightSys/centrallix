@@ -305,6 +305,7 @@ ors "widget/page"
 
 		form3 "widget/form"
 		    {
+		    allow_obscure = yes;
 		    _3bconfirmwindow = ConfirmWindow;
 		    form3status "widget/formstatus" { x=5;y=5; style=largeflat; }
 		    compname_label "widget/label" { x=5;y=40;width=70; height=20; text="Computer:"; align=right; }
