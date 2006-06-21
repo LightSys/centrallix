@@ -27,32 +27,44 @@ function eb_setvalue(v,f)
 function eb_clearvalue()
     {
     // fake it by just making the content invisible - much faster :)
-    this.content = '';
-    this.tmpcontent = '';
-    this.charOffset = 0;
-    this.cursorCol = 0;
-    htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
+    if (this != eb_current)
+	{
+	this.content = '';
+	this.tmpcontent = '';
+	this.charOffset = 0;
+	this.cursorCol = 0;
+	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
+	}
+    else
+	{
+	this.Update('', 0);
+	}
     }
 
 function eb_enable()
     {
-    if (cx__capabilities.Dom0IE)
-        pg_set_style(this,'bgColor',this.bg);
-    else
-	eval('this.document.'+this.xbg);
+    if (this.bg) htr_setbgcolor(this, this.bg);
+    if (this.bgi) htr_setbgimage(this, this.bgi);
+    //if (cx__capabilities.Dom0IE)
+    //    pg_set_style(this,'bgColor',this.bg);
+    //else
+    //	eval('this.document.'+this.xbg);
     this.enabled='full';
     }
 
 function eb_disable()
     {
-    this.document.background='';
-    pg_set_style(this.document, 'bgColor','#e0e0e0');
+    if (this.bg) htr_setbgcolor(this, '#e0e0e0');
+    //this.document.background='';
+    //pg_set_style(this.document, 'bgColor','#e0e0e0');
     this.enabled='disabled';
     }
 
 function eb_readonly()
     {
-    eval('this.document.'+this.bg);
+    if (this.bg) htr_setbgcolor(this, this.bg);
+    if (this.bgi) htr_setbgimage(this, this.bgi);
+    //eval('this.document.'+this.bg);
     this.enabled='readonly';
     }
 
@@ -121,6 +133,7 @@ function eb_update(txt, cursor)
     var newx;
     var newclipl, newclipw;
     var diff = cursor - this.cursorCol;
+    var ldiff = txt.length - this.content.length;
     txt = String(txt);
     this.cursorCol = cursor;
     if (this.cursorCol < 0) this.cursorCol = 0;
@@ -132,6 +145,18 @@ function eb_update(txt, cursor)
 	{
 	this.charOffset = this.cursorCol;
 	}
+    if (this.charOffset > 0 && this.cursorCol - this.charOffset < this.charWidth*2/3 && diff < 0)
+	{
+	this.charOffset--;
+	}
+    if (this.charOffset < txt.length - this.charWidth && this.cursorCol - this.charOffset > this.charWidth*2/3 && ldiff < 0)
+	{
+	this.charOffset = this.cursorCol - parseInt(this.charWidth*2/3);
+	}
+    /*if (this.charOffset > 0 && txt.length < this.charWidth)
+	{
+	this.charOffset = 0;
+	}*/
     if (eb_current == this)
 	pg_set_style(ibeam_current, 'visibility', 'hidden');
     newx = 5 - this.charOffset*text_metric.charWidth;
@@ -154,7 +179,6 @@ function eb_keyhandler(l,e,k)
     {
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
-    if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) eb_current.form.DataNotify(eb_current);
     var txt = l.content;
     var newtxt;
     var cursoradj = 0;
@@ -197,9 +221,17 @@ function eb_keyhandler(l,e,k)
 	{
 	return true;
 	}
-    l.Update(newtxt, l.cursorCol + cursoradj);
-    l.changed=true;
-    cn_activate(l,"DataChange", {});
+    if (newtxt != txt || cursoradj != 0)
+	{
+	l.Update(newtxt, l.cursorCol + cursoradj);
+	}
+    if (newtxt != txt)
+	{
+	//if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) 
+	if (l.form) l.form.DataNotify(l);
+	l.changed=true;
+	cn_activate(l,"DataChange", {});
+	}
     return false;
     }
 
@@ -253,18 +285,20 @@ function eb_init(param)
     var c2 = param.c2; 
     if (!param.mainBackground)
 	{
-	if (cx__capabilities.Dom0NS)
+	l.bg = '#c0c0c0';
+	/*if (cx__capabilities.Dom0NS)
 	    {
 	    l.bg = "bgcolor='#c0c0c0'";
 	    }
 	else if (cx__capabilities.Dom0IE)
 	    {
 	    l.bg = "backgroundColor='#c0c0c0'";
-	    }
+	    }*/
 	}
     else
 	{
-	l.bg = param.mainBackground;
+	l.bg = htr_extract_bgcolor(param.mainBackground);
+	l.bgi = htr_extract_bgimage(param.mainBackground);
 	}
     htr_init_layer(l,l,'eb');
     htr_init_layer(c1,l,'eb');
