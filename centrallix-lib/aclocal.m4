@@ -132,7 +132,7 @@ dnl	AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the 
 	else
 	    AC_MSG_RESULT(yes)
 	    PROFILE=""
-	    CFLAGS="$CFLAGS -O2"
+	    CFLAGS="$CFLAGS -O3"
 	    AC_DEFINE(USING_OPTIMIZATION,1,[defined to 1 if -On is being passed to the compiler])
 	fi
     fi

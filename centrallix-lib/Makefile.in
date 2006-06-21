@@ -1,4 +1,4 @@
-## $Id: Makefile.in,v 1.17 2005/03/14 20:41:24 gbeeley Exp $
+## $Id: Makefile.in,v 1.18 2006/06/21 21:19:03 gbeeley Exp $
 ## $Source: /srv/bld/centrallix-repo/centrallix-lib/Makefile.in,v $
 ##
 ## Centrallix-Lib Makefile
@@ -53,18 +53,19 @@ LIBS = @LIBS@
 PROFILE=@PROFILE@
 CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
 MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g -O0
+TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
 
-XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o
+XSTATICFILES=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
 
-XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.lo cxsec.lo smmalloc.lo
+XDYNAMICFILES=mtask.lo mtlexer.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.lo cxsec.lo smmalloc.lo qprintf.lo strtcpy.lo
 DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
 
 INCLUDEFILES:=$(wildcard include/*.h)
 INCLUDEFILES:=$(patsubst include/cxlibconfig-internal.h,,$(INCLUDEFILES))
 INCLUDEFILES:=$(patsubst include/cxlibconfig-all.h,,$(INCLUDEFILES))
 
-TESTFILES:=$(wildcard tests/test_*.c)
+TESTFILES:=$(wildcard tests/test_$(TONLY)*.c)
 TESTPROGS:=$(patsubst %.c,%.bin,$(TESTFILES))
 
 .SUFFIXES:	.c .o .lo
@@ -130,13 +131,17 @@ install: all
 	@echo ""
 
 %.bin:	%.c tests/t_driver.c libCentrallix.a
-	$(CC) $(CFLAGS) tests/t_driver.c $< libCentrallix.a -o $@
+	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@
 
 .PHONY: test
 test:	$(TESTPROGS)
-	@printf "%-64.64s  %s\n" "Test Name" "Ops/sec"
-	@printf "%-64.64s  %s\n" "----------------------------------------------------------------" "----------"
-	@for PROG in $(TESTPROGS); do $$PROG; done 
+	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
+	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
+	@for PROG in $(TESTPROGS); do \
+	    if [ "$$TONLY" = "" -o "$${PROG#tests/test_$$TONLY}" != "$$PROG" ]; then \
+		$$PROG; \
+	    fi \
+	done 
 
 .PHONY: clean
 clean:
