@@ -180,7 +180,7 @@ function osrc_action_query(aparam) //q, formobj)
 
 function osrc_action_delete(aparam) //up,formobj)
     {
-    var up = aparam.dataobj;
+    var up = aparam.data;
     var formobj = aparam.client;
 
     //Delete an object through OSML
@@ -246,7 +246,7 @@ function osrc_action_delete_cb()
 
 function osrc_action_create(aparam) //up,formobj)
     {
-    var up = aparam.dataobj;
+    var up = aparam.data;
     var formobj = aparam.client;
 
     this.formobj=formobj;
@@ -322,7 +322,7 @@ function osrc_action_create_cb()
 
 function osrc_action_modify(aparam) //up,formobj)
     {
-    var up = aparam.dataobj;
+    var up = aparam.data;
     var formobj = aparam.client;
 
     //Modify an object through OSML
@@ -1109,7 +1109,7 @@ function osrc_cb_reveal(child)
 
     // User requested onReveal?  If so, do that here.
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
-	pg_addsched_fn(this,'InitQuery',0);
+	pg_addsched_fn(this,'InitQuery', [], 0);
     else if (this.autoquery == this.AQonEachReveal)
 	{
 	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:null, client:null, ro:this.readonly}, 0);
