@@ -23,10 +23,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.17 2005/03/14 20:33:36 gbeeley Exp $
+    $Id: mtask.h,v 1.18 2006/06/21 21:25:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.18  2006/06/21 21:25:10  gbeeley
+    - Adding fdQPrintf() routines to utilize the qpfPrintf routines.
+
     Revision 1.17  2005/03/14 20:33:36  gbeeley
     - changing the interface to the get thread list function so that we can
       better identify a specific thread from one call to another.
@@ -131,6 +134,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdarg.h>
 
 #ifdef HAVE_CONFIG_H
 #ifdef CXLIB_INTERNAL
@@ -447,6 +451,8 @@ int fdFD(pFile filedesc);
 int fdSetOptions(pFile filedesc, int options);
 int fdUnSetOptions(pFile filedesc, int options);
 int fdPrintf(pFile filedesc, const char* fmt, ...);
+int fdQPrintf(pFile filedesc, const char* fmt, ...);	/* qpfPrintf() based */ 
+int fdQPrintf_va(pFile filedesc, const char* fmt, va_list va);	/* qpfPrintf() based */ 
 int fdAccess(const char* filename, int check_ok);
 int fdPipe(pFile *filedesc1, pFile *filedesc2);
 

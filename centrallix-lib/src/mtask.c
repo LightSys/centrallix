@@ -24,6 +24,7 @@
 #endif
 #include <grp.h>
 #include <stdarg.h>
+#include "qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -50,10 +51,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.33 2006/04/07 06:14:21 gbeeley Exp $
+    $Id: mtask.c,v 1.34 2006/06/21 21:25:10 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.34  2006/06/21 21:25:10  gbeeley
+    - Adding fdQPrintf() routines to utilize the qpfPrintf routines.
+
     Revision 1.33  2006/04/07 06:14:21  gbeeley
     - (bugfix) memory_leaks -= 2;
 
@@ -2719,6 +2723,74 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
                 }
 	    else if (code == EV_S_ERROR) rval = -1;
             }
+
+    return rval;
+    }
+
+
+/*** FDQPRINTF_GROW - handles buffer undersize conditions by dumping 
+ *** already-printed data to the output descriptor and going from
+ *** there.
+ ***/
+int
+fdQPrintf_Grow(char** str, size_t* size, void* arg, int req_size)
+    {
+    pFile filedesc = (pFile)arg;
+    int incr;
+
+	if (req_size <= *size) return 1;
+	if (req_size > filedesc->PrintfBufSize) return 0;
+
+	incr = *size - (filedesc->PrintfBuf - *str);
+	fdWrite(filedesc, filedesc->PrintfBuf, incr, 0, FD_U_PACKET);
+	(*size) += incr;
+	(*str) -= incr;
+
+    return 1;
+    }
+
+
+/*** FDQPRINTF_VA writes formatted output data, given an explicit va_list
+ *** rather than doing it via a variable argument list
+ ***/
+int
+fdQPrintf_va(pFile filedesc, const char* fmt, va_list va)
+    {
+    int rval;
+    char* buf;
+    int size;
+
+	/** Alloc a printf buf? **/
+	if (!filedesc->PrintfBuf)
+	    {
+	    filedesc->PrintfBufSize = FD_PRINTF_BUFSIZ;
+	    filedesc->PrintfBuf = (char*)nmSysMalloc(filedesc->PrintfBufSize);
+	    if (!filedesc->PrintfBuf)
+		return -ENOMEM;
+	    }
+	buf = filedesc->PrintfBuf;
+	size = filedesc->PrintfBufSize;
+
+	/** Print it **/
+	rval = qpfPrintf_va_internal(&buf, &size, fdQPrintf_Grow, filedesc, fmt, va);
+	fdWrite(filedesc, filedesc->PrintfBuf, size - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
+   
+    return rval;
+    }
+
+
+/*** FDQPRINTF writes formatted output data to the descriptor, using the
+ *** qpfPrintf() quoting-printf semantics
+ ***/
+int
+fdQPrintf(pFile filedesc, const char* fmt, ...)
+    {
+    va_list va;
+    int rval;
+
+	va_start(va, fmt);
+	rval = fdQPrintf_va(filedesc, fmt, va);
+	va_end(va);
 
     return rval;
     }
