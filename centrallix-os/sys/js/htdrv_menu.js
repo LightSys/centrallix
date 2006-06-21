@@ -270,6 +270,9 @@ function mn_mousemove(e)
 			// user *wants* the menu.  Now.
 			ly.ActivateItem(ly.cur_highlight);
 			}
+		    // if close to edge, activate now
+		    if (!ly.nextActive && ((!ly.horiz && x > ly.cur_highlight.width - 6)))
+			ly.ActivateItem(ly.cur_highlight);
 		    }
 		else if (ly.cur_highlight != ly.items[i])
 		    {
