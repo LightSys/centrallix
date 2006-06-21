@@ -474,7 +474,7 @@ function htr_new_layer(w,p)
 	    {
 	    nl = document.createElement('div');
 	    nl.style.width = w;
-	    pg_set_style(nl, 'position','relative');
+	    pg_set_style(nl, 'position','absolute');
 	    p.appendChild(nl);
 	    }
 
