@@ -22,6 +22,39 @@ COMPILE LIBS
     add your own prefix there).  Be sure that the previously mentioned path is
     listed in /etc/ld.so.conf and be sure to run ldconfig.
 
+    If you install into /usr/local, you must be root.
+
+    If you install into your home directory (as non-root), you must set your
+    LD_LIBRARY_PATH accordingly (instead of /etc/ld.so.conf).
+
+
+TEST SUITE
+==========
+    If you want to run the centrallix-lib test suite, type "make test" at the
+    prompt (from within the centrallix-lib main directory):
+
+      $ make test
+
+    The test suite should be run on a system 500MHz or faster; otherwise the
+    test suite may falsely report 'lockups' (the test suite lockup-detection
+    timer in t_driver.c can be modified to wait longer than 10 seconds if the
+    suite must be run on a slow machine).
+
+    If you only need to run a subset of the test suite, set the environment
+    variable $TONLY to the appropriate component, such as:
+
+      $ export TONLY=qprintf
+      $ make test
+
+    Benchmarks of known results are provided in the test suite directory for
+    comparison purposes.
+
+    All test suite items should 'PASS', except for some of the BASELINE items
+    which intentionally will fail in various ways to make sure test failure
+    detection is working.  Those items are marked appropriately.  The assert()
+    failure message goes along with the ABORT result for the corresponding
+    test suite item.
+
 
 COMPILE CENTRALLIX
 ==================
