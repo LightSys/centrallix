@@ -1,0 +1,12 @@
+.cvsignore
+.depend
+Makefile
+config.log
+config.status
+gmon.out
+stamp-h
+stamp-h.in
+autom4te-2.53.cache
+autom4te.cache
+config.h.in~
+configure.lineno
