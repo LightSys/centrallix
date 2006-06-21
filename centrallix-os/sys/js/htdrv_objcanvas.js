@@ -268,6 +268,7 @@ function oc_osrc_object_created(o)
 function oc_osrc_object_modified(o)
     {
     this.Refresh();
+    if (this.param.show_select) this.SelectItemById(this.osrc.CurrentRecord);
     }
 
 function oc_osrc_object_deleted(o)
