@@ -1,7 +1,7 @@
 Summary: A base functionality library developed for the Centrallix server.
 Name: centrallix-lib
-Version: 0.7.4a
-Release: 2
+Version: 0.7.5
+Release: 0
 License: LGPL
 Group: System Environment/Libraries
 Source: centrallix-lib-%{version}.tgz
@@ -57,5 +57,9 @@ mv $RPM_BUILD_ROOT/usr/lib/libStParse.so $RPM_BUILD_ROOT/usr/lib/libStParse.so.%
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Thu Apr 20 2006 Greg Beeley <Greg.Beeley@LightSys.org> 0.7.5-0
+- Update to 0.7.5; many bug fixes.
+- Added smmalloc module, strtcpy(), and the qpfPrintf() family of functions.
+
 * Wed Sep  8 2004 Greg Beeley <Greg.Beeley@LightSys.org> 0.7.4-0
 - Initial creation of the RPM.

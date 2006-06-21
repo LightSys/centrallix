@@ -3442,7 +3442,7 @@ fi
 done
 
 
-CXLIBVER="0.7.4a"
+CXLIBVER="0.7.5"
 FINAL_TARGETS="libCentrallix.a libStParse.a"
 
 
@@ -3651,7 +3651,7 @@ echo "$as_me: error: Optimization and security hardening are mutually exclusive;
 	    echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
 	    PROFILE=""
-	    CFLAGS="$CFLAGS -O2"
+	    CFLAGS="$CFLAGS -O3"
 
 cat >>confdefs.h <<\_ACEOF
 #define USING_OPTIMIZATION 1

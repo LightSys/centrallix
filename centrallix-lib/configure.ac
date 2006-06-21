@@ -33,7 +33,7 @@ AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
-CXLIBVER="0.7.4a"
+CXLIBVER="0.7.5"
 FINAL_TARGETS="libCentrallix.a libStParse.a"
 
 dnl Check for makedepend
