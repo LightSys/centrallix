@@ -16,7 +16,7 @@ test(char** tname)
 	smInitialize();
 
 	*tname = "smmalloc-02 malloc/free 1024 bytes";
-	iter = 300000;
+	iter = 100000;
 	r = smCreate(1024*1024);
 	for(i=0;i<iter;i++)
 	    {

@@ -15,7 +15,7 @@ test(char** tname)
 	smInitialize();
 
 	*tname = "smmalloc-01 create/destroy region";
-	iter = 100000;
+	iter = 30000;
 	for(i=0;i<iter;i++)
 	    {
 	    r = smCreate(1024*1024);

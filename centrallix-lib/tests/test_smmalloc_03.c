@@ -17,7 +17,7 @@ test(char** tname)
 	smInitialize();
 
 	*tname = "smmalloc-03 malloc/free 1MB, free order = LIFO, size=1K";
-	iter = 1000;
+	iter = 300;
 	r = smCreate(1024*1024);
 	for(i=0;i<iter;i++)
 	    {

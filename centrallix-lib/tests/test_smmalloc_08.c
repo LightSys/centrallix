@@ -21,7 +21,7 @@ test(char** tname)
 
 	*tname = "smmalloc-08 block realloc to 512K of 1M - 128 1K blocks";
 	srand(time(NULL));
-	iter = 1000;
+	iter = 300;
 	r = smCreate(1024*1024);
 	for(i=0;i<iter;i++)
 	    {

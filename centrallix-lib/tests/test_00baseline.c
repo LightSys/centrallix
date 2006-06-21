@@ -11,8 +11,8 @@ test(char** tname)
     int iter;
     int array[2];
 
-	*tname = "BASELINE";
-	iter = 1000*1000*1000;
+	*tname = "BASELINE - should pass";
+	iter = 1000*1000*300;
 	for(i=0;i<iter;i++) array[0] = array[1];
 
     return iter;

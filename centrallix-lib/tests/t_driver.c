@@ -26,10 +26,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: t_driver.c,v 1.2 2005/10/08 23:59:57 gbeeley Exp $
+    $Id: t_driver.c,v 1.3 2006/06/21 21:17:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/tests/t_driver.c,v $
 
     $Log: t_driver.c,v $
+    Revision 1.3  2006/06/21 21:17:02  gbeeley
+    - Updating timings on smmalloc tests to speed things up a bit.
+    - Updating test driver to detect crashes, lockups, and assertion failures.
+
     Revision 1.2  2005/10/08 23:59:57  gbeeley
     - (change) modify timing in test driver to reflect actual cpu and child
       process cpu utilization
@@ -53,13 +57,19 @@ char * tname = "?";
 void
 segv_handler(int v)
     {
-    printf("%-64.64s  **CRASH**\n", tname);
+    printf("%-62.62s  CRASH\n", tname);
     exit(0);
     }
 void
 abort_handler(int v)
     {
-    printf("%-64.64s  **ABORTED**\n", tname);
+    printf("%-62.62s  ABORT\n", tname);
+    exit(0);
+    }
+void
+alarm_handler(int v)
+    {
+    printf("%-62.62s  LOCKUP\n", tname);
     exit(0);
     }
 
@@ -72,15 +82,17 @@ main(int argc, char* argv[])
 
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
+	signal(SIGALRM, alarm_handler);
+	alarm(10);
 	times(&t);
 	start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	rval = test(&tname);
 	times(&t);
 	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	if (rval < 0)
-	    printf("%-64.64s  FAIL\n", tname);
+	    printf("%-62.62s  FAIL\n", tname);
 	else
-	    printf("%-64.64s  %lld\n", tname, rval*100/(long long)(end - start));
+	    printf("%-62.62s  PASS %lld\n", tname, rval*100/(long long)(end - start));
 
     return 0;
     }

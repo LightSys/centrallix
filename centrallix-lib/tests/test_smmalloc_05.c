@@ -19,7 +19,7 @@ test(char** tname)
 
 	*tname = "smmalloc-05 malloc/free 1MB, free order = random, size=1K";
 	srand(time(NULL));
-	iter = 1000;
+	iter = 300;
 	r = smCreate(1024*1024);
 	for(i=0;i<iter;i++)
 	    {

@@ -20,7 +20,7 @@ test(char** tname)
 
 	*tname = "smmalloc-07 reference counting (randomized free order)";
 	srand(time(NULL));
-	iter = 1000;
+	iter = 300;
 	r = smCreate(1024*1024);
 	for(i=0;i<iter;i++)
 	    {
