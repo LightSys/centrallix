@@ -356,11 +356,11 @@ AC_DEFUN(CENTRALLIX_CHECK_GZIP_OS,
 dnl Test for the HTTP os driver.
 AC_DEFUN(CENTRALLIX_CHECK_HTTP_OS,
     [
-	AC_MSG_CHECKING(if HTTP support is desired)
+	AC_MSG_CHECKING(if HTTP client support is desired)
 
 	AC_ARG_ENABLE(http,
 	    AC_HELP_STRING([--disable-http],
-		[disable HTTP support]
+		[disable HTTP client support]
 	    ),
 	    WITH_HTTP="$enableval", 
 	    WITH_HTTP="yes"
