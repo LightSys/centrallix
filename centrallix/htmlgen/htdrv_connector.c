@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.21 2006/04/07 06:28:25 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.22 2006/06/22 00:16:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.22  2006/06/22 00:16:00  gbeeley
+    - fix connector issue when attached to the page object
+
     Revision 1.21  2006/04/07 06:28:25  gbeeley
     - (change) convert widgets to new inter-widget interface mechanism rather
       than direct callbacks for Events and Actions
@@ -294,6 +297,10 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
     	/** Get an id for this. **/
 	id = (HTCONN.idcnt++);
+
+	/** Connectors should be on window object rather than document object **/
+	if (!strcmp(parentobj, "document"))
+	    parentobj = "window";
 
 	/** Get the event linkage information **/
 	if (wgtrGetPropertyValue(tree,"event",DATA_T_STRING,POD(&ptr)) != 0) 
