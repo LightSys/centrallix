@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.33 2005/09/17 02:55:55 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.34 2006/06/22 00:22:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.34  2006/06/22 00:22:07  gbeeley
+    - better tracking of what button got pushed, to match up the mousedown/up
+      events.
+
     Revision 1.33  2005/09/17 02:55:55  gbeeley
     - fix regressions in moz/ie support with regard to new init function
       call protocol.
@@ -433,6 +437,8 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	else
 	    strcpy(disable_color,"#808080");
 
+	htrAddScriptGlobal(s, "tb_current", "null", 0);
+	
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
