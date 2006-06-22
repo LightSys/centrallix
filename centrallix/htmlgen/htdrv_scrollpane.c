@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.26 2005/06/23 22:08:00 ncolson Exp $
+    $Id: htdrv_scrollpane.c,v 1.27 2006/06/22 00:21:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.27  2006/06/22 00:21:28  gbeeley
+    - use getRelativeY and moveBy instead of .y for moz/IE
+
     Revision 1.26  2005/06/23 22:08:00  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -455,8 +458,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 		"        var h=getClipHeight(ti.area)+getClipTop(ti.area);\n"
 		"        var d=h-getClipHeight(ti.pane);\n"
 		"        if (d<0) d=0;\n"
-		"        var yincr = (((ti.thum.y-18)/v)*-d) - ti.area.y;\n"
-		"        ti.area.y+=yincr;\n"
+		"        var yincr = (((getRelativeY(ti.thum)-18)/v)*-d) - getRelativeY(ti.area);\n"
+		"        moveBy(ti.area, 0, yincr);\n"
 		"        return false;\n"
 		"        }\n"
 		"");
