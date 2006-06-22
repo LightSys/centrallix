@@ -123,8 +123,8 @@ HTMLElement.prototype.clip getter = function ()
 
 function Element_MoveBy(x,y)
     {
-    this.x = this.x + x;
-    this.y = this.y + y;
+    if (x) this.x = this.x + x;
+    if (y) this.y = this.y + y;
     }
 
 function Element_MoveTo (x,y)
@@ -150,18 +150,22 @@ function Element_MoveAbove(lb)
     {
     if (lb)
 	{
+        this.parentLayer = pg_get_container(lb);
+	if (cx__capabilities.Dom1HTML && this.parentLayer)
+	    this.parentLayer.appendChild(this);
         var z = htr_getzindex(lb);
         htr_setzindex(this,++z);
-        this.parentLayer = lb.parentLayer;
 	}
     }
 function Element_MoveBelow(lb)
     {
     if (lb)
 	{
+        this.parentLayer = lb.parentLayer;
+	if (cx__capabilities.Dom1HTML && this.parentLayer)
+	    this.parentLayer.appendChild(this);
         var z = htr_getzindex(lb);
         htr_setzindex(this,--z);
-        this.parentLayer = lb.parentLayer;
 	}
     }
 
