@@ -192,15 +192,11 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	    if (objGetAttrValue(MinorObj, "name", DATA_T_STRING, &Val) < 0)
 		{
 		mssError(0, "IFC", "Couldn't get name for a minor version within '%s'", def->Pathname->Pathbuf+1);
-		objClose(MinorObj);
-		objQueryClose(MinorQy);
 		goto error;
 		}
 	    if (Val.String[0] != 'v' || ( (i=strtol(Val.String+1, &ptr, 10))==0 && ptr != Val.String+strlen(Val.String)))
 		{
 		mssError(0, "IFC", "Ilegal minor version name '%s' in '%s'", Val.String, def->Pathname->Pathbuf+1);
-		objClose(MinorObj);
-		objQueryClose(MinorQy);
 		goto error;
 		}
 	    if (IFC_DEBUG)
@@ -210,14 +206,14 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	    else if (HighestMinorVersion == i)
 		{
 		mssError(0, "IFC", "Duplicate entries for minor version %d in '%s'", i, def->Pathname->Pathbuf+1);
-		objClose(MinorObj);
-		objQueryClose(MinorQy);
 		goto error;
 		}
 	    NumMinorVersions++;
 	    objClose(MinorObj);
+	    MinorObj = NULL;
 	    }
 	objQueryClose(MinorQy);
+	MinorQy = NULL;
 	MajorVersion->NumMinorVersions = NumMinorVersions;
 	
 	/******* Second pass through minor versions, filling out major version struct **********/
@@ -243,16 +239,12 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	    if (ExpectedMinorVersion < 0)
 		{
 		mssError(1, "IFC", "Trying to process too many minor versions for '%s'!", def->Pathname->Pathbuf);
-		objClose(MinorObj);
-		objQueryClose(MinorQy);
 		goto error;
 		}
 	    /** make sure the version is the one we expect **/
 	    if (ThisMinorVersion != ExpectedMinorVersion)
 		{
 		mssError(1, "IFC", "In '%s', missing minor version %d", def->Pathname->Pathbuf, ExpectedMinorVersion);
-		objClose(MinorObj);
-		objQueryClose(MinorQy);
 		goto error;
 		}
 	    /** Set all offsets **/
@@ -262,8 +254,6 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	    if ( (MemberQy = objOpenQuery(MinorObj, NULL, NULL, NULL, NULL)) == NULL)
 		{
 		mssError(0, "IFC", "Could not retrieve the members of '%s'", MinorObj->Pathname->Pathbuf+1);
-		objClose(MinorObj);
-		objQueryClose(MinorQy);
 		goto error;
 		}
 	    while ( (MemberObj = objQueryFetch(MemberQy, O_RDONLY)) != NULL)
@@ -272,7 +262,6 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		if (objGetAttrValue(MemberObj, "name", DATA_T_STRING, &Val)<0)
 		    {
 		    mssError(0, "IFC", "Couldn't retrieve name from '%s'", MemberObj->Pathname->Pathbuf+1);
-		    objClose(MemberObj); objClose(MinorObj); objQueryClose(MemberQy); objQueryClose(MinorQy);
 		    goto error;
 		    }
 		strncpy(MemberName, Val.String, 64);
@@ -280,13 +269,11 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		if(objGetAttrValue(MemberObj, "outer_type", DATA_T_STRING, &Val)<0)
 		    {
 		    mssError(0, "IFC", "Couldn't retrieve Type from '%s'", MemberObj->Pathname->Pathbuf+1);
-		    objClose(MemberObj); objClose(MinorObj); objQueryClose(MemberQy); objQueryClose(MinorQy);
 		    goto error;
 		    }
 		if (strncmp("iface/", Val.String, 6))
 		    {
 		    mssError(0, "IFC", "Type of '%s' must be 'iface/<category>", MemberObj->Pathname->Pathbuf+1);
-		    objClose(MemberObj); objClose(MinorObj); objQueryClose(MemberQy); objQueryClose(MinorQy);
 		    goto error;
 		    }
 		for (MemberCategory=0;MemberCategory<NumCategories;MemberCategory++) 
@@ -295,7 +282,6 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		    {
 		    mssError(0, "IFC", "For member '%s': category '%s' not valid for interface type '%s'", 
 			MemberObj->Pathname->Pathbuf+1, Val.String+6, IFC.TypeNames[type]);
-		    objClose(MemberObj); objClose(MinorObj); objQueryClose(MemberQy); objQueryClose(MinorQy);
 		    goto error;
 		    }
 		/** check for duplicates **/
@@ -309,7 +295,6 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 			    {
 			    mssError(1, "IFC", "In '%s', member '%s' is duplicated", MinorObj->Pathname->Pathbuf+1,
 				MemberName);
-			    objClose(MemberObj); objClose(MinorObj); objQueryClose(MemberQy); objQueryClose(MinorQy);
 			    goto error;
 			    }
 			else
@@ -322,7 +307,6 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 			     **/
 			    mssError(1, "IFC", "In '%s', member '%s' is duplicated", MinorObj->Pathname->Pathbuf+1,
 				MemberName);
-			    objClose(MemberObj); objClose(MinorObj); objQueryClose(MemberQy); objQueryClose(MinorQy);
 			    goto error;
 			    }
 			}   /** end if (i >= ThisOffset) **/
@@ -332,13 +316,28 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		    fprintf(stderr, "Adding '%s' to '%s'\n", MemberName, def->Pathname->Pathbuf);
 		xaAddItem(&(MajorVersion->Members[MemberCategory]), nmSysStrdup(MemberName));
 		xaAddItem(&(MajorVersion->Properties[MemberCategory]), nmSysStrdup(MemberObj->Pathname->Pathbuf+1));
+		objClose(MemberObj);
+		MemberObj = NULL;
 		} /** end while ( (MemberObj = ... **/
-		ExpectedMinorVersion--;
+	    ExpectedMinorVersion--;
+
+	    objQueryClose(MemberQy);
+	    MemberQy = NULL;
+	    objClose(MinorObj);
+	    MinorObj = NULL;
 	    } /** end while ( (MinorObj = ... */
 
+	objQueryClose(MinorQy);
+	MinorQy = NULL;
+
 	return MajorVersion;
+
     error:
-	ifc_internal_FreeMajorVersion(MajorVersion, type);
+	if (MemberObj) objClose(MemberObj);
+	if (MemberQy) objQueryClose(MemberQy);
+	if (MinorObj) objClose(MinorObj);
+	if (MinorQy) objQueryClose(MinorQy);
+	if (MajorVersion) ifc_internal_FreeMajorVersion(MajorVersion, type);
 	return NULL;
     }
 
@@ -451,7 +450,9 @@ ifc_internal_NewIfcDef(pObjSession s, char* path)
 		objClose(obj);
 		return NULL;
 		}
+	    objClose(obj);
 	    }
+	objQueryClose(qy);
 	
 	return def;
     }
