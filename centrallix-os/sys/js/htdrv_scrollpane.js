@@ -98,20 +98,30 @@ function sp_init(param)
 
 function sp_action_scrollto(aparam)
     {
-    var h=getClipHeight(this.area)+getClipTop(this.area); // height of content
-    var d=h-getClipHeight(this); // height of non-visible content (max scrollable distance)
+    var h = getClipHeight(this.area)+getClipTop(this.area); // height of content
+    var ch = getClipHeight(this);
+    var d = h-ch; // height of non-visible content (max scrollable distance)
     if (d < 0) d=0;
-    if (aparam.Percent)
+    if (typeof aparam.Percent != 'undefined')
 	{
 	if (aparam.Percent < 0) aparam.Percent = 0;
 	else if (aparam.Percent > 100) aparam.Percent = 100;
-	this.area.y = -d*aparam.Percent/100;
+	setRelativeY(this.area, -d*aparam.Percent/100);
 	}
-    else if (aparam.Offset)
+    else if (typeof aparam.Offset != 'undefined')
 	{
 	if (aparam.Offset < 0) aparam.Offset = 0;
 	else if (aparam.Offset > d) aparam.Offset = d;
-	this.area.y = -aparam.Offset;
+	setRelativeY(this.area, -aparam.Offset);
+	}
+    else if (typeof aparam.RangeStart != 'undefined' && typeof aparam.RangeEnd != 'undefined')
+	{
+	var ny = -getRelativeY(this.area);
+	if (ny + ch < aparam.RangeEnd) ny = aparam.RangeEnd - ch;
+	if (ny > aparam.RangeStart) ny = aparam.RangeStart;
+	if (ny < 0) ny = 0;
+	if (ny > d) ny = d;
+	setRelativeY(this.area, -ny);
 	}
     this.UpdateThumb(h);
     }
