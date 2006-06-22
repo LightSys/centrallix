@@ -1,7 +1,7 @@
 Summary: The Centrallix application platform server.
 Name: centrallix
-Version: 0.7.4
-Release: 2
+Version: 0.7.5
+Release: 1
 License: GPL
 Group: System Environment/Daemons
 Source: centrallix-%{version}.tgz
@@ -81,7 +81,7 @@ make config_install
 make rhinit_install
 make test_install
 mkdir -p $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}
-cp COPYING AUTHORS RELNOTES.txt LICENSE CHANGELOG $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}
+cp COPYING AUTHORS RELNOTES.txt README LICENSE CHANGELOG $RPM_BUILD_ROOT/usr/share/doc/centrallix-%{version}
 mkdir -p $RPM_BUILD_ROOT/var/centrallix/os
 echo "<html><head><title>Centrallix</title></head><body>Centrallix Successfully Installed.<br><br>Please install a centrallix-os package for full functionality!</body></html>" > $RPM_BUILD_ROOT/var/centrallix/os/index.html
 
@@ -98,6 +98,7 @@ echo "<html><head><title>Centrallix</title></head><body>Centrallix Successfully 
 /usr/share/doc/centrallix-%{version}/COPYING
 /usr/share/doc/centrallix-%{version}/AUTHORS
 /usr/share/doc/centrallix-%{version}/RELNOTES.txt
+/usr/share/doc/centrallix-%{version}/README
 /usr/share/doc/centrallix-%{version}/LICENSE
 /usr/share/doc/centrallix-%{version}/CHANGELOG
 %verify(not md5 size mtime) %config(noreplace) /etc/centrallix.conf
@@ -118,5 +119,8 @@ echo "<html><head><title>Centrallix</title></head><body>Centrallix Successfully 
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Fri Apr 07 2006 Greg Beeley <Greg.Beeley@LightSys.org> 0.7.5-0
+- major development release; see release notes for details.
+
 * Sat Feb 26 2005 Greg Beeley <Greg.Beeley@LightSys.org> 0.7.4-0
 - Initial creation of the RPM.

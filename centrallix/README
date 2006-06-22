@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------------
                          Centrallix Core README File
-                               August 6th, 2001
+                               April 7th, 2006
 		 Greg Beeley (GRB), Greg.Beeley@LightSys.org
-		 (c) 2001 LightSys Technology Services, Inc.
+	      (c) 2001-2006 LightSys Technology Services, Inc.
 ------------------------------------------------------------------------------
 
 
@@ -25,12 +25,12 @@ you did) get it to build and run correctly on other platforms.
 LICENSING....
 
 The core of Centrallix is distributed under the GNU General Public License,
-version 2.  See the included files "LICENSE" and "COPYING" for the details of
-the license.
+version 2 (or any later version published by the free software foundation).
+See the included files "LICENSE" and "COPYING" for the details of the license.
 
 Please note that the centrallix-lib package is distributed under a different
 license (the LGPL v2.1).  Because of this you MUST obtain permission from the
-respective copyright holders for centrallix core code before including any 
+respective copyright holder(s) for centrallix core code before including any 
 of that code in the centrallix-lib package.  The reverse is NOT true,
 however.
 

@@ -1,5 +1,36 @@
 Centrallix Release Notes
 -------------------------------------------------------------------------------
+Version 0.7.5, (unreleased)
+
+This is a major development release of Centrallix.  See the release notes for
+the previous versions for further details.
+
+1.  Be sure to download at least centrallix, centrallix-lib, and centrallix-os.
+    Without those three packages, things will not work.
+
+2.  This version should not be considered secure enough to run on a computer
+    that can be accessed by a non-trusted network (internet, etc.).  Please
+    firewall your running Centrallix binary from such networks.
+
+3.  "makedepend" is REQUIRED for the build to work.  You can get it by 
+    installing your XFree86-devel or Xorg-devel package if you haven't already.
+
+4.  To be able to use 'altpasswd' authentication, you need to have a working
+    htpasswd command on your system - it comes with the httpd or apache
+    package.
+
+5.  If you intend to use Centrallix with Sybase ASE, install your Sybase ASE
+    packages first (including the OCSD).  On newer systems, Sybase ASE 11.0.3
+    does not grok locales like "en_US.utf8".  Change it to just "en_US" and you
+    will be fine.
+
+6.  See the 0.7.4 release notes for an example of how to install as a non-
+    root user, and the 0.7.3 release notes for an example of how to install
+    the package as root.  If you are root and installing RPM's, this does
+    not apply, of course!
+
+
+-------------------------------------------------------------------------------
 Version 0.7.4, 01-Mar-2005
 
 This is a major development release of Centrallix.  See the release notes for
@@ -67,6 +98,7 @@ the previous versions for further details.
 	$ centrallix
 	    (now point your browser to http://localhost:8800/samples/ors.app
 	     or some similar test application).
+
 
 -------------------------------------------------------------------------------
 Version 0.7.3, 19-Jun-2003 

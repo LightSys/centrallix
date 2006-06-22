@@ -22,6 +22,11 @@ Centrallix ChangeLog
 	    cut-and-paste repetition for widget properties.
 	8.  Changed name of 'htmlwindow' to 'childwindow' to remove the
 	    terminology dependence on the DHTML/HTTP app delivery mechanism.
+	9.  Added a working dropdown/popup menu widget, complete with 
+	    separators, submenus, and main menubars.
+	10. Added an inter-widget interface mechanism to standardize the way
+	    widgets interact.
+	11. Fixed a few memory leaks.
 
 -------------------------------------------------------------------------------
 0.7.3 --> 0.7.4	    01-Mar-2005     MAJOR DEVELOPMENT RELEASE
