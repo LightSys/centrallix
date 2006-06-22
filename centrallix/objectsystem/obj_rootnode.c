@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_rootnode.c,v 1.6 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_rootnode.c,v 1.7 2006/06/22 00:26:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_rootnode.c,v $
 
     $Log: obj_rootnode.c,v $
+    Revision 1.7  2006/06/22 00:26:00  gbeeley
+    - only open rootnode source file when needed, to avoid exhausting file
+      handles when lots of objects are open.
+
     Revision 1.6  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -132,13 +136,7 @@ rootOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     	/** Open the rootnode file **/
 	inf = (pRootData)nmMalloc(sizeof(RootData));
 	memset(inf,0,sizeof(RootData));
-	inf->fd = fdOpen(OSYS.RootPath, O_RDONLY, 0600);
-	if (!inf->fd)
-	    {
-	    nmFree(inf,sizeof(RootData));
-	    mssErrorErrno(1,"OSML","Could not access rootnode");
-	    return NULL;
-	    }
+	inf->fd = NULL;
 	inf->Obj = obj;
 
     	/** Set the object to be a rootnode type. **/
@@ -158,7 +156,11 @@ rootClose(void* inf_v, pObjTrxTree* oxt)
     pRootData inf = (pRootData)inf_v;
 
     	/** Close the rootnode file **/
-	fdClose(inf->fd,0);
+	if (inf->fd)
+	    {
+	    fdClose(inf->fd,0);
+	    inf->fd = NULL;
+	    }
 
 	/** Free the memory and return **/
 	nmFree(inf, sizeof(RootData));
@@ -173,7 +175,23 @@ int
 rootRead(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pRootData inf = (pRootData)inf_v;
-    return fdRead(inf->fd, buffer, cnt, offset, flags);
+    int rval;
+    if (!inf->fd)
+	{
+	inf->fd = fdOpen(OSYS.RootPath, O_RDONLY, 0600);
+	if (!inf->fd)
+	    {
+	    mssErrorErrno(1,"OSML","Could not access rootnode");
+	    return -1;
+	    }
+	}
+    rval = fdRead(inf->fd, buffer, cnt, offset, flags);
+    if (rval < cnt)
+	{
+	fdClose(inf->fd, 0);
+	inf->fd = NULL;
+	}
+    return rval;
     }
 
 
