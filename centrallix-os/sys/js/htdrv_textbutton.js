@@ -250,6 +250,7 @@ function tb_mousedown(e)
     if (ly.kind == 'tb' && ly.enabled)
         {
         tb_setmode(ly,2);
+	tb_current = ly;
 	ly.ifcProbe(ifEvent).Activate('MouseDown', {});
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -266,15 +267,23 @@ function tb_mouseup(e)
             e.pageY >= getPageY(ly) &&
             e.pageY < getPageY(ly) + getClipHeight(ly))
             {
-            tb_setmode(ly,1);
-	    ly.ifcProbe(ifEvent).Activate('Click', {});
-	    ly.ifcProbe(ifEvent).Activate('MouseUp', {});
+	    if (ly.mode == 2)
+		{
+		tb_setmode(ly,1);
+		ly.ifcProbe(ifEvent).Activate('Click', {});
+		ly.ifcProbe(ifEvent).Activate('MouseUp', {});
+		}
             }
         else
             {
             tb_setmode(ly,0);
             }
         }
+    if (tb_current && tb_current.mode == 2 && tb_current != ly)
+	{
+	tb_setmode(tb_current,0);
+	}
+    tb_current = null;
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
