@@ -81,6 +81,7 @@ struct
     {
     XHashTable	    Methods;		    /* deployment methods */
     XArray	    Drivers;		    /* simple driver listing */
+    XHashTable	    DriversByType;
     } WGTR;
 
 
@@ -88,11 +89,13 @@ struct
 pWgtrDriver
 wgtr_internal_LookupDriver(pWgtrNode node)
     {
-    int i, j;
+    /*int i, j;*/
     pWgtrDriver drv;
-    char* this_type;
+    /*char* this_type;*/
 
-	for (i=0;i<xaCount(&(WGTR.Drivers));i++)
+	drv = xhLookup(&(WGTR.DriversByType), node->Type+7);
+
+	/*for (i=0;i<xaCount(&(WGTR.Drivers));i++)
 	    {
 	    drv = xaGetItem(&(WGTR.Drivers), i);
 	    for (j=0;j<xaCount(&(drv->Types));j++)
@@ -100,9 +103,11 @@ wgtr_internal_LookupDriver(pWgtrNode node)
 		this_type = xaGetItem(&(drv->Types), j);
 		if (!strncmp(node->Type+7, this_type, 64)) return drv;
 		}
-	    }
-	mssError(1, "WGTR", "No driver registered for type '%s'", node->Type+7);
-	return NULL;
+	    }*/
+	if (!drv) 
+	    mssError(1, "WGTR", "No driver registered for type '%s'", node->Type+7);
+
+    return drv;
     }
 
 
@@ -1170,6 +1175,7 @@ wgtrInitialize()
     {
 	/** init datastructures for handling drivers **/
 	xaInit(&(WGTR.Drivers), 64);
+	xhInit(&(WGTR.DriversByType), 127, 0);
 	xhInit(&(WGTR.Methods), 5, 0);
 	
 	/** init datastructures for auto-positioning **/
@@ -1276,6 +1282,7 @@ wgtrAddType(char* name, char* type_name)
 	    }
 	if (i == xaCount(&(WGTR.Drivers))) return -1;
 	xaAddItem(&(drv->Types), nmSysStrdup(type_name));
+	xhAdd(&(WGTR.DriversByType), nmSysStrdup(type_name), (void*)drv);
 	return 0;
     }
 
