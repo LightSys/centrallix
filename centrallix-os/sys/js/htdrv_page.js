@@ -133,7 +133,10 @@ function pg_set_style(element,attr, value)
 	    element[attr] = value;
 	    return;
 	    }
-	element.style.setProperty(attr,value + "px","");
+	if (isNaN(parseInt(value)))
+	    element.style.setProperty(attr,value,"");
+	else
+	    element.style.setProperty(attr,value + "px","");
 	return;
 	}
     else if(cx__capabilities.Dom0NS)
@@ -569,8 +572,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     resizeTo(tl,w,1);
     setClipWidth(tl,w);
     setClipHeight(tl,1);
-    if (cx__capabilities.Dom1HTML && pl)
-    	pl.parentLayer.appendChild(tl);
+    //if (cx__capabilities.Dom1HTML && pl)
+    //	pl.parentLayer.appendChild(tl);
     moveAbove(tl,pl);
     moveToAbsolute(tl,x,y);
     htr_setzindex(tl,z);
@@ -578,8 +581,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     resizeTo(bl,w+s-1,1);
     setClipWidth(bl,w+s-1);
     setClipHeight(bl,1);
-    if (cx__capabilities.Dom1HTML && pl)
-    	pl.parentLayer.appendChild(bl);
+    //if (cx__capabilities.Dom1HTML && pl)
+    //	pl.parentLayer.appendChild(bl);
     moveAbove(bl,pl);
     moveToAbsolute(bl,x,y+h-s+1);
     htr_setzindex(bl,z);
@@ -587,8 +590,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     resizeTo(ll,1,h);
     setClipHeight(ll,h);
     setClipWidth(ll,1);
-    if (cx__capabilities.Dom1HTML && pl)
-    	pl.parentLayer.appendChild(ll);
+    //if (cx__capabilities.Dom1HTML && pl)
+    //	pl.parentLayer.appendChild(ll);
     moveAbove(ll,pl);
     moveToAbsolute(ll,x,y);
     htr_setzindex(ll,z);
@@ -596,8 +599,8 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     resizeTo(rl,1,h+1);
     setClipHeight(rl,h+1);
     setClipWidth(rl,1);
-    if (cx__capabilities.Dom1HTML && pl)
-    	pl.parentLayer.appendChild(rl);
+    //if (cx__capabilities.Dom1HTML && pl)
+    //	pl.parentLayer.appendChild(rl);
     moveAbove(rl,pl);
     moveToAbsolute(rl,x+w-s+1,y);
     htr_setzindex(rl,z);
@@ -675,12 +678,16 @@ function pg_resize_area(a,w,h,xo,yo)
     a.height = h;
     a.x = xo;
     a.y = yo;
-    if (tl.visibility == 'inherit')
+    if (htr_getvisibility(tl) == 'inherit')
 	{
 	resizeTo(tl, w,1);
+	setClipWidth(tl, w);
 	resizeTo(bl, w+1,1);
+	setClipWidth(bl, w+1);
 	resizeTo(rl, 1,h+1);
+	setClipHeight(rl, h+1);
 	resizeTo(ll, 1,h);
+	setClipHeight(ll, h);
 	moveToAbsolute(tl, x,y);
 	moveToAbsolute(bl, x,y+h);
 	moveToAbsolute(ll, x,y);
@@ -700,12 +707,16 @@ function pg_resize_area(a,w,h,xo,yo)
 	ll=document.getElementById("pgklft");
 	rl=document.getElementById("pgkrgt");
 	}
-    if (tl.visibility == 'inherit')
+    if (htr_getvisibility(tl) == 'inherit')
 	{
 	resizeTo(tl, w,1);
+	setClipWidth(tl, w);
 	resizeTo(bl, w+1,1);
+	setClipWidth(bl, w+1);
 	resizeTo(rl, 1,h+1);
+	setClipHeight(rl, h+1);
 	resizeTo(ll, 1,h);
+	setClipHeight(ll, h);
 	moveToAbsolute(tl, x,y);
 	moveToAbsolute(bl, x,y+h);
 	moveToAbsolute(ll, x,y);
@@ -754,8 +765,10 @@ function pg_resize(l)
 	var visibility = pg_get_style(cl,'visibility');
 	if (visibility == 'show' || visibility == 'visible' || visibility == 'inherit') 
 	    {
-	    var clh = getRelativeY(cl) + getClipHeight(cl) + getClipTop(cl);
-	    var clw = getRelativeX(cl) + getClipWidth(cl) + getClipLeft(cl);
+	    //var clh = getRelativeY(cl) + getClipHeight(cl) + getClipTop(cl);
+	    var clh = getRelativeY(cl) + getClipBottom(cl);
+	    //var clw = getRelativeX(cl) + getClipWidth(cl) + getClipLeft(cl);
+	    var clw = getRelativeX(cl) + getClipRight(cl);
 	    if(clh > maxheight)
 		maxheight = clh;
 	    if(clw > maxwidth)
@@ -1039,6 +1052,8 @@ function pg_init(l,a,gs,ct)
     pg_attract = a;
     if (cx__capabilities.Dom0NS) pg_set_emulation(document);
     htr_init_layer(window,window,"window");
+    if (typeof window.name == 'undefined')
+	window.name = 'window';
     pg_reveal_register_triggerer(window);
     pg_reveal_event(window,null,'Reveal');
     pg_addsched('pg_msg_init()', window,0);
@@ -1337,9 +1352,9 @@ function pg_setdatafocus(a)
 	if (cx__capabilities.Dom1HTML)
 	    {
 	    l.pg_dttop = document.createElement("div");
-	    l.pg_dttop.style.width = 1152;
+	    l.pg_dttop.style.width = 1;
 	    l.pg_dtbtm = document.createElement("div");
-	    l.pg_dtbtm.style.width = 1152;
+	    l.pg_dtbtm.style.width = 1;
 	    l.pg_dtrgt = document.createElement("div");
 	    l.pg_dtrgt.style.width = 2;
 	    l.pg_dtlft = document.createElement("div");
@@ -1436,6 +1451,26 @@ function pg_show_containers(l)
 	return pg_show_containers(l.parentLayer);
     else if (cx__capabilities.Dom1HTML)
 	return pg_show_containers(l.parentNode);
+    }
+
+
+// pg_get_container() - figure out what layer directly contains 
+// the current one.
+function pg_get_container(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	{
+	if (typeof l.parentLayer == 'undefined') return l;
+	else return l.parentLayer;
+	}
+    else if (cx__capabilities.Dom1HTML)
+	{
+	do  {
+	    l = l.parentNode;
+	    } while (l != window && l.tagName != 'BODY' && l.tagName != 'DIV' && l.tagName != 'IFRAME');
+	return l;
+	}
+    return null;
     }
 
 
@@ -1745,6 +1780,12 @@ function pg_debug_register_log(l)
 function pg_debug(msg)
     {
     if (pg_debug_log) pg_debug_log.ifcProbe(ifAction).Invoke("AddText", {Text:msg, ContentType:'text/plain'});
+    }
+
+// send error msg - for now just redirect to debug
+function pg_error(msg)
+    {
+    pg_debug(msg);
     }
 
 // log function calls and return values.
