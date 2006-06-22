@@ -236,12 +236,14 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	{
 	var tvtext = "";
 	for(var i = start_img; i<=l.tree_depth; i++)
-	    tvtext += "<IMG SRC='" + l.imgs[i] + "' align='left'>";
+	    tvtext += "<IMG width='18' SRC='" + l.imgs[i] + "' align='left'>";
 	tvtext += "&nbsp;<A HREF='" + link_href + "'>" +
 	    (link_bold?"<b>":"") + link_text + (link_bold?"<b>":"") + "</A>";
 	if (l.tvtext != tvtext)
 	    {
+	    l.expanded = 0;
 	    l.tvtext = tvtext;
+	    l.document.tags.A.textDecoration = "none";
 	    l.document.writeln(l.tvtext);
 	    l.document.close();
 	    //pg_serialized_write(l, l.tvtext, null);
@@ -260,6 +262,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	for(var i = start_img; i<=l.tree_depth; i++)
 	    {
 	    var img = document.createElement('img');
+	    img.setAttribute('width', '18');
 	    img.setAttribute('src',l.imgs[i]);
 	    img.setAttribute('align','left');
 	    l.appendChild(img);
@@ -370,6 +373,7 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 		}
 	    }
 	}
+    return 20*linkcnt;
     }
 
 function tv_clear_objs(l) { for(var i = 2; i<l.pdoc.layers.length;i++) l.pdoc.layers[i].objptr = null; }
@@ -531,8 +535,8 @@ function tv_loaded(e)
     var cnt=0;
     var nullcnt=0;
     var l=tv_tgt_layer;
-
     var linkcnt = tv_GetLinkCnt(l);
+    var offset;
 
     if (linkcnt < 0 && l.mainlayer.show_branches && l.tree_depth > 0)
 	{
@@ -546,7 +550,7 @@ function tv_loaded(e)
 
     if (linkcnt < 0) linkcnt = 0;
 
-    tv_MakeRoom(l, linkcnt);
+    offset = tv_MakeRoom(l, linkcnt);
 
     tv_BuildNewLayers(l, linkcnt);
 
@@ -561,6 +565,16 @@ function tv_loaded(e)
     else
 	{
 	alert('browser not supported');
+	}
+
+    // scroll container?
+    if (l.mainlayer.parentLayer)
+	{
+	var pl = l.mainlayer.parentLayer.mainlayer;
+	if (pl.ifcProbe && pl.ifcProbe(ifAction).Exists('ScrollTo'))
+	    {
+	    pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:getRelativeY(l), RangeEnd:getRelativeY(l)+offset+20});
+	    }
 	}
 
     pg_set(tv_tgt_layer.img,'src',tv_tgt_layer.img.realsrc);
@@ -675,6 +689,7 @@ function tv_expand()
     l.img.realsrc=l.img.src;
     pg_set(l.img,'src','/sys/images/ico11c.gif');
     tv_tgt_layer = l;
+    l.tvtext = '';
 
     if (l.mainlayer.show_branches && l.tree_depth > 0)
 	{
