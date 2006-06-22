@@ -193,6 +193,7 @@ function wn_windowshade(l)
     var duration = 200;
     var speed = 30;
 //  st = new Date();
+    var boxoffset = cx__capabilities.CSSBox?2:0;
     if (!l.shaded && !l.working)
 	{
 	if (l.gshade)
@@ -204,6 +205,7 @@ function wn_windowshade(l)
 	else
 	    {
 	    setClipHeight(l, 24);
+	    resizeTo(l, getClipWidth(l)-boxoffset, 24);
 	    }
 	l.shaded = true;
 	}
@@ -218,6 +220,9 @@ function wn_windowshade(l)
 	else
 	    {
 	    setClipHeight(l, l.orig_height);
+	//	resizeTo(l, getClipWidth(l)+2, l.orig_height+2);
+	//    else
+		resizeTo(l, getClipWidth(l)-boxoffset, l.orig_height-boxoffset);
 	    }
 	l.shaded = false;
 	}
@@ -402,23 +407,20 @@ function wn_domove()
 
 function wn_adjust_z(l,zi)
     {
-    if (zi < 0) l.zIndex += zi;
-    /*
-    for(i=0;i<l.document.layers.length;i++)
+    var cur_z = htr_getzindex(l);
+    if (zi)
 	{
-	//wn_adjust_z(l.document.layers[i],zi);
+	cur_z += zi;
+	htr_setzindex(l,cur_z);
 	}
-    */
-    if (zi > 0) l.zIndex += zi;
-    if (l.zIndex > wn_top_z) wn_top_z = l.zIndex;
-//    wn_clicked = 0;
+    if (cur_z > wn_top_z) wn_top_z = cur_z;
     return true;
     }
 
 function wn_bring_top(l)
     {
     if (wn_topwin == l) return true;
-    wn_adjust_z(l, wn_top_z - l.zIndex + 4);
+    wn_adjust_z(l, wn_top_z - htr_getzindex(l) + 4);
     wn_topwin = l;
 //    wn_clicked = 0;
     }
