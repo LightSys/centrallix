@@ -44,6 +44,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.58  2006/06/22 00:18:23  gbeeley
+    - adding allow_obscure option to form widget to permit unsaved data in a
+      form to be obscured (change tab, etc.) if desired.
+
     Revision 1.57  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -407,6 +411,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     int id, i;
     char* nptr;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
+    int allowobscure = 0;
     char _3bconfirmwindow[30];
     int readonly;
 //    pObject sub_w_obj;
@@ -479,6 +484,9 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	 ***          condition (c=true) can be overridden, (b=false) can't
 	 ***/
 
+	/** Should we allow obscures for this form? **/
+	allowobscure = htrGetBoolean(tree, "allow_obscure", 0);
+
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
@@ -499,9 +507,9 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    %s=form_init({aq:%i, an:%i, am:%i, av:%i, and:%i, me:%i, name:'%s', _3b:%s, ro:%i});\n",
+	htrAddScriptInit_va(s,"\n    %s=form_init({aq:%i, an:%i, am:%i, av:%i, and:%i, me:%i, name:'%s', _3b:%s, ro:%i, ao:%i});\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
-		_3bconfirmwindow,readonly);
+		_3bconfirmwindow,readonly,allowobscure);
 	htrAddScriptInit_va(s,"    %s.ChangeMode('NoData');\n",name);
 	htrAddScriptInit_va(s,"    %s.oldform=fm_current;\n",name);
 	htrAddScriptInit_va(s,"    fm_current=%s;\n",name);
