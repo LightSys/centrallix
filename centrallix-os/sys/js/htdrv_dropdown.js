@@ -11,6 +11,7 @@
 
 // Form manipulation
 
+
 function dd_getvalue() 
     {
     return this.Values[this.VisLayer.index][1];
@@ -28,7 +29,7 @@ function dd_setvalue(v)
 	    }
 	}
     return false;
-}
+    }
 
 function dd_clearvalue()
     {
@@ -93,32 +94,97 @@ function dd_keyhandler(l,e,k)
 	    var k_lower = k;
 	    var k_upper = k;
 	    }
-	if (!dd_lastkey || dd_lastkey != k)
+
+	this.time_stop = new Date();
+	if (this.time_start && this.time_start < this.time_stop 
+		&& (this.time_stop - this.time_start) >= 1000) 
+	    {
+	    this.keystring = null;
+	    this.match = null;
+	    this.lastmatch = null;
+	    this.time_start = null;
+	    this.time_stop = null;
+	    }
+		
+	if (!this.keystring)
 	    {
 	    for (var i=0; i < this.Values.length; i++)
 		{
-		if (this.Values[i][0].substring(0, 1) == String.fromCharCode(k_upper) ||
-		    this.Values[i][0].substring(0, 1) == String.fromCharCode(k_lower))
+		if (this.Values[i][0].substring(0, 1) == 
+			String.fromCharCode(k_upper) ||
+		    this.Values[i][0].substring(0, 1) == 
+			String.fromCharCode(k_lower))
 		    {
 		    dd_hilight_item(this,i);
+			this.lastmatch = i;
 		    i=this.Values.length;
 		    }
 		}
+	    this.keystring = String.fromCharCode(k);
+	    this.time_start = new Date();
+
+	    if (!this.lastmatch) 
+		{
+		this.keystring = null;
+		this.match = null;
+		this.lastmatch = null;
+		this.time_start = null;
+		this.time_stop = null;
+		dd_hilight_item(this, 0);
+		}
 	    }
+	
+	//find as you type code
 	else
+	    {
+	    this.keystring += String.fromCharCode(k);
+	    this.match = false;
+	    this.time_start = new Date();
+			
+	    for (var i=0; i < this.Values.length; i++) 
+		{
+		if ((this.Values[i][0].substring(0, 
+			this.keystring.length).toLowerCase())
+			== this.keystring && !this.match)
+		    {
+		    dd_hilight_item(this,i);
+		    //found a good match
+		    this.match = true;
+		    this.lastmatch = i;
+		    }		
+		}
+	    if (!this.match) 
+		{
+		this.keystring = this.keystring.substring(0, 
+			(this.keystring.length - 1));
+		dd_hilight_item(this, this.lastmatch);
+	    	this.match = true;
+		}
+	    }
+	/* CODE TO enable cycling through letter by repeatedly pressing 
+	the same button: such as pressing 't' and cycling through tommy, 
+	tranquilizer, tiger, and tivo contained in a dropdown list
+	
+	disabled to enable typing more of a word in the list to narrow it 
+	down to the correct  word */
+	/*else
 	    {
 	    var first = -1;
 	    var last = -1;
 	    var next = -1;
 	    for (var i=0; i < this.Values.length; i++)
 		{
-		if (this.Values[i][0].substring(0, 1) == String.fromCharCode(k_upper) ||
-		    this.Values[i][0].substring(0, 1) == String.fromCharCode(k_lower))
+		if (this.Values[i][0].substring(0, 1) == 
+			String.fromCharCode(k_upper) ||
+		    this.Values[i][0].substring(0, 1) == 
+			String.fromCharCode(k_lower))
 		    {
 		    if (first < 0) { first = i; last = i; }
 		    for (var j=i; j < this.Values.length && 
-			(this.Values[j][0].substring(0, 1) == String.fromCharCode(k_upper) ||
-			 this.Values[j][0].substring(0, 1) == String.fromCharCode(k_lower)); j++)
+			(this.Values[j][0].substring(0, 1) == 
+				String.fromCharCode(k_upper) ||
+			 this.Values[j][0].substring(0, 1) == 
+				String.fromCharCode(k_lower)); j++)
 			{
 			if (this.Items[j] == this.Items[this.SelectedItem])
 			    next = j + 1;
@@ -131,7 +197,7 @@ function dd_keyhandler(l,e,k)
 		    i=this.Values.length;
 		    }
 		}
-	    }
+	    }*/
 	}
     else if (k == 32)
 	{
@@ -154,7 +220,8 @@ function dd_keyhandler(l,e,k)
 	{
 	if (this.form)
 	    {
-	    if (htr_getvisibility(this.PaneLayer) == 'inherit' && this.SelectedItem)
+	    if (htr_getvisibility(this.PaneLayer) == 'inherit' && 
+		    this.SelectedItem)
 		{
 		dd_select_item(this,this.SelectedItem);
 		dd_collapse(this);
@@ -165,8 +232,9 @@ function dd_keyhandler(l,e,k)
 	}
     else if (k == 27)
 	{
-	if (htr_getvisibility(this.PaneLayer) == 'inherit')
+	if (htr_getvisibility(this.PaneLayer) == 'inherit') {
 	    dd_collapse(this);
+	}
 	else
 	    if (dd.form) dd.form.EscNotify(dd);
 	}
@@ -205,6 +273,11 @@ function dd_unhilight_item(l,i)
 
 function dd_collapse(l)
     {
+	l.keystring = null;
+	l.match = null;
+	l.lastmatch = null;
+	l.time_start = null;
+	l.time_stop = null;
     if (l && l.PaneLayer && htr_getvisibility(l.PaneLayer) == 'inherit')
 	{
 	//setClipHeight(l, getClipHeight(l) - getClipHeight(l.PaneLayer));
@@ -222,7 +295,8 @@ function dd_expand(l)
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), 20, getClipWidth(l));
+	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), 20, 
+		getClipWidth(l));
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
 	if (getPageY(l.PaneLayer) < getPageY(l))
@@ -230,7 +304,8 @@ function dd_expand(l)
 	else
 	    offs = getPageY(l.PaneLayer) - getPageY(l) - 1 - getClipHeight(l);
 	//setClipHeight(l, getClipHeight(l) + getClipHeight(l.PaneLayer));
-	pg_resize_area(l.area, getClipWidth(l)+1, getClipHeight(l)+1+getClipHeight(l.PaneLayer),
+	pg_resize_area(l.area, getClipWidth(l)+1, 
+		getClipHeight(l)+1+getClipHeight(l.PaneLayer),
 	    getPageX(l.PaneLayer) - getPageX(l) - 1,
 	    offs);
 	dd_hilight_item(l,l.VisLayer.index);
@@ -521,7 +596,8 @@ function dd_init(param)
 	else if (imgs[i].src.substr(-13,5) == 'white')
 	    imgs[i].upimg = true;
 	}
-    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dd', 'dd', 3);
+    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, 
+	    getClipHeight(l)+1, 'dd', 'dd', 3);
     if (fm_current) fm_current.Register(l);
 
     // Events
