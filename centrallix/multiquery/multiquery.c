@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.19 2005/10/18 22:50:33 gbeeley Exp $
+    $Id: multiquery.c,v 1.20 2006/07/07 22:09:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.20  2006/07/07 22:09:04  gbeeley
+    - patched up some 'unused variable' compile errors
+    - (bugfix) double objClose() caught by ASSERTMAGIC when the last object
+      in a query result set is modified after the query is closed, and then
+      that last object is closed.
+
     Revision 1.19  2005/10/18 22:50:33  gbeeley
     - (bugfix) properly detect which object to go to for presentation hints,
       and if it is a composite property (computed), just return default hints
@@ -335,8 +341,8 @@ mq_internal_AllocQS(int type)
 int
 mq_internal_SetChainedReferences(pQueryStructure qs, pQueryStructure clause)
     {
-    pQueryStructure clause_item;
-    int i,cnt,j;
+    /*pQueryStructure clause_item;
+    int i,cnt,j;*/
 
     return 0;
     }
@@ -1723,6 +1729,7 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 	    if (qy->Tree->Driver->NextItem(qy->Tree, qy) != 1)
 	        {
 		memcpy(&qy->CurObjList, qy->QTree->ObjList, sizeof(ParamObjects));
+		qy->CntSerial = qy->CurSerial;
 	        return NULL;
 	        }
 
@@ -2175,7 +2182,7 @@ int
 mqCommit(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    int i;
+    /*int i;*/
 
     	/** Check to see whether we're on current object. **/
 	mq_internal_CkSetObjList(p->Query, p);
