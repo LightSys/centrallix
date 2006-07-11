@@ -154,6 +154,8 @@ function oc_add_osrc_object(o)
 
     // add to the list
     this.objects.push(l);
+    // tag the images so they do not steal focus from the focus area
+    htutil_tag_images(l, 'oc', l, this);    
 
     return true;
     }

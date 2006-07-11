@@ -1338,7 +1338,7 @@ function pg_setdatafocus(a)
     var y = getPageY(a.layer)+a.y;
     var w = a.width;
     var h = a.height;
-    var l = a.layer;
+    var l = a.layer; 
 
     // hide old data focus box
     if (l.pg_dttop != null)
@@ -1348,25 +1348,34 @@ function pg_setdatafocus(a)
 	}
     else
 	{
+//THESE NEEDED TO USE htr_new_layer(w,p) FUNCTION FROM ht_render.js
+//also, this was not working correctly for the DOM1 anyway.
+//htr_new_layer seems to get it right
+//	if (cx__capabilities.Dom1HTML)
+//	    {
+//	    l.pg_dttop = document.createElement("div");
+//	    l.pg_dttop.style.width = 1;
+//	    l.pg_dtbtm = document.createElement("div");
+//	    l.pg_dtbtm.style.width = 1;
+//	    l.pg_dtrgt = document.createElement("div");
+//	    l.pg_dtrgt.style.width = 2;
+//	    l.pg_dtlft = document.createElement("div");
+//	    l.pg_dtlft.style.width = 2;
+//	    }
+//	else if (cx__capabilities.Dom0NS)
+//	    {
+//	    l.pg_dttop = new Layer(1152);
+//	    l.pg_dtbtm = new Layer(1152);
+//	    l.pg_dtrgt = new Layer(2);
+//	    l.pg_dtlft = new Layer(2);
+//	    }
+	
 	// mk new data focus box for this control.
-	if (cx__capabilities.Dom1HTML)
-	    {
-	    l.pg_dttop = document.createElement("div");
-	    l.pg_dttop.style.width = 1;
-	    l.pg_dtbtm = document.createElement("div");
-	    l.pg_dtbtm.style.width = 1;
-	    l.pg_dtrgt = document.createElement("div");
-	    l.pg_dtrgt.style.width = 2;
-	    l.pg_dtlft = document.createElement("div");
-	    l.pg_dtlft.style.width = 2;
-	    }
-	else if (cx__capabilities.Dom0NS)
-	    {
-	    l.pg_dttop = new Layer(1152);
-	    l.pg_dtbtm = new Layer(1152);
-	    l.pg_dtrgt = new Layer(2);
-	    l.pg_dtlft = new Layer(2);
-	    }		    
+	// the htr_new_layer function takes care of Dom0 vs Dom1 differences
+	l.pg_dttop = htr_new_layer(1,l);
+	l.pg_dtbtm = htr_new_layer(1,l);
+	l.pg_dtrgt = htr_new_layer(2,l);
+	l.pg_dtlft = htr_new_layer(2,l);
 	}
 
     // draw new data focus box
