@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.42 2006/04/07 06:30:42 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.43 2006/08/04 18:56:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.43  2006/08/04 18:56:51  gbeeley
+    - (fix) adding 'px' to CSS values that should have a dimension.
+
     Revision 1.42  2006/04/07 06:30:42  gbeeley
     - (feature) show small arrowheads at left and right edges of editbox when
       text overflows the left or right side.
@@ -440,8 +443,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	else if (s->Capabilities.Dom0NS)
 	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
-	htrAddStylesheetItem_va(s,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
-	htrAddStylesheetItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
 
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
