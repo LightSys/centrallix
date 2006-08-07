@@ -553,14 +553,14 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     htr_setvisibility(rl, 'hidden');
     htr_setvisibility(ll, 'hidden');
     //abc();
-    if (cx__capabilities.Dom0NS)
-        {
+    if (cx__capabilities.Dom0NS || cx__capabilities.Dom1HTML)
+/*        {
     	tl.bgColor = c1;
     	ll.bgColor = c1;
     	bl.bgColor = c2;
     	rl.bgColor = c2;
     	}
-    else if (cx__capabilities.Dom1HTML)
+    else if (cx__capabilities.Dom1HTML) */
         {
     	htr_setbgcolor(tl,c1);
     	htr_setbgcolor(ll,c1);

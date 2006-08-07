@@ -46,16 +46,21 @@ function dt_resetvalue() {
 
 function dt_enable() {
 	this.enabled = 'full';
-	this.bgColor = this.bg;
+	//this.bgColor = this.bg;
+	if (this.bg) htr_setbgcolor(this, this.bg);
+	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
 
 function dt_readonly() {
 	this.enabled = 'readonly';
+	if (this.bg) htr_setbgcolor(this, this.bg);
+	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
 
 function dt_disable() {
 	this.enabled = 'disabled';
-	this.bgColor = '#e0e0e0';
+	//this.bgColor = '#e0e0e0';
+	if (this.bg) htr_setbgcolor(this, '#e0e0e0');
 }
 
 // Date/Time Functions
@@ -69,9 +74,9 @@ function dt_init(param){
 	var h = param.height;
 	var h2 = param.height2;
 	l.enabled = 'full';
-	l.mainlayer = l;
-	c1.mainlayer = l;
-	c2.mainlayer = l;
+	//l.mainlayer = l;
+	//c1.mainlayer = l;
+	//c2.mainlayer = l;
 	l.setvalue   = dt_setvalue;
 	l.getvalue   = dt_getvalue;
 	l.enable     = dt_enable;
@@ -83,9 +88,13 @@ function dt_init(param){
 	l.getfocushandler  = dt_getfocus;
 	l.losefocushandler = dt_losefocus;
 	l.keyhandler = dt_keyhandler;
-	l.kind  = c1.kind = c2.kind = 'dt';
-	l.document.layer  = c1.document.layer = c2.document.layer = l;
-	dt_tag_images(l.document, 'dt', l);
+	//l.kind  = c1.kind = c2.kind = 'dt';
+	//l.document.layer  = c1.document.layer = c2.document.layer = l;
+	htr_init_layer(l,l,'dt');
+	htr_init_layer(c1,l,'dt');
+	htr_init_layer(c2,l,'dt');
+	//dt_tag_images(l.document, 'dt', l);
+	htutil_tag_images(l,'dt',l,l);
 	l.w = w; l.h = h;
 	l.bg = htr_extract_bgcolor(bg);
 	l.ubg = bg;
@@ -230,18 +239,25 @@ function dt_drawmonth(l, d) {
 	v+='</TR></TABLE>';
 
 	// Init the month data layer.
-	l.HidLayer.document.write(v);
-	l.HidLayer.document.close();
-	l.HidLayer.visibility = 'inherit';
-	l.VisLayer.visibility = 'hide';
+	//l.HidLayer.document.write(v);
+	//l.HidLayer.document.close();
+	htr_write_content(l.HidLayer,v);
+    	//l.HidLayer.visibility = 'inherit';
+	htr_setvisibility(l.HidLayer,'inherit');
+	//l.VisLayer.visibility = 'hide';
+	htr_setvisibility(l.VisLayer,'hidden');
 	var t = l.VisLayer;
 	l.VisLayer = l.HidLayer;
 	l.HidLayer = t;
 
-	l.MonHidLayer.document.write('<TABLE border=0 cellspacing=0 cellpadding=0 height=22 width=112><TR><TD align=center valign=middle>'+l.ml.MonthsAbbrev[TmpDate.getMonth()]+', '+(TmpDate.getYear()+1900)+'</TD></TR></TABLE>');
-	l.MonHidLayer.document.close();
-	l.MonHidLayer.visibility = 'inherit';
-	l.MonVisLayer.visibility = 'hide';
+	//l.MonHidLayer.document.write('<TABLE border=0 cellspacing=0 cellpadding=0 height=22 width=112><TR><TD align=center valign=middle>'+l.ml.MonthsAbbrev[TmpDate.getMonth()]+', '+(TmpDate.getYear()+1900)+'</TD></TR></TABLE>');
+	//l.MonHidLayer.document.close();
+	//l.MonHidLayer.visibility = 'inherit';
+	//l.MonVisLayer.visibility = 'hide';
+	var x = '<TABLE border=0 cellspacing=0 cellpadding=0 height=22 width=112><TR><TD align=center valign=middle>'+l.ml.MonthsAbbrev[TmpDate.getMonth()]+', '+(TmpDate.getYear()+1900)+'</TD></TR></TABLE>';
+	htr_write_content(l.MonHidLayer,x);
+	htr_setvisibility(l.MonHidLayer,'inherit');
+	htr_setvisibility(l.MonVisLayer,'hidden');
 	t = l.MonVisLayer;
 	l.MonVisLayer = l.MonHidLayer;
 	l.MonHidLayer = t;
@@ -294,21 +310,26 @@ function dt_drawtime(l, d) {
 	htr_write_content(tvl.seconds, ':&nbsp;' + (d?htutil_strpad(d.getSeconds(),0,2):''));
 }
 
-function dt_tag_images(d, t, l) {
+/*function dt_tag_images(d, t, l) {
 	for (i=0; i < d.images.length; i++) {
 		d.images[i].kind = t;
 		d.images[i].layer = l;
 	}
-}
+}*/
 
 function dt_toggle(l) {
-	for (i=0; i<l.document.images.length;i++) {
+	var imgs = pg_images(l);
+	//for (i=0; i<l.document.images.length;i++) {
+	for (i=0; i<imgs.length;i++) {
 		if (i == 4)
 			continue;
-		else if (l.document.images[i].src.substr(-14, 6) == 'dkgrey')
-			l.document.images[i].src = '/sys/images/white_1x1.png';
+		//else if (l.document.images[i].src.substr(-14, 6) == 'dkgrey')
+		else if (imgs[i].src.substr(-14, 6) == 'dkgrey')
+			//l.document.images[i].src = '/sys/images/white_1x1.png';
+			imgs[i].src = '/sys/images/white_1x1.png';
 		else
-			l.document.images[i].src = '/sys/images/dkgrey_1x1.png';
+			//l.document.images[i].src = '/sys/images/dkgrey_1x1.png';
+			imgs[i].src = '/sys/images/dkgrey_1x1.png';
 	}
 }
 
@@ -478,42 +499,58 @@ function dt_losefocus_day() {
 }
 
 function dt_create_pane(ml,bg,w,h,h2) {
-	l = new Layer(1024);
-	l.document.write("<BODY "+bg+">");
-	l.document.write("<TABLE border=0 cellpadding=0 cellspacing=0 width="+w+" height="+h+">");
-	l.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>");
-	l.document.write("	<TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(w-2)+"></TD>");
-	l.document.write("	<TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>");
-	l.document.write("<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(h-2)+" width=1></TD>");
-	l.document.write("	<TD valign=top>");
-	l.document.write("	<TABLE height=25 cellpadding=0 cellspacing=0 border=0>");
-	l.document.write("	<TR><TD width=18><IMG SRC=/sys/images/ico16aa.gif></TD>");
-	l.document.write("		<TD width=18><IMG SRC=/sys/images/ico16ba.gif></TD>");
-	l.document.write("		<TD width="+(w-72)+"></TD>");
-	l.document.write("		<TD width=18><IMG SRC=/sys/images/ico16ca.gif></TD>");
-	l.document.write("		<TD width=18><IMG SRC=/sys/images/ico16da.gif></TD></TR>");
-	l.document.write("	</TABLE>");
-	l.document.write("	<TABLE width="+w+" cellpadding=0 cellspacing=0 border=0>");
-	l.document.write("	<TR><TD align=center><B>S</B></TD>");
-	l.document.write("		<TD align=center><B>M</B></TD>");
-	l.document.write("		<TD align=center><B>T</B></TD>");
-	l.document.write("		<TD align=center><B>W</B></TD>");
-	l.document.write("		<TD align=center><B>T</B></TD>");
-	l.document.write("		<TD align=center><B>F</B></TD>");
-	l.document.write("		<TD align=center><B>S</B></TD></TR>");
-	l.document.write("	</TABLE>");
-	l.document.write("	</TD>");
-	l.document.write("	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(h-2)+" width=1></TD></TR>");
-	l.document.write("<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>");
-	l.document.write("	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(w-2)+"></TD>");
-	l.document.write("	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>");
-	l.document.write("</TABLE>");
-	l.document.write("</BODY>");
-	l.document.close();
-	l.HidLayer = new Layer(1024, l);
-	l.VisLayer = new Layer(1024, l);
-	l.MonHidLayer = new Layer(1024, l);
-	l.MonVisLayer = new Layer(1024, l);
+	var str;
+	var imgs;
+	//l = new Layer(1024);
+	var l = htr_new_layer(1024,ml);
+	//htr_init_layer(l,ml,'dt_pn');
+	htr_setvisibility(l,'hidden');
+
+	str = "<BODY "+bg+">";
+	str += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+w+" height="+h+">";
+	str += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>";
+	str += "	<TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(w-2)+"></TD>";
+	str += "	<TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>";
+	str += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(h-2)+" width=1></TD>";
+	str += "	<TD valign=top>";
+	str += "	<TABLE height=25 cellpadding=0 cellspacing=0 border=0>";
+	str += "	<TR><TD width=18><IMG SRC=/sys/images/ico16aa.gif></TD>";
+	str += "		<TD width=18><IMG SRC=/sys/images/ico16ba.gif></TD>";
+	str += "		<TD width="+(w-72)+"></TD>";
+	str += "		<TD width=18><IMG SRC=/sys/images/ico16ca.gif></TD>";
+	str += "		<TD width=18><IMG SRC=/sys/images/ico16da.gif></TD></TR>";
+	str += "	</TABLE>";
+	str += "	<TABLE width="+w+" cellpadding=0 cellspacing=0 border=0>";
+	str += "	<TR><TD align=center><B>S</B></TD>";
+	str += "		<TD align=center><B>M</B></TD>";
+	str += "		<TD align=center><B>T</B></TD>";
+	str += "		<TD align=center><B>W</B></TD>";
+	str += "		<TD align=center><B>T</B></TD>";
+	str += "		<TD align=center><B>F</B></TD>";
+	str += "		<TD align=center><B>S</B></TD></TR>";
+	str += "	</TABLE>";
+	str += "	</TD>";
+	str += "	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(h-2)+" width=1></TD></TR>";
+	str += "<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>";
+	str += "	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(w-2)+"></TD>";
+	str += "	<TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>";
+	str += "</TABLE>";
+	str += "</BODY>";
+	//l.document.close();
+	htr_write_content(l,str);
+	//htr_setbgcolor(l,bg);
+	pg_stackpopup(l,ml);
+	setClipHeight(l,h);
+	setClipWidth(l,w);
+	
+	//l.HidLayer = new Layer(1024, l);
+	l.HidLayer = htr_new_layer(1024,l);
+	//l.VisLayer = new Layer(1024, l);
+	l.VisLayer = htr_new_layer(1024,l);
+	//l.MonHidLayer = new Layer(1024, l);
+	l.MonHidLayer = htr_new_layer(1024,l);
+	//l.MonVisLayer = new Layer(1024, l);
+	l.MonVisLayer = htr_new_layer(1024,l);
 	l.TimeHidLayer = htr_new_layer(1024, l);
 	l.TimeVisLayer = htr_new_layer(1024, l);
 	moveTo(l.TimeHidLayer, 0, 156);
@@ -524,14 +561,22 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	l.x = ml.pageX;
 	l.y = ml.pageY+h2;
 	l.ml = ml;
+	
 	l.kind = l.HidLayer.kind = l.VisLayer.kind = l.MonHidLayer.kind = l.MonVisLayer.kind = 'dt_pn';
 	l.document.layer = l.HidLayer.document.layer = l.VisLayer.document.layer = l;
 	l.MonVisLayer.document.layer = l.MonHidLayer.document.layer = l;
-	dt_tag_images(l.document, 'dt_pn', l);
-	l.document.images[4].kind = 'dtimg_yrdn';
-	l.document.images[5].kind = 'dtimg_mndn';
-	l.document.images[6].kind = 'dtimg_mnup';
-	l.document.images[7].kind = 'dtimg_yrup';
+	
+	//dt_tag_images(l.document, 'dt_pn', l);
+	htutil_tag_images(l,'dt_pn',l,l);
+	imgs = pg_images(l);
+	//l.document.images[4].kind = 'dtimg_yrdn';
+	imgs[4].kind = 'dtimg_yrdn';
+	//l.document.images[5].kind = 'dtimg_mndn';
+	imgs[5].kind = 'dtimg_mndn';
+	//l.document.images[6].kind = 'dtimg_mnup';
+	imgs[6].kind = 'dtimg_mnup';
+	//l.document.images[7].kind = 'dtimg_yrup';
+	imgs[7].kind = 'dtimg_yrup';
 
 	dt_inittime(l);
 	return l;
