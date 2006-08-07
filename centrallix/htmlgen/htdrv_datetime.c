@@ -68,9 +68,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     DateTime dt;
     ObjData od;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 	    {
-	    mssError(1,"HTDT","Netscape DOM support required");
+	    mssError(1,"HTDT","Netscape or W3C DOM support required");
 	    return -1;
 	    }
 
@@ -103,7 +103,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    strncpy(fieldname,ptr,30);
 	else 
 	    fieldname[0]='\0';
-
+	
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	memccpy(name,ptr,0,63);
@@ -138,6 +138,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		    attr = objGetFirstAttr(qy_obj);
 		    if (!attr)
 			{
+			objClose(qy_obj);
+			objQueryClose(qy);
 			mssError(1, "HTDT", "There was an error getting date from your SQL query");
 			return -1;
 			}
@@ -177,16 +179,26 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Get colors **/
 	htrGetBackground(tree, NULL, 0, bgcolor, sizeof(bgcolor));
 	if (!*bgcolor) strcpy(bgcolor,"bgcolor=#c0c0c0");
+	//else strcpy(bgcolor, "bgcolor=green");
 
+///////////////////////////////////////
+//	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+//	    sprintf(bgcolor,"%.40s",ptr);
+//	else {
+	    //mssError(1,"HTDD","Date Time widget must have a 'bgcolor' property");
+	    //return -1;
+	    //strcpy(bgcolor,"blue");
+//	}
+	
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    sprintf(fgcolor,"%.63s",ptr);
 	else
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%dbtn  { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	htrAddStylesheetItem_va(s,"\t#dt%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
-	htrAddStylesheetItem_va(s,"\t#dt%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:1; TOP:1; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%dbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%dcon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
 
 	/** Write named global **/
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
@@ -199,22 +211,37 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = dt_init({layer:%s.layers.dt%dbtn,c1:%s.layers.dt%dbtn.document.layers.dt%dcon1,c2:%s.layers.dt%dbtn.document.layers.dt%dcon2,id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
-			nptr,
-			parentname,id, 
-			parentname,id,id, 
-			parentname,id,id, 
-			initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddScriptInit_va(s, "    %s = dt_init({layer:%s.layers.dt%dbtn,c1:%s.layers.dt%dbtn.document.layers.dt%dcon1,c2:%s.layers.dt%dbtn.document.layers.dt%dcon2,id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
+		nptr,
+		parentname,id, 
+		parentname,id,id, 
+		parentname,id,id, 
+		initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
+	    }
+	else if (s->Capabilities.Dom1HTML)
+	    {
+	    htrAddScriptInit_va(s,"	%s = dt_init({layer:document.getElementById(\"dt%dbtn\"), c1:document.getElementById(\"dt%dcon1\"), c2:document.getElementById(\"dt%dcon2\"),id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
+		nptr,
+		id,
+		id,
+		id,
+		initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
+	    }
 
 	/** Set object parent **/
 	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
 		nptr, nptr, parentobj);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\"><BODY %s>\n", id,bgcolor);
-	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
+	//htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\"><BODY %s>\n", id,bgcolor);
+	//htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\">\n", id);
+	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w, bgcolor);
 	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
@@ -227,7 +254,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddBodyItem_va(s,"</TABLE>\n");
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%dcon1\"></DIV>\n",id);
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%dcon2\"></DIV>\n",id);
-	htrAddBodyItem_va(s,"</BODY></DIV>\n");
+	htrAddBodyItem_va(s,"</DIV>\n");
 
 	/** Add the event handling scripts **/
 	htrAddEventHandler(s, "document","MOUSEDOWN","dt",
@@ -310,10 +337,13 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.33 2005/06/23 22:07:58 ncolson Exp $
+    $Id: htdrv_datetime.c,v 1.34 2006/08/07 15:14:20 darkwing0o0rama Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.34  2006/08/07 15:14:20  darkwing0o0rama
+    changed for mozilla compatibility
+
     Revision 1.33  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
