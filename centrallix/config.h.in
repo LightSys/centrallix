@@ -153,6 +153,9 @@
 /* Define for DBL support */
 #undef USE_DBL
 
+/* Define for FilePro support */
+#undef USE_FP
+
 /* Define for GZIP support */
 #undef USE_GZIP
 

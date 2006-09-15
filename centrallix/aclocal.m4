@@ -454,6 +454,48 @@ AC_DEFUN(CENTRALLIX_CHECK_POP3_OS,
 )
 
 
+dnl Test for the FilePro osdriver.
+AC_DEFUN(CENTRALLIX_CHECK_FP_OS,
+    [
+	AC_MSG_CHECKING(if FilePro support is desired)
+
+	AC_ARG_ENABLE(filepro,
+	    AC_HELP_STRING([--enable-filepro],
+		[enable FilePro support]
+	    ),
+	    WITH_FP="$enableval", 
+	    WITH_FP="no"
+	)
+
+	ENABLE_FP="no"
+ 
+	if test "$WITH_FP" = "yes"; then
+	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
+		AC_DEFINE(USE_FP)
+		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_fp.so"
+	    else
+		AC_DEFINE(USE_FP,CX_STATIC)
+		OBJDRIVERS="$OBJDRIVERS objdrv_fp.o"
+	    fi
+	    ENABLE_FP="yes"
+	    AC_MSG_RESULT(yes)
+	    CENTRALLIX_ADD_DRIVER(fp, FilePro)
+	else
+	    if test "$WITH_FP" = "static"; then
+		AC_DEFINE(USE_FP,CX_STATIC)
+		OBJDRIVERS="$OBJDRIVERS objdrv_fp.o"
+		ENABLE_FP="yes"
+		AC_MSG_RESULT(yes)
+		CENTRALLIX_ADD_DRIVER(fp, FilePro)
+	    else
+		AC_MSG_RESULT(no)
+	    fi
+	fi
+	AC_SUBST(ENABLE_FP)
+    ]
+)
+
+
 dnl Test for the DBL os driver.
 AC_DEFUN(CENTRALLIX_CHECK_DBL_OS,
     [

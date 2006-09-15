@@ -89,6 +89,10 @@ dnl DBL osdriver support.
 AH_TEMPLATE([USE_DBL], [Define for DBL support])
 CENTRALLIX_CHECK_DBL_OS
 
+dnl FilePro osdriver support.
+AH_TEMPLATE([USE_FP], [Define for FilePro support])
+CENTRALLIX_CHECK_FP_OS
+
 dnl Sybase support.
 AH_TEMPLATE([USE_SYBASE], [Define for Sybase support])
 CENTRALLIX_CHECK_SYBASE
