@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.12 2005/09/30 04:37:10 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.13 2006/09/15 20:40:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.13  2006/09/15 20:40:27  gbeeley
+    - (change) allow "strings" to be used as identifiers when specifying column
+      names in queries.  This permits column/attribute names to contain special
+      characters, including spaces.
+
     Revision 1.12  2005/09/30 04:37:10  gbeeley
     - (change) modified expExpressionToPod to take the type.
     - (feature) got eval() working
@@ -398,7 +403,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 			    }
 
 			/** Ok, verify next element is the name of the attribute **/
-			if (t != MLX_TOK_KEYWORD && t != MLX_TOK_FILENAME)
+			if (t != MLX_TOK_KEYWORD && t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
 			    {
                             expFreeExpression(etmp);
                             if (expr) expFreeExpression(expr);
