@@ -106,7 +106,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** Text **/
 	if (wgtrGetPropertyValue(menu_item,"label",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\">%s</td>", ptr);
+	    htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%s</td>", ptr);
 	    xsConcatPrintf(xs, ", label:'%s'", ptr);
 	    }
 	else
