@@ -51,10 +51,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.58 2006/10/04 17:12:54 gbeeley Exp $
+    $Id: ht_render.c,v 1.59 2006/10/04 17:33:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.59  2006/10/04 17:33:25  gbeeley
+    - (bugfix) ht_render processing of user agents crashes if useragent.cfg
+      is not valid.
+    - (bugfix) add detection for newer versions of Gecko.  I do not know if
+      the detection draws the line at the correct place regarding versions
+      and such, but this is a starting point...
+
     Revision 1.58  2006/10/04 17:12:54  gbeeley
     - (bugfix) Newer versions of Gecko handle clipping regions differently than
       anything else out there.  Created a capability flag to handle that.
@@ -689,6 +696,7 @@ htrRegisterUserAgents()
 	{
 	mssError(0,"HTR","Unable to parse useragent_config %s", uaConfigFilename);
 	fdClose(uaConfigFile, 0);
+	return -1;
 	}
 
     /** iterate through the classes and create them **/
