@@ -389,8 +389,16 @@ function mn_init(param)
 
     if (cx__capabilities.CSS2)
 	{
-	pg_set_style(menu,'height',menu.scrollHeight);
-	pg_set_style(menu,'width',menu.scrollWidth);
+	if (menu.scrollHeight == 0)
+	    {
+	    pg_set_style(menu,'height',menu.childNodes[0].scrollHeight);
+	    pg_set_style(menu,'width',menu.childNodes[0].scrollWidth);
+	    }
+	else
+	    {
+	    pg_set_style(menu,'height',menu.scrollHeight);
+	    pg_set_style(menu,'width',menu.scrollWidth);
+	    }
 	}
     menu.act_w = getClipWidth(menu.clayer);
     menu.act_h = getClipHeight(menu.clayer);
