@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.34 2006/06/22 00:22:07 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.35 2006/10/04 17:12:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.35  2006/10/04 17:12:54  gbeeley
+    - (bugfix) Newer versions of Gecko handle clipping regions differently than
+      anything else out there.  Created a capability flag to handle that.
+    - (bugfix) Useragent.cfg processing was sometimes ignoring sub-definitions.
+
     Revision 1.34  2006/06/22 00:22:07  gbeeley
     - better tracking of what button got pushed, to match up the mousedown/up
       events.
@@ -344,6 +349,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     int is_enabled = 1;
     pExpression code;
     int box_offset;
+    int clip_offset;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -386,6 +392,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    box_offset = 1;
 	else
 	    box_offset = 0;
+	clip_offset = s->Capabilities.CSSClip?1:0;
 
 	/** User requesting expression for enabled? **/
 	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
@@ -504,15 +511,15 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    {
 	    if(h >=0 )
 		{
-		htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; OVERFLOW:hidden; clip:rect(%dpx %dpx %dpx %dpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset,h-1-2*box_offset,0);
+		htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; OVERFLOW:hidden; clip:rect(%dpx %dpx %dpx %dpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,h-1-2*box_offset+2*clip_offset,0);
 		htrAddStylesheetItem_va(s,"\t#tb%dpane2, #tb%dpane3 { height: %dpx;}\n",id,id,h-3);
 		htrAddStylesheetItem_va(s,"\t#tb%dpane { height: %dpx;}\n",id,h-1-2*box_offset);
 		}
 	    else
 		{
-		htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; OVERFLOW:hidden; clip:rect(%dpx %dpx auto %dpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset,0);
+		htrAddStylesheetItem_va(s,"\t#tb%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; OVERFLOW:hidden; clip:rect(%dpx %dpx auto %dpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,0);
 		}
-	    htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { text-align: center; }\n",id,id,id);
+	    htrAddStylesheetItem_va(s,"\t#tb%dpane, #tb%dpane2, #tb%dpane3 { cursor:default; text-align: center; }\n",id,id,id);
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane { %s border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
 	    /*htrAddStylesheetItem_va(s,"\t#tb%dpane { color: %s; }\n",id,fgcolor2);*/
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane2 { VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:-1px; top: -1px; width:%dpx; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);

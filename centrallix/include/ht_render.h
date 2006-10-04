@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.28 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: ht_render.h,v 1.29 2006/10/04 17:12:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.29  2006/10/04 17:12:54  gbeeley
+    - (bugfix) Newer versions of Gecko handle clipping regions differently than
+      anything else out there.  Created a capability flag to handle that.
+    - (bugfix) Useragent.cfg processing was sometimes ignoring sub-definitions.
+
     Revision 1.28  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -466,6 +471,7 @@ typedef struct
     unsigned int CSS1:1; /* W3C CSS Level 1 */
     unsigned int CSS2:1; /* W3C CSS Level 2 */
     unsigned int CSSBox:1; /* Puts border outside declared box width */
+    unsigned int CSSClip:1; /* Clipping rectangle starts at border, not content */
     unsigned int HTML40:1; /* W3C HTML 4.0 */
     unsigned int JS15:1; /* Javacript 1.5 */
     }

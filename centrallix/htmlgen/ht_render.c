@@ -51,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.57 2005/03/01 07:08:25 gbeeley Exp $
+    $Id: ht_render.c,v 1.58 2006/10/04 17:12:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.58  2006/10/04 17:12:54  gbeeley
+    - (bugfix) Newer versions of Gecko handle clipping regions differently than
+      anything else out there.  Created a capability flag to handle that.
+    - (bugfix) Useragent.cfg processing was sometimes ignoring sub-definitions.
+
     Revision 1.57  2005/03/01 07:08:25  gbeeley
     - don't activate the serialized loading until after startup() finishes
       running.
@@ -584,6 +589,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
     PROCESS_CAP_INIT(CSS1);
     PROCESS_CAP_INIT(CSS2);
     PROCESS_CAP_INIT(CSSBox);
+    PROCESS_CAP_INIT(CSSClip);
     PROCESS_CAP_INIT(HTML40);
     PROCESS_CAP_INIT(JS15);
 
@@ -641,6 +647,7 @@ htr_internal_writeCxCapabilities(pHtSession s, pFile out)
     PROCESS_CAP_OUT(CSS1);
     PROCESS_CAP_OUT(CSS2);
     PROCESS_CAP_OUT(CSSBox);
+    PROCESS_CAP_OUT(CSSClip);
     PROCESS_CAP_OUT(HTML40);
     PROCESS_CAP_OUT(JS15);
     }
@@ -754,7 +761,7 @@ htr_internal_GetBrowserCapabilities(char *browser, pHtClass class)
 		    /** remember this point in case there are no more matches **/
 		    cap = &(agentCap->Capabilities);
 		    /** reset to the beginning of the list **/
-		    i=0;
+		    i = -1;
 		    }
 		else
 		    {
@@ -1996,7 +2003,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 		{
 		fdWrite(output, " onResize=\"location.reload()\"",29,0,FD_U_PACKET);
 		}
-	    fdWrite(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n",44,0,FD_U_PACKET);
+	    fdPrintf(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n");
 	    }
 	else
 	    {
