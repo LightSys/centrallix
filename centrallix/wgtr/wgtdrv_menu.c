@@ -53,6 +53,9 @@ wgtmenuVerify(pWgtrVerifySession s)
     pWgtrNode menu = s->CurrWidget;
     char* str;
     int i;
+    int min_height = s->ClientInfo->ParagraphHeight + 4;
+
+	if (menu->min_height < min_height) menu->min_height = min_height;
 
 	if (menu->Parent && !strcmp(menu->Parent->Type, "widget/menu"))
 	    {
@@ -90,7 +93,7 @@ wgtmenuNew(pWgtrNode node)
     {
 
 	if(node->fl_width < 0) node->fl_width = 25;
-	if(node->fl_height < 0) node->fl_height = 0;
+	if(node->fl_height < 0) node->fl_height = 1;
 	
     return 0;
     }

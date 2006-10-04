@@ -40,26 +40,33 @@
 
 //TODO: these structures' names probably need prefixes
 
+typedef struct _APOS_L AposLine, *pAposLine;
+typedef struct _APOS_S AposSection, *pAposSection;
+
 /**Line Structure**/
-typedef struct
+struct _APOS_L
     {
     int		Loc;		//coordinate of line
+    int		Adj;		//set != 0 if need to increase/decrease.
     int		isBorder;	//set for grid borderlines
     XArray	SWidgets;	//widgets that start on line
     XArray	EWidgets;	//widgets that end on line
     XArray	CWidgets;	//widgets that cross the line
-    } AposLine, *pAposLine;
+    pAposSection SSection;	// section starting with this line
+    pAposSection ESection;	// section ending with this line
+    };
     
 /**Section Structure (used for both rows and columns)**/
-typedef struct
+struct _APOS_S
     {
     pAposLine	StartLine;	//left line for columns and top line for rows
     pAposLine	EndLine;	//right line for columns and bottom line for rows
     int		Flex;		//section's flexibility
     int		Width;		//Width of columns or height of rows
+    int		DesiredWidth;	//When we need to resize to honor max/mins
     int		isSpacer;	//set for narrow spaces between widgets
     int		isBorder;	//set for grid border sections
-    } AposSection, *pAposSection;
+    };
 
 /**Grid Structure**/
 typedef struct
@@ -70,23 +77,30 @@ typedef struct
     XArray	HLines;		//array of horizontal lines, sorted by Location
     } AposGrid, *pAposGrid;
 
+#define AGRID(x) ((pAposGrid)(x))
+#define ALINE(x) ((pAposLine)(x))
+
 /**Function Definitions**/
 int aposAutoPositionWidgetTree(pWgtrNode);	/**top-level function, called from wgtr module**/
 int aposAutoPositionContainers (pWgtrNode);	/**Auto-positions all widgets inside a container**/
 int aposInit();					/**Registers datastructures used in auto-positioning**/
 int aposInitiallizeGrid (pAposGrid);		/**Initiallizes the XArrays in the grid object**/
 int aposFree(pAposGrid);				/**Frees dynamically allocated memory**/
+int aposFreeGrids(pWgtrNode);				/**Frees dynamically allocated memory**/
 int aposSetOffsetBools(pWgtrNode, int*, int*, int*, int*, int*); /**sets bools used to offset widgets**/
+int aposBuildGrid(pWgtrNode);			/** builds the layout grids **/
+int aposSetLimits(pWgtrNode);			/** enforce min/max sizing **/
 
 /**Tree Preparation**/
 int aposPrepareTree(pWgtrNode, pXArray);	/**Prepares widget tree for auto-positioning**/
 int aposPatchNegativeHeight(pWgtrNode, pXArray);/**Temporarily sets unspecified heights**/
 int aposSetContainerFlex(pWgtrNode);		/**Determines a container's flexibility**/
+int aposSetFlexibilities(pWgtrNode);		/**Determines a container's flexibility**/
 
 /**Line Creation**/
 int aposAddLinesToGrid(pWgtrNode, pXArray, pXArray);	/**Adds all of the necessary lines to the grid**/
 int aposAddLinesForChildren(pWgtrNode, pXArray, pXArray); /**Adds four lines for every child **/
-int aposCreateLine(pWgtrNode, pXArray, int, int, int);  /**Creates a line and adds it to the grid**/
+int aposCreateLine(pWgtrNode, pXArray, int, int, int, int, int);  /**Creates a line and adds it to the grid**/
 pAposLine aposExistingLine(pXArray, int);		/**Checks for a line with a certain location**/
 int aposFillInCWidget(pXArray, pXArray, pXArray);	/**Fills in the CWidget array of a line**/
 
@@ -96,6 +110,7 @@ int aposCreateSection(pXArray, pAposLine, pAposLine, int, int); /**Creates a sec
 int aposIsSpacer(pAposLine, pAposLine, int, int);/**Determines if a section is a space between widgets**/
 int aposNonFlexChildren(pAposLine, int);	 /**Checks section after line for non-flexible widgets**/
 int aposAverageChildFlex(pAposLine, int);	 /**Returns average flexibility of widgets**/
+int aposMinimumChildFlex(pAposLine, int);	 /**Returns minimum flexibility of widgets**/
 
 /**Resizing and Repositioning**/
 int aposSpaceOutLines(pXArray, pXArray, int);	/**Adjusts spaces between lines to expand or contract grid**/

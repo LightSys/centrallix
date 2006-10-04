@@ -65,10 +65,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.59 2006/07/19 20:43:41 gbeeley Exp $
+    $Id: net_http.c,v 1.60 2006/10/04 17:20:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.60  2006/10/04 17:20:50  gbeeley
+    - (feature) allow application to adjust to user agent's configured text
+      font size.  Especially the Mozilla versions in CentOS have terrible
+      line spacing problems.
+    - (feature) to allow the above, added minimum widget height management to
+      the auto-layout module (apos)
+    - (change) allow floating windows to grow in size if more room is needed
+      inside the window.
+    - (change) for auto-layout, go with the minimum flexibility in any row or
+      column rather than the average.  Not sure of all of the impact of
+      doing this.
+
     Revision 1.59  2006/07/19 20:43:41  gbeeley
     - change cx__width/cx__height to just cx__geom
     - allow cx__geom=design to render app as designed without any scaling
@@ -2576,39 +2588,36 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 	    }
 
 	/** Generate the snippet **/
-	fdPrintf(output, "<html><head><meta http-equiv=\"Pragma\" CONTENT=\"no-cache\"></head><script language='javascript'>\n");
-	fdPrintf(output, "function startup()\n"
-			 "    {\n"
-			 "    var loc = window.location.href;\n"
-			 "    var re1 = new RegExp('cx__[^&]*');\n"
-			 "    var re2 = new RegExp('([?&])&*');\n"
-			 "    while(loc.match(re1))\n"
-			 "        {\n"
-			 "        loc = loc.replace(re1,'');\n"
-			 "        }\n"
-			 "    while(loc.match(re2))\n"
-			 "        {\n"
-			 "        loc = loc.replace(re2,'');\n"
-			 "        }\n"
-			 "    loc = loc.replace(new RegExp('[?&]*$'),'');\n"
-			 "    if (loc.indexOf('?') >= 0)\n"
-			 "        loc += '&';\n"
-			 "    else\n"
-			 "        loc += '?';\n"
-			 "    if (window.innerHeight)\n"
-			 "        {\n"
-			 "        loc += 'cx__geom=' + window.innerWidth + 'x' + window.innerHeight;\n"
-			 "        window.location.replace(loc);\n"
-			 "        }\n"
-			 "    else if (window.document.body && window.document.body.clientWidth)\n"
-			 "        {\n"
-			 "        loc += 'cx__geom=' + window.document.body.clientWidth + 'x' + window.document.body.clientHeight;\n"
-			 "        window.location.replace(loc);\n"
-			 "        }\n"
-			 "    }\n");
-	fdPrintf(output, "</script><body %s onload='startup();'><img src='/sys/images/loading.gif'></body></html>\n", bgnd);
+	fdPrintf(output, "<html>\n"
+			 "<head>\n"
+			 "    <meta http-equiv=\"Pragma\" CONTENT=\"no-cache\">\n"
+			 "    <style type=\"text/css\">\n"
+			 "        #l1 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
+			 "        #l2 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
+			 "    </style>\n"
+			 "</head>\n"
+			 "<script language=\"javascript\" src=\"/sys/js/startup.js\" DEFER></script>\n"
+			 "<body %s onload='startup();'>\n"
+			 "    <img src='/sys/images/loading.gif'>\n"
+			 "    <div id=\"l1\">x<br>x</div>\n"
+			 "    <div id=\"l2\">xx</div>\n"
+			 "</body>\n"
+			 "</html>\n", bgnd);
 
     return 0;
+    }
+
+
+/*** nht_internal_Hex16ToInt - convert a 16-bit hex value, in four chars, to
+ *** an unsigned integer.
+ ***/
+unsigned int
+nht_internal_Hex16ToInt(char* hex)
+    {
+    char hex2[5];
+    memcpy(hex2, hex, 4);
+    hex2[4] = '\0';
+    return strtoul(hex2, NULL, 16);
     }
 
 
@@ -2647,6 +2656,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     int client_h, client_w;
     int gzip;
     int i;
+    WgtrClientInfo wgtr_params;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -2816,9 +2826,10 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    !strcmp(ptr,"widget/component-decl"))
 	        {
 		/** Width and Height of user agent specified? **/
+		memset(&wgtr_params, 0, sizeof(wgtr_params));
 		gptr = NULL;
 		stAttrValue_ne(stLookup_ne(url_inf,"cx__geom"),&gptr);
-		if (!gptr)
+		if (!gptr || (strlen(gptr) != 20 && strcmp(gptr,"design") != 0))
 		    {
 		    /** Deploy snippet to get geom from browser **/
 		    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
@@ -2836,7 +2847,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		else
 		    {
 		    client_h = client_w = 0;
-		    client_w = strtol(gptr,&gptr,10);
+		    /*client_w = strtol(gptr,&gptr,10);
 		    if (client_w < 0) client_w = 0;
 		    if (client_w > 10000) client_w = 10000;
 		    if (*gptr == 'x')
@@ -2844,8 +2855,17 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			client_h = strtol(gptr+1,NULL,10);
 			if (client_h < 0) client_h = 0;
 			if (client_h > 10000) client_h = 10000;
-			}
+			}*/
+		    client_w = nht_internal_Hex16ToInt(gptr);
+		    client_h = nht_internal_Hex16ToInt(gptr+4);
+		    wgtr_params.CharWidth = nht_internal_Hex16ToInt(gptr+8);
+		    wgtr_params.CharHeight = nht_internal_Hex16ToInt(gptr+12);
+		    wgtr_params.ParagraphHeight = nht_internal_Hex16ToInt(gptr+16);
 		    }
+		wgtr_params.MaxHeight = client_h;
+		wgtr_params.MinHeight = client_h;
+		wgtr_params.MaxWidth = client_w;
+		wgtr_params.MinWidth = client_w;
 
 		/** Check for gzip encoding **/
 		gzip=0;
@@ -2873,7 +2893,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		else
 		    {
 		    /*wgtrPrint(widget_tree, 0);*/
-		    if (wgtrVerify(widget_tree, client_w, client_h, client_w, client_h) < 0)
+		    if (wgtrVerify(widget_tree, &wgtr_params) < 0)
 			{
 			mssError(0, "HTTP", "Couldn't verify widget tree for '%s'", target_obj->Pathname->Pathbuf);
 			fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");

@@ -93,7 +93,7 @@ wgtr_internal_LookupDriver(pWgtrNode node)
     pWgtrDriver drv;
     /*char* this_type;*/
 
-	drv = xhLookup(&(WGTR.DriversByType), node->Type+7);
+	drv = (pWgtrDriver)xhLookup(&(WGTR.DriversByType), node->Type+7);
 
 	/*for (i=0;i<xaCount(&(WGTR.Drivers));i++)
 	    {
@@ -370,6 +370,10 @@ wgtrParseOpenObject(pObject obj, pWgtrNode template)
 	this_node->y = this_node->r_y;
 	this_node->width = this_node->r_width;
 	this_node->height = this_node->r_height;
+	this_node->pre_x = this_node->r_x;
+	this_node->pre_y = this_node->r_y;
+	this_node->pre_width = this_node->r_width;
+	this_node->pre_height = this_node->r_height;
 
 	/** loop through subobjects, and call ourselves recursively to add child nodes **/
 	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
@@ -744,6 +748,9 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->fl_height = flheight;
 	node->ObjSession = s;
 	node->Parent = NULL;
+	node->min_height = 0;
+	node->min_width = 0;
+	node->LayoutGrid = NULL;
 
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
@@ -1058,7 +1065,7 @@ wgtr_internal_BuildVerifyQueue(pWgtrVerifySession vs, pWgtrNode node)
     }
 
 int
-wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh)
+wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info)
     {
     WgtrVerifySession vs;
     pWgtrDriver drv;
@@ -1071,10 +1078,11 @@ wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh)
 	xaInit(&Names, 128);
 
 	/** Set top-level width and height **/
-	if (tree->width < minw) tree->width = minw;
-	if (tree->width > maxw) tree->width = maxw;
-	if (tree->height < minh) tree->height = minh;
-	if (tree->height > maxh) tree->height = maxh;
+	if (tree->width < client_info->MinWidth) tree->width = client_info->MinWidth;
+	if (tree->width > client_info->MaxWidth) tree->width = client_info->MaxWidth;
+	if (tree->height < client_info->MinHeight) tree->height = client_info->MinHeight;
+	if (tree->height > client_info->MaxHeight) tree->height = client_info->MaxHeight;
+	vs.ClientInfo = client_info;
 
 	/** Build the verification queue **/
 	wgtr_internal_BuildVerifyQueue(&vs, tree);
@@ -1115,7 +1123,7 @@ wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh)
 		}
 	    else vs.CurrWidget->Verified = 1;
 	    }
-	
+
 	/** Auto-position the widget tree **/
 	if(aposAutoPositionWidgetTree(tree) < 0)
 	    {

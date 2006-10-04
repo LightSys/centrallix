@@ -50,6 +50,11 @@
 int
 wgtddVerify(pWgtrVerifySession s)
     {
+    pWgtrNode this = s->CurrWidget;
+    int min_height = s->ClientInfo->ParagraphHeight + 2;
+
+	if (this->min_height < min_height) this->min_height = min_height;
+
     return 0;
     }
 
@@ -63,7 +68,7 @@ int
 wgtddNew(pWgtrNode node)
     {   
 	if(node->fl_width < 0) node->fl_width = 10;
-	if(node->fl_height < 0) node->fl_height = 0;
+	if(node->fl_height < 0) node->fl_height = 1;
 	
     return 0;
     }

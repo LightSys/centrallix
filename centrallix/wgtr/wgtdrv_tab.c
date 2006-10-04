@@ -70,6 +70,10 @@ wgttabVerify(pWgtrVerifySession s)
 			    tabpage->r_x = tabpage->r_y = 0;
 			    tabpage->r_width = tab->r_width;
 			    tabpage->r_height = tab->r_height;
+			    tabpage->pre_width = tab->pre_width;
+			    tabpage->pre_height = tab->pre_height;
+			    tabpage->min_width = tab->min_width;
+			    tabpage->min_height = tab->min_height;
 			
 			    tabpage->x = tabpage->y = 0;
 			    tabpage->width = tab->width;

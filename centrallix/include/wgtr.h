@@ -47,6 +47,20 @@
 #define WGTR_F_CONTAINER    2		/** set for container widgets **/
 #define WGTR_F_FLOATING	    4		/** widgets that 'float' - childwindows and popup menus **/
 
+
+typedef struct
+    {
+    int		MinWidth;
+    int		MinHeight;
+    int		MaxWidth;
+    int		MaxHeight;
+    int		CharWidth;
+    int		CharHeight;
+    int		ParagraphHeight;	/* total height of one line of text */
+    }
+    WgtrClientInfo, *pWgtrClientInfo;
+
+
 typedef struct _WN
     {
     int		Magic;
@@ -56,8 +70,10 @@ typedef struct _WN
     char	Type[64];			/** widget type - editbox, etc. **/
     char	Name[64];			/** widget name **/
     int		r_x, r_y, r_width, r_height;	/** Requested geometry **/
+    int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
     int		fl_x, fl_y, fl_width, fl_height;/** Flexibility **/
     double  	fx, fy, fw, fh;			/** internal flexibility calculations **/
+    int		min_width, min_height;		/** absolute minimums **/
     int		x, y, width, height;		/** actual geometry **/
     int		top, bottom, left, right;	/** container offsets **/
     XArray	Properties;			/** Array of widget properties **/
@@ -68,6 +84,11 @@ typedef struct _WN
     int		Verified;			/** Was the node verified? **/
     XArray	Interfaces;			/** Array of supported interface handles **/
     pObjSession ObjSession;			/** Object session this node's related to **/
+    void*	LayoutGrid;			/** Grid for this container **/
+    void*	StartHLine;
+    void*	EndHLine;
+    void*	StartVLine;
+    void*	EndVLine;
     }
     WgtrNode, *pWgtrNode;
 
@@ -88,7 +109,9 @@ typedef struct
     int			NumWidgets;	    /** Number of widgets currently in the queue **/
     int			CurrWidgetIndex;    /** Index of widget being verified right now **/
     pWgtrNode		CurrWidget;	    /** Pointer to widget being verified right now **/
+    pWgtrClientInfo	ClientInfo;
     } WgtrVerifySession, *pWgtrVerifySession;
+
 
 
 /** traversal methods for iterators **/
@@ -130,7 +153,7 @@ pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints
 pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression from a widget node **/
 
 /** verification functions **/
-int wgtrVerify(pWgtrNode tree, int minw, int minh, int maxw, int maxh);	/** Verify a widget-tree. s must be pHtSession **/
+int wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info);	/** Verify a widget-tree. s must be pHtSession **/
 int wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget); /** add a widget to the Verify Queue **/
 int wgtrCancelVerify(pWgtrVerifySession cs, pWgtrNode widget);	/** remove a widget from the Verify Queue **/
 
