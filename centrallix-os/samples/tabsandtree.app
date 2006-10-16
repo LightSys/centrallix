@@ -28,7 +28,7 @@ tabsandtree "widget/page"
 		    {
 		    mode = dynamic;
 		    x=0;y=0;width=464;
-		    source="http://localhost:8800/INSTALL.txt";
+		    source="http://localhost:800/INSTALL.txt";
 		    }
 		}
 	    }
@@ -126,7 +126,7 @@ tabsandtree "widget/page"
 		    {
 		    show_branches=yes;
 		    x=0; y=1; width=576;
-		    source = "javascript:myTab";
+		    source = "javascript:wgtrGetNode(window,'myTab')";
 		    }
 		}
 	    }

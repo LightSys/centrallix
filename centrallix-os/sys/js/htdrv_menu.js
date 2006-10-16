@@ -167,7 +167,8 @@ function mn_activate_item(item)
 	{
 	item.ifcProbe(ifEvent).Activate('Select', {Value:item.value, Label:item.label});
 	this.ifcProbe(ifEvent).Activate('SelectItem', {Value:item.value, Label:item.label});
-	if (this.VChildren[item.submenu])
+	//if (this.VChildren[item.submenu])
+	if (wgtrGetNode(this,item.submenu))
 	    {
 	    if (this.horiz)
 		{
@@ -179,7 +180,8 @@ function mn_activate_item(item)
 		var x = getPageX(this) + item.x + item.width;
 		var y = getPageY(this) + item.y;
 		}
-	    this.VChildren[item.submenu].Activate(x, y, this);
+	    //this.VChildren[item.submenu].Activate(x, y, this);
+	    wgtrGetNode(this,item.submenu).Activate(x, y, this);
 	    }
 	}
     else if (item.check != null)
@@ -243,7 +245,8 @@ function mn_mousemove(e)
     {
     var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
     var mn = mn_current;
-    while (mn && mn.VParent.kind == "mn" && mn.VParent.cur_highlight) mn = mn.VParent;
+    //while (mn && mn.VParent.kind == "mn" && mn.VParent.cur_highlight) mn = mn.VParent;
+    while (mn && wgtrGetParent(mn).kind == "mn" && wgtrGetParent(mn).cur_highlight) mn = wgtrGetParent(mn);
     while (mn)
 	{
 	var found = false;
@@ -456,3 +459,10 @@ function mn_init(param)
     return menu;
     }
 
+function mn_parent(node)
+    {
+    var parent = node;
+    while (wgtrGetType(parent) == "widget/menuitem" || wgtrGetType(parent) == "widget/menu")
+	parent = wgtrGetParent(parent);
+    return parent;
+    }

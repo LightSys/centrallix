@@ -175,12 +175,12 @@ function ht_init(param)
     ifc_init_widget(l);
     l.loader = param.loader;
     l2.loader = param.loader;
-    l.pdoc = param.pdoc;
-    l2.pdoc = param.pdoc;
+    //l.pdoc = param.pdoc;
+    l.pdoc = wgtrGetContainer(wgtrGetParent(l));
+    l2.pdoc = l.pdoc;
     l.curLayer = l;
     l.altLayer = l2;
     l.faderLayer = param.faderLayer;
-    l.LSParent = param.parent;
     l.content = '';
     l.content_type = 'text/html';
     l.ht_sourcechanged = ht_sourcechanged;

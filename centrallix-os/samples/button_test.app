@@ -15,7 +15,7 @@ window_test "widget/page"
 	    event="Click";
 	    target="alerter";
 	    action="Alert";
-	    param="('you clicked button 1')";
+	    param=runclient('you clicked button 1');
 	    }
 	}
 
@@ -29,14 +29,14 @@ window_test "widget/page"
 	    event="Click";
 	    target="alerter";
 	    action="Alert";
-	    param="('you clicked button 2')";
+	    param=runclient('you clicked button 2');
 	    }
 	}
 
     btnFirst "widget/imagebutton"
 	{
 	x=250;y=5;
-	width=20; height=20;
+	width=18; height=18;
 	image = "/sys/images/ico16aa.gif";
 	pointimage = "/sys/images/ico16ab.gif";
 	clickimage = "/sys/images/ico16ac.gif";
@@ -45,7 +45,7 @@ window_test "widget/page"
 	    event="Click";
 	    target="alerter";
 	    action="Alert";
-	    param="('\\'first\\' button')";
+	    param=runclient('\'first\' button');
 	    }
 	}
 

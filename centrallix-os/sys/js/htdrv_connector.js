@@ -12,6 +12,7 @@
 function cn_activate(t,f,eparam)
     {
     if (eparam == null) eparam = {};
+    if (!t.ifcProbe) alert('bad event source ' + t.id);
     if (!t.ifcProbe(ifEvent)) alert('ifEvent not defined on ' + t.id + ' for event ' + f);
     return t.ifcProbe(ifEvent).Activate(f,eparam);
     }

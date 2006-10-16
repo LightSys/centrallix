@@ -66,7 +66,7 @@ function sp_init(param)
     htr_init_layer(tlayer,l,"sp");
     htr_init_layer(alayer,l,"sp");
     ifc_init_widget(l);
-    l.LSParent = param.parent;
+    //l.LSParent = param.parent;
     l.thum = tlayer;
     l.area = alayer;
     l.UpdateThumb = sp_UpdateThumb;

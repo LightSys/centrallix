@@ -271,17 +271,39 @@ function htr_search_element(e,id)
 
 function htr_get_subelement(id)
     {
+    return htr_subel(this, id);
+    }
+
+function htr_subel(l, id)
+    {
     if (cx__capabilities.Dom0NS)
 	{
-	if (this.document)
-	    return this.document.layers[id];
+	if (!l) alert('parent undefined: ' + id);
+	if (l.document)
+	    {
+	    if (!l.document.layers[id]) alert('no subobject: ' + id + ' for layer ' + l.id);
+	    return l.document.layers[id];
+	    }
 	else
-	    return this.layers[id];
+	    {
+	    if (!l.layers) alert('object has no layers: ' + l.id + ' looking for subobject: ' + id);
+	    if (!l.layers[id]) alert('no subobject: ' + id + ' for layer ' + l.id);
+	    return l.layers[id];
+	    }
+	}
+    else if (cx__capabilities.Dom0IE)
+	{
+	if (l.document)
+	    return l.document.all[id];
+	else
+	    return l.all[id];
 	}
     else if (cx__capabilities.Dom1HTML)
 	{
-	if (!this.tagName) return this.getElementById(id);
-	return htr_search_element(this, id);
+	//if (!l.getElementById) alert('no func on ' + l.id + ' looking for ' + id);
+	//if (!l.tagName) return l.getElementById(id);
+	if (!l.tagName) return document.getElementById(id);
+	return htr_search_element(l, id);
 	}
     return null;
     }
@@ -293,7 +315,7 @@ function htr_extract_bgcolor(s)
 	var cp = s.indexOf(":");
 	return s.substr(cp+2,s.length-cp-3);
 	}
-    else if (s.substr(0,8) == "bgcolor=")
+    else if (s.substr(0,8) == "bgcolor=" || s.substr(0,8) == "bgColor=")
 	{
 	var qp = s.indexOf("'");
 	if (qp < 1)
@@ -450,7 +472,7 @@ function htr_setzindex(l,v)
 /**
 * IE's srcElement will always be the lowest level element you clicked on
 * need to trace back to the parent div node
-* Since a div node can be a child of anotjer div node, trace back to the topmost div
+* Since a div node can be a child of another div node, trace back to the topmost div
 **/
 function htr_get_parent_div(o)
     {
@@ -468,10 +490,14 @@ function htr_new_layer(w,p)
 
 	if (cx__capabilities.Dom0NS)
 	    {
-	    nl = new Layer(w,p);
+	    if (!p)
+		nl = new Layer(w);
+	    else
+		nl = new Layer(w,p);
 	    }
 	else if (cx__capabilities.Dom1HTML)
 	    {
+	    if (!p) p = document.body;
 	    nl = document.createElement('div');
 	    nl.style.width = w;
 	    pg_set_style(nl, 'position','absolute');
@@ -495,17 +521,5 @@ function htr_write_content(l,t)
 	    }
 
     return;
-    }
-
-function htr_set_parent(l,n,p)
-    {
-    l.WName = n;
-    l.WParent = p;
-    if (!l.WParent.WChildren) l.WParent.WChildren = new Array();
-    l.WParent.WChildren[n] = l;
-    while (p.nonvisual) p = p.WParent;
-    l.VParent = p;
-    if (!l.VParent.VChildren) l.VParent.VChildren = new Array();
-    l.VParent.VChildren[n] = l;
     }
 

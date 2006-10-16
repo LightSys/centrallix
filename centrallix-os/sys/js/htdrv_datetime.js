@@ -101,7 +101,7 @@ function dt_init(param){
 	l.fg = param.foreground;
 	l.w2 = w2;
 	l.h2 = h2;
-	l.form = fm_current;
+	l.form = wgtrFindContainer(l,"widget/form");
 	l.DateStr = param.id;
 	l.MonthsAbbrev = Array('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
 	l.VisLayer = c1;
@@ -115,7 +115,7 @@ function dt_init(param){
 		l.TmpDateObj = new Date();
 		dt_drawdate(l, '');
 	}
-	if (fm_current) fm_current.Register(l);
+	if (l.form) l.form.Register(l);
 	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dt', 'dt', 3);
 
 	// Events
@@ -338,7 +338,7 @@ function dt_toggle(l) {
 function dt_setdata(l,d) {
 	l.setvalue(d);
 	if (l.form) l.form.DataNotify(l);
-	cn_activate(dt_current, 'DataChange');
+	cn_activate(l, 'DataChange');
 }
 
 
@@ -602,23 +602,23 @@ function dt_mousedown(l) {
 	if (p.kind == 'dt_day') {
 		dt_drawdate(p.ml, p.DateVal);
 		p = l.ml; 
-	} else if (p.kind == 'dt' && p.enabled == 'full') {
-		dt_toggle(p);
+	} else if (p.kind == 'dt' && p.mainlayer.enabled == 'full') {
+		dt_toggle(p.mainlayer);
 	}
 	if (p.kind == 'dt' || p.kind == 'dt_day') {
 		if (dt_current) {
 			dt_current = null;
-			dt_collapse(p);
-		} else if (p.enabled == 'full') {
-			dt_current = p;
-			dt_expand(p);
+			dt_collapse(p.mainlayer);
+		} else if (p.mainlayer.enabled == 'full') {
+			dt_current = p.mainlayer;
+			dt_expand(p.mainlayer);
 		}
 	}
 }
 
 function dt_mouseup(l) {
-	if (l.kind == 'dt' && l.enabled == 'full') {
-		dt_toggle(l);
+	if (l.kind == 'dt' && l.mainlayer.enabled == 'full') {
+		dt_toggle(l.mainlayer);
 	}
 	if (dt_timeout) {
 		clearTimeout(dt_timeout);

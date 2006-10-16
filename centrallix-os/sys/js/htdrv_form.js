@@ -385,8 +385,8 @@ function form_show_3bconfirm()
     
 /** set modal and make the user do something
  **   modal will be unset and we'll get control back via callbacks **/
-    this._3bconfirmwindow.ifcProbe(ifAction).Invoke("Open", {});
-    pg_setmodal(this._3bconfirmwindow.ContentLayer)
+    this._3bconfirmwindow.ifcProbe(ifAction).Invoke("Open", {IsModal:true, NoClose:true});
+    //pg_setmodal(this._3bconfirmwindow.ContentLayer)
     
     }
 
@@ -729,15 +729,28 @@ function form_build_dataobj()
     return dataobj;
     }
 
+function form_action_save_success()
+    {
+    this.IsUnsaved=false;
+    this.is_savable=false;
+    this.Pending=false;
+    this.EnableModifyAll();
+    this.ifcProbe(ifAction).Invoke("View");
+    for(var i in this.elements)
+	this.elements[i]._form_IsChanged=false;
+    this.cb['OperationCompleteFail'].clear();
+    }
+
 function form_action_save()
     {
     if(!this.IsUnsaved)
 	{
 	return 0;
 	}
-    this.cb['OperationCompleteSuccess'].add(this,
-	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ifcProbe(ifAction).Invoke(\"View\");this.cb['OperationCompleteFail'].clear();"),null,-100);
-     this.cb['OperationCompleteFail'].add(this,
+    //this.cb['OperationCompleteSuccess'].add(this,
+    //	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ifcProbe(ifAction).Invoke(\"View\");this.cb['OperationCompleteFail'].clear();"),null,-100);
+    this.cb['OperationCompleteSuccess'].add(this, new Function("this.ActionSaveSuccessCB();"), null, -100);
+    this.cb['OperationCompleteFail'].add(this,
 	   new Function("this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
     
 /** build the object to pass to objectsource **/
@@ -908,9 +921,9 @@ function form_cb_reveal(element,event)
  ** _3b - three-button confirm window
  ** ro - is the form readonly?
  **/
-function form_init(param)
+function form_init(form,param)
     {
-    var form = new Object();
+    //var form = new Object();
     ifc_init_widget(form);
     form.readonly=param.ro;
     form.elements = new Array();
@@ -921,10 +934,10 @@ function form_init(param)
     form.didsearchlast = false;
     form.didsearch = false;
     form.revealed_elements = 0;
-    form.osrc = null;
-    if(osrc_current)
+    form.osrc = wgtrFindContainer(form, "widget/osrc");
+    //if (!form.osrc) alert('no osrc container!');
+    if(form.osrc)
 	{
-	form.osrc = osrc_current;
 	form.osrc.Register(form);
 	}
     form.IsUnsaved = false;
@@ -992,6 +1005,7 @@ function form_init(param)
     form.BuildDataObj = form_build_dataobj;
     form.Reveal = form_cb_reveal;
     //form.InitQuery = form_init_query;
+    form.ActionSaveSuccessCB = form_action_save_success;
 
     // Actions
     var ia = form.ifcProbeAdd(ifAction);
@@ -1023,3 +1037,4 @@ function form_init(param)
 
     return form;
     }
+

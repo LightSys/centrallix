@@ -362,3 +362,17 @@ function cx_hints_teststyle(e, b)
     if (!(h.StyleMask & b)) return null;
     return (h.Style & b)?1:0;
     }
+
+
+// cx_hints_datavalue() - generate a stored value for the currently displayed
+// value.
+function cx_hints_datavalue(e)
+    {
+    if (!e.getvalue) return null;
+    var v = e.getvalue();
+    if (!e.cx_hints) return v;
+    var h = e.cx_hints['all'];
+    if (v == '' && (h.Style & h.StyleMask & cx_hints_style.strnull)) return null;
+    return v;
+    }
+

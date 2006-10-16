@@ -614,8 +614,8 @@ function tx_init(param)
 	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'tbox', 'tbox', param.isReadonly?0:3);
     else
 	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'tbox', 'tbox', param.isReadonly?0:3);
-    if (fm_current) fm_current.Register(l);
-    l.form = fm_current;
+    l.form = wgtrFindContainer(l,"widget/form");
+    if (l.form) l.form.Register(l);
     l.changed = false;
 
     // Events

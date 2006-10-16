@@ -11,10 +11,10 @@
 
 function wn_init(param)
     {
-    var l = param.layer;
+    var l = param.mainlayer;
     var titlebar = param.titlebar;
     htr_init_layer(l,l,"wn");
-    htr_init_layer(param.mainlayer,l,"wn");
+    htr_init_layer(param.clayer,l,"wn");
     ifc_init_widget(l);
 
     /** NS4 version doesn't use a separate div for the title bar **/
@@ -29,16 +29,16 @@ function wn_init(param)
 	titlebar=l;
 	}
     l.keep_kbd_focus = true;
-    l.oldwin=window_current;
-    window_current=l;
-    l.osrc = new Array();
-    var t = osrc_current;
-    while(t)
-	{
-	l.osrc.push(t);
-	t=t.oldosrc;
-	}
-    l.ContentLayer = param.mainlayer;
+    //l.oldwin=window_current;
+    //window_current=l;
+    //l.osrc = new Array();
+    //var t = wgtrFindContainer(l, "widget/osrc");
+    //while(t)
+	//{
+	//l.osrc.push(t);
+	//t=t.oldosrc;
+	//}
+    l.ContentLayer = param.clayer;
     l.ContentLayer.maxheight = l.ContentLayer.minheight = getClipHeight(l.ContentLayer);
     l.ContentLayer.maxwidth = l.ContentLayer.minwidth = getClipWidth(l.ContentLayer);
 
@@ -80,7 +80,7 @@ function wn_init(param)
     ie.Add("MouseOut");
     ie.Add("MouseMove");
 
-    l.RegisterOSRC = wn_register_osrc;
+    //l.RegisterOSRC = wn_register_osrc;
 
     // Register as a triggerer of reveal/obscure events
     l.SetVisibilityBH = wn_setvisibility_bh;
@@ -150,10 +150,10 @@ function wn_setvisibility_bh(v)
 	}
     }
 
-function wn_register_osrc(t)
-    {
-    this.osrc.push(t);
-    }
+//function wn_register_osrc(t)
+//    {
+//    this.osrc.push(t);
+//    }
 
 function wn_unset_windowshade(l)
     {
@@ -270,6 +270,7 @@ function wn_close(l)
     {
     if (l.is_modal) pg_setmodal(null);
     l.is_modal = false;
+    l.no_close = false;
     if (l.closetype == 0 || !cx__capabilities.Dom0NS)
 	{
 	htr_setvisibility(l,'hidden');
@@ -371,6 +372,7 @@ function wn_setvisibility(aparam)
 		this.osrc[t].InitQuery();
 	    }*/
 	this.is_modal = aparam.IsModal;
+	this.no_close = aparam.NoClose;
 	this.SetVisibilityTH(true);
 	}
     else
@@ -469,7 +471,7 @@ function wn_mouseup(e)
     if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')
         {
         pg_set(e.target,'src','/sys/images/01bigclose.gif');
-	ly.mainlayer.SetVisibilityTH(false);
+	if (ly.mainlayer.no_close != true) ly.mainlayer.SetVisibilityTH(false);
         }
     else if (ly.document != null && pg_images(ly).length > 6 && pg_images(ly)[6].name == 'close')
         {

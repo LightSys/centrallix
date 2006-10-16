@@ -13,14 +13,16 @@ function sb_init(param)
     {
     var tlayer=null;
     var l = param.layer;
-    for(i=0;i<l.layers.length;i++)
+    tlayer = htr_subel(l, param.tname);
+    /*for(i=0;i<l.layers.length;i++)
 	{
 	var ml=l.layers[i];
 	if(ml.name==param.tname) tlayer=ml;
-	}
-    for(i=0;i<l.document.images.length;i++)
+	}*/
+    var imgs = pg_images(l);
+    for(i=0;i<imgs.length;i++)
 	{
-	var img=l.document.images[i];
+	var img=imgs[i];
 	if(img.name=='d' || img.name=='u' || img.name=='b')
 	    {
 	    img.pane=l;
@@ -30,21 +32,23 @@ function sb_init(param)
 	    img.mainlayer=l;
 	    }
 	}
-    tlayer.document.images[0].kind='sb';
-    tlayer.document.images[0].layer = tlayer.document.images[0];
-    tlayer.document.images[0].mainlayer=l;
-    tlayer.document.images[0].thum=tlayer;
-    tlayer.document.images[0].pane=l;
+    imgs = pg_images(tlayer);
+    imgs[0].kind='sb';
+    imgs[0].layer = imgs[0];
+    imgs[0].mainlayer=l;
+    imgs[0].thum=tlayer;
+    imgs[0].pane=l;
     tlayer.nofocus = true;
     htr_init_layer(tlayer, l, 'sb');
     htr_init_layer(l, l, 'sb');
     ifc_init_widget(l);
     l.thum = tlayer;
-    l.LSParent = param.parent;
+    //l.LSParent = param.parent;
     l.range = param.range;
     l.value = 0;
     l.is_horizontal = param.isHorizontal;
     l.controlsize = param.isHorizontal?(getClipWidth(l) - 18*3):(getClipHeight(l) - 18*3);
+    l.sb_range_changed = sb_range_changed;
     htr_watch(l,'range','sb_range_changed');
 
     // Actions
@@ -75,11 +79,11 @@ function sb_set_thumb(r,v)
     {
     if (this.is_horizontal)
 	{
-	if (r > 0) this.thum.x = 18 + this.controlsize*v/(r);
+	if (r > 0) moveTo(this.thum, 18 + this.controlsize*v/(r), 0);
 	}
     else
 	{
-	if (r > 0) this.thum.y = 18 + this.controlsize*v/(r);
+	if (r > 0) moveTo(this.thum, 0, 18 + this.controlsize*v/(r));
 	}
     }
 

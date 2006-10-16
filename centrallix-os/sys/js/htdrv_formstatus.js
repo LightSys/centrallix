@@ -81,9 +81,9 @@ function fs_init(param) {
     l.isFormStatusWidget = true;
     l.setvalue = fs_setvalue;
     l.imagestyle = param.style;
-    if (fm_current) {
-	fm_current.Register(l);
-	l.form = fm_current;
+    l.form = wgtrFindContainer(l,"widget/form");
+    if (l.form) {
+	l.form.Register(l);
     }
 
     // Request reveal/obscure notifications

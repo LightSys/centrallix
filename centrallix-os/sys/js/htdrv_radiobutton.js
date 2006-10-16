@@ -69,37 +69,37 @@ function rb_disable() {
 	}
 }
 
-function add_radiobutton(optionPane, parentPane, selected, ml) {
+function add_radiobutton(optionPane, selected) {
 	optionPane.kind = 'radiobutton';
 	optionPane.document.layer = optionPane;
-	optionPane.mainlayer = ml;
+	optionPane.mainlayer = wgtrGetParent(optionPane);
 	optionPane.optionPane = optionPane;
 	optionPane.setPane = optionPane.layers.radiobuttonpanelbuttonsetpane;
 	optionPane.unsetPane = optionPane.layers.radiobuttonpanelbuttonunsetpane;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.kind = 'radiobutton';
-	optionPane.layers.radiobuttonpanelbuttonsetpane.mainlayer = ml;
+	optionPane.layers.radiobuttonpanelbuttonsetpane.mainlayer = optionPane.mainlayer;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.optionPane = optionPane;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonsetpane;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].kind = 'radiobutton';
-	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].mainlayer = ml;
+	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].mainlayer = optionPane.mainlayer;
 	optionPane.layers.radiobuttonpanelbuttonsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonsetpane;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.kind = 'radiobutton';
-	optionPane.layers.radiobuttonpanelbuttonunsetpane.mainlayer = ml;
+	optionPane.layers.radiobuttonpanelbuttonunsetpane.mainlayer = optionPane.mainlayer;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.optionPane = optionPane;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].kind = 'radiobutton';
-	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].mainlayer = ml;
+	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].mainlayer = optionPane.mainlayer;
 	optionPane.layers.radiobuttonpanelbuttonunsetpane.document.images[0].layer = optionPane.layers.radiobuttonpanelbuttonunsetpane;
 	optionPane.layers.radiobuttonpanellabelpane.kind = 'radiobutton';
 	optionPane.layers.radiobuttonpanellabelpane.optionPane = optionPane;
-	optionPane.layers.radiobuttonpanellabelpane.mainlayer = ml;
+	optionPane.layers.radiobuttonpanellabelpane.mainlayer = optionPane.mainlayer;
 	optionPane.layers.radiobuttonpanellabelpane.document.layer = optionPane.layers.radiobuttonpanellabelpane;
-	parentPane.buttonList.push(optionPane);
+	optionPane.mainlayer.buttonList.push(optionPane);
 	if (selected) {
 		optionPane.layers.radiobuttonpanelbuttonsetpane.visibility = 'inherit';
 		optionPane.layers.radiobuttonpanelbuttonunsetpane.visibility = 'hidden';
-		parentPane.selectedOption = optionPane;
-		parentPane.defaultSelectedOption = optionPane;
+		optionPane.mainlayer.selectedOption = optionPane;
+		optionPane.mainlayer.defaultSelectedOption = optionPane;
 	} else {
 		optionPane.layers.radiobuttonpanelbuttonsetpane.visibility = 'hidden';
 		optionPane.layers.radiobuttonpanelbuttonunsetpane.visibility = 'inherit';
@@ -133,7 +133,7 @@ function radiobuttonpanel_init(param) {
 	parentPane.disable = rb_disable;
 	parentPane.readonly = rb_readonly;
 	parentPane.fieldname = param.fieldname;
-	parentPane.form = fm_current;
+	parentPane.form = wgtrFindContainer(parentPane,"widget/form");
 	htr_init_layer(parentPane, parentPane, 'radiobutton');
 	if (borderpane) {
 		htr_init_layer(borderpane, parentPane, 'radiobutton');
@@ -144,7 +144,7 @@ function radiobuttonpanel_init(param) {
 	if (titlepane) {
 		htr_init_layer(titlepane, parentPane, 'radiobutton');
 	}
-	if (fm_current) fm_current.Register(parentPane);
+	if (parentPane.form) parentPane.form.Register(parentPane);
 
 	// Events
 	ifc_init_widget(parentPane);

@@ -126,7 +126,7 @@ function checkbox_init(param)
     l.is_checked = param.checked;
     l.is_checked_initial = param.checked;
     l.enabled = param.enabled;
-    l.form = fm_current;
+    l.form = wgtrFindContainer(l,"widget/form");
     var imgs = pg_images(l);
     imgs[0].kind = 'checkbox';
     imgs[0].layer = l;
@@ -156,7 +156,7 @@ function checkbox_init(param)
     l.enable     = checkbox_enable;
     l.readonly   = checkbox_readonly;
     l.disable    = checkbox_disable;
-    if (fm_current) fm_current.Register(l);
+    if (l.form) l.form.Register(l);
 
     // Events
     ifc_init_widget(l);

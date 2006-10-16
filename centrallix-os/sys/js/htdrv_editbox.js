@@ -29,7 +29,7 @@ function eb_clearvalue()
     // fake it by just making the content invisible - much faster :)
     if (this != eb_current)
 	{
-	this.content = '';
+	this.set_content('');
 	this.tmpcontent = '';
 	this.charOffset = 0;
 	this.cursorCol = 0;
@@ -39,6 +39,19 @@ function eb_clearvalue()
 	{
 	this.Update('', 0);
 	}
+    }
+
+function eb_content_changed(p,o,n)
+    {
+    this.Update('' + n, 0);
+    return '' + n;
+    }
+
+function eb_set_content(v)
+    {
+    htr_unwatch(this, "content", "content_changed");
+    this.content = v;
+    htr_watch(this, "content", "content_changed");
     }
 
 function eb_enable()
@@ -90,7 +103,7 @@ function eb_settext(l,txt)
     if (!l.is_busy)
 	{
 	l.is_busy = true;
-	l.content=txt;
+	l.set_content(txt);
 	pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(txt) + '</pre> ', eb_settext_cb);
 	}
     }
@@ -356,9 +369,16 @@ function eb_init(param)
 	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
     setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
-    if (fm_current) fm_current.Register(l);
-    l.form = fm_current;
+    l.form = wgtrFindContainer(l,"widget/form");
+    if (l.form) l.form.Register(l);
     l.changed = false;
+
+    // Callbacks for internal management of 'content' value
+    l.set_content = eb_set_content;
+    l.content_changed = eb_content_changed;
+
+    // Hot properties
+    htr_watch(l,'content','content_changed');
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

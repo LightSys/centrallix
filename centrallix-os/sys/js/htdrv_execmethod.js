@@ -24,12 +24,12 @@ function ex_action_domethod(aparam)
 /** Timer initializer **/
 function ex_init(param)
     {
-    var ex = new Object();
+    var ex = param.node;
     ifc_init_widget(ex);
     ex.Objname = param.objname;
     ex.Methodname = param.methname;
     ex.Methodparam = param.methparam;
-    ex.HiddenLayer = new Layer(64);
+    ex.HiddenLayer = htr_new_layer(64,ex);
 
     // Actions
     var ia = ex.ifcProbeAdd(ifAction);

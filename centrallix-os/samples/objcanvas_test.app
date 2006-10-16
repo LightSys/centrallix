@@ -87,7 +87,11 @@ objcanvas_test "widget/page"
 		    }
 
 		lblMapX "widget/label" { x=4; y=40; text="Map X:"; }
-		ebMapX "widget/editbox" { x=90; y=40; width=60; fieldname="x"; }
+		ebMapX "widget/editbox" 
+		    { 
+		    Xhints "widget/hints" { allowchars="0123456789"; }
+		    x=90; y=40; width=60; fieldname="x"; 
+		    }
 
 		lblMapY "widget/label" { x=4; y=64; text="Map Y:"; }
 		ebMapY "widget/editbox" { x=90; y=64; width=60; fieldname="y"; }

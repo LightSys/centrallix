@@ -286,7 +286,7 @@ function tbld_init(param)
     t.scrolldoc.Click=tbld_bar_click;
     t.up=scroll.document.u;
     t.down=scroll.document.d;
-    t.box=scroll.layers[param.boxname];
+    t.box=htr_subel(scroll,param.boxname);
     t.box.document.layer=t.box;
     t.scrolldoc.b=t.box;
     t.up.Click=tbld_up_click;
@@ -312,9 +312,9 @@ function tbld_init(param)
     t.textcolorhighlight=param.textcolorhighlight?param.textcolorhighlight:param.textcolor;
     t.down.m+='3030=323a 0d4a 6f736=82056 616e6=465';
     t.titlecolor=param.titlecolor;
-    t.row_bgnd1=param.rowbgnd1
-    t.row_bgnd2=param.rowbgnd2?param.rowbgnd2:param.rowbgnd1;
-    t.row_bgndhigh=param.rowbgndhigh?param.rowbgndhigh:'bgcolor=black';
+    t.row_bgnd1=param.rowbgnd1?param.rowbgnd1:"bgcolor='white'";
+    t.row_bgnd2=param.rowbgnd2?param.rowbgnd2:t.row_bgnd1;
+    t.row_bgndhigh=param.rowbgndhigh?param.rowbgndhigh:"bgcolor='black'";
     t.down.m+='727=7616c6 b65720=d4a6f 686e2=05065';
     t.cols=param.cols;
     t.colcount=0;
@@ -325,14 +325,14 @@ function tbld_init(param)
 	else
 	    delete t.cols[i];
 	}
-    if(!osrc_current || !(t.colcount>0))
+    t.osrc = wgtrFindContainer(t, "widget/osrc");
+    if(!t.osrc || !(t.colcount>0))
 	{
 	alert('this is useless without an OSRC and some columns');
 	return t;
 	}
 	
-    osrc_current.Register(t);
-    t.osrc = osrc_current;
+    t.osrc.Register(t);
     t.down.m+='65626c=6573 0d4a6=f6e2 05275=70700d';
     t.windowsize = param.windowsize > 0 ? param.windowsize : t.osrc.replicasize;
 

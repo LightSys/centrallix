@@ -82,7 +82,8 @@ function tv_action_setroot(aparam)
     // Set the root
     if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
     if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, pdoc:this.root.pdoc, width:getClipWidth(this.root), parent:this.root.LSParent, newroot:aparam.NewRootObj, branches:this.show_branches});
+    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches});
+    //tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, pdoc:this.root.pdoc, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches});
     if (aparam.Expand == 'yes') this.root.expand();
     }
 
@@ -587,8 +588,8 @@ function tv_loaded(e)
 function tv_init(param)
     {
     var l = param.layer;
-    var pdoc = param.pdoc;
-    l.LSParent = param.parent;
+    //var pdoc = param.pdoc;
+    //l.LSParent = param.parent;
     l.fname = param.fname;
     l.show_branches = param.branches;
     if (htr_getvisibility(l) == 'inherit')
@@ -633,20 +634,21 @@ function tv_init(param)
     l.img = pg_images(l)[0];
     l.img.layer = l;
     l.img.kind = 'tv';
-    l.pdoc = pdoc;
+    l.pdoc = wgtrGetContainer(wgtrGetParent(l));
+    //l.pdoc = pdoc;
     l.ld = param.loader;
     htr_init_layer(l,l,'tv');
     ifc_init_widget(l);
     //l.ld.parent = l;
     l.root = l;
-    if (!pdoc.tv_layer_cache) pdoc.tv_layer_cache = new Array();
+    if (!l.pdoc.tv_layer_cache) l.pdoc.tv_layer_cache = new Array();
     if(cx__capabilities.Dom0NS)
 	{
-	pdoc.tv_layer_tgt = l.parentLayer;
+	l.pdoc.tv_layer_tgt = l.parentLayer;
 	}
     else if(cx__capabilities.Dom1HTML)
 	{
-	pdoc.tv_layer_tgt = l.parentNode;
+	l.pdoc.tv_layer_tgt = l.parentNode;
 	}
     else
 	{

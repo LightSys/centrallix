@@ -134,7 +134,7 @@ function ib_init(param)
     var l = param.layer;
     var w = param.width;
     var h = param.height;
-    l.LSParent = param.parentobj;
+    //l.LSParent = param.parentobj;
     l.nofocus = true;
     if(cx__capabilities.Dom0NS)
 	{

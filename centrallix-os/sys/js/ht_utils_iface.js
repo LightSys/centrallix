@@ -361,7 +361,8 @@ function ifEvent()
 	}
     function ifevent_connect_exec(ep)
 	{
-	var t = eval(this.target);
+	var t = wgtrGetNode(this.to, this.target)
+	// var t = eval(this.target);
 	if (!t || !t.ifcProbe) 
 	    {
 	    if (pg_diag)
@@ -376,8 +377,14 @@ function ifEvent()
 	    var p = this.paramlist[pn];
 	    if (p.type == 'int' || p.type == 'str' || p.type == 'dbl')
 		ap[pn] = p.value;
-	    else if (p.type == 'sym' || p.type == 'exp')
+	    else if (p.type == 'sym')
 		{
+		ap[pn] = wgtrGetNode(this.to, p.value);
+		}
+	    else if (p.type == 'exp')
+		{
+		var _context = this.to;
+		//if (pn == 'Source') htr_alert(this, 1);
 		if (typeof ep.eval != 'function')
 		    ep.eval = eval;
 		ap[pn] = ep.eval(p.value);
@@ -389,7 +396,7 @@ function ifEvent()
 	{
 	if (this.Events[e])
 	    {
-	    eo = {fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e};
+	    eo = {to:this.obj, fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e};
 	    eo.eo = eo;
 	    this.Events[e].push(eo);
 	    }

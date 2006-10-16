@@ -21,9 +21,8 @@ function alrt_action_confirm(sendthis)
     }
 
 /** Alert initializer **/
-function alrt_init()
+function alrt_init(alrt)
     {
-    alrt = new Object();
     ifc_init_widget(alrt);
     var ai = alrt.ifcProbeAdd(ifAction);
     ai.Add("Alert", alrt_action_alert);

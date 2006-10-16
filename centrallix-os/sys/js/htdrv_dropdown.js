@@ -14,7 +14,7 @@
 
 function dd_getvalue() 
     {
-    return this.Values[this.VisLayer.index][1];
+    return this.Values[this.VisLayer.index].value;
     }
 
 function dd_setvalue(v) 
@@ -22,7 +22,7 @@ function dd_setvalue(v)
     if (!this.PaneLayer) this.PaneLayer = dd_create_pane(this);
     for (var i=0; i < this.Values.length; i++)
 	{
-	if (this.Values[i][1] == v)
+	if (this.Values[i].value == v)
 	    {
 	    dd_select_item(this, i);
 	    return true;
@@ -110,9 +110,9 @@ function dd_keyhandler(l,e,k)
 	    {
 	    for (var i=0; i < this.Values.length; i++)
 		{
-		if (this.Values[i][0].substring(0, 1) == 
+		if (this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_upper) ||
-		    this.Values[i][0].substring(0, 1) == 
+		    this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_lower))
 		    {
 		    dd_hilight_item(this,i);
@@ -143,7 +143,7 @@ function dd_keyhandler(l,e,k)
 			
 	    for (var i=0; i < this.Values.length; i++) 
 		{
-		if ((this.Values[i][0].substring(0, 
+		if ((this.Values[i].label.substring(0, 
 			this.keystring.length).toLowerCase())
 			== this.keystring && !this.match)
 		    {
@@ -174,16 +174,16 @@ function dd_keyhandler(l,e,k)
 	    var next = -1;
 	    for (var i=0; i < this.Values.length; i++)
 		{
-		if (this.Values[i][0].substring(0, 1) == 
+		if (this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_upper) ||
-		    this.Values[i][0].substring(0, 1) == 
+		    this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_lower))
 		    {
 		    if (first < 0) { first = i; last = i; }
 		    for (var j=i; j < this.Values.length && 
-			(this.Values[j][0].substring(0, 1) == 
+			(this.Values[j].label.substring(0, 1) == 
 				String.fromCharCode(k_upper) ||
-			 this.Values[j][0].substring(0, 1) == 
+			 this.Values[j].label.substring(0, 1) == 
 				String.fromCharCode(k_lower)); j++)
 			{
 			if (this.Items[j] == this.Items[this.SelectedItem])
@@ -212,6 +212,7 @@ function dd_keyhandler(l,e,k)
 	else
 	    {
 	    dd_select_item(this,this.SelectedItem);
+	    dd_datachange(this);
 	    dd_collapse(this);
 	    dd_unhilight_item(this,this.SelectedItem);
 	    }
@@ -224,6 +225,7 @@ function dd_keyhandler(l,e,k)
 		    this.SelectedItem)
 		{
 		dd_select_item(this,this.SelectedItem);
+		dd_datachange(this);
 		dd_collapse(this);
 		dd_unhilight_item(this,this.SelectedItem);
 		}
@@ -246,7 +248,7 @@ function dd_hilight_item(l,i)
     {
     if (i == null)
 	{
-	if (l.Values[0][1] == null)
+	if (l.Values[0].value == null)
 	    i = 0;
 	else
 	    return;
@@ -262,7 +264,7 @@ function dd_unhilight_item(l,i)
     {
     if (i == null)
 	{
-	if (l.Values[0][1] == null)
+	if (l.Values[0].value == null)
 	    i = 0;
 	else
 	    return;
@@ -317,10 +319,10 @@ function dd_select_item(l,i)
     var c = "<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>";
     if (i!=null)
 	{
-	if (!(i==0 && l.Values[i][1]==null)) 
-	    c += l.Values[i][0];
+	if (!(i==0 && l.Values[i].value==null)) 
+	    c += l.Values[i].label;
 	else
-	    c += '<i>' + l.Values[i][0] + '</i>';
+	    c += '<i>' + l.Values[i].label + '</i>';
 	}
     c += "</TD></TR></TABLE>";
     htr_write_content(l.HidLayer, c);
@@ -332,14 +334,15 @@ function dd_select_item(l,i)
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
     if (i != null)
-	l.value = l.Values[l.VisLayer.index][1];
+	l.value = l.Values[l.VisLayer.index].value;
     else
 	l.value = null;
-    if(l.form)
-	{
-	l.form.DataNotify(l);
-	cn_activate(l, "DataChange");
-	}
+    cn_activate(l, "DataChange");
+    }
+
+function dd_datachange(l)
+    {
+    if (l.form) l.form.DataNotify(l);
     }
 
 function dd_getfocus()
@@ -434,10 +437,10 @@ function dd_create_pane(l)
 	{
 	var nullitem = new Array();
 	if (l.mainlayer.w < 108)
-	    nullitem[0] = '(none)';
+	    nullitem.label = '(none)';
 	else
-	    nullitem[0] = '(none selected)';
-	nullitem[1] = null;
+	    nullitem.label = '(none selected)';
+	nullitem.value = null;
 	l.Values.splice(0,0,nullitem);
 	}
 
@@ -526,10 +529,10 @@ function dd_create_pane(l)
 	setClipWidth(l.Items[i], getClipWidth(p.ScrLayer));
 	setClipHeight(l.Items[i], 16);
 	resizeTo(l.Items[i], getClipWidth(p.ScrLayer), 16);
-	if (i==0 && l.Values[i][1] == null)
-	    htr_write_content(l.Items[i], '<i>' + l.Values[i][0] + '</i>');
+	if (i==0 && l.Values[i].value == null)
+	    htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
 	else
-	    htr_write_content(l.Items[i], l.Values[i][0]);
+	    htr_write_content(l.Items[i], l.Values[i].label);
 	htr_setvisibility(l.Items[i], 'inherit');
 	l.Items[i].index = i;
 	}
@@ -545,8 +548,12 @@ function dd_add_items(l,ary)
     {
     for(var i=0; i<ary.length;i++) 
 	{
-	ary[i][0] = htutil_rtrim(ary[i][0]);
-	ary[i][1] = htutil_rtrim(ary[i][1]);
+	ary[i].label = htutil_rtrim(ary[i].label);
+	ary[i].value = htutil_rtrim(ary[i].value);
+	if (ary[i].wname)
+	    {
+	    ary[i].wname = htutil_rtrim(ary[i].wname);
+	    }
 	}
     l.Values = ary;
     }
@@ -584,7 +591,7 @@ function dd_init(param)
     l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
-    l.form = fm_current;
+    l.form = wgtrFindContainer(l,"widget/form");
     l.value = null;
     htr_init_layer(l,l,'dd');
     htutil_tag_images(l,'dd',l,l);
@@ -598,7 +605,7 @@ function dd_init(param)
 	}
     l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, 
 	    getClipHeight(l)+1, 'dd', 'dd', 3);
-    if (fm_current) fm_current.Register(l);
+    if (l.form) l.form.Register(l);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

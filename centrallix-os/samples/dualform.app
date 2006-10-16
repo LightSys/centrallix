@@ -637,7 +637,7 @@ wholePage "widget/page"
 	    Tree "widget/treeview"
 	        {
 		x=0; y=1; width=778;
-		source = "javascript:form1";
+		source = "javascript:window";
 		}
 	    }
 	}

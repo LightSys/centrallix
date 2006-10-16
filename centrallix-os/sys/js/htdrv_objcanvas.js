@@ -55,10 +55,8 @@ function oc_init(param)
     // Register with osrc.
     if (param.osrc)
 	l.osrc = param.osrc;
-    else if (osrc_current)
-	l.osrc = osrc_current;
     else
-	l.osrc = null;
+	l.osrc = wgtrFindContainer(l, "widget/osrc");
     if (l.osrc)
 	l.osrc.Register(l);
 

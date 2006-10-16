@@ -500,6 +500,23 @@ function pg_set_emulation(d)
 function pg_setmodal(l)
     {
     pg_modallayer = l;
+    if (!window.pg_masklayer)
+        {
+	pg_masklayer = htr_new_layer(pg_width, null);
+	htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
+	}
+    if (l)
+	{
+	if (l.mainlayer) l = l.mainlayer;
+	moveBelow(pg_masklayer, l);
+	setClipWidth(pg_masklayer, pg_width);
+	setClipHeight(pg_masklayer, pg_height);
+	htr_setvisibility(pg_masklayer, 'inherit');
+	}
+    else
+	{
+	htr_setvisibility(pg_masklayer, 'hidden');
+	}
     }
 
 /** Function to find out whether image or layer is in a layer **/
@@ -1191,7 +1208,7 @@ function pg_expchange(p,o,n)
 	    if (this == item[2] && p == item[1])
 		{
 		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
-		pg_addsched(exp.Objname + "." + exp.Propname + " = " + exp.Expression, window, 0);
+		pg_addsched("wgtrGetNode(" + exp.Context + ",\"" + exp.Objname + "\")." + exp.Propname + " = " + exp.Expression, window, 0);
 		}
 	    }
 	}
@@ -1215,6 +1232,7 @@ function pg_dosched()
 	    {
 	    // evaluate expression
 	    //alert('evaluating ' + sched_item.exp);
+	    var _context = sched_item.obj;
 	    with (sched_item.obj) { eval(sched_item.exp); }
 	    }
 	else
@@ -1239,19 +1257,24 @@ function pg_timestamp()
     return (new Date()).valueOf();
     }
 
-function pg_expression(o,p,e,l)
+function pg_expression(o,p,e,l,c)
     {
     var expobj = new Object();
     expobj.Objname = o;
     expobj.Propname = p;
     expobj.Expression = e;
     expobj.ParamList = l;
-    eval(expobj.Objname + "." + expobj.Propname + " = " + expobj.Expression);
+    expobj.Context = c;
+    var _context = eval(c);
+    var nodelist = wgtrNodeList(_context);
+    //nodelist[expobj.Objname][expobj.Propname] = eval(expobj.Expression);
+    eval("wgtrGetNode(" + expobj.Context + ",\"" + expobj.Objname + "\")." + expobj.Propname + " = " + expobj.Expression);
     pg_explist.push(expobj);
     for(var i=0; i<l.length; i++)
 	{
 	var item = l[i];
-	item[2] = eval(item[0]); // get obj reference
+	//item[2] = eval(item[0]); // get obj reference
+	item[2] = nodelist[item[0]]; // get obj reference
 	item[2].pg_expchange = pg_expchange;
 	htr_watch(item[2],item[1],"pg_expchange");
 	//item[2].watch(item[1], pg_expchange);

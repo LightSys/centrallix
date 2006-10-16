@@ -14,7 +14,7 @@ function tb_init(param)
     var l = param.layer;
     var l2 = param.layer2;
     var l3 = param.layer3;
-    l.LSParent = param.parent;
+    //l.LSParent = param.parent;
     l.nofocus = true;
     l2.nofocus = true;
     htr_init_layer(l,l,'tb');

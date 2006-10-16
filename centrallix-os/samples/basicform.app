@@ -302,7 +302,7 @@ basicform "widget/page"
 		Tree "widget/treeview"
 		    {
 		    x=0; y=1; width=576;
-		    source = "javascript:osrc1";
+		    source = "javascript:window";
 		    }
 		}
 	    }

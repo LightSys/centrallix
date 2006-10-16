@@ -244,12 +244,12 @@ function term_read(e)
 	term_write_spans(term);
 
 	/** the 1 millisecond delay is to allow Mozilla to refresh the display **/
-	setTimeout("term_reload_frame(document.getElementById('term"+term.id+"reader'));",1);
+	setTimeout("term_reload_frame(htr_subel(wgtrGetNode(" + term.rootname + ",\"" + wgtrGetName(term) + "\"),\""+term.readername+"\"));",1);
 	}
     else
 	{
 	/** wait for reload **/
-	setTimeout("term_reload_frame(document.getElementById('term"+term.id+"reader'));",term.refreshrate);
+	setTimeout("term_reload_frame(htr_subel(wgtrGetNode(" + term.rootname + ",\"" + wgtrGetName(term) + "\"),\""+term.readername+"\"));",term.refreshrate);
 	}
     return false;
     }
@@ -364,12 +364,20 @@ function term_deselect()
 /** Terminal initializer **/
 function terminal_init(param)
     {
-    var parent = param.parent;
-    var term = parent.getElementById('term'+param.id+'base');
-    term.id = param.id;
-    term.reader = parent.getElementById('term'+param.id+'reader');
+    //var parent = param.parent;
+    //var term = parent.getElementById('term'+param.id+'base');
+    //term.id = param.id;
+    //term.reader = parent.getElementById('term'+param.id+'reader');
+    //term.reader.term = term;
+    //term.writer = parent.getElementById('term'+param.id+'writer');
+    //term.writer.term = term;
+    term = param.layer;
+    term.rootname = param.root;
+    term.readername = param.rdr;
+    term.reader = htr_subel(term, param.rdr);
     term.reader.term = term;
-    term.writer = parent.getElementById('term'+param.id+'writer');
+    term.writername = param.wtr;
+    term.writer = htr_subel(term, param.wtr);
     term.writer.term = term;
     term.kind = 'term';
 
@@ -382,7 +390,7 @@ function terminal_init(param)
     term.tabstop = 8;
     term.refreshrate = 2000;
 
-    term.innerHTML="<span class='fixed"+term.id+"'></span>";
+    term.innerHTML="<span class='"+param.fxd+"'></span>";
     var s = "";
     for(var i=0;i<term.rows;i++)
 	{

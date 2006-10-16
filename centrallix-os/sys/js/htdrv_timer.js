@@ -33,7 +33,8 @@ function tm_action_canceltimer(aparam)
 
 function tm_init(param)
     {
-    tm = new Object();
+    //tm = new Object();
+    tm = param.node;
     ifc_init_widget(tm);
     tm.autostart = param.autostart;
     tm.autoreset = param.autoreset;

@@ -136,7 +136,7 @@ function spnr_init(param)
     main.HiddenLayer = c2;
     main.HiddenLayer.document.write('0');
     main.HiddenLayer.document.close();
-    main.form=fm_current;
+    main.form=wgtrFindContainer(main,"widget/form");
     if (!spnr_ibeam || !spnr_metric)
         {
         spnr_metric = new Layer(24);
@@ -179,8 +179,7 @@ function spnr_init(param)
     pg_addarea(main, -1,-1,main.clip.width+1,main.clip.height+1, 'spinner', 'spinner', 1);
     c1.y = ((l.clip.height - spnr_metric.charHeight)/2);
     c2.y = ((l.clip.height - spnr_metric.charHeight)/2);
-    if (fm_current) fm_current.Register(main);
-    if (fm_current) main.form = fm_current;
+    if (main.form) main.form.Register(main);
     return main;
     }
 

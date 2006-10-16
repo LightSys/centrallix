@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function cmpd_init(is_visual)
+function cmpd_init(node, is_visual)
     {
     // component is access point for stuff inside, shell is access point for stuff outside.
     var component = new Object();

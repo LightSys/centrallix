@@ -29,9 +29,9 @@ fade_test "widget/page"
 	        {
 		event = "Click";
 		action = "LoadPage";
-		Mode = "'static'";
-		Source = "'/samples/fade_test1.html'";
-		Transition = "'pixelate'";
+		Mode = runclient('static');
+		Source = runclient('/samples/fade_test1.html');
+		Transition = runclient('pixelate');
 		target = htmlarea;
 		}
 	    }
@@ -45,9 +45,9 @@ fade_test "widget/page"
 	        {
 		event = "Click";
 		action = "LoadPage";
-		Mode = "'static'";
-	    	Source="'/samples/fade_test2.html'";
-		Transition = "'pixelate'";
+		Mode = runclient('static');
+	    	Source=runclient('/samples/fade_test2.html');
+		Transition = runclient('pixelate');
 		target = htmlarea;
 		}
 	    }

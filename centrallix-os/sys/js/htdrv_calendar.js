@@ -172,7 +172,7 @@ function ca_redraw_year()
     curdate.setSeconds(59);
     curdate.setHours(23);
     curdate.setMinutes(59);
-    if (this.osrc.LastRecord - this.osrc.FirstRecord + 1 > 0)
+    if (this.osrc && this.osrc.LastRecord - this.osrc.FirstRecord + 1 > 0)
 	{
 	var firstdate = new Date(ca_lookup_field(this.osrc.replica[this.osrc.FirstRecord],this.eventdatefield));
 	var lastdate = new Date(ca_lookup_field(this.osrc.replica[this.osrc.LastRecord],this.eventdatefield));
@@ -402,8 +402,9 @@ function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfi
     l.ObjectCreated = ca_cb_object_created;
     l.ObjectModified = ca_cb_object_modified;
     l.IsUnsaved = false;
-    l.osrc = osrc_current;
-    l.osrc.Register(l);
+    l.osrc = wgtrFindContainer(l, "widget/osrc");
+    if (l.osrc) 
+	l.osrc.Register(l);
 
     // Events
     ifc_init_widget(l);
