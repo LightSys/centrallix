@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +42,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.35 2005/10/09 07:44:48 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.36 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.36  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.35  2005/10/09 07:44:48  gbeeley
     - (bugfix) allow checkbox to work properly inside other layers on Moz
 
@@ -298,13 +319,12 @@ static struct {
 } HTCB;
 
 
-int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
+int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
    int id, i;
    char *ptr;
    char name[64];
-   char* nptr;
    int enabled = 0;
 
    if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -318,14 +338,13 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
    /** Get name **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-   memccpy(name,ptr,0,63);
-   name[63] = 0;
+   strtcpy(name, ptr, sizeof(name));
 
    /** Get x,y of this object **/
    if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
    if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
    if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
-      strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
+      strtcpy(fieldname,ptr,HT_FIELDNAME_SIZE);
    else 
       fieldname[0]='\0';
 
@@ -336,9 +355,8 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    enabled = htrGetBoolean(tree, "enabled", 1);
 
    /** Write named global **/
-   nptr = (char*)nmMalloc(strlen(name)+1);
-   strcpy(nptr,name);
-   htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"cb%dmain\")", id);
+   htrAddWgtrCtrLinkage(s, tree, "_obj");
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%d; }\n",id,x,y,z);
@@ -374,19 +392,8 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
       "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseMove');\n"
       "\n");
    
-   /** Set object parent **/
-   htrAddScriptInit_va(s, "    htr_set_parent(%s.cxSubElement('cb%dmain'), \"%s\", %s);\n",
-       parentname, id, nptr, parentobj);
-
    /** Script initialization call. **/
-   if(s->Capabilities.Dom1HTML)
-       {
-       htrAddScriptInit_va(s,"    %s=checkbox_init({layer:document.getElementById('cb%dmain'), fieldname:\"%s\", checked: %d, enabled:%d});\n", nptr, id,fieldname,checked,enabled);
-       }
-   else if(s->Capabilities.Dom0NS)
-       {
-       htrAddScriptInit_va(s,"    %s=checkbox_init({layer:%s.layers.cb%dmain, fieldname:\"%s\", checked:%d, enabled:%d});\n", nptr, parentname, id,fieldname,checked,enabled);
-       }
+   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%s\"], fieldname:\"%s\", checked:%d, enabled:%d});\n", name, fieldname,checked,enabled);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItemLayerStart(s, 0, "cb%dmain", id);
@@ -405,13 +412,9 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
    htrAddBodyItemLayerEnd(s, 0);
 
-
-
-
    /** Check for more sub-widgets **/
     for (i=0;i<xaCount(&(tree->Children));i++)
-	 htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-
+	 htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
    return 0;
 }

@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -51,10 +52,7 @@ static struct
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
     {
-    /*if (is_horizontal)*/
-	htrAddBodyItem_va(s,"<td valign=\"%s\"><img align=\"%s\" name=\"xy_%s%d\" width=\"1\" height=\"%d\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
-    /*else
-	htrAddBodyItem_va(s,"<tr><td colspan=\"4\" align=\"%s\"><img align=\"top\" name=\"xy_%s%d\" width=\"1\" height=\"%d\" src=\"/sys/images/trans_1.gif\"></td></tr>", (mcnt&1)?"left":"right", nptr, mcnt, row_height?row_height:1);*/
+    htrAddBodyItem_va(s,"<td valign=\"%s\"><img align=\"%s\" name=\"xy_%s%d\" width=\"1\" height=\"%d\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
     return 0;
     }
 
@@ -75,8 +73,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
 
 	wgtrGetPropertyValue(menu_item,"name", DATA_T_STRING, POD(&ptr));
-	memccpy(name, ptr, '\0', sizeof(name));
-	name[sizeof(name)-1] = '\0';
+	strtcpy(name, ptr, sizeof(name));
 
 	/** icon **/
 	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
@@ -131,7 +128,11 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	    {
 	    xsConcatPrintf(xs, ", submenu:'%s'", name);
 	    }
-	htrAddScriptInit_va(s, "    %s = %s.AddItem({%s});\n", name, nptr, xs->String);
+
+	if (is_submenu) 
+	    htrAddScriptInit_va(s, "    nodes[\"%s\"].AddItem({%s});\n", nptr, xs->String);
+	else
+	    htrAddScriptInit_va(s, "    wgtrReplaceNode(nodes[\"%s\"], nodes[\"%s\"].AddItem({%s}));\n", name, nptr, xs->String);
 
     return 0;
     }
@@ -155,7 +156,7 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
 	    {
 	    htrAddBodyItem_va(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
 	    }
-	htrAddScriptInit_va(s, "    %s.AddItem({sep:true});\n", nptr);
+	htrAddScriptInit_va(s, "    nodes[\"%s\"].AddItem({sep:true});\n", nptr);
 
     return 0;
     }
@@ -164,22 +165,21 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
 /*** htmenuRender - generate the HTML code for the menu widget.
  ***/
 int 
-htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parentobj) 
+htmenuRender(pHtSession s, pWgtrNode menu, int z) 
     {
-    char bgstr[80];
+    char bgstr[80];	    /* N.B. all these colors must be the same size */
     char highlight[80];
     char active[80];
     char textcolor[80];
     char name[64];
-    char pdoc[80];
-    char *ptr, *nptr;
+    char *ptr;
     int x,y,w,h;
     int col_w, row_h;
-    int id, i, cnt, mcnt, j, subcnt;
+    int id, i, cnt, mcnt;
     int is_horizontal;
     int is_popup;
     int is_submenu;
-    pWgtrNode sub_tree, item_sub_tree;
+    pWgtrNode sub_tree;
     pXString xs;
     int bx = 0;
 
@@ -211,8 +211,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	if (wgtrGetPropertyValue(menu, "textcolor", DATA_T_STRING, POD(&ptr)) != 0)
 	    strcpy(textcolor, "black");
 	else
-	    memccpy(textcolor, ptr, 0, sizeof(textcolor)-1);
-	textcolor[sizeof(textcolor)-1] = '\0';
+	    strtcpy(textcolor, ptr, sizeof(textcolor));
 
 	/** Mode of operation (popup/bar, horiz/vert) **/
 	if (wgtrGetPropertyValue(menu, "direction", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"vertical"))
@@ -259,10 +258,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(menu,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Globals **/
 	htrAddScriptGlobal(s, "mn_active", "new Array()", 0);
@@ -272,7 +268,8 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "mn_pop_x", "0", 0);
 	htrAddScriptGlobal(s, "mn_pop_y", "0", 0);
 	htrAddScriptGlobal(s, "mn_mouseangle", "0", 0);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	htrAddWgtrObjLinkage_va(s, menu, "htr_subel(mn_parent(_parentobj), \"mn%dmain\")",id);
+	htrAddWgtrCtrLinkage_va(s, menu, "htr_subel(_obj, \"mn%dcontent\")",id);
 
 	/** Scripts **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
@@ -280,16 +277,10 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
 
 	/** Initialization **/
-	if (s->Capabilities.Dom0NS)
-	    htrAddScriptInit_va(s,"    %s = mn_init({layer:%s.layers.mn%dmain, clayer:%s.layers.mn%dmain.document.layers.mn%dcontent, hlayer:%s.layers.mn%dmain.document.layers.mn%dhigh, bgnd:\"%s\", high:\"%s\", actv:\"%s\", txt:\"%s\", w:%d, h:%d, horiz:%d, pop:%d, name:\"%s\"});\n", 
-		    nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, highlight, active, textcolor, w, h, is_horizontal, is_popup, nptr);
-	else
-	    htrAddScriptInit_va(s,"    %s = mn_init({layer:document.getElementById('mn%dmain'), clayer:document.getElementById('mn%dcontent'), hlayer:document.getElementById('mn%dhigh'), bgnd:\"%s\", high:\"%s\", actv:\"%s\", txt:\"%s\", w:%d, h:%d, horiz:%d, pop:%d, name:\"%s\"});\n", 
-		    nptr, id, id, id, bgstr, highlight, active, textcolor, w, h, is_horizontal, is_popup, nptr);
-
-	/** Set object parent **/
-	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
-		nptr, nptr, parentobj);
+	htrAddScriptInit_va(s,"    mn_init({layer:nodes[\"%s\"], clayer:wgtrGetContainer(nodes[\"%s\"]), hlayer:htr_subel(nodes[\"%s\"], \"mn%dhigh\"), bgnd:\"%s\", high:\"%s\", actv:\"%s\", txt:\"%s\", w:%d, h:%d, horiz:%d, pop:%d, name:\"%s\"});\n", 
+		name, name, name, id, 
+		bgstr, highlight, active, textcolor, 
+		w, h, is_horizontal, is_popup, name);
 
 	/** Event handlers **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "mn", "mn_mousemove");
@@ -336,22 +327,22 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 		is_submenu = !strcmp(ptr,"widget/menu");
 		if (!(is_horizontal && htrGetBoolean(sub_tree, "onright", 0) == 1))
 		    {
-		    htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 0, row_h, mcnt, nptr, xs);
+		    htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 0, row_h, mcnt, name, xs);
 		    mcnt++;
 		    }
 		}
 	    else if (!strcmp(ptr,"widget/menusep"))
 		{
-		htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, nptr);
+		htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, name);
 		mcnt++;
 		}
 	    }
 	if (is_horizontal)
-	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
+	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
 	else
 	    {
 	    htrAddBodyItem_va(s, "<tr>");
-	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
+	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
 	    htrAddBodyItem_va(s, "<td colspan=\"4\"></td></tr>");
 	    }
 	mcnt++;
@@ -369,17 +360,17 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 		    is_submenu = !strcmp(ptr,"widget/menu");
 		    if ((is_horizontal && htrGetBoolean(sub_tree, "onright", 0) == 1))
 			{
-			htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 1, row_h, mcnt, nptr, xs);
+			htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 1, row_h, mcnt, name, xs);
 			mcnt++;
 			}
 		    }
 		else if (!strcmp(ptr,"widget/menusep"))
 		    {
-		    htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, nptr);
+		    htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, name);
 		    mcnt++;
 		    }
 		}
-	    htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, 1);
+	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
 	    mcnt++;
 	    htrAddBodyItem_va(s,"</tr></table></td>\n");
 	    }
@@ -419,9 +410,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/menuitem")) 
 		{
-		wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
-		snprintf(pdoc, sizeof(pdoc), "%s", ptr);
-		htrRenderSubwidgets(s, sub_tree, parentname, pdoc, z+1);
+		htrRenderSubwidgets(s, sub_tree, z+1);
 		/*sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;*/
 		} 
 	    else if (!strcmp(ptr,"widget/menusep"))
@@ -430,7 +419,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z, char* parentname, char* parent
 		}
 	    else 
 		{
-		htrRenderWidget(s, sub_tree, z+1, parentname, nptr);
+		htrRenderWidget(s, sub_tree, z+1);
 		}
 	    }
 

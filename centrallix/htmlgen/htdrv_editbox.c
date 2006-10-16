@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "wgtr.h"
 
 /************************************************************************/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.43 2006/08/04 18:56:51 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.44 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.44  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.43  2006/08/04 18:56:51  gbeeley
     - (fix) adding 'px' to CSS values that should have a dimension.
 
@@ -354,18 +375,15 @@ static struct
 /*** htebRender - generate the HTML code for the editbox widget.
  ***/
 int
-htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htebRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    /*char sbuf[HT_SBUF_SIZE];*/
-    /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id, i;
     int is_readonly = 0;
     int is_raised = 0;
-    char* nptr;
     char* c1;
     char* c2;
     int maxchars;
@@ -407,8 +425,10 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
+
+	/** client-side expr for content **/
+	htrCheckAddExpression(s,tree,name,"content");
 
 	/** Style of editbox - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
@@ -425,7 +445,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	    }
 	else
 	    {
@@ -447,9 +467,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddStylesheetItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
 
 	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"eb%dbase\")",id);
+	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
@@ -488,27 +507,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    "\n");
 
 	/** Script initialization call. **/
-	if (s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s, "    %s = eb_init({layer:document.getElementById(\"eb%dbase\"), c1:document.getElementById(\"eb%dcon1\"), c2:document.getElementById(\"eb%dcon2\"), fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
-		nptr, id,
-		id,
-		id,
-		fieldname, is_readonly, main_bg);
-	    }
-	else if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s, "    %s = eb_init({layer:%s.layers.eb%dbase, c1:%s.layers.eb%dbase.document.layers.eb%dcon1, c2:%s.layers.eb%dbase.document.layers.eb%dcon2, fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
-		nptr, parentname, id,
-		parentname, id, id,
-		parentname, id, id,
-		fieldname, is_readonly, main_bg);
-	    }
-
-	/** Set object parent **/
-	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
-		nptr, nptr, parentobj);
-
+	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%s'], c1:htr_subel(nodes['%s'],\"eb%dcon1\"), c2:htr_subel(nodes['%s'],\"eb%dcon2\"), fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
+	    name,  name,id,  name,id, 
+	    fieldname, is_readonly, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);
@@ -545,19 +546,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon1\">&nbsp;</DIV>\n",id);
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon2\">&nbsp;</DIV>\n",id);
 
-	/** Check for objects within the editbox. **/
-	/** The editbox can have no subwidgets **/
-	/*sprintf(sbuf,"%s.mainlayer.document",nptr);*/
-	/*sprintf(sbuf2,"%s.mainlayer",nptr);*/
-	/*htrRenderSubwidgets(s, w_obj, sbuf, sbuf2, z+2);*/
-
-
-
-
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</DIV>\n");

@@ -12,6 +12,7 @@ centrallix "system/config"
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
     iface_dir = "/sys/ifc";	    // this is an OSML path
+    theme_dir = "/sys/themes";	    // OSML path
     
     // Configuration for various modules follows....
 

@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.11 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: htdrv_variable.c,v 1.12 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
+    Revision 1.12  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.11  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -186,52 +207,50 @@ static struct
 /*** htvblRender - generate the HTML code for the page.
  ***/
 int
-htvblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htvblRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[HT_SBUF_SIZE];
     int t;
     int id, i;
-    char* nptr;
     char* vptr;
-    char* avptr;
 
     	/** Get an id for this. **/
 	id = (HTVBL.idcnt++);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Get type and value **/
 	t = wgtrGetPropertyType(tree,"value");
 	if (t < 0)
 	    {
-	    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	    htrAddScriptInit_va(s, "    nodes[\"%s\"].type = 'ERR';\n",
+		    name);
 	    }
-	else if (t == DATA_T_STRING)
+	else
+	    {
+	    htrAddScriptInit_va(s, "    nodes[\"%s\"].type = '%s';\n",
+		    name, obj_type_names[t]);
+	    }
+
+	if (t == DATA_T_STRING)
 	    {
 	    wgtrGetPropertyValue(tree,"value",DATA_T_STRING,POD(&vptr));
-	    avptr = (char*)nmMalloc(strlen(vptr)+3);
-	    sprintf(avptr, "\"%s\"",vptr);
-	    htrAddScriptGlobal(s, nptr, avptr, HTR_F_NAMEALLOC | HTR_F_VALUEALLOC);
+	    htrAddScriptInit_va(s, "    nodes[\"%s\"].value = %s;\n",
+		    name, objDataToStringTmp(DATA_T_STRING, vptr, DATA_F_QUOTED));
 	    }
 	else if (t == DATA_T_INTEGER)
 	    {
 	    wgtrGetPropertyValue(tree,"value",DATA_T_INTEGER,POD(&t));
-	    snprintf(sbuf, HT_SBUF_SIZE, "%d", t);
-	    avptr = (char*)nmMalloc(strlen(sbuf)+1);
-	    strcpy(avptr,sbuf);
-	    htrAddScriptGlobal(s, nptr, avptr, HTR_F_NAMEALLOC | HTR_F_VALUEALLOC);
+	    htrAddScriptInit_va(s, "    nodes[\"%s\"].value = %d;\n", 
+		    name, t);
 	    }
 
 	/** Check for more sub-widgets within the vbl entity. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, parentname, nptr);
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
 
     return 0;
     }

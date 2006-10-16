@@ -47,10 +47,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.4 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.5 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.5  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.4  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -158,7 +178,7 @@ typedef struct
 /*** htcmpdRender - generate the HTML code for the component.
  ***/
 int
-htcmpdRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
@@ -170,7 +190,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     pObjQuery subobj_qy = NULL;
     XArray attrs;
     pHTCmpdParam param;
-    int i,t, j;
+    int i,t;
     int rval = 0;
     int is_visual = 1;
 
@@ -203,13 +223,13 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	/** Write named global **/
 	nptr = (char*)nmMalloc(strlen(name)+1);
 	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/*htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);*/
 
 	/** Include the js module **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_componentdecl.js", 0);
 
 	/** Init component **/
-	htrAddScriptInit_va(s, "    %s = cmpd_init(%d);\n", name, is_visual);
+	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%s\"], %d);\n", name, is_visual);
 
 	/** Hunt for parameters for this component **/
 	xaInit(&attrs, 16);
@@ -355,11 +375,11 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		/** Get type **/
 		wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
 		if (!strcmp(ptr,"widget/component-decl-action"))
-		    htrAddScriptInit_va(s, "    %s.addAction('%s');\n", name, subobj_name);
+		    htrAddScriptInit_va(s, "    nodes[\"%s\"].addAction('%s');\n", name, subobj_name);
 		else if (!strcmp(ptr,"widget/component-decl-event"))
-		    htrAddScriptInit_va(s, "    %s.addEvent('%s');\n", name, subobj_name);
+		    htrAddScriptInit_va(s, "    nodes[\"%s\"].addEvent('%s');\n", name, subobj_name);
 		else if (!strcmp(ptr,"widget/component-decl-cprop"))
-		    htrAddScriptInit_va(s, "    %s.addProp('%s');\n", name, subobj_name);
+		    htrAddScriptInit_va(s, "    nodes[\"%s\"].addProp('%s');\n", name, subobj_name);
 
 //		objClose(subobj);
 		sub_tree = NULL;
@@ -369,7 +389,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    }
 
 	/** End init for component **/
-	htrAddScriptInit_va(s, "    cmpd_endinit(%s);\n", name);
+	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%s\"]);\n", name);
 
     htcmpd_cleanup:
 //	if (subobj) objClose(subobj);

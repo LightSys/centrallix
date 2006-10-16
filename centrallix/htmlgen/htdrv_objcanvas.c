@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +42,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_objcanvas.c,v 1.2 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_objcanvas.c,v 1.3 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_objcanvas.c,v $
 
     $Log: htdrv_objcanvas.c,v $
+    Revision 1.3  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.2  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -69,17 +90,14 @@ static struct
 /*** htocRender - generate the HTML code for the page.
  ***/
 int
-htocRender(pHtSession s, pWgtrNode oc_node, int z, char* parentname, char* parentobj)
+htocRender(pHtSession s, pWgtrNode oc_node, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
-    char sbuf2[160];
     char main_bg[128];
     char osrc[64];
     int x=-1,y=-1,w,h;
     int id;
-    char* nptr;
     int allow_select, show_select;
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -112,8 +130,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z, char* parentname, char* paren
 	if (wgtrGetPropertyValue(oc_node, "source", DATA_T_STRING, POD(&ptr)) != 0)
 	    strcpy(osrc, "null");
 	else
-	    memccpy(osrc, ptr, 0, sizeof(osrc)-1);
-	osrc[sizeof(osrc)-1] = '\0';
+	    strtcpy(osrc, ptr, sizeof(osrc));
 
 	/** allow selection of objects? **/
 	allow_select = htrGetBoolean(oc_node, "allow_selection", 0);
@@ -123,8 +140,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z, char* parentname, char* paren
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(oc_node,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Add css item for the layer **/
 	if (s->Capabilities.CSS2)
@@ -132,10 +148,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z, char* parentname, char* paren
 	else
 	    htrAddStylesheetItem_va(s,"\t#oc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	htrAddWgtrObjLinkage_va(s, oc_node, "htr_subel(_parentctr,\"oc%dbase\")",id);
 
 	/** Include our necessary supporting js files **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_objcanvas.js", 0);
@@ -149,20 +162,16 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z, char* parentname, char* paren
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "oc", "oc_mouseout");
    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = oc_init({layer:%s.cxSubElement(\"oc%dbase\"), osrc:%s, allow_select:%d, show_select:%d, name:\"%s\"});\n",
-		nptr, parentname, id, osrc, allow_select, show_select, nptr);
+	htrAddScriptInit_va(s, "    oc_init({layer:nodes[\"%s\"], osrc:nodes[\"%s\"], allow_select:%d, show_select:%d, name:\"%s\"});\n",
+		name, osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"oc%dbase\">\n",id);
-	if (!s->Capabilities.CSS2) htrAddBodyItem_va(s,"<BODY %s><table width=%d><tr><td>&nbsp;</td></tr></table>\n",main_bg,w);
+	if (!s->Capabilities.CSS2) 
+	    htrAddBodyItem_va(s,"<BODY %s><table width=%d><tr><td>&nbsp;</td></tr></table>\n",main_bg,w);
 
 	/** Check for objects within the pane. **/
-	if (s->Capabilities.Dom0NS)
-	    snprintf(sbuf,160,"%s.mainlayer.document",nptr);
-	else
-	    snprintf(sbuf,160,"%s.mainlayer",nptr);
-	snprintf(sbuf2,160,"%s.mainlayer",nptr);
-	htrRenderSubwidgets(s, oc_node, sbuf, sbuf2, z+2);
+	htrRenderSubwidgets(s, oc_node, z+2);
 
 	/** End the containing layer. **/
 	if (!s->Capabilities.CSS2) htrAddBodyItem_va(s, "</BODY>");

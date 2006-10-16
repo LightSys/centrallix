@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.25 2005/06/23 22:07:59 ncolson Exp $
+    $Id: htdrv_html.c,v 1.26 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.26  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.25  2005/06/23 22:07:59  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -300,7 +321,7 @@ static struct
 /*** hthtmlRender - generate the HTML code for the page.
  ***/
 int
-hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+hthtmlRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
@@ -309,7 +330,6 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     int x=-1,y=-1,w,h;
     int id,cnt, i;
     int mode = 0;
-    char* nptr = NULL;
     pObject content_obj;
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -334,8 +354,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	/** Get source html objectsystem entry. **/
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(src,ptr,0,127);
-	    src[127] = 0;
+	    strtcpy(src,ptr,sizeof(src));
 	    }
 
 	/** Check for a 'mode' - dynamic or static.  Default is static. **/
@@ -343,8 +362,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63]=0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
 	if (mode == 1)
@@ -352,15 +370,15 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    /** Only give x and y if supplied. **/
 	    if (x < 0 || y < 0)
 	        {
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%d; Z-INDEX:%d; }\n",id,w,z+1);
+	        htrAddStylesheetItem_va(s,"\t#ht%dpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w,z+1);
 	        }
 	    else
 	        {
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z+1);
+	        htrAddStylesheetItem_va(s,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%d; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%d; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%d; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z+1);
 	        }
 
 	    if (s->Capabilities.CSS1)
@@ -368,13 +386,13 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	        htrAddStylesheetItem_va(s,"\t#ht%dpane { overflow:hidden; }\n",id);
 	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { overflow:hidden; }\n",id);
 	        htrAddStylesheetItem_va(s,"\t#ht%dfader { overflow:hidden; }\n",id);
-		htrAddStylesheetItem_va(s,"\t#ht%dloader { overflow:hidden; visibility:hidden; position:absolute; top:0; left:0; width:0; height:0; }\n", id);
+		htrAddStylesheetItem_va(s,"\t#ht%dloader { overflow:hidden; visibility:hidden; position:absolute; top:0px; left:0px; width:0px; height:0px; }\n", id);
 		}
 
             /** Write named global **/
-            nptr = (char*)nmMalloc(strlen(name)+1);
-            strcpy(nptr,name);
-            htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"ht%dpane\")",id);
+	    htrAddWgtrCtrLinkage(s, tree, "_obj");
+
             htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
     
 	    htrAddScriptInclude(s, "/sys/js/htdrv_html.js", 0);
@@ -395,13 +413,13 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
             /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s,"    %s = ht_init({layer:%s.cxSubElement(\"ht%dpane\"), layer2:%s.cxSubElement(\"ht%dpane2\"), faderLayer:%s.cxSubElement(\"ht%dfader\"), source:\"%s\", pdoc:%s, width:%d, height:%d, parent:%s, loader:null});\n",
-                    nptr, parentname, id, parentname, id, parentname, id, 
-		    src, parentname, w,h, parentobj);
+		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%s\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dfader\"), source:\"%s\", width:%d, height:%d, loader:null});\n",
+                    name, name, id, name, id, 
+		    src, w,h);
 	    else
-		htrAddScriptInit_va(s,"    %s = ht_init({layer:%s.cxSubElement(\"ht%dpane\"), layer2:%s.cxSubElement(\"ht%dpane2\"), faderLayer:%s.cxSubElement(\"ht%dfader\"), source:\"%s\", pdoc:%s, width:%d, height:%d, parent:%s, loader:%s.cxSubElement(\"ht%dloader\")});\n",
-                    nptr, parentname, id, parentname, id, parentname, id, 
-		    src, parentname, w,h, parentobj, parentname, id);
+		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%s\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dfader\"), source:\"%s\", width:%d, height:%d, loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), \"ht%dloader\")});\n",
+                    name, name, id, name, id, 
+		    src, w,h, name, id);
     
             /** HTML body <DIV> element for the layer. **/
             htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV>",id);
@@ -448,22 +466,9 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
             htrAddBodyItem(s, ptr);
             }
 
-        /** Check for more sub-widgets within the html entity. **/
-	if (mode == 1)
-	    {
-            /*sprintf(sbuf,"%s.document",nptr,id);*/
-            snprintf(sbuf,320,"%s.document",nptr);
-	    }
-	else
-	    {
-	    memccpy(sbuf,parentname,0,319);
-	    sbuf[319] = '\0';
-	    nptr = parentobj;
-	    }
-
 	/** render subwidgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+3, sbuf, nptr);
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+3);
 
         /** End the containing layer. **/
         if (mode == 1) htrAddBodyItemLayerEnd(s, 0);

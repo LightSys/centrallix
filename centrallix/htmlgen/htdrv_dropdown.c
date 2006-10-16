@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "wgtr.h"
 
 /************************************************************************/
@@ -49,13 +50,13 @@ static struct {
 /* 
    htddRender - generate the HTML code for the page.
 */
-int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
+int htddRender(pHtSession s, pWgtrNode tree, int z) {
    char bgstr[HT_SBUF_SIZE];
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
    char fieldname[30];
    char name[64];
-   char *ptr, *nptr;
+   char *ptr;
    char *sql;
    char *str;
    char *attr;
@@ -90,31 +91,28 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    if (wgtrGetPropertyValue(tree,"numdisplay",DATA_T_INTEGER,POD(&num_disp)) != 0) num_disp=3;
 
    if (wgtrGetPropertyValue(tree,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
-	snprintf(hilight,HT_SBUF_SIZE,"%.40s",ptr);
+	strtcpy(hilight,ptr,sizeof(hilight));
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
 	return -1;
    }
 
    if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
-	snprintf(bgstr,HT_SBUF_SIZE,"%.40s",ptr);
+	strtcpy(bgstr,ptr,sizeof(bgstr));
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'bgcolor' property");
 	return -1;
    }
 
    if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) {
-	strncpy(fieldname,ptr,30);
+	strtcpy(fieldname,ptr,sizeof(fieldname));
    } else {
 	fieldname[0]='\0';
    }
 
     /** Get name **/
     if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-    memccpy(name,ptr,0,63);
-    name[63] = 0;
-    nptr = (char*)nmMalloc(strlen(name)+1);
-    strcpy(nptr,name);
+    strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
     htrAddStylesheetItem_va(s,"\t#dd%dbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:20px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
@@ -130,7 +128,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
     htrAddScriptGlobal(s, "dd_click_y","0",0);
     htrAddScriptGlobal(s, "dd_incr","0",0);
     htrAddScriptGlobal(s, "dd_cur_mainlayer","null",0);
-    htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dd%dbtn\")", id);
+    htrAddWgtrCtrLinkage(s, tree, "_obj");
 
     htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
     htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
@@ -206,6 +205,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	"    if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')\n"
 	"        {\n"
 	"        dd_select_item(dd_current, ly.index);\n"
+	"        dd_datachange(dd_current);\n"
 	"        dd_collapse(dd_current);\n"
 	"        }\n"
 	"    else if (ly.kind == 'dd_sc')\n"
@@ -277,18 +277,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	return -1;
     }
     /** Script initialization call. **/
-    if (s->Capabilities.Dom0NS)
-	{
-	htrAddScriptInit_va(s,"    %s = dd_init({layer:%s.layers.dd%dbtn, c1:%s.layers.dd%dbtn.document.layers.dd%dcon1, c2:%s.layers.dd%dbtn.document.layers.dd%dcon2, background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", nptr, parentname, id, parentname, id, id, parentname, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
-	}
-    else if (s->Capabilities.Dom1HTML)
-	{
-	htrAddScriptInit_va(s,"    %s = dd_init({layer:document.getElementById(\"dd%dbtn\"), c1:document.getElementById(\"dd%dcon1\"), c2:document.getElementById(\"dd%dcon2\"), background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", nptr, id, id, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
-	}
-
-    /** Set object parent **/
-    htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
-	    nptr, nptr, parentobj);
+    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%s\"], c1:htr_subel(nodes[\"%s\"], \"dd%dcon1\"), c2:htr_subel(nodes[\"%s\"], \"dd%dcon2\"), background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%dbtn\">\n", id);
@@ -311,7 +300,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
     if (mode == 1) {
 	if ((qy = objMultiQuery(s->ObjSession, sql))) {
 	    flag=0;
-	    htrAddScriptInit_va(s,"    dd_add_items(%s, Array(",nptr);
+	    htrAddScriptInit_va(s,"    dd_add_items(nodes[\"%s\"], [",name);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
 		// Label
 		attr = objGetFirstAttr(qy_obj);
@@ -324,12 +313,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 		type = objGetAttrType(qy_obj, attr);
 		rval = objGetAttrValue(qy_obj, attr, type,&od);
 		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
-		    str = objDataToStringTmp(type, (void*)(&od), 0);
+		    str = objDataToStringTmp(type, (void*)(&od), DATA_F_QUOTED);
 		} else {
-		    str = objDataToStringTmp(type, (void*)(od.String), 0);
+		    str = objDataToStringTmp(type, (void*)(od.String), DATA_F_QUOTED);
 		}
 		if (flag) htrAddScriptInit(s,",");
-		htrAddScriptInit_va(s,"Array('%s',",str);
+		htrAddScriptInit_va(s,"{wname:null, label:%s,",str);
 		// Value
 		attr = objGetNextAttr(qy_obj);
 		if (!attr) {
@@ -342,15 +331,15 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 		type = objGetAttrType(qy_obj, attr);
 		rval = objGetAttrValue(qy_obj, attr, type,&od);
 		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
-		    str = objDataToStringTmp(type, (void*)(&od), 0);
+		    str = objDataToStringTmp(type, (void*)(&od), DATA_F_QUOTED);
 		} else {
-		    str = objDataToStringTmp(type, (void*)(od.String), 0);
+		    str = objDataToStringTmp(type, (void*)(od.String), DATA_F_QUOTED);
 		}
-		htrAddScriptInit_va(s,"'%s')", str);
+		htrAddScriptInit_va(s,"value:%s}", str);
 		objClose(qy_obj);
 		flag=1;
 	    }
-	    htrAddScriptInit_va(s,"));\n");
+	    htrAddScriptInit_va(s,"]);\n");
 	    objQueryClose(qy);
 	}
     }
@@ -361,7 +350,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
     for (i=0;i<xaCount(&(tree->Children));i++)
 	{
 	subtree = xaGetItem(&(tree->Children), i);
-	if (!strcmp(subtree->Type, "widget/dropdownitem")) subtree->RenderFlags |= HT_WGTF_NOOBJECT;
+	if (!strcmp(subtree->Type, "widget/dropdownitem")) 
+	    subtree->RenderFlags |= HT_WGTF_NOOBJECT;
 	if (!strcmp(subtree->Type,"widget/dropdownitem") && mode == 0) 
 	    {
 	    if (wgtrGetPropertyValue(subtree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
@@ -369,7 +359,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 		mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 		return -1;
 		}
-	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
+	    strtcpy(string, ptr, sizeof(string));
 	    if (flag) 
 		{
 		xsConcatPrintf(&xs, ",");
@@ -377,27 +367,28 @@ int htddRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 	    else 
 		{
 		xsInit(&xs);
-		xsConcatPrintf(&xs, "    dd_add_items(%s, Array(", nptr, id);
+		xsConcatPrintf(&xs, "    dd_add_items(nodes[\"%s\"], [", name, id);
 		flag=1;
 		}
-	    xsConcatPrintf(&xs,"Array('%s',", string);
+	    wgtrGetPropertyValue(subtree,"name",DATA_T_STRING,POD(&ptr));
+	    xsConcatPrintf(&xs,"{wname:'%s', label:'%s',", ptr, string);
 
 	    if (wgtrGetPropertyValue(subtree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
 		mssError(1,"HTDD","Drop Down widget must have a 'value' property");
 		return -1;
 		}
-	    memccpy(string,ptr,0,HT_SBUF_SIZE-1);
-	    xsConcatPrintf(&xs,"'%s')", string);
+	    strtcpy(string,ptr, sizeof(string));
+	    xsConcatPrintf(&xs,"value:'%s'}", string);
 	    } 
 	else 
 	    {
-	    htrRenderWidget(s, subtree, z+1, parentname, nptr);
+	    htrRenderWidget(s, subtree, z+1);
 	    }
 	}
     if (flag) 
 	{
-	xsConcatPrintf(&xs, "));\n");
+	xsConcatPrintf(&xs, "]);\n");
 	htrAddScriptInit(s,xs.String);
 	xsDeInit(&xs);
 	}
@@ -445,10 +436,30 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.52 2006/06/19 15:03:02 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.53 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.53  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.52  2006/06/19 15:03:02  gbeeley
     - Mozilla port.
 

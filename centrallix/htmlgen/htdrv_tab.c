@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +42,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.30 2005/10/09 07:49:30 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.31 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.31  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.30  2005/10/09 07:49:30  gbeeley
     - (feature) allow tab control to be configured to not display the tabs
       at all.
@@ -360,11 +381,10 @@ enum httab_locations { Top=0, Bottom=1, Left=2, Right=3, None=4 };
 /*** httabRender - generate the HTML code for the page.
  ***/
 int
-httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+httabRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
     char tab_txt[128];
     char main_bg[128];
     char inactive_bg[128];
@@ -373,12 +393,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
     pWgtrNode tabpage_obj;
     int x=-1,y=-1,w,h;
     int id,tabcnt, i, j;
-    char* nptr;
     char* subnptr;
     enum httab_locations tloc;
     int tab_width = 0;
     int xoffset,yoffset,xtoffset, ytoffset;
-    pExpression code;
     int is_selected;
     char* bg;
     char* tabname;
@@ -394,8 +412,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63]=0;
+	strtcpy(name,ptr,sizeof(name));
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -448,7 +465,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	if (wgtrGetPropertyType(tree,"selected") == DATA_T_STRING &&
 		wgtrGetPropertyValue(tree,"selected",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    snprintf(sel,128,"%s",ptr);
+	    strtcpy(sel,ptr, sizeof(sel));
 	    }
 	else
 	    {
@@ -465,18 +482,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    }
 
 	/** User requesting expression for selected tab? **/
-	if (wgtrGetPropertyType(tree,"selected") == DATA_T_CODE)
-	    {
-	    wgtrGetPropertyValue(tree,"selected",DATA_T_CODE,POD(&code));
-	    htrAddExpression(s, name, "selected", code);
-	    }
+	htrCheckAddExpression(s, tree, name, "selected");
 
 	/** User requesting expression for selected tab using integer index value? **/
-	if (wgtrGetPropertyType(tree,"selected_index") == DATA_T_CODE)
-	    {
-	    wgtrGetPropertyValue(tree,"selected_index",DATA_T_CODE,POD(&code));
-	    htrAddExpression(s, name, "selected_index", code);
-	    }
+	htrCheckAddExpression(s, tree, name, "selected_index");
 
 	/** Background color/image? **/
 	htrGetBackground(tree, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
@@ -486,7 +495,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** Text color? **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(tab_txt,"%.127s",ptr);
+	    strtcpy(tab_txt, ptr, sizeof(tab_txt));
 	else
 	    strcpy(tab_txt,"black");
 
@@ -506,10 +515,9 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	else if (s->Capabilities.Dom2CSS)
 	    htrAddStylesheetItem_va(s,"\t#tc%dbase { %s }\n", id, main_bg);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM Linkages **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tc%dbase\")",id);
+	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script include **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_tab.js", 0);
@@ -545,10 +553,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		"        }\n");
 
 	/** Script initialization call. **/
-	/*htrAddScriptInit_va(s,"    %s = tc_init(%s.layers.tc%dbase, %d, \"%s\", \"%s\");\n",
-		nptr, parentname, id, tloc, main_bg, inactive_bg);*/
-	htrAddScriptInit_va(s,"    %s = tc_init({layer:%s.cxSubElement(\"tc%dbase\"), tloc:%d, mainBackground:\"%s\", inactiveBackground:\"%s\"});\n",
-		nptr, parentname, id, tloc, main_bg, inactive_bg);
+	htrAddScriptInit_va(s,"    tc_init({layer:nodes[\"%s\"], tloc:%d, mainBackground:\"%s\", inactiveBackground:\"%s\"});\n",
+		name, tloc, main_bg, inactive_bg);
 
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
 	if (tloc != None)
@@ -663,9 +669,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 		    h-2,w-2);
 	    }
 
-
-
-
 	/** Check for tabpages within the tab control entity, this time to do the pages themselves **/
 	tabcnt = 0;
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -688,16 +691,19 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 		/** Add script initialization to add a new tabpage **/
 		if (tloc == None)
-		    htrAddScriptInit_va(s,"    %s = %s.addTab(null,%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",
-			ptr, nptr, nptr, id, tabcnt, nptr, ptr);
+		    htrAddScriptInit_va(s,"    nodes[\"%s\"].addTab(null,wgtrGetContainer(nodes[\"%s\"]),nodes[\"%s\"],'%s');\n",
+			name, ptr, name, ptr);
 		else
-		    htrAddScriptInit_va(s,"    %s = %s.addTab(%s.cxSubElement(\"tc%dtab%d\"),%s.cxSubElement(\"tc%dpane%d\"),%s,'%s');\n",
-			ptr, nptr, parentname, id, tabcnt, nptr, id, tabcnt, nptr, ptr);
+		    htrAddScriptInit_va(s,"    nodes[\"%s\"].addTab(nodes[\"%s\"],wgtrGetContainer(nodes[\"%s\"]),nodes[\"%s\"],'%s');\n",
+			name, ptr, ptr, name, ptr);
 
 		/** Add named global for the tabpage **/
-		subnptr = (char*)nmMalloc(strlen(ptr)+1);
-		strcpy(subnptr,ptr);
-		htrAddScriptGlobal(s, subnptr, "null", HTR_F_NAMEALLOC);
+		subnptr = nmSysStrdup(ptr);
+		if (tloc == None)
+		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(_parentctr, \"tc%dpane%d\")", id, tabcnt);
+		else
+		    htrAddWgtrObjLinkage_va(s, tabpage_obj, "htr_subel(wgtrGetContainer(wgtrGetParent(_parentobj)), \"tc%dtab%d\")", id, tabcnt);
+		htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%dpane%d\")", id, tabcnt);
 
 		/** Add DIV section for the tabpage. **/
 		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
@@ -707,23 +713,16 @@ httabRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
 
 		/** Now look for sub-items within the tabpage. **/
-		if (s->Capabilities.Dom0NS)
-		    snprintf(sbuf,160,"%s.tabpage.document",subnptr);
-		else if (s->Capabilities.Dom1HTML)
-		    snprintf(sbuf,160,"%s.tabpage",subnptr);
-		snprintf(name,64,"%s.tabpage",subnptr);
 		for (j=0;j<xaCount(&(tabpage_obj->Children));j++)
-		    htrRenderWidget(s, xaGetItem(&(tabpage_obj->Children), j), z+3, sbuf, name);
+		    htrRenderWidget(s, xaGetItem(&(tabpage_obj->Children), j), z+3);
+
 		htrAddBodyItem(s, "</DIV>\n");
+
+		nmSysFree(subnptr);
 		}
 	    else if (!strcmp(ptr,"widget/connector"))
 		{
-		if (s->Capabilities.Dom0NS)
-		    snprintf(sbuf,160,"%s.mainlayer.document",nptr);
-		else
-		    snprintf(sbuf,160,"%s.mainlayer",nptr);
-		snprintf(name,64,"%s.mainlayer",nptr);
-		htrRenderWidget(s, tabpage_obj, z+2, sbuf, name);
+		htrRenderWidget(s, tabpage_obj, z+2);
 		}
 	    }
 

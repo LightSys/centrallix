@@ -78,4 +78,6 @@ wgtformInitialize()
 
 	wgtrRegisterDriver(name, wgtformVerify, wgtformNew);
 	wgtrAddType(name, "form");
+
+    return 0;
     }

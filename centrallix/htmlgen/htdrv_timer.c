@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +44,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.14 2005/06/23 22:08:01 ncolson Exp $
+    $Id: htdrv_timer.c,v 1.15 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.15  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.14  2005/06/23 22:08:01  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -221,21 +242,18 @@ static struct
 /*** httmRender - generate the HTML code for the timer nonvisual widget.
  ***/
 int
-httmRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+httmRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[200];
-    char sbuf2[160];
     int id;
-    char* nptr;
     int msec;
     int auto_reset = 0;
     int auto_start = 1;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 	    {
-	    mssError(1,"HTTM","Netscape DOM support required");
+	    mssError(1,"HTTM","Netscape 4.x or W3C DOM support required");
 	    return -1;
 	    }
 
@@ -255,29 +273,15 @@ httmRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63]=0;
-
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	strtcpy(name,ptr,sizeof(name));
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0);
 
 	/** Script initialization call. **/
-	snprintf(sbuf,200,"    %s = tm_init({time:%d, autoreset:%d, autostart:%d});\n", nptr, msec, auto_reset, auto_start);
-	htrAddScriptInit(s, sbuf);
+	htrAddScriptInit_va(s, "    tm_init({node:nodes[\"%s\"], time:%d, autoreset:%d, autostart:%d});\n", name, msec, auto_reset, auto_start);
 
 	/** Check for objects within the timer. **/
-	snprintf(sbuf,200,"%s.document",nptr);
-	snprintf(sbuf2,160,"%s",nptr);
-
-
-
-
-	htrRenderSubwidgets(s, tree, sbuf, sbuf2, z+2);
-
+	htrRenderSubwidgets(s, tree, z+2);
 
     return 0;
     }

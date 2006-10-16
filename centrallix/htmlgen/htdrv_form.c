@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "wgtr.h"
 
 /************************************************************************/
@@ -44,6 +45,26 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.59  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.58  2006/06/22 00:18:23  gbeeley
     - adding allow_obscure option to form widget to permit unsaved data in a
       form to be obscured (change tab, etc.) if desired.
@@ -403,19 +424,16 @@ static struct
 /*** htformRender - generate the HTML code for the form 'glue'
  ***/
 int
-htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htformRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
     char tabmode[64];
     int id, i;
-    char* nptr;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter;
     int allowobscure = 0;
     char _3bconfirmwindow[30];
     int readonly;
-//    pObject sub_w_obj;
-//    pObjQuery qy;
 
 	/** form widget should work on any browser **/
     
@@ -437,8 +455,10 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	 **   the code, not here -- JDR **/
 	if (wgtrGetPropertyValue(tree,"MultiEnter",DATA_T_INTEGER,POD(&multienter)) != 0) 
 	    multienter=0;
-	if (wgtrGetPropertyValue(tree,"TabMode",DATA_T_STRING,POD(tabmode)) != 0) 
+	if (wgtrGetPropertyValue(tree,"TabMode",DATA_T_STRING,POD(&ptr)) != 0) 
 	    tabmode[0]='\0';
+	else
+	    strtcpy(tabmode, ptr,sizeof(tabmode));
 	if (wgtrGetPropertyValue(tree,"ReadOnly",DATA_T_INTEGER,POD(&readonly)) != 0) 
 	    readonly=0;
 
@@ -457,7 +477,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	 ***/
 	
 	if (wgtrGetPropertyValue(tree,"_3bconfirmwindow",DATA_T_STRING,POD(&ptr)) == 0)
-	    snprintf(_3bconfirmwindow,30,"%s",ptr);
+	    strtcpy(_3bconfirmwindow,ptr,sizeof(_3bconfirmwindow));
 	else
 	    strcpy(_3bconfirmwindow,"null");
 
@@ -489,15 +509,10 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
-
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
+	strtcpy(name,ptr,sizeof(name));
 
 	/** create our instance variable **/
-	htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
+	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Script include to add functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_form.js", 0);
@@ -507,45 +522,21 @@ htformRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    %s=form_init({aq:%i, an:%i, am:%i, av:%i, and:%i, me:%i, name:'%s', _3b:%s, ro:%i, ao:%i});\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,multienter,name,
-		_3bconfirmwindow,readonly,allowobscure);
-	htrAddScriptInit_va(s,"    %s.ChangeMode('NoData');\n",name);
-	htrAddScriptInit_va(s,"    %s.oldform=fm_current;\n",name);
-	htrAddScriptInit_va(s,"    fm_current=%s;\n",name);
-
-
-
+	htrAddScriptInit_va(s,"\n    form_init(nodes[\"%s\"], {aq:%i, an:%i, am:%i, av:%i, and:%i, me:%i, name:'%s', _3b:nodes[\"%s\"], ro:%i, ao:%i});\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,
+		multienter,name,_3bconfirmwindow,readonly,allowobscure);
+	htrAddScriptInit_va(s,"    nodes[\"%s\"].ChangeMode('NoData');\n",name);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/
-
-	/**
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
-		if (strcmp(ptr,"widget/connector") == 0)
-		    htrRenderWidget(s, sub_w_obj, z, "", name);
-		else
-		    htrRenderWidget(s, sub_w_obj, z, parentname, parentobj);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
-	**/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    if (strcmp(tree->Type, "widget/connector") == 0)
-		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z, "", name);
+		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
 	    else
-		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z, parentname, name);
+		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
 	    }
 	
-	htrAddScriptInit_va(s,"    fm_current=%s.oldform;\n",name);
-
     return 0;
     }
 

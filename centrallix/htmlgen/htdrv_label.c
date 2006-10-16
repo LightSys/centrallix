@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,6 +43,26 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.25  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.24  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -257,7 +278,7 @@ static struct
 /*** htlblRender - generate the HTML code for the label widget.
  ***/
 int
-htlblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htlblRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
@@ -267,10 +288,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
     int x=-1,y=-1,w,h;
     int id, i;
     int fontsize;
-    char* nptr;
     char *text;
-    pObject sub_w_obj;
-    pObjQuery qy;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -297,13 +315,11 @@ htlblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    text=nmMalloc(strlen(ptr)+1);
-	    strcpy(text,ptr);
+	    text=nmSysStrdup(ptr);
 	    }
 	else
 	    {
-	    text=nmMalloc(1);
-	    text[0]='\0';
+	    text=nmSysStrdup("");
 	    }
 
 	/** label text color **/
@@ -318,35 +334,28 @@ htlblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	align[0]='\0';
 	if(wgtrGetPropertyValue(tree,"align",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    memccpy(align,ptr,0,63);
-	    align[63] = '\0';
-	    }
+	    strtcpy(align,ptr,sizeof(align));
 	else
-	    {
 	    strcpy(align,"left");
-	    }
 	
 	/** Background color/image? **/
 	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgcolor='%.40s'",ptr);
+	    snprintf(main_bg,sizeof(main_bg), "bgcolor='%.40s'",ptr);
 	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"background='%.110s'",ptr);
+	    snprintf(main_bg,sizeof(main_bg), "background='%.110s'",ptr);
 	else
 	    strcpy(main_bg,"");
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#lbl%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%d\")",id);
+	htrAddWgtrCtrLinkage(s, tree, "_obj");
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%s']);\n", name);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
@@ -378,28 +387,15 @@ htlblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseMove');\n"
 	    "\n");
 
-	if(s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s,"    %s = lbl_init(document.getElementById('lbl%d'));\n", nptr, id);
-	    }
-	else if(s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s,"    %s = lbl_init(%s.layers.lbl%d);\n", nptr, parentname, id);
-	    }
-
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "lbl%d", id, 
 	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>%s</font></td></tr></table>\n",w,align,fontsize,fgcolor,text);
 
-
-
-
 	/** Check for more sub-widgets **/
 	for (i=0;xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, tree, z+1, parentname, nptr);
+	    htrRenderWidget(s, tree, z+1);
 
-
-	nmFree(text,strlen(text)+1);
+	nmSysFree(text);
 
     return 0;
     }

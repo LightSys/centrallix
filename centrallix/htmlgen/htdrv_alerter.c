@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,6 +44,26 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.19  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.18  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -258,33 +279,20 @@ static struct
 /*** htalrtRender - generate the HTML code for the alert -- not much..
  ***/
 int
-htalrtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htalrtRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
-    char name[64];
     int id;
-    char* nptr;
     
     	/** Get an id for this. **/
 	id = (HTALRT.idcnt++);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = '\0';
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-
-	htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); /* create our instance variable */
+	htrAddScriptInit_va(s,"    alrt_init(nodes[\"%s\"]);\n", ptr);
 
 	htrAddScriptInclude(s,"/sys/js/htdrv_alerter.js",0);
-
-	htrAddScriptInit_va(s,"    %s=alrt_init();\n",name);
-
-
-
 
     return 0;
     }

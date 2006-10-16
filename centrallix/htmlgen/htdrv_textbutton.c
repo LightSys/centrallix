@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +44,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.35 2006/10/04 17:12:54 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.36 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.36  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.35  2006/10/04 17:12:54  gbeeley
     - (bugfix) Newer versions of Gecko handle clipping regions differently than
       anything else out there.  Created a capability flag to handle that.
@@ -332,7 +353,7 @@ static struct
 /*** httbtnRender - generate the HTML code for the page.
  ***/
 int
-httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+httbtnRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
@@ -345,7 +366,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     int x,y,w,h;
     int id, i;
     int is_ts = 1;
-    char* nptr;
+    char* dptr;
     int is_enabled = 1;
     pExpression code;
     int box_offset;
@@ -384,8 +405,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** box adjustment... arrgh **/
 	if (s->Capabilities.CSSBox)
@@ -411,8 +431,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    mssError(1,"HTTBTN","TextButton widget must have a 'text' property");
 	    return -1;
 	    }
-	memccpy(text,ptr,'\0',63);
-	text[63]=0;
+	strtcpy(text,ptr,sizeof(text));
 
 	/** Get fgnd colors 1,2, and background color **/
 	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -432,27 +451,29 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    }
 
 	if (wgtrGetPropertyValue(tree,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(fgcolor1,"%.63s",ptr);
+	    strtcpy(fgcolor1,ptr,sizeof(fgcolor1));
 	else
 	    strcpy(fgcolor1,"white");
 	if (wgtrGetPropertyValue(tree,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(fgcolor2,"%.63s",ptr);
+	    strtcpy(fgcolor2,ptr,sizeof(fgcolor2));
 	else
 	    strcpy(fgcolor2,"black");
 	if (wgtrGetPropertyValue(tree,"disable_color",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(disable_color,"%.63s",ptr);
+	    strtcpy(disable_color,ptr,sizeof(disable_color));
 	else
 	    strcpy(disable_color,"#808080");
 
 	htrAddScriptGlobal(s, "tb_current", "null", 0);
-	
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
+	/** DOM Linkages **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tb%dpane\")",id);
+	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Include the javascript code for the textbutton **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
+
+	dptr = wgtrGetDName(tree);
+	htrAddScriptInit_va(s, "    %s = nodes['%s'];\n", dptr, name);
 
 	if(s->Capabilities.Dom0NS)
 	    {
@@ -466,27 +487,8 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddStylesheetItem_va(s,"\t#tb%dlft { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
 
 	    /** Script initialization call. **/
-	    if(s->Capabilities.Dom0NS)
-	        {
-	    	htrAddScriptInit_va(s, "    %s = %s.layers.tb%dpane;\n",nptr, parentname, id);
-	    	htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:%s.document.layers.tb%dpane2, layer3:%s.document.layers.tb%dpane3, top:%s.document.layers.tb%dtop, bottom:%s.document.layers.tb%dbtm, right:%s.document.layers.tb%drgt, left:%s.document.layers.tb%dlft, width:%d, height:%d, parent:%s, tristate:%d, name:\"%s\"});\n",
-		    nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
-		}
-	    /*else if(s->Capabilities.Dom0IE)
-	        {
-		if(strstr(parentname,"document")!=NULL)
-		    {
-		    htrAddScriptInit_va(s, "    %s = %s.getElementById(\"tb%dpane\");\n",nptr, parentname, id);
-		      htrAddScriptInit_va(s, "    tb_init(%s,%s.document.getElementById(\"tb%dpane2\"),%s.document.getElementById(\"tb%dpane3\"),%s.document.getElementById(\"tb%dtop\"),%s.document.getElementById(\"tb%dbtm\"),%s.document.getElementById(\"tb%drgt\"),%s.document.getElementById(\"tb%dlft\"),%d,%d,%s,%d,\"%s\");\n",
-					  nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
-		    }
-		else
-		    {
-		      htrAddScriptInit_va(s, "    %s = %s.document.getElementById(\"tb%dpane\");\n",nptr, parentname, id);
-		      htrAddScriptInit_va(s, "    tb_init(%s,%s.document.getElementById(\"tb%dpane2\"),%s.document.getElementById(\"tb%dpane3\"),%s.document.getElementById(\"tb%dtop\"),%s.document.getElementById(\"tb%dbtm\"),%s.document.getElementById(\"tb%drgt\"),%s.document.getElementById(\"tb%dlft\"),%d,%d,%s,%d,\"%s\");\n",
-					  nptr, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, nptr, id, w, h, parentobj,is_ts, nptr);
-		    }
-	        }*/
+	    htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:htr_subel(%s, \"tb%dpane2\"), layer3:htr_subel(%s, \"tb%dpane3\"), top:htr_subel(%s, \"tb%dtop\"), bottom:htr_subel(%s, \"tb%dbtm\"), right:htr_subel(%s, \"tb%drgt\"), left:htr_subel(%s, \"tb%dlft\"), width:%d, height:%d, tristate:%d, name:\"%s\"});\n",
+		    dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, w, h, is_ts, name);
 
 	    /** HTML body <DIV> elements for the layers. **/
 	    if (h >= 0)
@@ -525,15 +527,14 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane2 { VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:-1px; top: -1px; width:%dpx; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);
 	    htrAddStylesheetItem_va(s,"\t#tb%dpane3 { VISIBILITY: %s; Z-INDEX: %d; position: absolute; left:0px; top: 0px; width:%dpx; }\n",id,is_enabled?"hidden":"inherit",z+1,w-3);
 
-	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%d valign=middle align=center><font color=%s><b>%s</b></font</td></tr></table></center>\n",id,h-3,fgcolor2,text);
+	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%d valign=middle align=center><font color=%s><b>%s</b></font></td></tr></table></center>\n",id,h-3,fgcolor2,text);
 	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%d valign=middle align=center><font color=%s><b>%s</b></font></td></tr></table></center></DIV>\n",id,h-3,fgcolor1,text);
 	    htrAddBodyItem_va(s,"<DIV ID=\"tb%dpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%d valign=middle align=center><font color=%s><b>%s</b></font></td></tr></table></center></DIV>\n",id,h-3,disable_color,text);
 	    htrAddBodyItem_va(s,"</DIV>");
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    %s = document.getElementById('tb%dpane');\n",nptr, id);
-	    htrAddScriptInit_va(s, "    tb_init({layer:%s,layer2:document.getElementById('tb%dpane2'), layer3:document.getElementById('tb%dpane3'), top:null, bottom:null, right:null, left:null, width:%d, height:%d, parent:%s, tristate:%d, name:\"%s\"});\n",
-		    nptr, id, id, w, h, parentobj,is_ts, nptr);
+	    htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:htr_subel(%s, \"tb%dpane2\"), layer3:htr_subel(%s, \"tb%dpane3\"), top:null, bottom:null, right:null, left:null, width:%d, height:%d, tristate:%d, name:\"%s\"});\n",
+		    dptr, dptr, id, dptr, id, w, h, is_ts, name);
 	    }
 	else
 	    {
@@ -554,7 +555,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Check for more sub-widgets within the textbutton. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+3, parentname, nptr);
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+3);
 
     return 0;
     }

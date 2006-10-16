@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,6 +43,26 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_image.c,v $
+    Revision 1.6  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.5  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -141,17 +162,14 @@ static struct
 /*** htimgRender - generate the HTML code for the label widget.
  ***/
 int
-htimgRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htimgRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
     char src[128];
     int x=-1,y=-1,w,h;
     int id, i;
-    char* nptr;
     char *text;
-    pObject sub_w_obj;
-    pObjQuery qy;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -178,39 +196,33 @@ htimgRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    text=nmMalloc(strlen(ptr)+1);
-	    strcpy(text,ptr);
+	    text=nmSysStrdup(ptr);
 	    }
 	else
 	    {
-	    text=nmMalloc(1);
-	    text[0]='\0';
+	    text=nmSysStrdup("");
 	    }
 
 	/** image source **/
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'source' property");
+	    nmSysFree(text);
 	    return -1;
 	    }
-	snprintf(src,sizeof(src),"%s",ptr);
+	strtcpy(src, ptr, sizeof(src));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#img%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
-
 	/** Init image widget (?) **/
-	htrAddScriptInit_va(s, "    %s = im_init(%s.cxSubElement(\"img%d\"));\n",
-		nptr, parentname, id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"img%d\")",id);
+	htrAddWgtrCtrLinkage(s, tree, "_obj");
+	htrAddScriptInit_va(s, "    im_init(nodes['%s']);\n", name);
 	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
 
 	/** Event Handlers **/
@@ -246,9 +258,9 @@ htimgRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
-	nmFree(text,strlen(text)+1);
+	nmSysFree(text);
 
     return 0;
     }

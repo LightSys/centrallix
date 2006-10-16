@@ -10,6 +10,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +44,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.60 2005/10/09 07:48:03 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.61 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.61  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.60  2005/10/09 07:48:03  gbeeley
     - (bugfix) osrc was being noisy on mozilla
 
@@ -435,12 +456,11 @@ enum htosrc_autoquery_types { Never=0, OnLoad=1, OnFirstReveal=2, OnEachReveal=3
    Don't know what this is, but we're keeping it for now - JJP, JDH
 */
 int
-htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htosrcRender(pHtSession s, pWgtrNode tree, int z)
    {
    int id;
    char name[40];
    char *ptr;
-   char *nptr;
    int readahead;
    int scrollahead;
    int replicasize;
@@ -464,8 +484,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
    /** Get name **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-   memccpy(name,ptr,0,39);
-   name[39] = 0;
+   strtcpy(name,ptr,sizeof(name));
 
    if (wgtrGetPropertyValue(tree,"replicasize",DATA_T_INTEGER,POD(&replicasize)) != 0)
       replicasize=6;
@@ -509,8 +528,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&ptr)) == 0)
       {
-      sql=nmMalloc(strlen(ptr)+1);
-      strcpy(sql,ptr);
+      sql = nmSysStrdup(ptr);
       }
    else
       {
@@ -519,102 +537,47 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
       }
 
    if (wgtrGetPropertyValue(tree,"baseobj",DATA_T_STRING,POD(&ptr)) == 0)
-      {
-      baseobj = nmMalloc(strlen(ptr)+1);
-      strcpy(baseobj, ptr);
-      }
+      baseobj = nmSysStrdup(ptr);
    else
-      {
       baseobj = NULL;
-      }
 
    if (wgtrGetPropertyValue(tree,"filter",DATA_T_STRING,POD(&ptr)) == 0)
-      {
-      filter=nmMalloc(strlen(ptr)+1);
-      strcpy(filter,ptr);
-      }
+      filter = nmSysStrdup(ptr);
    else
-      {
-      filter=nmMalloc(1);
-      filter[0]='\0';
-      }
-
-
-
-   /** Write named global **/
-   nptr = (char*)nmMalloc(strlen(name)+1);
-   strcpy(nptr,name);
+      filter = nmSysStrdup("");
 
    /** create our instance variable **/
-   //htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"osrc%dloader\")",id);
+   htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"        #osrc%dloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
-   if(s->Capabilities.Dom0NS)
-      {
-      htrAddScriptInit_va(s,"    %s=osrc_init({loader:%s.layers.osrc%dloader, readahead:%i, scrollahead:%i, replicasize:%i, sql:\"%s\", filter:\"%s\", baseobj:\"%s\", name:\"%s\", autoquery:%d, requestupdates:%d});\n",
-	    name,parentname, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq,receive_updates);
-      }
-   else if(s->Capabilities.Dom1HTML)
-      {
-      htrAddScriptInit_va(s,"    %s=osrc_init({loader:document.getElementById('osrc%dloader'), readahead:%i, scrollahead:%i, replicasize:%i, sql:\"%s\", filter:\"%s\", baseobj:\"%s\", name:\"%s\", autoquery:%d, requestupdates:%d});\n",
-	    name, id,readahead,scrollahead,replicasize,sql,filter,baseobj?baseobj:"",name,aq,receive_updates);
-      }
-   else
-      {
-      mssError(1,"HTOSRC","Cannot render for this browser");
-      }
+   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%s\"], readahead:%i, scrollahead:%i, replicasize:%i, sql:\"%s\", filter:\"%s\", baseobj:\"%s\", name:\"%s\", autoquery:%d, requestupdates:%d});\n",
+	 name,readahead,scrollahead,replicasize,sql,filter,
+	 baseobj?baseobj:"",name,aq,receive_updates);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
    htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
-   htrAddScriptInit_va(s,"    %s.oldosrc=osrc_current;\n",name);
-   htrAddScriptInit_va(s,"    osrc_current=%s;\n",name);
-
    /** HTML body element for the frame **/
    htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%dloader",id);
    htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
    htrAddBodyItem(s, "\n");
 
-
-
-
-
-   /**
-   qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-   if (qy)
-   {
-   while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-       {
-       wgtrGetPropertyValue(sub_w_obj, "outer_type", DATA_T_STRING,POD(&ptr));
-       if (strcmp(ptr,"widget/connector") == 0)
-	   htrRenderWidget(s, sub_w_obj, z, "", name);
-       else
-	   htrRenderWidget(s, sub_w_obj, z, parentname, parentobj);
-       objClose(sub_w_obj);
-       }
-   objQueryClose(qy);
-   }
-   **/
     count = xaCount(&(tree->Children));
     for (i=0;i<count;i++)
 	{
 	sub_tree = xaGetItem(&(tree->Children), i);
-	if (strcmp(sub_tree->Type, "widget/connector") == 0)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z, "", name);
-	else
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z, parentname, parentobj);
+	htrRenderWidget(s, sub_tree, z);
 	}
 
-
-   /** We set osrc_current=null so that orphans can't find us  **/
-   htrAddScriptInit(s, "    //osrc_current.InitQuery();\n");
-   htrAddScriptInit_va(s,"    osrc_current=%s.oldosrc;\n\n",name);
-
+    nmSysFree(filter);
+    if (baseobj) nmSysFree(baseobj);
+    nmSysFree(sql);
 
    return 0;
 }

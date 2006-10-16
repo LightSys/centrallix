@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,6 +44,26 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_terminal.c,v $
+    Revision 1.9  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.8  2005/06/23 22:08:01  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -184,14 +205,12 @@ static struct
 /*** httermRender - generate the HTML code for the form 'glue'
  ***/
 int
-httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+httermRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
     int id;
-    char* nptr;
     pWgtrNode sub_tree;
-    pObjQuery qy;
 #define MAX_COLORS 8
 #define MAX_COLOR_LEN 32
     char colors[MAX_COLORS][MAX_COLOR_LEN]={"black","red","green","yellow","blue","purple","aqua","white"};
@@ -206,7 +225,6 @@ httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    return -1;
 	    }
 
-
     	/** Get an id for this. **/
 	id = (HTTERM.idcnt++);
 
@@ -217,8 +235,7 @@ httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    sprintf(color,"color%i",i);
 	    if (wgtrGetPropertyValue(tree,color,DATA_T_STRING,POD(&ptr)) == 0) 
 		{
-		strncpy(colors[i],ptr,MAX_COLOR_LEN);
-		colors[i][MAX_COLOR_LEN-1]='\0';
+		strtcpy(colors[i],ptr,MAX_COLOR_LEN);
 		}
 	    }
 
@@ -266,15 +283,7 @@ httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
-
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-
-	/** create our instance variable **/
-	htrAddScriptGlobal(s, nptr, "null",HTR_F_NAMEALLOC); 
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Script include to add functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_terminal.js", 0);
@@ -292,7 +301,8 @@ httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddStylesheetItem_va(s,"        .fixed%d {font-family: fixed; }\n",id);
 
 	/** init line **/
-	htrAddScriptInit_va(s,"    %s=terminal_init({parent:%s, id:%d, source:'%s', rows:%d, cols:%d, colors:new Array(",name,parentname,id,source.String,rows,cols);
+	htrAddScriptInit_va(s,"    terminal_init({layer:nodes[\"%s\"], rdr:\"term%dreader\", wtr:\"term%dwriter\", fxd:\"fixed%d\", root:rootname, source:'%s', rows:%d, cols:%d, colors:new Array(",
+		name,id,id,id,source.String,rows,cols);
 	for(i=0;i<MAX_COLORS;i++)
 	    {
 	    if(i!=0)
@@ -301,22 +311,13 @@ httermRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    }
 	htrAddScriptInit(s,")});\n");
 
-
-
-
 	/** Check for and render all subobjects. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    sub_tree = xaGetItem(&(tree->Children), i);
-	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
-	    if (strcmp(ptr,"widget/connector") == 0)
-		htrRenderWidget(s, sub_tree, z+1, "", name);
-	    else
-		/** probably shouldn't render anything other than connectors, but who knows... **/
-		htrRenderWidget(s, sub_tree, z+1, parentname, parentobj);
+	    htrRenderWidget(s, sub_tree, z+1);
 	    }
 	
-
     return 0;
     }
 

@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +42,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.36 2006/04/07 06:36:33 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.37 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.37  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.36  2006/04/07 06:36:33  gbeeley
     - (bugfix) make sure treeview events occur on main treeview object rather
       than on sub-layers
@@ -325,14 +346,13 @@ static struct
 /*** httreeRender - generate the HTML code for the page.
  ***/
 int
-httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+httreeRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
     char src[128];
     int x,y,w;
     int id, i;
-    char* nptr;
     int show_root = 1;
     int show_branches = 0;
 
@@ -378,8 +398,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Get source directory tree **/
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
@@ -387,9 +406,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    mssError(1,"HTTREE","TreeView widget must have a 'source' property");
 	    return -1;
 	    }
-	memccpy(src,ptr,0,127);
-	src[127]=0;
-
+	strtcpy(src,ptr,sizeof(src));
 
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom0NS)
@@ -405,28 +422,13 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "tv_alloc_cnt","0",0);
 	htrAddScriptGlobal(s, "tv_cache_cnt","0",0);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM Linkage on client **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tv%droot\")",id);
+	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script initialization call. **/
-	if(s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s,"    %s = %s.layers.tv%droot;\n",nptr, parentname, id);
-	    htrAddScriptInit_va(s,"    tv_init({layer:%s, fname:\"%s\", loader:%s.layers.tv%dload, pdoc:%s, width:%d, parent:%s, newroot:null, branches:%d});\n",
-		    nptr, src, parentname, id, parentname, w, parentobj, show_branches);
-	    }
-	else if(s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s,"    %s = document.getElementById('tv%droot');\n",nptr, id);
-	    htrAddScriptInit_va(s,"    tv_init({layer:%s, fname:\"%s\", loader:document.getElementById('tv%dload'), pdoc:%s, width:%d, parent:%s, newroot:null, branches:%d});\n",
-		    nptr, src, id, parentname, w, parentobj, show_branches);
-	    }
-	else
-	    {
-	    mssError(1,"HTTREE","cannot render for this browser");
-	    }
+	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%s\"], fname:\"%s\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"tv%dload\"), width:%d, newroot:null, branches:%d});\n",
+		name, src, name, id, w, show_branches);
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js", 0);
@@ -523,13 +525,9 @@ httreeRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddEventHandler(s,"document","MOUSEMOVE","tv","   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseMove');\n");
 	htrAddEventHandler(s,"document","MOUSEOUT","tv", "   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
-
-
-
 	/** Check for more sub-widgets within the treeview. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, parentname, nptr);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
 
     return 0;
     }

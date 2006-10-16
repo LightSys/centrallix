@@ -65,10 +65,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.60 2006/10/04 17:20:50 gbeeley Exp $
+    $Id: net_http.c,v 1.61 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.61  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.60  2006/10/04 17:20:50  gbeeley
     - (feature) allow application to adjust to user agent's configured text
       font size.  Especially the Mozilla versions in CentOS have terrible
@@ -2882,7 +2902,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 
 		/** Read the app spec, verify it, and generate it to DHTML **/
-		if ( (widget_tree = wgtrParseOpenObject(target_obj, NULL)) == NULL)
+		if ( (widget_tree = wgtrParseOpenObject(target_obj, NULL, NULL)) == NULL)
 		    {
 		    mssError(0, "HTTP", "Couldn't parse %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");

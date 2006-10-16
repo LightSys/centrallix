@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +45,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.34 2006/04/07 06:31:08 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.35 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.35  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.34  2006/04/07 06:31:08  gbeeley
     - (change) move event scripts to .js file.
 
@@ -335,7 +356,7 @@ static struct
 /*** htibtnRender - generate the HTML code for the page.
  ***/
 int
-htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htibtnRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
@@ -346,7 +367,6 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     int is_enabled = 1;
     int x,y,w,h;
     int id, i;
-    char* nptr;
     pExpression code;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
@@ -378,8 +398,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Get normal, point, and click images **/
 	if (wgtrGetPropertyValue(tree,"image",DATA_T_STRING,POD(&ptr)) != 0) 
@@ -387,35 +406,22 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    mssError(1,"HTIBTN","ImageButton must have an 'image' property");
 	    return -1;
 	    }
-	memccpy(n_img,ptr,'\0',127);
-	n_img[127]=0;
+	strtcpy(n_img,ptr,sizeof(n_img));
+
 	if (wgtrGetPropertyValue(tree,"pointimage",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    memccpy(p_img,ptr,'\0',127);
-	    p_img[127]=0;
-	    }
+	    strtcpy(p_img,ptr,sizeof(p_img));
 	else
-	    {
 	    strcpy(p_img, n_img);
-	    }
+
 	if (wgtrGetPropertyValue(tree,"clickimage",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    memccpy(c_img,ptr,'\0',127);
-	    c_img[127]=0;
-	    }
+	    strtcpy(c_img,ptr,sizeof(c_img));
 	else
-	    {
 	    strcpy(c_img, p_img);
-	    }
+
 	if (wgtrGetPropertyValue(tree,"disabledimage",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    memccpy(d_img,ptr,'\0',127);
-	    d_img[127]=0;
-	    }
+	    strtcpy(d_img,ptr,sizeof(d_img));
 	else
-	    {
 	    strcpy(d_img, n_img);
-	    }
 
 	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_STRING && wgtrGetPropertyValue(tree,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
 	    {
@@ -425,11 +431,8 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#ib%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 	htrAddScriptGlobal(s, "ib_cur_img", "null", 0);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"ib%dpane\")", id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
 
@@ -441,22 +444,8 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
-	/** Script initialization call. **/
-	if(s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s,"    %s = %s.layers.ib%dpane;\n",nptr, parentname, id);
-	    }
-	else if(s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s,"    %s = document.getElementById('ib%dpane');\n",nptr, id);
-	    }
-	else
-	    {
-	    mssError(1,"HTIBTN","Cannot render for this browser");
-	    }
-
-	htrAddScriptInit_va(s,"    ib_init({layer:%s, n:'%s', p:'%s', c:'%s', d:'%s', width:%d, height:%d, parentobj:%s, name:'%s', enable:%d});\n",
-	        nptr, n_img, p_img, c_img, d_img, w, h, parentobj,nptr,is_enabled);
+	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%s\"], n:'%s', p:'%s', c:'%s', d:'%s', width:%d, height:%d, name:'%s', enable:%d});\n",
+	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)
@@ -479,8 +468,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Check for more sub-widgets within the imagebutton. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-	
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
     return 0;
     }

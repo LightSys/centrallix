@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "stparse.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -59,10 +60,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.47 2005/10/18 22:51:44 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.48 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.48  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.47  2005/10/18 22:51:44  gbeeley
     - (bugfix) correct deletion of orderby items.
 
@@ -477,7 +498,7 @@ typedef struct
     } httbl_struct;
 
 int
-httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj, httbl_struct* t)
+httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     {
     int colid;
     int colw;
@@ -515,11 +536,15 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
-	htrAddScriptInit_va(s,"    %s = tbld_init({tablename:'%s', table:%s.layers.tbld%dpane, scroll:%s.layers.tbld%dscroll, boxname:\"tbld%dbox\", name:\"%s\", height:%d, width:%d, innerpadding:%d, innerborder:%d, windowsize:%d, rowheight:%d, cellhspacing:%d, cellvspacing:%d, textcolor:\"%s\", textcolorhighlight:\"%s\", titlecolor:\"%s\", rowbgnd1:\"%s\", rowbgnd2:\"%s\", rowbgndhigh:\"%s\", hdrbgnd:\"%s\", followcurrent:%i, dragcols:%i, colsep:%i, gridinemptyrows:%i, cols:new Array(",
-		t->name,t->name,parentname,t->id,parentname,t->id,t->id,t->name,t->h,t->w-18,t->inner_padding,
-		t->inner_border,t->windowsize,t->rowheight,t->cellvspacing, t->cellhspacing,t->textcolor, 
-		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,t->row_bgndhigh,t->hdr_bgnd,
-		t->followcurrent,t->dragcols,t->colsep,t->gridinemptyrows);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%dpane\")",t->id);
+
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%s', table:nodes[\"%s\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"tbld%dscroll\"), boxname:\"tbld%dbox\", name:\"%s\", height:%d, width:%d, innerpadding:%d, innerborder:%d, windowsize:%d, rowheight:%d, cellhspacing:%d, cellvspacing:%d, textcolor:\"%s\", textcolorhighlight:\"%s\", titlecolor:\"%s\", rowbgnd1:\"%s\", rowbgnd2:\"%s\", rowbgndhigh:\"%s\", hdrbgnd:\"%s\", followcurrent:%i, dragcols:%i, colsep:%i, gridinemptyrows:%i, cols:new Array(",
+		t->name,t->name,t->name,t->id,t->id,t->name,t->h,t->w-18,
+		t->inner_padding,t->inner_border,t->windowsize,t->rowheight,
+		t->cellvspacing, t->cellhspacing,t->textcolor, 
+		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,
+		t->row_bgndhigh,t->hdr_bgnd,t->followcurrent,t->dragcols,
+		t->colsep,t->gridinemptyrows);
 	
 	for(colid=0;colid<t->ncols;colid++)
 	    {
@@ -530,17 +555,13 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 
 	htrAddScriptInit(s,"null)});\n");
 
-
-
-
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    sub_tree = xaGetItem(&(tree->Children), i);
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
 	    if (strcmp(ptr,"widget/table-column") != 0) //got columns earlier
-		htrRenderWidget(s, sub_tree, z+3, "", t->name);
+		htrRenderWidget(s, sub_tree, z+3);
 	    }
-
 
 	htrAddEventHandler(s,"document","MOUSEOVER","tabledynamic",
 		"\n"
@@ -738,7 +759,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* 
 
 
 int
-httblRenderStatic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj, httbl_struct* t)
+httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     {
     pObject qy_obj;
     pObjQuery qy;
@@ -757,9 +778,9 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* p
 	/** flag ourselves as not having an associated layer **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
-	if (t->w >= 0) snprintf(tmpbuf,64,"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
+	if (t->w >= 0) snprintf(tmpbuf,sizeof(tmpbuf),"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
 	htrAddBodyItem_va(s,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, t->outer_border, t->tbl_bgnd);
-	if (t->w >= 0) snprintf(tmpbuf,64,"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
+	if (t->w >= 0) snprintf(tmpbuf,sizeof(tmpbuf),"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
 	htrAddBodyItem_va(s,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%d cellpadding=%d %s>\n", t->inner_border, t->inner_padding, tmpbuf);
 	if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0)
 	    {
@@ -888,21 +909,17 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, char* parentname, char* p
 	objQueryClose(qy);
 	htrAddBodyItem(s,"</TABLE></TD></TR></TABLE>\n");
 
-	
 	/** Call init function **/
- 	htrAddScriptInit_va(s,"    tbls_init({parentLayer:%s.layer, name:\"%s\", width:%d, cp:%d, cs:%d});\n",parentname,t->name,t->w,t->inner_padding,t->inner_border);
-
-
-
-
+ 	htrAddScriptInit_va(s,"    tbls_init({parentLayer:wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), name:\"%s\", width:%d, cp:%d, cs:%d});\n",t->name,t->name,t->w,t->inner_padding,t->inner_border);
  
     return 0;
     }
 
+
 /*** httblRender - generate the HTML code for the page.
  ***/
 int
-httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+httblRender(pHtSession s, pWgtrNode tree, int z)
     {
     pWgtrNode sub_tree;
     char* ptr;
@@ -910,7 +927,6 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
     pStructInf attr_inf;
     int n, i;
     httbl_struct* t;
-    char *nptr;
     int rval;
 
 	t = (httbl_struct*)nmMalloc(sizeof(httbl_struct));
@@ -935,6 +951,14 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
     	/** Get an id for thit. **/
 	t->id = (HTTBL.idcnt++);
 
+	/** Backwards compat for the time being **/
+	wgtrRenameProperty(tree, "row_bgcolor1", "row1_bgcolor");
+	wgtrRenameProperty(tree, "row_background1", "row1_background");
+	wgtrRenameProperty(tree, "row_bgcolor2", "row2_bgcolor");
+	wgtrRenameProperty(tree, "row_background2", "row2_background");
+	wgtrRenameProperty(tree, "row_bgcolorhighlight", "rowhighlight_bgcolor");
+	wgtrRenameProperty(tree, "row_backgroundhighlight", "rowhighlight_background");
+
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&(t->x))) != 0) t->x = -1;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&(t->y))) != 0) t->y = -1;
@@ -955,21 +979,13 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) t->followcurrent = 0;
 	    }
 
-
-
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    nmFree(t, sizeof(httbl_struct));
 	    return -1;
 	    }
-	memccpy(t->name,ptr,0,63);
-	t->name[63] = 0;
-
-	/** Write named global **/
-	nptr=nmMalloc(strlen(t->name)+1);
-	strcpy(nptr,t->name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	strtcpy(t->name,ptr,sizeof(t->name));
 
 	/** Mode of table operation.  Defaults to 0 (static) **/
 	if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0)
@@ -986,32 +1002,15 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    }
 
 	/** Get background color/image for table header **/
-	if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->tbl_bgnd,"background='%.110s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->tbl_bgnd,"bgColor='%.40s'",ptr);
+	htrGetBackground(tree, NULL, !s->Capabilities.Dom0NS, t->tbl_bgnd, sizeof(t->tbl_bgnd));
 
 	/** Get background color/image for header row **/
-	if (wgtrGetPropertyValue(tree,"hdr_background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->hdr_bgnd,"background='%.110s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"hdr_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->hdr_bgnd,"bgColor='%.40s'",ptr);
+	htrGetBackground(tree, "hdr", !s->Capabilities.Dom0NS, t->hdr_bgnd, sizeof(t->hdr_bgnd));
 
 	/** Get background color/image for rows **/
-	if (wgtrGetPropertyValue(tree,"row_background1",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->row_bgnd1,"background='%.110s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"row_bgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->row_bgnd1,"bgColor='%.40s'",ptr);
-
-	if (wgtrGetPropertyValue(tree,"row_background2",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->row_bgnd2,"background='%.110s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"row_bgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->row_bgnd2,"bgColor='%.40s'",ptr);
-
-	if (wgtrGetPropertyValue(tree,"row_backgroundhighlight",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->row_bgndhigh,"background='%.110s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"row_bgcolorhighlight",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->row_bgndhigh,"bgColor='%.40s'",ptr);
+	htrGetBackground(tree, "row1", !s->Capabilities.Dom0NS, t->row_bgnd1, sizeof(t->row_bgnd1));
+	htrGetBackground(tree, "row2", !s->Capabilities.Dom0NS, t->row_bgnd2, sizeof(t->row_bgnd2));
+	htrGetBackground(tree, "rowhighlight", !s->Capabilities.Dom0NS, t->row_bgndhigh, sizeof(t->row_bgndhigh));
 
 	/** Get borders and padding information **/
 	wgtrGetPropertyValue(tree,"outer_border",DATA_T_INTEGER,POD(&(t->outer_border)));
@@ -1020,17 +1019,16 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** Text color information **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->textcolor,"%.63s",ptr);
+	    strtcpy(t->textcolor,ptr,sizeof(t->textcolor));
 
 	/** Text color information **/
 	if (wgtrGetPropertyValue(tree,"textcolorhighlight",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->textcolorhighlight,"%.63s",ptr);
+	    strtcpy(t->textcolorhighlight,ptr,sizeof(t->textcolorhighlight));
 
 	/** Title text color information **/
 	if (wgtrGetPropertyValue(tree,"titlecolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(t->titlecolor,"%.63s",ptr);
+	    strtcpy(t->titlecolor,ptr,sizeof(t->titlecolor));
 	if (!*t->titlecolor) strcpy(t->titlecolor,t->textcolor);
-
 
 	/** Get column data **/
 	t->ncols = 0;
@@ -1068,29 +1066,14 @@ httblRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    }
 	if(t->mode==0)
 	    {
-	    rval = httblRenderStatic(s, tree, z, parentname, parentobj, t);
+	    rval = httblRenderStatic(s, tree, z, t);
 	    nmFree(t, sizeof(httbl_struct));
 	    }
 	else
 	    {
-	    rval = httblRenderDynamic(s, tree, z, parentname, parentobj, t);
+	    rval = httblRenderDynamic(s, tree, z, t);
 	    nmFree(t, sizeof(httbl_struct));
 	    }
-#if 0
-	/** Check for more sub-widgets within the table. **/
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		objGetAttrValue(sub_w_obj, "outer_type", DATA_T_STRING, POD(&ptr));
-		if (strcmp(ptr,"widget/table-column") != 0)
-		    htrRenderWidget(s, sub_w_obj, z+1, parentname, parentobj);
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
-#endif
 
     return rval;
     }

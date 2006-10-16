@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +42,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.21 2005/06/23 22:07:59 ncolson Exp $
+    $Id: htdrv_formstatus.c,v 1.22 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.22  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.21  2005/06/23 22:07:59  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -255,13 +276,10 @@ static struct {
 /* 
    htfsRender - generate the HTML code for the page.
 */
-int htfsRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
+int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    int x=-1,y=-1;
    int id;
-   char sbuf[160];
-   char sbuf2[160];
    char name[64];
-   char* nptr;
    char* ptr;
    char* style;
    int w;
@@ -288,11 +306,8 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
    /** Write named global **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-   memccpy(name,ptr,0,63);
-   name[63] = 0;
-   nptr = (char*)nmMalloc(strlen(name)+1);
-   strcpy(nptr,name);
-   htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+   strtcpy(name,ptr,sizeof(name));
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"fs%dmain\")", id);
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
@@ -300,18 +315,8 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   if(s->Capabilities.Dom0NS)
-     {
-     htrAddScriptInit_va(s,"    %s = fs_init({layer:%s.layers.fs%dmain, style:\"%s\"});\n", nptr, parentname, id, style);
-     }
-   else if(s->Capabilities.Dom1HTML)
-     {
-     htrAddScriptInit_va(s,"    %s = fs_init({layer:document.getElementById('fs%dmain'), style:\"%s\"});\n", nptr, id, style);
-     }
-   else
-     {
-     mssError(0,"HTFS","Cannot render -- browser not supported");
-     }
+   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%s\"],style:\"%s\"});\n",
+	    name, style);
 
    /** HTML body <DIV> element for the layers. **/
    if (!strcmp(style,"large"))
@@ -326,24 +331,8 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    htrAddEventHandler(s,"document","MOUSEOVER","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOver');\n\n"); 
    htrAddEventHandler(s,"document","MOUSEOUT", "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOut');\n\n"); 
    htrAddEventHandler(s,"document","MOUSEMOVE","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseMove');\n\n"); 
-  
 
-
-
-   if(s->Capabilities.Dom0NS)
-     {
-     snprintf(sbuf,160,"%s.document",nptr);
-     snprintf(sbuf2,160,"%s",nptr);
-     htrRenderSubwidgets(s, tree, sbuf, sbuf2, z+2);
-     }
-   else if(s->Capabilities.Dom1HTML)
-     {
-     htrRenderSubwidgets(s, tree, nptr, nptr, z+2);
-     }
-   else
-     {
-     mssError(0,"HTFS","Cannot render -- browser not supported");
-     }
+   htrRenderSubwidgets(s, tree, z+2);
 
    return 0;
 }

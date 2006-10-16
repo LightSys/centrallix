@@ -110,4 +110,6 @@ struct _IFC
 
 extern struct _IFC IFC;
 
+pIfcDefinition ifc_internal_NewIfcDef(pObjSession s, char* path);
+
 #endif /* not defined _IFACE_PRIVATE_H */

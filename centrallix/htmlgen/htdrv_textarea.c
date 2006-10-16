@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.22 2005/06/23 22:08:01 ncolson Exp $
+    $Id: htdrv_textarea.c,v 1.23 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.23  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.22  2005/06/23 22:08:01  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -219,19 +240,16 @@ static struct
 /*** httxRender - generate the HTML code for the textarea widget.
  ***/
 int
-httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+httxRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    /*char sbuf[HT_SBUF_SIZE];*/
-    /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id, i;
     int is_readonly = 0;
     int is_raised = 0;
     int mode = 0; /* 0=text, 1=html, 2=wiki */
-    char* nptr;
     char* c1;
     char* c2;
     int maxchars;
@@ -281,13 +299,11 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    }
 
 	/** Background color/image? **/
-	strcpy(main_bg,"");
 	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Style of Textarea - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
@@ -304,7 +320,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
 	    {
-	    strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
+	    strtcpy(fieldname,ptr,HT_FIELDNAME_SIZE);
 	    }
 	else 
 	    { 
@@ -322,10 +338,8 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	else if (s->Capabilities.Dom0NS)
 	    htrAddStylesheetItem_va(s,"\t#tx%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM Linkage **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tx%dbase\")",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "text_metric", "null", 0);
@@ -374,18 +388,8 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    "\n");
 	    
 	/** Script initialization call. **/
-	if (s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s, "    %s = tx_init({layer:document.getElementById(\"tx%dbase\"), fieldname:\"%s\", isReadonly:%d, mode:%d, mainBackground:\"%s\"});\n",
-		nptr, id, 
-		fieldname, is_readonly, mode, main_bg);
-	    }
-	else if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s, "    %s = tx_init({layer:%s.layers.tx%dbase, fieldname:\"%s\", isReadonly:%d, mode:%d, mainBackground:\"%s\"});\n",
-		nptr, parentname, id, 
-		fieldname, is_readonly, mode, main_bg);
-	    }
+	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%s\"], fieldname:\"%s\", isReadonly:%d, mode:%d, mainBackground:\"%s\"});\n",
+	    name, fieldname, is_readonly, mode, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"tx%dbase\">\n",id);
@@ -416,8 +420,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</DIV>\n");

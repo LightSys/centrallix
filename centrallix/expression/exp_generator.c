@@ -46,10 +46,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.7 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: exp_generator.c,v 1.8 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.8  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.7  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -623,7 +643,9 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 	    case EXPR_N_OBJECT:
 	        if (exp->ObjID == -1 && exp->Name) 
 		    {
+		    exp_internal_WriteText(eg, "wgtrGetNode(_context,\"");
 		    exp_internal_WriteText(eg, exp->Name);
+		    exp_internal_WriteText(eg, "\")");
 		    exp_internal_WriteText(eg, ".");
 		    }
 	        if (exp->Children.nItems != 1 || exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;

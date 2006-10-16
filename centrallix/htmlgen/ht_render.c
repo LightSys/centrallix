@@ -51,10 +51,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.59 2006/10/04 17:33:25 gbeeley Exp $
+    $Id: ht_render.c,v 1.60 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.60  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.59  2006/10/04 17:33:25  gbeeley
     - (bugfix) ht_render processing of user agents crashes if useragent.cfg
       is not valid.
@@ -840,9 +860,8 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
  *** widget's objectsystem descriptor...
  ***/
 int
-htrRenderWidget(pHtSession session, pWgtrNode widget, int z, char* parentname, char* parentobj)
+htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     {
-    char* w_type;
     pHtDriver drv;
     pXHashTable widget_drivers = NULL;
 
@@ -877,7 +896,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z, char* parentname, c
 	    return -1;
 	    }
 
-    return drv->Render(session, widget, z, parentname, parentobj);
+    return drv->Render(session, widget, z);
     }
 
 
@@ -1518,7 +1537,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    }
 	xsConcatenate(&xs,")",1);
 	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript");
-	htrAddExpressionItem_va(s, "    pg_expression('%s','%s','%s',%s);\n", objname, property, exptxt.String, xs.String);
+	htrAddExpressionItem_va(s, "    pg_expression('%s','%s','%s',%s,'%s');\n", objname, property, exptxt.String, xs.String, s->Context);
 
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1534,6 +1553,24 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
     }
 
 
+/*** htrCheckAddExpression - checks if an expression should be added for a
+ *** given widget property, and deploys it to the client if so.
+ ***/
+int
+htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property)
+    {
+    pExpression code;
+
+        if (wgtrGetPropertyType(tree,property) == DATA_T_CODE)
+            {
+            wgtrGetPropertyValue(tree,property,DATA_T_CODE,POD(&code));
+            htrAddExpression(s, w_name, property, code);
+            }
+
+    return 0;
+    }
+
+
 /*** htrRenderSubwidgets - generates the code for all subwidgets within
  *** the current widget.  This is  a generic function that does not
  *** necessarily apply to all widgets that contain other widgets, but
@@ -1541,7 +1578,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
  *** as panes and tab pages.
  ***/
 int
-htrRenderSubwidgets(pHtSession s, pWgtrNode widget, char* docname, char* layername, int zlevel)
+htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
     {
 //    pObjQuery qy;
 //    pObject sub_widget_obj;
@@ -1562,7 +1599,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, char* docname, char* layerna
 	**/
 	count = xaCount(&(widget->Children));
 	for (i=0;i<count;i++) 
-	    htrRenderWidget(s, xaGetItem(&(widget->Children), i), zlevel, docname, layername);
+	    htrRenderWidget(s, xaGetItem(&(widget->Children), i), zlevel);
 
     return 0;
     }
@@ -1577,7 +1614,7 @@ int
 htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     {
     pStruct c_param;
-    pFile include_file;
+    pObject include_file;
     char buf[256];
     int rcnt;
 
@@ -1605,7 +1642,7 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
     return 0;
     }
 
-
+#if 00
 /*** htr_internal_BuildClientWgtr_r - the recursive part of client-side wgtr generation
  ***/
 int
@@ -1651,6 +1688,62 @@ htr_internal_BuildClientWgtr(pHtSession s, pWgtrNode tree)
 
 	return htr_internal_BuildClientWgtr_r(s, tree);
     }
+#endif
+
+/*** htr_internal_BuildClientWgtr - generate the DHTML to represent the widget
+ *** tree.
+ ***/
+int
+htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
+    {
+    int i;
+    int childcnt = xaCount(&tree->Children);
+    char* objinit;
+    char* ctrinit;
+    pHtDMPrivateData inf = wgtrGetDMPrivateData(tree);
+
+	objinit = inf?(inf->ObjectLinkage):NULL;
+	ctrinit = inf?(inf->ContainerLinkage):NULL;
+	htrAddScriptWgtr_va(s, 
+		"        %*.*s{name:'%s', obj:%s, cobj:%s, type:'%s', vis:%s, sub:", 
+		indent*4, indent*4, "",
+		tree->Name, objinit?objinit:"\"new Object()\"",
+		ctrinit?ctrinit:"\"_obj\"",
+		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
+
+	if (childcnt)
+	    {
+	    htrAddScriptWgtr_va(s, "\n        %*.*s    [\n", indent*4, indent*4, "");
+	    for(i=0;i<childcnt;i++)
+		{
+		htr_internal_BuildClientWgtr_r(s, xaGetItem(&(tree->Children), i), indent+1);
+		if (i == childcnt-1) 
+		    htrAddScriptWgtr(s, "\n");
+		else
+		    htrAddScriptWgtr(s, ",\n");
+		}
+	    htrAddScriptWgtr_va(s, "        %*.*s    ] }", indent*4, indent*4, "");
+	    }
+	else
+	    {
+	    htrAddScriptWgtr(s, "[] }");
+	    }
+
+    return 0;
+    }
+
+int
+htr_internal_BuildClientWgtr(pHtSession s, pWgtrNode tree)
+    {
+
+	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
+	htrAddScriptWgtr_va(s, "    pre_%s =\n", tree->DName);
+	htr_internal_BuildClientWgtr_r(s, tree, 0);
+	htrAddScriptWgtr_va(s, ";\n    %s = wgtrSetupTree(pre_%s, null);\n", 
+		tree->DName, tree->DName);
+
+    return 0;
+    }
 
 
 /*** htrRender - generate an HTML document given the app structure subtree
@@ -1670,8 +1763,6 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
     char* agent = NULL;
     char* classname = NULL;
     int rval;
-    char* hptr;
-    char* wptr;
 
 	/** What UA is on the other end of the connection? **/
 	agent = (char*)mssGetParam("User-Agent");
@@ -1688,6 +1779,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	s->Params = params;
 //	s->ObjSession = appstruct->Session;
 	s->ObjSession = obj_s;
+	strtcpy(s->Context, wgtrGetRootDName(tree), sizeof(s->Context));
 
 	/** Parent container name specified? **/
 	if ((ptr = htrParamValue(s, "cx__parent")))
@@ -1790,8 +1882,15 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	    mssError(0, "HTR", "Error Initializing Html Interface code...continuing, but things might not work for client");
 	    }
 	
+	/** first thing in the startup() function should be calling build_wgtr **/
+	htrAddScriptInit(s, "    build_wgtr();\n");
+	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%s);\n", 
+		wgtrGetRootDName(tree));
+	htrAddScriptInit_va(s, "    var rootname = \"%s\";\n",
+		wgtrGetRootDName(tree));
+
 	/** Render the top-level widget. **/
-	rval = htrRenderWidget(s, tree, 10, "document", "document");
+	rval = htrRenderWidget(s, tree, 10);
 
 	/** Assemble the various objects into a widget tree **/
 	htr_internal_BuildClientWgtr(s, tree);
@@ -1806,8 +1905,6 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 			    "</form></div>\n");
 #endif
 
-	/** last thing in the startup() function should be calling build_wgtr **/
-	htrAddScriptInit(s, "    build_wgtr();\n");
 
 	if (rval < 0)
 	    {
@@ -1822,14 +1919,14 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 
 	/** Write the HTML out... **/
 	snprintf(sbuf, HT_SBUF_SIZE, "<!--\nGenerated by Centrallix v%s (http://www.centrallix.org)\n"
-				     "(c) 1998-2004 by LightSys Technology Services, Inc.\n\n", PACKAGE_VERSION);
+				     "(c) 1998-2006 by LightSys Technology Services, Inc.\n\n", PACKAGE_VERSION);
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
 	snprintf(sbuf, HT_SBUF_SIZE, "This DHTML document contains Javascript and other DHTML\n"
 				     "generated from Centrallix which is licensed under the\n"
 				     "GNU GPL (http://www.gnu.org/licenses/gpl.txt).  Any copying\n");
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
 	snprintf(sbuf, HT_SBUF_SIZE, "modifying, or redistributing of this generated code falls\n"
-				     "under the restrictuions of the GPL.\n"
+				     "under the restrictions of the GPL.\n"
 				     "-->\n");
 	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
 	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
@@ -2203,7 +2300,7 @@ htrLookupDriver(pHtSession s, char* type_name)
 	    mssError(1, "HTR", "No widgets defined for useragent/class combo");
 	    return NULL;
 	    }
-	return xhLookup(widget_drivers, type_name+7);
+	return (pHtDriver)xhLookup(widget_drivers, type_name+7);
     }
 
 /*** htrInitialize - initialize the system and the global variables and
@@ -2273,7 +2370,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    if (as_style)
 		snprintf(buf,buflen,"background-color: %s;",ptr);
 	    else
-		snprintf(buf,buflen,"bgcolor='%s'",ptr);
+		snprintf(buf,buflen,"bgColor='%s'",ptr);
 	    }
 	else
 	    {
@@ -2353,4 +2450,105 @@ htrParamValue(pHtSession s, char* paramname)
 
     return attr->StrVal;
     }
+
+
+/*** htr_internal_CheckDMPrivateData() - check to see if widget private info
+ *** structure is allocated, and put it in there if it is not.
+ ***/
+pHtDMPrivateData
+htr_internal_CheckDMPrivateData(pWgtrNode widget)
+    {
+    pHtDMPrivateData inf = wgtrGetDMPrivateData(widget);
+    
+	if (!inf)
+	    {
+	    inf = (pHtDMPrivateData)nmMalloc(sizeof(HtDMPrivateData));
+	    memset(inf, 0, sizeof(HtDMPrivateData));
+	    wgtrSetDMPrivateData(widget, inf);
+	    }
+
+    return inf;
+    }
+
+
+/*** htrAddWgtrObjLinkage() - specify what function/object to call to find out
+ *** what the actual client-side object is that represents an object inside
+ *** the widget tree.
+ ***/
+int
+htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
+    {
+    pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+    
+	inf->ObjectLinkage = nmSysStrdup(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
+
+    return 0;
+    }
+
+
+/*** htrAddWgtrObjLinkage_va() - varargs version of the above.
+ ***/
+int
+htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
+    {
+    va_list va;
+    char buf[256];
+
+	va_start(va, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, va);
+	va_end(va);
+
+    return htrAddWgtrObjLinkage(s, widget, buf);
+    }
+
+
+/*** htrAddWgtrCtrLinkage() - specify what function/object to call to find out
+ *** what the actual client-side object is that represents an object inside
+ *** the widget tree.
+ ***/
+int
+htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
+    {
+    pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+    
+	inf->ContainerLinkage = nmSysStrdup(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
+
+    return 0;
+    }
+
+
+/*** htrAddWgtrCtrLinkage_va() - varargs version of the above.
+ ***/
+int
+htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
+    {
+    va_list va;
+    char buf[256];
+
+	va_start(va, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, va);
+	va_end(va);
+
+    return htrAddWgtrCtrLinkage(s, widget, buf);
+    }
+
+
+/*** htrAddWgtrInit() - sets the initialization function for the widget
+ ***/
+int
+htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
+    {
+    va_list va;
+    char buf[256];
+    pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+    
+	inf->InitFunc = func;
+	va_start(va, paramfmt);
+	vsnprintf(buf, sizeof(buf), paramfmt, va);
+	va_end(va);
+	inf->Param = nmSysStrdup(objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED));
+
+    return 0;
+    }
+
 

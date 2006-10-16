@@ -50,13 +50,7 @@
 /* 
    htfbRender - generate the HTML code for the page.
 */
-int htfbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
-   int x=-1,y=-1;
-   int id;
-   char name[64];
-   char sbuf[160], sbuf2[160];
-   char* ptr;
-   char* style;
+int htfbRender(pHtSession s, pWgtrNode tree, int z) {
    int i;
 
    if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -65,11 +59,13 @@ int htfbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
        return -1;
        }
 
+    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+
     /** mark this node as not being associated with a DHTML object **/
     tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
     for (i=0;i<xaCount(&(tree->Children));i++)
-	htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, parentname, parentobj);
+	htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
 
    return 0;
 }

@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +45,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.19 2005/06/23 22:07:58 ncolson Exp $
+    $Id: htdrv_execmethod.c,v 1.20 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.20  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.19  2005/06/23 22:07:58  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -245,14 +266,11 @@ static struct
 /*** htexRender - generate the HTML code for the timer nonvisual widget.
  ***/
 int
-htexRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htexRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[256];
-    char sbuf2[160];
     int id;
-    char* nptr;
     char* objname;
     char* methodname = NULL;
     char* methodparam = NULL;
@@ -273,30 +291,14 @@ htexRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
-
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	strtcpy(name, ptr, sizeof(name));
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    %s = ex_init({objname:'%s', methname:'%s', methparam:'%s'});\n", nptr, objname,
-	    methodname, methodparam);
-
-	/** Set object parent **/
-	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
-		nptr, nptr, parentobj);
-
-
-
+	htrAddScriptInit_va(s, "    ex_init({node:nodes[\"%s\"], objname:'%s', methname:'%s', methparam:'%s'});\n", 
+		name, objname, methodname, methodparam);
 
 	/** Check for objects within the exec method object. **/
-	snprintf(sbuf, HT_SBUF_SIZE, "%s.document",nptr);
-	snprintf(sbuf2,160,"%s",nptr);
-	htrRenderSubwidgets(s, tree, sbuf, sbuf2, z+2);
-
+	htrRenderSubwidgets(s, tree, z+2);
 
 	htrAddScriptInclude(s,"/sys/js/htdrv_execmethod.js",0);
 

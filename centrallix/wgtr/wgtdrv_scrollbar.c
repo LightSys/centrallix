@@ -50,6 +50,24 @@
 int
 wgtsbVerify(pWgtrVerifySession s)
     {
+    char* str;
+    pWgtrNode sb;
+
+	sb = s->CurrWidget;
+	if (wgtrGetPropertyValue(sb, "direction", DATA_T_STRING, POD(&str)) == 0)
+	    {
+	    if (!strcmp(str, "vertical")) 
+		{
+		sb->pre_width = sb->width = sb->r_width = 18;
+		sb->fl_width = 0;
+		}
+	    if (!strcmp(str, "horizontal")) 
+		{
+		sb->pre_height = sb->height = sb->r_height = 18;
+		sb->fl_height = 0;
+		}
+	    }
+
     return 0;
     }
 

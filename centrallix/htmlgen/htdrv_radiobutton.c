@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.27 2005/06/23 22:08:00 ncolson Exp $
+    $Id: htdrv_radiobutton.c,v 1.28 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.28  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.27  2005/06/23 22:08:00  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -295,12 +316,11 @@ static struct {
 
 
 /** htrbRender - generate the HTML code for the page.  **/
-int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
+int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    char* ptr;
    char name[64];
    char title[64];
    char sbuf2[200];
-   char* nptr;
    //char bigbuf[4096];
    char textcolor[32];
    char main_bgcolor[32];
@@ -334,41 +354,39 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
    /** Background color/image? **/
    if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-      strncpy(main_bgcolor,ptr,31);
+      strtcpy(main_bgcolor,ptr,sizeof(main_bgcolor));
    else 
       strcpy(main_bgcolor,"");
 
    if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-      strncpy(main_background,ptr,127);
+      strtcpy(main_background,ptr,sizeof(main_background));
    else
       strcpy(main_background,"");
 
    /** Text color? **/
    if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-      snprintf(textcolor,32,"%s",ptr);
+      strtcpy(textcolor,ptr,sizeof(textcolor));
    else
       strcpy(textcolor,"black");
 
    /** Outline color? **/
    if (wgtrGetPropertyValue(tree,"outlinecolor",DATA_T_STRING,POD(&ptr)) == 0)
-      snprintf(outline_bg,64,"%s",ptr);
+      strtcpy(outline_bg,ptr,sizeof(outline_bg));
    else
       strcpy(outline_bg,"black");
 
    /** Get name **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-   memccpy(name,ptr,0,63);
-   name[63]=0;
+   strtcpy(name,ptr,sizeof(name));
 
    /** Get title **/
    if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-   memccpy(title,ptr,0,63);
-   title[63] = 0;
+   strtcpy(title,ptr,sizeof(title));
 
    /** Get fieldname **/
    if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
       {
-      strncpy(fieldname,ptr,30);
+      strtcpy(fieldname,ptr,sizeof(fieldname));
       }
    else 
       { 
@@ -395,12 +413,11 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
    htrAddStylesheetItem_va(s,"\t#radiobuttonpanellabelpane       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            27,2,w-(2*3 +2+27+1),24,z+2,w-(2*3 +2+27+1),24);
    
-   /** Write named global **/
-   nptr = (char*)nmMalloc(strlen(name)+1);
-   strcpy(nptr,name);
-   htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
    htrAddScriptGlobal(s, "radiobutton", "null", 0);
 
+   /** DOM linkages **/
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"radiobuttonpanel%dparentpane\")",id);
+   htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj,\"radiobuttonpanel%dborderpane\"),\"radiobuttonpanel%dcoverpane\")",id,id);
 
     /** Loop through each radiobutton and flag it NOOBJECT **/
     for (i=0;i<xaCount(&(tree->Children));i++)
@@ -427,21 +444,21 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 
    /** Script initialization call. **/
    if (strlen(main_bgcolor) > 0) {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init({\n"
-        "    parentPane:%s.layers.radiobuttonpanel%dparentpane, fieldname:\"%s\", flag:1,\n"
-        "    borderPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
-        "    coverPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
-        "    titlePane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
-	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_bgcolor, outline_bg);
+      htrAddScriptInit_va(s,"    radiobuttonpanel_init({\n"
+        "    parentPane:nodes[\"%s\"], fieldname:\"%s\", flag:1,\n"
+        "    borderPane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\n"
+        "    coverPane:htr_subel(htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\"radiobuttonpanel%dcoverpane\"),\n"
+        "    titlePane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dtitlepane\"),\n"
+	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", name, fieldname, name,id, name,id,id, name,id, main_bgcolor, outline_bg);
    } else if (strlen(main_background) > 0) {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init({\n"
-        "    parentPane:%s.layers.radiobuttonpanel%dparentpane, fieldname:\"%s\", flag:2,\n"
-        "    borderPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane,\n"
-        "    coverPane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane,\n"
-        "    titlePane:%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dtitlepane,\n"
-	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", nptr, parentname, id, fieldname, parentname,id,id, parentname,id,id,id, parentname,id,id,main_background, outline_bg);
+      htrAddScriptInit_va(s,"    radiobuttonpanel_init({\n"
+        "    parentPane:nodes[\"%s\"], fieldname:\"%s\", flag:2,\n"
+        "    borderPane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\n"
+        "    coverPane:htr_subel(htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\"radiobuttonpanel%dcoverpane\"),\n"
+        "    titlePane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dtitlepane\"),\n"
+	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", name, fieldname, name,id, name,id,id, name,id, main_background, outline_bg);
    } else {
-      htrAddScriptInit_va(s,"    %s = radiobuttonpanel_init({parentPane:%s.layers.radiobuttonpanel%dparentpane, fieldname:\"%s\", flag:0, borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0});\n", nptr, parentname, id,fieldname);
+      htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:nodes[\"%s\"], fieldname:\"%s\", flag:0, borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0});\n", name,fieldname);
    }
 
    htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"
@@ -480,9 +497,6 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
       "   if (ly != null && ly.kind == 'radiobutton') {\n"
       "      if (ly.mainlayer.enabled) cn_activate(ly.mainlayer, 'MouseMove');\n"
       "   }\n");
- 
-
-
 
    /*
       Now lets loop through and add each radiobutton
@@ -498,16 +512,17 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
 		strcpy(sbuf2,"false");
             else 
 		{
-		memccpy(sbuf2,ptr,0,199);
-		sbuf2[199] = 0;
+		strtcpy(sbuf2,ptr,sizeof(sbuf2));
 		}
+	    htrAddWgtrObjLinkage_va(s,sub_tree,"htr_subel(_parentctr,\"radiobuttonpanel%doption%dpane\")",id,i);
 
-            htrAddScriptInit_va(s,"    add_radiobutton(%s.layers.radiobuttonpanel%dparentpane.layers.radiobuttonpanel%dborderpane.layers.radiobuttonpanel%dcoverpane.layers.radiobuttonpanel%doption%dpane, %s.layers.radiobuttonpanel%dparentpane, %s, %s);\n", parentname, id, id, id, id, i, parentname, id, sbuf2, nptr);
+	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
+            htrAddScriptInit_va(s,"    add_radiobutton(nodes[\"%s\"], %s);\n", ptr, sbuf2);
             i++;
 	    }
 	 else 
 	    {
-	    htrRenderWidget(s, sub_tree, z+1, parentname, nptr);
+	    htrRenderWidget(s, sub_tree, z+1);
 	    }
 	}
 
@@ -531,15 +546,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* pare
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
  
             wgtrGetPropertyValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
-            memccpy(sbuf2,ptr,0,199);
-	    sbuf2[199]=0;
+	    strtcpy(sbuf2,ptr,sizeof(sbuf2));
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
 
 	    /* use label (from above) as default value if no value given */
 	    if(wgtrGetPropertyValue(radiobutton_obj,"value",DATA_T_STRING,POD(&ptr))==0)
 		{
-		memccpy(sbuf2,ptr,0,199);
-		sbuf2[199] = 0;
+		strtcpy(sbuf2,ptr,sizeof(sbuf2));
 		}
 
             htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);

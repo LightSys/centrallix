@@ -51,18 +51,18 @@ static struct
 /*** htdtRender - generate the HTML code for the page.
  ***/
 int
-htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htdtRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char *sql;
     char *str;
-    char *attr, *nptr;
+    char *attr;
     char name[64];
     char initialdate[64];
     char fgcolor[64];
     char bgcolor[128];
     char fieldname[30];
-    int type, rval;
+    int type;
     int x,y,w,h,w2=184,h2=190;
     int id, i;
     DateTime dt;
@@ -100,16 +100,13 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    }
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
-	    strncpy(fieldname,ptr,30);
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
 	else 
 	    fieldname[0]='\0';
 	
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Get initial date **/
 	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING,POD(&sql)) == 0) 
@@ -128,7 +125,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		    str = objDataToStringTmp(type, (void*)(&od), 0);
 		else
 		    str = objDataToStringTmp(type, (void*)(od.String), 0);
-		snprintf(initialdate, 64, "%s", str);
+		strtcpy(initialdate, str, sizeof(initialdate));
 		}
 /*
 	    if ((qy = objMultiQuery(w_obj->Session, sql))) 
@@ -158,7 +155,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    }
 	else if (wgtrGetPropertyValue(tree,"initialdate",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(initialdate, ptr, '\0', 63);
+	    strtcpy(initialdate, ptr, sizeof(initialdate));
 	    }
 	else
 	    {
@@ -167,7 +164,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	if (strlen(initialdate))
 	    {
 	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
-	    snprintf(initialdate, 64, "%s %d %d, %d:%d:%d", obj_short_months[dt.Part.Month], 
+	    snprintf(initialdate, sizeof(initialdate), "%s %d %d, %d:%d:%d", obj_short_months[dt.Part.Month], 
 	                          dt.Part.Day+1,
 	                          dt.Part.Year+1900,
 	                          dt.Part.Hour,
@@ -191,7 +188,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 //	}
 	
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(fgcolor,"%.63s",ptr);
+	    strtcpy(fgcolor,ptr,sizeof(fgcolor));
 	else
 	    strcpy(fgcolor,"black");
 
@@ -205,7 +202,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptGlobal(s, "dt_timeout", "null", 0);
 	htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0);
 	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dt%dbtn\")",id);
+	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
@@ -214,32 +213,13 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s, "    %s = dt_init({layer:%s.layers.dt%dbtn,c1:%s.layers.dt%dbtn.document.layers.dt%dcon1,c2:%s.layers.dt%dbtn.document.layers.dt%dcon2,id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
-		nptr,
-		parentname,id, 
-		parentname,id,id, 
-		parentname,id,id, 
-		initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
-	    }
-	else if (s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s,"	%s = dt_init({layer:document.getElementById(\"dt%dbtn\"), c1:document.getElementById(\"dt%dcon1\"), c2:document.getElementById(\"dt%dcon2\"),id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
-		nptr,
-		id,
-		id,
-		id,
-		initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
-	    }
-
-	/** Set object parent **/
-	htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
-		nptr, nptr, parentobj);
+	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%s\"],c1:htr_subel(nodes[\"%s\"],\"dt%dcon1\"),c2:htr_subel(nodes[\"%s\"],\"dt%dcon2\"),id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
+	    name,
+	    name,id, 
+	    name,id, 
+	    initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
 
 	/** HTML body <DIV> elements for the layers. **/
-	//htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\"><BODY %s>\n", id,bgcolor);
-	//htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0>\n",w);
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\">\n", id);
 	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w, bgcolor);
 	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
@@ -263,8 +243,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		"    } else {\n"
 		"        if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
 		"            dt_mousedown(ly);\n"
-		"            if (ly.kind == 'dt') cn_activate(ly, 'MouseDown');\n"
-		"        } else if (dt_current && dt_current != ly) {\n"
+		"            if (ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseDown');\n"
+		"        } else if (dt_current && dt_current != ly.mainlayer) {\n"
 		"            dt_collapse(dt_current);\n"
 		"            dt_current = null;\n"
 		"        }\n"
@@ -273,26 +253,22 @@ htdtRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddEventHandler(s, "document","MOUSEUP","dt",
 		"    if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
 		"        dt_mouseup(ly);\n"
-		"        if (ly.kind == 'dt') cn_activate(ly, 'MouseUp');\n"
-		"        if (ly.kind == 'dt') cn_activate(ly, 'Click');\n"
+		"        if (ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseUp');\n"
+		"        if (ly.kind == 'dt') cn_activate(ly.mainlayer, 'Click');\n"
 		"    }\n");
 
 	htrAddEventHandler(s, "document","MOUSEMOVE","dt",
-		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly, 'MouseMove');\n");
+		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseMove');\n");
 
 	htrAddEventHandler(s, "document","MOUSEOVER","dt",
-		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly, 'MouseOver');\n");
+		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseOver');\n");
 
 	htrAddEventHandler(s, "document","MOUSEOUT","dt",
-		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly, 'MouseOut');\n");
-
-
-
+		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseOut');\n");
 
 	/** Check for more sub-widgets within the datetime. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
     return 0;
     }
@@ -337,10 +313,30 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.34 2006/08/07 15:14:20 darkwing0o0rama Exp $
+    $Id: htdrv_datetime.c,v 1.35 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.35  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.34  2006/08/07 15:14:20  darkwing0o0rama
     changed for mozilla compatibility
 

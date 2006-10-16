@@ -34,10 +34,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.29 2006/10/04 17:12:54 gbeeley Exp $
+    $Id: ht_render.h,v 1.30 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.30  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.29  2006/10/04 17:12:54  gbeeley
     - (bugfix) Newer versions of Gecko handle clipping regions differently than
       anything else out there.  Created a capability flag to handle that.
@@ -319,6 +339,20 @@
 /** This is the max fieldname size -- John Peebles and Joe Heth **/
 #define HT_FIELDNAME_SIZE (60)
 
+
+/** WGTR deployment method private data value, used to hold various
+ ** dhtml specific add-on values for particular widgets
+ **/
+typedef struct
+    {
+    char*	ObjectLinkage;		/* object linkage to DOM */
+    char*	ContainerLinkage;	/* subobj container linkage to DOM */
+    char*	InitFunc;		/* initialization function */
+    char*	Param;			/* initialization parameter */
+    }
+    HtDMPrivateData, *pHtDMPrivateData;
+
+
 /** Widget parameter structure, also used for positioning params **/
 typedef struct
     {
@@ -493,6 +527,7 @@ typedef struct
     int		Height;			/* target container height in pixels */
     char*	Parent;			/* name of target container */
     pWgtrVerifySession VerifySession;	/* name of the current verification session */
+    char	Context[64];
     }
     HtSession, *pHtSession;
 
@@ -526,12 +561,18 @@ int htrAddStylesheetItem(pHtSession s, char* html_text);
 int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
 
 int htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp);
+int htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property);
 int htrDisableBody(pHtSession s);
-int htrRenderWidget(pHtSession session, pWgtrNode widget, int z, char* parentname, char* parentobj);
-int htrRenderSubwidgets(pHtSession s, pWgtrNode widget, char* docname, char* layername, int zlevel);
+int htrRenderWidget(pHtSession session, pWgtrNode widget, int z);
+int htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel);
 
 int htrAddScriptWgtr(pHtSession s, char* wgtr_text);
 int htrAddScriptWgtr_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3))); 
+int htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage);
+int htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));
+int htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage);
+int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));
+int htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...);
 
 /** Utility routines **/
 int htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen);

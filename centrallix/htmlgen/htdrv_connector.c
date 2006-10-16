@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "wgtr.h"
 
 /************************************************************************/
@@ -45,10 +46,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.22 2006/06/22 00:16:00 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.23 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.23  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.22  2006/06/22 00:16:00  gbeeley
     - fix connector issue when attached to the page object
 
@@ -269,7 +290,7 @@ static struct
 /*** htconnRender - generate the HTML code for the page.
  ***/
 int
-htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htconnRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char* vstr;
@@ -277,14 +298,10 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     double vdbl;
     char name[64];
     char sbuf[HT_SBUF_SIZE];
-    char* fnbuf;
-    char fnname[16];
-    char* fnnamebuf;
     char event[32];
     char target[32];
     char action[32];
     int id, i;
-    char* nptr;
     XString xs;
     pExpression code;
     int first;
@@ -298,46 +315,29 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     	/** Get an id for this. **/
 	id = (HTCONN.idcnt++);
 
-	/** Connectors should be on window object rather than document object **/
-	if (!strcmp(parentobj, "document"))
-	    parentobj = "window";
-
 	/** Get the event linkage information **/
 	if (wgtrGetPropertyValue(tree,"event",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'event' property");
 	    return -1;
 	    }
-	memccpy(event,ptr,0,31);
-	event[31]=0;
+	strtcpy(event,ptr,sizeof(event));
 	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have a 'target' property");
 	    return -1;
 	    }
-	memccpy(target,ptr,0,31);
-	target[31]=0;
+	strtcpy(target,ptr,sizeof(target));
 	if (wgtrGetPropertyValue(tree,"action",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'action' property");
 	    return -1;
 	    }
-	memccpy(action,ptr,0,31);
-	action[31]=0;
+	strtcpy(action,ptr,sizeof(action));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
-
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
-
-	/** Add globals for event param handling **/
-	/*htrAddScriptGlobal(s, "aparam", "null", 0);
-	htrAddScriptGlobal(s, "eparam", "null", 0);*/
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Build the param list **/
 	xsInit(&xs);
@@ -352,7 +352,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		case DATA_T_CODE:
 		    wgtrGetPropertyValue(tree, ptr, DATA_T_CODE, POD(&code));
 		    xsConcatPrintf(&xs,"%s:{type:'exp', value:'", ptr);
-		    expGenerateText(code, NULL, xsWrite, &xs, '\\', "javascript");
+		    expGenerateText(code, NULL, xsWrite, &xs, '\'', "javascript");
 		    xsConcatenate(&xs,"'}",2);
 		    break;
 		case DATA_T_INTEGER:
@@ -379,82 +379,17 @@ htconnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	    }
 
 	/** Add a script init to install the connector **/
-	//htrAddScriptInit_va(s,"    %s = new cn_init({parent:%s, f:cn_%d});\n", nptr, parentobj, id);
-//	htrAddScriptInit_va(s,"    %s.Add(%s,'%s');\n", nptr, parentobj, event);
-	//htrAddScriptInit_va(s,"    %s.Add('%s');\n", nptr, event);
-	htrAddScriptInit_va(s, "    %s.ifcProbe(ifEvent).Connect('%s', '%s', '%s', {%s});\n",
-		parentobj, event, target, action, xs.String);
+	htrAddScriptInit_va(s, "    wgtrGetParent(nodes[\"%s\"]).ifcProbe(ifEvent).Connect('%s', '%s', '%s', {%s});\n",
+		name, event, target, action, xs.String);
 	xsDeInit(&xs);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 
-	/** Set object parent **/
-	/*htrAddScriptInit_va(s, "    htr_set_parent(%s, \"%s\", %s);\n",
-		nptr, nptr, parentobj);*/
-
-	/** Add the connector function **/
-	/*xsInit(&xs);
-	xsConcatPrintf(&xs, "\n"
-		     	"function cn_%d(eparam)\n"
-		     	"    {\n" ,id);
-	xsConcatenate(&xs,"    var aparam = new Object();\n",-1);
-	for(ptr = wgtrFirstPropertyName(tree); ptr; ptr = wgtrNextPropertyName(tree))
-	    {
-	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action")) continue;
-	    switch(wgtrGetPropertyType(tree, ptr))
-	        {
-		case DATA_T_CODE:
-		    wgtrGetPropertyValue(tree, ptr, DATA_T_CODE, POD(&code));
-		    xsConcatPrintf(&xs,"    with(eparam) { aparam.%s = ", ptr);
-		    expGenerateText(code, NULL, xsWrite, &xs, NULL, "javascript");
-		    xsConcatenate(&xs,"; }\n",4);
-		    break;
-		case DATA_T_INTEGER:
-	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_INTEGER,POD(&vint));
-		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %d;\n",ptr,vint);
-		    xsConcatenate(&xs,sbuf,-1);
-		    break;
-		case DATA_T_DOUBLE:
-		    wgtrGetPropertyValue(tree, ptr, DATA_T_DOUBLE,POD(&vdbl));
-		    snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = %f;\n",ptr,vdbl);
-		    xsConcatenate(&xs,sbuf,-1);
-		    break;
-		case DATA_T_STRING:
-	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_STRING,POD(&vstr));
-		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
-		        {
-			snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = eparam.%s\n", ptr, vstr);
-			xsConcatenate(&xs,sbuf,-1);
-			}
-		    else
-		        {
-			snprintf(sbuf, HT_SBUF_SIZE, "    aparam.%s = ", ptr);
-			xsConcatenate(&xs,sbuf,-1);
-			xsConcatenate(&xs,vstr,-1);
-			xsConcatenate(&xs,";\n",2);
-			}
-		    break;
-		}
-	    }
-	xsConcatPrintf(&xs,"    var rval = %s.Action%s(aparam);\n", target, action);
-	xsConcatenate(&xs,"    delete aparam;\n",-1);
-	xsConcatenate(&xs,"    return rval;\n",-1);
-	xsConcatenate(&xs,"    }\n\n",7);
-	snprintf(fnname, HT_SBUF_SIZE, "cn_%d",id);
-	fnbuf = (char*)nmMalloc(strlen(xs.String)+1);
-	strcpy(fnbuf,xs.String);
-	fnnamebuf = (char*)nmMalloc(strlen(fnname)+1);
-	strcpy(fnnamebuf, fnname);
-	htrAddScriptFunction(s, fnnamebuf, fnbuf, HTR_F_NAMEALLOC | HTR_F_VALUEALLOC);
-	xsDeInit(&xs);*/
-
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
-
 
 	/** Check for more sub-widgets within the conn entity. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
     return 0;
     }

@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.17 2006/04/07 06:21:18 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.18 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.18  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.17  2006/04/07 06:21:18  gbeeley
     - (feature) port to Mozilla
 
@@ -221,7 +242,7 @@ static struct
 /*** htclRender - generate the HTML code for the clock widget.
  ***/
 int
-htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htclRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
@@ -239,7 +260,6 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     int miltime = 0;
     int x=-1,y=-1,w,h;
     int id, i;
-    char* nptr;
     char fieldname[HT_FIELDNAME_SIZE];
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
@@ -266,12 +286,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    }
 	
 	/** Background color/image? **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgcolor=%.40s",ptr);
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"background='%.110s'",ptr);
-	else
-	    strcpy(main_bg,"");
+	htrGetBackground(tree, NULL, 0, main_bg, sizeof(main_bg));
 
 	/** Military Time? **/
 	if (wgtrGetPropertyValue(tree,"hrtype",DATA_T_INTEGER,POD(&ptr)) == 0 && (int)ptr == 24)
@@ -286,7 +301,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get text color **/
 	if (wgtrGetPropertyValue(tree,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
-	   sprintf(fgcolor1,"%.40s",ptr);
+	   strtcpy(fgcolor1,ptr,sizeof(fgcolor1));
 	else
 	   strcpy(fgcolor1,"black");
 
@@ -295,7 +310,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    {
 	    shadowed = 1;
 	    if (wgtrGetPropertyValue(tree,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
-		strcpy(fgcolor2,ptr);
+		strtcpy(fgcolor2,ptr,sizeof(fgcolor2));
 	    else
 	        strcpy(fgcolor2,"#777777");
 	    if (wgtrGetPropertyValue(tree,"shadowx",DATA_T_INTEGER,POD(&ptr)) == 0)
@@ -326,12 +341,11 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Get fieldname **/
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
-	    strncpy(fieldname,ptr,HT_FIELDNAME_SIZE);
+	    strtcpy(fieldname,ptr,HT_FIELDNAME_SIZE);
 	else 
 	    fieldname[0]='\0';
 
@@ -341,9 +355,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddStylesheetItem_va(s,"\t#cl%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,0,0,w,z+2);
 
 	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"cl%dbase\")",id);
 
 	/** Other global variables **/
 	htrAddScriptGlobal(s, "cl_move", "false", 0);
@@ -397,35 +409,16 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    "        }\n"
 	    "\n");
 
-	/** Set object parent **/
-	htrAddScriptInit_va(s, "    htr_set_parent(%s.cxSubElement('cl%dbase'), \"%s\", %s);\n",
-		parentname, id, nptr, parentobj);
-	    
 	/** Script initialization call. **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s, "    %s = cl_init({layer:%s.layers.cl%dbase, c1:%s.layers.cl%dbase.document.layers.cl%dcon1, c2:%s.layers.cl%dbase.document.layers.cl%dcon2, fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
-		nptr, parentname, id,
-		parentname, id, id,
-		parentname, id, id,
-		fieldname, main_bg, shadowed,
-		fgcolor1, fgcolor2,
-		size, moveable, bold,
-		shadowx, shadowy,
-		showsecs, showampm, miltime);
-	    }
-	else
-	    {
-	    htrAddScriptInit_va(s, "    %s = cl_init({layer:document.getElementById(\"cl%dbase\"), c1:document.getElementById(\"cl%dcon1\"), c2:document.getElementById(\"cl%dcon2\"), fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
-		nptr, id,
-		id,
-		id,
-		fieldname, main_bg, shadowed,
-		fgcolor1, fgcolor2,
-		size, moveable, bold,
-		shadowx, shadowy,
-		showsecs, showampm, miltime);
-	    }
+	htrAddScriptInit_va(s, "    cl_init({layer:nodes[\"%s\"], c1:htr_subel(nodes[\"%s\"],\"cl%dcon1\"), c2:htr_subel(nodes[\"%s\"],\"cl%dcon2\"), fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
+	    name,
+	    name, id,
+	    name, id,
+	    fieldname, main_bg, shadowed,
+	    fgcolor1, fgcolor2,
+	    size, moveable, bold,
+	    shadowx, shadowy,
+	    showsecs, showampm, miltime);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"cl%dbase\">\n",id);
@@ -434,13 +427,9 @@ htclRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddBodyItem_va(s, "    <DIV ID=\"cl%dcon2\"></DIV>\n",id);
 	htrAddBodyItem(s,    "</DIV>\n");
 
-
-
-
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
     return 0;
     }

@@ -44,10 +44,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_hints.c,v 1.5 2005/09/26 06:24:04 gbeeley Exp $
+    $Id: htdrv_hints.c,v 1.6 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_hints.c,v $
 
     $Log: htdrv_hints.c,v $
+    Revision 1.6  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.5  2005/09/26 06:24:04  gbeeley
     - (major feature) Added templating mechanism via the wgtr module.
       To use a widget template on an app, specify widget_template= in the
@@ -150,11 +170,12 @@ static struct
 /*** hthintRender - generate the HTML code for the page.
  ***/
 int
-hthintRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+hthintRender(pHtSession s, pWgtrNode tree, int z)
     {
     int id;
     pObjPresentationHints hints;
     XString xs;
+    char* nptr;
 
     	/** Get an id for this. **/
 	id = (HTHINT.idcnt++);
@@ -170,8 +191,9 @@ hthintRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	/** Serialize the hints data and add the script init for it **/
 	xsInit(&xs);
 	hntEncodeHints(hints, &xs);
-	htrAddScriptInit_va(s, "    cx_set_hints(%s, '%s', 'app');\n",
-		parentobj, xs.String);
+	wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&nptr));
+	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(nodes[\"%s\"]), '%s', 'app');\n",
+		nptr, xs.String);
 	xsDeInit(&xs);
 
 	/** mark this node as not being associated with a DHTML object **/

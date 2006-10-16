@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +44,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.45 2005/10/01 00:23:46 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.46 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.46  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.45  2005/10/01 00:23:46  gbeeley
     - (change) renamed 'htmlwindow' to 'childwindow' to remove the terminology
       dependence on the dhtml/http app delivery mechanism
@@ -365,21 +386,16 @@ static struct
 /*** htwinRender - generate the HTML code for the page.
  ***/
 int
-htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htwinRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[HT_SBUF_SIZE];
-    char sbuf2[HT_SBUF_SIZE];
-    char sbuf3[HT_SBUF_SIZE];
-    char sbuf4[HT_SBUF_SIZE];
     pWgtrNode sub_tree;
     int x,y,w,h;
     int tbw,tbh,bx,by,bw,bh;
     int id, i;
     int visible = 1;
-    char* nptr;
-    char bgnd[128] = "";
+    char bgnd[128] = "";	    /* these bgnd's must all be same length */
     char hdr_bgnd[128] = "";
     char bgnd_style[128] = "";
     char hdr_bgnd_style[128] = "";
@@ -423,8 +439,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,'\0',63);
-	name[63]=0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Check background color **/
 	htrGetBackground(tree, NULL, 1, bgnd_style, sizeof(bgnd_style));
@@ -438,13 +453,13 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** Check title text color. **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(txtcolor,"%.63s",ptr);
+	    strtcpy(txtcolor,ptr,sizeof(txtcolor));
 	else
 	    strcpy(txtcolor,"black");
 
 	/** Check window title. **/
 	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(title,"%.127s",ptr);
+	    strtcpy(title,ptr, sizeof(title));
 	else
 	    strcpy(title,name);
 
@@ -477,8 +492,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	/** Window icon? **/
 	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    memccpy(icon, ptr, '\0', sizeof(icon)-1);
-	    icon[sizeof(icon)-1] = '\0';
+	    strtcpy(icon,ptr,sizeof(icon));
 	    }
 	else
 	    {
@@ -575,19 +589,16 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	htrAddScriptGlobal(s, "wn_moved","0",0);
 	htrAddScriptGlobal(s, "wn_clicked","0",0);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM Linkages **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"wn%dbase\")",id);
+	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"wn%dmain\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
-	
 
 	/** Event handler for mousedown/up/click/etc **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "wn", "wn_mousedown");
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "wn", "wn_mouseup");
 	htrAddEventHandlerFunction(s, "document", "DBLCLICK", "wn", "wn_dblclick");
-
 
 	/** Mouse move event handler -- when user drags the window **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "wn", "wn_mousemove");
@@ -599,20 +610,20 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    /** Script initialization call. **/
 	    if (has_titlebar)
 		{
-		htrAddScriptInit_va(s,"    %s = wn_init({layer:document.getElementById('wn%dbase'), mainlayer:document.getElementById('wn%dmain'), gshade:%d, closetype:%d, titlebar:document.getElementById('wn%dtitlebar')});\n", 
-			name,id,id,gshade,closetype, id);
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%s\"], clayer:wgtrGetContainer(nodes[\"%s\"]), gshade:%d, closetype:%d, titlebar:htr_subel(nodes[\"%s\"],'wn%dtitlebar')});\n", 
+			name,name,gshade,closetype, name, id);
 		}
 	    else
 		{
-		htrAddScriptInit_va(s,"    %s = wn_init({layer:document.getElementById('wn%dbase'), mainlayer:document.getElementById('wn%dmain'), gshade:%d, closetype:%d, titlebar:null});\n", 
-			name,id,id,gshade,closetype);
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%s\"], clayer:nodes[\"%s\"], gshade:%d, closetype:%d, titlebar:null});\n", 
+			name,name,gshade,closetype);
 		}
 	    }
 	else if(s->Capabilities.Dom0NS)
 	    {
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s,"    %s = wn_init({layer:%s.layers.wn%dbase, mainlayer:%s.layers.wn%dbase.document.layers.wn%dmain, gshade:%d, closetype:%d, titlebar:null});\n", 
-		    name,parentname,id,parentname,id,id,gshade,closetype);
+	    htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%s\"], clayer:wgtrGetContainer(nodes[\"%s\"]), gshade:%d, closetype:%d, titlebar:null});\n", 
+		    name,name,gshade,closetype);
 	    }
 
 	/** HTML body <DIV> elements for the layers. **/
@@ -703,52 +714,14 @@ htwinRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    htrAddBodyItem_va(s,"<DIV ID=\"wn%dmain\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"%d\" height=\"%d\" %s><tr><td>&nbsp;</td></tr></table>\n",id,bw,bh,bgnd);
 	    }
 
-
-
-
 	/** Check for more sub-widgets within the page. **/
-	if(s->Capabilities.Dom1HTML)
-	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"%s.ContentLayer",name);
-	    }
-	else if(s->Capabilities.Dom0NS)
-	    {
-	    snprintf(sbuf,HT_SBUF_SIZE,"%s.ContentLayer.document",name);
-	    }
-	snprintf(sbuf2,HT_SBUF_SIZE,"%s.ContentLayer",name);
-
-	if(s->Capabilities.Dom1HTML)
-	    {
-	    snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer",name);
-	    }
-	else
-	    {
-	    snprintf(sbuf3,HT_SBUF_SIZE,"%s.mainlayer.document",name);
-	    }
-	snprintf(sbuf4,HT_SBUF_SIZE,"%s.mainlayer",name);
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    sub_tree = xaGetItem(&(tree->Children), i);
-	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
-	    if (!strcmp(ptr,"widget/connector"))
-		{
-		htrRenderWidget(s, sub_tree, z+2, sbuf3, sbuf4);
-		}
-	    else
-		{
-		htrRenderWidget(s, sub_tree, z+2, sbuf, sbuf2);
-		}
+	    htrRenderWidget(s, sub_tree, z+2);
 	    }
-	
 
 	htrAddBodyItem(s,"</DIV></DIV>\n");
-
-	/*if(visible==1)
-	    htrAddScriptInit(s,
-		    "    for (var t in window_current.osrc)\n"
-		    "        setTimeout(window_current.osrc[t].osrcname+'.InitQuery();',1);\n"
-		    );*/
-	htrAddScriptInit(s,"    window_current = window_current.oldwin;\n");
 
     return 0;
     }

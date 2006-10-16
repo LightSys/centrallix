@@ -78,5 +78,5 @@ wgtpnInitialize()
 	wgtrRegisterDriver(name, wgtpnVerify, wgtpnNew);
 	wgtrAddType(name, "pane");
 
-	return NULL;
+    return 0;
     }

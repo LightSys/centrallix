@@ -44,6 +44,7 @@
 #include "cxlib/datatypes.h"
 #include "cxlib/magic.h"
 #include "cxlib/xhash.h"
+#include "cxlib/strtcpy.h"
 #include "ht_render.h"
 
 
@@ -82,6 +83,7 @@ struct
     XHashTable	    Methods;		    /* deployment methods */
     XArray	    Drivers;		    /* simple driver listing */
     XHashTable	    DriversByType;
+    long	    SerialID;
     } WGTR;
 
 
@@ -260,14 +262,14 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
 	    }
 
 	/** call wgtrParseOpenObject and return results **/
-	results = wgtrParseOpenObject(obj, NULL);
+	results = wgtrParseOpenObject(obj, NULL, NULL);
 	objClose(obj);
         return results;
     }
 
 
 pWgtrNode 
-wgtrParseOpenObject(pObject obj, pWgtrNode template)
+wgtrParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root)
     {
     pWgtrNode	this_node, child_node;
     char   name[64], type[64], * prop_name;
@@ -374,13 +376,17 @@ wgtrParseOpenObject(pObject obj, pWgtrNode template)
 	this_node->pre_y = this_node->r_y;
 	this_node->pre_width = this_node->r_width;
 	this_node->pre_height = this_node->r_height;
+	if (root)
+	    this_node->Root = root;
+	else
+	    this_node->Root = this_node;
 
 	/** loop through subobjects, and call ourselves recursively to add child nodes **/
 	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
 	    {
 	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
 		{
-		if ( (child_node = wgtrParseOpenObject(child_obj,my_template)) != NULL) wgtrAddChild(this_node, child_node);
+		if ( (child_node = wgtrParseOpenObject(child_obj,my_template,this_node->Root)) != NULL) wgtrAddChild(this_node, child_node);
 		else
 		    {
 		    mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
@@ -738,6 +744,7 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 
 	strncpy(node->Name, name, 64);
 	strncpy(node->Type, type, 64);
+	snprintf(node->DName, sizeof(node->DName), "w%8.8lx", WGTR.SerialID++);
 	node->x = node->r_x = rx;
 	node->y = node->r_y = ry;
 	node->width = node->r_width = rwidth;
@@ -751,6 +758,8 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->min_height = 0;
 	node->min_width = 0;
 	node->LayoutGrid = NULL;
+	node->Root = node;  /* this will change when it is added as a child */
+	node->DMPrivate = NULL;
 
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
@@ -799,6 +808,7 @@ wgtrAddChild(pWgtrNode widget, pWgtrNode child)
 	ASSERTMAGIC(widget, MGK_WGTR);
 	xaAddItem(&(widget->Children), child);
 	child->Parent = widget;
+	child->Root = widget->Root;
 	return 0;
     }
 
@@ -1185,6 +1195,8 @@ wgtrInitialize()
 	xaInit(&(WGTR.Drivers), 64);
 	xhInit(&(WGTR.DriversByType), 127, 0);
 	xhInit(&(WGTR.Methods), 5, 0);
+
+	WGTR.SerialID = lrand48();
 	
 	/** init datastructures for auto-positioning **/
 	aposInit();
@@ -1338,5 +1350,80 @@ wgtrImplementsInterface(pWgtrNode this, char* iface_ref)
 	xaAddItem(&(this->Interfaces), h);
 	
 	return 0;
+    }
+
+
+/*** wgtrSetDMPrivateData() - specify opaque data used by the deployment method
+ *** module.  WGTR doesn't care what this data is, and does not manage it.
+ ***/
+int
+wgtrSetDMPrivateData(pWgtrNode tree, void* data)
+    {
+    tree->DMPrivate = data;
+    return 0;
+    }
+
+
+/*** wgtrGetDMPrivateData() - obtain the previously-set deployment method
+ *** specific data value for the given widget.
+ ***/
+void*
+wgtrGetDMPrivateData(pWgtrNode tree)
+    {
+    return tree->DMPrivate;
+    }
+
+
+/*** wgtrGetRootDName() - returns the deployment name of the root of the tree
+ ***/
+char*
+wgtrGetRootDName(pWgtrNode tree)
+    {
+    return tree->Root->DName;
+    }
+
+
+/*** wgtrGetDName() - returns the deployment name of the specified node
+ ***/
+char*
+wgtrGetDName(pWgtrNode tree)
+    {
+    return tree->DName;
+    }
+
+
+/*** wgtrRenameProperty() - if a property exists in a widget, then rename it
+ *** to a new name.  This is used to provide (for a time) backwards compat.
+ *** for deprecated property names.
+ ***/
+int
+wgtrRenameProperty(pWgtrNode tree, char* oldname, char* newname)
+    {
+    int i, count;
+    int oldid = -1;
+    pObjProperty prop;
+
+	count = xaCount(&(tree->Properties));
+	for (i=0;i<count;i++)
+	    {
+	    prop = xaGetItem(&(tree->Properties), i);
+	    if (prop && !strcmp(oldname, prop->Name))
+		oldid = i;
+	    if (prop && !strcmp(newname, prop->Name))
+		{
+		/** already exists! **/
+		return -1;
+		}
+	    }
+
+	if (oldid < 0) return 0;
+
+	/** Rename it **/
+	prop = xaGetItem(&(tree->Properties), oldid);
+	strtcpy(prop->Name, newname, sizeof(prop->Name));
+
+	mssError(1, "WGTR", "WARNING: deprecated property '%s' used for widget '%s'; please use '%s' in the future.", oldname, tree->Name, newname);
+
+    return 0;
     }
 

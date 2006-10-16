@@ -2,7 +2,7 @@
 /* 
    htcbMozDefRender - generate the HTML code for the page (Mozilla:Default).
 */
-int htcbMozDefRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj) {
+int htcbMozDefRender(pHtSession s, pWgtrNode tree, int z) {
    char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
    int id;

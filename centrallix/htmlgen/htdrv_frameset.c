@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.11 2005/02/26 06:42:37 gbeeley Exp $
+    $Id: htdrv_frameset.c,v 1.12 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
+    Revision 1.12  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.11  2005/02/26 06:42:37  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -176,11 +197,10 @@
 /*** htsetRender - generate the HTML code for the page.
  ***/
 int
-htsetRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htsetRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     pWgtrNode sub_tree;
-    pObjQuery qy;
     char geom_str[64] = "";
     int t,n,bdr=0,direc=0, i;
     char nbuf[16];
@@ -199,22 +219,26 @@ htsetRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 	    t = wgtrGetPropertyType(sub_tree, "framesize");
 	    if (t < 0) 
 		{
-		snprintf(nbuf,16,"*");
+		strcpy(nbuf,"*");
 		}
 	    else if (t == DATA_T_INTEGER)
 		{
 		wgtrGetPropertyValue(sub_tree, "framesize", DATA_T_INTEGER,POD(&n));
-		snprintf(nbuf,16,"%d",n);
+		snprintf(nbuf,sizeof(nbuf),"%d",n);
 		}
 	    else if (t == DATA_T_STRING)
 		{
 		wgtrGetPropertyValue(sub_tree, "framesize", DATA_T_STRING,POD(&ptr));
-		memccpy(nbuf, ptr, 0, 15);
-		nbuf[15] = 0;
+		strtcpy(nbuf, ptr, sizeof(nbuf));
 		}
 	    if (geom_str[0] != '\0')
 		{
 		strcat(geom_str,",");
+		}
+	    if (strlen(geom_str) + strlen(nbuf) + 2 >= sizeof(geom_str))
+		{
+		mssError(1,"HTSET","Internal storage exhausted");
+		return -1;
 		}
 	    strcat(geom_str,nbuf);
 	    }
@@ -245,6 +269,7 @@ htsetRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parento
 
 	/** End the framset. **/
 	htrAddBodyItem_va(s, "</FRAMESET>\n");
+
     return 0;
     }
 

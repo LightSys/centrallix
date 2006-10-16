@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "centrallix.h"
 #include "wgtr.h"
 
@@ -43,10 +44,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.72 2006/04/07 06:34:13 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.73 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.73  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.72  2006/04/07 06:34:13  gbeeley
     - (change) adding show_diagnostics attribute to page widget to allow
       wgtr et al warning messages to be un-suppressed
@@ -530,14 +551,11 @@
 
 int
 //htpageRender(pHtSession s, pObject w_obj, int z, char* parentname, char* parentobj)
-htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htpageRender(pHtSession s, pWgtrNode tree, int z)
     {
     char *ptr;
-    char *nptr;
     char name[64];
     int attract = 0;
-    pObject sub_tree;
-    pObjQuery qy;
     int watchdogtimer;
     char bgstr[128];
     int show, i, count;
@@ -548,6 +566,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     char dtfocus1[64];	/* dt focus = navyblue rectangle */
     char dtfocus2[64];
     int show_diag = 0;
+    int w,h;
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -565,6 +584,10 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
     	/** If not at top-level, don't render the page. **/
 	/** Z is set to 10 for the top-level page. **/
 	if (z != 10) return 0;
+
+	/** These are always set for a page widget **/
+	wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w));
+	wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h));
 
     	/** Check for a title. **/
 	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
@@ -597,37 +620,31 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	/** Keyboard Focus Indicator colors 1 and 2 **/
 	if (wgtrGetPropertyValue(tree,"kbdfocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(kbfocus1,ptr,0,63);
-	    kbfocus1[63]=0;
+	    strtcpy(kbfocus1,ptr,sizeof(kbfocus1));
 	    }
 	if (wgtrGetPropertyValue(tree,"kbdfocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(kbfocus2,ptr,0,63);
-	    kbfocus2[63]=0;
+	    strtcpy(kbfocus2,ptr,sizeof(kbfocus2));
 	    }
 
 	/** Mouse Focus Indicator colors 1 and 2 **/
 	if (wgtrGetPropertyValue(tree,"mousefocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(msfocus1,ptr,0,63);
-	    msfocus1[63]=0;
+	    strtcpy(msfocus1,ptr,sizeof(msfocus1));
 	    }
 	if (wgtrGetPropertyValue(tree,"mousefocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(msfocus2,ptr,0,63);
-	    msfocus2[63]=0;
+	    strtcpy(msfocus2,ptr,sizeof(msfocus2));
 	    }
 
 	/** Data Focus Indicator colors 1 and 2 **/
 	if (wgtrGetPropertyValue(tree,"datafocus1",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(dtfocus1,ptr,0,63);
-	    dtfocus1[63]=0;
+	    strtcpy(dtfocus1,ptr,sizeof(dtfocus1));
 	    }
 	if (wgtrGetPropertyValue(tree,"datafocus2",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(dtfocus2,ptr,0,63);
-	    dtfocus2[63]=0;
+	    strtcpy(dtfocus2,ptr,sizeof(dtfocus2));
 	    }
 
 	/** Cx windows attract to browser edges? if so, by how much **/
@@ -658,12 +675,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "pg_schedtimeout", "null", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeoutlist", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeoutid", "0", 0);
-	htrAddScriptGlobal(s, "fm_current", "null", 0);
-	htrAddScriptGlobal(s, "osrc_current", "null", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
-	htrAddScriptGlobal(s, "window_current","null",0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_loadqueue", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_loadqueue_busy", "true", 0);
@@ -674,6 +688,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptGlobal(s, "pg_msg_layer", "null", 0);
 	htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0);
 	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0);
+	htrAddScriptGlobal(s, "pg_width", "0", 0);
+	htrAddScriptGlobal(s, "pg_height", "0", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -685,25 +701,15 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 
 	/** Write named global **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,'\0',63);
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "document", HTR_F_NAMEALLOC);
+	strtcpy(name,ptr,sizeof(name));
 
-	if(s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s, "    %s = pg_init(%s.getElementById('pgtop'),%d);\n", name, parentname, attract);
-	    }
-	else if(s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s, "    %s = pg_init(%s.layers.pgtop,%d);\n", name, parentname, attract);
-	    }
-	else if(s->Capabilities.Dom0IE)
-	    {
-	    htrAddScriptInit_va(s, "    %s = pg_init(%s.all.pgtop,%d);\n", name, parentname, attract);
-	    }
+	htrAddWgtrObjLinkage(s, tree, "window");
+	htrAddWgtrCtrLinkage(s, tree, "document");
 
+	htrAddScriptInit_va(s, "    pg_init(nodes['%s'],%d);\n", name, attract);
 	htrAddScriptInit_va(s, "    pg_username = '%s';\n", mssUserName());
+	htrAddScriptInit_va(s, "    pg_width = %d;\n", w);
+	htrAddScriptInit_va(s, "    pg_height = %d;\n", h);
 
 	if(s->Capabilities.HTML40)
 	    {
@@ -766,14 +772,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddBodyItem(s, "\n");
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
-	if(s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s,"    pg_ping_init(%s.getElementById('pgping'),%i);\n",parentname,watchdogtimer/2*1000);
-	    }
-	else if(s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s,"    pg_ping_init(%s.layers.pgping,%i);\n",parentname,watchdogtimer/2*1000);
-	    }
+	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(nodes[\"%s\"],\"pgping\"),%i);\n",name,watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "pg", "pg_mousemove");
@@ -796,7 +795,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddScriptInit_va(s, "    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",kbfocus1,kbfocus2);
 	htrAddScriptInit_va(s, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",msfocus1,msfocus2);
 	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
-	htrAddScriptInit(s, "    document.LSParent = null;\n");
+	/*htrAddScriptInit(s, "    document.LSParent = null;\n");*/
 
 	htrAddScriptInit(s, "    pg_togglecursor();\n");
 
@@ -806,37 +805,11 @@ htpageRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddEventHandlerFunction(s, "document", "KEYPRESS", "pg", "pg_keypress");
 
 	/** create the root node of the wgtr **/
-
-	/** Check for more sub-widgets within the page. **/
-	/*
-	qy = objOpenQuery(w_obj,"",NULL,NULL,NULL);
-	if (qy)
-	    {
-	    while((sub_w_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, sub_w_obj, z+1, parentname, "document");
-		objClose(sub_w_obj);
-		}
-	    objQueryClose(qy);
-	    }
-	*/
-
 	count = xaCount(&(tree->Children));
 	for (i=0;i<count;i++)
 	    {
-	    htrRenderWidget(s, xaGetItem(&(tree->Children),i), z+1, parentname, "document");
+	    htrRenderWidget(s, xaGetItem(&(tree->Children),i), z+1);
 	    }
-
-#if 0
-	if(s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit(s,
-		    "    document.getElementById('pgtop').style.clip.left=0;\n"
-		    "    document.getElementById('pgtop').style.clip.top=0;\n"
-		    "    document.getElementById('pgtop').style.clip.x=1;\n"
-		    "    document.getElementById('pgtop').style.clip.y=1;\n");
-	    }
-#endif
 
 	/** keyboard input for NS4 **/
 	if(s->Capabilities.Dom0NS)

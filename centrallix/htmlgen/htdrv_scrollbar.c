@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -42,10 +43,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.9 2005/06/23 22:08:00 ncolson Exp $
+    $Id: htdrv_scrollbar.c,v 1.10 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.10  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.9  2005/06/23 22:08:00  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -188,23 +209,21 @@ static struct
 /*** htsbRender - generate the HTML code for the page.
  ***/
 int
-htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htsbRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
     int x,y,w,h,r;
     int id, i;
     int visible = 1;
-    char* nptr;
     char bcolor[64] = "";
     char bimage[64] = "";
     int is_horizontal = 0;
     pExpression code;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom1HTML)
 	    {
-	    mssError(1,"HTSB","Netscape 4.x or IE DOM support required");
+	    mssError(1,"HTSB","Netscape 4.x, IE, or W3C DOM support required");
 	    return -1;
 	    }
 
@@ -266,8 +285,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,'\0',63);
-	name[63]=0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Range of scrollbar (static or dynamic property) **/
 	if (wgtrGetPropertyType(tree,"range") == DATA_T_INTEGER && wgtrGetPropertyValue(tree,"range",DATA_T_INTEGER,POD(&r)) != 0)
@@ -284,13 +302,11 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	/** Check background color **/
 	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(bcolor,ptr,'\0',63);
-	    bcolor[63]=0;
+	    strtcpy(bcolor,ptr,sizeof(bcolor));
 	    }
 	if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(bimage,ptr,'\0',63);
-	    bimage[63]=0;
+	    strtcpy(bimage,ptr,sizeof(bimage));
 	    }
 
 	/** Marked not visible? **/
@@ -300,11 +316,11 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#sb%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; clip:rect(%d,%d); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	htrAddStylesheetItem_va(s,"\t#sb%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	if (is_horizontal)
-	    htrAddStylesheetItem_va(s,"\t#sb%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:18; TOP:0; WIDTH:18; Z-INDEX:%d; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sb%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:18px; TOP:0px; WIDTH:18px; Z-INDEX:%d; }\n",id,z+1);
 	else
-	    htrAddStylesheetItem_va(s,"\t#sb%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; Z-INDEX:%d; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sb%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; Z-INDEX:%d; }\n",id,z+1);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sb_target_img", "null", 0);
@@ -316,16 +332,14 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	htrAddScriptGlobal(s, "sb_mv_incr","0",0);
 	htrAddScriptGlobal(s, "sb_cur_mainlayer","null",0);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM Linkage **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sb%dpane\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollbar.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s=sb_init({layer:%s.layers.sb%dpane, tname:\"sb%dthum\", parent:%s, isHorizontal:%d, range:%d});\n", name, parentname,id,id,parentobj,is_horizontal,r);
+	htrAddScriptInit_va(s,"    sb_init({layer:nodes[\"%s\"], tname:\"sb%dthum\", isHorizontal:%d, range:%d});\n", name, id, is_horizontal, r);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"sb%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
@@ -350,9 +364,10 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		"    if (sb_target_img != null && sb_target_img.kind=='sb' && (sb_target_img.name=='u' || sb_target_img.name=='d'))\n"
 		"        {\n"
 		"        if (sb_target_img.name=='u') sb_mv_incr=-10; else sb_mv_incr=+10;\n"
-		"        sb_target_img.src = htutil_subst_last(sb_target_img.src,\"c.gif\");\n"
+		"        pg_set(sb_target_img,'src',htutil_subst_last(sb_target_img.src,\"c.gif\"));\n"
 		"        sb_do_mv();\n"
 		"        sb_mv_timeout = setTimeout(sb_tm_mv,300);\n"
+		"        return false;\n"
 		"        }\n"
 		"    else if (sb_target_img != null && sb_target_img.kind=='sb' && sb_target_img.name=='t')\n"
 		"        {\n"
@@ -360,6 +375,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		"        sb_click_y = e.pageY;\n"
 		"        sb_thum_x = getPageX(sb_target_img.thum);\n"
 		"        sb_thum_y = getPageY(sb_target_img.thum);\n"
+		"        return false;\n"
 		"        }\n"
 		"    else if (sb_target_img != null && sb_target_img.kind=='sb' && sb_target_img.name=='b')\n"
 		"        {\n"
@@ -368,6 +384,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		"        if (sb_target_img.mainlayer.is_horizontal && e.pageX < getPageX(sb_target_img.thum)+9) sb_mv_incr = -sb_mv_incr;\n"
 		"        sb_do_mv();\n"
 		"        sb_mv_timeout = setTimeout(sb_tm_mv,300);\n"
+		"        return false;\n"
 		"        }\n"
 		"    else sb_target_img = null;\n"
 		"    if (ly.kind == 'sb') cn_activate(ly.mainlayer, 'MouseDown');");
@@ -409,7 +426,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		"    if (sb_target_img != null)\n"
 		"        {\n"
 		"        if (sb_target_img.name != 'b')\n"
-		"            sb_target_img.src = htutil_subst_last(sb_target_img.src,\"b.gif\");\n"
+		"            pg_set(sb_target_img,'src',htutil_subst_last(sb_target_img.src,\"b.gif\"));\n"
 		"        sb_target_img = null;\n"
 		"        }\n"
 		"    if (ly.kind == 'sb') cn_activate(ly.mainlayer, 'MouseUp');\n");
@@ -423,13 +440,9 @@ htsbRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		"            }\n"
 		"        }\n");
 
-
-
-
 	/** Check for more sub-widgets within the scrollbar (visual ones not allowed). **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, sbuf, name);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
 
 	/** Finish off the last <DIV> **/
 	htrAddBodyItem(s,"</DIV>\n");

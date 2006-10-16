@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -46,10 +47,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_calendar.c,v 1.8 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: htdrv_calendar.c,v 1.9 2006/10/16 18:34:33 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_calendar.c,v $
 
     $Log: htdrv_calendar.c,v $
+    Revision 1.9  2006/10/16 18:34:33  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.8  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -181,7 +202,7 @@ static struct
 /*** htcaRender - generate the HTML code for the editbox widget.
  ***/
 int
-htcaRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htcaRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
@@ -196,7 +217,6 @@ htcaRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
     int minpriority=0;
     int x=-1,y=-1,w,h;
     int id, i;
-    char* nptr;
 
 	/** Verify user-agent's capabilities allow us to continue... **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -219,24 +239,14 @@ htcaRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = 0;
 	
 	/** Background color/image? **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"bgColor='%.40s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(main_bg,"background='%.110s'",ptr);
-	else
-	    strcpy(main_bg,"");
+	htrGetBackground(tree,NULL,0,main_bg,sizeof(main_bg));
 
 	/** Cell background color/image? **/
-	if (wgtrGetPropertyValue(tree,"cell_bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(cell_bg,"bgColor='%.40s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"cell_background",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(cell_bg,"background='%.110s'",ptr);
-	else
-	    strcpy(cell_bg,"");
+	htrGetBackground(tree,"cell",0,cell_bg,sizeof(cell_bg));
 
 	/** Text color? **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    sprintf(textcolor,"%.31s",ptr);
+	    strtcpy(textcolor,ptr,sizeof(textcolor));
 	else
 	    strcpy(textcolor,"black");
 
@@ -246,31 +256,26 @@ htcaRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    mssError(1,"HTCA","Calendar widget must have an 'eventdatefield' property");
 	    return -1;
 	    }
-	memccpy(eventdatefield, ptr, 0, 31);
-	eventdatefield[31] = 0;
+	strtcpy(eventdatefield, ptr, sizeof(eventdatefield));
 	if (wgtrGetPropertyValue(tree, "eventnamefield", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCA","Calendar widget must have an 'eventnamefield' property");
 	    return -1;
 	    }
-	memccpy(eventnamefield, ptr, 0, 31);
-	eventnamefield[31] = 0;
+	strtcpy(eventnamefield,ptr,sizeof(eventnamefield));
 	if (wgtrGetPropertyValue(tree, "eventpriofield", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    memccpy(eventpriofield, ptr, 0, 31);
-	    eventpriofield[31] = 0;
+	    strtcpy(eventpriofield,ptr,sizeof(eventpriofield));
 	    }
 	if (wgtrGetPropertyValue(tree, "eventdescfield", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    memccpy(eventdescfield, ptr, 0, 31);
-	    eventdescfield[31] = 0;
+	    strtcpy(eventdescfield,ptr,sizeof(eventdescfield));
 	    }
 
 	/** display mode **/
 	if (wgtrGetPropertyValue(tree, "displaymode", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    memccpy(dispmode, ptr, 0, 31);
-	    dispmode[31] = 0;
+	    strtcpy(dispmode,ptr,sizeof(dispmode));
 	    }
 
 	/** minimum priority **/
@@ -278,16 +283,10 @@ htcaRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#ca%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_calendar.js", 0);
@@ -318,38 +317,19 @@ htcaRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    "    if (ly.kind == 'ca') cn_activate(ly, 'MouseMove');\n"
 	    "\n");
 
-	/** Set object parent **/
-	htrAddScriptInit_va(s, "    htr_set_parent(%s.layers.ca%dbase, \"%s\", %s);\n",
-		parentname, id, nptr, parentobj);
-
 	/** Script initialization call. **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s, "    %s = ca_init(%s.layers.ca%dbase, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d);\n",
-		nptr, parentname, id, 
-		main_bg, cell_bg, textcolor, dispmode,
-		eventdatefield, eventdescfield, eventnamefield, eventpriofield,
-		minpriority, w, h);
-	    }
-	else /** W3C **/
-	    {
-	    htrAddScriptInit_va(s, "    %s = ca_init(document.getElementById('ca%dbase'), \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d);\n",
-		nptr, id, 
-		main_bg, cell_bg, textcolor, dispmode,
-		eventdatefield, eventdescfield, eventnamefield, eventpriofield,
-		minpriority, w, h);
-	    }
+	htrAddScriptInit_va(s, "    ca_init(nodes[\"%s\"], \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d);\n",
+	    name,
+	    main_bg, cell_bg, textcolor, dispmode,
+	    eventdatefield, eventdescfield, eventnamefield, eventpriofield,
+	    minpriority, w, h);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"ca%dbase\"><BODY %s text='%s'>\n",id, main_bg, textcolor);
 
-
-
-
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1, parentname, nptr);
-
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</BODY></DIV>\n");

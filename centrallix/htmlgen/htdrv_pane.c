@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -41,10 +42,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.31 2006/04/07 06:51:41 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.32 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.32  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.31  2006/04/07 06:51:41  gbeeley
     - (bugfix) make sure events get activated on the main object rather than
       on sublayers.
@@ -308,17 +329,14 @@ static struct
 /*** htpnRender - generate the HTML code for the page.
  ***/
 int
-htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htpnRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
-    char sbuf2[160];
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none */
-    char* nptr;
     char* c1;
     char* c2;
     int box_offset;
@@ -347,32 +365,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    }
 
 	/** Background color/image? **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if(s->Capabilities.Dom0NS)
-		{
-		sprintf(main_bg,"bgcolor='%.40s'",ptr);
-		}
-	    else if(s->Capabilities.CSS1)
-		{
-		sprintf(main_bg,"background-color: %.40s;",ptr);
-		}
-	    }
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if(s->Capabilities.Dom0NS)
-		{
-		sprintf(main_bg,"background='%.110s'",ptr);
-		}
-	    else if(s->Capabilities.CSS1)
-		{
-		sprintf(main_bg,"background-image: url('%.100s');",ptr);
-		}
-	    }
-	else
-	    {
-	    strcpy(main_bg,"");
-	    }
+	htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS,main_bg,sizeof(main_bg));
 
 	/** figure out box offset fudge factor... stupid box model... **/
 	if (s->Capabilities.CSSBox)
@@ -382,8 +375,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Style of pane - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0)
@@ -451,10 +443,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    mssError(0,"HTPN","Cannot render");
 	    }
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM linkages **/
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddWgtrObjLinkage_va(s, tree, 
+		    "htr_subel(_parentctr, \"pn%dbase\")",id);
+	    htrAddWgtrCtrLinkage_va(s, tree, 
+		    "htr_subel(_obj, \"pn%dmain\")",id);
+	    }
+	else
+	    htrAddWgtrObjLinkage_va(s, tree, 
+		    "htr_subel(_parentctr, \"pn%dmain\")",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);
@@ -491,29 +490,11 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    {
 	    /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s, "    %s = pn_init({layer:%s.cxSubElement(\"pn%dbase\"), mainlayer:%s.cxSubElement(\"pn%dbase\").document.layers.pn%dmain});\n",
-			nptr,parentname, id, parentname,id,id);
+		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes['%s'], layer:htr_subel(nodes['%s'], \"pn%dmain\")});\n", 
+			name, name, id);
 	    else
-		htrAddScriptInit_va(s, "    %s = pn_init({layer:%s.cxSubElement(\"pn%dmain\"), mainlayer:%s.cxSubElement(\"pn%dmain\")});\n",
-			nptr,parentname, id, parentname, id);
-	    /*if(s->Capabilities.Dom0NS)
-	        {
-	    	htrAddScriptInit_va(s, "    %s = pn_init(%s.layers.pn%dbase, %s.layers.pn%dbase.document.layers.pn%dmain);\n",
-		    nptr, parentname, id, parentname, id, id);
-		}
-	    else
-	        {
-	        if(strstr(parentname, "document") != NULL)
-	            {
-	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.getElementById(\"pn%dmain\"), %s.getElementById(\"pn%dmain\"));\n",
-		        nptr, parentname, id, parentname, id);
-		    }
-		else
-		    {
-	    	    htrAddScriptInit_va(s, "    %s = pn_init(%s.document.getElementById(\"pn%dmain\"), %s.document.getElementById(\"pn%dmain\"));\n",
-		        nptr, parentname, id, parentname, id);		    	
-		    }
-	        }*/
+		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes[\"%s\"], layer:nodes[\"%s\"]});\n",
+			name, name);
 
 	    /** HTML body <DIV> element for the base layer. **/
 	    if (s->Capabilities.Dom0NS)
@@ -539,18 +520,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 		}
 	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
 
-
-
-
-
 	    /** Check for objects within the pane. **/
-	    if (s->Capabilities.Dom0NS)
-		snprintf(sbuf,160,"%s.mainlayer.document",nptr);
-	    else
-		snprintf(sbuf,160,"%s.mainlayer",nptr);
-	    snprintf(sbuf2,160,"%s.mainlayer",nptr);
-	    htrRenderSubwidgets(s, tree, sbuf, sbuf2, z+2);
-
+	    htrRenderSubwidgets(s, tree, z+2);
 
 	    /** End the containing layer. **/
 	    htrAddBodyItem(s, "</td></tr></table></DIV>\n");
@@ -560,7 +531,6 @@ htpnRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentob
 	    {
 	    mssError(0,"HTPN","Cannot render");
 	    }
-
 
     return 0;
     }

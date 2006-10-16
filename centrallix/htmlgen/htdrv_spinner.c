@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +45,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.17 2005/06/23 22:08:00 ncolson Exp $
+    $Id: htdrv_spinner.c,v 1.18 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.18  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.17  2005/06/23 22:08:00  ncolson
     Modified *_init JavaScript function call here in the HTML generator so that
     when it is executed in the generated page it no longer passes parameters as
@@ -243,16 +264,14 @@ static struct
 /*** htspnrRender - generate the HTML code for the spinner widget.
  ***/
 int
-htspnrRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htspnrRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    /*char sbuf2[160];*/
     char main_bg[128];
     int x=-1,y=-1,w,h;
     int id;
     int is_raised = 1;
-    char* nptr;
     char* c1;
     char* c2;
     int maxchars;
@@ -284,17 +303,11 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	if (wgtrGetPropertyValue(tree,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
 
 	/** Background color/image? **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    snprintf(main_bg,128,"bgcolor='%.40s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    snprintf(main_bg,128,"background='%.110s'",ptr);
-	else
-	    strcpy(main_bg,"");
+	htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS, main_bg, sizeof(main_bg));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63]=0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Style of editbox - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
@@ -317,10 +330,8 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddStylesheetItem_va(s,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1,w,z);
 	htrAddStylesheetItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1+9,w,z);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM Linkage **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"spnr%dmain\")",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "spnr_ibeam", "null", 0);
@@ -344,14 +355,13 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 		"\n");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    %s = spnr_init({main:%s.layers.spnr%dmain, layer:%s.layers.spnr%dmain.layers.spnr%dbase, c1:%s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon1, c2:%s.layers.spnr%dmain.layers.spnr%dbase.document.layers.spnr%dcon2});\n",
-		nptr, parentname, id, 
-                parentname, id, id,
-		parentname, id, id, id, 
-		parentname, id, id, id);
+	htrAddScriptInit_va(s,"    spnr_init({main:nodes[\"%s\"], layer:htr_subel(nodes[\"%s\"],\"spnr%dbase\"), c1:htr_subel(htr_subel(nodes[\"%s\"],\"spnr%dbase\"),\"spnr%dcon1\"), c2:htr_subel(htr_subel(nodes[\"%s\"],\"spnr%dbase\"),\"spnr%dcon2\")});\n",
+		name,
+                name, id,
+		name, id, id, 
+		name, id, id);
 
 	/** HTML body <DIV> element for the base layer. **/
-
 	htrAddBodyItem_va(s,"<DIV ID=\"spnr%dmain\">\n",id);
 	htrAddBodyItem_va(s,"<DIV ID=\"spnr%dbase\">\n",id);
 	htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w-12,main_bg);
@@ -371,8 +381,6 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parent
 	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
 	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
   	htrAddBodyItem(s, "</DIV>\n"); 
-
-
 
 	return 0;
     }

@@ -110,5 +110,5 @@ wgttabInitialize()
 	wgtrAddType(name, "tab");
 	wgtrAddType(name, "tabpage");
 
-	return NULL;
+    return 0;
     }

@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +44,30 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.27 2006/06/22 00:21:28 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.28 2006/10/16 18:34:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.28  2006/10/16 18:34:34  gbeeley
+    - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
+      references on client side.  removed all named globals for widgets on
+      client.  This is in preparation for component widget (static and dynamic)
+      features.
+    - (bugfix) changed many snprintf(%s) and strncpy(), and some sprintf(%.<n>s)
+      to use strtcpy().  Also converted memccpy() to strtcpy().  A few,
+      especially strncpy(), could have caused crashes before.
+    - (change) eliminated need for 'parentobj' and 'parentname' parameters to
+      Render functions.
+    - (change) wgtr port allowed for cleanup of some code, especially the
+      ScriptInit calls.
+    - (feature) ported scrollbar widget to Mozilla.
+    - (bugfix) fixed a couple of memory leaks in allocated data in widget
+      drivers.
+    - (change) modified deployment of widget tree to client to be more
+      declarative (the build_wgtr function).
+    - (bugfix) removed wgtdrv_templatefile.c from the build.  It is a template,
+      not an actual module.
+
     Revision 1.27  2006/06/22 00:21:28  gbeeley
     - use getRelativeY and moveBy instead of .y for moz/IE
 
@@ -275,15 +296,13 @@ static struct
 /*** htspaneRender - generate the HTML code for the page.
  ***/
 int
-htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* parentobj)
+htspaneRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    char sbuf[160];
     int x,y,w,h;
     int id, i;
     int visible = 1;
-    char* nptr;
     char bcolor[64] = "";
     char bimage[64] = "";
 
@@ -320,19 +339,16 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,'\0',63);
-	name[63]=0;
+	strtcpy(name,ptr,sizeof(name));
 
 	/** Check background color **/
 	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(bcolor,ptr,'\0',63);
-	    bcolor[63]=0;
+	    strtcpy(bcolor,ptr,sizeof(bcolor));
 	    }
 	if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    memccpy(bimage,ptr,'\0',63);
-	    bimage[63]=0;
+	    strtcpy(bimage,ptr,sizeof(bimage));
 	    }
 
 	/** Marked not visible? **/
@@ -345,8 +361,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 	if (s->Capabilities.Dom0NS)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	    htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%dpx; }\n",id,w-18,z+1);
-	    htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w-18,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%d; }\n",id,w-18,z+1);
 	    }
 
 	/** Write globals for internal use **/
@@ -358,28 +374,14 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 	htrAddScriptGlobal(s, "sp_mv_incr","0",0);
 	htrAddScriptGlobal(s, "sp_cur_mainlayer","null",0);
 
-	/** Write named global **/
-	nptr = (char*)nmMalloc(strlen(name)+1);
-	strcpy(nptr,name);
-	htrAddScriptGlobal(s, nptr, "null", HTR_F_NAMEALLOC);
+	/** DOM Linkages **/
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sp%dpane\")",id);
+	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"sp%darea\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
-	/** Script initialization call. **/
-	if(s->Capabilities.Dom0NS)
-	    {
-	    htrAddScriptInit_va(s,"    %s=%s.layers.sp%dpane;\n",name,parentname,id);
-	    }
-	else if(s->Capabilities.Dom1HTML)
-	    {
-	    htrAddScriptInit_va(s,"    %s=document.getElementById('sp%dpane');\n",name,id);
-	    }
-	else
-	    {
-	    mssError(1,"HTSPANE","Cannot render for this browser");
-	    }
-	htrAddScriptInit_va(s,"    sp_init({layer:%s, aname:\"sp%darea\", tname:\"sp%dthum\", parent:%s});\n", name,id,id,parentobj);
+	htrAddScriptInit_va(s,"    sp_init({layer:nodes[\"%s\"], aname:\"sp%darea\", tname:\"sp%dthum\"});\n", name,id,id);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if(s->Capabilities.Dom0NS)
@@ -402,8 +404,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 	    htrAddStylesheetItem_va(s,"\t#sp%dup { POSITION: absolute; LEFT: %dpx; TOP: 0px; }\n",id, w-18);
 	    htrAddStylesheetItem_va(s,"\t#sp%dbar { POSITION: absolute; LEFT: %dpx; TOP: 18px; WIDTH: 18px; HEIGHT: %dpx;}\n",id, w-18, h-36);
 	    htrAddStylesheetItem_va(s,"\t#sp%ddown { POSITION: absolute; LEFT: %dpx; TOP: %dpx; }\n",id, w-18, h-18);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%darea\" style=\"HEIGHT: %dpx; POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%dpx;\">",id,h,w-18,z+1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%d;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%darea\" style=\"HEIGHT: %dpx; POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d;\">",id,h,w-18,z+1);
 	    }
 	else
 	    {
@@ -411,7 +413,6 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 	    }
 
 	/** Add the event handling scripts **/
-
 	htrAddEventHandler(s, "document","MOUSEDOWN","sp",
 		"    sp_target_img=e.target;\n"
 		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseDown');\n"
@@ -489,21 +490,9 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z, char* parentname, char* paren
 //	htrAddEventHandler(s, "document", "MOUSEOUT", "sp",
 //		"");
 
-	/** Check for more sub-widgets within the page. **/
-	if(s->Capabilities.Dom0NS)
-	    {
-	    snprintf(sbuf,160,"%s.document.layers.sp%darea.document",name,id);
-	    }
-	else if(s->Capabilities.Dom1HTML)
-	    {
-	    snprintf(sbuf,160,"document.getElementById('sp%darea')",id);
-	    }
-	else
-	    {
-	    mssError(1,"HTSPANE","Cannot render for this browser");
-	    }
+	/** Do subwidgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2, sbuf, name);
+	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
 
 	/** Finish off the last <DIV> **/
 	if(s->Capabilities.Dom0NS)
