@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2006 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -30,9 +30,9 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	wgtr/wgtdrv_componentdecl.c						*/
-/* Author:	Matt McGill (MJM)		 			*/
-/* Creation:	June 30, 2004						*/
+/* Module: 	wgtr/wgtdrv_component.c					*/
+/* Author:	Greg Beeley (GRB)		 			*/
+/* Creation:	October 18, 2006					*/
 /* Description:								*/
 /************************************************************************/
 
@@ -42,25 +42,25 @@
  **END-CVSDATA***********************************************************/
 
 
-/*** wgtcmpdVerify - allows the driver to check elsewhere in the tree
+/*** wgtcmpVerify - allows the driver to check elsewhere in the tree
  *** to make sure that the conditions it requires for proper functioning
  *** are present - checking for other widgets that might be necessary,
  *** checking interface versions on widgets to be interacted with, etc.
  ***/
 int
-wgtcmpdVerify(pWgtrVerifySession s)
+wgtcmpVerify(pWgtrVerifySession s)
     {
     return 0;
     }
 
 
-/*** wgtcmpdNew - after a node has been filled out with initial values,
+/*** wgtcmpNew - after a node has been filled out with initial values,
  *** the driver uses this function to take care of any other initialization
  *** that needs to be done on a per-node basis. By far the most important
  *** is declaring interfaces.
  ***/
 int
-wgtcmpdNew(pWgtrNode node)
+wgtcmpNew(pWgtrNode node)
     {
 
 	node->Flags |= WGTR_F_NONVISUAL;
@@ -71,12 +71,13 @@ wgtcmpdNew(pWgtrNode node)
 
 
 int
-wgtcmpdInitialize()
+wgtcmpInitialize()
     {
-    char*   name="Component Declaration Driver";
+    char*   name="Component Instance Driver";
 
-	wgtrRegisterDriver(name, wgtcmpdVerify, wgtcmpdNew);
-	wgtrAddType(name, "component-decl");
+	wgtrRegisterDriver(name, wgtcmpVerify, wgtcmpNew);
+	wgtrAddType(name, "component");
 
 	return 0;
     }
+

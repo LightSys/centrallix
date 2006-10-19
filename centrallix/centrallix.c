@@ -53,10 +53,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.37 2005/09/17 01:23:50 gbeeley Exp $
+    $Id: centrallix.c,v 1.38 2006/10/19 21:53:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.38  2006/10/19 21:53:23  gbeeley
+    - (feature) First cut at the component-based client side development
+      system.  Only rendering of the components works right now; interaction
+      with the components and their containers is not yet functional.  For
+      an example, see "debugwin.cmp" and "window_test.app" in the samples
+      directory of centrallix-os.
+
     Revision 1.37  2005/09/17 01:23:50  gbeeley
     - Adding sysinfo objectsystem driver, which is roughly analogous to
       the /proc filesystem in Linux.
@@ -712,6 +719,7 @@ cxHtInit()
 	hthintInitialize();			/* pres. hints module */
 
 	htcmpdInitialize();			/* component declaration */
+	htcmpInitialize();			/* component instance */
 
 	/** Load any htdriver modules **/
 	cx_internal_LoadModules("htdriver");

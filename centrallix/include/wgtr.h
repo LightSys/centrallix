@@ -155,6 +155,9 @@ pWgtrNode wgtrFirstChild(pWgtrNode tree);	/** return the first child **/
 int wgtrImplementsInterface(pWgtrNode this, char* iface_ref);	    /** state that a wgt implements an interface **/
 int wgtrSetDMPrivateData(pWgtrNode tree, void* data);
 void* wgtrGetDMPrivateData(pWgtrNode tree);
+int wgtrGetContainerHeight(pWgtrNode tree);
+int wgtrGetContainerWidth(pWgtrNode tree);
+int wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset);
 
 /** misc. functions **/
 pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints **/
@@ -169,7 +172,7 @@ int wgtrCancelVerify(pWgtrVerifySession cs, pWgtrNode widget);	/** remove a widg
 int wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)());	/** registers a widget driver **/
 int wgtrAddType(char* name, char* type_name);	    /** associate a type with a wgtr driver **/
 int wgtrAddDeploymentMethod(char* method, int (*Render)());	/** add a deployment method to a driver **/
-int wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, char* method);
+int wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method);
 
 /** for debugging **/
 void wgtrPrint(pWgtrNode tree, int indent);	/** for debug purposes **/

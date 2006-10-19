@@ -47,10 +47,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.5 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.6 2006/10/19 21:53:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.6  2006/10/19 21:53:23  gbeeley
+    - (feature) First cut at the component-based client side development
+      system.  Only rendering of the components works right now; interaction
+      with the components and their containers is not yet functional.  For
+      an example, see "debugwin.cmp" and "window_test.app" in the samples
+      directory of centrallix-os.
+
     Revision 1.5  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -390,6 +397,12 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** End init for component **/
 	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%s\"]);\n", name);
+
+	/** DOM Linkages **/
+	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+
+	/** Do subwidgets **/
+	htrRenderSubwidgets(s, tree, z+2);
 
     htcmpd_cleanup:
 //	if (subobj) objClose(subobj);

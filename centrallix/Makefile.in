@@ -117,6 +117,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_calendar.o \
 	wgtdrv_checkbox.o \
 	wgtdrv_clock.o \
+	wgtdrv_component.o \
 	wgtdrv_componentdecl.o \
 	wgtdrv_connector.o \
 	wgtdrv_datetime.o \
@@ -193,6 +194,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_calendar.o \
 	   htdrv_scrollbar.o \
 	   htdrv_componentdecl.o \
+	   htdrv_component.o \
 	   htdrv_image.o \
 	   htdrv_hints.o \
 	   htdrv_formbar.o \

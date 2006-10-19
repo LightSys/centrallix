@@ -51,10 +51,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.60 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: ht_render.c,v 1.61 2006/10/19 21:53:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.61  2006/10/19 21:53:23  gbeeley
+    - (feature) First cut at the component-based client side development
+      system.  Only rendering of the components works right now; interaction
+      with the components and their containers is not yet functional.  For
+      an example, see "debugwin.cmp" and "window_test.app" in the samples
+      directory of centrallix-os.
+
     Revision 1.60  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -1537,7 +1544,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    }
 	xsConcatenate(&xs,")",1);
 	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript");
-	htrAddExpressionItem_va(s, "    pg_expression('%s','%s','%s',%s,'%s');\n", objname, property, exptxt.String, xs.String, s->Context);
+	htrAddExpressionItem_va(s, "    pg_expression('%s','%s','%s',%s,'%s');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1733,14 +1740,65 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     }
 
 int
-htr_internal_BuildClientWgtr(pHtSession s, pWgtrNode tree)
+htrBuildClientWgtr(pHtSession s, pWgtrNode tree)
     {
 
 	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
 	htrAddScriptWgtr_va(s, "    pre_%s =\n", tree->DName);
 	htr_internal_BuildClientWgtr_r(s, tree, 0);
-	htrAddScriptWgtr_va(s, ";\n    %s = wgtrSetupTree(pre_%s, null);\n", 
-		tree->DName, tree->DName);
+	htrAddScriptWgtr(s, ";\n");
+
+    return 0;
+    }
+
+
+/*** htr_internal_InitNamespace() - generate the code to build the namespace
+ *** initializations on the client.
+ ***/
+int
+htr_internal_InitNamespace(pHtSession s, pHtNamespace ns)
+    {
+    pHtNamespace child;
+
+	/** If this namespace is within another, link to that in the tree
+	 ** init by setting 'cobj', otherwise leave the parent linkage totally
+	 ** empty.
+	 **/
+	if (ns->ParentCtr[0] && ns->Parent)
+	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, {cobj:wgtrGetContainer(wgtrGetNode(%s,\"%s\"))});\n",
+		ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
+	else
+	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, null);\n", 
+		ns->DName, ns->DName);
+
+	/** Init child namespaces too **/
+	for(child = ns->FirstChild; child; child=child->NextSibling)
+	    {
+	    htr_internal_InitNamespace(s, child);
+	    }
+
+    return 0;
+    }
+
+
+int
+htr_internal_FreeNamespace(pHtNamespace ns)
+    {
+    pHtNamespace child, next;
+
+	/** if 'ns' does not have a parent, then it is builtin to the session
+	 ** 'page' structure and need not be freed.
+	 **/
+	child = ns->FirstChild;
+	if (ns->Parent) nmFree(ns, sizeof(HtNamespace));
+
+	/** Free up sub namespaces too **/
+	while(child)
+	    {
+	    next = child->NextSibling;
+	    htr_internal_FreeNamespace(child);
+	    child = next;
+	    }
 
     return 0;
     }
@@ -1750,7 +1808,7 @@ htr_internal_BuildClientWgtr(pHtSession s, pWgtrNode tree)
  *** as an open ObjectSystem object.
  ***/
 int
-htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
+htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
     {
     pHtSession s;
     int i,n,j,k,l;
@@ -1779,7 +1837,9 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	s->Params = params;
 //	s->ObjSession = appstruct->Session;
 	s->ObjSession = obj_s;
-	strtcpy(s->Context, wgtrGetRootDName(tree), sizeof(s->Context));
+	s->ClientInfo = c_info;
+	s->Namespace = &(s->Page.RootNamespace);
+	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
 
 	/** Parent container name specified? **/
 	if ((ptr = htrParamValue(s, "cx__parent")))
@@ -1884,16 +1944,20 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params)
 	
 	/** first thing in the startup() function should be calling build_wgtr **/
 	htrAddScriptInit(s, "    build_wgtr();\n");
-	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%s);\n", 
-		wgtrGetRootDName(tree));
-	htrAddScriptInit_va(s, "    var rootname = \"%s\";\n",
-		wgtrGetRootDName(tree));
+	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%s);\n"
+			       "    var rootname = \"%s\";\n",
+		s->Namespace->DName, s->Namespace->DName);
 
 	/** Render the top-level widget. **/
 	rval = htrRenderWidget(s, tree, 10);
 
 	/** Assemble the various objects into a widget tree **/
-	htr_internal_BuildClientWgtr(s, tree);
+	htrBuildClientWgtr(s, tree);
+
+	/** Generate the namespace initialization. **/
+	htr_internal_InitNamespace(s, s->Namespace);
+
+	htr_internal_FreeNamespace(s->Namespace);
 
 	/** Add wgtr debug window **/
 #ifdef WGTR_DBG_WINDOW
@@ -2551,4 +2615,53 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
     return 0;
     }
 
+
+/*** htrAddNamespace() - adds a namespace context for expression evaluation
+ *** et al.
+ ***/
+int
+htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
+    {
+    pHtNamespace new_ns;
+    char* ptr;
+
+	/** Allocate a new namespace **/
+	new_ns = (pHtNamespace)nmMalloc(sizeof(HtNamespace));
+	if (!new_ns) return -1;
+	new_ns->Parent = s->Namespace;
+	strtcpy(new_ns->DName, nspace, sizeof(new_ns->DName));
+	wgtrGetPropertyValue(container, "name", DATA_T_STRING, POD(&ptr));
+	strtcpy(new_ns->ParentCtr, ptr, sizeof(new_ns->ParentCtr));
+
+	/** Link it in **/
+	new_ns->FirstChild = NULL;
+	new_ns->NextSibling = s->Namespace->FirstChild;
+	s->Namespace->FirstChild = new_ns;
+	s->Namespace = new_ns;
+
+	/** Add script inits **/
+	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%s);\n"
+			       "    rootname = \"%s\";\n",
+		nspace, nspace);
+
+    return 0;
+    }
+
+
+/*** htrLeaveNamespace() - revert back to the parent namespace of the one
+ *** currently in use.
+ ***/
+int
+htrLeaveNamespace(pHtSession s)
+    {
+
+	s->Namespace = s->Namespace->Parent;
+
+	/** Add script inits **/
+	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%s);\n"
+			       "    rootname = \"%s\";\n",
+		s->Namespace->DName, s->Namespace->DName);
+
+    return 0;
+    }
 

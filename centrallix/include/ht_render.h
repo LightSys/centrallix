@@ -34,10 +34,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.30 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: ht_render.h,v 1.31 2006/10/19 21:53:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.31  2006/10/19 21:53:23  gbeeley
+    - (feature) First cut at the component-based client side development
+      system.  Only rendering of the components works right now; interaction
+      with the components and their containers is not yet functional.  For
+      an example, see "debugwin.cmp" and "window_test.app" in the samples
+      directory of centrallix-os.
+
     Revision 1.30  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -353,6 +360,20 @@ typedef struct
     HtDMPrivateData, *pHtDMPrivateData;
 
 
+/** Namespace / subtree structure.  Used to identify the heirarchy of
+ ** namespaces/subtrees within the application.
+ **/
+typedef struct _HTN
+    {
+    char	DName[64];		/* deployment name for subtree root */
+    char	ParentCtr[64];		/* name of parent container */
+    struct _HTN* Parent;
+    struct _HTN* FirstChild;
+    struct _HTN* NextSibling;
+    }
+    HtNamespace, *pHtNamespace;
+
+
 /** Widget parameter structure, also used for positioning params **/
 typedef struct
     {
@@ -476,6 +497,7 @@ typedef struct
     XHashTable	NameIncludes;		/* hash lookup for includes */
     XArray	Wgtr;			/* code for wgtr-building function */
     HtNameArray	EventScripts;		/* various event script code */
+    HtNamespace	RootNamespace;
     }
     HtPage, *pHtPage;
 
@@ -527,7 +549,9 @@ typedef struct
     int		Height;			/* target container height in pixels */
     char*	Parent;			/* name of target container */
     pWgtrVerifySession VerifySession;	/* name of the current verification session */
-    char	Context[64];
+    /*char	Context[64];*/
+    pWgtrClientInfo ClientInfo;
+    pHtNamespace Namespace;		/* current namespace */
     }
     HtSession, *pHtSession;
 
@@ -573,6 +597,8 @@ int htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __at
 int htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage);
 int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));
 int htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...);
+int htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace);
+int htrLeaveNamespace(pHtSession s);
 
 /** Utility routines **/
 int htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen);
@@ -586,7 +612,7 @@ int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
-int htrRender(pFile output, pObjSession s, pWgtrNode tree, pStruct params);
+int htrRender(pFile output, pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
 int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
@@ -594,7 +620,7 @@ pHtDriver htrAllocDriver();
 int htrAddSupport(pHtDriver drv, char* className);
 char* htrParamValue(pHtSession s, char* paramname);
 pHtDriver htrLookupDriver(pHtSession s, char* type_name);
-
+int htrBuildClientWgtr(pHtSession s, pWgtrNode tree);
 
 #endif /* _HT_RENDER_H */
 

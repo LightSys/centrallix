@@ -65,10 +65,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.61 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: net_http.c,v 1.62 2006/10/19 21:53:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.62  2006/10/19 21:53:23  gbeeley
+    - (feature) First cut at the component-based client side development
+      system.  Only rendering of the components works right now; interaction
+      with the components and their containers is not yet functional.  For
+      an example, see "debugwin.cmp" and "window_test.app" in the samples
+      directory of centrallix-os.
+
     Revision 1.61  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -2922,7 +2929,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			objClose(target_obj);
 			return -1;
 			}
-		    else wgtrRender(conn->ConnFD, target_obj->Session, widget_tree, url_inf, "DHTML");
+		    else wgtrRender(conn->ConnFD, target_obj->Session, widget_tree, url_inf, &wgtr_params, "DHTML");
 		    wgtrFree(widget_tree);
 		    }
 	        }

@@ -381,7 +381,9 @@ wgtrParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root)
 	else
 	    this_node->Root = this_node;
 
-	/** loop through subobjects, and call ourselves recursively to add child nodes **/
+	/** loop through subobjects, and call ourselves recursively to add
+	 ** child nodes.
+	 **/
 	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
 	    {
 	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
@@ -1210,6 +1212,7 @@ wgtrInitialize()
 	wgtcaInitialize();
 	wgtcbInitialize();
 	wgtclInitialize();
+	wgtcmpInitialize();
 	wgtcmpdInitialize();
 	wgtconnInitialize();
 	wgtdtInitialize();
@@ -1321,16 +1324,16 @@ wgtrAddDeploymentMethod(char* method, int (*Render)(pFile, pObjSession, pWgtrNod
  ***/
 
 int
-wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, char* method)
+wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method)
     {
-    int	    (*Render)(pFile, pObjSession, pWgtrNode, pStruct);
+    int	    (*Render)(pFile, pObjSession, pWgtrNode, pStruct, pWgtrClientInfo);
 
 	if ( (Render = (void*)xhLookup(&(WGTR.Methods), method)) == NULL)
 	    {
 	    mssError(1, "WGTR", "Couldn't render widget tree '%s': no render function for '%s'", tree->Name, method);
 	    return -1;
 	    }
-	return Render(output, obj_s, tree, params);
+	return Render(output, obj_s, tree, params, c_info);
     }
 
 
@@ -1423,6 +1426,74 @@ wgtrRenameProperty(pWgtrNode tree, char* oldname, char* newname)
 	strtcpy(prop->Name, newname, sizeof(prop->Name));
 
 	mssError(1, "WGTR", "WARNING: deprecated property '%s' used for widget '%s'; please use '%s' in the future.", oldname, tree->Name, newname);
+
+    return 0;
+    }
+
+
+/*** wgtrGetContainerHeight() - returns the height of the (visual) container
+ *** of a widget.
+ ***/
+int
+wgtrGetContainerHeight(pWgtrNode tree)
+    {
+    int c_height;
+    do  {
+	tree = tree->Parent;
+	} while(tree->Parent && (tree->Flags & WGTR_F_NONVISUAL));
+    c_height = tree->height - 2;
+    if (!strcmp(tree->Type, "widget/childwindow"))
+	c_height -= 24;
+    else if (!strcmp(tree->Type, "widget/scrollpane"))
+	c_height += 2;
+    return c_height;
+    }
+
+
+/*** wgtrGetContainerWidth() - returns the width of the (visual) container
+ *** of a widget.
+ ***/
+int
+wgtrGetContainerWidth(pWgtrNode tree)
+    {
+    int c_width;
+    do  {
+	tree = tree->Parent;
+	} while(tree->Parent && (tree->Flags & WGTR_F_NONVISUAL));
+    c_width = tree->width - 2;
+    if (!strcmp(tree->Type, "widget/scrollpane"))
+	c_width = c_width + 2 - 18;
+    return c_width;
+    }
+
+
+/*** wgtrMoveChildren() - given a widget tree node, adjust the positioning
+ *** of all children by the given amount.  If some children are nonvisual,
+ *** then this function adjusts the children in those nonvisual containers,
+ *** as well.
+ ***/
+int
+wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset)
+    {
+    int cnt = xaCount(&tree->Children);
+    int i;
+    pWgtrNode child;
+
+	for(i=0;i<cnt;i++)
+	    {
+	    child = xaGetItem(&tree->Children, i);
+	    if (child->Flags & WGTR_F_NONVISUAL)
+		{
+		wgtrMoveChildren(child, x_offset, y_offset);
+		}
+	    else
+		{
+		child->x += x_offset;
+		child->pre_x += x_offset;
+		child->y += y_offset;
+		child->pre_y += y_offset;
+		}
+	    }
 
     return 0;
     }
