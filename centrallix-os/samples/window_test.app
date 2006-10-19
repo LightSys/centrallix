@@ -73,4 +73,11 @@ window_test "widget/page"
 		}
 	    }
 	}
+
+    debugger "widget/component"
+	{
+	x=0;y=0;
+	path = "/samples/debugwin.cmp";
+	mode = static;
+	}
     }

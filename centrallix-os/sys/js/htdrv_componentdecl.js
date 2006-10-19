@@ -12,7 +12,7 @@
 function cmpd_init(node, is_visual)
     {
     // component is access point for stuff inside, shell is access point for stuff outside.
-    var component = new Object();
+    var component = node;
     var shell = new Object();
 
     // interface init

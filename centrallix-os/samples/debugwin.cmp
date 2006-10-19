@@ -1,0 +1,113 @@
+$Version=2$
+debugwin "widget/component-decl"
+    {
+    // Component declared design width/height
+    width = 600;
+    height = 434;
+    visual = yes;
+
+    // And here is what is inside the component...
+    mainwin "widget/childwindow"
+	{
+	x=0;y=0;width=600;height=434;
+	hdr_bgcolor='#e0e0e0';
+	bgcolor='#c0c0c0';
+	visible=true;
+	style=dialog;
+	title = "Centrallix Debugger";
+	Treeview_pane "widget/pane"
+	    {
+	    x=1; y=1; width=596; height=210;
+	    style=lowered;
+	    Tree_scroll "widget/scrollpane"
+		{
+		x=0; y=0; width=594; height=208;
+		Tree "widget/treeview"
+		    {
+		    show_branches=yes;
+		    x=0; y=1; width=574;
+		    source = "javascript:window";
+		    }
+		}
+	    }
+	Win_btn "widget/textbutton"
+	    {
+	    x=1;y=213;width=80;height=20;
+	    tristate=no;
+	    fgcolor1="black";
+	    fgcolor2="white";
+	    bgcolor="#e0e0e0";
+	    text="Window";
+	    winconn "widget/connector" { event=Click; target=Tree; action=SetRoot; NewRoot=runclient('javascript:window'); }
+	    }
+	Win_btn2 "widget/textbutton"
+	    {
+	    x=82;y=213;width=80;height=20;
+	    tristate=no;
+	    fgcolor1="black";
+	    fgcolor2="white";
+	    bgcolor="#e0e0e0";
+	    text="Document";
+	    winconn1 "widget/connector" { event=Click; target=Tree; action=SetRoot; NewRoot=runclient('javascript:document'); }
+	    }
+	Root_label "widget/label"
+	    {
+	    x=181;y=213;width=60;height=20;text='Browse:'; align=right;
+	    }
+	Root_eb "widget/editbox"
+	    {
+	    x=241; y=213; width=354; height=20;
+	    bgcolor=white;
+	    setrootconn "widget/connector" { event=ReturnPressed; target=Tree; action=SetRoot; NewRoot=runclient('javascript:' + :Root_eb:content); Expand=runclient('yes'); }
+	    }
+	Log_pane "widget/pane"
+	    {
+	    x=1;y=235;width=596;height=149;
+	    style=lowered;
+	    Log_scroll "widget/scrollpane"
+		{
+		x=0;y=0;width=594;height=147;
+		Log "widget/html"
+		    {
+		    x=0;y=0;width=574;
+		    source = "debug:";
+		    mode=dynamic;
+		    }
+		}
+	    }
+	Show_btn "widget/textbutton"
+	    {
+	    x=1;y=386;width=80;height=20;
+	    tristate=no;
+	    fgcolor1="black";
+	    fgcolor2="white";
+	    bgcolor="#e0e0e0";
+	    text="Show Log";
+	    showconn "widget/connector" { event=Click; target=Log; action=ShowText; }
+	    bottomconn "widget/connector" { event=Click; target=Log_scroll; action=ScrollTo; Percent=100; }
+	    }
+	Clear_btn "widget/textbutton"
+	    {
+	    x=82;y=386;width=80;height=20;
+	    tristate=no;
+	    fgcolor1="black";
+	    fgcolor2="white";
+	    bgcolor="#e0e0e0";
+	    text="Clear";
+	    clearconn "widget/connector" { event=Click; target=Log; action=SetValue; Value=runclient(''); }
+	    clearshowconn "widget/connector" { event=Click; target=Log; action=ShowText; }
+	    }
+	Eval_label "widget/label"
+	    {
+	    x=181;y=386;width=60;height=20;text='Evaluate:'; align=right;
+	    }
+	Eval_editbox "widget/editbox"
+	    {
+	    x=241; y=386; width=354; height=20;
+	    bgcolor=white;
+	    evalconn "widget/connector" { event=ReturnPressed; target=Log; action=AddText; Text=runclient(:Eval_editbox:content + ' = ' + eval(:Eval_editbox:content) + '\n'); ContentType = runclient('text/plain');}
+	    showconn1 "widget/connector" { event=ReturnPressed; target=Log; action=ShowText; }
+	    bottomconn1 "widget/connector" { event=ReturnPressed; target=Log_scroll; action=ScrollTo; Percent=100; }
+	    }
+	}
+    }
