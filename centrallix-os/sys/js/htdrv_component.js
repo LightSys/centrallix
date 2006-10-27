@@ -23,8 +23,10 @@ function cmp_cb_load_complete_3()
 	this.cmp.loader.parentNode.appendChild(larr[i]);
     this.cmp.larr = larr;
     var scripts = document.getElementsByTagName('script');
+    var css = document.getElementsByTagName('style');
     var head = document.getElementsByTagName('head')[0];
     var scripts_to_move = new Array();
+    var css_to_move = new Array();
     for(var i=0;i<scripts.length;i++)
 	{
 	if (scripts[i].parentNode != head) 
@@ -39,6 +41,15 @@ function cmp_cb_load_complete_3()
 	if (oldscript.language) newscript.language = oldscript.language;
 	if (oldscript.text) newscript.text = oldscript.text;
 	head.appendChild(newscript);
+	}
+    for(var i=0;i<css.length;i++)
+	{
+	if (css[i].parentNode != head) 
+	    css_to_move.push(css[i]);
+	}
+    for(var i=0;i<css_to_move.length;i++)
+	{
+	head.appendChild(css_to_move[i]);
 	}
     pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_4', [], 200);
     }

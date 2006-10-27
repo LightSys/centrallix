@@ -2133,7 +2133,8 @@ function pg_keypress(e)
     else if (cx__capabilities.Dom2Events)
 	{
 	k = e.Dom2Event.which;
-	if (k == 8) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	if ((k == 8 || k == 13) && k == pg_lastkey) 
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         if (k == pg_lastkey) pg_lastkey = -1;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	pg_keytimeoutid = null;

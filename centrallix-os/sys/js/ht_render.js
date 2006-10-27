@@ -597,6 +597,11 @@ function htr_mousemovehandler(e)
     // are we busy?
     if (!pg_handlertimeout)
 	pg_handlertimeout = setTimeout(htr_mousemovehandler_cb, 0);
+    if (cx__capabilities.Dom2Events)
+	{
+	e.Dom2Event.preventDefault();
+	e.Dom2Event.stopPropagation();
+	}
     return false;
     }
 
@@ -619,6 +624,7 @@ function htr_eventhandler(e)
     var handler_return;
     var prevent_default = false;
     var handlerlist = pg_handlers[e.type];
+    //pg_debug(e.type + '<br>\n');
     for(var h in handlerlist)
 	{
 	if (typeof handlerlist[h] != 'function')
@@ -627,10 +633,41 @@ function htr_eventhandler(e)
 	if (handler_return & EVENT_PREVENT_DEFAULT_ACTION)
 	    prevent_default = true;
 	if (handler_return & EVENT_HALT)
+	    {
+	    if (prevent_default && cx__capabilities.Dom2Events && e.type != 'mousemove')
+		{
+		e.Dom2Event.preventDefault();
+		e.Dom2Event.stopPropagation();
+		}
 	    return !prevent_default;
+	    }
+	}
+
+    if (prevent_default && cx__capabilities.Dom2Events && e.type != 'mousemove')
+	{
+	e.Dom2Event.preventDefault();
+	e.Dom2Event.stopPropagation();
 	}
 
     return !prevent_default;
+    }
+
+function htr_addeventlistener(e,o,f)
+    {
+    if (!pg_capturedevents)
+	pg_capturedevents = new Array();
+    if (cx__capabilities.Dom2Events)
+	{
+	if (typeof pg_capturedevents[e] == 'undefined')
+	    {
+	    pg_capturedevents[e] = f;
+	    o.addEventListener(e, f, true);
+	    }
+	}
+    else
+	{
+	o['on' + e] = f;
+	}
     }
 
 function htr_captureevents(elist)
@@ -640,7 +677,21 @@ function htr_captureevents(elist)
     // SPECIFIED THE SECOND TIME WERE NOT SPECIFIED THE FIRST TIME!
     // N.B. - captureEvents() is deprecated and may not be available in
     // the future.
-    document.releaseEvents(pg_capturedevents);
-    pg_capturedevents |= elist;
-    document.captureEvents(pg_capturedevents);
+    //document.releaseEvents(pg_capturedevents);
+    //pg_capturedevents |= elist;
+    //alert(pg_capturedevents);
+    if (cx__capabilities.Dom2Events)
+	{
+	//var old_capturedevents = pg_capturedevents;
+	//document.releaseEvents(pg_capturedevents & ~(Event.KEYDOWN | Event.KEYUP | Event.KEYPRESS));
+	//pg_capturedevents |= elist;
+	//document.captureEvents(pg_capturedevents);
+	//alert(pg_capturedevents & ~(old_capturedevents & (Event.KEYDOWN | Event.KEYPRESS | Event.KEYUP)));
+	}
+    else
+	{
+	document.releaseEvents(pg_capturedevents);
+	pg_capturedevents |= elist;
+	document.captureEvents(pg_capturedevents);
+	}
     }
