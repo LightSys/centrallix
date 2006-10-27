@@ -11,6 +11,7 @@
 #include "cxlib/strtcpy.h"
 #include "centrallix.h"
 #include "wgtr.h"
+#include "iface.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.73 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.74 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.74  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.73  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -597,8 +608,18 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
     	/** Check for page load status **/
 	show = htrGetBoolean(tree, "loadstatus", 0);
-
 	strcpy(bgstr, "");
+
+	/** Initialize the html-related interface stuff **/
+	if (ifcHtmlInit(s, tree) < 0)
+	    {
+	    mssError(0, "HTR", "Error Initializing Html Interface code...continuing, but things might not work for client");
+	    }
+	
+	/** Auto-call startup and cleanup **/
+	htrAddBodyParam_va(s, " onLoad=\"startup_%s();\" onUnload=\"cleanup();\"",
+		s->Namespace->DName);
+
 	/** Check for bgcolor. **/
 	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
@@ -690,6 +711,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0);
 	htrAddScriptGlobal(s, "pg_width", "0", 0);
 	htrAddScriptGlobal(s, "pg_height", "0", 0);
+	htrAddScriptGlobal(s, "pg_charw", "0", 0);
+	htrAddScriptGlobal(s, "pg_charh", "0", 0);
+	htrAddScriptGlobal(s, "pg_parah", "0", 0);
+	htrAddScriptGlobal(s, "pg_namespaces", "new Object()", 0);
+	htrAddScriptGlobal(s, "pg_handlertimeout", "null", 0);
+	htrAddScriptGlobal(s, "pg_mousemoveevents", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_handlers", "new Array()", 0);
+	htrAddScriptGlobal(s, "pg_capturedevents", "0", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -698,6 +727,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Write named global **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -706,10 +736,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrObjLinkage(s, tree, "window");
 	htrAddWgtrCtrLinkage(s, tree, "document");
 
+	htrAddScriptInit_va(s, "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
 	htrAddScriptInit_va(s, "    pg_init(nodes['%s'],%d);\n", name, attract);
 	htrAddScriptInit_va(s, "    pg_username = '%s';\n", mssUserName());
 	htrAddScriptInit_va(s, "    pg_width = %d;\n", w);
 	htrAddScriptInit_va(s, "    pg_height = %d;\n", h);
+	htrAddScriptInit_va(s, "    pg_charw = %d;\n", s->ClientInfo->CharWidth);
+	htrAddScriptInit_va(s, "    pg_charh = %d;\n", s->ClientInfo->CharHeight);
+	htrAddScriptInit_va(s, "    pg_parah = %d;\n", s->ClientInfo->ParagraphHeight);
 
 	if(s->Capabilities.HTML40)
 	    {
@@ -787,8 +821,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if(s->Capabilities.Dom0NS)
 	    {
 	    htrAddBodyItem(s, "<DIV ID=pginpt><FORM name=tmpform action><textarea name=x tabindex=1 rows=1></textarea></FORM></DIV>\n");
-	    htrAddEventHandler(s, "document", "MOUSEUP", "pg2",
-		    "    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);\n");
+	    htrAddEventHandlerFunction(s, "document", "MOUSEUP", "pg2", "pg_mouseup_ns4");
 	    }
 
 	/** Set colors for the focus layers **/
@@ -820,6 +853,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		    "    document.layers.pginpt.visibility = 'inherit';\n");
 	    htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");
 	    }
+
+	htrAddScriptInit(s, "    if(typeof(pg_status_close)=='function')pg_status_close();\n");
+	htrAddScriptInit(s, "    pg_serialized_load_doone();\n");
 	
 	return 0;
     }

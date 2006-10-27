@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.28 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.29 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.29  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.28  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -461,42 +471,10 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
       htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:nodes[\"%s\"], fieldname:\"%s\", flag:0, borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0});\n", name,fieldname);
    }
 
-   htrAddEventHandler(s, "document", "MOUSEUP", "radiobutton", "\n"
-      "   if (ly != null && ly.kind == 'radiobutton') {\n"
-      "      if (ly.mainlayer.enabled) {\n"
-      "          if(ly.optionPane) {\n"
-      "             if (ly.mainlayer.form) ly.mainlayer.form.FocusNotify(ly.mainlayer);\n"
-      "             radiobutton_toggle(ly);\n"
-      "          }\n"
-      "          cn_activate(ly.mainlayer, 'Click');\n"
-      "          cn_activate(ly.mainlayer, 'MouseUp');\n"
-      "      }\n"
-      "   }\n");
-
-   htrAddEventHandler(s, "document", "MOUSEDOWN", "radiobutton", "\n"
-      "   if (ly != null && ly.kind == 'radiobutton') {\n"
-      "      if (ly.mainlayer.enabled) cn_activate(ly.mainlayer, 'MouseDown');\n"
-      "   }\n");
-   
-   htrAddEventHandler(s, "document", "MOUSEOVER", "radiobutton", "\n"
-      "   if (ly != null && ly.kind == 'radiobutton') {\n"
-      "      if (ly.mainlayer.enabled && !util_cur_mainlayer) {\n"
-      "          cn_activate(ly.mainlayer, 'MouseOver');\n"
-      "          util_cur_mainlayer = ly.mainlayer;\n"
-      "      }\n"
-      "   }\n");
-
-//   htrAddEventHandler(s, "document", "MOUSEOUT", "radiobutton", "\n"
-//      "   }\n");
-   
-   htrAddEventHandler(s, "document", "MOUSEMOVE", "radiobutton", "\n"
-      "   if (util_cur_mainlayer && ly.kind != 'radiobutton') {\n"						// 
-      "      if (util_cur_mainlayer.mainlayer.enabled) cn_activate(util_cur_mainlayer.mainlayer, 'MouseOut');\n"	// This is MouseOut Detection!
-      "      util_cur_mainlayer = null;\n"									// 
-      "   }\n"												// 
-      "   if (ly != null && ly.kind == 'radiobutton') {\n"
-      "      if (ly.mainlayer.enabled) cn_activate(ly.mainlayer, 'MouseMove');\n"
-      "   }\n");
+   htrAddEventHandlerFunction(s, "document", "MOUSEUP", "radiobutton", "radiobutton_mouseup");
+   htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "radiobutton", "radiobutton_mousedown");
+   htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "radiobutton", "radiobutton_mouseover");
+   htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "radiobutton", "radiobutton_mousemove");
 
    /*
       Now lets loop through and add each radiobutton

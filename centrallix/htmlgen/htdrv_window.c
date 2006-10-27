@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.46 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.47 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.47  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.46  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -548,7 +558,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    /** draw titlebar div **/
 	    if (has_titlebar)
 		{
-		htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %dpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %d; text-color: %s; %s}\n", id, tbh-1-box_offset, z+1, txtcolor, hdr_bgnd_style);
+		htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %dpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %d; color:%s; %s}\n", id, tbh-1-box_offset, z+1, txtcolor, hdr_bgnd_style);
 		htrAddStylesheetItem_va(s,"\t#wn%dtitlebar { border-style: solid; border-width: 0px 0px 1px 0px; border-color: gray; }\n", id);
 		}
 

@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.28 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.29 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.29  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.28  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -413,82 +423,10 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Add the event handling scripts **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","sp",
-		"    sp_target_img=e.target;\n"
-		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"    if (sp_target_img != null && sp_target_img.kind=='sp' && (sp_target_img.name=='u' || sp_target_img.name=='d'))\n"
-		"        {\n"
-		"        if (sp_target_img.name=='u') sp_mv_incr=-10; else sp_mv_incr=+10;\n"
-		"        pg_set(sp_target_img,'src',htutil_subst_last(sp_target_img.src,\"c.gif\"));\n"
-		"        do_mv();\n"
-		"        if (!sp_mv_timeout) sp_mv_timeout = setTimeout(tm_mv,300);\n"
-		"        return false;\n"
-		"        }\n"
-		"    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='t')\n"
-		"        {\n"
-		"        sp_click_x = e.pageX;\n"
-		"        sp_click_y = e.pageY;\n"
-		"        sp_thum_y = getPageY(sp_target_img.thum);\n"
-		"        return false;\n"
-		"        }\n"
-		"    else if (sp_target_img != null && sp_target_img.kind=='sp' && sp_target_img.name=='b')\n"
-		"        {\n"
-		"        sp_mv_incr=sp_target_img.height+36;\n"
-		"        if (e.pageY < getPageY(sp_target_img.thum)+9) sp_mv_incr = -sp_mv_incr;\n"
-		"        do_mv();\n"
-		"        if (!sp_mv_timeout) sp_mv_timeout = setTimeout(tm_mv,300);\n"
-		"        return false;\n"
-		"        }\n"
-		"    else sp_target_img = null;\n"
-		"");
-	htrAddEventHandler(s, "document","MOUSEMOVE","sp",
-		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseMove');\n"
-		"    if (sp_cur_mainlayer && ly.kind != 'sp')\n"
-		"        {\n"
-		"        cn_activate(sp_cur_mainlayer, 'MouseOut');\n"
-		"        sp_cur_mainlayer = null;\n"
-		"        }\n"
-		"    var ti=sp_target_img;\n"
-		"    if (ti != null && ti.kind=='sp' && ti.name=='t')\n"
-		"        {\n"
-		"        var v=getClipHeight(ti.pane)-(3*18);\n"
-		"        var new_y=sp_thum_y + (e.pageY-sp_click_y);\n"
-		"        if (new_y > getPageY(ti.pane)+18+v) new_y=getPageY(ti.pane)+18+v;\n"
-		"        if (new_y < getPageY(ti.pane)+18) new_y=getPageY(ti.pane)+18;\n"
-		"        setPageY(ti.thum,new_y);\n"
-		"        var h=getClipHeight(ti.area)+getClipTop(ti.area);\n"
-		"        var d=h-getClipHeight(ti.pane);\n"
-		"        if (d<0) d=0;\n"
-		"        var yincr = (((getRelativeY(ti.thum)-18)/v)*-d) - getRelativeY(ti.area);\n"
-		"        moveBy(ti.area, 0, yincr);\n"
-		"        return false;\n"
-		"        }\n"
-		"");
-	htrAddEventHandler(s, "document","MOUSEUP","sp",
-		"    if (sp_mv_timeout != null)\n"
-		"        {\n"
-		"        clearTimeout(sp_mv_timeout);\n"
-		"        sp_mv_timeout = null;\n"
-		"        sp_mv_incr = 0;\n"
-		"        }\n"
-		"    if (sp_target_img != null)\n"
-		"        {\n"
-		"        if (sp_target_img.name != 'b')\n"
-		"            pg_set(sp_target_img,'src',htutil_subst_last(sp_target_img.src,\"b.gif\"));\n"
-		"        sp_target_img = null;\n"
-		"        }\n"
-		"    if (ly.kind == 'sp') cn_activate(ly.mainlayer, 'MouseUp');\n");
-	htrAddEventHandler(s, "document", "MOUSEOVER", "sp",
-		"    if (ly.kind == 'sp')\n"
-		"        {\n"
-		"        if (!sp_cur_mainlayer)\n"
-		"            {\n"
-		"            cn_activate(ly.mainlayer, 'MouseOver');\n"
-		"            sp_cur_mainlayer = ly.mainlayer;\n"
-		"            }\n"
-		"        }\n");
-//	htrAddEventHandler(s, "document", "MOUSEOUT", "sp",
-//		"");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","sp","sp_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","sp","sp_mousemove");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP","sp","sp_mouseup");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sp","sp_mouseover");
 
 	/** Do subwidgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

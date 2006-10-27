@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.23 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_textarea.c,v 1.24 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.24  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.23  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -351,41 +361,10 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 
-	htrAddEventHandler(s, "document","MOUSEUP", "tx", 
-	    "\n"
-	    "    if (ly.kind == 'tx') cn_activate(ly.mainlayer, 'MouseUp');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEDOWN", "tx",
-	    "\n"
-	    "    if (ly.kind == 'tx') cn_activate(ly.mainlayer, 'MouseDown');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER", "tx", 
-	    "\n"
-	    "    if (ly.kind == 'tx')\n"
-	    "        {\n"
-	    "        if (!tx_cur_mainlayer)\n"
-	    "            {\n"
-	    "            cn_activate(ly.mainlayer, 'MouseOver');\n"
-	    "            tx_cur_mainlayer = ly.mainlayer;\n"
-	    "            }\n"
-	    "        }\n"
-	    "\n");
-
-//	htrAddEventHandler(s, "document","MOUSEOUT", "tx", 
-//	    "\n"
-//	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEMOVE", "tx", 
-	    "\n"
-	    "   if (tx_cur_mainlayer && ly.kind != 'tx')\n"			// 
-	    "      {\n"								//
-	    "      cn_activate(tx_cur_mainlayer, 'MouseOut');\n"		// This is MouseOut Detection!
-	    "      tx_cur_mainlayer = null;\n"					// 
-	    "      }\n"								//
-	    "   if (ly.kind == 'tx') cn_activate(ly.mainlayer, 'MouseMove');\n"
-	    "\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "tx", "tx_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "tx","tx_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "tx", "tx_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
 	    
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%s\"], fieldname:\"%s\", isReadonly:%d, mode:%d, mainBackground:\"%s\"});\n",

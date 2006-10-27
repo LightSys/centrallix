@@ -237,34 +237,11 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s,"</DIV>\n");
 
 	/** Add the event handling scripts **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","dt",
-		"    if (e.target.kind && e.target.kind.substr(0, 5) == 'dtimg') {\n"
-		"        eval('dt_'+e.target.kind.substr(6, 4)+'(true,' + e.y + ')');\n"
-		"    } else {\n"
-		"        if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
-		"            dt_mousedown(ly);\n"
-		"            if (ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"        } else if (dt_current && dt_current != ly.mainlayer) {\n"
-		"            dt_collapse(dt_current);\n"
-		"            dt_current = null;\n"
-		"        }\n"
-		"    }\n");
-
-	htrAddEventHandler(s, "document","MOUSEUP","dt",
-		"    if (ly.kind && ly.kind.substr(0, 2) == 'dt') {\n"
-		"        dt_mouseup(ly);\n"
-		"        if (ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseUp');\n"
-		"        if (ly.kind == 'dt') cn_activate(ly.mainlayer, 'Click');\n"
-		"    }\n");
-
-	htrAddEventHandler(s, "document","MOUSEMOVE","dt",
-		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseMove');\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER","dt",
-		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseOver');\n");
-
-	htrAddEventHandler(s, "document","MOUSEOUT","dt",
-		"    if (ly.kind && ly.kind == 'dt') cn_activate(ly.mainlayer, 'MouseOut');\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","dt","dt_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP","dt","dt_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","dt","dt_mousemove");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER","dt","dt_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEOUT","dt","dt_mouseout");
 
 	/** Check for more sub-widgets within the datetime. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -313,10 +290,20 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.35 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.36 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.36  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.35  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on

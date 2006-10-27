@@ -51,10 +51,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.61 2006/10/19 21:53:23 gbeeley Exp $
+    $Id: ht_render.c,v 1.62 2006/10/27 05:57:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.62  2006/10/27 05:57:22  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.61  2006/10/19 21:53:23  gbeeley
     - (feature) First cut at the component-based client side development
       system.  Only rendering of the components works right now; interaction
@@ -1255,6 +1265,7 @@ htrAddScriptCleanup(pHtSession s, char* init_text)
     return htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text);
     }
 
+#if 00
 /*** htrAddEventHandler - adds an event handler script code segment for a
  *** given event on a given object (usually the 'document').
  ***/
@@ -1315,14 +1326,57 @@ htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, ch
 
     return 0;
     }
+#endif
 
-/*** htrAddEventHandlerFunction - adds an event handler script code segment for a
- *** given event on a given object (usually the 'document').
+/*** htrAddEventHandlerFunction - adds an event handler script code segment for
+ *** a given event on a given object (usually the 'document').
+ ***
+ *** GRB note -- event_src is no longer used, should always be 'document'.
+ ***          -- drvname is no longer used, just ignored.
  ***/
 int
 htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function)
     {
-    char buf[HT_SBUF_SIZE];
+    pHtDomEvent e = NULL;
+    pHtDomEvent e_srch;
+    int i,cnt;
+
+	/** Look it up? 
+	 ** (GRB note -- is this slow enough to need an XHashTable?)
+	 **/
+	cnt = xaCount(&s->Page.EventHandlers);
+	for(i=0;i<cnt;i++)
+	    {
+	    e_srch = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
+	    if (!strcmp(event, e_srch->DomEvent))
+		{
+		e = e_srch;
+		break;
+		}
+	    }
+	
+	/** Make a new one? **/
+	if (!e)
+	    {
+	    e = (pHtDomEvent)nmMalloc(sizeof(HtDomEvent));
+	    if (!e) return -1;
+	    strtcpy(e->DomEvent, event, sizeof(e->DomEvent));
+	    xaInit(&e->Handlers,64);
+	    xaAddItem(&s->Page.EventHandlers, e);
+	    }
+
+	/** Add our handler **/
+	cnt = xaCount(&e->Handlers);
+	for(i=0;i<cnt;i++)
+	    {
+	    if (!strcmp(function, (char*)xaGetItem(&e->Handlers,i)))
+		return 0;
+	    }
+	xaAddItem(&e->Handlers, function);
+
+    return 0;
+	
+    /*char buf[HT_SBUF_SIZE];
     snprintf(buf, HT_SBUF_SIZE,
 	"    handler_return = %s(e);\n"
 	"    if(handler_return & EVENT_PREVENT_DEFAULT_ACTION)\n"
@@ -1332,8 +1386,9 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	function);
     buf[HT_SBUF_SIZE-1] = '\0';
 
-    return htrAddEventHandler(s, event_src, event, drvname, buf);
+    return htrAddEventHandler(s, event_src, event, drvname, buf);*/
     }
+
 
 /*** htrDisableBody - disables the <BODY> </BODY> tags so that, for instance,
  *** a frameset item can be used.
@@ -1765,10 +1820,12 @@ htr_internal_InitNamespace(pHtSession s, pHtNamespace ns)
 	 ** empty.
 	 **/
 	if (ns->ParentCtr[0] && ns->Parent)
-	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, {cobj:wgtrGetContainer(wgtrGetNode(%s,\"%s\"))});\n",
-		ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
+	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, \"%s\", {cobj:wgtrGetContainer(wgtrGetNode(%s,\"%s\"))});\n",
+		    ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
 	else
-	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, null);\n", 
+	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, \"%s\", null);\n", 
+		    ns->DName, ns->DName, ns->DName);
+	htrAddScriptWgtr_va(s, "    pg_namespaces[\"%s\"] = %s;\n",
 		ns->DName, ns->DName);
 
 	/** Init child namespaces too **/
@@ -1811,13 +1868,13 @@ int
 htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
     {
     pHtSession s;
-    int i,n,j,k,l;
+    int i,n,j,k,cnt,cnt2;
     pStrValue tmp;
     char* ptr;
     pStrValue sv;
     char sbuf[HT_SBUF_SIZE];
     char ename[40];
-    pHtNameArray tmp_a, tmp_a2, tmp_a3;
+    pHtDomEvent e;
     char* agent = NULL;
     char* classname = NULL;
     int rval;
@@ -1842,10 +1899,10 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
 
 	/** Parent container name specified? **/
-	if ((ptr = htrParamValue(s, "cx__parent")))
-	    s->Parent = nmSysStrdup(ptr);
+	if ((ptr = htrParamValue(s, "cx__graft")))
+	    s->GraftPoint = nmSysStrdup(ptr);
 	else
-	    s->Parent = nmSysStrdup("window");
+	    s->GraftPoint = NULL;
 
 	/** Did user request a class of widgets? **/
 	classname = (char*)mssGetParam("Class");
@@ -1911,7 +1968,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	s->TmpbufSize = 512;
 	if (!s->Tmpbuf)
 	    {
-	    nmSysFree(s->Parent);
+	    if (s->GraftPoint) nmSysFree(s->GraftPoint);
 	    nmFree(s, sizeof(HtSession));
 	    return -1;
 	    }
@@ -1928,22 +1985,18 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	xaInit(&(s->Page.HtmlStylesheet),64);
 	xaInit(&(s->Page.HtmlBodyParams),16);
 	xaInit(&(s->Page.HtmlExpressionInit),16);
-	xaInit(&(s->Page.EventScripts.Array),16);
-	xhInit(&(s->Page.EventScripts.HashTable),257,0);
+	/*xaInit(&(s->Page.EventScripts.Array),16);
+	xhInit(&(s->Page.EventScripts.HashTable),257,0);*/
+	xaInit(&s->Page.EventHandlers,16);
 	xaInit(&(s->Page.Wgtr), 64);
 	s->Page.HtmlBodyFile = NULL;
 	s->Page.HtmlHeaderFile = NULL;
 	s->Page.HtmlStylesheetFile = NULL;
 	s->DisableBody = 0;
 
-	/** Initialize the html-related interface stuff **/
-	if (ifcHtmlInit(s, tree) < 0)
-	    {
-	    mssError(0, "HTR", "Error Initializing Html Interface code...continuing, but things might not work for client");
-	    }
-	
 	/** first thing in the startup() function should be calling build_wgtr **/
-	htrAddScriptInit(s, "    build_wgtr();\n");
+	htrAddScriptInit_va(s, "    build_wgtr_%s();\n",
+		s->Namespace->DName);
 	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%s);\n"
 			       "    var rootname = \"%s\";\n",
 		s->Namespace->DName, s->Namespace->DName);
@@ -2014,7 +2067,6 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    n = *(int*)ptr;
 	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
-	fdWrite(output, "\n</HEAD>\n",9,0,FD_U_PACKET);
 
 	/** Write the script globals **/
 	fdWrite(output, "<SCRIPT language=\"javascript\" DEFER>\n\n\n", 39,0,FD_U_PACKET);
@@ -2022,7 +2074,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
 	    if (sv->Value[0])
-		snprintf(sbuf,HT_SBUF_SIZE,"var %s = %s;\n", sv->Name, sv->Value);
+		snprintf(sbuf,HT_SBUF_SIZE,"if (typeof %s == 'undefined') var %s = %s;\n", sv->Name, sv->Name, sv->Value);
 	    else
 		snprintf(sbuf,HT_SBUF_SIZE,"var %s;\n", sv->Name);
 	    fdWrite(output, sbuf, strlen(sbuf),0,FD_U_PACKET);
@@ -2059,7 +2111,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    }
 
 	/** Write the event scripts themselves. **/
-	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
+	/*for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
 	    {
 	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
 	    for(j=0;j<tmp_a->Array.nItems;j++)
@@ -2080,10 +2132,44 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 		    }
 		fdPrintf(output,"    return !prevent_default;\n    }\n");
 		}
-	    }
+	    }*/
+
+	/** Link up the events **/
 
 	/** Write the event capture lines **/
-	fdWrite(output,"\nfunction events()\n    {\n", 25,0,FD_U_PACKET);
+	fdPrintf(output,"\nfunction events_%s()\n    {\n",s->Namespace->DName);
+	cnt = xaCount(&s->Page.EventHandlers);
+	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");
+	for(i=0;i<cnt;i++)
+	    {
+	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
+	    if (i) strcat(sbuf, " | ");
+	    strcat(sbuf,"Event.");
+	    strcat(sbuf,e->DomEvent);
+	    }
+	strcat(sbuf,");\n");
+	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
+	for(i=0;i<cnt;i++)
+	    {
+	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
+	    n = strlen(e->DomEvent);
+	    if (n >= sizeof(ename)) n = sizeof(ename)-1;
+	    for(k=0;k<=n;k++) ename[k] = tolower(e->DomEvent[k]);
+	    ename[k] = '\0';
+	    cnt2 = xaCount(&e->Handlers);
+	    for(j=0;j<cnt2;j++)
+		{
+		fdPrintf(output, "    htr_addeventhandler(\"%s\",\"%s\");\n",
+			ename, xaGetItem(&e->Handlers, j));
+		}
+	    if (!strcmp(ename,"mousemove"))
+		fdPrintf(output, "    document.on%s = htr_mousemovehandler;\n",
+			ename);
+	    else
+		fdPrintf(output, "    document.on%s = htr_eventhandler;\n",
+			ename);
+	    }
+#if 00
 	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
 	    {
 	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
@@ -2101,15 +2187,25 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	        {
 	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
 		n = strlen(tmp_a2->Name);
+		if (n >= sizeof(ename)) n = sizeof(ename)-1;
 		for(k=0;k<=n;k++) ename[k] = tolower(tmp_a2->Name[k]);
-		snprintf(sbuf,HT_SBUF_SIZE,"    %.64s.on%s=e%d_%d;\n",tmp_a->Name,ename,i,j);
-		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);
+		ename[k] = '\0';
+		/*snprintf(sbuf,HT_SBUF_SIZE,"    %.64s.on%s=e%d_%d;\n",tmp_a->Name,ename,i,j);
+		fdWrite(output,sbuf,strlen(sbuf),0,FD_U_PACKET);*/
+		if (!strcmp(ename,"mousemove"))
+		    fdPrintf(output, "    %.64s.on%s = htr_mousemovehandler;\n",
+			tmp_a->Name, ename);
+		else
+		    fdPrintf(output, "    %.64s.on%s = htr_eventhandler;\n",
+			tmp_a->Name, ename);
 		}
 	    }
+#endif
+
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 	/** Write the expression initializations **/
-	fdWrite(output,"\nfunction expinit()\n    {\n",26,0,FD_U_PACKET);
+	fdPrintf(output,"\nfunction expinit_%s()\n    {\n",s->Namespace->DName);
 	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlExpressionInit.Items[i]);
@@ -2119,7 +2215,8 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 	/** Write the wgtr declaration **/
-	fdWrite(output, "\nfunction build_wgtr()\n    {\n", 29, 0, FD_U_PACKET);
+	fdPrintf(output, "\nfunction build_wgtr_%s()\n    {\n",
+		s->Namespace->DName);
 	for (i=0;i<s->Page.Wgtr.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Wgtr.Items[i]);
@@ -2129,20 +2226,17 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	fdWrite(output, "    }\n", 6, 0, FD_U_PACKET);
 
 	/** Write the initialization lines **/
-	fdWrite(output,"\nfunction startup()\n    {\n",26,0,FD_U_PACKET);
+	fdPrintf(output,"\nfunction startup_%s()\n    {\n", s->Namespace->DName);
 	htr_internal_writeCxCapabilities(s,output);
 
-	fdWrite(output,"    if(typeof(pg_status_init)=='function')pg_status_init();\n",60,0,FD_U_PACKET);
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Inits.Items[i]);
 	    n = *(int*)ptr;
 	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
 	    }
-	fdWrite(output,"    events();\n", 14,0,FD_U_PACKET);
-	fdWrite(output,"    expinit();\n", 15,0,FD_U_PACKET);
-	fdWrite(output,"    if(typeof(pg_status_close)=='function')pg_status_close();\n",62,0,FD_U_PACKET);
-	fdWrite(output,"    pg_serialized_load_doone();\n",32,0,FD_U_PACKET);
+	fdPrintf(output,"    events_%s();\n", s->Namespace->DName);
+	fdPrintf(output,"    expinit_%s();\n", s->Namespace->DName);
 	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
 
 	/** Write the cleanup lines **/
@@ -2160,7 +2254,8 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	if (s->DisableBody == 0)
 	    {
 	    /** Write the HTML body params **/
-	    fdWrite(output, "\n</SCRIPT>\n<BODY", 16,0,FD_U_PACKET);
+	    fdWrite(output, "\n</SCRIPT>\n</HEAD>",18,0,FD_U_PACKET);
+	    fdWrite(output, "\n<BODY", 6,0,FD_U_PACKET);
 	    for(i=0;i<s->Page.HtmlBodyParams.nItems;i++)
 	        {
 	        ptr = (char*)(s->Page.HtmlBodyParams.Items[i]);
@@ -2172,7 +2267,8 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 		{
 		fdWrite(output, " onResize=\"location.reload()\"",29,0,FD_U_PACKET);
 		}
-	    fdPrintf(output, " onLoad=\"startup();\" onUnload=\"cleanup();\">\n");
+	    /*fdPrintf(output, " onLoad=\"startup();\" onUnload=\"cleanup();\"");*/
+	    fdPrintf(output, ">\n");
 	    }
 	else
 	    {
@@ -2244,7 +2340,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	xaDeInit(&(s->Page.HtmlExpressionInit));
 
 	/** Clean up the event script structure, which is multi-level. **/
-	for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
+	/*for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
 	    {
 	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
 	    for(j=0;j<tmp_a->Array.nItems;j++)
@@ -2272,11 +2368,25 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    nmFree(tmp_a,sizeof(HtNameArray));
 	    }
 	xhDeInit(&(s->Page.EventScripts.HashTable));
-	xaDeInit(&(s->Page.EventScripts.Array));
+	xaDeInit(&(s->Page.EventScripts.Array));*/
+	cnt = xaCount(&s->Page.EventHandlers);
+	for(i=0;i<cnt;i++)
+	    {
+	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
+	    /** these must all be string constants; no need to free **/
+	    /*cnt2 = xaCount(&e->Handlers);
+	    for(j=0;j<cnt2;j++)
+		{
+		nmSysFree((char*)xaGetItem(&e->Handlers, j));
+		}*/
+	    xaDeInit(&e->Handlers);
+	    nmFree(e, sizeof(HtDomEvent));
+	    }
+	xaDeInit(&s->Page.EventHandlers);
 
 	nmSysFree(s->Tmpbuf);
 
-	nmSysFree(s->Parent);
+	if (s->GraftPoint) nmSysFree(s->GraftPoint);
 
 	nmFree(s,sizeof(HtSession));
 

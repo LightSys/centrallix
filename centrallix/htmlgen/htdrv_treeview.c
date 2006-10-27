@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.37 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.38 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.38  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.37  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -449,81 +459,14 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Event handler for click-on-url **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddEventHandler(s, "document","CLICK","tv",
-		"    if (e.target != null && e.target.kind == 'tv' && e.target.href != null)\n"
-		"        {\n"
-		"        cn_activate(ly.mainlayer, 'Click');\n"
-		"        return tv_click(e);\n"
-		"        }\n");
-	    }
-	else
-	    {
-	    htrAddEventHandler(s, "document","CLICK","tv",
-		"    if (e.target != null && e.target.kind == 'tv' && (e.target.nodeName == 'A' || e.target.nodeName == 'DIV'))\n"
-		"        {\n"
-		"        cn_activate(ly.mainlayer, 'Click');\n"
-		"        return tv_click(e);\n"
-		"        }\n");
-	    }
+	htrAddEventHandlerFunction(s, "document","CLICK","tv","tv_click");
 
 	/** Add the event handling scripts **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddEventHandler(s, "document","MOUSEDOWN","tv",
-		"    if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"    if (e.target != null && e.target.kind=='tv' && e.target.href == null)\n"
-		"        {\n"
-		"        if (e.which == 3)\n"
-		"            {\n"
-		"            return false; //return tv_rclick(e);\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            tv_target_img = e.target;\n"
-		"            pg_set(tv_target_img.layer.img,'src',htutil_subst_last(tv_target_img.layer.img.src,'c.gif'));\n"
-		"            }\n"
-		"        }\n");
-	    }
-	else
-	    {
-	    htrAddEventHandler(s, "document","MOUSEDOWN","tv",
-		"    if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"    if (e.target != null && e.target.kind=='tv' && e.target.nodeName != 'A' && e.target.nodeName != 'DIV')\n"
-		"        {\n"
-		"        if (e.which == 3)\n"
-		"            {\n"
-		"            return false; //return tv_rclick(e);\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            tv_target_img = e.target;\n"
-		"            pg_set(tv_target_img.layer.img,'src',htutil_subst_last(tv_target_img.layer.img.src,'c.gif'));\n"
-		"            }\n"
-		"        }\n");
-	    }
-
-	htrAddEventHandler(s, "document","MOUSEUP","tv",
-		"    if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseUp');\n"
-		"    if (e.target != null && e.target.kind == 'tv' && e.which == 3) return false;\n"
-		"    if (tv_target_img != null && tv_target_img.kind == 'tv')\n"
-		"        {\n"
-		"        var l = tv_target_img.layer;\n"
-		"        tv_target_img = null;\n"
-		"        if (l.expanded == 0)\n"
-		"            {\n"
-		"            return l.expand();\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            return l.collapse();\n"
-		"            }\n"
-		"        }\n");
-
-	htrAddEventHandler(s,"document","MOUSEOVER","tv","   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseOver');\n");
-	htrAddEventHandler(s,"document","MOUSEMOVE","tv","   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseMove');\n");
-	htrAddEventHandler(s,"document","MOUSEOUT","tv", "   if (ly.kind == 'tv') cn_activate(ly.mainlayer, 'MouseOut');\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","tv","tv_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP","tv","tv_mouseup");
+	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tv","tv_mouseover");
+	htrAddEventHandlerFunction(s,"document","MOUSEMOVE","tv","tv_mousemove");
+	htrAddEventHandlerFunction(s,"document","MOUSEOUT","tv", "tv_mouseout");
 
 	/** Check for more sub-widgets within the treeview. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

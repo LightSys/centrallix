@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.22 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.23 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.23  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.22  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -326,11 +336,11 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    else
        htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
 
-   htrAddEventHandler(s,"document","MOUSEDOWN","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseDown');\n\n"); 
-   htrAddEventHandler(s,"document","MOUSEUP",  "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseUp');\n\n"); 
-   htrAddEventHandler(s,"document","MOUSEOVER","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOver');\n\n"); 
-   htrAddEventHandler(s,"document","MOUSEOUT", "fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseOut');\n\n"); 
-   htrAddEventHandler(s,"document","MOUSEMOVE","fs","\n    if (ly.kind == 'formstatus') cn_activate(ly, 'MouseMove');\n\n"); 
+   htrAddEventHandlerFunction(s,"document","MOUSEDOWN","fs","fs_mousedown");
+   htrAddEventHandlerFunction(s,"document","MOUSEUP",  "fs","fs_mouseup");
+   htrAddEventHandlerFunction(s,"document","MOUSEOVER","fs","fs_mouseover");
+   htrAddEventHandlerFunction(s,"document","MOUSEOUT", "fs","fs_mouseout");
+   htrAddEventHandlerFunction(s,"document","MOUSEMOVE","fs","fs_mousemove");
 
    htrRenderSubwidgets(s, tree, z+2);
 

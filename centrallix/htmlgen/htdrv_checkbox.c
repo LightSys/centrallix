@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.36 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.37 2006/10/27 05:57:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.37  2006/10/27 05:57:22  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.36  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -363,34 +373,11 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
    htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js",0);
 
-   htrAddEventHandler(s, "document","MOUSEDOWN", "checkbox", 
-      "\n"
-      "    if (ly.kind == 'checkbox' && ly.enabled)\n"
-      "       {\n"
-      "       checkbox_toggleMode(ly);\n"
-      "       cn_activate(ly, 'MouseDown');\n"
-      "       }\n"
-      "\n");
-   
-   htrAddEventHandler(s, "document","MOUSEUP", "checkbox", 
-      "\n"
-      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseUp');\n"
-      "\n");
-
-   htrAddEventHandler(s, "document","MOUSEOVER", "checkbox", 
-      "\n"
-      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseOver');\n"
-      "\n");
-   
-   htrAddEventHandler(s, "document","MOUSEOUT", "checkbox", 
-      "\n"
-      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseOut');\n"
-      "\n");
-   
-   htrAddEventHandler(s, "document","MOUSEMOVE", "checkbox", 
-      "\n"
-      "    if (ly.kind == 'checkbox' && ly.enabled) cn_activate(ly, 'MouseMove');\n"
-      "\n");
+   htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "checkbox", "checkbox_mousedown");
+   htrAddEventHandlerFunction(s, "document","MOUSEUP", "checkbox", "checkbox_mouseup");
+   htrAddEventHandlerFunction(s, "document","MOUSEOVER", "checkbox", "checkbox_mouseover");
+   htrAddEventHandlerFunction(s, "document","MOUSEOUT", "checkbox", "checkbox_mouseout");
+   htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "checkbox", "checkbox_mousemove");
    
    /** Script initialization call. **/
    htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%s\"], fieldname:\"%s\", checked:%d, enabled:%d});\n", name, fieldname,checked,enabled);

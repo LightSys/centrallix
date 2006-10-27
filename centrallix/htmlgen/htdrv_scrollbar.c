@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.10 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_scrollbar.c,v 1.11 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.11  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.10  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -359,86 +369,10 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Add the event handling scripts **/
 
-	htrAddEventHandler(s, "document","MOUSEDOWN","sb",
-		"    sb_target_img=e.target;\n"
-		"    if (sb_target_img != null && sb_target_img.kind=='sb' && (sb_target_img.name=='u' || sb_target_img.name=='d'))\n"
-		"        {\n"
-		"        if (sb_target_img.name=='u') sb_mv_incr=-10; else sb_mv_incr=+10;\n"
-		"        pg_set(sb_target_img,'src',htutil_subst_last(sb_target_img.src,\"c.gif\"));\n"
-		"        sb_do_mv();\n"
-		"        sb_mv_timeout = setTimeout(sb_tm_mv,300);\n"
-		"        return false;\n"
-		"        }\n"
-		"    else if (sb_target_img != null && sb_target_img.kind=='sb' && sb_target_img.name=='t')\n"
-		"        {\n"
-		"        sb_click_x = e.pageX;\n"
-		"        sb_click_y = e.pageY;\n"
-		"        sb_thum_x = getPageX(sb_target_img.thum);\n"
-		"        sb_thum_y = getPageY(sb_target_img.thum);\n"
-		"        return false;\n"
-		"        }\n"
-		"    else if (sb_target_img != null && sb_target_img.kind=='sb' && sb_target_img.name=='b')\n"
-		"        {\n"
-		"        sb_mv_incr=sb_target_img.mainlayer.controlsize + (18*3);\n"
-		"        if (!sb_target_img.mainlayer.is_horizontal && e.pageY < getPageY(sb_target_img.thum)+9) sb_mv_incr = -sb_mv_incr;\n"
-		"        if (sb_target_img.mainlayer.is_horizontal && e.pageX < getPageX(sb_target_img.thum)+9) sb_mv_incr = -sb_mv_incr;\n"
-		"        sb_do_mv();\n"
-		"        sb_mv_timeout = setTimeout(sb_tm_mv,300);\n"
-		"        return false;\n"
-		"        }\n"
-		"    else sb_target_img = null;\n"
-		"    if (ly.kind == 'sb') cn_activate(ly.mainlayer, 'MouseDown');");
-	htrAddEventHandler(s, "document","MOUSEMOVE","sb",
-		"    var ti=sb_target_img;\n"
-		"    if (ti != null && ti.kind=='sb' && ti.name=='t')\n"
-		"        {\n"
-		"        if (ti.mainlayer.is_horizontal)\n"
-		"            {\n"
-		"            var new_x=sb_thum_x + (e.pageX-sb_click_x);\n"
-		"            if (new_x > getPageX(ti.pane)+18+ti.mainlayer.controlsize) new_x=getPageX(ti.pane)+18+ti.mainlayer.controlsize;\n"
-		"            if (new_x < getPageX(ti.pane)+18) new_x=getPageX(ti.pane)+18;\n"
-		"            setPageX(ti.thum,new_x);\n"
-		"            ti.mainlayer.value = Math.round((new_x - (getPageX(ti.pane)+18))*ti.mainlayer.range/ti.mainlayer.controlsize);\n"
-		"            }\n"
-		"        else\n"
-		"            {\n"
-		"            var new_y=sb_thum_y + (e.pageY-sb_click_y);\n"
-		"            if (new_y > getPageY(ti.pane)+18+ti.mainlayer.controlsize) new_y=getPageY(ti.pane)+18+ti.mainlayer.controlsize;\n"
-		"            if (new_y < getPageY(ti.pane)+18) new_y=getPageY(ti.pane)+18;\n"
-		"            setPageY(ti.thum,new_y);\n"
-		"            ti.mainlayer.value = Math.round((new_y - (getPageY(ti.pane)+18))*ti.mainlayer.range/ti.mainlayer.controlsize);\n"
-		"            }\n"
-		"        return false;\n"
-		"        }\n"
-		"    if (ly.kind == 'sb') cn_activate(ly.mainlayer, 'MouseMove');\n"
-		"    if (sb_cur_mainlayer && ly.kind != 'sb')\n"
-		"        {\n"
-		"        cn_activate(sb_cur_mainlayer, 'MouseOut');\n"
-		"        sb_cur_mainlayer = null;\n"
-		"        }\n");
-	htrAddEventHandler(s, "document","MOUSEUP","sb",
-		"    if (sb_mv_timeout != null)\n"
-		"        {\n"
-		"        clearTimeout(sb_mv_timeout);\n"
-		"        sb_mv_timeout = null;\n"
-		"        sb_mv_incr = 0;\n"
-		"        }\n"
-		"    if (sb_target_img != null)\n"
-		"        {\n"
-		"        if (sb_target_img.name != 'b')\n"
-		"            pg_set(sb_target_img,'src',htutil_subst_last(sb_target_img.src,\"b.gif\"));\n"
-		"        sb_target_img = null;\n"
-		"        }\n"
-		"    if (ly.kind == 'sb') cn_activate(ly.mainlayer, 'MouseUp');\n");
-	htrAddEventHandler(s, "document", "MOUSEOVER", "sb",
-		"    if (ly.kind == 'sb')\n"
-		"        {\n"
-		"        if (!sb_cur_mainlayer)\n"
-		"            {\n"
-		"            cn_activate(ly.mainlayer, 'MouseOver');\n"
-		"            sb_cur_mainlayer = ly.mainlayer;\n"
-		"            }\n"
-		"        }\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","sb","sb_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","sb","sb_mousemove");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP","sb","sb_mouseup");
+	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sb","sb_mouseover");
 
 	/** Check for more sub-widgets within the scrollbar (visual ones not allowed). **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

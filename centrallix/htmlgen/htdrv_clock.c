@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.18 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.19 2006/10/27 05:57:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.19  2006/10/27 05:57:22  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.18  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -367,47 +377,11 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Event Handlers **/
-	htrAddEventHandler(s, "document","MOUSEUP", "cl", 
-	    "\n"
-	    "    if (ly.kind == 'cl')\n"
-	    "        {\n"
-	    "        cn_activate(ly.mainlayer, 'MouseUp');\n"
-	    "        if (ly.mainlayer.moveable) cl_move = false;\n"
-	    "        }\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEDOWN", "cl",
-	    "\n"
-	    "    if (ly.kind == 'cl')\n"
-	    "        {\n"
-	    "        cn_activate(ly.mainlayer, 'MouseDown');\n"
-	    "        if (ly.mainlayer.moveable)\n"
-	    "            {\n"
-	    "            cl_move = true;\n"
-	    "            cl_xOffset = e.pageX - ly.mainlayer.pageX;\n"
-	    "            cl_yOffset = e.pageY - ly.mainlayer.pageY;\n"
-	    "            }\n"
-	    "        }\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER", "cl", 
-	    "\n"
-	    "    if (ly.kind == 'cl') cn_activate(ly.mainlayer, 'MouseOver');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOUT", "cl", 
-	    "\n"
-	    "    if (ly.kind == 'cl') cn_activate(ly.mainlayer, 'MouseOver');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEMOVE", "cl", 
-	    "\n"
-	    "    if (ly.kind == 'cl')\n"
-	    "        {\n"
-	    "        cn_activate(ly.mainlayer, 'MouseMove');\n"
-	    "        if (ly.mainlayer.moveable && cl_move) moveToAbsolute(ly.mainlayer, e.pageX-cl_xOffset, e.pageY-cl_yOffset);\n"
-	    "        }\n"
-	    "\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "cl", "cl_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "cl", "cl_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "cl", "cl_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "cl", "cl_mouseout");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    cl_init({layer:nodes[\"%s\"], c1:htr_subel(nodes[\"%s\"],\"cl%dcon1\"), c2:htr_subel(nodes[\"%s\"],\"cl%dcon2\"), fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",

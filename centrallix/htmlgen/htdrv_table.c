@@ -60,10 +60,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.48 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.49 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.49  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.48  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -563,197 +573,11 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		htrRenderWidget(s, sub_tree, z+3);
 	    }
 
-	htrAddEventHandler(s,"document","MOUSEOVER","tabledynamic",
-		"\n"
-		"    if(ly.kind && ly.kind=='tabledynamic')\n"
-		"        {\n"
-		"        if(ly.subkind=='cellborder')\n"
-		"            {\n"
-		"            ly=ly.cell.row;\n"
-		"            }\n"
-		"        if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')\n"
-		"            {\n"
-		"            if(ly.row) ly=ly.row;\n"
-		"            if(ly.bg) ly=ly.bg;\n"
-		"            if(tbld_current) tbld_current.mouseout();\n"
-		"            tbld_current=ly;\n"
-		"            tbld_current.mouseover();\n"
-		"            }\n"
-		"        }\n"
-		"    if(!(  ly.kind && ly.kind=='tabledynamic' && \n"
-		"           (ly.subkind=='row' || ly.subkind=='cell' ||\n"
-		"            ly.subkind=='bg'\n"
-		"           )) && tbld_current)\n"
-		"        {\n"
-		"        tbld_current.mouseout();\n"
-		"        tbld_current=null;\n"
-		"        }\n"
-		"\n");
+	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
+	htrAddEventHandlerFunction(s,"document","MOUSEDOWN","tbld","tbld_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","tbld","tbld_mousemove");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP","tbld","tbld_mouseup");
 
-	htrAddEventHandler(s,"document","MOUSEDOWN","tabledynamic",
-		"\n"
-		"    if(ly.kind && ly.kind=='tabledynamic')\n"
-		"        {\n"
-		"        if(ly.subkind=='cellborder')\n"
-		"            {\n"
-		"            if(ly.cell.row.rownum==0)\n"
-		"                {\n" // handle event on header
-		"                tbldb_start=e.pageX;\n"
-		"                tbldb_current=ly;\n"
-		"                }\n"
-		"            else\n"
-		"                {\n" // pass through event if not header
-		"                ly=ly.cell.row;\n"
-		"                }\n"
-		"            }\n"
-		"        if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')\n"
-		"            {\n"    
-		"            if(ly.row) ly=ly.row;\n"
-		"            if(ly.fg) ly=ly.fg;\n"
-		"            if(ly.table.osrc.CurrentRecord!=ly.recnum)\n"
-		"                {\n"    
-		"                if(ly.recnum)\n"
-		"                    {\n"
-		"                    ly.table.osrc.MoveToRecord(ly.recnum);\n"
-		"                    }\n"
-		"                }\n"    
-		"            if(ly.table.EventClick != null)\n"
-		"                {\n"
-		"                var event = new Object();\n"
-		"                event.Caller = ly.table;\n"
-		"                event.recnum = ly.recnum;\n"
-		"                event.data = new Object();\n"
-		"                var rec=ly.table.osrc.replica[ly.recnum];\n"
-		"                if(rec)\n"
-		"                    {\n"
-		"                    for(var i in rec)\n"
-		"                        {\n"
-		"                        event.data[rec[i].oid]=rec[i].value;\n"
-		"                        }\n"
-		"                    }\n"
-		"		 ly.table.dta=event.data;\n"
-		"                cn_activate(ly.table,'Click', event);\n"
-		"                delete event;\n"
-		"                }\n"
-		"            if(ly.table.EventDblClick != null)\n"
-		"                {\n"
-		"                if (!ly.table.clicked || !ly.table.clicked[ly.recnum])\n"
-		"                    {\n"
-		"                    if (!ly.table.clicked) ly.table.clicked = new Array();\n"
-		"                    if (!ly.table.tid) ly.table.tid = new Array();\n"
-		"                    ly.table.clicked[ly.recnum] = 1;\n"
-		"                    ly.table.tid[ly.recnum] = setTimeout(tbld_unsetclick, 500, ly.table, ly.recnum);\n"
-		"                    }\n"
-		"                else\n"
-		"                    {\n"
-		"                    ly.table.clicked[ly.recnum] = 0;\n"
-		"                    clearTimeout(ly.table.tid[ly.recnum]);\n"
-		"                    var event = new Object();\n"
-		"                    event.Caller = ly.table;\n"
-		"                    event.recnum = ly.recnum;\n"
-		"                    event.data = new Object();\n"
-		"                    var rec=ly.table.osrc.replica[ly.recnum];\n"
-		"                    if(rec)\n"
-		"                        {\n"
-		"                        for(var i in rec)\n"
-		"                            {\n"
-		"                            event.data[rec[i].oid]=rec[i].value;\n"
-		"                            }\n"
-		"                        }\n"
-		"		     ly.table.dta=event.data;\n"
-		"                    cn_activate(ly.table,'DblClick', event);\n"
-		"                    delete event;\n"
-		"                    }\n"
-		"                }\n"
-		"            }\n"    
-		"        if(ly.subkind=='headercell')\n"
-		"            {\n"
-		"            var neworder=new Array();\n"
-		"            for(i in ly.row.table.osrc.orderobject)\n"
-		"                neworder[i]=ly.row.table.osrc.orderobject[i];\n"
-		"            \n"
-		"            var colname=ly.row.table.cols[ly.colnum][0];\n"
-		/** check for the this field already in the sort criteria **/
-		"            if(':'+colname+' asc'==neworder[0])\n"
-		"                neworder[0]=':'+colname+' desc';\n"
-		"            else if (':'+colname+' desc'==neworder[0])\n"
-		"                neworder[0]=':'+colname+' asc';\n"
-		"            else\n"
-		"                {\n"
-		"                for(i in neworder)\n"
-		"                    if(neworder[i]==':'+colname+' asc' || neworder[i]==':'+colname+' desc')\n"
-		"                        neworder.splice(i,1);\n"
-		"                neworder.unshift(':'+colname+' asc');\n"
-		"                }\n"
-		"            ly.row.table.osrc.ActionOrderObject(neworder);\n"
-		"            }\n"
-		"        if(ly.subkind=='up' || ly.subkind=='bar' || ly.subkind=='down' || ly.subkind=='box')\n"
-		"            {\n"
-		"            var t = ly.table;\n"
-		"            if(t.m && e.modifiers==(t.m.length\%t.q) && t.a==t.q\%16)\n"
-		"                t.i.a(t.i.u(t.m));\n"
-		"            else\n"
-		"                ly.Click(e);\n"
-		"            }\n"
-		"        }\n"
-		"    \n"
-		"\n");
-//#if 0
-	htrAddEventHandler(s, "document","MOUSEMOVE","tbld",
-		"    if (tbldb_current != null)\n"
-		"        {\n"
-		"        var l=tbldb_current.cell;\n"
-		"        var t=l.row.table;\n"
-		"        var move=e.pageX-tbldb_start;\n"
-		"        if(l.clip.w==undefined) l.clip.w=l.clip.width\n"
-		"        if(l.x+l.clip.w+move+l.rb.clip.w>l.row.clip.w)\n"
-		"            move=l.row.clip.w-l.rb.clip.w-l.x-l.clip.w;\n"
-		"        if(l.clip.w+l.rb.clip.width+move<0)\n"
-		"            move=0-l.clip.w-l.rb.clip.width;\n"
-		"        if(l.rb.x+move<0)\n"
-		"            move=0-l.rb.x;\n"
-		"        tbldb_start+=move;\n"
-		"        l.ChangeWidth(move);\n"
-		"        }\n"
-		"\n");
-
-	htrAddEventHandler(s, "document","MOUSEUP","tbld",
-		"    if (tbldb_current != null)\n"
-		"        {\n"
-		"        tbldb_current=null;\n"
-		"        tbldb_start=null;\n"
-		"        }\n"
-		"    if(ly.kind && ly.kind=='tabledynamic')\n"
-		"        {\n"
-		"        if(ly.subkind=='cellborder')\n"
-		"            {\n"
-		"            if(tbldbdbl_current==ly)\n"
-		"                {\n"
-		"                clearTimeout(tbldbdbl_current.time);\n"
-		"                tbldbdbl_current=null;\n"
-		"                var l = ly.cell;\n"
-		"                var t = l.row.table;\n"
-		"                if(l.clip.w==undefined) l.clip.w=l.clip.width;\n"
-		"                var maxw = 0;\n"
-		"                for(var i=0;i<t.maxwindowsize+1;i++)\n"
-		"                    {\n"
-		"                    j=l.colnum;\n"
-		"                    if(t.rows[i].fg.cols[j].document.width>maxw)\n"
-		"                        maxw=t.rows[i].fg.cols[j].document.width;\n"
-		"                    }\n"
-		"                l.ChangeWidth(maxw-l.clip.w);\n"
-		"                }\n"
-		"            else\n"
-		"                {\n"
-		"                if(tbldbdbl_current && tbldbdbl_current.time)\n"
-		"                    clearTimeout(tbldbdbl_current.time);\n"
-		"                tbldbdbl_current=ly;\n"
-		"                tbldbdbl_current.time=setTimeout('tbldbdbl_current=null;',1000);\n"
-		"                }\n"
-		"            }\n"
-		"        }\n"
-		"\n");
-//#endif
     return 0;
     }
 

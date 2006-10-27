@@ -135,128 +135,10 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
     htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js", 0);
 
-    htrAddEventHandler(s, "document","MOUSEMOVE", "dd", 
-	"\n"
-	"    var ti=dd_target_img;\n"
-	"    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')\n"
-	"        {\n"
-	"        var pl=ti.mainlayer.PaneLayer;\n"
-	"        var v=getClipHeight(pl)-(3*18)-4;\n"
-	"        var new_y=dd_thum_y+(e.pageY-dd_click_y)\n"
-	"        if (new_y > getPageY(pl)+20+v) new_y=getPageY(pl)+20+v;\n"
-	"        if (new_y < getPageY(pl)+20) new_y=getPageY(pl)+20;\n"
-	"        setPageY(ti.thum,new_y);\n"
-	"        var h=dd_current.PaneLayer.h;\n"
-	"        var d=h-getClipHeight(pl)+4;\n"
-	"        if (d<0) d=0;\n"
-	"        dd_incr = (((getRelativeY(ti.thum)-22)/(v-4))*-d)-getRelativeY(dd_current.PaneLayer.ScrLayer);\n"
-	"        dd_scroll(0);\n"
-	"        return false;\n"
-	"        }\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd')\n"
-	"        {\n"
-	"        cn_activate(ly.mainlayer, 'MouseMove');\n"
-	"        dd_cur_mainlayer = null;\n"
-	"        }\n"
-	"\n");
-
-    htrAddEventHandler(s, "document","MOUSEOVER", "dd", 
-	"\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd')\n"
-	"        {\n"
-	"        cn_activate(ly.mainlayer, 'MouseOver');\n"
-	"        dd_cur_mainlayer = ly.mainlayer;\n"
-	"        }\n"
-	"    if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')\n"
-	"        {\n"
-	"        dd_lastkey = null;\n"
-	"        dd_hilight_item(dd_current, ly.index);\n"
-	"        }\n"
-	"\n");
-
-    htrAddEventHandler(s, "document","MOUSEUP", "dd", 
-	"\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd')\n"
-	"        {\n"
-	"        cn_activate(ly.mainlayer, 'MouseUp');\n"
-	"        }\n"
-	"    if (dd_timeout != null)\n"
-	"        {\n"
-	"        clearTimeout(dd_timeout);\n"
-	"        dd_timeout = null;\n"
-	"        dd_incr = 0;\n"
-	"        }\n"
-	"    if (dd_target_img != null)\n"
-	"        {\n"
-	"        if (dd_target_img.kind && dd_target_img.kind.substr(0,2) == 'dd' && (dd_target_img.name == 'u' || dd_target_img.name == 'd'))\n"
-	"            pg_set(dd_target_img,'src',htutil_subst_last(dd_target_img.src,\"b.gif\"));\n"
-	"        dd_target_img = null;\n"
-	"        }\n"
-	"    if ((ly.kind == 'dd' || ly.kind == 'ddtxt') && ly.mainlayer.enabled != 'disabled')\n"
-	"        {\n"
-	"        dd_toggle(ly.mainlayer,false);\n"
-	"        }\n"
-	"\n");
-
-    htrAddEventHandler(s, "document","MOUSEDOWN", "dd", 
-	"\n"
-	"    if (ly.mainlayer && ly.mainlayer.kind == 'dd') cn_activate(ly.mainlayer, 'MouseDown');\n"
-	"    dd_target_img = e.target;\n"
-	"    if (ly.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')\n"
-	"        {\n"
-	"        dd_select_item(dd_current, ly.index);\n"
-	"        dd_datachange(dd_current);\n"
-	"        dd_collapse(dd_current);\n"
-	"        }\n"
-	"    else if (ly.kind == 'dd_sc')\n"
-	"        {\n"
-	"        switch(ly.name)\n"
-	"            {\n"
-	"            case 'u':\n"
-	"                pg_set(ly,'src','/sys/images/ico13c.gif');\n"
-	"                dd_incr = 8;\n"
-	"                dd_scroll();\n"
-	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
-	"                break;\n"
-	"            case 'd':\n"
-	"                pg_set(ly, 'src', '/sys/images/ico12c.gif');\n"
-	"                dd_incr = -8;\n"
-	"                dd_scroll();\n"
-	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
-	"                break;\n"
-	"            case 'b':\n"
-	"                dd_incr = dd_target_img.height+36;\n"
-	"                if (e.pageY > getPageY(dd_target_img.thum)+9) dd_incr = -dd_incr;\n"
-	"                dd_scroll();\n"
-	"                dd_timeout = setTimeout(dd_scroll_tm,300);\n"
-	"                break;\n"
-	"            case 't':\n"
-	"                dd_click_x = e.pageX;\n"
-	"                dd_click_y = e.pageY;\n"
-	"                dd_thum_y = getPageY(dd_target_img.thum);\n"
-	"                break;\n"
-	"            }\n"
-	"        }\n"
-	"    else if ((ly.kind == 'dd' || ly.kind == 'ddtxt') && ly.mainlayer.enabled != 'disabled')\n"
-	"        {\n"
-	"        if (dd_current)\n"
-	"            {\n"
-	"            dd_toggle(dd_current,true);\n"
-	"            dd_collapse(dd_current);\n"
-	"            }\n"
-	"        else\n"
-	"            {\n"
-	"            dd_toggle(ly.mainlayer,true);\n"
-	"            dd_expand(ly.mainlayer);\n"
-	"            if(ly.mainlayer.form)\n"
-	"                ly.mainlayer.form.FocusNotify(ly);\n"
-	"            }\n"
-	"        }\n"
-	"    if (dd_current && dd_current != ly && dd_current.PaneLayer != ly && (!ly.mainlayer || dd_current != ly.mainlayer))\n"
-	"        {\n"
-	"        dd_collapse(dd_current);\n"
-	"        }\n"
-	"\n");
+    htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "dd", "dd_mousemove");
+    htrAddEventHandlerFunction(s, "document","MOUSEOVER", "dd", "dd_mouseover");
+    htrAddEventHandlerFunction(s, "document","MOUSEUP", "dd", "dd_mouseup");
+    htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "dd", "dd_mousedown");
 
     /** Get the mode (default to 1, dynamicpage) **/
     mode = 0;
@@ -436,10 +318,20 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.53 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.54 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.54  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.53  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on

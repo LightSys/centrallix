@@ -43,6 +43,16 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.26  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.25  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -361,31 +371,11 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
 
 	/** Event Handlers **/
-	htrAddEventHandler(s, "document","MOUSEUP", "lbl", 
-	    "\n"
-	    "    if (ly.kind == 'lbl') cn_activate(ly, 'Click');\n"
-	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseUp');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEDOWN", "lbl", 
-	    "\n"
-	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseDown');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER", "lbl", 
-	    "\n"
-	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseOver');\n"
-	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEOUT", "lbl", 
-	    "\n"
-	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseOut');\n"
-	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEMOVE", "lbl", 
-	    "\n"
-	    "    if (ly.kind == 'lbl') cn_activate(ly, 'MouseMove');\n"
-	    "\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "lbl", "lbl_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "lbl", "lbl_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "lbl", "lbl_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "lbl", "lbl_mouseout");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "lbl%d", id, 

@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.18 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_spinner.c,v 1.19 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.19  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.18  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -340,19 +350,7 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 
    	htrAddScriptInclude(s,"/sys/js/htdrv_spinner.js",0);
 
-	htrAddEventHandler(s, "document","MOUSEDOWN", "spnr", 
-		"\n"
-		"   if (e.target != null && e.target.kind == 'spinner') {\n"
-		"      if(e.target.subkind=='up')\n"
-		"      {\n"
-		"   	   e.target.eb_layers.setvalue(e.target.eb_layers.getvalue()+1);\n"
-		"      }\n"
-		"      if(e.target.subkind=='down')\n"
-		"      {\n"
-		"          e.target.eb_layers.setvalue(e.target.eb_layers.getvalue()-1);\n"
-		"      }\n"
-		"   }\n"
-		"\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "spnr", "spnr_mousedown");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    spnr_init({main:nodes[\"%s\"], layer:htr_subel(nodes[\"%s\"],\"spnr%dbase\"), c1:htr_subel(htr_subel(nodes[\"%s\"],\"spnr%dbase\"),\"spnr%dcon1\"), c2:htr_subel(htr_subel(nodes[\"%s\"],\"spnr%dbase\"),\"spnr%dcon2\")});\n",

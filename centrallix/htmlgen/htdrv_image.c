@@ -43,6 +43,16 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_image.c,v $
+    Revision 1.7  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.6  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -226,31 +236,11 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
 
 	/** Event Handlers **/
-	htrAddEventHandler(s, "document","MOUSEUP", "img", 
-	    "\n"
-	    "    if (ly.kind == 'img') cn_activate(ly, 'Click');\n"
-	    "    if (ly.kind == 'img') cn_activate(ly, 'MouseUp');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEDOWN", "img", 
-	    "\n"
-	    "    if (ly.kind == 'img') cn_activate(ly, 'MouseDown');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER", "img", 
-	    "\n"
-	    "    if (ly.kind == 'img') cn_activate(ly, 'MouseOver');\n"
-	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEOUT", "img", 
-	    "\n"
-	    "    if (ly.kind == 'img') cn_activate(ly, 'MouseOut');\n"
-	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEMOVE", "img", 
-	    "\n"
-	    "    if (ly.kind == 'img') cn_activate(ly, 'MouseMove');\n"
-	    "\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "img", "im_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "img", "im_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "img", "im_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "img", "im_mouseout");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "img%d", id, 

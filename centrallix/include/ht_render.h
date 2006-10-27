@@ -34,10 +34,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.31 2006/10/19 21:53:23 gbeeley Exp $
+    $Id: ht_render.h,v 1.32 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.32  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.31  2006/10/19 21:53:23  gbeeley
     - (feature) First cut at the component-based client side development
       system.  Only rendering of the components works right now; interaction
@@ -476,6 +486,15 @@ typedef struct
     HtNameArray, *pHtNameArray;
 
 
+/*** structure for event handlers for a DOM event ***/
+typedef struct
+    {
+    char	DomEvent[40];
+    XArray	Handlers;		/*  xarray of char*  */
+    }
+    HtDomEvent, *pHtDomEvent;
+
+
 /** When page is being actualized, we use this: **/
 typedef struct
     {
@@ -496,7 +515,8 @@ typedef struct
     XArray	Includes;		/* script includes */
     XHashTable	NameIncludes;		/* hash lookup for includes */
     XArray	Wgtr;			/* code for wgtr-building function */
-    HtNameArray	EventScripts;		/* various event script code */
+    /*HtNameArray	EventScripts;*/		/* various event script code */
+    XArray	EventHandlers;		/*  xarray of pHtDomEvent  */
     HtNamespace	RootNamespace;
     }
     HtPage, *pHtPage;
@@ -547,7 +567,7 @@ typedef struct
     pObjSession	ObjSession;		/* objectsystem session */
     int		Width;			/* target container (browser) width in pixels */
     int		Height;			/* target container height in pixels */
-    char*	Parent;			/* name of target container */
+    char*	GraftPoint;		/* name of target container */
     pWgtrVerifySession VerifySession;	/* name of the current verification session */
     /*char	Context[64];*/
     pWgtrClientInfo ClientInfo;

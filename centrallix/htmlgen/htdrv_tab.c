@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.31 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.32 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.32  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.31  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -527,30 +537,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "tc_cur_mainlayer", "null", 0);
 
 	/** Event handler for click-on-tab **/
-	htrAddEventHandler(s, "document","MOUSEDOWN","tc",
-		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseDown');\n"
-		"    if (ly.kind == 'tc' && ly.tabctl) ly.tabctl.ChangeSelection1(ly.tabpage);\n");
-
-	htrAddEventHandler(s, "document","MOUSEUP","tc",
-		"    if (ly.mainlayer && ly.mainlayer.kind == 'tc') cn_activate(ly.mainlayer, 'MouseUp');\n");
-
-	htrAddEventHandler(s, "document","MOUSEMOVE","tc",
-		"    if (!ly.mainlayer || ly.mainlayer.kind != 'tc')\n"
-		"        {\n"
-		"        if (tc_cur_mainlayer) cn_activate(tc_cur_mainlayer, 'MouseOut');\n"
-		"        tc_cur_mainlayer = null;\n"
-		"        }\n"
-		"    else if (ly.kind && ly.kind.substr(0,2) == 'tc')\n"
-		"        {\n"
-		"        cn_activate(ly.mainlayer, 'MouseMove');\n"
-		"        }\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER","tc",
-		"    if (ly.kind && ly.kind.substr(0,2) == 'tc')\n"
-		"        {\n"
-		"        cn_activate(ly.mainlayer, 'MouseOver');\n"
-		"        tc_cur_mainlayer = ly.mainlayer;\n"
-		"        }\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","tc","tc_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP","tc","tc_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","tc","tc_mousemove");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER","tc","tc_mouseover");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,"    tc_init({layer:nodes[\"%s\"], tloc:%d, mainBackground:\"%s\", inactiveBackground:\"%s\"});\n",

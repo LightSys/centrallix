@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.44 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.45 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.45  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.44  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -480,31 +490,11 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
-	htrAddEventHandler(s, "document","MOUSEUP", "eb",
-	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'Click');\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseUp');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEDOWN", "eb",
-	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseDown');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER", "eb",
-	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseOver');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOUT", "eb",
-	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseOut');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEMOVE", "eb",
-	    "\n"
-	    "    if (ly.kind == 'eb') cn_activate(ly.mainlayer, 'MouseMove');\n"
-	    "\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "eb", "eb_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "eb", "eb_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "eb", "eb_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "eb", "eb_mouseout");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%s'], c1:htr_subel(nodes['%s'],\"eb%dcon1\"), c2:htr_subel(nodes['%s'],\"eb%dcon2\"), fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",

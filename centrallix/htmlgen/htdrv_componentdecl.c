@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "hints.h"
 #include "cxlib/cxsec.h"
 
@@ -47,10 +48,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.6 2006/10/19 21:53:23 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.7 2006/10/27 05:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.7  2006/10/27 05:57:23  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.6  2006/10/19 21:53:23  gbeeley
     - (feature) First cut at the component-based client side development
       system.  Only rendering of the components works right now; interaction
@@ -200,6 +211,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     int i,t;
     int rval = 0;
     int is_visual = 1;
+    char gbuf[256];
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -337,7 +349,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 			    rval = -1;
 			    goto htcmpd_cleanup;
 			    }
-			param->TypedObjData.Data.Double = strtod(param->StrVal,&ptr,10);
+			param->TypedObjData.Data.Double = strtod(param->StrVal,&ptr);
 			if (*ptr)
 			    {
 			    mssError(1,"HTCMPD","Failed to convert value '%s' for param '%s' to double", param->StrVal, param->Name);
@@ -399,7 +411,29 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%s\"]);\n", name);
 
 	/** DOM Linkages **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	if (s->GraftPoint)
+	    {
+	    strtcpy(gbuf, s->GraftPoint, sizeof(gbuf));
+	    ptr = strchr(gbuf,':');
+	    if (!ptr)
+		{
+		mssError(1,"HTCMPD", "Invalid graft point");
+		goto htcmpd_cleanup;
+		}
+	    *(ptr++) = '\0';
+	    if (strpbrk(ptr,"'\"\\<>\r\n\t ") || strspn(gbuf,"w0123456789abcdef") != strlen(gbuf))
+		{
+		mssError(1,"HTCMPD", "Invalid graft point");
+		goto htcmpd_cleanup;
+		}
+	    htrAddWgtrCtrLinkage_va(s, tree, 
+		    "wgtrGetContainer(wgtrGetNode(%s,\"%s\"))", gbuf, ptr);
+	    htrAddBodyItem_va(s, "<a id=\"dname\" target=\"%s\" href=\".\"></a>", s->Namespace->DName);
+	    }
+	else
+	    {
+	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	    }
 
 	/** Do subwidgets **/
 	htrRenderSubwidgets(s, tree, z+2);

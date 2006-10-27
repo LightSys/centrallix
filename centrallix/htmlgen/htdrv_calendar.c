@@ -47,10 +47,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_calendar.c,v 1.9 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_calendar.c,v 1.10 2006/10/27 05:57:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_calendar.c,v $
 
     $Log: htdrv_calendar.c,v $
+    Revision 1.10  2006/10/27 05:57:22  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.9  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -292,30 +302,11 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_calendar.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
-	htrAddEventHandler(s, "document","MOUSEUP", "ca", 
-	    "\n"
-	    "    if (ly.kind == 'ca') cn_activate(ly, 'MouseUp');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEDOWN", "ca", 
-	    "\n"
-	    "    if (ly.kind == 'ca') cn_activate(ly, 'MouseDown');\n"
-	    "\n");
-
-	htrAddEventHandler(s, "document","MOUSEOVER", "ca", 
-	    "\n"
-	    "    if (ly.kind == 'ca') cn_activate(ly, 'MouseOver');\n"
-	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEOUT", "ca", 
-	    "\n"
-	    "    if (ly.kind == 'ca') cn_activate(ly, 'MouseOut');\n"
-	    "\n");
-   
-	htrAddEventHandler(s, "document","MOUSEMOVE", "ca", 
-	    "\n"
-	    "    if (ly.kind == 'ca') cn_activate(ly, 'MouseMove');\n"
-	    "\n");
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "ca", "ca_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "ca", "ca_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "ca", "ca_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "ca", "ca_mouseout");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ca", "ca_mousemove");
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "    ca_init(nodes[\"%s\"], \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d);\n",

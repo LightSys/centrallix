@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.1 2006/10/19 21:53:23 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.2 2006/10/27 05:57:22 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.2  2006/10/27 05:57:22  gbeeley
+    - (change) All widgets switched over to use event handler functions instead
+      of inline event scripts in the main .app generated DHTML file.
+    - (change) Reworked the way event capture is done to allow dynamically
+      loaded components to hook in with the existing event handling mechanisms
+      in the already-generated page.
+    - (feature) Dynamic-loading of components now works.  Multiple instancing
+      does not yet work.  Components need not be "rectangular", but all pieces
+      of the component must share a common container.
+
     Revision 1.1  2006/10/19 21:53:23  gbeeley
     - (feature) First cut at the component-based client side development
       system.  Only rendering of the components works right now; interaction
@@ -128,12 +138,15 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	/** Include the js module **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_component.js", 0);
 
-	/** Init component **/
-	htrAddScriptInit_va(s, "    cmp_init(nodes[\"%s\"]);\n", name);
-
 	/** If static mode, load the component **/
 	if (is_static)
 	    {
+	    /** Init component **/
+	    htrAddScriptInit_va(s, 
+		    "    cmp_init({node:nodes[\"%s\"], is_static:true});\n",
+		    name);
+
+	    /** Open and parse the component **/
 	    cmp_obj = objOpen(s->ObjSession, cmp_path, O_RDONLY, 0600, "system/structure");
 	    if (!cmp_obj)
 		{
@@ -173,7 +186,15 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
+	    /** Init component **/
+	    htrAddScriptInit_va(s, 
+		    "    cmp_init({node:nodes[\"%s\"], is_static:false, path:\"%s\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), \"cmp%d\")});\n",
+		    name, cmp_path, name, id);
+
 	    /** Dynamic mode -- load from client **/
+	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%d", id, "");
+	    htrAddStylesheetItem_va(s,"\t#cmp%d { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n", id);
 	    }
 
 	rval = 0;
