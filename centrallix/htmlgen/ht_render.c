@@ -51,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.62 2006/10/27 05:57:22 gbeeley Exp $
+    $Id: ht_render.c,v 1.63 2006/10/27 19:26:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.63  2006/10/27 19:26:00  gbeeley
+    - (bugfix) use Dom2Event for event capture, if the UA supports it.  The old
+      captureEvents/onthisorthatevent interface was far to unreliable in Gecko
+      when new events needed to be captured after the fact.
+
     Revision 1.62  2006/10/27 05:57:22  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -2163,10 +2168,10 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 			ename, xaGetItem(&e->Handlers, j));
 		}
 	    if (!strcmp(ename,"mousemove"))
-		fdPrintf(output, "    document.on%s = htr_mousemovehandler;\n",
+		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_mousemovehandler);\n",
 			ename);
 	    else
-		fdPrintf(output, "    document.on%s = htr_eventhandler;\n",
+		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_eventhandler);\n",
 			ename);
 	    }
 #if 00
