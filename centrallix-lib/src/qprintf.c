@@ -36,10 +36,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.1 2006/06/21 21:22:44 gbeeley Exp $
+    $Id: qprintf.c,v 1.2 2006/10/27 19:21:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.2  2006/10/27 19:21:32  gbeeley
+    - (bugfix) qpfPrintf() %[ %] conditional formatting needs to still chomp
+      va_arg()'s that occur within the %[ %], to preserve the positions of
+      the supplied arguments.
+
     Revision 1.1  2006/06/21 21:22:44  gbeeley
     - Preliminary versions of strtcpy() and qpfPrintf() calls, which can be
       used for better safety in handling string data.
@@ -365,6 +370,7 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
     int startspec;
     int endspec;
     int maxdst;
+    int ignore = 0;
 
 	if (!QPF.is_init) 
 	    {
@@ -423,6 +429,7 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 		else if (__builtin_expect(format[0] == ']',0))
 		    {
 		    format++;
+		    ignore = 0;
 		    }
 		else if (__builtin_expect(format[0] == '[',0))
 		    {
@@ -430,10 +437,11 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 		    intval = va_arg(ap, int);
 		    if (!intval)
 			{
-			while(*format && format[0] != '%' && format[1] != ']') 
+			/*while(*format && format[0] != '%' && format[1] != ']') 
 			    format++;
 			if (*format)
-			    format += 2;
+			    format += 2;*/
+			ignore = 1;
 			}
 		    }
 		else
@@ -511,14 +519,14 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 
 			case QPF_SPEC_T_STR:
 			    strval = va_arg(ap, const char*);
-			    if (__builtin_expect(strval == NULL, 0))
+			    if (__builtin_expect(strval == NULL && !ignore, 0))
 				{ rval = -EINVAL; goto error; }
 			    cplen = strlen(strval);
 			    break;
 
 			case QPF_SPEC_T_POS:
 			    intval = va_arg(ap, int);
-			    if (__builtin_expect(intval < 0, 0))
+			    if (__builtin_expect(intval < 0 && !ignore, 0))
 				{ rval = -EINVAL; goto error; }
 			    cplen = qpf_internal_itoa(tmpbuf, sizeof(tmpbuf), intval);
 			    strval = tmpbuf;
@@ -532,7 +540,7 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 
 			case QPF_SPEC_T_NSTR:
 			    strval = va_arg(ap, const char*);
-			    if (__builtin_expect(strval == NULL, 0))
+			    if (__builtin_expect(strval == NULL && !ignore, 0))
 				{ rval = -EINVAL; goto error; }
 			    cplen = specchain_n[0];
 			    break;
@@ -546,101 +554,104 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 			default:
 			    rval = -EINVAL;
 			    goto error;
-			}
+			    }
 
-		    /** Length problem? **/
-		    if (__builtin_expect(cplen < 0, 0))
-			{ rval = -EINVAL; goto error; }
-
-		    /** Filters? **/
-		    for (i=1;i<n_specs;i++)
+		    if (!ignore)
 			{
-			switch(specchain[i])
-			    {
-			    case QPF_SPEC_T_NLEN:
-				if (cplen > specchain_n[i]) cplen = specchain_n[i];
-				break;
+			/** Length problem? **/
+			if (__builtin_expect(cplen < 0, 0))
+			    { rval = -EINVAL; goto error; }
 
-			    case QPF_SPEC_T_SYM:
-				if (cxsecVerifySymbol_n(strval, cplen) < 0)
-				    { rval = -EINVAL; goto error; }
-				break;
-			    
-			    case QPF_SPEC_T_ESCQ:
-				/** We need to special-case this both for performance
-				 ** and for security so that \' doesn't get truncated
-				 ** with just the \ and no ', for instance.
-				 **/
-				if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
-				    {
-				    if (n_specs-i == 2)
-					maxdst = specchain_n[i+1];
-				    else
-					maxdst = INT_MAX;
-				    oldcpoffset = cpoffset;
-				    n = qpf_internal_Translate(strval, cplen, str, &cpoffset, size, maxdst, QPF.quote_matrix, nogrow?NULL:grow_fn, grow_arg);
-				    if (n < 0) 
+			/** Filters? **/
+			for (i=1;i<n_specs;i++)
+			    {
+			    switch(specchain[i])
+				{
+				case QPF_SPEC_T_NLEN:
+				    if (cplen > specchain_n[i]) cplen = specchain_n[i];
+				    break;
+
+				case QPF_SPEC_T_SYM:
+				    if (cxsecVerifySymbol_n(strval, cplen) < 0)
+					{ rval = -EINVAL; goto error; }
+				    break;
+				
+				case QPF_SPEC_T_ESCQ:
+				    /** We need to special-case this both for performance
+				     ** and for security so that \' doesn't get truncated
+				     ** with just the \ and no ', for instance.
+				     **/
+				    if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
 					{
-					rval = n;
+					if (n_specs-i == 2)
+					    maxdst = specchain_n[i+1];
+					else
+					    maxdst = INT_MAX;
+					oldcpoffset = cpoffset;
+					n = qpf_internal_Translate(strval, cplen, str, &cpoffset, size, maxdst, QPF.quote_matrix, nogrow?NULL:grow_fn, grow_arg);
+					if (n < 0) 
+					    {
+					    rval = n;
+					    goto error;
+					    }
+					if (n != cpoffset - oldcpoffset) nogrow = 1;
+					copied += n;
+					cplen = 0;
+					}
+				    else
+					{
+					rval = -ENOSYS;
 					goto error;
 					}
-				    if (n != cpoffset - oldcpoffset) nogrow = 1;
-				    copied += n;
-				    cplen = 0;
-				    }
-				else
-				    {
+				    break;
+
+				case QPF_SPEC_T_HTE:
+				    if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
+					{
+					if (n_specs-i == 2)
+					    maxdst = specchain_n[i+1];
+					else
+					    maxdst = INT_MAX;
+					oldcpoffset = cpoffset;
+					n = qpf_internal_Translate(strval, cplen, str, &cpoffset, size, maxdst, QPF.hte_matrix, nogrow?NULL:grow_fn, grow_arg);
+					if (n < 0) 
+					    {
+					    rval = n;
+					    goto error;
+					    }
+					if (n != cpoffset - oldcpoffset) nogrow = 1;
+					copied += n;
+					cplen = 0;
+					}
+				    else
+					{
+					rval = -ENOSYS;
+					}
+				    break;
+
+				default:
+				    /** Unimplemented filter **/
 				    rval = -ENOSYS;
 				    goto error;
-				    }
-				break;
-
-			    case QPF_SPEC_T_HTE:
-				if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
-				    {
-				    if (n_specs-i == 2)
-					maxdst = specchain_n[i+1];
-				    else
-					maxdst = INT_MAX;
-				    oldcpoffset = cpoffset;
-				    n = qpf_internal_Translate(strval, cplen, str, &cpoffset, size, maxdst, QPF.hte_matrix, nogrow?NULL:grow_fn, grow_arg);
-				    if (n < 0) 
-					{
-					rval = n;
-					goto error;
-					}
-				    if (n != cpoffset - oldcpoffset) nogrow = 1;
-				    copied += n;
-				    cplen = 0;
-				    }
-				else
-				    {
-				    rval = -ENOSYS;
-				    }
-				break;
-
-			    default:
-				/** Unimplemented filter **/
-				rval = -ENOSYS;
-				goto error;
+				}
 			    }
-			}
 
-		    /** Copy it. **/
-		    if (__builtin_expect(cplen != 0,1))
-			{
-			copied += cplen;
-			if (__builtin_expect(nogrow, 0)) cplen = 0;
-			if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (!grow_fn(str, size, grow_arg, cpoffset+cplen+1)))
+			/** Copy it. **/
+			if (__builtin_expect(cplen != 0,1))
 			    {
-			    cplen = (*size) - cpoffset - 1;
-			    nogrow = 1;
+			    copied += cplen;
+			    if (__builtin_expect(nogrow, 0)) cplen = 0;
+			    if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (!grow_fn(str, size, grow_arg, cpoffset+cplen+1)))
+				{
+				cplen = (*size) - cpoffset - 1;
+				nogrow = 1;
+				}
+			    memcpy((*str)+cpoffset, strval, cplen);
 			    }
-			memcpy((*str)+cpoffset, strval, cplen);
-			}
 
-		    /** Update string counters **/
-		    cpoffset += cplen;
+			/** Update string counters **/
+			cpoffset += cplen;
+			}
 		    }
 		}
 	    }
