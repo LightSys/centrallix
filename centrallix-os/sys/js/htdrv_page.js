@@ -1173,9 +1173,13 @@ function pg_addsched_fn(o,f,p,t)
     if(!pg_schedtimeout) 
 	{
 	if (window.pg_isloaded)
+	    {
 	    pg_schedtimeout = setTimeout(pg_dosched, pg_schedtimeoutlist[0].tm);
+	    }
 	else
+	    {
 	    pg_schedtimeout = setTimeout(pg_dosched, Math.max(pg_schedtimeoutlist[0].tm,100));
+	    }
 	}
     return sched.id;
     }
@@ -1242,13 +1246,16 @@ function pg_dosched()
 	    }
 	}
 
-    if (pg_schedtimeoutlist.length > 0)
+    if (!pg_schedtimeout)
 	{
-	pg_schedtimeout = setTimeout(pg_dosched,pg_schedtimeoutlist[0].tm);
-	}
-    else
-	{
-	pg_schedtimeout = null;
+	if (pg_schedtimeoutlist.length > 0)
+	    {
+	    pg_schedtimeout = setTimeout(pg_dosched,pg_schedtimeoutlist[0].tm);
+	    }
+	else
+	    {
+	    pg_schedtimeout = null;
+	    }
 	}
     }
 
@@ -1575,6 +1582,7 @@ function pg_serialized_load_doone()
 	    one_item.lyr.innerHTML = one_item.text;
 	    }
 	if (one_item.lyr.__pg_onload) one_item.lyr.__pg_onload();
+	//one_item.lyr.onload = pg_serialized_load_cb;
 	pg_loadqueue_busy = false;
 	if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
 	}
@@ -1896,7 +1904,7 @@ function pg_msg_received()
 // event handlers
 function pg_mousemove(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_modallayer)
         {
@@ -1906,7 +1914,7 @@ function pg_mousemove(e)
         {
         pg_setmousefocus(pg_curlayer, e.pageX - getPageX(pg_curlayer), e.pageY - getPageY(pg_curlayer));
         }
-    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
         {
         pg_removemousefocus();
         }
@@ -1915,7 +1923,7 @@ function pg_mousemove(e)
 
 function pg_mouseout(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_modallayer)
         {
@@ -1928,7 +1936,7 @@ function pg_mouseout(e)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
     if (e.target == pg_curlayer) pg_curlayer = null;
-    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer == pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer == pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
         {
         pg_removemousefocus();
         }
@@ -1937,7 +1945,7 @@ function pg_mouseout(e)
 
 function pg_mouseover(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_modallayer)
         {
@@ -1959,15 +1967,15 @@ function pg_mouseover(e)
 
 function pg_mousedown(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
-    //if (pg_curlayer) alert('cur layer kind = ' + ly.kind + ' ' + ly.id);
+    //if (pg_curlayer) alert('cur layer kind = ' + e.mainkind + ' ' + e.mainlayer.id);
     if (ibeam_current && e.target.layer == ibeam_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-    if (e.target != null && pg_curarea != null && ((ly.mainlayer && ly.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
         {
         pg_removemousefocus();
         }
@@ -2007,9 +2015,15 @@ function pg_contextmenu(e)
 	}
     }
 
+function pg_mouseup_ns4(e)
+    {
+    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 function pg_mouseup(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
+    var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_modallayer)
         {
@@ -2020,8 +2034,6 @@ function pg_mouseup(e)
 
 function pg_keydown(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.mainlayer) ly = ly.mainlayer;
     if (cx__capabilities.Dom0NS)
 	{
         k = e.which;
@@ -2067,8 +2079,6 @@ function pg_keydown(e)
 
 function pg_keyup(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.mainlayer) ly = ly.mainlayer;
     if (cx__capabilities.Dom0NS)
 	{
         k = e.which;
@@ -2107,8 +2117,6 @@ function pg_keyup(e)
 
 function pg_keypress(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.mainlayer) ly = ly.mainlayer;
     if (cx__capabilities.Dom0IE)
 	{
         k = e.keyCode;

@@ -176,3 +176,46 @@ function radiobutton_toggle(layer) {
 		cn_activate(layer.mainlayer, 'DataChange');
 	}
 }
+
+function radiobutton_mouseup(e) {
+        if (e.layer != null && e.kind == 'radiobutton') {
+		if (e.mainlayer.enabled) {
+			if(e.layer.optionPane) {
+				if (e.mainlayer.form) e.mainlayer.form.FocusNotify(e.mainlayer);
+					radiobutton_toggle(e.layer);
+			}
+			cn_activate(e.mainlayer, 'Click');
+			cn_activate(e.mainlayer, 'MouseUp');
+		}
+        }
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function radiobutton_mousedown(e) {
+	if (e.layer != null && e.kind == 'radiobutton') {
+		if (e.mainlayer.enabled) 
+			cn_activate(e.mainlayer, 'MouseDown');
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function radiobutton_mouseover(e) {
+	if (e.layer != null && e.kind == 'radiobutton') {
+		if (e.mainlayer.enabled && !util_cur_mainlayer) {
+			cn_activate(e.mainlayer, 'MouseOver');
+			util_cur_mainlayer = e.mainlayer;
+		}
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function radiobutton_mousemove(e) {
+	if (util_cur_mainlayer && e.kind != 'radiobutton') {
+		if (util_cur_mainlayer.mainlayer.enabled) cn_activate(util_cur_mainlayer.mainlayer, 'MouseOut');  // This is MouseOut Detection!
+			util_cur_mainlayer = null;
+	}
+	if (e.layer != null && e.kind == 'radiobutton') {
+		if (e.mainlayer.enabled) cn_activate(e.mainlayer, 'MouseMove');
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}

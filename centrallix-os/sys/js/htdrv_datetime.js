@@ -597,7 +597,7 @@ function dt_collapse(l) {
 }
 
 /*  Event Functions  */
-function dt_mousedown(l) {
+function dt_domousedown(l) {
 	p = l;
 	if (p.kind == 'dt_day') {
 		dt_drawdate(p.ml, p.DateVal);
@@ -616,7 +616,7 @@ function dt_mousedown(l) {
 	}
 }
 
-function dt_mouseup(l) {
+function dt_domouseup(l) {
 	if (l.kind == 'dt' && l.mainlayer.enabled == 'full') {
 		dt_toggle(l.mainlayer);
 	}
@@ -697,4 +697,45 @@ function dt_edsc(first,y) {
 	dt_timeout_fn = dt_edsc;
 	dt_img_y = y;
 	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+}
+
+function dt_mousedown(e) {
+	if (e.target.kind && e.target.kind.substr(0,5) == 'dtimg') {
+		eval('dt_' + e.target.kind.substr(6,4)+'(true,'+e.y + ')');
+	} else {
+		if (e.kind && e.kind.substr(0,2) == 'dt') {
+			dt_domousedown(e.layer);
+			if (e.kind == 'dt') cn_activate(e.mainlayer, 'MouseDown');
+		} else if (dt_current && dt_current != e.mainlayer) {
+			dt_collapse(dt_current);
+			dt_current = null;
+		}
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function dt_mouseup(e) {
+	if (e.kind && e.kind.substr(0,2) == 'dt') {
+		dt_domouseup(e.layer);
+		if (e.kind == 'dt') {
+			cn_activate(e.mainlayer, 'MouseUp');
+			cn_activate(e.mainlayer, 'Click');
+		}
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function dt_mousemove(e) {
+	if (e.kind && e.kind == 'dt') cn_activate(e.mainlayer, 'MouseMove');
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function dt_mouseover(e) {
+	if (e.kind && e.kind == 'dt') cn_activate(e.mainlayer, 'MouseOver');
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function dt_mouseout(e) {
+	if (e.kind && e.kind == 'dt') cn_activate(e.mainlayer, 'MouseOut');
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 }

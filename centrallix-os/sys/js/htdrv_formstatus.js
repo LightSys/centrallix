@@ -69,6 +69,29 @@ function fs_cb_reveal(e) {
     return true;
 }
 
+// Event handlers
+function fs_mousedown(e) {
+    if (e.kind == 'formstatus') cn_activate(e.layer, 'MouseDown');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+function fs_mouseup(e) {
+    if (e.kind == 'formstatus') cn_activate(e.layer, 'MouseUp');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+function fs_mouseover(e) {
+    if (e.kind == 'formstatus') cn_activate(e.layer, 'MouseOver');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+function fs_mouseout(e) {
+    if (e.kind == 'formstatus') cn_activate(e.layer, 'MouseOut');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+function fs_mousemove(e) {
+    if (e.kind == 'formstatus') cn_activate(e.layer, 'MouseMove');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+// Init routine
 function fs_init(param) {
     var l = param.layer;
     var images = pg_images(l);

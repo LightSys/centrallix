@@ -558,6 +558,134 @@ function dd_add_items(l,ary)
     l.Values = ary;
     }
 
+// Event scripts
+function dd_mousemove(e)
+    {
+    var ti=dd_target_img;
+    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')
+        {
+        var pl=ti.mainlayer.PaneLayer;
+        var v=getClipHeight(pl)-(3*18)-4;
+        var new_y=dd_thum_y+(e.pageY-dd_click_y)
+        if (new_y > getPageY(pl)+20+v) new_y=getPageY(pl)+20+v;
+        if (new_y < getPageY(pl)+20) new_y=getPageY(pl)+20;
+        setPageY(ti.thum,new_y);
+        var h=dd_current.PaneLayer.h;
+        var d=h-getClipHeight(pl)+4;
+        if (d<0) d=0;
+        dd_incr = (((getRelativeY(ti.thum)-22)/(v-4))*-d)-getRelativeY(dd_current.PaneLayer.ScrLayer);
+        dd_scroll(0);
+        return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        }
+    if (e.mainlayer && e.mainkind == 'dd')
+        {
+        cn_activate(e.mainlayer, 'MouseMove');
+        dd_cur_mainlayer = null;
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function dd_mouseover(e)
+    {
+    if (e.mainlayer && e.mainkind == 'dd')
+        {
+        cn_activate(e.mainlayer, 'MouseOver');
+        dd_cur_mainlayer = e.mainlayer;
+        }
+    if (e.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')
+        {
+        dd_lastkey = null;
+        dd_hilight_item(dd_current, e.layer.index);
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function dd_mouseup(e)
+    {
+    if (e.mainlayer && e.mainkind == 'dd')
+        {
+        cn_activate(e.mainlayer, 'MouseUp');
+        }
+    if (dd_timeout != null)
+        {
+        clearTimeout(dd_timeout);
+        dd_timeout = null;
+        dd_incr = 0;
+        }
+    if (dd_target_img != null)
+        {
+        if (dd_target_img.kind && dd_target_img.kind.substr(0,2) == 'dd' && (dd_target_img.name == 'u' || dd_target_img.name == 'd'))
+            pg_set(dd_target_img,'src',htutil_subst_last(dd_target_img.src,"b.gif"));
+        dd_target_img = null;
+        }
+    if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.enabled != 'disabled')
+        {
+        dd_toggle(e.mainlayer,false);
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function dd_mousedown(e)
+    {
+    if (e.mainlayer && e.mainkind == 'dd') cn_activate(e.mainlayer, 'MouseDown');
+    dd_target_img = e.target;
+    if (e.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')
+        {
+        dd_select_item(dd_current, e.layer.index);
+        dd_datachange(dd_current);
+        dd_collapse(dd_current);
+        }
+    else if (e.kind == 'dd_sc')
+        {
+        switch(e.layer.name)
+            {
+            case 'u':
+                pg_set(e.layer,'src','/sys/images/ico13c.gif');
+                dd_incr = 8;
+                dd_scroll();
+                dd_timeout = setTimeout(dd_scroll_tm,300);
+                break;
+            case 'd':
+                pg_set(e.layer, 'src', '/sys/images/ico12c.gif');
+                dd_incr = -8;
+                dd_scroll();
+                dd_timeout = setTimeout(dd_scroll_tm,300);
+                break;
+            case 'b':
+                dd_incr = dd_target_img.height+36;
+                if (e.pageY > getPageY(dd_target_img.thum)+9) dd_incr = -dd_incr;
+                dd_scroll();
+                dd_timeout = setTimeout(dd_scroll_tm,300);
+                break;
+            case 't':
+                dd_click_x = e.pageX;
+                dd_click_y = e.pageY;
+                dd_thum_y = getPageY(dd_target_img.thum);
+                break;
+            }
+        }
+    else if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.enabled != 'disabled')
+        {
+        if (dd_current)
+            {
+            dd_toggle(dd_current,true);
+            dd_collapse(dd_current);
+            }
+        else
+            {
+            dd_toggle(e.mainlayer,true);
+            dd_expand(e.mainlayer);
+            if(e.mainlayer.form)
+                e.mainlayer.form.FocusNotify(e.layer);
+            }
+        }
+    if (dd_current && dd_current != e.layer && dd_current.PaneLayer != e.layer && (!e.mainlayer || dd_current != e.mainlayer))
+        {
+        dd_collapse(dd_current);
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 function dd_init(param)
     {
     var l = param.layer;

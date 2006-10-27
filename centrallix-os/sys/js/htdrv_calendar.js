@@ -331,6 +331,33 @@ function ca_cb_object_modified()
     return true;
     }
 
+// Event handlers
+function ca_mouseup(e)
+    {
+    if (e.kind == 'ca') cn_activate(e.layer, 'MouseUp');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ca_mousedown(e)
+    {
+    if (e.kind == 'ca') cn_activate(e.layer, 'MouseDown');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ca_mouseover(e)
+    {
+    if (e.kind == 'ca') cn_activate(e.layer, 'MouseOver');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ca_mouseout(e)
+    {
+    if (e.kind == 'ca') cn_activate(e.layer, 'MouseOut');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ca_mousemove(e)
+    {
+    if (e.kind == 'ca') cn_activate(e.layer, 'MouseMove');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 // Widget initialization.
 function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfield,eventnamefield,eventpriofield,minprio,w,h)
     {
@@ -417,3 +444,4 @@ function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfi
 
     return l;
     }
+

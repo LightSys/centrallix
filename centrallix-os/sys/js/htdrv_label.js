@@ -9,6 +9,40 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+function lbl_mouseup(e)
+    {
+    if (e.kind == 'lbl') 
+	{
+	cn_activate(e.layer, 'Click');
+	cn_activate(e.layer, 'MouseUp');
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function lbl_mousedown(e)
+    {
+    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseDown');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function lbl_mouseover(e)
+    {
+    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseOver');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function lbl_mouseout(e)
+    {
+    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseOut');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function lbl_mousemove(e)
+    {
+    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseMove');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 // DO NOT COPY! TOP SECRET FUNCTION!
 function lbl_init(l)
     {

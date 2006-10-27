@@ -183,3 +183,17 @@ function spnr_init(param)
     return main;
     }
 
+function spnr_mousedown(e)
+    {
+    if (e.target != null && e.target.kind == 'spinner') 
+	{
+	if(e.target.subkind=='up')
+	    {
+	    e.target.eb_layers.setvalue(e.target.eb_layers.getvalue()+1);
+	    }
+	if(e.target.subkind=='down')
+	    {
+	    e.target.eb_layers.setvalue(e.target.eb_layers.getvalue()-1);
+	    }
+	}
+    }

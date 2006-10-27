@@ -631,3 +631,41 @@ function tx_init(param)
 
     return l;
     }
+
+// Event handlers
+function tx_mouseup(e)
+    {
+    if (e.kind == 'tx') cn_activate(e.mainlayer, 'MouseUp');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tx_mousedown(e)
+    {
+    if (e.kind == 'tx') cn_activate(e.mainlayer, 'MouseDown');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tx_mouseover(e)
+    {
+    if (e.kind == 'tx')
+        {
+        if (!tx_cur_mainlayer)
+            {
+            cn_activate(e.mainlayer, 'MouseOver');
+            tx_cur_mainlayer = e.mainlayer;
+            }
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tx_mousemove(e)
+    {
+    if (tx_cur_mainlayer && e.kind != 'tx')
+        {
+	// This is MouseOut Detection!
+        cn_activate(tx_cur_mainlayer, 'MouseOut');
+        tx_cur_mainlayer = null;
+        }
+    if (e.kind == 'tx') cn_activate(e.mainlayer, 'MouseMove');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }

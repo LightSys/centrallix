@@ -231,3 +231,20 @@ function moveBelow(lt, lb)
     {    
     lt.moveBelow(lb);
     }
+
+function getWidth(l)
+    {
+    if (l == window || l == document)
+	return window.innerWidth;
+    else
+	return getClipWidth(l);
+    }
+
+function getHeight(l)
+    {
+    if (l == window || l == document)
+	return window.innerHeight;
+    else
+	return getClipHeight(l);
+    }
+

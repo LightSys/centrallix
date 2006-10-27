@@ -8,16 +8,31 @@
 // Pass in the declared tree, and this thing returns the actual tree of real
 // widgets.
 //
-function wgtrSetupTree(tree, parent)
+function wgtrSetupTree(tree, ns, parent)
     {
     var _parentobj = parent?parent.obj:null;
     var _parentctr = parent?parent.cobj:null;
+    //if (tree.name == 'mainwin') htr_alert(_parentctr,1);
+    var e;
+    e = tree.obj;
+    if (tree.name == 'mainwin')
+	{
+	with (tree) var x = eval("_parentctr");
+	//htr_alert(x,1);
+	}
     with (tree) tree.obj = eval(tree.obj);
+    //if (!tree.obj) alert('expression failed: ' + e);
     var _obj = tree.obj;
+    //if (ns) alert(typeof window);
+    e = tree.cobj;
     with (tree) tree.cobj = eval(tree.cobj);
+    //if (!tree.cobj) alert('ctr expression failed: ' + e);
+    //if (tree.name == 'debugwin') htr_alert(tree.cobj,1);
+    //if (ns) alert(tree.cobj);
+    if (ns) tree.obj.__WgtrNamespace = ns;
     wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis);
     for(var i=0; i<tree.sub.length; i++)
-	wgtrSetupTree(tree.sub[i], tree);
+	wgtrSetupTree(tree.sub[i], null, tree);
     return tree.obj;
     }
 
@@ -267,3 +282,13 @@ function wgtrGetName(node)
 	    { pg_debug("wgtrGetName - node was not a WgtrNode!\n"); return false; }
 	return node.__WgtrName;
     }
+
+
+function wgtrGetNamespace(node)
+    {
+	// make sure this is actually a tree
+	if (!node || !node.__WgtrName) 
+	    { pg_debug("wgtrGetName - node was not a WgtrNode!\n"); return false; }
+	return node.__WgtrRoot.__WgtrNamespace;
+    }
+

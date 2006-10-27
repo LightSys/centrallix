@@ -109,3 +109,44 @@ function cl_format_time(l,t) {
 	var timef = t.hrs+":"+t.mins+((l.showSecs)?":"+t.secs:"")+((l.showAmPm)?(" "+t.ampm):"");
 	return timef;
 }
+
+function cl_mouseup(e) {
+	if (e.kind == 'cl') {
+		cn_activate(e.mainlayer, 'MouseUp');
+		if (e.mainlayer.moveable) cl_move = false;
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function cl_mousedown(e) {
+	if (e.kind == 'cl') {
+		cn_activate(e.mainlayer, 'MouseDown');
+		if (e.mainlayer.moveable) {
+			cl_move = true;
+			cl_xOffset = e.pageX - getPageX(e.mainlayer);
+			cl_yOffset = e.pageY - getPageY(e.mainlayer);
+		}
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function cl_mouseover(e) {
+	if (e.kind == 'cl') cn_activate(e.mainlayer, 'MouseOver');
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function cl_mouseout(e) {
+	if (e.kind == 'cl') cn_activate(e.mainlayer, 'MouseOut');
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
+function cl_mousemove(e) {
+	if (e.kind == 'cl') {
+		cn_activate(e.mainlayer, 'MouseMove');
+		if (e.mainlayer.moveable && cl_move)
+			moveToAbsolute(e.mainlayer, 
+				e.pageX - cl_xOffset, 
+				e.pageY - cl_yOffset);
+	}
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}

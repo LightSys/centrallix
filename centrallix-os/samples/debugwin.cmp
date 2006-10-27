@@ -10,7 +10,8 @@ debugwin "widget/component-decl"
     mainwin "widget/childwindow"
 	{
 	x=0;y=0;width=600;height=434;
-	hdr_bgcolor='#e0e0e0';
+	//hdr_bgcolor='#e0e0e0';
+	hdr_background='/sys/images/window_hdr.png';
 	bgcolor='#c0c0c0';
 	visible=true;
 	style=dialog;
@@ -26,7 +27,7 @@ debugwin "widget/component-decl"
 		    {
 		    show_branches=yes;
 		    x=0; y=1; width=574;
-		    source = "javascript:window";
+		    source = "javascript:pg_namespaces";
 		    }
 		}
 	    }

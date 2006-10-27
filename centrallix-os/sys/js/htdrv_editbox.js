@@ -284,6 +284,38 @@ function eb_deselect()
     return true;
     }
 
+
+function eb_mouseup(e)
+    {
+    if (e.kind == 'eb') cn_activate(e.mainlayer, 'Click');
+    if (e.kind == 'eb') cn_activate(e.mainlayer, 'MouseUp');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function eb_mousedown(e)
+    {
+    if (e.kind == 'eb') cn_activate(e.mainlayer, 'MouseDown');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function eb_mouseover(e)
+    {
+    if (e.kind == 'eb') cn_activate(e.mainlayer, 'MouseOver');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function eb_mouseout(e)
+    {
+    if (e.kind == 'eb') cn_activate(e.mainlayer, 'MouseOut');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function eb_mousemove(e)
+    {
+    if (e.kind == 'eb') cn_activate(e.mainlayer, 'MouseMove');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 /**
 * l - base layer
 * c1 - content layer 1

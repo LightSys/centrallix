@@ -11,6 +11,40 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+function im_mouseup(e)
+    {
+    if (e.kind == 'img') 
+	{
+	cn_activate(e.layer, 'Click');
+	cn_activate(e.layer, 'MouseUp');
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function im_mousedown(e)
+    {
+    if (e.kind == 'img') cn_activate(e.layer, 'MouseDown');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function im_mouseover(e)
+    {
+    if (e.kind == 'img') cn_activate(e.layer, 'MouseOver');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function im_mouseout(e)
+    {
+    if (e.kind == 'img') cn_activate(e.layer, 'MouseOut');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function im_mousemove(e)
+    {
+    if (e.kind == 'img') cn_activate(e.layer, 'MouseMove');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 function im_init(l)
     {
     htr_init_layer(l,l,"im");

@@ -158,13 +158,13 @@ function tbld_deselect()
 	}
     }
 
-function tbld_mouseover()
+function tbld_domouseover()
     {
     if(this.fg.recnum!=null && this.subkind!='headerrow')
 	this.bgColor=0;
     }
 
-function tbld_mouseout()
+function tbld_domouseout()
     {
     if(this.subkind!='headerrow')
 	this.bgColor=null;
@@ -368,8 +368,8 @@ function tbld_init(param)
 	t.rows[i].fg.document.layer=t.rows[i];
 	t.rows[i].fg.select=tbld_select;
 	t.rows[i].fg.deselect=tbld_deselect;
-	t.rows[i].mouseover=tbld_mouseover;
-	t.rows[i].mouseout=tbld_mouseout;
+	t.rows[i].mouseover=tbld_domouseover;
+	t.rows[i].mouseout=tbld_domouseout;
 	t.rows[i].fg.rownum=i;
 	t.rows[i].fg.table=t;
 	t.rows[i].table=t;
@@ -522,3 +522,203 @@ function tbls_init(param)
         }
     }
 
+function tbld_mouseover(e)
+    {
+    var ly = e.layer;
+    if(ly.kind && ly.kind=='tabledynamic')
+        {
+        if(ly.subkind=='cellborder')
+            {
+            ly=ly.cell.row;
+            }
+        if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
+            {
+            if(ly.row) ly=ly.row;
+            if(ly.bg) ly=ly.bg;
+            if(tbld_current) tbld_current.mouseout();
+            tbld_current=ly;
+            tbld_current.mouseover();
+            }
+        }
+    if(!(  ly.kind && ly.kind=='tabledynamic' && 
+           (ly.subkind=='row' || ly.subkind=='cell' ||
+            ly.subkind=='bg'
+           )) && tbld_current)
+        {
+        tbld_current.mouseout();
+        tbld_current=null;
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_mousedown(e)
+    {
+    var ly = e.layer;
+    if(ly.kind && ly.kind=='tabledynamic')
+        {
+        if(ly.subkind=='cellborder')
+            {
+            if(ly.cell.row.rownum==0)
+                { 
+		// handle event on header
+                tbldb_start=e.pageX;
+                tbldb_current=ly;
+                }
+            else
+                {
+		// pass through event if not header
+                ly=ly.cell.row;
+                }
+            }
+        if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
+            {
+            if(ly.row) ly=ly.row;
+            if(ly.fg) ly=ly.fg;
+            if(ly.table.osrc.CurrentRecord!=ly.recnum)
+                {
+                if(ly.recnum)
+                    {
+                    ly.table.osrc.MoveToRecord(ly.recnum);
+                    }
+                }
+            if(ly.table.EventClick != null)
+                {
+                var event = new Object();
+                event.Caller = ly.table;
+                event.recnum = ly.recnum;
+                event.data = new Object();
+                var rec=ly.table.osrc.replica[ly.recnum];
+                if(rec)
+                    {
+                    for(var i in rec)
+                        {
+                        event.data[rec[i].oid]=rec[i].value;
+                        }
+                    }
+                ly.table.dta=event.data;
+                cn_activate(ly.table,'Click', event);
+                delete event;
+                }
+            if(ly.table.EventDblClick != null)
+                {
+                if (!ly.table.clicked || !ly.table.clicked[ly.recnum])
+                    {
+                    if (!ly.table.clicked) ly.table.clicked = new Array();
+                    if (!ly.table.tid) ly.table.tid = new Array();
+                    ly.table.clicked[ly.recnum] = 1;
+                    ly.table.tid[ly.recnum] = setTimeout(tbld_unsetclick, 500, ly.table, ly.recnum);
+                    }
+                else
+                    {
+                    ly.table.clicked[ly.recnum] = 0;
+                    clearTimeout(ly.table.tid[ly.recnum]);
+                    var event = new Object();
+                    event.Caller = ly.table;
+                    event.recnum = ly.recnum;
+                    event.data = new Object();
+                    var rec=ly.table.osrc.replica[ly.recnum];
+                    if(rec)
+                        {
+                        for(var i in rec)
+                            {
+                            event.data[rec[i].oid]=rec[i].value;
+                            }
+                        }
+                    ly.table.dta=event.data;
+                    cn_activate(ly.table,'DblClick', event);
+                    delete event;
+                    }
+                }
+            }
+        if(ly.subkind=='headercell')
+            {
+            var neworder=new Array();
+            for(i in ly.row.table.osrc.orderobject)
+                neworder[i]=ly.row.table.osrc.orderobject[i];
+            
+            var colname=ly.row.table.cols[ly.colnum][0];
+                /** check for the this field already in the sort criteria **/
+            if(':'+colname+' asc'==neworder[0])
+                neworder[0]=':'+colname+' desc';
+            else if (':'+colname+' desc'==neworder[0])
+                neworder[0]=':'+colname+' asc';
+            else
+                {
+                for(i in neworder)
+                    if(neworder[i]==':'+colname+' asc' || neworder[i]==':'+colname+' desc')
+                        neworder.splice(i,1);
+                neworder.unshift(':'+colname+' asc');
+                }
+            ly.row.table.osrc.ActionOrderObject(neworder);
+            }
+        if(ly.subkind=='up' || ly.subkind=='bar' || ly.subkind=='down' || ly.subkind=='box')
+            {
+            var t = ly.table;
+            if(t.m && e.modifiers==(t.m.length%t.q) && t.a==t.q%16)
+                t.i.a(t.i.u(t.m));
+            else
+                ly.Click(e);
+            }
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_mousemove(e)
+    {
+    if (tbldb_current != null)
+        {
+        var l=tbldb_current.cell;
+        var t=l.row.table;
+        var move=e.pageX-tbldb_start;
+        if(l.clip.w==undefined) l.clip.w=l.clip.width
+        if(l.x+l.clip.w+move+l.rb.clip.w>l.row.clip.w)
+            move=l.row.clip.w-l.rb.clip.w-l.x-l.clip.w;
+        if(l.clip.w+l.rb.clip.width+move<0)
+            move=0-l.clip.w-l.rb.clip.width;
+        if(l.rb.x+move<0)
+            move=0-l.rb.x;
+        tbldb_start+=move;
+        l.ChangeWidth(move);
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_mouseup(e)
+    {
+    var ly = e.layer;
+    if (tbldb_current != null)
+        {
+        tbldb_current=null;
+        tbldb_start=null;
+        }
+    if(ly.kind && ly.kind=='tabledynamic')
+        {
+        if(ly.subkind=='cellborder')
+            {
+            if(tbldbdbl_current==ly)
+                {
+                clearTimeout(tbldbdbl_current.time);
+                tbldbdbl_current=null;
+                var l = ly.cell;
+                var t = l.row.table;
+                if(l.clip.w==undefined) l.clip.w=l.clip.width;
+                var maxw = 0;
+                for(var i=0;i<t.maxwindowsize+1;i++)
+                    {
+                    j=l.colnum;
+                    if(t.rows[i].fg.cols[j].document.width>maxw)
+                        maxw=t.rows[i].fg.cols[j].document.width;
+                    }
+                l.ChangeWidth(maxw-l.clip.w);
+                }
+            else
+                {
+                if(tbldbdbl_current && tbldbdbl_current.time)
+                    clearTimeout(tbldbdbl_current.time);
+                tbldbdbl_current=ly;
+                tbldbdbl_current.time=setTimeout('tbldbdbl_current=null;',1000);
+                }
+            }
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }

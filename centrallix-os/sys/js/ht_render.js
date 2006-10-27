@@ -49,6 +49,9 @@ function cxjs_eval(x)
 function htr_event(e)
     {
     var cx__event = new Object();
+    cx__event.cx = true;
+
+    // Browser specific stuff
     if(cx__capabilities.Dom2Events)
 	{
 	cx__event.Dom2Event = e;
@@ -126,6 +129,14 @@ function htr_event(e)
 	cx__event.screenX = e.screenX;
 	cx__event.screenY = e.screenY;
 	}
+
+    // Non-browser specific stuff
+    cx__event.layer = ((typeof cx__event.target.layer) != "undefined" && cx__event.target.layer != null)?cx__event.target.layer:cx__event.target;
+    if (cx__event.layer.mainlayer) 
+	cx__event.mainlayer = cx__event.layer.mainlayer;
+    cx__event.kind = cx__event.layer.kind;
+    if (cx__event.mainlayer) 
+	cx__event.mainkind = cx__event.mainlayer.kind;
     return cx__event;
     }
 
@@ -269,6 +280,32 @@ function htr_search_element(e,id)
 	}
     }
 
+function htr_get_layers(l)
+    {
+    if (cx__capabilities.Dom0NS)
+	{
+	if (l.document)
+	    return l.document.layers;
+	else
+	    return l.layers;
+	}
+    else
+	{
+	//alert(l);
+	var sl = l.firstChild;
+	var lyrs = new Array();
+	if (sl.tagName == 'HTML') sl = sl.firstChild;
+	if (sl.tagName == 'BODY') sl = sl.firstChild;
+	while(sl)
+	    {
+	    if (sl.tagName == 'DIV' || sl.tagName == 'IFRAME')
+		lyrs.push(sl);
+	    sl = sl.nextSibling;
+	    }
+	return lyrs;
+	}
+    }
+
 function htr_get_subelement(id)
     {
     return htr_subel(this, id);
@@ -276,18 +313,33 @@ function htr_get_subelement(id)
 
 function htr_subel(l, id)
     {
+    if (pg_namespaces)
+	for(var ns in pg_namespaces) ;
     if (cx__capabilities.Dom0NS)
 	{
-	if (!l) alert('parent undefined: ' + id);
+	if (!l) 
+	    {
+	    alert('parent undefined: ' + id);
+	    return null;
+	    }
 	if (l.document)
 	    {
-	    if (!l.document.layers[id]) alert('no subobject: ' + id + ' for layer ' + l.id);
+	    if (!l.document.layers[id]) 
+		{
+		//htr_alert(wgtrGetContainer(wgtrGetNode(window[ns],'win')),1);
+		alert('no subobject: ' + id + ' for layer ' + l.id);
+		}
 	    return l.document.layers[id];
 	    }
 	else
 	    {
 	    if (!l.layers) alert('object has no layers: ' + l.id + ' looking for subobject: ' + id);
-	    if (!l.layers[id]) alert('no subobject: ' + id + ' for layer ' + l.id);
+	    if (!l.layers[id]) 
+		{
+		//htr_alert(wgtrGetContainer(wgtrGetNode(window[ns],'win')),1);
+		alert('no subobject: ' + id + ' for layer ' + l.id);
+		//alert(startup);
+		}
 	    return l.layers[id];
 	    }
 	}
@@ -300,6 +352,7 @@ function htr_subel(l, id)
 	}
     else if (cx__capabilities.Dom1HTML)
 	{
+	if (!l) alert('parent undefined: ' + id);
 	//if (!l.getElementById) alert('no func on ' + l.id + ' looking for ' + id);
 	//if (!l.tagName) return l.getElementById(id);
 	if (!l.tagName) return document.getElementById(id);
@@ -523,3 +576,71 @@ function htr_write_content(l,t)
     return;
     }
 
+
+function htr_addeventhandler(t,h)
+    {
+    if (!pg_handlers[t])
+	pg_handlers[t] = new Array();
+    pg_handlers[t][h] = eval(h);
+    }
+
+
+// This one is special-cased due to the volume of events that it must
+// handle.  We use timing tricks to reduce the number of mousemove events
+// to a manageable number, relative to the performance available on the
+// client useragent.
+//
+function htr_mousemovehandler(e)
+    {
+    // stack the event
+    pg_mousemoveevents.push(htr_event(e));
+    // are we busy?
+    if (!pg_handlertimeout)
+	pg_handlertimeout = setTimeout(htr_mousemovehandler_cb, 0);
+    return false;
+    }
+
+function htr_mousemovehandler_cb()
+    {
+    pg_handlertimeout = null;
+    // for now, just ignore previous mousemove events and only
+    // process the most recent one.
+    var e = pg_mousemoveevents.pop();
+    pg_mousemoveevents = [];
+    htr_eventhandler(e);
+    }
+
+
+// Universal event handler script
+function htr_eventhandler(e)
+    {
+    if (!e.cx)
+	e = htr_event(e);
+    var handler_return;
+    var prevent_default = false;
+    var handlerlist = pg_handlers[e.type];
+    for(var h in handlerlist)
+	{
+	if (typeof handlerlist[h] != 'function')
+	    alert(h + ' ' + typeof handlerlist[h]);
+	handler_return = handlerlist[h](e);
+	if (handler_return & EVENT_PREVENT_DEFAULT_ACTION)
+	    prevent_default = true;
+	if (handler_return & EVENT_HALT)
+	    return !prevent_default;
+	}
+
+    return !prevent_default;
+    }
+
+function htr_captureevents(elist)
+    {
+    // This is a workaround for an apparent Gecko bug that causes events
+    // to fire twice if captureEvents is called twice, EVEN IF ALL EVENTS
+    // SPECIFIED THE SECOND TIME WERE NOT SPECIFIED THE FIRST TIME!
+    // N.B. - captureEvents() is deprecated and may not be available in
+    // the future.
+    document.releaseEvents(pg_capturedevents);
+    pg_capturedevents |= elist;
+    document.captureEvents(pg_capturedevents);
+    }

@@ -155,11 +155,49 @@ function ht_reloaded(e)
 	ht_startfade(this.mainlayer,this.mainlayer.transition,'in',null);
     }
 
-function ht_click(e)
+/*function ht_click(e)
     {
     if (e.target.href)
     	e.target.layer.mainlayer.source = e.target.href;
     return false;
+    }*/
+
+
+// Event handlers
+function ht_mouseover(e)
+    {
+    if (e.kind == 'ht') cn_activate(e.mainlayer,'MouseOver');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ht_mouseout(e)
+    {
+    if (e.kind == 'ht') cn_activate(e.mainlayer,'MouseOut');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ht_mousemove(e)
+    {
+    if (e.kind == 'ht') cn_activate(e.mainlayer,'MouseMove');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ht_mousedown(e)
+    {
+    if (e.kind == 'ht') cn_activate(e.mainlayer,'MouseDown');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ht_mouseup(e)
+    {
+    if (e.kind == 'ht') cn_activate(e.mainlayer,'MouseUp');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function ht_click(e)
+    {
+    if (e.target != null && e.target.kind == 'ht')
+	{
+	if (e.target.href)
+	    e.target.layer.mainlayer.source = e.target.href;
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 

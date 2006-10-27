@@ -115,6 +115,42 @@ function checkbox_hintschanged()
     }
 
 
+// Event handlers
+function checkbox_mousedown(e)
+    {
+    if (e.kind == 'checkbox' && e.layer.enabled)
+	{
+	checkbox_toggleMode(e.layer);
+	cn_activate(e.layer, "MouseDown");
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function checkbox_mouseup(e)
+    {
+    if (e.kind == 'checkbox' && e.layer.enabled) 
+	cn_activate(e.layer, "MouseUp");
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function checkbox_mouseover(e)
+    {
+    if (e.kind == 'checkbox' && e.layer.enabled) 
+	cn_activate(e.layer, "MouseOver");
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function checkbox_mouseout(e)
+    {
+    if (e.kind == 'checkbox' && e.layer.enabled) 
+	cn_activate(e.layer, "MouseOut");
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+function checkbox_mousemove(e)
+    {
+    if (e.kind == 'checkbox' && e.layer.enabled) 
+	cn_activate(e.layer, "MouseMove");
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+
 // checked: -1 = null, 0 = unchecked, 1 = checked.
 // enabled: 0 = disabled, 1 = enabled
 

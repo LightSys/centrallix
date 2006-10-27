@@ -334,3 +334,42 @@ function tc_changeselection_3(c)
     c.tab.makeCurrent();
     }
 
+function tc_mousedown(e)
+    {
+    if (e.mainlayer && e.mainkind == 'tc')
+	 cn_activate(e.mainlayer, 'MouseDown');
+    if (e.kind == 'tc' && e.layer.tabctl)
+	 e.layer.tabctl.ChangeSelection1(e.layer.tabpage);
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tc_mouseup(e)
+    {
+    if (e.mainlayer && e.mainkind == 'tc') 
+	cn_activate(e.mainlayer, 'MouseUp');
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tc_mousemove(e)
+    {
+    if (!e.mainlayer || e.mainkind != 'tc')
+        {
+        if (tc_cur_mainlayer) cn_activate(tc_cur_mainlayer, 'MouseOut');
+            tc_cur_mainlayer = null;
+        }
+    else if (e.kind && e.kind.substr(0,2) == 'tc')
+	{
+        cn_activate(e.mainlayer, 'MouseMove');
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tc_mouseover(e)
+    {
+    if (e.kind && e.kind.substr(0,2) == 'tc')
+        {
+        cn_activate(e.mainlayer, 'MouseOver');
+        tc_cur_mainlayer = e.mainlayer;
+        }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }

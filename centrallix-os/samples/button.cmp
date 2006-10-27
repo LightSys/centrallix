@@ -1,0 +1,16 @@
+$Version=2$
+button "widget/component-decl"
+    {
+    width=80;
+    height=32;
+    visual=yes;
+    tb "widget/textbutton"
+	{
+	x=0;y=0;width=80;height=32;
+	tristate=no;
+	text = "Button";
+	fgcolor1="black";
+	fgcolor2="white";
+	background="/sys/images/grey_gradient.png";
+	}
+    }

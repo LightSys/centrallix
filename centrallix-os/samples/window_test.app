@@ -6,11 +6,12 @@ window_test "widget/page"
     background="/sys/images/test_background.png";
     x=0; y=0; width=640; height=480;
     
-    button1 "widget/textbutton"
+    button1 "widget/component"
         {
 	x=8; y=8; width=100; height=32;
-	text="MyButton";
-	tristate=no;
+	path = "/samples/button.cmp";
+	//text="MyButton";
+	//tristate=no;
 	}
 
     notitle_win1 "widget/childwindow"

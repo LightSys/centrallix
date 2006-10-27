@@ -60,19 +60,17 @@ function ib_setmode(ly, mode)
 
 function ib_mousedown(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind=='ib' && ly.layer.enabled==true)
+    if (e.kind=='ib' && e.mainlayer.enabled==true)
         {
-	ib_setmode(ly.layer, 'c');
-        cn_activate(ly.layer, 'MouseDown');
-        ib_cur_img = ly.layer.img;
+	ib_setmode(e.mainlayer, 'c');
+        cn_activate(e.mainlayer, 'MouseDown');
+        ib_cur_img = e.mainlayer.img;
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
     }
 
 function ib_mouseup(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
     if (ib_cur_img)
         {
         if (e.pageX >= getPageX(ib_cur_img.layer) &&
@@ -80,8 +78,8 @@ function ib_mouseup(e)
             e.pageY >= getPageY(ib_cur_img.layer) &&
             e.pageY < getPageY(ib_cur_img.layer) + getClipHeight(ib_cur_img.layer))
             {
-            cn_activate(ly.layer, 'Click');
-            cn_activate(ly.layer, 'MouseUp');
+            cn_activate(e.mainlayer, 'Click');
+            cn_activate(e.mainlayer, 'MouseUp');
 	    ib_setmode(ib_cur_img.layer, 'p');
             }
         else
@@ -95,36 +93,30 @@ function ib_mouseup(e)
 
 function ib_mousemove(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'ib' && ly.layer.enabled == true)
+    if (e.kind == 'ib' && e.mainlayer.enabled == true)
         {
-        ly = ly.layer;
-        if (ly.img && ly.img.src != ly.cImage.src) ib_setmode(ly, 'p'); 
-        cn_activate(ly.layer, 'MouseMove');
+        if (e.mainlayer.img && e.mainlayer.img.src != e.mainlayer.cImage.src) ib_setmode(e.mainlayer, 'p'); 
+        cn_activate(e.mainlayer, 'MouseMove');
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
     }
 
 function ib_mouseover(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'ib' && ly.layer.enabled == true)
+    if (e.kind == 'ib' && e.mainlayer.enabled == true)
         {
-        ly = ly.layer;
-        if (ly.img && (ly.img.src != ly.cImage.src)) ib_setmode(ly, 'p');
-        cn_activate(ly.layer, 'MouseOver');
+        if (e.mainlayer.img && (e.mainlayer.img.src != e.mainlayer.cImage.src)) ib_setmode(e.mainlayer, 'p');
+        cn_activate(e.mainlayer, 'MouseOver');
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
     }
 
 function ib_mouseout(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'ib' && ly.layer.enabled == true)
+    if (e.kind == 'ib' && e.mainlayer.enabled == true)
         {
-        ly = ly.layer;
-        if (ly.img && ly.img.src != ly.cImage.src) ib_setmode(ly, 'n'); 
-        cn_activate(ly.layer, 'MouseMove');
+        if (e.mainlayer.img && e.mainlayer.img.src != e.mainlayer.cImage.src) ib_setmode(e.mainlayer, 'n'); 
+        cn_activate(e.mainlayer.layer, 'MouseMove');
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
     }
@@ -152,6 +144,7 @@ function ib_init(param)
     l.layer = l;
     ifc_init_widget(l);
     l.img.layer = l;
+    l.img.mainlayer = l;
     l.img.kind = 'ib';
     l.cursrc = param.n;
     setClipWidth(l, w);

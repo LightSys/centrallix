@@ -312,15 +312,13 @@ function mn_mousemove(e)
 
 function mn_mouseout(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == "mn" && e.target.constructor != Image)
+    if (e.kind == "mn" && e.target.constructor != Image)
 	{
-	ly = ly.mainlayer;
-	if (mn_current == ly)
+	if (mn_current == e.mainlayer)
 	    {
 	    mn_current = null;
-	    pg_addsched_fn(ly, "CkUnHighlight", [],0);
-	    //if (!mn_deactivate_tmout) mn_deactivate_tmout = pg_addsched_fn(ly, "DeactivateAll", [], 300);
+	    pg_addsched_fn(e.mainlayer, "CkUnHighlight", [],0);
+	    //if (!mn_deactivate_tmout) mn_deactivate_tmout = pg_addsched_fn(e.mainlayer, "DeactivateAll", [], 300);
 	    }
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
@@ -328,11 +326,9 @@ function mn_mouseout(e)
 
 function mn_mouseover(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == "mn")
+    if (e.kind == "mn")
 	{
-	ly = ly.mainlayer;
-	mn_current = ly;
+	mn_current = e.mainlayer;
 	if (mn_deactivate_tmout) pg_delsched(mn_deactivate_tmout);
 	mn_deactivate_tmout = null;
 	}
@@ -341,8 +337,7 @@ function mn_mouseover(e)
 
 function mn_mousedown(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (mn_current && mn_current.cur_highlight && (mn_current == ly.mainlayer || (ly == document && e.pageX >= getPageX(mn_current) && e.pageX <= getPageX(mn_current) + mn_current.act_w && e.pageY >= getPageY(mn_current) && e.pageY <= getPageY(mn_current) + mn_current.act_h)))
+    if (mn_current && mn_current.cur_highlight && (mn_current == e.mainlayer || (e.layer == document && e.pageX >= getPageX(mn_current) && e.pageX <= getPageX(mn_current) + mn_current.act_w && e.pageY >= getPageY(mn_current) && e.pageY <= getPageY(mn_current) + mn_current.act_h)))
 	{
 	var ts = pg_timestamp();
 	if (mn_current.nextActive)

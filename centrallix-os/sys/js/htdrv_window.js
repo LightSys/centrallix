@@ -335,7 +335,8 @@ function wn_graphical_close(l,speed,sizeX,sizeY)
 
 function wn_togglevisibility(aparam)
     {
-    if (htr_getvisibility(this) != 'inherit')
+    var vis = htr_getvisibility(this);
+    if (vis != 'inherit' && vis != 'visible')
 	{
 	//aparam.IsVisible = 1;
 	//this.ActionSetVisibility(aparam);
@@ -430,66 +431,62 @@ function wn_bring_top(l)
 // FIXME: does this MOUSEDOWN work if for NS4 if there is no title?
 function wn_mousedown(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'wn')
+    if (e.kind == 'wn')
         {
         if (e.target.name == 'close')
             pg_set(e.target,'src','/sys/images/02bigclose.gif');
-        else if ((ly.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
-                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' ))
+        else if ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' ))
             {
-            wn_current = ly.mainlayer;
+            wn_current = e.mainlayer;
             wn_msx = e.pageX;
             wn_msy = e.pageY;
             wn_newx = null;
             wn_newy = null;
             wn_moved = 0;
-	    if (!cx__capabilities.Dom0IE) wn_windowshade_ns_moz(ly.mainlayer);
+	    if (!cx__capabilities.Dom0IE) wn_windowshade_ns_moz(e.mainlayer);
 	    return EVENT_CONTINUE | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
-        cn_activate(ly.mainlayer, 'MouseDown');
+        cn_activate(e.mainlayer, 'MouseDown');
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function wn_dblclick(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'wn')
+    if (e.kind == 'wn')
 	{
-        if ((ly.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < ly.mainlayer.pageY + 24) ||
-                (cx__capabilities.Dom1HTML && ly.subkind == 'titlebar' ))
+        if ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' ))
             {
-            if (cx__capabilities.Dom0IE) wn_windowshade_ie(ly.mainlayer);
+            if (cx__capabilities.Dom0IE) wn_windowshade_ie(e.mainlayer);
             }
 	}
     }
 
 function wn_mouseup(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
     if (e.target != null && e.target.name == 'close' && e.target.kind == 'wn')
         {
         pg_set(e.target,'src','/sys/images/01bigclose.gif');
-	if (ly.mainlayer.no_close != true) ly.mainlayer.SetVisibilityTH(false);
+	if (e.mainlayer.no_close != true) e.mainlayer.SetVisibilityTH(false);
         }
-    else if (ly.document != null && pg_images(ly).length > 6 && pg_images(ly)[6].name == 'close')
+    else if (e.layer.document != null && pg_images(e.layer).length > 6 && pg_images(e.layer)[6].name == 'close')
         {
-        pg_set(pg_images(ly)[6],'src','/sys/images/01bigclose.gif');
+        pg_set(pg_images(e.layer)[6],'src','/sys/images/01bigclose.gif');
         }
     if (wn_current != null)
         {
         if (wn_moved == 0) wn_bring_top(wn_current);
         }
-    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseUp');
+    if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseUp');
     wn_current = null;
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function wn_mousemove(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseMove');
+    if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseMove');
     if (wn_current != null)
         {
         wn_current.clicked = 0;
@@ -516,15 +513,13 @@ function wn_mousemove(e)
 
 function wn_mouseover(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOver');
+    if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseOver');
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function wn_mouseout(e)
     {
-    var ly = (typeof e.target.layer != "undefined" && e.target.layer != null)?e.target.layer:e.target;
-    if (ly.kind == 'wn') cn_activate(ly.mainlayer, 'MouseOut');
+    if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseOut');
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
