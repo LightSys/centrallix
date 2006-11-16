@@ -19,15 +19,19 @@ function dd_getvalue()
 
 function dd_setvalue(v) 
     {
-    if (!this.PaneLayer) this.PaneLayer = dd_create_pane(this);
+    //pg_debug('dd_setvalue: ' + v);
+    //if (!this.PaneLayer) this.PaneLayer = dd_create_pane(this);
+    //pg_debug(' ... ');
     for (var i=0; i < this.Values.length; i++)
 	{
 	if (this.Values[i].value == v)
 	    {
+	    //pg_debug(' (' + this.Values[i].label + ')\n');
 	    dd_select_item(this, i);
 	    return true;
 	    }
 	}
+    //pg_debug(' (none)\n');
     return false;
     }
 
@@ -297,7 +301,7 @@ function dd_expand(l)
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), 20, 
+	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, 
 		getClipWidth(l));
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
@@ -316,7 +320,11 @@ function dd_expand(l)
 
 function dd_select_item(l,i)
     {
-    var c = "<TABLE height=18 cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>";
+    /*if (l.Values && l.Values[i] && l.Values[i].label)
+	pg_debug('dd_select_item: ' + i + ' (' + l.Values[i].label + ')\n');
+    else
+	pg_debug('dd_select_item: ' + i + ' (?)\n');*/
+    var c = "<TABLE height=" + (pg_parah) + " cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>";
     if (i!=null)
 	{
 	if (!(i==0 && l.Values[i].value==null)) 
@@ -325,14 +333,19 @@ function dd_select_item(l,i)
 	    c += '<i>' + l.Values[i].label + '</i>';
 	}
     c += "</TD></TR></TABLE>";
-    htr_write_content(l.HidLayer, c);
+    //htr_write_content(l.HidLayer, c);
+    pg_serialized_write(l.HidLayer, c, null);
     l.HidLayer.index = i;
+
+    moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
+    resizeTo(l.HidLayer, l.w, l.h);
     htr_setvisibility(l.HidLayer, 'inherit');
     setClipWidth(l.HidLayer, l.w-21);
     htr_setvisibility(l.VisLayer, 'hidden');
     var t=l.VisLayer;
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
+    //pg_debug('new id = ' + l.VisLayer.id + '\n');
     if (i != null)
 	l.value = l.Values[l.VisLayer.index].value;
     else
@@ -379,7 +392,7 @@ function dd_scroll_to(l, n)
     var btm=top+(getClipHeight(dd_current.PaneLayer)-4);
     var il=l.Items[n];
 
-    if (getRelativeY(il)>=top && getRelativeY(il)+16<=btm) //none
+    if (getRelativeY(il)>=top && getRelativeY(il)+(pg_parah)<=btm) //none
 	return;
     else if (getRelativeY(il)<top) //up
 	{
@@ -391,7 +404,7 @@ function dd_scroll_to(l, n)
 	{
 	var imgs = pg_images(l.PaneLayer.BarLayer);
 	dd_target_img = imgs[2];
-	dd_incr = (top-getRelativeY(il)+(16*(dd_current.NumDisplay-1)));
+	dd_incr = (top-getRelativeY(il)+((pg_parah)*(dd_current.NumDisplay-1)));
 	}
     dd_scroll();
     }
@@ -446,8 +459,9 @@ function dd_create_pane(l)
 
     // Create the layer
     l.NumElements = l.Values.length;
-    l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*16)+4;
+    l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*(pg_parah))+4;
     var p = htr_new_layer(1024,pg_toplevel_layer(l));
+    //pg_debug(' x ');
     htr_init_layer(p, l, 'dd_pn');
     htr_setvisibility(p, 'hidden');
     var c = "<BODY bgcolor="+l.bg+">";
@@ -465,7 +479,8 @@ function dd_create_pane(l)
     c += "</TABLE>";
     c += "</BODY>";
     htr_setbgcolor(p, l.bg);
-    htr_write_content(p, c);
+    //htr_write_content(p, c);
+    pg_serialized_write(p, c, null);
     htutil_tag_images(p,'dt_pn',p,l);
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
@@ -490,7 +505,8 @@ function dd_create_pane(l)
 	c += '<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>';
 	c += '<TR><TD><IMG name=d src=/sys/images/ico12b.gif></TD></TR>';
 	c += '</TABLE>';
-	htr_write_content(p.BarLayer, c);
+	//htr_write_content(p.BarLayer, c);
+	pg_serialized_write(p.BarLayer, c, null);
 	var imgs = pg_images(p.BarLayer);
 	imgs[0].mainlayer = imgs[1].mainlayer = imgs[2].mainlayer = l;
 	imgs[0].kind = imgs[1].kind = imgs[2].kind = 'dd_sc';
@@ -502,7 +518,8 @@ function dd_create_pane(l)
 	moveTo(p.TmbLayer, l.w-20, 20);
 	htr_setvisibility(p.TmbLayer, 'inherit');
 	p.TmbLayer.mainlayer = l;
-	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>');
+	//htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>');
+	pg_serialized_write(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>', null);
 	imgs = pg_images(p.TmbLayer);
 	imgs[0].mainlayer = l;
 	imgs[0].thum = p.TmbLayer;
@@ -525,19 +542,21 @@ function dd_create_pane(l)
 	    l.Items[i] = htr_new_layer(1024, p.ScrLayer);
 	    htr_init_layer(l.Items[i], l, 'dd_itm');
 	    }
-	moveTo(l.Items[i], 0, i*16);
+	moveTo(l.Items[i], 1, i*(pg_parah));
 	setClipWidth(l.Items[i], getClipWidth(p.ScrLayer));
-	setClipHeight(l.Items[i], 16);
-	resizeTo(l.Items[i], getClipWidth(p.ScrLayer), 16);
+	setClipHeight(l.Items[i], (pg_parah));
+	resizeTo(l.Items[i], getClipWidth(p.ScrLayer), (pg_parah));
 	if (i==0 && l.Values[i].value == null)
-	    htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
+	    //htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
+	    pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
 	else
-	    htr_write_content(l.Items[i], l.Values[i].label);
+	    //htr_write_content(l.Items[i], l.Values[i].label);
+	    pg_serialized_write(l.Items[i], l.Values[i].label, null);
 	htr_setvisibility(l.Items[i], 'inherit');
 	l.Items[i].index = i;
 	}
 
-    p.h = l.NumElements*16;
+    p.h = l.NumElements*(pg_parah);
     p.mainlayer = l;
 
     return p;
@@ -567,8 +586,9 @@ function dd_mousemove(e)
         var pl=ti.mainlayer.PaneLayer;
         var v=getClipHeight(pl)-(3*18)-4;
         var new_y=dd_thum_y+(e.pageY-dd_click_y)
-        if (new_y > getPageY(pl)+20+v) new_y=getPageY(pl)+20+v;
-        if (new_y < getPageY(pl)+20) new_y=getPageY(pl)+20;
+	var pl_y = getPageY(pl);
+        if (new_y > pl_y+20+v) new_y=pl_y+20+v;
+        if (new_y < pl_y+20) new_y=pl_y+20;
         setPageY(ti.thum,new_y);
         var h=dd_current.PaneLayer.h;
         var d=h-getClipHeight(pl)+4;

@@ -503,12 +503,16 @@ function pg_setmodal(l)
     if (!window.pg_masklayer)
         {
 	pg_masklayer = htr_new_layer(pg_width, null);
+	setClipWidth(pg_masklayer, pg_width);
+	setClipHeight(pg_masklayer, pg_height);
+	resizeTo(pg_masklayer, pg_width, pg_height);
 	htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
 	}
     if (l)
 	{
 	if (l.mainlayer) l = l.mainlayer;
 	moveBelow(pg_masklayer, l);
+	moveTo(pg_masklayer, 0, 0);
 	setClipWidth(pg_masklayer, pg_width);
 	setClipHeight(pg_masklayer, pg_height);
 	htr_setvisibility(pg_masklayer, 'inherit');
@@ -1152,17 +1156,22 @@ function pg_addschedtolist(s)
 	pg_schedtimeoutlist.splice(insert, 0, s);
     }
 
-function pg_addsched(e,o,t)
+function pg_startschedtimeout()
     {
-    var sched = {exp:e, obj:o, tm:t, id:pg_schedtimeoutid++};
-    pg_addschedtolist(sched);
-    if(!pg_schedtimeout) 
+    if(!pg_schedtimeout && pg_schedtimeoutlist.length > 0) 
 	{
 	if (window.pg_isloaded)
 	    pg_schedtimeout = setTimeout(pg_dosched, pg_schedtimeoutlist[0].tm);
 	else
 	    pg_schedtimeout = setTimeout(pg_dosched, Math.max(pg_schedtimeoutlist[0].tm,100));
 	}
+    }
+
+function pg_addsched(e,o,t)
+    {
+    var sched = {exp:e, obj:o, tm:t, id:pg_schedtimeoutid++};
+    pg_addschedtolist(sched);
+    pg_startschedtimeout();
     return sched.id;
     }
 
@@ -1170,17 +1179,7 @@ function pg_addsched_fn(o,f,p,t)
     {
     var sched = {func:f, obj:o, param:p, tm:t, id:pg_schedtimeoutid++};
     pg_addschedtolist(sched);
-    if(!pg_schedtimeout) 
-	{
-	if (window.pg_isloaded)
-	    {
-	    pg_schedtimeout = setTimeout(pg_dosched, pg_schedtimeoutlist[0].tm);
-	    }
-	else
-	    {
-	    pg_schedtimeout = setTimeout(pg_dosched, Math.max(pg_schedtimeoutlist[0].tm,100));
-	    }
-	}
+    pg_startschedtimeout();
     return sched.id;
     }
 
@@ -1246,17 +1245,7 @@ function pg_dosched()
 	    }
 	}
 
-    if (!pg_schedtimeout)
-	{
-	if (pg_schedtimeoutlist.length > 0)
-	    {
-	    pg_schedtimeout = setTimeout(pg_dosched,pg_schedtimeoutlist[0].tm);
-	    }
-	else
-	    {
-	    pg_schedtimeout = null;
-	    }
-	}
+    pg_startschedtimeout();
     }
 
 function pg_timestamp()
@@ -1539,31 +1528,32 @@ function pg_serialized_load(l, newsrc, cb)
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
     pg_loadqueue.push({lyr:l, src:newsrc, cb:cb});
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
-    if (!pg_loadqueue_busy) //pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
-	pg_serialized_load_doone();
+    pg_serialized_load_doone();
     }
 
 // pg_serialized_write() - schedules the writing of content to a layer, so that
 // we don't have the document open while stuff is happening from the server.
 function pg_serialized_write(l, text, cb)
     {
+    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
     pg_loadqueue.push({lyr:l, text:text, cb:cb});
-    if (!pg_loadqueue_busy) //pg_addsched_fn(window, 'pg_serialized_load_doone', new Array());
-	pg_serialized_load_doone();
+    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
+    pg_serialized_load_doone();
     }
 
 // pg_serialized_load_doone() - loads the next item off of the
 // serialized loader list.
 function pg_serialized_load_doone()
     {
+    if (pg_loadqueue_busy) return;
     if (pg_loadqueue.length == 0) 
 	{
 	pg_loadqueue_busy = false;
 	return;
 	}
-    var one_item = pg_loadqueue.shift(); // remove first item
-    if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.src + ' into ' + one_item.lyr.name + '\n');
     pg_loadqueue_busy = true;
+    var one_item = pg_loadqueue.shift(); // remove first item
+    if  (!one_item.text) pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' loads ' + one_item.src + '\n');
     one_item.lyr.__pg_onload = one_item.cb;
     if (one_item.src)
 	{
@@ -1576,14 +1566,25 @@ function pg_serialized_load_doone()
 	    {
 	    one_item.lyr.document.write(one_item.text);
 	    one_item.lyr.document.close();
+	    //alert(one_item.text);
 	    }
 	else
 	    {
 	    one_item.lyr.innerHTML = one_item.text;
 	    }
-	if (one_item.lyr.__pg_onload) one_item.lyr.__pg_onload();
+	if (one_item.lyr.__pg_onload) 
+	    {
+	    //one_item.lyr.__pg_onload();
+	    one_item.lyr.__pg_onload_cb = pg_serialized_load_cb;
+	    pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [], 0);
+	    //pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' cb ' + one_item.lyr.__pg_onload.name + '()\n');
+	    }
+	else
+	    {
+	    pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
+	    pg_loadqueue_busy = false;
+	    }
 	//one_item.lyr.onload = pg_serialized_load_cb;
-	pg_loadqueue_busy = false;
 	if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
 	}
     }
@@ -1591,9 +1592,18 @@ function pg_serialized_load_doone()
 // pg_serialized_load_cb() - called when a load finishes
 function pg_serialized_load_cb()
     {
-    if (this.__pg_onload) this.__pg_onload();
     pg_loadqueue_busy = false;
-    pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': ' + this.name + '\n');
+    if (this.__pg_onload) 
+	{
+	//pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': (start) ' + this.name + ' ' + this.__pg_onload.name + '()\n');
+	this.__pg_onload();
+	//pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': (end) ' + this.name + ' ' + this.__pg_onload.name + '()\n');
+	}
+    else
+	{
+	//pg_debug('pg_serialized_load_cb (no cb fn): ' + pg_loadqueue.length + ': ' + this.name + '\n');
+	}
+    //pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': ' + this.name + '\n');
     if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
     }
 
@@ -1608,14 +1618,19 @@ function pg_reveal_register_listener(l)
     l.__pg_reveal_is_listener = true;
 
     // Search for the triggerer in question.
-    var trigger_layer = l;
+    /*var trigger_layer = l;
     do  {
 	if (cx__capabilities.Dom0NS)
 	    trigger_layer = trigger_layer.parentLayer;
 	else 
 	    trigger_layer = trigger_layer.parentNode;
 	} while (trigger_layer && !trigger_layer.__pg_reveal_is_triggerer && trigger_layer != window && trigger_layer != document);
-    if (!trigger_layer) trigger_layer = window;
+    if (!trigger_layer) trigger_layer = window;*/
+    var trigger_layer = l;
+    do  {
+	trigger_layer = wgtrGetParent(trigger_layer);
+	} while (trigger_layer && !trigger_layer.__pg_reveal_is_triggerer && wgtrGetRoot(trigger_layer) != trigger_layer);
+    if (!trigger_layer) trigger_layer = wgtrGetRoot(l);
 
     // Add us to the triggerer
     if (trigger_layer && trigger_layer.__pg_reveal) trigger_layer.__pg_reveal.push(l);
@@ -1646,7 +1661,7 @@ function pg_reveal_register_triggerer(l)
 // down to listeners on this triggerer.
 function pg_reveal_internal(e)
     {
-    pg_debug('reveal_internal: ' + this.name + ' ' + e.eventName + ' from ' + e.triggerer.name + '\n');
+    pg_debug('reveal_internal: ' + wgtrGetName(this) + ' ' + e.eventName + ' from ' + wgtrGetName(e.triggerer) + '\n');
     // Parent telling us something we already know?  (this is just a sanity check)
     if ((this.__pg_reveal_parent_visible) && e.eventName == 'RevealCheck') return pg_reveal_check_ok(e);
     if ((!this.__pg_reveal_parent_visible) && e.eventName == 'ObscureCheck') return pg_reveal_check_ok(e);
@@ -1680,7 +1695,7 @@ function pg_reveal_internal(e)
 	our_e.listener_num = 0;
 	our_e.origName = null;   // not needed
 	our_e.triggerer_c = null;   // not needed
-	pg_debug('reveal_internal: passing it on down to ' + this.__pg_reveal[0].name + '\n');
+	pg_debug('reveal_internal: passing it on down to ' + wgtrGetName(this.__pg_reveal[0]) + '\n');
 	pg_addsched_fn(this.__pg_reveal[0], "__pg_reveal_listener_fn", new Array(our_e), 0);
 	}
     return true;
@@ -1690,7 +1705,7 @@ function pg_reveal_internal(e)
 // desires to initiate an event.
 function pg_reveal_event(l,c,e_name)	
     {
-    pg_debug('reveal_event: ' + l.name + ' ' + e_name + '\n');
+    pg_debug('reveal_event: ' + wgtrGetName(l) + ' ' + e_name + '\n');
     if (l.__pg_reveal_busy) return false;
 
     // not a check event
@@ -1735,16 +1750,16 @@ function pg_reveal_event(l,c,e_name)
 // pg_reveal_check_ok() - called when the listener approves the check event.
 function pg_reveal_check_ok(e)
     {
-    pg_debug('reveal_check_ok: ' + e.triggerer.__pg_reveal[e.listener_num].name + ' said OK\n');
+    pg_debug('reveal_check_ok: ' + wgtrGetName(e.triggerer.__pg_reveal[e.listener_num]) + ' said OK\n');
     e.listener_num++;
     if (e.triggerer.__pg_reveal.length > e.listener_num)
 	{
-	pg_debug('    -- passing it on down to ' + e.triggerer.__pg_reveal[e.listener_num].name + '\n');
+	pg_debug('    -- passing it on down to ' + wgtrGetName(e.triggerer.__pg_reveal[e.listener_num]) + '\n');
 	pg_addsched_fn(e.triggerer.__pg_reveal[e.listener_num], "__pg_reveal_listener_fn", new Array(e), 0);
 	}
     else
 	{
-	pg_debug('reveal_check_ok: OK to ' + e.eventName + ' ' + e.triggerer.name + '\n');
+	pg_debug('reveal_check_ok: OK to ' + e.eventName + ' ' + wgtrGetName(e.triggerer) + '\n');
 	if (e.parent_e)
 	    {
 	    e.triggerer.__pg_reveal_busy = false;
@@ -1803,7 +1818,7 @@ function pg_reveal_send_events(t, e)
 	{
 	if ((e == 'Reveal') == t.__pg_reveal[i].__pg_reveal_listener_visible) continue;
 	t.__pg_reveal[i].__pg_reveal_listener_visible = (e == 'Reveal');
-	pg_debug('    -- sending ' + e + ' to ' + t.__pg_reveal[i].name + '\n');
+	pg_debug('    -- sending ' + e + ' to ' + wgtrGetName(t.__pg_reveal[i]) + '\n');
 	pg_addsched_fn(t.__pg_reveal[i], "__pg_reveal_listener_fn", new Array(listener_e), 0);
 	}
     return true;
@@ -1957,7 +1972,7 @@ function pg_mouseover(e)
         pg_curarea = pg_curkbdarea;
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
-    if (e.target != null && getPageX(e.target) != null)
+    if (e.target != null && e.target != document && getPageX(e.target) != null)
         {
         pg_curlayer = e.target;
         if (pg_curlayer.mainlayer != null) pg_curlayer = pg_curlayer.mainlayer;

@@ -501,6 +501,8 @@ function osrc_get_qid()
 
 function osrc_fetch_next()
     {
+    pg_debug("osrc_fetch_next()\n");
+    pg_debug(this.id + ": FetchNext()\n");
     //alert('fetching....');
     if(!this.qid)
 	{
@@ -744,6 +746,7 @@ function osrc_move_to_record(recnum)
 
 function osrc_move_to_record_cb(recnum)
     {
+    pg_debug(this.id + ": MoveTo(" + recnum + ")\n");
     //confirm(recnum);
     this.moveop=true;
     if(recnum<1)

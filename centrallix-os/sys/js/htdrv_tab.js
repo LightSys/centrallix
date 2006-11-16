@@ -28,7 +28,7 @@ function tc_set_tab_unwatched()
 function tc_makecurrent()
     {
     var t;
-    if (htr_getzindex(this) > htr_getzindex(this.tabctl)) return 0;
+    if (this.tabctl.tloc != 4 && htr_getzindex(this) > htr_getzindex(this.tabctl)) return 0;
     for(var i=0;i<this.tabctl.tabs.length;i++)
 	{
 	t = this.tabctl.tabs[i];
@@ -131,7 +131,7 @@ function tc_addtab(l_tab, l_page, l, nm)
 	l.selected_index = l_tab.tabindex;
 	l.current_tab = l_tab;
 	l.init_tab = l_tab;
-	pg_addsched_fn(window,"pg_reveal_event",new Array(l_page,l_page,'Reveal'), 0);
+	pg_addsched_fn(window,"pg_reveal_event",new Array(l_tab,l_tab,'Reveal'), 0);
 	htr_watch(l,"selected", "tc_selection_changed");
 	htr_watch(l,"selected_index", "tc_selection_changed");
 	if (l.tloc != 4)
@@ -157,7 +157,7 @@ function tc_addtab(l_tab, l_page, l, nm)
     l_tab.setTabUnwatched = tc_set_tab_unwatched;
     if (l.tloc != 4)
 	{
-	moveToAbsolute(l_tab, newx, newy);
+	moveToAbsolute(l_tab, newx + 0.001, newy + 0.001);
 	}
     l_page.tabctl = this;
     l_page.tab = l_tab;
@@ -165,8 +165,8 @@ function tc_addtab(l_tab, l_page, l, nm)
     setClipHeight(l_page, getClipHeight(this)-2);
 
     // Indicate that we generate reveal/obscure notifications
-    l_page.Reveal = tc_cb_reveal;
-    pg_reveal_register_triggerer(l_page);
+    l_tab.Reveal = tc_cb_reveal;
+    pg_reveal_register_triggerer(l_tab);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
 
     // Show Container API
@@ -296,8 +296,8 @@ function tc_init(param)
 
 
 // Reveal() interface function - called when a triggerer event occurs.
-// c == tabpage (not tab) to make current.
-// this == tabpage (not tab) event (revealcheck/obscurecheck) was processed for.
+// c == tab (not tabpage) to make current.
+// this == tab (not tabpage) event (revealcheck/obscurecheck) was processed for.
 function tc_cb_reveal(e)
     {
     switch(e.eventName)
@@ -319,7 +319,7 @@ function tc_cb_reveal(e)
 // change selection - first function, called initially.
 function tc_changeselection_1(c)
     {
-    pg_reveal_event(c.tabctl.current_tab.tabpage, c, 'ObscureCheck');
+    pg_reveal_event(c.tabctl.current_tab, c.tab, 'ObscureCheck');
     }
 // change selection - second function, called when ObscureCheck succeeds.
 function tc_changeselection_2(c)
@@ -330,8 +330,8 @@ function tc_changeselection_2(c)
 function tc_changeselection_3(c)
     {
     pg_reveal_event(c, c, 'Reveal');
-    pg_reveal_event(c.tabctl.current_tab.tabpage, c, 'Obscure');
-    c.tab.makeCurrent();
+    pg_reveal_event(c.tabctl.current_tab, c, 'Obscure');
+    c.makeCurrent();
     }
 
 function tc_mousedown(e)

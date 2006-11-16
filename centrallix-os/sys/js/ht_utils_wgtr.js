@@ -292,3 +292,10 @@ function wgtrGetNamespace(node)
 	return node.__WgtrRoot.__WgtrNamespace;
     }
 
+function wgtrGetRoot(node)
+    {
+	// make sure this is actually a tree
+	if (!node || !node.__WgtrName) 
+	    { pg_debug("wgtrGetRoot - node was not a WgtrNode!\n"); return false; }
+	return node.__WgtrRoot;
+    }

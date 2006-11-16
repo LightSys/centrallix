@@ -38,9 +38,9 @@ function tv_new_layer(width,pdoc,l)
 	else if(cx__capabilities.Dom1HTML)
 	    {
 	    nl = document.createElement('DIV');
-	    nl.style.width = width;
+	    nl.style.width = width + 'px';
 	    //setClip(0, width, 0, 0);
-	    pg_set_style(nl, 'position','relative');
+	    pg_set_style(nl, 'position','absolute');
 	    pdoc.appendChild(nl);
 	    }
 	else

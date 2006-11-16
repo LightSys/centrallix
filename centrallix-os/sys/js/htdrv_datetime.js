@@ -116,7 +116,7 @@ function dt_init(param){
 		dt_drawdate(l, '');
 	}
 	if (l.form) l.form.Register(l);
-	pg_addarea(l, -1, -1, l.clip.width+1, l.clip.height+1, 'dt', 'dt', 3);
+	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dt', 'dt', 3);
 
 	// Events
 	ifc_init_widget(l);

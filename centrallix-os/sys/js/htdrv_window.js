@@ -63,7 +63,8 @@ function wn_init(param)
 	if (pg_images(titlebar)[i].name == 'close')
 	    l.has_titlebar = 1;
 	}
-
+    
+    wn_list.push(l);
     wn_bring_top(l);
 
     // Actions
@@ -87,7 +88,7 @@ function wn_init(param)
     l.SetVisibilityTH = wn_setvisibility_th;
     l.Reveal = wn_cb_reveal;
     pg_reveal_register_triggerer(l);
-    if (htr_getvisibility(l) == 'inherit')
+    if (htr_getvisibility(l) == 'inherit' || htr_getvisibility(l) == 'visible')
 	{
 	pg_addsched_fn(window, "pg_reveal_event", new Array(l,l,'Reveal'), 0);
 	}
@@ -425,6 +426,17 @@ function wn_bring_top(l)
     if (wn_topwin == l) return true;
     wn_adjust_z(l, wn_top_z - htr_getzindex(l) + 4);
     wn_topwin = l;
+    // maybe we can mess with this someday.
+    /*if (cx__capabilities.CSS2)
+	{
+	l.style.opacity = 1.0;
+	for(var i=0; i<wn_list.length; i++)
+	    {
+	    var onewin = wn_list[i];
+	    if (onewin != l)
+		onewin.style.opacity = 0.9;
+	    }
+	}*/
 //    wn_clicked = 0;
     }
 

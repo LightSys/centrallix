@@ -55,7 +55,19 @@ function ht_showtext(aparam)
 	}
     else
 	{
-	newtxt = this.mainlayer.content;
+	if (this.mainlayer.content_type == 'text/plain')
+	    {
+	    var newtxt = '<pre>';
+	    var htmltxt = this.mainlayer.content.replace(/&/g,'&amp;');
+	    htmltxt = htmltxt.replace(/>/g,'&gt;');
+	    htmltxt = htmltxt.replace(/</g,'&lt;');
+	    newtxt += htmltxt;
+	    newtxt += '</pre>';
+	    }
+	else
+	    {
+	    var newtxt = this.mainlayer.content;
+	    }
 	}
     htr_write_content(this, newtxt);
     setClipHeight(this, getdocHeight(this));

@@ -599,8 +599,8 @@ function htr_mousemovehandler(e)
 	pg_handlertimeout = setTimeout(htr_mousemovehandler_cb, 0);
     if (cx__capabilities.Dom2Events)
 	{
-	e.Dom2Event.preventDefault();
-	e.Dom2Event.stopPropagation();
+	e.preventDefault();
+	e.stopPropagation();
 	}
     return false;
     }
