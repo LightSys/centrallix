@@ -23,6 +23,17 @@ samples "system/querytree"
 	    where="right(:name,4) == '.cmp'";
 	    }
 	}
+    Templates "system/querytree"
+	{
+	text = "Templates";
+	content = "<h1>Templates</h1>Click the icon to view a list of application widget templates to choose from.";
+	content_type = "text/html";
+	Tmpl_List "system/querytree"
+	    {
+	    source="/samples";
+	    where="right(:name,4) == '.tpl'";
+	    }
+	}
     Reports "system/querytree"
 	{
 	text = "Reports";
@@ -64,7 +75,7 @@ samples "system/querytree"
 	MS_List "system/querytree"
 	    {
 	    source="/samples";
-	    where="right(:name,4) != '.csv' and right(:name,5) != '.spec' and right(:name,4) != '.app' and right(:name,4) != '.rpt' and right(:name,4) != '.cmp' and right(:name,4) != '.txt'";
+	    where="right(:name,4) != '.csv' and right(:name,5) != '.spec' and right(:name,4) != '.app' and right(:name,4) != '.rpt' and right(:name,4) != '.cmp' and right(:name,4) != '.txt' and right(:name,4) != '.tpl'";
 	    }
 	}
     }
