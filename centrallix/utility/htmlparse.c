@@ -45,10 +45,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htmlparse.c,v 1.3 2005/02/26 06:39:22 gbeeley Exp $
+    $Id: htmlparse.c,v 1.4 2006/11/16 20:15:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/htmlparse.c,v $
 
     $Log: htmlparse.c,v $
+    Revision 1.4  2006/11/16 20:15:54  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.3  2005/02/26 06:39:22  gbeeley
     * SECURITY FIX: possible heap corruption bug in htmlparse.c regarding
       illegal placement of % and & (and other chars) in the URL.
@@ -492,6 +500,9 @@ htsParseURL(char* url)
         if (*url == '?') url++;
         while(*url && *url != '/')
             {
+	    /** Empty param? **/
+	    while (*url == '&') url++;
+
             /** Alloc a structure for this param. **/
             attr_inf = stAllocInf_ne();
             if (!attr_inf)
@@ -512,6 +523,9 @@ htsParseURL(char* url)
 	    /** Name must comply with symbol name standards **/
 	    if (cxsecVerifySymbol(attr_inf->Name) < 0)
 		{
+		/** Skip to end of param **/
+		while(*url && (*url != '&')) url++;
+
 		stFreeInf_ne(attr_inf);
 		continue;
 		}

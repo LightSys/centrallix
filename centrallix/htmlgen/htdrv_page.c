@@ -45,10 +45,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.74 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.75 2006/11/16 20:15:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.75  2006/11/16 20:15:54  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.74  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -723,7 +731,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
 	    {
-	    htrAddScriptInclude(s, "/sys/js/htdrv_page_js15.js", 0);
+	    /*htrAddScriptInclude(s, "/sys/js/htdrv_page_js15.js", 0);*/
 	    }
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
@@ -855,6 +863,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	htrAddScriptInit(s, "    if(typeof(pg_status_close)=='function')pg_status_close();\n");
+	htrAddScriptInit(s, "    pg_loadqueue_busy = false;\n");
 	htrAddScriptInit(s, "    pg_serialized_load_doone();\n");
 	
 	return 0;

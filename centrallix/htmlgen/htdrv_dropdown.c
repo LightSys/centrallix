@@ -82,7 +82,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    /** Get x,y of this object **/
    if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
    if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-   if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h=20;
+   if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h=0;
+   if (h < s->ClientInfo->ParagraphHeight+2)
+	h = s->ClientInfo->ParagraphHeight+2;
    if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) {
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
 	return -1;
@@ -115,7 +117,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%dbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:20px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+    htrAddStylesheetItem_va(s,"\t#dd%dbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,h,w,z);
     htrAddStylesheetItem_va(s,"\t#dd%dcon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,h-2,z+1);
     htrAddStylesheetItem_va(s,"\t#dd%dcon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,h-2,z+1);
 
@@ -318,10 +320,18 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.54 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.55 2006/11/16 20:15:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.55  2006/11/16 20:15:53  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.54  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.

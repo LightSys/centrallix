@@ -30,10 +30,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.7 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: apos.c,v 1.8 2006/11/16 20:15:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.8  2006/11/16 20:15:54  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.7  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -383,9 +391,10 @@ ObjData val;
 	}
     else if(!strcmp(Widget->Type, "widget/dropdown"))
 	{
-	    if(xaCount(&(Widget->Children)) < 4) 
+	    /*if(xaCount(&(Widget->Children)) < 4) 
 	         Widget->height = 40+16*xaCount(&(Widget->Children));
-	    else Widget->height = 104;
+	    else Widget->height = 104;*/
+	    Widget->height = Widget->min_height;
 	}
     else if(!strcmp(Widget->Type, "widget/table"))
 	{

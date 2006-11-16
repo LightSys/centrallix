@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2006 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -59,6 +59,12 @@ typedef struct
     int		ParagraphHeight;	/* total height of one line of text */
     }
     WgtrClientInfo, *pWgtrClientInfo;
+
+
+typedef struct
+    {
+    }
+    WgtrAppParams, *pWgtrAppParams;
 
 
 typedef struct _WN
@@ -123,8 +129,8 @@ typedef struct
 #define WGTR_TM_POSTORDER	3
 
 /** wgtr creation and destruction **/
-pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type);  /** parse osml object **/
-pWgtrNode wgtrParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root);	/** parses an open OSML object into a widget tree **/
+pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params);  /** parse osml object **/
+pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
@@ -173,6 +179,7 @@ int wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)());	/** registers
 int wgtrAddType(char* name, char* type_name);	    /** associate a type with a wgtr driver **/
 int wgtrAddDeploymentMethod(char* method, int (*Render)());	/** add a deployment method to a driver **/
 int wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method);
+int wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method);
 
 /** for debugging **/
 void wgtrPrint(pWgtrNode tree, int indent);	/** for debug purposes **/

@@ -35,10 +35,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.32 2005/09/24 20:15:42 gbeeley Exp $
+    $Id: obj.h,v 1.33 2006/11/16 20:15:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.33  2006/11/16 20:15:54  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.32  2005/09/24 20:15:42  gbeeley
     - Adding objAddVirtualAttr() to the OSML API, which can be used to add
       an attribute to an object which invokes callback functions to get the
@@ -850,6 +858,7 @@ int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
 
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);
+int objGetAttrValueWithContext(pObject this, char* attrname, pObjData val, void* objlist);
 #if 1
 int objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
 int objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val);

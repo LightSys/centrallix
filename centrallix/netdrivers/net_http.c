@@ -65,10 +65,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.62 2006/10/19 21:53:23 gbeeley Exp $
+    $Id: net_http.c,v 1.63 2006/11/16 20:15:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.63  2006/11/16 20:15:54  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.62  2006/10/19 21:53:23  gbeeley
     - (feature) First cut at the component-based client side development
       system.  Only rendering of the components works right now; interaction
@@ -2904,33 +2912,18 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    {
 		    fdPrintf(conn->ConnFD,"Content-Encoding: gzip\r\n");
 		    }
-		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
+		fdPrintf(conn->ConnFD,"Content-Type: text/html\r\nPragma: no-cache\r\n\r\n");
 		if(gzip==1)
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 
 		/** Read the app spec, verify it, and generate it to DHTML **/
-		if ( (widget_tree = wgtrParseOpenObject(target_obj, NULL, NULL)) == NULL)
+		if (wgtrRenderObject(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML") < 0)
 		    {
-		    mssError(0, "HTTP", "Couldn't parse %s of type %s", url_inf->StrVal, ptr);
+		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
 		    mssPrintError(conn->ConnFD);
 		    objClose(target_obj);
 		    return -1;
-		    }
-		else
-		    {
-		    /*wgtrPrint(widget_tree, 0);*/
-		    if (wgtrVerify(widget_tree, &wgtr_params) < 0)
-			{
-			mssError(0, "HTTP", "Couldn't verify widget tree for '%s'", target_obj->Pathname->Pathbuf);
-			fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
-			mssPrintError(conn->ConnFD);
-			wgtrFree(widget_tree);
-			objClose(target_obj);
-			return -1;
-			}
-		    else wgtrRender(conn->ConnFD, target_obj->Session, widget_tree, url_inf, &wgtr_params, "DHTML");
-		    wgtrFree(widget_tree);
 		    }
 	        }
 	    /** a client app requested an interface definition **/ 

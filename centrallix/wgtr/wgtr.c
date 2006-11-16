@@ -235,7 +235,7 @@ wgtrLoadTemplate(pObjSession s, char* path)
     {
     pWgtrNode template;
 
-	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure");
+	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", NULL);
 	if (!template) return NULL;
 	if (strcmp(template->Type, "widget/template"))
 	    {
@@ -249,7 +249,7 @@ wgtrLoadTemplate(pObjSession s, char* path)
 
 
 pWgtrNode 
-wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type)
+wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params)
     {
     pObject obj;
     pWgtrNode results;
@@ -262,14 +262,14 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
 	    }
 
 	/** call wgtrParseOpenObject and return results **/
-	results = wgtrParseOpenObject(obj, NULL, NULL);
+	results = wgtrParseOpenObject(obj, params);
 	objClose(obj);
         return results;
     }
 
 
 pWgtrNode 
-wgtrParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root)
+wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct params)
     {
     pWgtrNode	this_node, child_node;
     char   name[64], type[64], * prop_name;
@@ -295,6 +295,13 @@ wgtrParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root)
 	    return NULL;
 	    }
 	strncpy(type, val.String, 64);
+
+	/** Before we do anything else, examine any application parameters
+	 ** that could be present.
+	 **/
+	if (!context_objlist)
+	    {
+	    }
 
 	/** get the name, r_*, fl_*, from calls to the OSML **/
 	if (objGetAttrValue(obj, "name", DATA_T_STRING, &val) < 0)
@@ -388,7 +395,7 @@ wgtrParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root)
 	    {
 	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
 		{
-		if ( (child_node = wgtrParseOpenObject(child_obj,my_template,this_node->Root)) != NULL) wgtrAddChild(this_node, child_node);
+		if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,my_template,this_node->Root, context_objlist, params)) != NULL) wgtrAddChild(this_node, child_node);
 		else
 		    {
 		    mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
@@ -413,6 +420,13 @@ wgtrParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root)
 	    wgtrFree(my_template);
 	wgtrFree(this_node);
 	return NULL;
+    }
+
+
+pWgtrNode
+wgtrParseOpenObject(pObject obj, pStruct params)
+    {
+    return wgtr_internal_ParseOpenObject(obj, NULL, NULL, NULL, params);
     }
 
 
@@ -1496,5 +1510,35 @@ wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset)
 	    }
 
     return 0;
+    }
+
+/*** wgtrRenderObject() - does a wgtrParseOpenObject, wgtrVerify, and
+ *** wgtrRender, as well as handling any application defined parameters
+ *** and expressions.
+ ***/
+int
+wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method)
+    {
+    pWgtrNode tree;
+    int rval;
+
+	/** Parse it **/
+	tree = wgtrParseOpenObject(obj, app_params);
+	if (!tree) return -1;
+
+	/** Verify **/
+	if (wgtrVerify(tree, client_info) < 0)
+	    {
+	    wgtrFree(tree);
+	    return -1;
+	    }
+
+	/** Render **/
+	rval = wgtrRender(output, s, tree, app_params, client_info, method);
+
+	/** Clean up **/
+	wgtrFree(tree);
+
+    return rval;
     }
 

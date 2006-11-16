@@ -44,10 +44,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.47 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.48 2006/11/16 20:15:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.48  2006/11/16 20:15:54  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.47  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -589,7 +597,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "wn_top_z","10000",0);
-	htrAddScriptGlobal(s, "wn_list","null",0);
+	htrAddScriptGlobal(s, "wn_list","new Array()",0);
 	htrAddScriptGlobal(s, "wn_current","null",0);
 	htrAddScriptGlobal(s, "wn_newx","null",0);
 	htrAddScriptGlobal(s, "wn_newy","null",0);

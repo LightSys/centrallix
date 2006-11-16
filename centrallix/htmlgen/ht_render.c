@@ -51,10 +51,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.63 2006/10/27 19:26:00 gbeeley Exp $
+    $Id: ht_render.c,v 1.64 2006/11/16 20:15:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.64  2006/11/16 20:15:53  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.63  2006/10/27 19:26:00  gbeeley
     - (bugfix) use Dom2Event for event capture, if the UA supports it.  The old
       captureEvents/onthisorthatevent interface was far to unreliable in Gecko
@@ -2096,9 +2104,17 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    {
 	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ie.js");
 	    }
-	else
+	else if (s->Capabilities.Dom0NS)
 	    {
 	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ns.js");
+	    }
+	else if (s->Capabilities.Dom1HTML)
+	    {
+	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom1html.js");
+	    }
+	else
+	    {
+	    /** cannot render **/
 	    }
 
 	for(i=0;i<s->Page.Includes.nItems;i++)

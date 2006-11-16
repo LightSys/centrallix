@@ -45,10 +45,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.2 2006/10/27 05:57:22 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.3 2006/11/16 20:15:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.3  2006/11/16 20:15:53  gbeeley
+    - (change) move away from emulation of NS4 properties in Moz; add a separate
+      dom1html geom module for Moz.
+    - (change) add wgtrRenderObject() to do the parse, verify, and render
+      stages all together.
+    - (bugfix) allow dropdown to auto-size to allow room for the text, in the
+      same way as buttons and editboxes.
+
     Revision 1.2  2006/10/27 05:57:22  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -153,7 +161,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, NULL, NULL);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, NULL);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
