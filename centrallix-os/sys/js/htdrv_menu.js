@@ -412,11 +412,13 @@ function mn_init(param)
 	{
 	if (imgs[i].name.substr(0,nmstr.length) == nmstr)
 	    {
+	    var x = getRelativeX(imgs[i]);
+	    if (isNaN(x)) x = imgs[i].offsetLeft + imgs[i].offsetParent.offsetLeft;
+	    var y = getRelativeY(imgs[i]);
+	    if (isNaN(y)) y = imgs[i].offsetTop + imgs[i].offsetParent.offsetTop;
 	    menu.coords.push(new Object());
-	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].x = 
-		getRelativeX(imgs[i]);
-	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].y = 
-		getRelativeY(imgs[i]);
+	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].x = x;
+	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].y = y;
 	    }
 	else if (imgs[i].name.substr(0,3) == "cb_")
 	    {
