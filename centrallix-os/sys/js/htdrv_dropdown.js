@@ -225,7 +225,7 @@ function dd_keyhandler(l,e,k)
 	{
 	if (this.form)
 	    {
-	    if (htr_getvisibility(this.PaneLayer) == 'inherit' && 
+	    if (this.PaneLayer && htr_getvisibility(this.PaneLayer) == 'inherit' && 
 		    this.SelectedItem)
 		{
 		dd_select_item(this,this.SelectedItem);
@@ -238,7 +238,7 @@ function dd_keyhandler(l,e,k)
 	}
     else if (k == 27)
 	{
-	if (htr_getvisibility(this.PaneLayer) == 'inherit') {
+	if (this.PaneLayer && htr_getvisibility(this.PaneLayer) == 'inherit') {
 	    dd_collapse(this);
 	}
 	else
