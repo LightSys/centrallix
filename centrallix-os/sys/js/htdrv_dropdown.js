@@ -479,8 +479,8 @@ function dd_create_pane(l)
     c += "</TABLE>";
     c += "</BODY>";
     htr_setbgcolor(p, l.bg);
-    //htr_write_content(p, c);
-    pg_serialized_write(p, c, null);
+    htr_write_content(p, c);
+    //pg_serialized_write(p, c, null);
     htutil_tag_images(p,'dt_pn',p,l);
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
@@ -505,8 +505,8 @@ function dd_create_pane(l)
 	c += '<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>';
 	c += '<TR><TD><IMG name=d src=/sys/images/ico12b.gif></TD></TR>';
 	c += '</TABLE>';
-	//htr_write_content(p.BarLayer, c);
-	pg_serialized_write(p.BarLayer, c, null);
+	htr_write_content(p.BarLayer, c);
+	//pg_serialized_write(p.BarLayer, c, null);
 	var imgs = pg_images(p.BarLayer);
 	imgs[0].mainlayer = imgs[1].mainlayer = imgs[2].mainlayer = l;
 	imgs[0].kind = imgs[1].kind = imgs[2].kind = 'dd_sc';
@@ -518,8 +518,8 @@ function dd_create_pane(l)
 	moveTo(p.TmbLayer, l.w-20, 20);
 	htr_setvisibility(p.TmbLayer, 'inherit');
 	p.TmbLayer.mainlayer = l;
-	//htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>');
-	pg_serialized_write(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>', null);
+	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>');
+	//pg_serialized_write(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>', null);
 	imgs = pg_images(p.TmbLayer);
 	imgs[0].mainlayer = l;
 	imgs[0].thum = p.TmbLayer;
@@ -547,11 +547,11 @@ function dd_create_pane(l)
 	setClipHeight(l.Items[i], (pg_parah));
 	resizeTo(l.Items[i], getClipWidth(p.ScrLayer), (pg_parah));
 	if (i==0 && l.Values[i].value == null)
-	    //htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
-	    pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
+	    htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
+	    //pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
 	else
-	    //htr_write_content(l.Items[i], l.Values[i].label);
-	    pg_serialized_write(l.Items[i], l.Values[i].label, null);
+	    htr_write_content(l.Items[i], l.Values[i].label);
+	    //pg_serialized_write(l.Items[i], l.Values[i].label, null);
 	htr_setvisibility(l.Items[i], 'inherit');
 	l.Items[i].index = i;
 	}
