@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.20 2006/07/07 22:09:04 gbeeley Exp $
+    $Id: multiquery.c,v 1.21 2007/01/31 22:32:19 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.21  2007/01/31 22:32:19  gbeeley
+    - (bugfix) Return error instead of data type when expression evaluation
+      fails on error (not on NULL however).
+
     Revision 1.20  2006/07/07 22:09:04  gbeeley
     - patched up some 'unused variable' compile errors
     - (bugfix) double objClose() caught by ASSERTMAGIC when the last object
@@ -1928,7 +1932,8 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	/** Evaluate the expression to get the data type **/
 	p->Query->QTree->ObjList->Session = p->Query->SessionID;
-	expEvalTree((pExpression)p->Query->Tree->AttrCompiledExpr.Items[id],p->Query->QTree->ObjList);
+	if (expEvalTree((pExpression)p->Query->Tree->AttrCompiledExpr.Items[id],p->Query->QTree->ObjList) < 0)
+	    return -1;
 	dt = ((pExpression)p->Query->Tree->AttrCompiledExpr.Items[id])->DataType;
 
     return dt;
