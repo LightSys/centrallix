@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.6 2005/10/18 22:51:06 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.7 2007/02/17 04:18:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.7  2007/02/17 04:18:14  gbeeley
+    - (bugfix) SQL engine was not properly setting ObjCoverageMask on
+      expression trees built from components of the where clause, thus
+      expressions tended to not get re-evaluated when new values were
+      available.
+
     Revision 1.6  2005/10/18 22:51:06  gbeeley
     - (bugfix) request writability on objects when query open for update.
 
@@ -444,8 +450,8 @@ mqpAnalyze(pMultiQuery mq)
 			    {
 			    new_exp = expAllocExpression();
 			    new_exp->NodeType = EXPR_N_AND;
-			    xaAddItem(&new_exp->Children, (void*)qe->Constraint);
-			    xaAddItem(&new_exp->Children, (void*)where_item->Expr);
+			    expAddNode(new_exp, qe->Constraint);
+			    expAddNode(new_exp, where_item->Expr);
 			    qe->Constraint = new_exp;
 			    }
 
@@ -561,8 +567,8 @@ mqpStart(pQueryElement qe, pMultiQuery mq, pExpression additional_expr)
 	    {
 	    new_exp = expAllocExpression();
 	    new_exp->NodeType = EXPR_N_AND;
-	    xaAddItem(&new_exp->Children,(void*)qe->Constraint);
-	    xaAddItem(&new_exp->Children,(void*)additional_expr);
+	    expAddNode(new_exp, qe->Constraint);
+	    expAddNode(new_exp, additional_expr);
 	    qe->Constraint = new_exp;
 	    }
 	if (!qe->Constraint) qe->Constraint = additional_expr;

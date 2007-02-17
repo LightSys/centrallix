@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.6 2005/09/30 04:37:10 gbeeley Exp $
+    $Id: exp_main.c,v 1.7 2007/02/17 04:18:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.7  2007/02/17 04:18:14  gbeeley
+    - (bugfix) SQL engine was not properly setting ObjCoverageMask on
+      expression trees built from components of the where clause, thus
+      expressions tended to not get re-evaluated when new values were
+      available.
+
     Revision 1.6  2005/09/30 04:37:10  gbeeley
     - (change) modified expExpressionToPod to take the type.
     - (feature) got eval() working
@@ -502,6 +508,7 @@ expAddNode(pExpression parent, pExpression child)
     {
     xaAddItem(&(parent->Children), (void*)child);
     child->Parent = parent;
+    parent->ObjCoverageMask |= child->ObjCoverageMask;
     return 0;
     }
 

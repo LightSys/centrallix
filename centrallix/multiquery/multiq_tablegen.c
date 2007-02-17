@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.4 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.5 2007/02/17 04:18:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.5  2007/02/17 04:18:14  gbeeley
+    - (bugfix) SQL engine was not properly setting ObjCoverageMask on
+      expression trees built from components of the where clause, thus
+      expressions tended to not get re-evaluated when new values were
+      available.
+
     Revision 1.4  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -303,8 +309,8 @@ mqtAnalyze(pMultiQuery mq)
 			    {
 			    new_exp = expAllocExpression();
 			    new_exp->NodeType = EXPR_N_AND;
-			    xaAddItem(&new_exp->Children, (void*)qe->Constraint);
-			    xaAddItem(&new_exp->Children, (void*)where_item->Expr);
+			    expAddNode(new_exp, qe->Constraint);
+			    expAddNode(new_exp, where_item->Expr);
 			    qe->Constraint = new_exp;
 			    }
 

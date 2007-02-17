@@ -45,10 +45,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.6 2005/09/17 01:31:33 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.7 2007/02/17 04:18:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.7  2007/02/17 04:18:14  gbeeley
+    - (bugfix) SQL engine was not properly setting ObjCoverageMask on
+      expression trees built from components of the where clause, thus
+      expressions tended to not get re-evaluated when new values were
+      available.
+
     Revision 1.6  2005/09/17 01:31:33  gbeeley
     - Proper error return values from queries containing joins when one of
       the join halves doesn't open correctly.
@@ -416,9 +422,8 @@ mqjAnalyze(pMultiQuery mq)
 			    {
 			    new_exp = expAllocExpression();
 			    new_exp->NodeType = EXPR_N_AND;
-			    xaAddItem(&new_exp->Children,(void*)qe->Constraint);
-			    xaAddItem(&new_exp->Children,(void*)where_item->Expr);
-			    new_exp->ObjCoverageMask = qe->Constraint->ObjCoverageMask | where_item->Expr->ObjCoverageMask;
+			    expAddNode(new_exp, qe->Constraint);
+			    expAddNode(new_exp, where_item->Expr);
 			    qe->Constraint = new_exp;
 			    }
 			else
