@@ -58,10 +58,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.11 2005/02/26 06:36:59 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.12 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.12  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.11  2005/02/26 06:36:59  gbeeley
     - Adding document_format option so that .rpt author can specify what output
       format (html, pdf, text, etc.) should be used for the report.
@@ -297,14 +311,18 @@ struct
 #define RPT_NUM_ATTR	7
 static char* attrnames[RPT_NUM_ATTR] = {"bold","expanded","compressed","center","underline","italic","barcode"};
 
+#define RPT_FP_FUDGE	(0.00001)
+
 
 int rpt_internal_DoTable(pRptData, pStructInf, pRptSession, int container_handle);
+int rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int numcols, int table_handle, double colsep);
 int rpt_internal_DoSection(pRptData, pStructInf, pRptSession, pQueryConn);
 int rpt_internal_DoField(pRptData, pStructInf, pRptSession, pQueryConn);
 int rpt_internal_DoComment(pRptData, pStructInf, pRptSession);
 int rpt_internal_DoData(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoForm(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle);
+int rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, double dl, double dr);
 
 
 /*** rpt_internal_GetNULLstr - get the string to be substituted in place of
@@ -1468,7 +1486,7 @@ rpt_internal_Deactivate(pRptData inf, pRptActiveQueries ac)
 /*** rpt_internal_DoTableRow - process a single row object in a table.
  ***/
 int
-rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int numcols, int table_handle)
+rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int numcols, int table_handle, double colsep)
     {
     int tablerow_handle, tablecell_handle, area_handle;
     int i;
@@ -1517,7 +1535,8 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 
 	/** Set the style for the table **/
 	rpt_internal_SetStyle(inf, tablerow, rs, tablerow_handle);
-	rpt_internal_SetMargins(tablerow, tablerow_handle);
+	rpt_internal_SetMargins(tablerow, tablerow_handle,
+		colsep/2/prtGetUnitsRatio(rs->PSession), colsep/2/prtGetUnitsRatio(rs->PSession), 0, 0);
 
 	/** Output data formats **/
 	rpt_internal_CheckFormats(tablerow, oldmfmt, olddfmt, oldnfmt, 0);
@@ -1566,7 +1585,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 			return -1;
 			}
 		    /*rpt_internal_SetStyle(inf, subinf, rs, area_handle);*/
-		    rpt_internal_SetMargins(subinf, area_handle);
+		    rpt_internal_SetMargins(subinf, area_handle, 0, 0, 0, 0);
 		    if (rpt_internal_DoData(inf, subinf, rs, area_handle) < 0)
 			{
 			mssError(0,"RPT","problem constructing cell object '%s' (error doing area content)", subinf->Name);
@@ -1663,6 +1682,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
     double x,y,w,h;
     int numcols;
     pPrtBorder outerborder=NULL, innerborder=NULL, shadow=NULL;
+    pPrtBorder tb=NULL, bb=NULL, lb=NULL, rb=NULL;
     pStructInf rowinf, summarize_for_inf;
     pRptUserData ud;
     int changed;
@@ -1705,15 +1725,26 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	if (rpt_internal_GetDouble(table, "colsep", &colsep, 0) != 0) colsep = 1.0;
 
 	/** Check for borders / shadow **/
-	if (rpt_internal_GetDouble(table, "outerborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(table, "outerborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
 	    outerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "innerborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(table, "innerborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
 	    innerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "shadow", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(table, "shadow", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
 	    shadow = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(table, "topborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	    tb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(table, "bottomborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	    bb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(table, "leftborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	    lb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	if (rpt_internal_GetDouble(table, "rightborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	    rb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 
 	/** Create the table **/
-	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags, "numcols", numcols, "colwidths", cwidths, "colsep", colsep, "outerborder", outerborder, "innerborder", innerborder, "shadow", shadow, NULL);
+	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags,
+		"numcols", numcols, "colwidths", cwidths, "colsep", colsep, "outerborder", outerborder,
+		"innerborder", innerborder, "shadow", shadow, "topborder", tb, "bottomborder", bb,
+		"leftborder", lb, "rightborder", rb, NULL);
 	if (table_handle < 0)
 	    {
 	    mssError(0, "RPT", "Could not create table '%s'", table->Name);
@@ -1728,7 +1759,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 
 	/** Set the style for the table **/
 	rpt_internal_SetStyle(inf, table, rs, table_handle);
-	rpt_internal_SetMargins(table, table_handle);
+	rpt_internal_SetMargins(table, table_handle, 0, 0, 0, 0);
 
 	/** Suppress "no data returned" message on 0 rows? **/
 	no_data_msg = rpt_internal_GetBool(table, "nodatamsg", 1, 0);
@@ -1819,7 +1850,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		{
 		if (rpt_internal_GetBool(rowinf,"header",0,0))
 		    {
-		    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+		    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
 			{
 			err = 1;
 			break;
@@ -1848,7 +1879,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		    {
 		    if (!rpt_internal_GetBool(rowinf,"header",0,0) && !rpt_internal_GetBool(rowinf,"summary",0,0))
 			{
-			if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+			if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
 			    {
 			    err = 1;
 			    break;
@@ -1872,7 +1903,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			if (rval != 0) 
 			    {
 			    /** End of table.  do the final summary. **/
-			    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+			    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
 				{
 				err = 1;
 				break;
@@ -1901,7 +1932,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 				else if (ud->LastValue->DataType != ud->Exp->DataType)
 				    {
 				    /** Data type changed.  Issue summary. **/
-				    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+				    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
 					{
 					err = 1;
 					break;
@@ -1934,7 +1965,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 				    if (changed)
 					{
 					/** Value changed.  Issue summary. **/
-					if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle) < 0)
+					if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
 					    {
 					    err = 1;
 					    break;
@@ -2631,6 +2662,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
     int n;
     int attr = 0;
     int i;
+    double lh;
 
 	/** Check for font, size, color **/
 	if (stAttrValue(stLookup(config,"font"), NULL, &ptr, 0) == 0)
@@ -2649,6 +2681,10 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 		prtSetColor(prt_obj, n);
 		}
 	    }
+	if (rpt_internal_GetDouble(config, "lineheight", &lh, 0) == 0)
+	    {
+	    prtSetLineHeight(prt_obj, lh);
+	    }
 
 	/** Check justification **/
 	if (stAttrValue(stLookup(config,"align"), NULL, &ptr, 0) == 0)
@@ -2656,6 +2692,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    if (!strcmp(ptr,"left")) prtSetJustification(prt_obj, PRT_JUST_T_LEFT);
 	    else if (!strcmp(ptr,"right")) prtSetJustification(prt_obj, PRT_JUST_T_RIGHT);
 	    else if (!strcmp(ptr,"center")) prtSetJustification(prt_obj, PRT_JUST_T_CENTER);
+	    else if (!strcmp(ptr,"full")) prtSetJustification(prt_obj, PRT_JUST_T_FULL);
 	    }
 
 	/** Check attrs (bold/italic/underline) **/
@@ -2668,6 +2705,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    else if (!strcmp(ptr,"underline")) attr |= PRT_OBJ_A_UNDERLINE;
 	    else if (!strcmp(ptr,"plain")) attr = 0;
 	    }
+	prtSetAttr(prt_obj, attr);
 
     return 0;
     }
@@ -2676,15 +2714,15 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 /*** rpt_internal_SetMargins - sets the margins for a print object
  ***/
 int
-rpt_internal_SetMargins(pStructInf config, int prt_obj)
+rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, double dl, double dr)
     {
     double ml, mr, mt, mb;
 
 	/** Set the margins **/
-	if (rpt_internal_GetDouble(config, "margintop", &mt, 0) < 0) mt = 0.0;
-	if (rpt_internal_GetDouble(config, "marginbottom", &mb, 0) < 0) mb = 0.0;
-	if (rpt_internal_GetDouble(config, "marginleft", &ml, 0) < 0) ml = 0.0;
-	if (rpt_internal_GetDouble(config, "marginright", &mr, 0) < 0) mr = 0.0;
+	if (rpt_internal_GetDouble(config, "margintop", &mt, 0) < 0) mt = dt;
+	if (rpt_internal_GetDouble(config, "marginbottom", &mb, 0) < 0) mb = db;
+	if (rpt_internal_GetDouble(config, "marginleft", &ml, 0) < 0) ml = dl;
+	if (rpt_internal_GetDouble(config, "marginright", &mr, 0) < 0) mr = dr;
 	if (mt != 0 || mb != 0 || ml != 0 || mr != 0) 
 	    prtSetMargins(prt_obj, mt, mb, ml, mr);
 
@@ -2886,7 +2924,7 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn th
 
 	/** Set the style for the area **/
 	rpt_internal_SetStyle(inf, area, rs, area_handle);
-	rpt_internal_SetMargins(area, area_handle);
+	rpt_internal_SetMargins(area, area_handle, 0, 0, 0, 0);
 
 	/** Do stuff that is contained in the area **/
 	rval = rpt_internal_DoContainer(inf, area, rs, area_handle);
@@ -3236,6 +3274,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	inf->RSess = rs;
 	rs->PageHandle = prtGetPageRef(ps);
 	prtSetPageNumber(rs->PageHandle, 1);
+	rpt_internal_SetMargins(req, rs->PageHandle, 3.0, 3.0, 0, 0);
 
 	/** Build the object list. **/
 	for(i=0;i<req->nSubInf;i++) if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP && !strcmp(req->SubInf[i]->UsrType,"report/query"))

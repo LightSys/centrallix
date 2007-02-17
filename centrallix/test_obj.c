@@ -64,10 +64,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.35 2005/02/26 06:42:36 gbeeley Exp $
+    $Id: test_obj.c,v 1.36 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.36  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.35  2005/02/26 06:42:36  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -1088,7 +1102,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			return -1;
 			}
 		    objGetAttrValue(obj, "inner_type", DATA_T_STRING,POD(&stringval));
-		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, stringval);
+		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT | O_TRUNC, 0600, stringval);
 		    if (!to_obj)
 		        {
 			objClose(obj);
@@ -1098,7 +1112,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    }
 		else
 		    {
-		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, "application/octet-stream");
+		    to_obj = objOpen(s, ptr, O_RDWR | O_CREAT | O_TRUNC, 0600, "application/octet-stream");
 		    if (!to_obj)
 			{
 			mlxCloseSession(ls);

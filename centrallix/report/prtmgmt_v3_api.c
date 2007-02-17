@@ -50,10 +50,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_api.c,v 1.20 2005/03/01 07:11:41 gbeeley Exp $
+    $Id: prtmgmt_v3_api.c,v 1.21 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_api.c,v $
 
     $Log: prtmgmt_v3_api.c,v $
+    Revision 1.21  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.20  2005/03/01 07:11:41  gbeeley
     - properly return error on failure to add an object.
 
@@ -314,9 +328,32 @@ int
 prtSetLineHeight(int handle_id, double line_height)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
 
 	if (!obj) return -1;
+
+	/** Add an empty string object to contain the attr change. **/
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    set_obj = prt_internal_CreateEmptyObj(obj);
+	else
+	    set_obj = prt_internal_AddEmptyObj(obj);
+
 	obj->LineHeight = prtUnitY(PRTSESSION(obj),line_height);
+	set_obj->LineHeight = prtUnitY(PRTSESSION(obj),line_height);
+	obj->ConfigLineHeight = obj->LineHeight;
+	set_obj->ConfigLineHeight = set_obj->LineHeight;
+
+	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    {
+	    set_obj->Height = prt_internal_GetFontHeight(set_obj);
+	    set_obj->ConfigHeight = set_obj->Height;
+	    }
+	set_obj->YBase = prt_internal_GetFontBaseline(set_obj);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    obj->LayoutMgr->AddObject(obj,set_obj);
+
+	prt_internal_DispatchEvents(s);
 
     return 0;
     }
@@ -356,7 +393,10 @@ prtSetTextStyle(int handle_id, pPrtTextStyle style)
 	/** Set the style. **/
 	memcpy(&(set_obj->TextStyle), style, sizeof(PrtTextStyle));
 	set_obj->TextStyle.FontSize = s->Formatter->GetNearestFontSize(s->FormatterData, set_obj->TextStyle.FontSize);
-	set_obj->LineHeight = set_obj->TextStyle.FontSize/12.0;
+	if (set_obj->ConfigLineHeight >= 0.0)
+	    set_obj->LineHeight = set_obj->ConfigLineHeight;
+	else
+	    set_obj->LineHeight = prt_internal_FontToLineHeight(set_obj);
 
 	/** Only adjust height if a string object **/
 	if (set_obj->ObjType->TypeID == PRT_OBJ_T_STRING)
@@ -534,7 +574,10 @@ prtSetFontSize(int handle_id, int fontsize)
 
 	/** Set the size and recalc the height/baseline **/
 	set_obj->TextStyle.FontSize = s->Formatter->GetNearestFontSize(s->FormatterData, fontsize);
-	set_obj->LineHeight = set_obj->TextStyle.FontSize/12.0;
+	if (set_obj->ConfigLineHeight >= 0.0)
+	    set_obj->LineHeight = set_obj->ConfigLineHeight;
+	else
+	    set_obj->LineHeight = prt_internal_FontToLineHeight(set_obj);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
 	    {
 	    set_obj->Height = prt_internal_GetFontHeight(set_obj);

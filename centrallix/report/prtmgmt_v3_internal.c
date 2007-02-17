@@ -49,10 +49,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.18 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.19 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.19  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.18  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -289,6 +303,26 @@ prt_internal_Add(pPrtObjStream parent, pPrtObjStream new_child)
     }
 
 
+/*** prt_internal_Insert() - adds a child object after a sibling.
+ ***/
+int
+prt_internal_Insert(pPrtObjStream sibling, pPrtObjStream new_obj)
+    {
+
+	new_obj->Next = sibling->Next;
+	new_obj->Prev = sibling;
+	if (new_obj->Next)
+	    new_obj->Next->Prev = new_obj;
+	else
+	    sibling->Parent->ContentTail = new_obj;
+	sibling->Next = new_obj;
+	new_obj->Parent = sibling->Parent;
+	new_obj->Session = sibling->Session;
+
+    return 0;
+    }
+
+
 /*** prt_internal_CopyAttrs - duplicate the formatting attributes of one 
  *** object to another object.
  ***/
@@ -301,8 +335,26 @@ prt_internal_CopyAttrs(pPrtObjStream src, pPrtObjStream dst)
 	dst->BGColor = src->BGColor;
 	memcpy(&(dst->TextStyle), &(src->TextStyle), sizeof(PrtTextStyle));
 	dst->LineHeight = src->LineHeight;
+	dst->ConfigLineHeight = src->ConfigLineHeight;
 
     return 0;
+    }
+
+
+/*** prt_internal_FontToLineHeight() - determine the appropriate line height
+ *** given the font and size.
+ ***/
+double
+prt_internal_FontToLineHeight(pPrtObjStream obj)
+    {
+    double correction_factor;
+
+	if (obj->TextStyle.FontID == PRT_FONT_T_MONOSPACE)
+	    correction_factor = 1.0;
+	else
+	    correction_factor = 1.116;
+
+    return correction_factor * prt_internal_GetFontHeight(obj);
     }
 
 
@@ -405,6 +457,7 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
     pPrtObjStream subtree_first_obj;
     pPrtObjStream subtree_last_obj;
     pPrtObjStream objptr;
+    int total = 0;
 
 	/** Set first obj to the obj itself for now. **/
 	*first_obj = obj;
@@ -433,8 +486,10 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
 	/** For each child obj, run setup on it and add the chain. **/
 	for(objptr=obj->ContentHead;objptr;objptr=objptr->Next)
 	    {
+	    total++;
+
 	    /** Do the subtree **/
-	    prt_internal_YSetup_r(objptr, &subtree_first_obj, &subtree_last_obj);
+	    total += prt_internal_YSetup_r(objptr, &subtree_first_obj, &subtree_last_obj);
 
 	    /** Add the subtree to the list. **/
 	    (*last_obj)->YNext = subtree_first_obj;
@@ -444,7 +499,7 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
 	(*last_obj)->YNext = NULL;
 	(*first_obj)->YPrev = NULL;
 
-    return 0;
+    return total;
     }
 
 
@@ -480,11 +535,12 @@ prt_internal_YSort(pPrtObjStream obj)
     pPrtObjStream first,last,tmp1,tmp2;
     pPrtObjStream *sortptr;
     int did_swap;
+    int cnt;
 
 	/** Walk the tree, determining absolute coordinates as well as 
 	 ** setting up the initial linear sortable sequence of objects.
 	 **/
-	prt_internal_YSetup_r(obj, &first, &last);
+	cnt = prt_internal_YSetup_r(obj, &first, &last) + 1;
 
 	/** Basic stuff here - do a bubble sort on the objects.  We point to
 	 ** the *pointer* with sortptr in order to keep 'first' pointing to
@@ -700,6 +756,7 @@ prt_internal_CreateEmptyObj(pPrtObjStream container)
 	obj->ContentSize = 2;
 	obj->Content[0] = '\0';
 	obj->Width = 0.0;
+	obj->ConfigLineHeight = -1.0;
 	prev_obj = (container->ContentTail)?(container->ContentTail):container;
 	prt_internal_CopyAttrs(prev_obj, obj);
 	obj->Height = prt_internal_GetFontHeight(prev_obj);

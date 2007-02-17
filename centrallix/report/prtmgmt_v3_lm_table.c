@@ -54,10 +54,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.11 2005/03/01 07:13:13 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.12 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.12  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.11  2005/03/01 07:13:13  gbeeley
     - minor tweak to how breaking of tables is done when the page fills up.
 
@@ -415,8 +429,13 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	/** Check total of column widths. **/
 	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE))
 	    {
-	    mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
-	    return -EINVAL;
+	    /*mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
+	    return -EINVAL;*/
+	    for(i=0;i<lm_inf->nColumns;i++)
+		{
+		lm_inf->ColWidths[i] *= (prtInnerWidth(this)/totalwidth);
+		}
+	    lm_inf->ColSep *= (prtInnerWidth(this)/totalwidth);
 	    }
 
 	/** Set column X positions **/

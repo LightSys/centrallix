@@ -50,10 +50,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.10 2005/09/17 01:23:51 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.11 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.11  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.10  2005/09/17 01:23:51  gbeeley
     - Adding sysinfo objectsystem driver, which is roughly analogous to
       the /proc filesystem in Linux.
@@ -403,7 +417,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y);
 
 		    /** Adjust the rectangle to remove what was already printed **/
-		    if (end_y < cur_obj->PageY + cur_obj->Height && end_y > cur_obj->PageY)
+		    if (end_y < (cur_obj->PageY + cur_obj->Height - PRT_FP_FUDGE) && end_y > (cur_obj->PageY - PRT_FP_FUDGE))
 			{
 			cur_obj->Height -= (end_y - cur_obj->PageY);
 			cur_obj->PageY = end_y;

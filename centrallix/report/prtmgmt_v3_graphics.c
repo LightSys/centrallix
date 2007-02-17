@@ -58,10 +58,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_graphics.c,v 1.6 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_graphics.c,v 1.7 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_graphics.c,v $
 
     $Log: prtmgmt_v3_graphics.c,v $
+    Revision 1.7  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.6  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -507,7 +521,7 @@ prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width
 	/** build a new image object **/
 	image_obj = prt_internal_AllocObjByID(PRT_OBJ_T_IMAGE);
 	if (!image_obj) return -ENOMEM;
-	prt_internal_CopyAttrs(obj, image_obj);
+	prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,image_obj);
 	image_obj->Flags = flags & PRT_OBJ_UFLAGMASK;
 	image_obj->X = x;
 	image_obj->Y = y;
@@ -517,6 +531,7 @@ prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width
 	image_obj->ConfigHeight = height;
 	image_obj->Content = (void*)imgdata;
 	image_obj->ContentSize = prtImageSize(imgdata);
+	image_obj->YBase = height;
 
 	/** Add it **/
 	rval = obj->LayoutMgr->AddObject(obj, image_obj);

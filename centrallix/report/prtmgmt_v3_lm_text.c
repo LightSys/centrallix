@@ -54,10 +54,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.21 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.22 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.22  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.21  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -201,6 +215,7 @@
  **END-CVSDATA***********************************************************/
 
 
+pPrtObjStream prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, double new_width);
 
 /*** prt_textlm_Break() - performs a break operation on this area, which 
  *** will pass the break operation on up to the parent container and so
@@ -399,6 +414,32 @@ prt_textlm_UpdateLineY(pPrtObjStream starting_point, double y_offset)
     }
 
 
+/*** prt_textlm_Chopify() - splits a string object up into components,
+ *** so that full justification can be done by adjusting component
+ *** positioning.  Returns the last component in the created chain.
+ ***/
+pPrtObjStream
+prt_textlm_Chopify(pPrtObjStream to_be_chopped)
+    {
+    pPrtObjStream end_of_chop = to_be_chopped;
+    pPrtObjStream new_chunk;
+    double space_width = prt_internal_GetStringWidth(to_be_chopped, " ", 1);
+    unsigned char* spaceptr;
+
+	/** Trim them off the initial string one word at a time **/
+	while((spaceptr = strrchr(to_be_chopped->Content, ' ')) != NULL)
+	    {
+	    new_chunk = prt_textlm_SplitString(to_be_chopped, spaceptr - to_be_chopped->Content, 0, -1);
+	    prt_internal_Insert(to_be_chopped, new_chunk);
+	    if (end_of_chop == to_be_chopped) end_of_chop = new_chunk;
+	    new_chunk->Y = to_be_chopped->Y;
+	    new_chunk->X = to_be_chopped->X + to_be_chopped->Width + space_width;
+	    }
+
+    return end_of_chop;
+    }
+
+
 /*** prt_textlm_JustifyLine() - applies justification to a given line,
  *** keeping anything pre-positioned with xset, but changing
  *** the positioning of just about everything else.
@@ -406,9 +447,9 @@ prt_textlm_UpdateLineY(pPrtObjStream starting_point, double y_offset)
 int
 prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     {
-    pPrtObjStream scan, start, end;
+    pPrtObjStream scan, start, end, endchop;
     double slack_space, total_width, width_so_far;
-    int n_items;
+    int n_items, items_so_far, n_fj_items;;
 
 	/** Locate the beginning and end of the line **/
 	start = scan;
@@ -426,11 +467,27 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 	    if (scan->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
 	    }
 
+	/** Use left justification on a newline'd line **/
+	if (jtype == PRT_JUST_T_FULL && !(end->Flags & PRT_OBJ_F_SOFTNEWLINE))
+	    jtype = PRT_JUST_T_LEFT;
+
+	/** Does line end in a space?  Trim it if so **/
+	if (end->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    {
+	    while (*(end->Content) && end->Content[strlen(end->Content)-1] == ' ')
+		{
+		end->Content[strlen(end->Content)-1] = '\0';
+		end->Width = prt_internal_GetStringWidth(end, end->Content, -1);
+		end->Flags |= PRT_TEXTLM_F_RMSPACE;
+		}
+	    }
+
 	/** Compute the amount of "slack space" in the region.  We need to count
 	 ** everything because we may be re-justifying the line or whatever...
 	 **/
 	slack_space=0.0;
 	n_items=0;
+	n_fj_items = 0;
 	total_width = prtInnerWidth(end->Parent);
 	for(scan=start; scan && scan->Next && scan != end; scan=scan->Next)
 	    {
@@ -444,8 +501,29 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 	if (!(end->Flags & PRT_OBJ_F_XSET))
 	    slack_space += (total_width - (end->X + end->Width));
 
+	/** Chop into components? **/
+	if (jtype == PRT_JUST_T_FULL)
+	    {
+	    for(scan=start; scan; scan=scan->Next)
+		{
+		if (scan->ObjType->TypeID == PRT_OBJ_T_STRING)
+		    {
+		    endchop = prt_textlm_Chopify(scan);
+		    if (scan == end) end = endchop;
+		    scan = endchop;
+		    }
+		if (scan == end) break;
+		}
+	    for(scan=start; scan && scan->Next && scan != end; scan=scan->Next)
+		{
+		if (scan->Width > PRT_FP_FUDGE)
+		    n_fj_items++;
+		}
+	    }
+
 	/** Ok, apply the justification. **/
 	width_so_far = 0.0;
+	items_so_far = 0;
 	for(scan=start; scan; scan=scan->Next)
 	    {
 	    if (!(scan->Flags & PRT_OBJ_F_XSET)) 
@@ -462,11 +540,11 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 			scan->X = (slack_space/2.0) + width_so_far;
 			break;
 		    case PRT_JUST_T_FULL:
-			/** not yet implemented; we need to chop the 
-			 ** pieces into components and get rid of the
-			 ** spaces (sort of).  yuck. 
-			 **/
-			scan->X = width_so_far;
+			scan->X = width_so_far + (slack_space/n_fj_items)*items_so_far;
+			if (scan->Width > PRT_FP_FUDGE)
+			    {
+			    items_so_far++;
+			    }
 			break;
 		    }
 		width_so_far += scan->Width;
@@ -936,7 +1014,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Justify previous line? **/
 		prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
 		objptr->X = 0.0;
-		objptr->Y = bottom;
+		if (this->ContentTail->LineHeight > bottom - top)
+		    objptr->Y = top + this->ContentTail->LineHeight;
+		else
+		    objptr->Y = bottom;
 		}
 	    else
 		{
@@ -982,7 +1063,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    if (this->ContentTail->Flags & PRT_OBJ_F_SOFTNEWLINE)
 			{
 			objptr->X = 0.0;
-			objptr->Y = bottom;
+			if (this->ContentTail->LineHeight > bottom - top)
+			    objptr->Y = top + this->ContentTail->LineHeight;
+			else
+			    objptr->Y = bottom;
 			}
 		    }
 		else
@@ -991,7 +1075,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    if (objptr->X != 0.0)
 		        {
 			objptr->X = 0.0;
-			objptr->Y = bottom;
+			if (this->ContentTail->LineHeight > bottom - top)
+			    objptr->Y = top + this->ContentTail->LineHeight;
+			else
+			    objptr->Y = bottom;
 			this->ContentTail->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 			}
 		    split_obj = NULL;

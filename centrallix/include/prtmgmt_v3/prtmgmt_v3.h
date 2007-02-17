@@ -35,10 +35,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3.h,v 1.4 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: prtmgmt_v3.h,v 1.5 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/prtmgmt_v3/prtmgmt_v3.h,v $
 
     $Log: prtmgmt_v3.h,v $
+    Revision 1.5  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.4  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -268,6 +282,7 @@ typedef struct _POS
     double		BorderTop;
     double		BorderBottom;
     double		LineHeight;		/* Height of lines... */
+    double		ConfigLineHeight;	/* Configured height of lines, negative if unset. */
     unsigned char*	Content;		/* Text content or image bitmap */
     int			ContentSize;		/* total memory allocated for the content */
     }
@@ -562,6 +577,7 @@ int prtSetPageGeometry(pPrtSession s, double width, double height);
 int prtGetPageGeometry(pPrtSession s, double *width, double *height);
 int prtSetUnits(pPrtSession s, char* units_name);
 char* prtGetUnits(pPrtSession s);
+double prtGetUnitsRatio(pPrtSession s);
 int prtSetResolution(pPrtSession s, int dpi);
 int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)());
 
@@ -570,9 +586,11 @@ pPrtObjStream prt_internal_AllocObj(char* type);
 pPrtObjStream prt_internal_AllocObjByID(int type_id);
 int prt_internal_FreeObj(pPrtObjStream obj);
 int prt_internal_Add(pPrtObjStream parent, pPrtObjStream new_child);
+int prt_internal_Insert(pPrtObjStream sibling, pPrtObjStream new_obj);
 int prt_internal_CopyAttrs(pPrtObjStream src, pPrtObjStream dst);
 int prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst);
 double prt_internal_GetFontHeight(pPrtObjStream obj);
+double prt_internal_FontToLineHeight(pPrtObjStream obj);
 double prt_internal_GetFontBaseline(pPrtObjStream obj);
 double prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n);
 pPrtObjStream prt_internal_YSort(pPrtObjStream obj);

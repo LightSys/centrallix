@@ -47,10 +47,24 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_session.c,v 1.11 2005/02/26 06:42:41 gbeeley Exp $
+    $Id: prtmgmt_v3_session.c,v 1.12 2007/02/17 04:34:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_session.c,v $
 
     $Log: prtmgmt_v3_session.c,v $
+    Revision 1.12  2007/02/17 04:34:51  gbeeley
+    - (bugfix) test_obj should open destination objects with O_TRUNC
+    - (bugfix) prtmgmt should remember 'configured' line height, so it can
+      auto-adjust height only if the line height is not explicitly set.
+    - (change) report writer should assume some default margin settings on
+      tables/table cells, so that tables aren't by default ugly :)
+    - (bugfix) various floating point comparison fixes
+    - (feature) allow top/bottom/left/right border options on the entire table
+      itself in a report.
+    - (feature) allow setting of text line height with "lineheight" attribute
+    - (change) allow table to auto-scale columns should the total of column
+      widths and separations exceed the available inner width of the table.
+    - (feature) full justification of text.
+
     Revision 1.11  2005/02/26 06:42:41  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -191,6 +205,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	page_os->Height = this->PageHeight;
 	page_os->ConfigWidth = this->PageWidth;
 	page_os->ConfigHeight = this->PageHeight;
+	page_os->ConfigLineHeight = -1.0;
 	page_os->MarginLeft = 2.5;
 	page_os->MarginRight = 2.5;
 	page_os->MarginTop = 3.0;
@@ -310,6 +325,13 @@ char*
 prtGetUnits(pPrtSession s)
     {
     return s->Units->Name;
+    }
+
+
+double
+prtGetUnitsRatio(pPrtSession s)
+    {
+    return prtUsrUnitX(s,1.0)*10.0/(prtUsrUnitY(s,1.0)*6.0);
     }
 
 
