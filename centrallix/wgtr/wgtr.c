@@ -1025,7 +1025,7 @@ wgtrWgtToHints(pWgtrNode widget)
 		/** Check style settings **/
 		hnt_internal_SetStyleItem(ph, ptr);
 
-		if (t == DATA_T_STRING || i >= od.StringVec->nStrings-1); break;
+		if (t == DATA_T_STRING || i >= od.StringVec->nStrings-1) break;
 		i++;
 		}
 	    }
