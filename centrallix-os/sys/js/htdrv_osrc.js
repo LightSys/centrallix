@@ -155,7 +155,7 @@ function osrc_action_query(aparam) //q, formobj)
 	return 0;
 	}
     this.easyquery=q;
-    this.pendingquery=String(escape(q)).replace("/","%2F","g");
+    this.pendingquery=htutil_escape(q);
     this.pending=true;
     var someunsaved=false;
 /** Check if any children are modified and call IsDiscardReady if they are **/
@@ -278,7 +278,7 @@ function osrc_action_create_cb2()
     var src = this.baseobj + '/*?ls__mode=osml&ls__req=create&ls__sid=' + this.sid;
     for(var i in this.createddata) if(i!='oid')
 	{
-	src+='&'+escape(this.createddata[i]['oid'])+'='+escape(this.createddata[i]['value']);
+	src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
 	}
     pg_serialized_load(this, src, osrc_action_create_cb);
     }
@@ -333,7 +333,7 @@ function osrc_action_modify(aparam) //up,formobj)
     var src='/?ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
     for(var i in up) if(i!='oid')
 	{
-	src+='&'+escape(up[i]['oid'])+'='+escape(up[i]['value']);
+	src+='&'+htutil_escape(up[i]['oid'])+'='+htutil_escape(up[i]['value']);
 	}
     this.formobj=formobj;
     this.modifieddata=up;

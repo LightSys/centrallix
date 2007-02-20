@@ -81,3 +81,10 @@ function tohex16(n)
     var digits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
     return '' + digits[(n/4096)&0xF] + digits[(n/256)&0xF] + digits[(n/16)&0xF] + digits[n&0xF];
     }
+
+function htutil_escape(s)
+    {
+    var new_s = String(escape(s));
+    var re = /\//g;
+    return new_s.replace(re, "%2f");
+    }
