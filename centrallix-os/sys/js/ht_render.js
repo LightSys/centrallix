@@ -24,7 +24,9 @@ function cxjs_user_name()
 function cxjs_getdate()
     {
     var dt = new Date();
-    var dtstr = '' + (dt.getMonth()+1) + '/' + (dt.getDate()) + '/' + (dt.getFullYear()) + ' ' + (dt.getHours()) + ':' + (dt.getMinutes()) + ':' + (dt.getSeconds());
+    var dtmin = (dt.getMinutes()<10)?('0' + dt.getMinutes()):dt.getMinutes();
+    var dtsec = (dt.getSeconds()<10)?('0' + dt.getSeconds()):dt.getSeconds();
+    var dtstr = '' + (dt.getMonth()+1) + '/' + (dt.getDate()) + '/' + (dt.getFullYear()) + ' ' + (dt.getHours()) + ':' + dtmin + ':' + dtsec;
     return dtstr;
     }
 function cxjs_convert(dt,v)
