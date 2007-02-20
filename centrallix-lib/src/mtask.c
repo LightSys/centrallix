@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.34 2006/06/21 21:25:10 gbeeley Exp $
+    $Id: mtask.c,v 1.35 2007/02/20 19:32:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.35  2007/02/20 19:32:16  gbeeley
+    - (bugfix #757726) Compile properly without zlib support.  This is a
+      really ancient build bug that we should have fixed eons ago...
+
     Revision 1.34  2006/06/21 21:25:10  gbeeley
     - Adding fdQPrintf() routines to utilize the qpfPrintf routines.
 
@@ -2322,7 +2326,9 @@ fdOpenFD(int fd, int mode)
 	new_fd->UnReadLen = 0;
 	new_fd->WrCacheBuf = NULL;
 	new_fd->RdCacheBuf = NULL;
+#ifdef HAVE_LIBZ
 	new_fd->GzFile = NULL;
+#endif
 	new_fd->PrintfBuf = NULL;
 
 	/** Set nonblocking mode **/
@@ -2934,12 +2940,14 @@ fdClose(pFile filedesc, int flags)
 	    if (filedesc->PrintfBuf) nmSysFree(filedesc->PrintfBuf);
             nmFree(filedesc,sizeof(File));
 	    }
-	else
 #ifdef HAVE_LIBZ
+	else
+	    {
 	    if (filedesc->Flags & FD_UF_GZIP)
 		{
 		gzclose(filedesc->GzFile);
 		}
+	    }
 #endif
 
     return 0;
