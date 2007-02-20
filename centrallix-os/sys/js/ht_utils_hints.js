@@ -317,7 +317,7 @@ function cx_hints_startmodify(e)
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr && (e.cx_hints['all'].Style & cx_hints_style.alwaysdef))
 	    {
 	    e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
-	    //if (e.form) e.form.DataNotify(e);
+	    if (e.form) e.form.DataNotify(e);
 	    }
 
     return;
