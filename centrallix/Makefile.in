@@ -48,7 +48,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_DATA = @INSTALL_DATA@
 
 # VPATH - all the directories we manage.
-VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr
+VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss
 
 # Support modules -- only basic utilities.
 #XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
@@ -257,6 +257,11 @@ XEXPRMODS=exp_main.o \
 	  exp_generator.o
 EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
 
+XCXSSMODS=cxss_main.o \
+	  cxss_utility.o \
+	  cxss_entropy.o
+CXSSMODS=$(patsubst %,cxss/%,$(XCXSSMODS))
+
 # Javascript VM modules... for Centrallix side of things.
 XLSJSVM=jsvm_client.o
 LSJSVM=$(patsubst %,jsvm/%,$(XLSJSVM))
@@ -296,7 +301,7 @@ CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBB
 
 LIBS=@LIBS@ @STATIC_LIBS@
 
-BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS)
+BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS) $(CXSSMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 V3BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS)
 V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)

@@ -31,6 +31,7 @@
 #include "iface.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -65,10 +66,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.63 2006/11/16 20:15:54 gbeeley Exp $
+    $Id: net_http.c,v 1.64 2007/02/22 23:25:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.64  2007/02/22 23:25:14  gbeeley
+    - (feature) adding initial framework for CXSS, the security subsystem.
+    - (feature) CXSS entropy pool and key generation, basic framework.
+    - (feature) adding xmlhttprequest capability
+    - (change) CXSS requires OpenSSL, adding that check to the build
+    - (security) Adding application key to thwart request spoofing attacks.
+      Once the AML is active, application keying will be more important and
+      will be handled there instead of in net_http.
+
     Revision 1.63  2006/11/16 20:15:54  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.
@@ -575,7 +585,8 @@ typedef struct
     {
     char	Username[32];
     char	Password[32];
-    char	Cookie[32];
+    char	Cookie[64];
+    char	AKey[64];
     char	HTTPVer[16];
     int		ver_10:1;	/* is HTTP/1.0 compatible */
     int		ver_11:1;	/* is HTTP/1.1 compatible */
@@ -1698,7 +1709,11 @@ nht_internal_Decode64(char* dst, char* src, int maxdst)
 int
 nht_internal_CreateCookie(char* ck)
     {
-    sprintf(ck,"LSID=LS-%6.6X%4.4X", (((int)(time(NULL)))&0xFFFFFF), (((int)(lrand48()))&0xFFFF));
+    int key[4];
+
+	cxssGenerateKey((unsigned char*)key, sizeof(key));
+	sprintf(ck,"LSID=%8.8x%8.8x%8.8x%8.8x", key[0], key[1], key[2], key[3]);
+
     return 0;
     }
 
@@ -2540,7 +2555,7 @@ nht_internal_CkParams(pStruct url_inf, pObject obj)
 	for(i=0;i<url_inf->nSubInf;i++)
 	    {
 	    search_inf = url_inf->SubInf[i];
-	    if (strncmp(search_inf->Name,"ls__",4))
+	    if (strncmp(search_inf->Name,"ls__",4) && strncmp(search_inf->Name,"cx__",4))
 	        {
 		/** Get the value and call objSetAttrValue with it **/
 		t = objGetAttrType(obj, search_inf->Name);
@@ -2692,6 +2707,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     int gzip;
     int i;
     WgtrClientInfo wgtr_params;
+    int akey_match = 0;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -2705,6 +2721,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    {
 	    return nht_internal_ControlMsgHandler(conn, url_inf);
 	    }
+
+	/** app key specified? **/
+	find_inf = stLookup_ne(url_inf,"cx__akey");
+	if (find_inf && !strcmp(find_inf->StrVal, nsess->AKey))
+	    akey_match = 1;
 
 	/** Check GET mode. **/
 	find_inf = stLookup_ne(url_inf,"ls__mode");
@@ -2758,7 +2779,8 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 
 	    /** Do we need to set params as a part of the open? **/
-	    nht_internal_CkParams(url_inf, target_obj);
+	    if (akey_match)
+		nht_internal_CkParams(url_inf, target_obj);
 	    }
 	else
 	    {
@@ -2901,6 +2923,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		wgtr_params.MinHeight = client_h;
 		wgtr_params.MaxWidth = client_w;
 		wgtr_params.MinWidth = client_w;
+		strtcpy(wgtr_params.AKey, nsess->AKey, sizeof(wgtr_params.AKey));
 
 		/** Check for gzip encoding **/
 		gzip=0;
@@ -3043,7 +3066,7 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    }
 
 	/** SQL QUERY mode **/
-	else if (!strcmp(find_inf->StrVal,"query"))
+	else if (!strcmp(find_inf->StrVal,"query") && akey_match)
 	    {
 	    /** Change directory to appropriate query root **/
 	    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n\r\n");
@@ -3088,14 +3111,14 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    }
 
 	/** Direct OSML Access mode... **/
-	else if (!strcmp(find_inf->StrVal,"osml"))
+	else if (!strcmp(find_inf->StrVal,"osml") && akey_match)
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__req");
 	    nht_internal_OSML(conn,target_obj, find_inf->StrVal, url_inf);
 	    }
 
 	/** Exec method mode **/
-	else if (!strcmp(find_inf->StrVal,"execmethod"))
+	else if (!strcmp(find_inf->StrVal,"execmethod") && akey_match)
 	    {
 	    find_inf = stLookup_ne(url_inf,"ls__methodname");
 	    find_inf2 = stLookup_ne(url_inf,"ls__methodparam");
@@ -3419,6 +3442,7 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtUser usr;
     pNhtConn conn = NULL;
     pNhtSessionData nsess;
+    int akey[2];
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
@@ -3754,6 +3778,8 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xaInit(&nsess->ErrorList,16);
 	    xaInit(&nsess->ControlMsgsList,16);
 	    nht_internal_CreateCookie(nsess->Cookie);
+	    cxssGenerateKey(akey, sizeof(akey));
+	    sprintf(nsess->AKey, "%8.8x%8.8x", akey[0], akey[1]);
 	    xhnInitContext(&(nsess->Hctx));
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
 	    usr->SessionCnt++;
@@ -3824,6 +3850,19 @@ nht_internal_ConnHandler(void* connfd_v)
 	/** If the method was GET and an ls__method was specified, use that method **/
 	if (!strcmp(method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
+	    find_inf = stLookup_ne(url_inf,"cx__akey");
+	    if (!find_inf || strcmp(find_inf->StrVal, nsess->AKey))
+		{
+		snprintf(sbuf,160,"HTTP/1.0 200 OK\r\n"
+			     "Server: %s\r\n"
+			     "Pragma: no-cache\r\n"
+			     "Content-Type: text/html\r\n"
+			     "\r\n"
+			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
+		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
+		netCloseTCP(conn->ConnFD,1000,0);
+		thExit();
+		}
 	    if (!strcasecmp(find_inf->StrVal,"get"))
 	        {
 	        nht_internal_GET(conn,url_inf,if_modified_since);

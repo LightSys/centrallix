@@ -34,10 +34,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.32 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: ht_render.h,v 1.33 2007/02/22 23:25:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.33  2007/02/22 23:25:14  gbeeley
+    - (feature) adding initial framework for CXSS, the security subsystem.
+    - (feature) CXSS entropy pool and key generation, basic framework.
+    - (feature) adding xmlhttprequest capability
+    - (change) CXSS requires OpenSSL, adding that check to the build
+    - (security) Adding application key to thwart request spoofing attacks.
+      Once the AML is active, application keying will be more important and
+      will be handled there instead of in net_http.
+
     Revision 1.32  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -550,6 +559,7 @@ typedef struct
     unsigned int CSSClip:1; /* Clipping rectangle starts at border, not content */
     unsigned int HTML40:1; /* W3C HTML 4.0 */
     unsigned int JS15:1; /* Javacript 1.5 */
+    unsigned int XMLHttpRequest:1; /* MSIE/Mozilla XMLHttpRequest method capability */
     }
     HtCapabilities, *pHtCapabilities;
 

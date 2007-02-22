@@ -65,6 +65,9 @@ AC_CACHE_SAVE
 dnl Check for makedepend (typically in XFree86-devel)
 CHECK_MAKEDEPEND
 
+dnl Check for OpenSSL
+CENTRALLIX_CHECK_OPENSSL
+
 dnl Check for __ctype_b
 AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])
 CHECK_CTYPE_B

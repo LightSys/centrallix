@@ -69,6 +69,14 @@ AC_DEFUN(CENTRALLIX_CHECK_READLINE,
     ]
 )
 
+dnl Test for OpenSSL
+AC_DEFUN(CENTRALLIX_CHECK_OPENSSL,
+    [
+	AC_CHECK_LIB(ssl, MD5, [LIBS="$LIBS -lssl"], AC_MSG_ERROR([Centrallix requires OpenSSL to be installed.]))
+	AC_CHECK_HEADER([openssl/md5.h], [], AC_MSG_ERROR([Centrallix requires OpenSSL development header files to be installed.]))
+    ]
+)
+
 dnl Test for the Centrallix-LIB header and library files.
 AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
     [

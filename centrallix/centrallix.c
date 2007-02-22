@@ -19,6 +19,7 @@
 #include <signal.h>
 #include "wgtr.h"
 #include "iface.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -53,10 +54,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.38 2006/10/19 21:53:23 gbeeley Exp $
+    $Id: centrallix.c,v 1.39 2007/02/22 23:25:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.39  2007/02/22 23:25:13  gbeeley
+    - (feature) adding initial framework for CXSS, the security subsystem.
+    - (feature) CXSS entropy pool and key generation, basic framework.
+    - (feature) adding xmlhttprequest capability
+    - (change) CXSS requires OpenSSL, adding that check to the build
+    - (security) Adding application key to thwart request spoofing attacks.
+      Once the AML is active, application keying will be more important and
+      will be handled there instead of in net_http.
+
     Revision 1.38  2006/10/19 21:53:23  gbeeley
     - (feature) First cut at the component-based client side development
       system.  Only rendering of the components works right now; interaction
@@ -565,6 +575,10 @@ cxInitialize(void* v)
 	    thExit();
 	    }
 	fdClose(cxconf, 0);
+
+	/** Init the security subsystem.
+	 **/
+	cxssInitialize();
 
 	/** Init the session handler.  We have to extract the config data for this 
 	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't

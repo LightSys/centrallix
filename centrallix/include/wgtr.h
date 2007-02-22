@@ -57,6 +57,7 @@ typedef struct
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
+    char	AKey[64];
     }
     WgtrClientInfo, *pWgtrClientInfo;
 

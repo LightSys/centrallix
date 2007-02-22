@@ -51,10 +51,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.64 2006/11/16 20:15:53 gbeeley Exp $
+    $Id: ht_render.c,v 1.65 2007/02/22 23:25:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.65  2007/02/22 23:25:13  gbeeley
+    - (feature) adding initial framework for CXSS, the security subsystem.
+    - (feature) CXSS entropy pool and key generation, basic framework.
+    - (feature) adding xmlhttprequest capability
+    - (change) CXSS requires OpenSSL, adding that check to the build
+    - (security) Adding application key to thwart request spoofing attacks.
+      Once the AML is active, application keying will be more important and
+      will be handled there instead of in net_http.
+
     Revision 1.64  2006/11/16 20:15:53  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.
@@ -649,6 +658,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
     PROCESS_CAP_INIT(CSSClip);
     PROCESS_CAP_INIT(HTML40);
     PROCESS_CAP_INIT(JS15);
+    PROCESS_CAP_INIT(XMLHttpRequest);
 
     /** now process children, passing a reference to our capabilities along **/
     xaInit(&(agentCap->Children), 4);
@@ -707,6 +717,7 @@ htr_internal_writeCxCapabilities(pHtSession s, pFile out)
     PROCESS_CAP_OUT(CSSClip);
     PROCESS_CAP_OUT(HTML40);
     PROCESS_CAP_OUT(JS15);
+    PROCESS_CAP_OUT(XMLHttpRequest);
     }
 
 /**
@@ -2013,6 +2024,9 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%s);\n"
 			       "    var rootname = \"%s\";\n",
 		s->Namespace->DName, s->Namespace->DName);
+
+	/** Set the application key **/
+	htrAddScriptInit_va(s, "    akey = '%s';\n", c_info->AKey);
 
 	/** Render the top-level widget. **/
 	rval = htrRenderWidget(s, tree, 10);
