@@ -34,10 +34,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse_ne.h,v 1.2 2005/02/26 06:42:38 gbeeley Exp $
+    $Id: stparse_ne.h,v 1.3 2007/02/22 23:26:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/stparse_ne.h,v $
 
     $Log: stparse_ne.h,v $
+    Revision 1.3  2007/02/22 23:26:44  gbeeley
+    - (debug) adding stPrint_ne() to print out a pStruct tree.
+
     Revision 1.2  2005/02/26 06:42:38  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -103,6 +106,7 @@ int stAttrValue_ne(pStruct inf, char** strval);
 pStruct stAllocInf_ne();
 int stFreeInf_ne(pStruct inf);
 int stAddInf_ne(pStruct main_inf, pStruct sub_inf);
+int stPrint_ne(pStruct inf);
 
 #endif /* _STPARSE_NE_H */
 

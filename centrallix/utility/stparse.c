@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.12 2005/09/30 04:37:10 gbeeley Exp $
+    $Id: stparse.c,v 1.13 2007/02/22 23:26:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.13  2007/02/22 23:26:44  gbeeley
+    - (debug) adding stPrint_ne() to print out a pStruct tree.
+
     Revision 1.12  2005/09/30 04:37:10  gbeeley
     - (change) modified expExpressionToPod to take the type.
     - (feature) got eval() working
@@ -1565,3 +1568,28 @@ stAddInf_ne(pStruct main_inf, pStruct sub_inf)
     main_inf->SubInf[main_inf->nSubInf++] = sub_inf;
     return 0;
     }
+
+
+/*** stPrint_ne - format and print a pStruct tree on stdout.
+ ***/
+int
+stPrint_ne_r(pStruct inf, int level)
+    {
+    int i;
+    if (inf->Type == ST_T_ATTRIB)
+	printf("%*.*s%s = %s\n", level*4, level*4, "", inf->Name, inf->StrVal);
+    else
+	{
+	printf("%*.*s%s (%s)\n%*.*s{\n", level*4, level*4, "", inf->Name, inf->StrVal?inf->StrVal:"", (level+1)*4, (level+1)*4, "");
+	for(i=0;i<inf->nSubInf;i++) stPrint_ne_r(inf->SubInf[i], level+1);
+	printf("%*.*s}\n", (level+1)*4, (level+1)*4, "");
+	}
+    return 0;
+    }
+
+int
+stPrint_ne(pStruct inf)
+    {
+    return stPrint_ne_r(inf, 0);
+    }
+
