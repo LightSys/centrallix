@@ -66,10 +66,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.64 2007/02/22 23:25:14 gbeeley Exp $
+    $Id: net_http.c,v 1.65 2007/02/26 16:40:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.65  2007/02/26 16:40:39  gbeeley
+    - (bugfix) adding of cx__akey threw off OSML setattrs operation.
+
     Revision 1.64  2007/02/22 23:25:14  gbeeley
     - (feature) adding initial framework for CXSS, the security subsystem.
     - (feature) CXSS entropy pool and key generation, basic framework.
@@ -2410,7 +2413,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		for(i=0;i<req_inf->nSubInf;i++)
 		    {
 		    subinf = req_inf->SubInf[i];
-		    if (strncmp(subinf->Name,"ls__",4) != 0)
+		    if (strncmp(subinf->Name,"ls__",4) != 0 && strncmp(subinf->Name,"cx__",4) != 0)
 		        {
 			t = objGetAttrType(obj, subinf->Name);
 			if (t < 0) return -1;
