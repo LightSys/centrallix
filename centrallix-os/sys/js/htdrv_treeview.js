@@ -356,23 +356,9 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
     for (var j=0;j<layers.length;j++)
 	{
 	var sl = layers[j];
-	if(cx__capabilities.Dom2CSS)
-	    {
-	    /** much faster code for DOM2CSS1 compliant browsers **/
-	    var slTop = getRelativeY(sl);
-	    var visibility = pg_get_style(sl,'visibility');
-	    if (slTop >= tgtTop + 20 && sl != tv_tgt_layer && (visibility == 'inherit' || visibility == 'visible') )
-		{
-		setRelativeY(sl, slTop+20*linkcnt);
-		}
-	    }
-	else
-	    {
-	    if (getRelativeY(sl) >= getRelativeY(tv_tgt_layer) + 20 && sl != tv_tgt_layer && sl.visibility == 'inherit')
-		{
-		setRelativeY(sl, getRelativeY(sl) + 20*(linkcnt));
-		}
-	    }
+	var slTop = getRelativeY(sl);
+	if (slTop >= tgtTop + 20 && sl != tv_tgt_layer && htr_getvisibility(sl) == 'inherit')
+	    setRelativeY(sl, slTop+20*linkcnt);
 	}
     return 20*linkcnt;
     }
@@ -716,9 +702,9 @@ function tv_expand()
 	else
 	    use_fname = l.fname;
 	if (use_fname.lastIndexOf('?') > use_fname.lastIndexOf('/', use_fname.length-2))
-	    pg_serialized_load(l.ld, use_fname + '&ls__mode=list&ls__info=1', tv_loaded);
+	    pg_serialized_load(l.ld, use_fname + '&cx__akey='+akey+'&ls__mode=list&ls__info=1', tv_loaded);
 	else
-	    pg_serialized_load(l.ld, use_fname + '?ls__mode=list&ls__info=1', tv_loaded);
+	    pg_serialized_load(l.ld, use_fname + '?cx__akey='+akey+'&ls__mode=list&ls__info=1', tv_loaded);
 	}
     }
 
