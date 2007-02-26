@@ -17,11 +17,49 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.
+			<p>A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">auto_reset</td>
+<td class="type">boolean</td>
+<td class="description">the timer starts counting down again immediately after it expires.</td>
+</tr>
+<tr>
+<td class="name">auto_start</td>
+<td class="type">boolean</td>
+<td class="description">the timer starts counting down immediately after the page loads.</td>
+</tr>
+<tr>
+<td class="name">msec</td>
+<td class="type">integer</td>
+<td class="description">of milliseconds (1/1000th of a second) before the timer expires.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetTimer</td>
+<td class="description">action takes two parameters: &quot;Time&quot; (integer in milliseconds) and &quot;AutoReset&quot; (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.</td>
+</tr>
+<tr>
+<td class="name">CancelTimer</td>
+<td class="description">actions causes a timer to stop counting down, and thus no Expire event will occur until another countdown sequence is initiated by a SetTimer action.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$

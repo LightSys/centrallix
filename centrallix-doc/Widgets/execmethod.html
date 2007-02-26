@@ -17,12 +17,46 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.
-			These widgets are used via the activation of their &quot;ExecuteMethod&quot; action.
+			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
+			<p>These widgets are used via the activation of their &quot;ExecuteMethod&quot; action.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type &quot;widget/page&quot;) for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type &quot;widget/page&quot;) for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">method</td>
+<td class="type">string</td>
+<td class="description">The name of the method to invoke.</td>
+</tr>
+<tr>
+<td class="name">object</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the object on which the method is to be run.</td>
+</tr>
+<tr>
+<td class="name">parameter</td>
+<td class="type">string</td>
+<td class="description">A string parameter to pass to the method being invoked.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">ExecuteMethod</td>
+<td class="description">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: &quot;Objname&quot;, the object path, &quot;Method&quot;, the method to invoke, and &quot;Parameter&quot;, the parameter to pass to the method being invoked.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$

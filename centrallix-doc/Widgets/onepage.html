@@ -18,6 +18,10 @@
 <br><p><b>Documentation on the following widgets is available:</b></p>
 <table>
 <tr>
+<td><a href="#calendar">calendar</a></td>
+<td>Calendar-type view of event/schedule type data in an objectsource</td>
+</tr>
+<tr>
 <td><a href="#checkbox">checkbox</a></td>
 <td>Form element capable of selecting an on/off, yes/no, true/false, etc., type of value, via a visual 'check mark'.</td>
 </tr>
@@ -131,6 +135,81 @@
 </tr>
 </table>
 <br><br>
+<!-- PAGE BREAK: 'calendar.html' -->
+<h2 class="widgetname"><a name="calendar">calendar</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/calendar</span>
+</p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span>
+</p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span>
+</p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span>
+</p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The calendar widget is used to present event/schedule types of data in a year, month, week, or day format.  The data for the events on the calendar is obtained from an objectsource's query results, and as such, can be controlled via queries and other forms/tables associated with the same objectsource.  The four formats are listed below and can be selected during app run-time.</p>
+			<ul>
+			    <li>
+<b>Year</b> - presents twelve months at a time in a low-detail type of setting; when events occur on a day, the day is highlighted, but no more data than that is displayed.  If the user points the mouse at a given day, it will display in a popup &quot;tooltip&quot; type of manner the events associated with that day.  If more than one year's worth of data is in the objectsource's replica, then multiple years are displayed one after the other.  Each year is displayed as four rows of three months each, in traditional calendar format.</li>
+			    <li>
+<b>Month</b> - presents one month's worth of data in a medium-detail display.  For each month with data in the objectsource, the calendar will display the month as multiple rows, each row containing one week's worth of days.  The calendar will attempt to display the various entries for each day, in order of priority, but will limit the amount of data displayed to keep the boxes for the days approximately visually square.  Pointing at a day will show the events for the day in a popup, and pointing at an event in the day will show the details for that event.</li>
+			    <li>
+<b>Week</b> - presents one week's worth of data in a high-detail display.  For each week with data in the objectsource, the calendar will display the week as seven days with a large vertical extent capable of displaying all events for the day.  The left edge of the display will contain times during the day for the day's events to line up with.</li>
+			    <li>
+<b>Day</b> - presents an entire day's worth of data in a high-detail display.  For each day with data in the objectsource, the calendar will display the day in full-width, with the day's events listed chronologically from top to bottom.</li>
+			</ul>
+			<p>It should be noted that all of the data for the calendar must fit into the objectsource, or else the calendar will not display all of the available data.  In this manner the calendar's display must be controlled via the objectsource's data.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>The calendar widget can be placed inside of any visual container, but because its height can change, it is often placed inside of a scrollpane widget.  This widget may not contain other visual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">An image for the background of the calendar widget.  Should be an ObjectSystem path.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric (RGB), for the background of the calendar.  If neither bgcolor nor background are specified, the calendar's background is transparent.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">The height of the calendar, in pixels.  If not specified, the calendar may grow vertically an indefinite amount in order to display its given data.  If specified, however, the calendar will be limited to that size.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">The width of the calendar, in pixels.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the calendar, default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the calendar, default is 0.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="actions">Actions:</h3>
+<p class="none">none currently available</p>
+<h3 class="events">Events:</h3>
+<p class="none">none currently available</p>
+<h3 class="properties">Client Properties:</h3>
+<p class="none">none currently available</p>
+<h3 class="sample">Sample Code:</h3>
+<p class="none">none currently available</p>
 <!-- PAGE BREAK: 'checkbox.html' -->
 <h2 class="widgetname"><a name="checkbox">checkbox</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/checkbox</span>
@@ -143,10 +222,10 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The checkbox widget is used to display a value that can be either true or false (or on/off, yes/no, etc.).It displays as a simple clickable check box.
+			<p>The checkbox widget is used to display a value that can be either true or false (or on/off, yes/no, etc.).It displays as a simple clickable check box.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Checkboxes may not contain visual widgets.
+			<p>The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Checkboxes may not contain visual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -247,10 +326,10 @@ checkbox_test &quot;widget/page&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The clock widget displays the current time on the client computer, and is very configurable in terms of appearance.
+			<p>The clock widget displays the current time on the client computer, and is very configurable in terms of appearance.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The clock widget can be used inside of any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.
+			<p>The clock widget can be used inside of any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -373,14 +452,37 @@ checkbox_test &quot;widget/page&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.
-			The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.
-			Events and actions can have parameters, which specify more information about the occurrence of an event, or which specify more information about how to perform the action.  Such parameters from events can be linked into parameters for actions via the connector widget as well.
+			<p>Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.</p>
+			<p>The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.</p>
+			<p>Events and actions can have parameters, which specify more information about the occurrence of an event, or which specify more information about how to perform the action.  Such parameters from events can be linked into parameters for actions via the connector widget as well.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The connector object should be a sub-object of the widget which will trigger the event.  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.
-			An example connector would link the click of a URL in a treeview with the loading of a new page in an HTML area.  See the Example source code at the end of this document to see how this is done.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The connector object should be a sub-object of the widget which will trigger the event.  Any widget with events can contain connectors as subwidgets.More than one connector may be attached to another widget's event.</p>
+			<p>An example connector would link the click of a URL in a treeview with the loading of a new page in an HTML area.  See the Example source code at the end of this document to see how this is done.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">action</td>
+<td class="type">string</td>
+<td class="description">The name of the action which will be activated on another widget on the page.</td>
+</tr>
+<tr>
+<td class="name">event</td>
+<td class="type">string</td>
+<td class="description">The name of the event that this connector will act on.</td>
+</tr>
+<tr>
+<td class="name">target</td>
+<td class="type">string</td>
+<td class="description">The name of another widget on the page whose action will be called by this connector.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -423,10 +525,10 @@ cn1 &quot;widget/connector&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-		  A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.
+		  <p>A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-		  This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.
+		  <p>This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -538,10 +640,10 @@ myDropDown2 &quot;widget/dropdown&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).
+			<p>An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The editbox can be placed within any visual widget (or within a form widget).  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).  Editboxes cannot contain visual widgets.
+			<p>The editbox can be placed within any visual widget (or within a form widget).  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).  Editboxes cannot contain visual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -685,12 +787,46 @@ my_editbox &quot;widget/editbox&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.
-			These widgets are used via the activation of their &quot;ExecuteMethod&quot; action.
+			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
+			<p>These widgets are used via the activation of their &quot;ExecuteMethod&quot; action.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type &quot;widget/page&quot;) for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type &quot;widget/page&quot;) for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">method</td>
+<td class="type">string</td>
+<td class="description">The name of the method to invoke.</td>
+</tr>
+<tr>
+<td class="name">object</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the object on which the method is to be run.</td>
+</tr>
+<tr>
+<td class="name">parameter</td>
+<td class="type">string</td>
+<td class="description">A string parameter to pass to the method being invoked.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">ExecuteMethod</td>
+<td class="description">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: &quot;Objname&quot;, the object path, &quot;Method&quot;, the method to invoke, and &quot;Parameter&quot;, the parameter to pass to the method being invoked.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -715,19 +851,19 @@ mySoundPlayer &quot;widget/execmethod&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.
-			Forms have five different &quot;modes&quot;of operation, each of which can be specifically allowed or disallowed for the form.
-		
-		 No Data - form inactive/disabled, no data viewed/edited.
-		 View - data being viewed readonly.
-		 Modify - existing data being modified.
-		 Query - query criteria being entered (used for query-by-form applications)
-		 New - new object being entered/created.
-		
-			Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a &quot;three-way confirm&quot; message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a &quot;three-way confirm&quot; window.  This should be a hidden (visible=no) &quot;widget/htmlwindow&quot; object which may contain any content, but should at least contain three buttons named &quot;_3bConfirmSave&quot;, &quot;_3bConfirmDiscard&quot;, and &quot;_3bConfirmCancel&quot; directly in the htmlwindow.  During a confirm operation, this window will become &quot;application-modal&quot;; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.
+			<p>The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
+			<p>Forms have five different &quot;modes&quot;of operation, each of which can be specifically allowed or disallowed for the form.</p>
+		<ol>
+		<li> No Data - form inactive/disabled, no data viewed/edited.</li>
+		<li> View - data being viewed readonly.</li>
+		<li> Modify - existing data being modified.</li>
+		<li> Query - query criteria being entered (used for query-by-form applications)</li>
+		<li> New - new object being entered/created.</li>
+		</ol>
+			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a &quot;three-way confirm&quot; message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a &quot;three-way confirm&quot; window.  This should be a hidden (visible=no) &quot;widget/htmlwindow&quot; object which may contain any content, but should at least contain three buttons named &quot;_3bConfirmSave&quot;, &quot;_3bConfirmDiscard&quot;, and &quot;_3bConfirmCancel&quot; directly in the htmlwindow.  During a confirm operation, this window will become &quot;application-modal&quot;; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).
+			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -924,10 +1060,10 @@ form1 &quot;widget/form&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently &quot;doing&quot; (for instance, is a blank form with a blinking cursor in a &quot;new&quot; state or &quot;enter query&quot; state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.
+			<p>Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently &quot;doing&quot; (for instance, is a blank form with a blinking cursor in a &quot;new&quot; state or &quot;enter query&quot; state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The form status widget can only be used either directly or indirectly within a form widget.  It can contain no visual widgets.
+			<p>The form status widget can only be used either directly or indirectly within a form widget.  It can contain no visual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -1009,11 +1145,53 @@ formstatus &quot;widget/formstatus&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).  Framesets can consist of one or more frames, arranged either in rows or columns.
+			<p>The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).  Framesets can consist of one or more frames, arranged either in rows or columns.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">Title of the frameset for an html page.</td>
+</tr>
+<tr>
+<td class="name">borderwidth</td>
+<td class="type">integer</td>
+<td class="description">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</td>
+</tr>
+<tr>
+<td class="name">direction</td>
+<td class="type">string</td>
+<td class="description">Whether the frames are arranged in rows or columns.  Set this attribute to &quot;rows&quot; or &quot;columns&quot;respectively.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of any child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">framesize</td>
+<td class="type">integer/string</td>
+<td class="description">large this frame will be.Can either be expressed as an integer, which represents &quot;50%&quot;.</td>
+</tr>
+<tr>
+<td class="name">marginwidth</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the margins of the frame.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -1057,13 +1235,77 @@ BigFrameset &quot;widget/frameset&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.
-			The HTML area widget also can act as a mini-browser -- clicking on hyper-text links in the visible document will by default cause the link to be followed, and the new document to be displayed in the HTML area (if the HTML area is dynamic).
-			Dynamic HTML areas do double-buffering and allow for transitions (fades) of various types.
+			<p>The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.</p>
+			<p>The HTML area widget also can act as a mini-browser -- clicking on hyper-text links in the visible document will by default cause the link to be followed, and the new document to be displayed in the HTML area (if the HTML area is dynamic).</p>
+			<p>Dynamic HTML areas do double-buffering and allow for transitions (fades) of various types.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The HTML area widget can be placed within any other widget that has a visible container (such as panes, pages, tab pages, etc.).
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The HTML area widget can be placed within any other widget that has a visible container (such as panes, pages, tab pages, etc.).</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">content</td>
+<td class="type">string</td>
+<td class="description">Static contents for the HTML area. Usually used in lieu of &quot;source&quot; (see below).</td>
+</tr>
+<tr>
+<td class="name">epilogue</td>
+<td class="type">string</td>
+<td class="description">HTML source to be inserted at the end of the HTML document.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the HTML area as a whole.</td>
+</tr>
+<tr>
+<td class="name">mode</td>
+<td class="type">string</td>
+<td class="description">Either &quot;static&quot; or &quot;dynamic&quot;, and determines whether the HTML area is in-flow (&quot;static&quot;) can be positioned and reloaded at-will.</td>
+</tr>
+<tr>
+<td class="name">prologue</td>
+<td class="type">string</td>
+<td class="description">HTML source to be inserted at the beginning of the HTML document.</td>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">string</td>
+<td class="description">The objectsystem path or URL containing the document to be loaded into the HTML as  local server.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the HTML area as a whole.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">dynamic HTML areas, the x coordinate on the container of its upper left corner.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">dynamic HTML areas, the y coordinate on the container of its upper left corner.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">LoadPage</td>
+<td class="description">loadpage action takes two parameters. &quot;Source&quot; contains the URL for the new page to be loaded into the HTML area.The optional parameter &quot;Transition&quot; indicates the type of fade to be used between one page and the next.Currently supported values are &quot;pixelate&quot;, &quot;rlwipe&quot;, and &quot;lrwipe&quot;.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -1088,12 +1330,96 @@ HTMLArea &quot;widget/html&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The htmlwindow provides the capability of creating a popup dialog or application window within a web page.  The window is not actually a separate browser window, but rather a movable container that can appear &quot;floating&quot; above the rest of the Centrallix application.They can take on one of two styles;&quot;dialog&quot; and &quot;window&quot;, which currently relate only to how the window border and titlebar are drawn.  The windows support windowshading (double-clicking on the titlebar to &quot;rollup&quot; or &quot;rolldown&quot; the window contents).
-			These &quot;windows&quot; currently do not support multiple instantiation.
+			<p>The htmlwindow provides the capability of creating a popup dialog or application window within a web page.  The window is not actually a separate browser window, but rather a movable container that can appear &quot;floating&quot; above the rest of the Centrallix application.They can take on one of two styles;&quot;dialog&quot; and &quot;window&quot;, which currently relate only to how the window border and titlebar are drawn.  The windows support windowshading (double-clicking on the titlebar to &quot;rollup&quot; or &quot;rolldown&quot; the window contents).</p>
+			<p>These &quot;windows&quot; currently do not support multiple instantiation.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Htmlwindows are normally coded at the top-level of an application, since if they are placed within containers, the container limits where the window can be moved.  These windows can contain other visual and nonvisual widgets.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>Htmlwindows are normally coded at the top-level of an application, since if they are placed within containers, the container limits where the window can be moved.  These windows can contain other visual and nonvisual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the body of the window.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the window body's background.If neither transparent.</td>
+</tr>
+<tr>
+<td class="name">hdr_background</td>
+<td class="type">string</td>
+<td class="description">A background image for the titlebar of the window.</td>
+</tr>
+<tr>
+<td class="name">hdr_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the titlebar of the window.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the window.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">Either &quot;dialog&quot; or &quot;window&quot;, and determines the style of the window's border.</td>
+</tr>
+<tr>
+<td class="name">textcolor</td>
+<td class="type">string</td>
+<td class="description">The color for the titlebar's text (window title).  Default &quot;black&quot;.</td>
+</tr>
+<tr>
+<td class="name">titlebar</td>
+<td class="type">yes/no</td>
+<td class="description">whether the window will have a titlebar. Default &quot;yes&quot;.</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The window's title.</td>
+</tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">boolean</td>
+<td class="description">the window is initially visible on screen. The window has an action which can &quot;true&quot;.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the window.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the window, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the window, relative to its container.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetVisibility</td>
+<td class="description">one parameter, &quot;is_visible&quot;, which is set to 0 or 1 to hide or show the window, respectively.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -1121,13 +1447,13 @@ MyButton &quot;widget/htmlwindow&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The ImageButton widget provides a clickable button that is comprised of a set of two or three images.The first image is shown normally when the button is idle, the second when the button is pointed-to, and the third image is shown when the button is actually clicked.  This provides a &quot;tri-state&quot; appearance much like that provided by buttons in modern user interfaces, although the button can be two-state, with just an &quot;unclicked&quot; and &quot;clicked&quot; version of the image.
-			The images are automatically swapped out when the appropriate mouse events occur on the button.
-			ImageButtons can also be disabled, and a &quot;disabled&quot; image is displayed at that time.
-			Unlike the textbutton, there is no 'tristate' property for an imagebutton; to make an imagebutton tri-state (different image when idle vs. when pointed to), use a 'pointimage', otherwise do not specify 'pointimage'.
+			<p>The ImageButton widget provides a clickable button that is comprised of a set of two or three images.The first image is shown normally when the button is idle, the second when the button is pointed-to, and the third image is shown when the button is actually clicked.  This provides a &quot;tri-state&quot; appearance much like that provided by buttons in modern user interfaces, although the button can be two-state, with just an &quot;unclicked&quot; and &quot;clicked&quot; version of the image.</p>
+			<p>The images are automatically swapped out when the appropriate mouse events occur on the button.</p>
+			<p>ImageButtons can also be disabled, and a &quot;disabled&quot; image is displayed at that time.</p>
+			<p>Unlike the textbutton, there is no 'tristate' property for an imagebutton; to make an imagebutton tri-state (different image when idle vs. when pointed to), use a 'pointimage', otherwise do not specify 'pointimage'.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The ImageButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.
+			<p>The ImageButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -1236,12 +1562,12 @@ MyButton &quot;widget/imagebutton&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The menu widget is used to create popup menus, drop-down menus, and menu bars.  Menu widgets consist of a series of menuitem widgets which compose a menu.
-			Menu items are generally linked to actions on a page via the use of connectors.  Simply place the connector inside the menu item widget.
-			Note: as of the time of writing, menu widgets were not yet properly functional.
+			<p>The menu widget is used to create popup menus, drop-down menus, and menu bars.  Menu widgets consist of a series of menuitem widgets which compose a menu.</p>
+			<p>Menu items are generally linked to actions on a page via the use of connectors.  Simply place the connector inside the menu item widget.</p>
+			<p>Note: as of the time of writing, menu widgets were not yet properly functional.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Menus can be placed inside of any visual container. However, be aware that the menu will be clipped by its container, so placing them at the top-level can be of an advantage. Menu widgets contain menuitem widgets, which are also described in this section.
+			<p>Menus can be placed inside of any visual container. However, be aware that the menu will be clipped by its container, so placing them at the top-level can be of an advantage. Menu widgets contain menuitem widgets, which are also described in this section.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -1355,13 +1681,13 @@ myMenu &quot;widget/menu&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The objectsource widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of &quot;replication&quot; by maintaining a replica of a small segment of data in the user agent.
-			Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.
-			ObjectSources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.
+			<p>The objectsource widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of &quot;replication&quot; by maintaining a replica of a small segment of data in the user agent.</p>
+			<p>Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.</p>
+			<p>ObjectSources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Objectsource widgets are normally used at the top-level of an application, within a &quot;widget/page&quot; object, but can be used anywhere.  The forms/tables that use an objectsource are generally placed within that objectsource.  A page may have more than one objectsource widget.
-			Even though the objectsource is nonvisual, it is, like the form widget, a container, and can (should!) contain other visual and nonvisual widgets.
+			<p>Objectsource widgets are normally used at the top-level of an application, within a &quot;widget/page&quot; object, but can be used anywhere.  The forms/tables that use an objectsource are generally placed within that objectsource.  A page may have more than one objectsource widget.</p>
+			<p>Even though the objectsource is nonvisual, it is, like the form widget, a container, and can (should!) contain other visual and nonvisual widgets.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -1485,11 +1811,11 @@ osrc1 &quot;widget/osrc&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be &quot;widget/page&quot; or &quot;widget/frameset&quot;, where the latter is used to create a multi-framed application containing multiple page widgets.
-			Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.
+			<p>The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be &quot;widget/page&quot; or &quot;widget/frameset&quot;, where the latter is used to create a multi-framed application containing multiple page widgets.</p>
+			<p>Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.
+			<p>The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -1582,10 +1908,10 @@ MyPage &quot;widget/page&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The pane is Centrallix's simplest container. It consists only of a background and a border, which can either have a &quot;raised&quot; edge or &quot;lowered&quot; edge style.
+			<p>The pane is Centrallix's simplest container. It consists only of a background and a border, which can either have a &quot;raised&quot; edge or &quot;lowered&quot; edge style.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			This container can be placed inside any widget having a visible container.  Visual or nonvisual widgets may be placed inside a pane.
+			<p>This container can be placed inside any widget having a visible container.  Visual or nonvisual widgets may be placed inside a pane.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -1659,12 +1985,94 @@ mypane &quot;widget/pane&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			A radio button panel widget is a form element used to create a set of radio buttons on screen.  Only one radio button may be selected at a time.
+			<p>A radio button panel widget is a form element used to create a set of radio buttons on screen.  Only one radio button may be selected at a time.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).  The &quot;widget/radiobuttonpanel&quot; is the main widget, and can contain any number of &quot;widget/radiobutton&quot; widgets which specify the choices which will be present on the panel.  No other visual widgets can be contained within a radio button panel.
-			Note: form widget interaction was not yet implemented as of the time of writing of this document.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).  The &quot;widget/radiobuttonpanel&quot; is the main widget, and can contain any number of &quot;widget/radiobutton&quot; widgets which specify the choices which will be present on the panel.  No other visual widgets can be contained within a radio button panel.</p>
+			<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Name of the column in the datasource you want to reference.</td>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image for the radio button panel.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, for the panel background. If neither bgcolor nor background transparent.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the panel.</td>
+</tr>
+<tr>
+<td class="name">outlinecolor</td>
+<td class="type">string</td>
+<td class="description">The color, RGB or named, of the rectangular border drawn around the radio buttons.</td>
+</tr>
+<tr>
+<td class="name">textcolor</td>
+<td class="type">string</td>
+<td class="description">The color, RGB or named, of the text within the panel.  Default: &quot;black&quot;.</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The title for the radio button panel, which appears superimposed on the rectangular   border around the radio buttons.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the panel.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the panel, default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the panel, default is 0.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of widget/radiobutton child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">The text label to appear beside the radio button.</td>
+</tr>
+<tr>
+<td class="name">selected</td>
+<td class="type">boolean</td>
+<td class="description">the radio button is initially selected or not. Should only be set on one radio Default;&quot;false&quot;.</td>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">string</td>
+<td class="description">The value of the selected item</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -1692,13 +2100,13 @@ testradio &quot;widget/radiobuttonpanel&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The remote control nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.
-			Two remote control widgets are required: a master and slave. This widget is the slave widget, which receives remote control events via the Centrallix server. When a master widget (remotemgr) sends an event through the channel, this slave widget is automatically activated and can then trigger the appropriate action on another widget on the page.
-			In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.
-			Note: at the time of this writing, the remotectl widget was not yet operational.
+			<p>The remote control nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.</p>
+			<p>Two remote control widgets are required: a master and slave. This widget is the slave widget, which receives remote control events via the Centrallix server. When a master widget (remotemgr) sends an event through the channel, this slave widget is automatically activated and can then trigger the appropriate action on another widget on the page.</p>
+			<p>In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.</p>
+			<p>Note: at the time of this writing, the remotectl widget was not yet operational.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The remote control widget is a nonvisual widget and thus cannot contain visual widgets.  It is normally located at the top-level of an application, within a &quot;widget/page&quot; object.
+			<p>The remote control widget is a nonvisual widget and thus cannot contain visual widgets.  It is normally located at the top-level of an application, within a &quot;widget/page&quot; object.</p>
 		</span><h3 class="sample">Sample Code:</h3>
 <p class="none">none currently available</p>
 <!-- PAGE BREAK: 'remotemgr.html' -->
@@ -1713,13 +2121,13 @@ testradio &quot;widget/radiobuttonpanel&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.
-			Two remote control widgets are required: a master and slave. This widget is the master widget, which sends remote control events via the Centrallix server. When a this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.
-			In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.
-			Note: at the time of this writing, the remotemgr widget was not yet written.
+			<p>The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.</p>
+			<p>Two remote control widgets are required: a master and slave. This widget is the master widget, which sends remote control events via the Centrallix server. When a this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.</p>
+			<p>In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.</p>
+			<p>Note: at the time of this writing, the remotemgr widget was not yet written.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The remote control manager widget is a nonvisual widget and thus cannot contain visual widgets.It is normally located at the top-level of an application, within a &quot;widget/page&quot; object.
+			<p>The remote control manager widget is a nonvisual widget and thus cannot contain visual widgets.It is normally located at the top-level of an application, within a &quot;widget/page&quot; object.</p>
 		</span><h3 class="sample">Sample Code:</h3>
 <p class="none">none currently available</p>
 <!-- PAGE BREAK: 'scrollpane.html' -->
@@ -1734,12 +2142,55 @@ testradio &quot;widget/radiobuttonpanel&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.
-			The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.  Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.
+			<p>The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.</p>
+			<p>The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.  Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Scrollpane widgets can be placed inside any other container, but are usually placed inside a pane or a tab page.  Almost any content can be placed inside a scrollpane, but most commonly tables, treeviews, and html areas appear there.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>Scrollpane widgets can be placed inside any other container, but are usually placed inside a pane or a tab page.  Almost any content can be placed inside a scrollpane, but most commonly tables, treeviews, and html areas appear there.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">A background image to be placed behind the scrollpane.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as the scrollpane background.If neither bgcolor transparent.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">height, in pixels, of the scrollpane's visible area. Due to the nature of the  can time.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the scrollpane, including the scrollbar area on the right side.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the scrollpane, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the scrollpane, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">boolean</td>
+<td class="description">allows user to set scroll pane to visible (true) or not (false).</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -1773,13 +2224,75 @@ MyScrollPane &quot;widget/scrollpane&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The TabControl widget provides a DHTML tab control within Centrallix. The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.
-			To further distinguish which tab at the top of the tab control is active, this widget slightly modifies the X/Y position of the tab as well as changing a thumbnail image (on the left edge of the tab) to further enhance the distinction between selected and inactive tab pages.
+			<p>The TabControl widget provides a DHTML tab control within Centrallix. The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.</p>
+			<p>To further distinguish which tab at the top of the tab control is active, this widget slightly modifies the X/Y position of the tab as well as changing a thumbnail image (on the left edge of the tab) to further enhance the distinction between selected and inactive tab pages.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.
-			Tab pages are added to a tab control by including widgets of type &quot;widget/tabpage&quot; within the &quot;widget/tab&quot; widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective &quot;widget/tabpage&quot; widgets in the structure file.Only widgets of type &quot;widget/tabpage&quot; should be placed inside a &quot;widget/tab&quot;, with the exception of nonvisuals such as connectors.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.</p>
+			<p>Tab pages are added to a tab control by including widgets of type &quot;widget/tabpage&quot; within the &quot;widget/tab&quot; widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective &quot;widget/tabpage&quot; widgets in the structure file.Only widgets of type &quot;widget/tabpage&quot; should be placed inside a &quot;widget/tab&quot;, with the exception of nonvisuals such as connectors.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">background</td>
+<td class="type">string</td>
+<td class="description">An image to be used as the background of the tab control.This is useful for adding control.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">As an alternate to &quot;background&quot;, &quot;bgcolor&quot; can specify a color, either named or RGB, control.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">the height, in pixels, of the entire tab control, including the tabs and pages.</td>
+</tr>
+<tr>
+<td class="name">selected</td>
+<td class="type">string</td>
+<td class="description">The name of the tab page that should be initially selected.</td>
+</tr>
+<tr>
+<td class="name">textcolor</td>
+<td class="type">string</td>
+<td class="description">The color of the text to be used on the tabs to identify them.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the entire tab control.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the tab control, relative to the container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the control, relative to its container.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of any child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The name of the tab page, which appears in the tab at the top of the control.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -1806,12 +2319,12 @@ myTabControl &quot;widget/tab&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.
-		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only static mode and dynamicrow mode were supported.
-			Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.
+			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
+		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only <i>static</i> mode and <i>dynamicrow</i> mode were supported.
+			<p>Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via &quot;widget/table-column&quot; child widgets within the table widget.
+			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via &quot;widget/table-column&quot; child widgets within the table widget.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -2025,10 +2538,10 @@ tblFileList &quot;widget/table&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The textarea is a multi-line text edit widget, allowing the user to enter text data containing line endings, tabs, and more.  It also contains a scrollbar which allows more text to be edited than can fit in the displayable area.
+			<p>The textarea is a multi-line text edit widget, allowing the user to enter text data containing line endings, tabs, and more.  It also contains a scrollbar which allows more text to be edited than can fit in the displayable area.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The textarea is a visual form element widget, and can be contained inside any container capable of holding visual widgets.  It may only contain nonvisual widgets like the connector.
+			<p>The textarea is a visual form element widget, and can be contained inside any container capable of holding visual widgets.  It may only contain nonvisual widgets like the connector.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -2154,11 +2667,11 @@ tblFileList &quot;widget/table&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.
-			Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a &quot;raised&quot; border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.
+			<p>A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.</p>
+			<p>Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a &quot;raised&quot; border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The TextButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.
+			<p>The TextButton can be placed inside any visible container, but only nonvisual widgets can be placed within it.</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -2269,11 +2782,49 @@ MyButton &quot;widget/textbutton&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.
+			<p>A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">auto_reset</td>
+<td class="type">boolean</td>
+<td class="description">the timer starts counting down again immediately after it expires.</td>
+</tr>
+<tr>
+<td class="name">auto_start</td>
+<td class="type">boolean</td>
+<td class="description">the timer starts counting down immediately after the page loads.</td>
+</tr>
+<tr>
+<td class="name">msec</td>
+<td class="type">integer</td>
+<td class="description">of milliseconds (1/1000th of a second) before the timer expires.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetTimer</td>
+<td class="description">action takes two parameters: &quot;Time&quot; (integer in milliseconds) and &quot;AutoReset&quot; (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.</td>
+</tr>
+<tr>
+<td class="name">CancelTimer</td>
+<td class="description">actions causes a timer to stop counting down, and thus no Expire event will occur until another countdown sequence is initiated by a SetTimer action.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -2317,12 +2868,55 @@ mytimerTwo &quot;widget/timer&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			A treeview provides a way of viewing hierarchically-organized data via a &quot;traditional&quot; GUI point-and-click tree structure. A treeview has &quot;branches&quot; that can expand and collapse entire subtrees of data.
-			Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a &quot;querytree&quot; (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.
+			<p>A treeview provides a way of viewing hierarchically-organized data via a &quot;traditional&quot; GUI point-and-click tree structure. A treeview has &quot;branches&quot; that can expand and collapse entire subtrees of data.</p>
+			<p>Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a &quot;querytree&quot; (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem path of the root of the treeview.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the treeview.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">x-coordinate of the upper left corner of the treeview's root object.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">y-coordinate of the upper left corner of the treeview's root object.</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">ClickItem</td>
+<td class="description">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is &quot;Pathname&quot;, or the ObjectSystem path to the object which was selected.</td>
+</tr>
+<tr>
+<td class="name">RightClickItem</td>
+<td class="description">to the above, but when the user right-clicks on an item in the treeview.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$
@@ -2356,11 +2950,24 @@ mypane &quot;widget/pane&quot;
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The 'variable' nonvisual widget is used to create a global javascript scalar variable in the application.The variable can be an integer or string.
+			<p>The 'variable' nonvisual widget is used to create a global javascript scalar variable in the application.The variable can be an integer or string.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			This nonvisual widget is used at the top-level (within a &quot;widget/page&quot;).  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>This nonvisual widget is used at the top-level (within a &quot;widget/page&quot;).  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">integer/string</td>
+<td class="description">initial value of the variable.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$

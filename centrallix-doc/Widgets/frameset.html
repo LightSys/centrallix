@@ -17,11 +17,53 @@
 </p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).  Framesets can consist of one or more frames, arranged either in rows or columns.
+			<p>The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).  Framesets can consist of one or more frames, arranged either in rows or columns.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.
-		</span><h3 class="sample">Sample Code:</h3>
+			<p>The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">Title of the frameset for an html page.</td>
+</tr>
+<tr>
+<td class="name">borderwidth</td>
+<td class="type">integer</td>
+<td class="description">Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.</td>
+</tr>
+<tr>
+<td class="name">direction</td>
+<td class="type">string</td>
+<td class="description">Whether the frames are arranged in rows or columns.  Set this attribute to &quot;rows&quot; or &quot;columns&quot;respectively.</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of any child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">framesize</td>
+<td class="type">integer/string</td>
+<td class="description">large this frame will be.Can either be expressed as an integer, which represents &quot;50%&quot;.</td>
+</tr>
+<tr>
+<td class="name">marginwidth</td>
+<td class="type">integer</td>
+<td class="description">width, in pixels, of the margins of the frame.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
 <pre>
 		
 $Version=2$

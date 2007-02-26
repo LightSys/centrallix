@@ -232,12 +232,10 @@
 
 
 <!--HTML elements allowed in other stuff-->
-<!--
 <xsl:template match="p"><p><xsl:apply-templates/></p></xsl:template>
 <xsl:template match="ol"><ol><xsl:apply-templates/></ol></xsl:template>
 <xsl:template match="ul"><ul><xsl:apply-templates/></ul></xsl:template>
 <xsl:template match="li"><li><xsl:apply-templates/></li></xsl:template>
 <xsl:template match="b"><b><xsl:apply-templates/></b></xsl:template>
 <xsl:template match="i"><i><xsl:apply-templates/></i></xsl:template>
--->
 </xsl:stylesheet>
