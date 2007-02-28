@@ -86,5 +86,6 @@ function htutil_escape(s)
     {
     var new_s = String(escape(s));
     var re = /\//g;
-    return new_s.replace(re, "%2f");
+    var re2 = /+/g;
+    return new_s.replace(re, "%2f").replace(re2, "%2b");
     }
