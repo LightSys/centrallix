@@ -50,10 +50,17 @@
 
 /**CVSDATA***************************************************************
  
-    $Id: prtmgmt_v3_od_ps.c,v 1.3 2005/03/01 07:09:55 gbeeley Exp $
+    $Id: prtmgmt_v3_od_ps.c,v 1.4 2007/02/28 06:07:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
  
     $Log: prtmgmt_v3_od_ps.c,v $
+    Revision 1.4  2007/02/28 06:07:56  gbeeley
+    - (workaround) This is a workaround for an apparent bug in Ghostscript,
+      or possibly in the way Centrallix generates the postscript data,
+      which caused successive postscript "show" operations to tend to
+      overlap each other.  This does not actually fix the problem, but it
+      does seem to for all practical purposes prevent it.
+
     Revision 1.3  2005/03/01 07:09:55  gbeeley
     - adding quality setting on ps2pdf conversion to gain better image
       resolution.
@@ -137,6 +144,7 @@ typedef struct _PPS
     pFile		TransWPipe;
     pFile		TransRPipe;
     pSemaphore		CompletionSem;
+    char		Buffer[512];
     }
     PrtPsodInf, *pPrtPsodInf;
 
@@ -188,7 +196,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.3 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.4 $ \n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
@@ -782,7 +790,6 @@ int
 prt_psod_WriteText(void* context_v, char* str)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
-    char psbuf[256];
     double bl;
     int i,psbuflen;
 
@@ -796,21 +803,21 @@ prt_psod_WriteText(void* context_v, char* str)
 
 	/** output it. **/
 	/** wrap content in parentheses and show command **/
-	psbuf[0] = '\0';
+	context->Buffer[0] = '\0';
 	for(i=psbuflen=0;i<strlen(str);i++)
 	    {
-	    sprintf(psbuf+psbuflen, "%2.2X", str[i]);
+	    sprintf(context->Buffer+psbuflen, "%2.2X", str[i]);
 	    psbuflen += 2;
-	    if (psbuflen >= 72)
+	    if (psbuflen >= sizeof(context->Buffer)-1)
 		{
-		prt_psod_Output_va(context, "<%s> show\n", psbuf);
+		prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
 		psbuflen = 0;
-		psbuf[0] = '\0';
+		context->Buffer[0] = '\0';
 		}
 	    }
 	if (psbuflen)
 	    {
-	    prt_psod_Output_va(context, "<%s> show\n", psbuf);
+	    prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
 	    }
 
     return 0;
