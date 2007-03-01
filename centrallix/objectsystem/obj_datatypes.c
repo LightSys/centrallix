@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.14 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.15 2007/03/01 21:56:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.15  2007/03/01 21:56:16  gbeeley
+    - (bugfix) allow conversion of string to Money data type to permit leading
+      spaces and a leading dollar sign, before or after any minus sign.
+
     Revision 1.14  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -1268,14 +1272,23 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
     char* endptr;
     char* endptr2;
     double dbl;
+    int is_neg = 0;
 
     	/** Select the correct type. **/
 	switch(data_type)
 	    {
 	    case DATA_T_STRING:
 	        ptr = (char*)data_ptr;
+		while(*ptr == ' ') ptr++;
+		if (*ptr == '-')
+		    {
+		    is_neg = 1;
+		    ptr++;
+		    }
+		if (*ptr == '$') ptr++;
 		m->FractionPart = 0;
 		m->WholePart = strtol(ptr, &endptr, 10);
+		if (is_neg) m->WholePart = -m->WholePart;
 		if (endptr != ptr && *endptr == '.') m->FractionPart = strtol(endptr+1, &endptr2, 10)*100;
 		if (endptr2 == endptr+2) m->FractionPart *= 10;
 		if (m->WholePart < 0 && m->FractionPart != 0)
