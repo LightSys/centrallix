@@ -55,10 +55,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.16 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.17 2007/03/01 21:57:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.17  2007/03/01 21:57:26  gbeeley
+    - (bugfix) allow trailing spaces on a row to be used (properly) as space
+      for the row to grow instead of being absorbed into the last field in
+      the row.
+
     Revision 1.16  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -1112,6 +1117,12 @@ dat_csv_ParseRow(pDatData inf, pDatTableInf td)
 		switch(td->ColTypes[field])
 		    {
 		    case DATA_T_STRING:
+			/** Trim trailing spaces from the last field **/
+			if (field == td->nCols-1)
+			    {
+			    while(inf->RowBuf + inf->RowBufSize > field_ptr && inf->RowBuf[inf->RowBufSize-1] == ' ')
+				inf->RowBufSize--;
+			    }
 		        inf->RowBuf[inf->RowBufSize++] = '\0';
 			break;
 
