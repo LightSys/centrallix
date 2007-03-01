@@ -31,6 +31,7 @@ cx_hints_style.uppercase = 4096;
 cx_hints_style.tabpage = 8192;
 cx_hints_style.sepwindow = 16384;
 cx_hints_style.alwaysdef = 32768;
+cx_hints_style.createonly = 65536;
 
 // cx_set_hints() - initializes hints information for a given
 // form field.
