@@ -739,6 +739,7 @@ function form_action_save_success()
     for(var i in this.elements)
 	this.elements[i]._form_IsChanged=false;
     this.cb['OperationCompleteFail'].clear();
+    this.SendEvent("DataSaved");
     }
 
 function form_action_save()
@@ -1029,6 +1030,7 @@ function form_init(form,param)
     var ie = form.ifcProbeAdd(ifEvent);
     ie.Add("StatusChange");
     ie.Add("DataChange");
+    ie.Add("DataSaved");
     ie.Add("NoData");
     ie.Add("View");
     ie.Add("New");
