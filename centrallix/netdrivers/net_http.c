@@ -66,10 +66,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.65 2007/02/26 16:40:39 gbeeley Exp $
+    $Id: net_http.c,v 1.66 2007/03/01 21:55:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.66  2007/03/01 21:55:13  gbeeley
+    - (change) Use CXID for cookie name instead of LSID.
+
     Revision 1.65  2007/02/26 16:40:39  gbeeley
     - (bugfix) adding of cx__akey threw off OSML setattrs operation.
 
@@ -1715,7 +1718,7 @@ nht_internal_CreateCookie(char* ck)
     int key[4];
 
 	cxssGenerateKey((unsigned char*)key, sizeof(key));
-	sprintf(ck,"LSID=%8.8x%8.8x%8.8x%8.8x", key[0], key[1], key[2], key[3]);
+	sprintf(ck,"CXID=%8.8x%8.8x%8.8x%8.8x", key[0], key[1], key[2], key[3]);
 
     return 0;
     }
@@ -3533,7 +3536,7 @@ nht_internal_ConnHandler(void* connfd_v)
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
 		    /** if the token is a string, and the current cookie doesn't look like ours, try the next one **/
-		    if (toktype == MLX_TOK_STRING && strncmp(cookie,"LSID=",5))
+		    if (toktype == MLX_TOK_STRING && strncmp(cookie,"CXID=",5))
 			{
 			mlxCopyToken(s,cookie,160);
 			}
