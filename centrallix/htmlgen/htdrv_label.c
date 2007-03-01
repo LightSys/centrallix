@@ -43,6 +43,9 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.27  2007/03/01 21:53:25  gbeeley
+    - (feature) Allow label to be a form element.
+
     Revision 1.26  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -295,10 +298,12 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char align[64];
     char main_bg[128];
     char fgcolor[64];
+    char fieldname[HT_FIELDNAME_SIZE];
     int x=-1,y=-1,w,h;
     int id, i;
     int fontsize;
     char *text;
+    char stylestr[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -356,6 +361,16 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strcpy(main_bg,"");
 
+	/** Field name **/
+	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    strtcpy(fieldname,ptr,sizeof(fieldname));
+	    }
+	else
+	    {
+	    fieldname[0]='\0';
+	    }
+
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
@@ -365,7 +380,11 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%d\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%s']);\n", name);
+	snprintf(stylestr,sizeof(stylestr),
+		"<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>",
+		w,align,fontsize,fgcolor);
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%s'], {field:'%s', text:'%s', style:'%s'});\n",
+		name, fieldname, text, stylestr);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
@@ -379,7 +398,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "lbl%d", id, 
-	    "\n<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>%s</font></td></tr></table>\n",w,align,fontsize,fgcolor,text);
+	    "\n%s%s</font></td></tr></table>\n", stylestr, text);
 
 	/** Check for more sub-widgets **/
 	for (i=0;xaCount(&(tree->Children));i++)
