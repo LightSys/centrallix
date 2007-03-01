@@ -43,11 +43,60 @@ function lbl_mousemove(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function lb_actionsetvalue(aparam)
+    {
+    if (aparam.Value) this.setvalue(aparam.Value);
+    }
+
+function lb_getvalue()
+    {
+    return this.content;
+    }
+
+function lb_setvalue(v)
+    {
+    this.content = v;
+    this.Update();
+    }
+
+function lb_clearvalue()
+    {
+    this.content = '';
+    this.Update();
+    }
+
+function lb_enable()
+    {
+    }
+
+function lb_disable()
+    {
+    }
+
+function lb_update()
+    {
+    pg_serialized_write(this, this.stylestr + htutil_encode(this.content) + "</font></td></tr></table>", null);
+    }
+
 // DO NOT COPY! TOP SECRET FUNCTION!
-function lbl_init(l)
+function lbl_init(l, wparam)
     {
     htr_init_layer(l,l,'lbl');
     ifc_init_widget(l);
+
+    // Params
+    l.content = wparam.text;
+    l.fieldname = wparam.field;
+    l.stylestr = wparam.style;
+
+    // Callbacks
+    l.getvalue = lb_getvalue;
+    l.setvalue = lb_setvalue;
+    l.clearvalue = lb_clearvalue;
+    l.enable = lb_enable;
+    l.disable = lb_disable;
+
+    l.Update = lb_update;
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -57,6 +106,24 @@ function lbl_init(l)
     ie.Add("MouseOver");
     ie.Add("MouseOut");
     ie.Add("MouseMove");
+    ie.Add("DataChange");
+
+    // Actions
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetValue", lb_actionsetvalue);
+
+    // Register with form.
+    l.enabled = 'disable';
+    l.isFormStatusWidget = false;
+    if (l.fieldname)
+	{
+	l.form = wgtrFindContainer(l, "widget/form");
+	if (l.form) l.form.Register(l);
+	}
+    else
+	{
+	l.form = null;
+	}
 
     return l;
     }
