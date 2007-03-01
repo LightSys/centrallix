@@ -65,6 +65,8 @@ wgtcmpNew(pWgtrNode node)
 
 	node->Flags |= WGTR_F_NONVISUAL;
 	node->Flags |= WGTR_F_CONTAINER;
+	if(node->fl_width < 0) node->fl_width = 100;
+	if(node->fl_height < 0) node->fl_height = 100;
 
     return 0;
     }
