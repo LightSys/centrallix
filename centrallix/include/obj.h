@@ -35,10 +35,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.33 2006/11/16 20:15:54 gbeeley Exp $
+    $Id: obj.h,v 1.34 2007/03/01 21:54:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.34  2007/03/01 21:54:05  gbeeley
+    - (feature) stub out code for 'createonly' presentation hints style flag
+
     Revision 1.33  2006/11/16 20:15:54  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.
@@ -438,6 +441,7 @@ typedef struct _PH
 #define OBJ_PH_STYLE_TABPAGE	8192	/* Prefer tabpage layout for grouped fields */
 #define OBJ_PH_STYLE_SEPWINDOW	16384	/* Prefer separate windows for grouped fields */
 #define OBJ_PH_STYLE_ALWAYSDEF	32768	/* Always reset default value on any modify */
+#define OBJ_PH_STYLE_CREATEONLY	65536	/* Writable only during record creation */
 
 
 /** objectsystem driver **/

@@ -40,10 +40,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.7 2005/02/26 06:42:41 gbeeley Exp $
+    $Id: hints.c,v 1.8 2007/03/01 21:54:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.8  2007/03/01 21:54:05  gbeeley
+    - (feature) stub out code for 'createonly' presentation hints style flag
+
     Revision 1.7  2005/02/26 06:42:41  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -158,7 +161,7 @@ hnt_internal_SetStyleItem(pObjPresentationHints ph, char* style)
 				    "strnull","grouped","readonly","hidden",
 				    "password","multiline","highlight","uppercase",
 				    "lowercase","tabpage","sepwindow","alwaysdef",
-				    NULL };
+				    "createonly", NULL };
     static int style_ids[] = {	OBJ_PH_STYLE_BITMASK, OBJ_PH_STYLE_LIST, OBJ_PH_STYLE_BUTTONS, OBJ_PH_STYLE_NOTNULL,
 				OBJ_PH_STYLE_STRNULL, OBJ_PH_STYLE_GROUPED, OBJ_PH_STYLE_READONLY, OBJ_PH_STYLE_HIDDEN,
 				OBJ_PH_STYLE_PASSWORD, OBJ_PH_STYLE_MULTILINE, OBJ_PH_STYLE_HIGHLIGHT, OBJ_PH_STYLE_UPPERCASE,
