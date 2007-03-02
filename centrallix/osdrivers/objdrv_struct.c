@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.9 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.10 2007/03/02 22:30:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.10  2007/03/02 22:30:39  gbeeley
+    - (bugfix) problem with the setting up of the Pathname structure in this
+      driver was causing subtree select to crash on structure file items.
+
     Revision 1.9  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -467,17 +471,13 @@ stxQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	qy->CurInf = qy->Data->Data->SubInf[qy->ItemCnt];
 
 	/** Build the filename. **/
-	if (strlen(qy->CurInf->Name) + 1 + strlen(qy->Data->Obj->Pathname->Pathbuf) > 255) 
-	    {
-	    mssError(1,"STX","Query result pathname exceeds internal representation");
+	if (obj_internal_AddToPath(obj->Pathname, qy->CurInf->Name) < 0)
 	    return NULL;
-	    }
-	sprintf(obj->Pathname->Pathbuf,"%s/%s",qy->Data->Obj->Pathname->Pathbuf,qy->CurInf->Name);
 
 	/** Alloc the structure **/
 	inf = (pStxData)nmMalloc(sizeof(StxData));
 	if (!inf) return NULL;
-	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
+	strtcpy(inf->Pathname, obj->Pathname->Pathbuf, sizeof(inf->Pathname));
 	inf->Node = qy->Data->Node;
 	inf->Data = qy->CurInf;
 	inf->Node->OpenCnt++;
