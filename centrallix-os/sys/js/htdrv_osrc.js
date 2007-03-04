@@ -344,8 +344,9 @@ function osrc_action_modify(aparam) //up,formobj)
 
 function osrc_action_modify_cb()
     {
-/** I don't know how to tell if we succeeded....assume we did... **/
-    if(true)
+    var links = pg_links(this);
+    var success = links[0].target;
+    if(success != 'ERR')
 	{
 	var recnum=this.CurrentRecord;
 	var cr=this.replica[this.CurrentRecord];
@@ -354,10 +355,26 @@ function osrc_action_modify_cb()
 		for(var j in cr)
 		    if(cr[j].oid==this.modifieddata[i].oid)
 			cr[j].value=this.modifieddata[i].value;
+
+	// Check new/corrected data provided by server
+	var server_rec = this.ParseOneRow(links, 1);
+	var diff = 0;
+	for(var i in server_rec)
+	    for(var j in cr)
+		{
+		if (cr[j].oid == server_rec[i].oid && cr[j].value != server_rec[i].value)
+		    {
+		    cr[j].value = server_rec[i].value;
+		    cr[j].type = server_rec[i].type;
+		    diff = 1;
+		    }
+		}
 	
 	this.formobj.OperationComplete(true);
 	for(var i in this.child)
 	    this.child[i].ObjectModified(recnum);
+	if (diff)
+	    this.GiveAllCurrentRecord();
 	}
     else
 	{
@@ -499,6 +516,74 @@ function osrc_get_qid()
 /** normally don't actually load the data...just let children know that the data is available **/
     }
 
+function osrc_parse_one_attr(lnk)
+    {
+    var col = new Array();
+    if (lnk.text.charAt(0) == 'N')
+	col['value'] = null;
+    else if (lnk.text.charAt(0) == 'V')
+	col['value'] = htutil_rtrim(unescape(lnk.text.substr(2)));
+    else
+	col['value'] = '** ERROR **';
+    col['type'] = lnk.hash.substr(1);
+    col['oid'] = lnk.host;
+    /** MJM - this is actually done in the form widget. We need only save the hint string **/
+    //col['hints'] = cx_parse_hints(lnk.search);
+    col.hints = lnk.search;
+    return col;
+    }
+
+
+function osrc_new_replica_object(id, oid)
+    {
+    var obj=new Array();
+    obj.oid=oid;
+    obj.id = id;
+    return obj;
+    }
+
+function osrc_prune_replica(most_recent_id)
+    {
+    if(this.LastRecord < most_recent_id)
+	{
+	this.LastRecord = most_recent_id;
+	while(this.LastRecord-this.FirstRecord >= this.replicasize)
+	    {
+	    // clean up replica
+	    this.oldoids.push(this.replica[this.FirstRecord].oid);
+	    delete this.replica[this.FirstRecord];
+	    this.FirstRecord++;
+	    }
+	}
+    if(this.FirstRecord > most_recent_id)
+	{
+	this.FirstRecord = most_recent_id;
+	while(this.LastRecord-this.FirstRecord >= this.replicasize)
+	    { /* clean up replica */
+	    if (this.replica[this.LastRecord])
+		{
+		this.oldoids.push(this.replica[this.LastRecord].oid);
+		delete this.replica[this.LastRecord];
+		}
+	    this.LastRecord--;
+	    }
+	}
+    }
+
+function osrc_parse_one_row(lnk, i)
+    {
+    var row = new Array();
+    var cnt = 0;
+    var tgt = lnk[i].target;
+    while(i < lnk.length && lnk[i].target == tgt)
+	{
+	row[cnt] = this.ParseOneAttr(lnk[i]);
+	cnt++;
+	i++;
+	}
+    return row;
+    }
+
 function osrc_fetch_next()
     {
     pg_debug("osrc_fetch_next()\n");
@@ -518,7 +603,7 @@ function osrc_fetch_next()
 	//this.formobj.OperationComplete(); /* don't need this...I think....*/
 	var qid=this.qid
 	this.qid=null;
-/* return the last record as the current one if it was our target otherwise, don't */
+	/* return the last record as the current one if it was our target otherwise, don't */
 	if(this.moveop)
 	    {
 	    if(this.CurrentRecord>this.LastRecord)
@@ -536,81 +621,39 @@ function osrc_fetch_next()
 	    {
 	    //confirm('close query');
 	    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
-	    //this.onload=osrc_close_query;
-	    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid);
 	    }
 	return 0;
 	}
-    var row='';
     var colnum=0;
-    for (var i = 1; i < lc; i++)
+    var i = 1;
+    while (i < lc)
 	{
-	if(row!=lnk[i].target)
-	    { /** This is a different (or 1st) row of the result set **/
-	    row=lnk[i].target;
-	    this.OSMLRecord++; /* this holds the last record we got, so now will hold current record number */
-	    this.replica[this.OSMLRecord]=new Array();
-	    this.replica[this.OSMLRecord].oid=row;
-	    this.replica[this.OSMLRecord].id = this.OSMLRecord;
-	    if(this.LastRecord<this.OSMLRecord)
-		{
-		this.LastRecord=this.OSMLRecord;
-		while(this.LastRecord-this.FirstRecord>=this.replicasize)
-		    { /* clean up replica */
-		    this.oldoids.push(this.replica[this.FirstRecord].oid);
-		    delete this.replica[this.FirstRecord];
-		    this.FirstRecord++;
-		    }
-		}
-	    if(this.FirstRecord>this.OSMLRecord)
-		{
-		this.FirstRecord=this.OSMLRecord;
-		while(this.LastRecord-this.FirstRecord>=this.replicasize)
-		    { /* clean up replica */
-		    if (this.replica[this.LastRecord])
-			{
-			this.oldoids.push(this.replica[this.LastRecord].oid);
-			delete this.replica[this.LastRecord];
-			}
-		    this.LastRecord--;
-		    }
-		}
-	    colnum=0;
-	    //alert('New row: '+row+'('+this.OSMLRecord+')');
+	this.OSMLRecord++; // this holds the last record we got, so now will hold current record number
+	this.replica[this.OSMLRecord] =
+		this.NewReplicaObj(this.OSMLRecord, lnk[i].target);
+	this.PruneReplica(this.OSMLRecord);
+	var row = this.ParseOneRow(lnk, i);
+	i += row.length;
+	for(var j=0; j<row.length; j++)
+	    {
+	    this.replica[this.OSMLRecord][j] = row[j];
 	    }
-	colnum++;
-	this.replica[this.OSMLRecord][colnum] = new Array();
-	if (lnk[i].text.charAt(0) == 'N')
-	    this.replica[this.OSMLRecord][colnum]['value'] = null;
-	else if (lnk[i].text.charAt(0) == 'V')
-	    this.replica[this.OSMLRecord][colnum]['value'] = htutil_rtrim(unescape(lnk[i].text.substr(2)));
-	else
-	    this.replica[this.OSMLRecord][colnum]['value'] = '** ERROR **';
-	//confirm(lnk[i].text + ' ==> ' + this.replica[this.OSMLRecord][colnum]['value']);
-	this.replica[this.OSMLRecord][colnum]['type'] = lnk[i].hash.substr(1);
-	this.replica[this.OSMLRecord][colnum]['oid'] = lnk[i].host;
-	/** MJM - this is actually done in the form widget. We need only save the hint string **/
-	//this.replica[this.OSMLRecord][colnum]['hints'] = cx_parse_hints(lnk[i].search);
-	this.replica[this.OSMLRecord][colnum].hints = lnk[i].search;
 	}
-/** make sure we bring this.LastRecord back down to the top of our replica...**/
+    // make sure we bring this.LastRecord back down to the top of our replica...
     while(!this.replica[this.LastRecord])
 	this.LastRecord--;
     if(this.LastRecord<this.TargetRecord)
-	{ /* We're going farther down this... */
+	{ 
+	// We're going farther down this...
 	//alert('qf osrc_fetch_next 1');
 	pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount="+this.readahead, osrc_fetch_next);
-	//this.onload = osrc_fetch_next;
-	//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+this.readahead);
 	}
     else
 	{ /* we've got the one we need */
 	if((this.LastRecord-this.FirstRecord+1)<this.replicasize)
 	    { /* make sure we have a full replica if possible */
-	//alert('qf osrc_fetch_next 2');
+	    //alert('qf osrc_fetch_next 2');
 	    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount="+(this.replicasize-(this.LastRecord-this.FirstRecord+1)), osrc_fetch_next);
-	    //this.onload = osrc_fetch_next;
-	    //pg_set(this,'src',"/?ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__rowcount="+(this.replicasize-(this.LastRecord-this.FirstRecord+1)));
 	    }
 	else
 	    {
@@ -1159,7 +1202,11 @@ function osrc_init(param)
     loader.AQonLoad = 1;
     loader.AQonFirstReveal = 2;
     loader.AQonEachReveal = 3;
-    
+
+    loader.ParseOneAttr = osrc_parse_one_attr;
+    loader.ParseOneRow = osrc_parse_one_row;
+    loader.NewReplicaObj = osrc_new_replica_object;
+    loader.PruneReplica = osrc_prune_replica;
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
