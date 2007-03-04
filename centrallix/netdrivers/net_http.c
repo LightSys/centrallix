@@ -66,10 +66,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.66 2007/03/01 21:55:13 gbeeley Exp $
+    $Id: net_http.c,v 1.67 2007/03/04 03:56:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.67  2007/03/04 03:56:49  gbeeley
+    - (feature) have server feed updated values after an update or create, so
+      client can get data that may have been changed by the server during the
+      update or insert operation, due to business rules or auto keying.
+
     Revision 1.66  2007/03/01 21:55:13  gbeeley
     - (change) Use CXID for cookie name instead of LSID.
 
@@ -2477,7 +2482,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				 obj_handle);
 			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 			if (DEBUG_OSML) printf("ls__mode=create X" XHN_HANDLE_PRT "\n", obj_handle);
-			nht_internal_WriteOneAttr(obj,conn,obj_handle,"name",encode_attrs);
+			nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
 			}
 		    }
 		else
@@ -2499,6 +2504,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 				 0);
 			}
 		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
 		    }
 		}
 	    else if (!strcmp(request,"delete"))
