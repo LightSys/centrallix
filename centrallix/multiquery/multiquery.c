@@ -43,10 +43,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.21 2007/01/31 22:32:19 gbeeley Exp $
+    $Id: multiquery.c,v 1.22 2007/03/04 05:04:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.22  2007/03/04 05:04:47  gbeeley
+    - (change) This is a change to the way that expressions track which
+      objects they were last evaluated against.  The old method was causing
+      some trouble with stale data in some expressions.
+
     Revision 1.21  2007/01/31 22:32:19  gbeeley
     - (bugfix) Return error instead of data type when expression evaluation
       fails on error (not on NULL however).
@@ -1458,9 +1463,9 @@ mq_internal_CkSetObjList(pMultiQuery mq, pPseudoObject p)
 	if (mq->CurSerial == p->Serial) return 0;
 
 	/** Ok, need to update... **/
-	expSyncSeqID(&(p->ObjList), mq->QTree->ObjList);
+	/*expSyncSeqID(&(p->ObjList), mq->QTree->ObjList);*/
 	memcpy(mq->QTree->ObjList, &p->ObjList, sizeof(ParamObjects));
-	mq->QTree->ObjList->MainFlags |= EXPR_MO_RECALC;
+	/*mq->QTree->ObjList->MainFlags |= EXPR_MO_RECALC;*/
 	mq->CurSerial = p->Serial;
 
     return 1;
@@ -1486,7 +1491,7 @@ mq_internal_UpdateNotify(void* v)
     int i;
 
 	/** We're about to update... sync the seq ids **/
-	expSyncSeqID(&(p->ObjList), p->Query->QTree->ObjList);
+	/*expSyncSeqID(&(p->ObjList), p->Query->QTree->ObjList);*/
 
 	/** Track down the entry in the objlist **/
 	objid = expObjChanged(&(p->ObjList), n->Obj);

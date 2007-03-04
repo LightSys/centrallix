@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.13 2006/09/15 20:40:27 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.14 2007/03/04 05:04:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.14  2007/03/04 05:04:47  gbeeley
+    - (change) This is a change to the way that expressions track which
+      objects they were last evaluated against.  The old method was causing
+      some trouble with stale data in some expressions.
+
     Revision 1.13  2006/09/15 20:40:27  gbeeley
     - (change) allow "strings" to be used as identifiers when specifying column
       names in queries.  This permits column/attribute names to contain special
@@ -909,8 +914,8 @@ expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags)
 	exp_internal_SetCoverageMask(e);
 
 	/** Set SEQ ids. **/
-	e->SeqID = 0;
-	e->PSeqID = 0;
+	exp_internal_SetupControl(e);
+	e->Control->PSeqID = 0;
 
 	e->CmpFlags = cmpflags;
 	e->LxFlags = s->Flags;

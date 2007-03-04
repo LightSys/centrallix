@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.5 2007/02/17 04:18:14 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.6 2007/03/04 05:04:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.6  2007/03/04 05:04:47  gbeeley
+    - (change) This is a change to the way that expressions track which
+      objects they were last evaluated against.  The old method was causing
+      some trouble with stale data in some expressions.
+
     Revision 1.5  2007/02/17 04:18:14  gbeeley
     - (bugfix) SQL engine was not properly setting ObjCoverageMask on
       expression trees built from components of the where clause, thus
@@ -494,15 +499,14 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 	    /** Restore a saved object list? **/
 	    if (md->nObjects != 0 && qe->IterCnt > 1)
 	        {
-		mq->QTree->ObjList->SeqID++;
 		for(i=0;i<md->nObjects;i++)
 		    {
 		    tmp_obj = md->SavedObjList[i];
 		    md->SavedObjList[i] = mq->QTree->ObjList->Objects[i];
 		    mq->QTree->ObjList->Objects[i] = tmp_obj;
-		    mq->QTree->ObjList->SeqIDs[i] = mq->QTree->ObjList->SeqID;
 		    if (md->SavedObjList[i]) objClose(md->SavedObjList[i]);
 		    }
+		expAllObjChanged(mq->QTree->ObjList);
 		md->nObjects = 0;
 		}
 
@@ -590,14 +594,13 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		/** Last one? **/
 		if (rval == 0) 
 		    {
-		    mq->QTree->ObjList->SeqID++;
 		    for(i=0;i<md->nObjects;i++)
 		        {
 			tmp_obj = md->SavedObjList[i];
 			md->SavedObjList[i] = mq->QTree->ObjList->Objects[i];
 			mq->QTree->ObjList->Objects[i] = tmp_obj;
-			mq->QTree->ObjList->SeqIDs[i] = mq->QTree->ObjList->SeqID;
 			}
+		    expAllObjChanged(mq->QTree->ObjList);
 		    md->IsLastRow = 1;
 		    return 1;
 		    }
@@ -605,14 +608,13 @@ mqtNextItem(pQueryElement qe, pMultiQuery mq)
 		/** Is this a group-end?  Return now if so. **/
 		if (mqt_internal_CheckGroupBy(qe, mq, md, &bptr) == 1 || !cld || qe->Children.nItems == 0)
 		    {
-		    mq->QTree->ObjList->SeqID++;
 		    for(i=0;i<md->nObjects;i++)
 		        {
 			tmp_obj = md->SavedObjList[i];
 			md->SavedObjList[i] = mq->QTree->ObjList->Objects[i];
 			mq->QTree->ObjList->Objects[i] = tmp_obj;
-			mq->QTree->ObjList->SeqIDs[i] = mq->QTree->ObjList->SeqID;
 			}
+		    expAllObjChanged(mq->QTree->ObjList);
 		    md->GroupByPtr = bptr;
 		    if (!cld || qe->Children.nItems == 0) md->IsLastRow = 1;
 		    return 1;

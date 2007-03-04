@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.6 2005/09/30 04:37:10 gbeeley Exp $
+    $Id: exp_params.c,v 1.7 2007/03/04 05:04:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.7  2007/03/04 05:04:47  gbeeley
+    - (change) This is a change to the way that expressions track which
+      objects they were last evaluated against.  The old method was causing
+      some trouble with stale data in some expressions.
+
     Revision 1.6  2005/09/30 04:37:10  gbeeley
     - (change) modified expExpressionToPod to take the type.
     - (feature) got eval() working
@@ -106,7 +111,6 @@ expCreateParamList()
 	objlist->CurrentID = -1;
 	objlist->ParentID = -1;
 	objlist->MainFlags = 0;
-	objlist->SeqID = 1;
 	objlist->PSeqID = (EXP.PSeqID++);
 
     return objlist;
@@ -156,8 +160,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	for(i=0;i<EXPR_MAX_PARAMS;i++) if (this->Names[i] == NULL)
 	    {
 	    /** Setup the entry for this parameter. **/
-	    this->SeqID++;
-	    this->SeqIDs[i] = this->SeqID;
+	    this->SeqIDs[i] = EXP.ModSeqID++;
 	    this->Objects[i] = obj;
 	    this->Flags[i] = flags | EXPR_O_CHANGED;
 	    this->GetTypeFn[i] = objGetAttrType;
@@ -251,8 +254,7 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 	/** Replace the object. **/
 	this->Objects[slot_id] = replace_obj;
 	this->Flags[slot_id] |= EXPR_O_CHANGED;
-	this->SeqID++;
-	this->SeqIDs[slot_id] = this->SeqID;
+	this->SeqIDs[slot_id] = EXP.ModSeqID++;
 
     return slot_id;
     }
@@ -489,12 +491,14 @@ expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id)
     int i;
 
 	/** No control block? **/
-    	if (!tree->Control)
+    	if (!tree->Control) exp_internal_SetupControl(tree);
+
+	/** Setup remapping **/
+	if (!tree->Control->Remapped)
 	    {
-	    tree->Control = (pExpControl)nmMalloc(sizeof(ExpControl));
+	    tree->Control->Remapped = 1;
 	    for(i=0;i<EXPR_MAX_PARAMS;i++) tree->Control->ObjMap[i] = i;
 	    }
-
 	tree->Control->ObjMap[exp_obj_id] = objlist_obj_id;
 
     return 0;
@@ -507,11 +511,7 @@ expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id)
 int
 expClearRemapping(pExpression tree)
     {
-    if (tree->Control)
-        {
-	if (!tree->Parent) nmFree(tree->Control, sizeof(ExpControl));
-        tree->Control = NULL;
-	}
+    if (tree->Control) tree->Control->Remapped = 0;
     return 0;
     }
 
@@ -530,8 +530,7 @@ expObjChanged(pParamObjects objlist, pObject obj)
 	    if (objlist->Objects[i] == obj)
 		{
 		/** Got it.  Give it a new serial number. **/
-		objlist->SeqID++;
-		objlist->SeqIDs[i] = objlist->SeqID;
+		objlist->SeqIDs[i] = EXP.ModSeqID++;
 		found_obj = i;
 		break;
 		}
@@ -568,17 +567,15 @@ expContainsAttr(pExpression exp, int objid, char* attrname)
     }
 
 
-/*** expSyncSeqID - synchronize the sequence ID's between two object lists,
- *** updating the max sequence ids so that neither list's sequence id is
- *** out-of-date.
+/*** expAllObjChanged() - indicate that all objects in the param objects list
+ *** have potentially changed.
  ***/
 int
-expSyncSeqID(pParamObjects list1, pParamObjects list2)
+expAllObjChanged(pParamObjects objlist)
     {
-    if (list1->SeqID > list2->SeqID)
-	list2->SeqID = list1->SeqID;
-    else
-	list1->SeqID = list2->SeqID;
+
+	/** stamp a new objlist serial id **/
+	objlist->PSeqID = EXP.PSeqID++;
+
     return 0;
     }
-

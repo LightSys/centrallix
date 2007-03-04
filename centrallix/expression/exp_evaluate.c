@@ -66,10 +66,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.14 2005/09/30 04:37:10 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.15 2007/03/04 05:04:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.15  2007/03/04 05:04:47  gbeeley
+    - (change) This is a change to the way that expressions track which
+      objects they were last evaluated against.  The old method was causing
+      some trouble with stale data in some expressions.
+
     Revision 1.14  2005/09/30 04:37:10  gbeeley
     - (change) modified expExpressionToPod to take the type.
     - (feature) got eval() working
@@ -1473,21 +1478,25 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    /*expEvalTree(tree,objlist);*/
 	    }
 
+	/** Setup control struct? **/
+	if (!tree->Control)
+	    if ((v=exp_internal_SetupControl(tree)) < 0) return v;
+
     	/** Determine modified-object coverage mask **/
 	if (objlist)
 	    {
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
 	    objlist->CurControl = tree->Control;
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
-	    if (tree->PSeqID != objlist->PSeqID) 
+	    if (tree->Control->PSeqID != objlist->PSeqID) 
 		{
 		objlist->ModCoverageMask = 0xFFFFFFFF;
 		}
 	    else
 		{
-		for(i=0;i<objlist->nObjects;i++) if (objlist->SeqIDs[i] > tree->SeqID)
+		for(i=0;i<objlist->nObjects;i++) if (objlist->SeqIDs[i] != tree->Control->ObjSeqID[i])
 		    {
-		    if (tree->Control)
+		    if (tree->Control->Remapped)
 			{
 			for(c=0;c<EXPR_MAX_PARAMS;c++) if (tree->Control->ObjMap[c] == i)
 			    {
@@ -1508,8 +1517,8 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	/** Update sequence ids on the expression. **/
 	if (objlist)
 	    {
-	    tree->PSeqID = objlist->PSeqID;
-	    tree->SeqID = objlist->SeqID;
+	    tree->Control->PSeqID = objlist->PSeqID;
+	    memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
 	    objlist->MainFlags &= ~EXPR_MO_RECALC;
 	    }
 

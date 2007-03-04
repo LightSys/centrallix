@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <errno.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -45,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.7 2007/02/17 04:18:14 gbeeley Exp $
+    $Id: exp_main.c,v 1.8 2007/03/04 05:04:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.8  2007/03/04 05:04:47  gbeeley
+    - (change) This is a change to the way that expressions track which
+      objects they were last evaluated against.  The old method was causing
+      some trouble with stale data in some expressions.
+
     Revision 1.7  2007/02/17 04:18:14  gbeeley
     - (bugfix) SQL engine was not properly setting ObjCoverageMask on
       expression trees built from components of the where clause, thus
@@ -191,10 +197,10 @@ expObjID(pExpression exp, pParamObjects objlist)
     if (exp->ObjID == EXPR_OBJID_CURRENT && objlist) id = objlist->CurrentID;
     else if (exp->ObjID == EXPR_OBJID_PARENT && objlist) id = objlist->ParentID;
     else id = exp->ObjID;
-    if ((!objlist->CurControl && !exp->Control) || id < 0) return id;
-    if (exp->Control) 
+    if ((!objlist->CurControl && (!exp->Control || !exp->Control->Remapped)) || id < 0) return id;
+    if (exp->Control && exp->Control->Remapped) 
         id = exp->Control->ObjMap[id];
-    else if (objlist)
+    else if (objlist && objlist->CurControl && objlist->CurControl->Remapped)
         id = objlist->CurControl->ObjMap[id];
     if (id == EXPR_CTL_CURRENT && objlist) return objlist->CurrentID;
     else if (id == EXPR_CTL_PARENT && objlist) return objlist->ParentID;
@@ -426,18 +432,28 @@ int
 expDumpExpression(pExpression this)
     {
     int i;
-    printf("Expression serial ID = %d\nExpression ParamList serial ID = %d\n",this->SeqID, this->PSeqID);
     if (this->Control) 
         {
-	printf("Remapping: ");
+	printf("Expression ParamList serial ID = %d\n", this->Control->PSeqID);
+	printf("Expression Obj SeqIDs: ");
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
 	    {
-	    if (this->Control->ObjMap[i] != i)
-	        {
-		printf("E%d->O%d  ",i, this->Control->ObjMap[i]);
-		}
+	    if (this->Control->ObjSeqID[i])
+		printf("%d:%d ", i, this->Control->ObjSeqID);
 	    }
 	printf("\n");
+	if (this->Control->Remapped)
+	    {
+	    printf("Remapping: ");
+	    for(i=0;i<EXPR_MAX_PARAMS;i++)
+		{
+		if (this->Control->ObjMap[i] != i)
+		    {
+		    printf("E%d->O%d  ",i, this->Control->ObjMap[i]);
+		    }
+		}
+	    printf("\n");
+	    }
 	}
     exp_internal_DumpExpression_r(this, 0);
     return 0;
@@ -653,6 +669,22 @@ expReplaceString(pExpression tree, char* oldstr, char* newstr)
     }
 
 
+/*** exp_internal_SetupControl() - setup the expression evaluation
+ *** control structure that is normally present on the head node of
+ *** an expression tree.
+ ***/
+int
+exp_internal_SetupControl(pExpression exp)
+    {
+
+	exp->Control = (pExpControl)nmMalloc(sizeof(ExpControl));
+	if (!exp->Control) return -ENOMEM;
+	memset(exp->Control, 0, sizeof(ExpControl));
+
+    return 0;
+    }
+
+
 /*** expInitialize - initialize the expression evaluator subsystem.
  ***/
 int
@@ -662,6 +694,7 @@ expInitialize()
     	/** Init globals **/
 	memset(&EXP,0,sizeof(EXP));
 	EXP.PSeqID = 1;
+	EXP.ModSeqID = 1;
 
 	/** Init function list **/
 	exp_internal_DefineNodeEvals();

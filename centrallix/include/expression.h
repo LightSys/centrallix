@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: expression.h,v 1.12 2005/09/30 04:37:10 gbeeley Exp $
+    $Id: expression.h,v 1.13 2007/03/04 05:04:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/expression.h,v $
 
     $Log: expression.h,v $
+    Revision 1.13  2007/03/04 05:04:47  gbeeley
+    - (change) This is a change to the way that expressions track which
+      objects they were last evaluated against.  The old method was causing
+      some trouble with stale data in some expressions.
+
     Revision 1.12  2005/09/30 04:37:10  gbeeley
     - (change) modified expExpressionToPod to take the type.
     - (feature) got eval() working
@@ -129,6 +134,7 @@
 typedef struct
     {
     int         PSeqID;
+    int		ModSeqID;
     int         (*(EvalFunctions[64]))();
     int         Precedence[64];
     XHashTable  Functions;
@@ -141,6 +147,9 @@ extern EXP_Globals EXP;
 /** expression tree control structure **/
 typedef struct _EC
     {
+    int			Remapped:1;
+    int			PSeqID;
+    int			ObjSeqID[EXPR_MAX_PARAMS];
     char		ObjMap[EXPR_MAX_PARAMS]; /* id or EXPR_CTL_xxx */
     }
     ExpControl, *pExpControl;
@@ -154,13 +163,15 @@ typedef struct _EC
 typedef struct _ET
     {
     int			Magic;
+    struct _ET*		Parent;
+    XArray		Children;
     unsigned char	NodeType;		/* one-of EXPR_N_xxx */
     unsigned char	DataType;		/* one-of DATA_T_xxx */
     unsigned char	CompareType;		/* bitmask MLX_CMP_xxx */
-    struct _ET*		Parent;
-    XArray		Children;
-    int			Alloc;
-    int			NameAlloc;
+    char		ObjID;
+    unsigned int	Alloc;
+    unsigned int	NameAlloc;
+    pExpControl		Control;
     char*		Name;
     int			Flags;			/* bitmask EXPR_F_xxx */
     int			Integer;
@@ -175,16 +186,12 @@ typedef struct _ET
         IntVec		IntVec;
 	}
 	Types;
-    char		ObjID;
     int			ObjCoverageMask;
     int			ObjOuterMask;
     int			AggCount;
     int			AggValue;
     unsigned char	AggLevel;
     struct _ET*		AggExp;
-    unsigned int 	SeqID;
-    unsigned int 	PSeqID;
-    pExpControl		Control;
     unsigned int	ListCount;
     unsigned int	ListTrackCnt;
     unsigned int	LinkCnt;
@@ -217,7 +224,6 @@ typedef struct _PO
     char		CurrentID;
     char		ParentID;
     unsigned char	MainFlags;		/* bitmask EXPR_MO_xxx */
-    unsigned int 	SeqID;
     unsigned int 	PSeqID;
     int			ModCoverageMask;
     pExpControl		CurControl;
@@ -319,6 +325,7 @@ int exp_internal_DefineNodeEvals();
 int expCopyValue(pExpression src, pExpression dst, int make_independent);
 int expAddNode(pExpression parent, pExpression child);
 int expDataTypeToNodeType(int data_type);
+int exp_internal_SetupControl(pExpression exp);
 
 
 /*** Evaluator functions ***/
@@ -360,6 +367,6 @@ int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);
 int expObjChanged(pParamObjects this, pObject obj);
 int expContainsAttr(pExpression exp, int objid, char* attrname);
-int expSyncSeqID(pParamObjects list1, pParamObjects list2);
+int expAllObjChanged(pParamObjects this);
 
 #endif /* not defined _EXPRESSION_H */
