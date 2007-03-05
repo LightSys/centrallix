@@ -245,7 +245,18 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		    AC_CHECK_FILE($libfile, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no")
 		fi
 		if test "$WITH_SYBASE_CT" = "no"; then
-		    WITH_SYBASE="no"
+		    dnl Dont give up yet.  Could be Sybase 15.0 which uses
+		    dnl different library names.
+		    SYBASE_CFLAGS="-I$sybase_incdir"
+		    temp=$LIBS
+		    LIBS="$LIBS -L$sybase_libdir"
+		    libfile="$sybase_libdir/libsybct.so"
+		    AC_CHECK_FILE($libfile, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no")
+		    if test "$WITH_SYBASE_CT" = "no"; then
+			SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
+		    else
+			WITH_SYBASE="no"
+		    fi
 		else
 		    SYBASE_LIBS="-L$sybase_libdir -lct -lcomn -lintl -lsybtcl -lcs -linsck"
 		fi
