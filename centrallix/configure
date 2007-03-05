@@ -6335,9 +6335,9 @@ else
 fi
 
 		    if test "$WITH_SYBASE_CT" = "no"; then
-			SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
-		    else
 			WITH_SYBASE="no"
+		    else
+			SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
 		    fi
 		else
 		    SYBASE_LIBS="-L$sybase_libdir -lct -lcomn -lintl -lsybtcl -lcs -linsck"

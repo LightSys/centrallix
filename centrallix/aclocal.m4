@@ -253,9 +253,9 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		    libfile="$sybase_libdir/libsybct.so"
 		    AC_CHECK_FILE($libfile, WITH_SYBASE_CT="yes", WITH_SYBASE_CT="no")
 		    if test "$WITH_SYBASE_CT" = "no"; then
-			SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
-		    else
 			WITH_SYBASE="no"
+		    else
+			SYBASE_LIBS="-L$sybase_libdir -lsybct -lsybcomn -lsybintl -lsybtcl -lsybcs"
 		    fi
 		else
 		    SYBASE_LIBS="-L$sybase_libdir -lct -lcomn -lintl -lsybtcl -lcs -linsck"
