@@ -66,10 +66,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.67 2007/03/04 03:56:49 gbeeley Exp $
+    $Id: net_http.c,v 1.68 2007/03/05 20:04:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.68  2007/03/05 20:04:45  gbeeley
+    - (feature) allow session cookie name to be specified in centrallix.conf.
+    - (workaround) put a <br> after each attr when sending attr-value list to
+      client, as NS4 seems to be dropping some data when all the attrs are
+      together on one "line" of html.  Symptom was "** ERROR **" on occasion
+      in form fields.
+
     Revision 1.67  2007/03/04 03:56:49  gbeeley
     - (feature) have server feed updated values after an update or create, so
       client can get data that may have been changed by the server during the
@@ -668,6 +675,7 @@ struct
     XArray	Sessions;
     char	ServerString[80];
     char	Realm[80];
+    char	SessionCookie[32];
     pSemaphore	TimerUpdateSem;
     pSemaphore	TimerDataMutex;
     XArray	Timers;
@@ -1723,7 +1731,9 @@ nht_internal_CreateCookie(char* ck)
     int key[4];
 
 	cxssGenerateKey((unsigned char*)key, sizeof(key));
-	sprintf(ck,"CXID=%8.8x%8.8x%8.8x%8.8x", key[0], key[1], key[2], key[3]);
+	sprintf(ck,"%s=%8.8x%8.8x%8.8x%8.8x",
+		NHT.SessionCookie,
+		key[0], key[1], key[2], key[3]);
 
     return 0;
     }
@@ -1878,7 +1888,7 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 	    nht_internal_Escape(&xs, dptr);
 	else
 	    xsConcatenate(&xs,dptr,-1);
-	xsConcatenate(&xs,"</A>\n",5);
+	xsConcatenate(&xs,"</A><br>\n",9);
 	fdWrite(conn->ConnFD,xs.String,strlen(xs.String),0,0);
 	/*printf("%s",xs.String);*/
 	xsDeInit(&xs);
@@ -3542,7 +3552,7 @@ nht_internal_ConnHandler(void* connfd_v)
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
 		    /** if the token is a string, and the current cookie doesn't look like ours, try the next one **/
-		    if (toktype == MLX_TOK_STRING && strncmp(cookie,"CXID=",5))
+		    if (toktype == MLX_TOK_STRING && (strncmp(cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || cookie[strlen(NHT.SessionCookie)] != '='))
 			{
 			mlxCopyToken(s,cookie,160);
 			}
@@ -4054,6 +4064,12 @@ nht_internal_Handler(void* v)
 		    mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
 		    }
 		}
+
+	    if (stAttrValue(stLookup(my_config, "session_cookie"), NULL, &strval, 0) < 0)
+		{
+		strval = "CXID";
+		}
+	    strtcpy(NHT.SessionCookie, strval, sizeof(NHT.SessionCookie));
 	    }
 
     	/** Open the server listener socket. **/

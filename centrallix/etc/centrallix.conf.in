@@ -23,6 +23,7 @@ centrallix "system/config"
 	user_session_limit = 100; // max sessions per user
 	server_string = "Centrallix/0.7.5";
 	auth_realm = "Centrallix";
+	session_cookie = "CXID";
 	session_watchdog_timer = 180; //seconds
 	session_inactivity_timer = 1800; //seconds
 	enable_gzip = 0; // false - NS4 fails on this
