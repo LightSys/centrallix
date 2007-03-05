@@ -64,10 +64,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.36 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: test_obj.c,v 1.37 2007/03/05 20:02:44 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.37  2007/03/05 20:02:44  gbeeley
+    - (bugfix) make tab completion use a looser check for the possibility of
+      subobjects.
+
     Revision 1.36  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -595,7 +599,7 @@ int handle_tab(int unused_1, int unused_2)
 
     /** open the query **/
     info = objInfo(obj);
-    if (!info || info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
+    if (!info || !(info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
 	qry = objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL);
     else
 	qry = NULL;
@@ -665,7 +669,7 @@ int handle_tab(int unused_1, int unused_2)
 	    {
 	    /** see if there are any subobjects -- only need to fetch 1 to check **/
 	    info = objInfo(obj2);
-	    if (!info || info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ)
+	    if (!info || !(info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
 		qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL);
 	    else
 		qry=NULL;
