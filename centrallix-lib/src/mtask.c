@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.35 2007/02/20 19:32:16 gbeeley Exp $
+    $Id: mtask.c,v 1.36 2007/03/06 03:51:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.36  2007/03/06 03:51:57  gbeeley
+    - (security) Adding a function to aid in recursion depth limiting, since
+      stack space is at a premium when using MTask.
+
     Revision 1.35  2007/02/20 19:32:16  gbeeley
     - (bugfix #757726) Compile properly without zlib support.  This is a
       really ancient build bug that we should have fixed eons ago...
@@ -241,11 +245,12 @@ int mtRunStartFn(pThread new_thr, int idx);
 int r_mtRunStartFn();
 int mtSched();
 
-#define MAX_EVENTS	256
-#define MAX_THREADS	256
-#define MAX_STACK	(31 * 1024)
-#define MT_TASKSEP	256
-#define MT_TICK_MAX	1
+#define MAX_EVENTS		256
+#define MAX_THREADS		256
+#define MAX_STACK		(31 * 1024)
+#define MT_STACK_HIGHWATER	(24 * 1024)
+#define MT_TASKSEP		256
+#define MT_TICK_MAX		1
 
 //#define dbg_write(x,y,z) write(x,y,z)
 #define dbg_write(x,y,z)
@@ -819,6 +824,7 @@ r_mtRun_Spacer()
     buf[0] = buf[0];
 
     /*mprotect((char*)((int)(buf-MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
+    MTASK.CurrentThread->Stack = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
     return 0; /* never returns */
     }
@@ -2118,6 +2124,18 @@ thClearFlags(pThread thr, int flags)
     return 0;
     }
 
+
+
+/*** THEXCESSIVERECURSION - check to see if we have used up too much
+ *** stack space (still in current stack, but exceeding the allowable
+ *** limit minus a safety cushion).
+ ***/
+int
+thExcessiveRecursion()
+    {
+    unsigned char buf[1];
+    return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+    }
 
 
 /*** FDSETOPTIONS sets options on an open file descriptor.  These options

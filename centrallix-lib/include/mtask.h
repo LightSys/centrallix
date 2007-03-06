@@ -23,10 +23,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.18 2006/06/21 21:25:10 gbeeley Exp $
+    $Id: mtask.h,v 1.19 2007/03/06 03:51:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.19  2007/03/06 03:51:57  gbeeley
+    - (security) Adding a function to aid in recursion depth limiting, since
+      stack space is at a premium when using MTask.
+
     Revision 1.18  2006/06/21 21:25:10  gbeeley
     - Adding fdQPrintf() routines to utilize the qpfPrintf routines.
 
@@ -217,6 +221,7 @@ typedef struct _THR
     void*	StartParam;			/* Param to pass to start fn */
     int		BlkReturnCode;			/* Return code for longjmp */
     jmp_buf	SavedEnv;			/* for context switches */
+    unsigned char*  Stack;			/* approx. stack start ptr */
     }
     Thread, *pThread;
 
@@ -429,6 +434,7 @@ int thSetParam(pThread thr, const char* name, void* param);
 void* thGetParam(pThread thr, const char* name);
 int thSetFlags(pThread thr, int flags);
 int thClearFlags(pThread thr, int flags);
+int thExcessiveRecursion();
 
 
 /** MTASK Security-related functions **/
