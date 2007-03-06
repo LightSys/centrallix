@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.75 2006/11/16 20:15:54 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.76 2007/03/06 16:12:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.76  2007/03/06 16:12:04  gbeeley
+    - (feature) tooltip capability.
+
     Revision 1.75  2006/11/16 20:15:54  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.
@@ -727,6 +730,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_mousemoveevents", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_handlers", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_capturedevents", "0", 0);
+	htrAddScriptGlobal(s, "pg_tiplayer", "null", 0);
+	htrAddScriptGlobal(s, "pg_tipindex", "0", 0);
+	htrAddScriptGlobal(s, "pg_tiptmout", "null", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
