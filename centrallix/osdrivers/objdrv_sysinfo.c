@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sysinfo.c,v 1.1 2005/09/17 01:23:51 gbeeley Exp $
+    $Id: objdrv_sysinfo.c,v 1.2 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sysinfo.c,v $
 
     $Log: objdrv_sysinfo.c,v $
+    Revision 1.2  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.1  2005/09/17 01:23:51  gbeeley
     - Adding sysinfo objectsystem driver, which is roughly analogous to
       the /proc filesystem in Linux.
@@ -68,10 +73,12 @@ typedef struct
     pObject	Obj;
     int		Mask;
     int		CurAttr;
+    int		CurMethod;
     pSnNode	Node;
     pSysInfoData Sid;		/* ptr to tree of sysinfo objects */
     pXArray	ObjsArray;
     pXArray	AttrsArray;
+    pXArray	MethodsArray;
     pXArray	AttrTypesArray;
     }
     SysData, *pSysData;
@@ -94,6 +101,7 @@ typedef struct
 struct
     {
     pSysInfoData	Root;
+    int			StartUID;
     int			sys_thr_ids[256];
     char*		sys_thr_names[256][3];
     char*		sys_thr_desc[256];
@@ -135,6 +143,31 @@ sys_internal_RootAttrValue(void* ctx, char* objname, char* attrname, void* val_v
     return -1;
     }
 
+void
+sys_internal_HardRestart(void* v)
+    {
+    int i;
+
+	thSleep(2000);
+	for(i=3;i<1024;i++) close(i);
+	execvp(CxGlobals.ArgV[0], CxGlobals.ArgV);
+
+    thExit();
+    }
+
+int
+sys_internal_RootExecMethod(void* ctx, char* objname, char* methodname, char* param)
+    {
+
+	if (!strcmp(methodname, "HardRestart") && geteuid() == SYS_INF.StartUID)
+	    {
+	    thCreate(sys_internal_HardRestart, 0, NULL);
+	    }
+
+    return -1;
+    }
+
+
 int
 sysInitGlobals()
     {
@@ -143,10 +176,12 @@ sysInitGlobals()
 
 	/** Initialize globals **/
 	memset(&SYS_INF,0,sizeof(SYS_INF));
-	SYS_INF.Root = sysAllocData("/", NULL, NULL, NULL, sys_internal_RootAttrValue, 0);
+	SYS_INF.Root = sysAllocData("/", NULL, NULL, NULL, NULL, sys_internal_RootAttrValue, sys_internal_RootExecMethod, 0);
+	SYS_INF.StartUID = geteuid();
 	sysAddAttrib(SYS_INF.Root, "version", DATA_T_STRING);
 	sysAddAttrib(SYS_INF.Root, "build", DATA_T_STRING);
 	sysAddAttrib(SYS_INF.Root, "stability", DATA_T_STRING);
+	sysAddMethod(SYS_INF.Root, "HardRestart");
 	SYS_INF.Root->Subtree = (pXArray)nmMalloc(sizeof(XArray));
 	xaInit(SYS_INF.Root->Subtree, 16);
 	SYS_INF.Root->Context = NULL;
@@ -162,7 +197,7 @@ sysInitGlobals()
 /*** sysAllocData - allocate a SysInfoData structure from the given params
  ***/
 pSysInfoData
-sysAllocData(char* path, pXArray (*attrfn)(void*, char* objname), pXArray (*objfn)(void*), int (*getfn)(void*, char* objname, char* attrname), int (*valuefn)(void*, char* objname, char* attrname, void* value), int admin_only)
+sysAllocData(char* path, pXArray (*attrfn)(void*, char* objname), pXArray (*objfn)(void*), pXArray (*methfn)(void*, char* objname), int (*getfn)(void*, char* objname, char* attrname), int (*valuefn)(void*, char* objname, char* attrname, void* value), int (*execfn)(void*, char* objname, char* methname, char* methparam), int admin_only)
     {
     pSysInfoData sid;
 
@@ -174,8 +209,10 @@ sysAllocData(char* path, pXArray (*attrfn)(void*, char* objname), pXArray (*objf
 	memset(sid, 0, sizeof(SysInfoData));
 	sid->AttrEnumFn = attrfn;
 	sid->ObjEnumFn = objfn;
+	sid->MethodEnumFn = methfn;
 	sid->GetAttrTypeFn = getfn;
 	sid->GetAttrValueFn = valuefn;
+	sid->ExecFn = execfn;
 	sid->AdminOnly = admin_only;
 	sid->Path = nmSysStrdup(path);
 
@@ -218,6 +255,34 @@ sysAddAttrib(pSysInfoData sid, char* attrname, int type)
 	/** Add the type **/
 	xaAddItem(sid->AttrTypes, (void*)type);
 
+    return 0;
+    }
+
+
+/*** sysAddMethod - add a declared method on an object.
+ ***/
+int
+sysAddMethod(pSysInfoData sid, char* methodname)
+    {
+
+	/** Can't do it if have an obj enum fn **/
+	if (sid->MethodEnumFn)
+	    {
+	    mssError(1, "SYS", "Cannot add method '%s' to sysinfo object '%s' that has a method enumerator", methodname, sid->Path);
+	    return -1;
+	    }
+
+	/** init the xarray? **/
+	if (!sid->Methods)
+	    {
+	    sid->Methods = (pXArray)nmMalloc(sizeof(XArray));
+	    if (!sid->Methods) return -1;
+	    xaInit(sid->Methods, 16);
+	    }
+
+	/** Add it. **/
+	xaAddItem(sid->Methods, nmSysStrdup(methodname));
+	
     return 0;
     }
 
@@ -269,7 +334,7 @@ sysFindPath(pPathname path, pSysInfoData new_sid, int start_path, int* path_cnt)
 	/** Loop for elements in the path **/
 	for(i = start_path; i<path->nElements-1; i++)
 	    {
-	    if (path_cnt) (*path_cnt) = i - start_path;
+	    if (path_cnt) (*path_cnt) = (i - start_path + 1);
 	    if (i == path->nElements-2 && new_sid)
 		{
 		/** Stop here, caller is going to add new item. **/
@@ -294,7 +359,7 @@ sysFindPath(pPathname path, pSysInfoData new_sid, int start_path, int* path_cnt)
 	    else if (new_sid)
 		{
 		/** make it **/
-		mk_sid = sysAllocData(obj_internal_PathPart(path, 1, i+1), NULL, NULL, NULL, NULL, new_sid->AdminOnly);
+		mk_sid = sysAllocData(obj_internal_PathPart(path, 1, i+1), NULL, NULL, NULL, NULL, NULL, NULL, new_sid->AdminOnly);
 		obj_internal_PathPart(path, 0, 0);
 		mk_sid->Name = nmSysStrdup(obj_internal_PathPart(path, i+1, 1));
 		mk_sid->Context = NULL;
@@ -362,6 +427,27 @@ sysLoadObjsArray(pSysData inf)
 	else if (inf->Sid->ObjEnumFn)
 	    xa = inf->Sid->ObjEnumFn(inf->Sid->Context);
 	inf->ObjsArray = xa;
+
+    return 0;
+    }
+
+
+/*** sysLoadMethodsArray() - figure out the needed list of subobjects
+ ***/
+int
+sysLoadMethodsArray(pSysData inf)
+    {
+    pXArray xa = NULL;
+
+	/** Static or dynamic list? **/
+	if (inf->MethodsArray)
+	    xa = inf->MethodsArray;
+	else if (inf->Sid->Methods)
+	    xa = inf->Sid->Methods;
+	else if (inf->Sid->MethodEnumFn)
+	    xa = inf->Sid->MethodEnumFn(inf->Sid->Context, (inf->Flags & SYS_F_SUBOBJ)?inf->Name:NULL);
+	inf->MethodsArray = xa;
+	if (!xa) return -1;
 
     return 0;
     }
@@ -962,21 +1048,38 @@ sysOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     }
 
 
-/*** sysGetFirstMethod -- return name of First method available on the object.
- ***/
-char*
-sysGetFirstMethod(void* inf_v, pObjTrxTree oxt)
-    {
-    return NULL;
-    }
-
-
 /*** sysGetNextMethod -- return successive names of methods after the First one.
  ***/
 char*
 sysGetNextMethod(void* inf_v, pObjTrxTree oxt)
     {
+    pSysData inf = SYS(inf_v);
+
+	if (inf->MethodsArray && inf->CurMethod < inf->MethodsArray->nItems)
+	    {
+	    return inf->MethodsArray->Items[inf->CurMethod++];
+	    }
+
     return NULL;
+    }
+
+
+/*** sysGetFirstMethod -- return name of First method available on the object.
+ ***/
+char*
+sysGetFirstMethod(void* inf_v, pObjTrxTree oxt)
+    {
+    pSysData inf = SYS(inf_v);
+    char* ptr;
+
+	/** Set the current method. **/
+	inf->CurMethod = 0;
+
+	/** Return the next one. **/
+	sysLoadMethodsArray(inf);
+	ptr = sysGetNextMethod(inf_v, oxt);
+
+    return ptr;
     }
 
 
@@ -985,6 +1088,25 @@ sysGetNextMethod(void* inf_v, pObjTrxTree oxt)
 int
 sysExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
+    pSysData inf = SYS(inf_v);
+    int i;
+
+	/** Get the methods... **/
+	sysLoadMethodsArray(inf);
+
+	/** Look it up **/
+	if (inf->MethodsArray)
+	    {
+	    for(i=0;i<inf->MethodsArray->nItems;i++)
+		{
+		if (!strcmp(inf->MethodsArray->Items[i], methodname))
+		    {
+		    if (!inf->Sid->ExecFn) return 1; /* null */
+		    return inf->Sid->ExecFn(inf->Sid->Context, (inf->Flags & SYS_F_SUBOBJ)?inf->Name:NULL, methodname, param->String);
+		    }
+		}
+	    }
+
     return -1;
     }
 
@@ -1008,7 +1130,10 @@ sysPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 sysInfo(void* inf_v, pObjectInfo info_struct)
     {
-    memset(info_struct, sizeof(ObjectInfo), 0);
+    /*pSysData inf = SYS(inf_v);*/
+    
+	memset(info_struct, sizeof(ObjectInfo), 0);
+
     return 0;
     }
 
@@ -1158,7 +1283,7 @@ sys_internal_RegisterMtask()
     pSysInfoData si;
 
 	/** thread list **/
-	si = sysAllocData("/tasks", sys_internal_MtaskAttrList, sys_internal_MtaskObjList, sys_internal_MtaskAttrType, sys_internal_MtaskAttrValue, 0);
+	si = sysAllocData("/tasks", sys_internal_MtaskAttrList, sys_internal_MtaskObjList, NULL, sys_internal_MtaskAttrType, sys_internal_MtaskAttrValue, NULL, 0);
 	sysRegister(si, NULL);
 
     return 0;

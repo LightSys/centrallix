@@ -45,6 +45,7 @@ extern char* cx__years;
 typedef struct _CXG
     {
     char	ConfigFileName[256];
+    char**	ArgV;
     pStructInf	ParsedConfig;
     int		QuietInit;
     pCxModule	ModuleList;
@@ -101,9 +102,12 @@ typedef struct _CXSI
     pXArray	Attrs;			/* -or- Hardcoded list of attrs */
     pXArray	(*ObjEnumFn)(void*);		/* Subobject name enumerator */
     pXArray	Objs;			/* -or- Hardcoded list of object names */
+    pXArray	(*MethodEnumFn)(void*, char*);	/* Method enumerator */
+    pXArray	Methods;		/* -or- Hardcoded list of methods */
     int		(*GetAttrTypeFn)(void*, char*, char*);	/* func to get one attribute type */
     pXArray	AttrTypes;		/* -or- if Attrs given, we can specify AttrTypes */
     int		(*GetAttrValueFn)(void*, char*, char*, void*);	/* func to get one attribute value */
+    int		(*ExecFn)(void*, char*, char*, char*);	/* func to execute a method */
     int		AdminOnly;		/* only allow "root" to see it.  N.B.: change this once the sec model is in! */
     void*	Context;
     pXArray	Subtree;
@@ -115,9 +119,10 @@ typedef struct _CXSI
  *** objname = NULL on funcs to get stuff on subtree root
  *** void* value is a pObjData (see datatypes.h).
  ***/
-pSysInfoData sysAllocData(char* path, pXArray (*attrfn)(void*, char* objname), pXArray (*objfn)(void*), int (*getfn)(void*, char* objname, char* attrname), int (*valuefn)(void*, char* objname, char* attrname, void* value), int admin_only);
+pSysInfoData sysAllocData(char* path, pXArray (*attrfn)(void*, char* objname), pXArray (*objfn)(void*), pXArray (*methfn)(void*, char* objname), int (*getfn)(void*, char* objname, char* attrname), int (*valuefn)(void*, char* objname, char* attrname, void* value), int (*execfn)(void*, char* objname, char* methname, char* methparam), int admin_only);
 int sysRegister(pSysInfoData, void* context);
 int sysAddAttrib(pSysInfoData, char*, int);
 int sysAddObj(pSysInfoData, char*);
+int sysAddMethod(pSysInfoData, char*);
 
 #endif

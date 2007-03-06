@@ -49,10 +49,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_internal.c,v 1.19 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: prtmgmt_v3_internal.c,v 1.20 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_internal.c,v $
 
     $Log: prtmgmt_v3_internal.c,v $
+    Revision 1.20  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.19  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -458,6 +463,14 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
     pPrtObjStream subtree_last_obj;
     pPrtObjStream objptr;
     int total = 0;
+    int rval;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Set first obj to the obj itself for now. **/
 	*first_obj = obj;
@@ -489,7 +502,9 @@ prt_internal_YSetup_r(pPrtObjStream obj, pPrtObjStream* first_obj, pPrtObjStream
 	    total++;
 
 	    /** Do the subtree **/
-	    total += prt_internal_YSetup_r(objptr, &subtree_first_obj, &subtree_last_obj);
+	    rval = prt_internal_YSetup_r(objptr, &subtree_first_obj, &subtree_last_obj);
+	    if (rval < 0) return rval;
+	    total += rval;
 
 	    /** Add the subtree to the list. **/
 	    (*last_obj)->YNext = subtree_first_obj;
@@ -541,6 +556,7 @@ prt_internal_YSort(pPrtObjStream obj)
 	 ** setting up the initial linear sortable sequence of objects.
 	 **/
 	cnt = prt_internal_YSetup_r(obj, &first, &last) + 1;
+	if (cnt < 0) return NULL;
 
 	/** Basic stuff here - do a bubble sort on the objects.  We point to
 	 ** the *pointer* with sortptr in order to keep 'first' pointing to
@@ -680,6 +696,13 @@ prt_internal_Finalize_r(pPrtObjStream this)
     {
     pPrtObjStream content;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
+
 	/** Finalize children first.  That way, since a finalize may modify
 	 ** the content of an object, we don't have trouble looking at the 
 	 ** content while it is being modified. 
@@ -687,7 +710,8 @@ prt_internal_Finalize_r(pPrtObjStream this)
 	content = this->ContentHead;
 	while(content)
 	    {
-	    prt_internal_Finalize_r(content);
+	    if (prt_internal_Finalize_r(content) < 0)
+		return -1;
 	    content = content->Next;
 	    }
 
@@ -709,10 +733,12 @@ prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
 	ASSERTMAGIC(page, MGK_PRTOBJSTRM);
 
 	/** First, give the layout managers a chance to 'finalize' **/
-	prt_internal_Finalize_r(page);
+	if (prt_internal_Finalize_r(page) < 0)
+	    return -1;
 
 	/** Next, y-sort the page **/
-	prt_internal_YSort(page);
+	if (prt_internal_YSort(page) < 0)
+	    return -1;
 
 	/** Now, send it to the formatter **/
 	s->Formatter->Generate(s->FormatterData, page);

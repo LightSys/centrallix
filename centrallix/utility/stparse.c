@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.13 2007/02/22 23:26:44 gbeeley Exp $
+    $Id: stparse.c,v 1.14 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.14  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.13  2007/02/22 23:26:44  gbeeley
     - (debug) adding stPrint_ne() to print out a pStruct tree.
 
@@ -787,6 +792,14 @@ st_internal_ParseGroup(pLxSession s, pStructInf inf, pParamObjects objlist)
     int toktype,nametoktype;
     pStructInf subinf;
     char* str;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"ST","Failed to parse structure file: resource exhaustion occurred");
+	    mlxNotePosition(s);
+	    return -1;
+	    }
 
 	while(1)
 	    {

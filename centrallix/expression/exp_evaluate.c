@@ -66,10 +66,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.15 2007/03/04 05:04:47 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.16 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.16  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.15  2007/03/04 05:04:47  gbeeley
     - (change) This is a change to the way that expressions track which
       objects they were last evaluated against.  The old method was causing
@@ -1535,6 +1540,13 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
     {
     int (*fn)();
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"EXP","Failed to evaluate expression: resource exhaustion occurred");
+	    return -1;
+	    }
+
     	/** If node is frozen, return OK **/
 	if (tree->Flags & EXPR_F_FREEZEEVAL) return 0;
 
@@ -1599,6 +1611,13 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 int
 expReverseEvalTree(pExpression tree, pParamObjects objlist)
     {
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"EXP","Failed to reverse-evaluate expression: resource exhaustion occurred");
+	    return -1;
+	    }
 
     	/** Call the evaluator based on the type of node **/
 	switch(tree->NodeType)

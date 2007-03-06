@@ -57,10 +57,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_xml.c,v 1.24 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: objdrv_xml.c,v 1.25 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_xml.c,v $
 
     $Log: objdrv_xml.c,v $
+    Revision 1.25  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.24  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -419,6 +424,13 @@ int
 xml_internal_GetNode(pXmlData inf,pObject obj)
     {
     xmlNodePtr p;
+
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	mssError(1,"XML","Could not lookup XML node: resource exhaustion occurred");
+	return -1;
+	}
 
     /** don't want to go wandering off farther than we need **/
     if(obj->Pathname->nElements<obj->SubPtr+obj->SubCnt)

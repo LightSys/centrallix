@@ -282,6 +282,13 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
     pObjQuery qy;
     pWgtrNode my_template = template;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"WGTR","Could not load widget tree: resource exhaustion occurred");
+	    return NULL;
+	    }
+
 	/** check the outer_type of obj tobe sure it's a widget **/
 	if (objGetAttrValue(obj, "outer_type", DATA_T_STRING, &val) < 0)
 	    {

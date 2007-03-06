@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_table.c,v 1.12 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_table.c,v 1.13 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_table.c,v $
 
     $Log: prtmgmt_v3_lm_table.c,v $
+    Revision 1.13  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.12  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -153,6 +158,13 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
     pPrtTabLMData new_lm_inf;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
+
 	/** Is this object allowed to break? **/
 	if (!(this->Flags & PRT_OBJ_F_ALLOWBREAK)) return -1;
 
@@ -241,6 +253,13 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
     {
     pPrtObjStream table_obj, new_parent, old_parent;
     double new_height;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Allow width resizes on a limited basis **/
 	if ((child->ObjType->TypeID == PRT_OBJ_T_TABLE || child->ObjType->TypeID == PRT_OBJ_T_TABLEROW ||
@@ -356,6 +375,13 @@ prt_tablm_Resize(pPrtObjStream this, double new_width, double new_height)
     {
     double ow, oh;
     pPrtObjStream peers;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Can we resize? **/
 	if (this->Flags & PRT_OBJ_F_FIXEDSIZE) return -1;

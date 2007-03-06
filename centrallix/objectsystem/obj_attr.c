@@ -48,10 +48,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.11 2005/09/24 20:15:43 gbeeley Exp $
+    $Id: obj_attr.c,v 1.12 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.12  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.11  2005/09/24 20:15:43  gbeeley
     - Adding objAddVirtualAttr() to the OSML API, which can be used to add
       an attribute to an object which invokes callback functions to get the
@@ -200,6 +205,13 @@ objGetAttrType(pObject this, char* attrname)
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"OSML","Could not get attribute: resource exhaustion occurred");
+	    return -1;
+	    }
+
     	/** Builtin attribute 'objcontent' is always a string **/
 	if (!strcmp(attrname, "objcontent")) return DATA_T_STRING;
 
@@ -233,6 +245,13 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     pObjVirtualAttr va;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"OSML","Could not get attribute: resource exhaustion occurred");
+	    return -1;
+	    }
 
 #ifdef _OBJATTR_CONV
 	/** Caller is using OLD API syntax **/
@@ -343,6 +362,13 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     pObjVirtualAttr va;
     
 	ASSERTMAGIC(this, MGK_OBJECT);
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"OSML","Could not set attribute: resource exhaustion occurred");
+	    return -1;
+	    }
 
 #ifdef _OBJATTR_CONV
 	if (data_type < 0 || data_type > 256)

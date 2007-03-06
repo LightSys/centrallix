@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_content.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_content.c,v 1.6 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_content.c,v $
 
     $Log: obj_content.c,v $
+    Revision 1.6  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.5  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -86,6 +91,13 @@ int
 objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
     {
     ASSERTMAGIC(this, MGK_OBJECT);
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	mssError(1,"OSML","Could not objRead(): resource exhaustion occurred");
+	return -1;
+	}
+
     if (maxcnt < 0 || offset < 0)
 	{
 	mssError(1,"OSML","Parameter error calling objRead()");
@@ -102,6 +114,13 @@ int
 objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
     {
     ASSERTMAGIC(this, MGK_OBJECT);
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	mssError(1,"OSML","Could not objWrite(): resource exhaustion occurred");
+	return -1;
+	}
+
     if (cnt < 0 || offset < 0)
 	{
 	mssError(1,"OSML","Parameter error calling objWrite()");

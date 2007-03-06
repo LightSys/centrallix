@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.13 2005/09/17 01:23:51 gbeeley Exp $
+    $Id: obj_main.c,v 1.14 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.14  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.13  2005/09/17 01:23:51  gbeeley
     - Adding sysinfo objectsystem driver, which is roughly analogous to
       the /proc filesystem in Linux.
@@ -485,7 +490,7 @@ objInitialize()
 
 	    /** Add to the /sys/cx.sysinfo directory **/
 	    snprintf(sysbuf, sizeof(sysbuf), "/osml/types/%d", OSYS.TypeList.nItems);
-	    si = sysAllocData(sysbuf, NULL, NULL, NULL, obj_types_GetAttrValue, 0);
+	    si = sysAllocData(sysbuf, NULL, NULL, NULL, NULL, obj_types_GetAttrValue, NULL, 0);
 	    sysAddAttrib(si, "type_name", DATA_T_STRING);
 	    sysAddAttrib(si, "type_description", DATA_T_STRING);
 	    sysAddAttrib(si, "parent_type", DATA_T_STRING);

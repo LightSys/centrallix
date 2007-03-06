@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.14 2007/03/04 05:04:47 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.15 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.15  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.14  2007/03/04 05:04:47  gbeeley
     - (change) This is a change to the way that expressions track which
       objects they were last evaluated against.  The old method was causing
@@ -162,6 +167,13 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     int was_prefix_unary = 0;
     int new_cmpflags;
     char* sptr;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"EXP","Failed to compile expression: resource exhaustion occurred");
+	    return NULL;
+	    }
 
 	/** This is to suppress a rather unintelligent compiler warning about
 	 ** eptr being used uninitialized.

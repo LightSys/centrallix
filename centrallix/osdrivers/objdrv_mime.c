@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_mime.c,v 1.28 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: objdrv_mime.c,v 1.29 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_mime.c,v $
 
     $Log: objdrv_mime.c,v $
+    Revision 1.29  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.28  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -431,6 +436,13 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     {
     int size;
     pMimeInfo inf = (pMimeInfo)inf_v;
+
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	mssError(1,"MIME","Could not read data: resource exhaustion occurred");
+	return -1;
+	}
 
     if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART)
 	{

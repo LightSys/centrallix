@@ -30,10 +30,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.8 2006/11/16 20:15:54 gbeeley Exp $
+    $Id: apos.c,v 1.9 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.9  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.8  2006/11/16 20:15:54  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.
@@ -219,6 +224,14 @@ aposSetFlexibilities(pWgtrNode Parent)
 pWgtrNode Child;
 int i=0, childCount=xaCount(&(Parent->Children));
 
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    return -1;
+	}
+
+
     for(i=0; i<childCount; ++i)
         {
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
@@ -251,13 +264,21 @@ int sectionCount;
 pAposSection s;
 pWgtrNode Child;
 
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    return -1;
+	}
+
     /** Figure what is needed for children **/
     childCount = xaCount(&(Parent->Children));
     total_child_delta_w = total_child_delta_h = 0;
     for(i=0;i<childCount;i++)
 	{
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
-	    aposSetLimits_r(Child, &child_delta_w, &child_delta_h);
+	    if (aposSetLimits_r(Child, &child_delta_w, &child_delta_h) < 0)
+		return -1;
 	    total_child_delta_w += child_delta_w;
 	    total_child_delta_h += child_delta_h;
 	}
@@ -348,6 +369,13 @@ aposPrepareTree(pWgtrNode Parent, pXArray PatchedWidgets)
 pWgtrNode Child;
 int i=0, childCount=xaCount(&(Parent->Children));
 
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    return -1;
+	}
+
     for(i=0; i<childCount; ++i)
         {
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
@@ -359,7 +387,8 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	    
 	    /** If child is a container but not a window, recursively prepare it as well **/
 	    if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_FLOATING))
-		aposPrepareTree(Child, PatchedWidgets);
+		if (aposPrepareTree(Child, PatchedWidgets) < 0)
+		    return -1;
 	}
     
     return 0;
@@ -515,6 +544,13 @@ int childCount, grandchildCount, i, j;
 pWgtrNode Child, GrandChild;
 pAposGrid theGrid;
 
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    return -1;
+	}
+
     /** Allocate a grid **/
     theGrid = Parent->LayoutGrid = (pAposGrid)nmMalloc(sizeof(AposGrid));
     if (!Parent->LayoutGrid) goto error;
@@ -584,6 +620,13 @@ aposAutoPositionContainers(pWgtrNode Parent)
 pAposGrid theGrid;
 pWgtrNode Child, GrandChild;
 int i=0, j=0, grandchildCount=0, childCount = xaCount(&(Parent->Children));
+
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    return -1;
+	}
 
     /** Grid is pre-built by aposBuildGrid **/
     theGrid = (pAposGrid)(Parent->LayoutGrid);
@@ -698,7 +741,8 @@ pXArray FirstCross, LastCross;
     if(aposCreateLine(NULL, VLines, (Parent->pre_width-isSP*18), 0, 1, width_adj, 1) < 0)
         goto CreateLineError;
 
-    aposAddLinesForChildren(Parent, HLines, VLines);
+    if(aposAddLinesForChildren(Parent, HLines, VLines) < 0)
+	goto CreateLineError;
 
     /**populate horizontal line cross XArrays**/
     count = xaCount(HLines);
@@ -757,6 +801,13 @@ int isTopTab=0, isSideTab=0, tabWidth=0;
 int height_adj, width_adj;
 pWgtrNode C;
 
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    return -1;
+	}
+
     /**loop through the children and create 4 lines for each child's 4 edges**/
     for(i=0; i<childCount; ++i)
         {
@@ -774,7 +825,10 @@ pWgtrNode C;
 	    *** the grandchildren. Otherwise, if C is visual
 	    *** and not a window, just add 4 lines for it **/
 	    if((C->Flags & WGTR_F_NONVISUAL) && (C->Flags & WGTR_F_CONTAINER))
-		aposAddLinesForChildren(C, HLines, VLines);
+		{
+		    if (aposAddLinesForChildren(C, HLines, VLines) < 0)
+			goto CreateLineError;
+		}
 	    else if(!(C->Flags & WGTR_F_NONVISUAL) && !(C->Flags & WGTR_F_FLOATING))
 	        {
 		    /**add horizontal lines, unless parent is a scrollpane**/
@@ -1257,6 +1311,13 @@ int i=0, changed=0, isWin=0, isSP=0;
 int childCount=xaCount(&(Parent->Children));
 pWgtrNode Child;
 
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    return -1;
+	}
+
     aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL);
 
     /**loop through children and process any windows**/
@@ -1309,11 +1370,17 @@ pWgtrNode Child;
 	    
 	    /**recursive call on visual containers; new visual reference is passed**/
 	    if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_NONVISUAL))
-		aposProcessWindows(Child, Child);
+		{
+		    if (aposProcessWindows(Child, Child) < 0)
+			return -1;
+		}
 	    
 	    /**recursive call on nonvisual containers; old visual reference is maintained**/
 	    if((Child->Flags & WGTR_F_CONTAINER) && (Child->Flags & WGTR_F_NONVISUAL))
-		aposProcessWindows(VisualRef, Child);
+		{
+		    if (aposProcessWindows(VisualRef, Child) < 0)
+			return -1;
+		}
 	
 	}
 	

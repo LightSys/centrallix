@@ -58,10 +58,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.12 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.13 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.13  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.12  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -2800,6 +2805,13 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
     int i;
     pStructInf subobj;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"RPT","Could not generate report: resource exhaustion occurred");
+	    return -1;
+	    }
+
 	/** Loop through container subobjects **/
 	for (i=0;i<container->nSubInf;i++)
 	    {
@@ -3006,6 +3018,13 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
     pXString subst_value;
     pStructInf expr_inf;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"RPT","Could not generate report: resource exhaustion occurred");
+	    return -1;
+	    }
+
     	/** Need to allocate an object list? **/
 	if (!objlist)
 	    {
@@ -3102,6 +3121,13 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
     int i;
     pXArray xa;
     pRptUserData ud;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"RPT","Could not generate report: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Visit all sub-inf structures that are groups **/
 	for(i=0;i<object->nSubInf;i++) if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)

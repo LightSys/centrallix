@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_text.c,v 1.22 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_text.c,v 1.23 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_text.c,v $
 
     $Log: prtmgmt_v3_lm_text.c,v $
+    Revision 1.23  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.22  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -228,6 +233,13 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     pPrtObjStream new_container = NULL;
     pPrtObjStream new_object = NULL;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
+
 	/** Does object not allow break operations? **/
 	if (!(this->Flags & PRT_OBJ_F_ALLOWBREAK)) return -1;
 
@@ -296,6 +308,13 @@ int
 prt_textlm_Resize(pPrtObjStream this, double new_width, double new_height)
     {
     double ow, oh;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Can container be resized? **/
 	if (this->Flags & PRT_OBJ_F_FIXEDSIZE) 

@@ -51,10 +51,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.65 2007/02/22 23:25:13 gbeeley Exp $
+    $Id: ht_render.c,v 1.66 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.66  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.65  2007/02/22 23:25:13  gbeeley
     - (feature) adding initial framework for CXSS, the security subsystem.
     - (feature) CXSS entropy pool and key generation, basic framework.
@@ -905,6 +910,13 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     {
     pHtDriver drv;
     pXHashTable widget_drivers = NULL;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"HTR","Could not render application: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Find the hashtable keyed with widget names for this combination of
 	 ** user-agent:style that contains pointers to the drivers to use.
@@ -1788,6 +1800,13 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     char* ctrinit;
     pHtDMPrivateData inf = wgtrGetDMPrivateData(tree);
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"HTR","Could not render application: resource exhaustion occurred");
+	    return -1;
+	    }
+
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
@@ -1802,7 +1821,8 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    htrAddScriptWgtr_va(s, "\n        %*.*s    [\n", indent*4, indent*4, "");
 	    for(i=0;i<childcnt;i++)
 		{
-		htr_internal_BuildClientWgtr_r(s, xaGetItem(&(tree->Children), i), indent+1);
+		if (htr_internal_BuildClientWgtr_r(s, xaGetItem(&(tree->Children), i), indent+1) < 0)
+		    return -1;
 		if (i == childcnt-1) 
 		    htrAddScriptWgtr(s, "\n");
 		else

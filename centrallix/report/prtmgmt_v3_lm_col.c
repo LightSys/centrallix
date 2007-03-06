@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_col.c,v 1.12 2005/02/26 06:42:40 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_col.c,v 1.13 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_col.c,v $
 
     $Log: prtmgmt_v3_lm_col.c,v $
+    Revision 1.13  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.12  2005/02/26 06:42:40  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -150,6 +155,13 @@ prt_collm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     pPrtObjStream new_object,new_container;
     pPrtColLMData lm_inf, new_lm_inf;
     pPrtObjStream parent;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Shouldn't be called on the main section object but rather on a 
 	 ** child of that (a column object)!  Make sure first... 
@@ -254,6 +266,13 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
     pPrtColLMData lm_inf;
     pPrtObjStream parent;
     double new_h;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Shouldn't be called on the main section object but rather on a 
 	 ** child of that (a column object)!  Make sure first... 
@@ -370,6 +389,13 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
     double oh, ow;
     pPrtObjStream col_obj;
     double npw, nph;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Being called on a column rather than the section as a whole? If so,
 	 ** reflect the call to the parent section object instead.

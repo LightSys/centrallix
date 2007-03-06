@@ -54,10 +54,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.32 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: lsmain.c,v 1.33 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.33  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.32  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -372,6 +377,7 @@ main(int argc, char* argv[])
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
+	CxGlobals.ArgV = argv;
 
 	/** Check for config file options on the command line **/
 #ifdef HAVE_BASENAME

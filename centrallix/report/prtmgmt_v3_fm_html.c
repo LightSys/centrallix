@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_html.c,v 1.5 2005/09/17 01:23:51 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_html.c,v 1.6 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html.c,v $
 
     $Log: prtmgmt_v3_fm_html.c,v $
+    Revision 1.6  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.5  2005/09/17 01:23:51  gbeeley
     - Adding sysinfo objectsystem driver, which is roughly analogous to
       the /proc filesystem in Linux.
@@ -569,6 +574,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     void* arg;
     int w,h,id;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
+	    return -1;
+	    }
+
 	/** Select the type of object we're formatting **/
 	switch(obj->ObjType->TypeID)
 	    {
@@ -801,7 +813,7 @@ prt_htmlfm_Initialize()
 	prtRegisterFormatter(fmtdrv);
 
 	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
-	si = sysAllocData("/prtmgmt/output_types/html", NULL, NULL, NULL, prt_htmlfm_GetType, 0);
+	si = sysAllocData("/prtmgmt/output_types/html", NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0);
 	sysAddAttrib(si, "type", DATA_T_STRING);
 	sysRegister(si, NULL);
 

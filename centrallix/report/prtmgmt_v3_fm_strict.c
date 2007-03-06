@@ -50,10 +50,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_strict.c,v 1.11 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_strict.c,v 1.12 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_strict.c,v $
 
     $Log: prtmgmt_v3_fm_strict.c,v $
+    Revision 1.12  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.11  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -185,7 +190,7 @@ prt_strictfm_RegisterDriver(pPrtOutputDriver drv)
 	else
 	    ptr = ptr + 1;
 	snprintf(buf, sizeof(buf), "/prtmgmt/output_types/%s", ptr);
-	si = sysAllocData(buf, NULL, NULL, NULL, prt_strictfm_GetType, 0);
+	si = sysAllocData(buf, NULL, NULL, NULL, NULL, prt_strictfm_GetType, NULL, 0);
 	sysAddAttrib(si, "type", DATA_T_STRING);
 	sysRegister(si, (void*)drv);
 

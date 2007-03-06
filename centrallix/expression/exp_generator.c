@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.8 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: exp_generator.c,v 1.9 2007/03/06 16:16:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.9  2007/03/06 16:16:55  gbeeley
+    - (security) Implementing recursion depth / stack usage checks in
+      certain critical areas.
+    - (feature) Adding ExecMethod capability to sysinfo driver.
+
     Revision 1.8  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -189,6 +194,13 @@ int
 exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
     {
     int i;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"EXP","Failed to generate CXSQL expression: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Do we have a domain declaration?  Add the pseudo-function for it if so **/
 	if (exp->Flags & EXPR_F_DOMAINMASK)
@@ -441,6 +453,13 @@ int
 exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
     {
     int i;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"EXP","Failed to generate JS expression: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	/** Select an expression type **/
 	switch(exp->NodeType)
