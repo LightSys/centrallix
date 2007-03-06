@@ -1280,6 +1280,8 @@ function pg_expression(o,p,e,l,c)
 
 function pg_removemousefocus()
     {
+    if (pg_curarea.layer.losemousefocushandler) 
+	pg_curarea.layer.losemousefocushandler(pg_curarea.layer, pg_curarea.cls, pg_curarea.name, pg_curarea);
     if (cx__capabilities.Dom0NS)
         {
     	if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);
@@ -1316,20 +1318,23 @@ function pg_setmousefocus(l, xo, yo)
 	pg_curarea = a;
 	if (pg_curarea.flags & 1)
 	    {
-	    // wants mouse focus
-	    var x = getPageX(pg_curarea.layer)+pg_curarea.x;
-	    var y = getPageY(pg_curarea.layer)+pg_curarea.y;
-	    
-	    var w = pg_curarea.width;
-	    var h = pg_curarea.height;
-	    if (cx__capabilities.Dom0NS)
-	        {
-	        pg_mkbox(l, x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
-	        }
-	    else if (cx__capabilities.Dom1HTML)
-	        {
-	    	pg_mkbox(l, x,y,w,h, 1, document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"), page.mscolor1, page.mscolor2, htr_getzindex(document.getElementById("pgktop"))-1);
-	    	}
+	    if (!pg_curarea.layer.getmousefocushandler || pg_curarea.layer.getmousefocushandler(xo, yo, a.layer, a.cls, a.name, a))
+		{
+		// wants mouse focus
+		var x = getPageX(pg_curarea.layer)+pg_curarea.x;
+		var y = getPageY(pg_curarea.layer)+pg_curarea.y;
+		
+		var w = pg_curarea.width;
+		var h = pg_curarea.height;
+		if (cx__capabilities.Dom0NS)
+		    {
+		    pg_mkbox(l, x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
+		    }
+		else if (cx__capabilities.Dom1HTML)
+		    {
+		    pg_mkbox(l, x,y,w,h, 1, document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"), page.mscolor1, page.mscolor2, htr_getzindex(document.getElementById("pgktop"))-1);
+		    }
+		}
 	    }
 	}
     }
@@ -1916,11 +1921,66 @@ function pg_msg_received()
     }
 
 
+// tooltips
+function pg_tooltip(msg, x, y)
+    {
+    if (!pg_tiplayer)
+	pg_tiplayer = htr_new_layer(pg_width);
+    htr_setvisibility(pg_tiplayer, "hidden");
+    pg_tipindex++;
+    pg_tipinfo = {msg:msg, x:x, y:y};
+    if (pg_tiptmout) pg_delsched(pg_tiptmout);
+    pg_tiptmout = pg_addsched_fn(window, "pg_dotip", [], 500);
+    return pg_tipindex;
+    }
+
+function pg_canceltip(id)
+    {
+    if (id == pg_tipindex)
+	{
+	if (pg_tiptmout) pg_delsched(pg_tiptmout);
+	pg_tiptmout = null;
+	htr_setvisibility(pg_tiplayer, "hidden");
+	pg_tipindex++;
+	return true;
+	}
+    return false;
+    }
+
+function pg_dotip()
+    {
+    pg_tiptmout = null;
+    var txt = '<table border="0" cellspacing="0" cellpadding="1" bgcolor="black"><tr><td><table border="0" cellspacing="0" cellpadding="1" bgcolor="#ffffc0"><tr><td><table border="0" cellspacing="0" cellpadding="0"><tr><td><img src="/sys/images/trans_1.gif"></td><td>' + htutil_encode(pg_tipinfo.msg) + '</td><td><img src="/sys/images/trans_1.gif"></td></tr></table></td></tr></table></td></tr></table>';
+    pg_serialized_write(pg_tiplayer, txt, pg_dotip_complete);
+    }
+
+function pg_dotip_complete()
+    {
+    var imgs = pg_images(pg_tiplayer);
+    var x1 = getRelativeX(imgs[0]);
+    if (isNaN(x1)) x1 = imgs[0].offsetLeft + imgs[0].offsetParent.offsetLeft;
+    var x2 = getRelativeX(imgs[1]);
+    if (isNaN(x2)) x2 = imgs[1].offsetLeft + imgs[1].offsetParent.offsetLeft;
+    var tipw = x2 - x1;
+    var pgx = pg_tipinfo.x + 16;
+    var pgy = pg_tipinfo.y;
+    if (pgx + tipw > pg_width) pgx = pg_width - tipw;
+    if (pgx < 0) pgx = 0;
+    moveToAbsolute(pg_tiplayer, pgx, pgy);
+    htr_setvisibility(pg_tiplayer, "inherit");
+    }
+
+
 // event handlers
 function pg_mousemove(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
+    if (pg_tiptmout)
+	{
+	pg_tipinfo.x = e.pageX;
+	pg_tipinfo.y = e.pageY;
+	}
     if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;

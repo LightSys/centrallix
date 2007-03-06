@@ -285,6 +285,22 @@ function eb_deselect()
     }
 
 
+function eb_mselect(x,y,l,c,n,a)
+    {
+    if (this.charOffset > 0 || this.charOffset + this.charWidth < this.content.length)
+	this.tipid = pg_tooltip(this.content, getPageX(this) + x, getPageY(this) + y);
+    return 1;
+    }
+
+
+function eb_mdeselect(l,c,n,a)
+    {
+    if (this.tipid) pg_canceltip(this.tipid);
+    this.tipid = null;
+    return 1;
+    }
+
+
 function eb_mouseup(e)
     {
     if (e.kind == 'eb') cn_activate(e.mainlayer, 'Click');
@@ -377,6 +393,9 @@ function eb_init(param)
     l.keyhandler = eb_keyhandler;
     l.getfocushandler = eb_select;
     l.losefocushandler = eb_deselect;
+    l.getmousefocushandler = eb_mselect;
+    l.losemousefocushandler = eb_mdeselect;
+    l.tipid = null;
     l.getvalue = eb_getvalue;
     l.setvalue = eb_setvalue;
     l.clearvalue = eb_clearvalue;
