@@ -43,6 +43,11 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.28  2007/03/06 16:11:39  gbeeley
+    - (bugfix) properly escape quote marks.  This instance was particularly
+      pesky, but other instances of needing to escape will be dealt with when
+      the qprintf formatting is integrated into the ht_render functions.
+
     Revision 1.27  2007/03/01 21:53:25  gbeeley
     - (feature) Allow label to be a form element.
 
@@ -294,6 +299,7 @@ int
 htlblRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
+    char* ptr2;
     char name[64];
     char align[64];
     char main_bg[128];
@@ -303,6 +309,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int id, i;
     int fontsize;
     char *text;
+    char *text2;
     char stylestr[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -336,6 +343,14 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    text=nmSysStrdup("");
 	    }
+	text2 = nmSysMalloc(strlen(text)*2);
+	ptr=text;
+	ptr2=text2;
+	do  {
+	    if (*ptr == '\'') *(ptr2++) = '\\';
+	    *(ptr2++) = *(ptr);
+	    }
+	    while (*(ptr++));
 
 	/** label text color **/
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -384,7 +399,8 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 		"<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>",
 		w,align,fontsize,fgcolor);
 	htrAddScriptInit_va(s, "    lbl_init(nodes['%s'], {field:'%s', text:'%s', style:'%s'});\n",
-		name, fieldname, text, stylestr);
+		name, fieldname, text2, stylestr);
+	nmSysFree(text2);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
