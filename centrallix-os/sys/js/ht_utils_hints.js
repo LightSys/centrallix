@@ -302,6 +302,7 @@ function cx_hints_startnew(e)
 	// Set default all the time
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr) 
 	    {
+	    var _context = wgtrGetRoot(e);
 	    e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
 	    if (e.form) e.form.DataNotify(e);
 	    }
@@ -317,6 +318,7 @@ function cx_hints_startmodify(e)
 	// Set default only if 'alwaysdef' enabled
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr && (e.cx_hints['all'].Style & cx_hints_style.alwaysdef))
 	    {
+	    var _context = wgtrGetRoot(e);
 	    e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
 	    if (e.form) e.form.DataNotify(e);
 	    }

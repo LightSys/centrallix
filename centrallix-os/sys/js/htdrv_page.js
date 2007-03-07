@@ -136,7 +136,7 @@ function pg_set_style(element,attr, value)
 	if (isNaN(parseInt(value)))
 	    element.style.setProperty(attr,value,"");
 	else
-	    element.style.setProperty(attr,value + "px","");
+	    element.style.setProperty(attr,parseInt(value) + "px","");
 	return;
 	}
     else if(cx__capabilities.Dom0NS)
@@ -1211,7 +1211,7 @@ function pg_expchange(p,o,n)
 	    if (this == item[2] && p == item[1])
 		{
 		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
-		pg_addsched("wgtrGetNode(" + exp.Context + ",\"" + exp.Objname + "\")." + exp.Propname + " = " + exp.Expression, window, 0);
+		pg_addsched("wgtrGetNode(" + exp.Context + ",\"" + exp.Objname + "\")." + exp.Propname + " = " + exp.Expression, eval(exp.Context), 0);
 		}
 	    }
 	}
@@ -1235,12 +1235,17 @@ function pg_dosched()
 	    {
 	    // evaluate expression
 	    //alert('evaluating ' + sched_item.exp);
-	    var _context = sched_item.obj;
+	    var _context = null;
+	    if (wgtrIsNode(sched_item.obj))
+		_context = wgtrGetRoot(sched_item.obj);
 	    with (sched_item.obj) { eval(sched_item.exp); }
 	    }
 	else
 	    {
 	    // call function
+	    var _context = null;
+	    if (wgtrIsNode(sched_item.obj))
+		_context = wgtrGetRoot(sched_item.obj);
 	    sched_item.obj[sched_item.func].apply(sched_item.obj, sched_item.param);
 	    }
 	}
@@ -1961,12 +1966,15 @@ function pg_dotip_complete()
     if (isNaN(x1)) x1 = imgs[0].offsetLeft + imgs[0].offsetParent.offsetLeft;
     var x2 = getRelativeX(imgs[1]);
     if (isNaN(x2)) x2 = imgs[1].offsetLeft + imgs[1].offsetParent.offsetLeft;
-    var tipw = x2 - x1;
+    var tipw = (x2 - x1) + 6;
     var pgx = pg_tipinfo.x + 16;
     var pgy = pg_tipinfo.y;
     if (pgx + tipw > pg_width) pgx = pg_width - tipw;
     if (pgx < 0) pgx = 0;
+    setClipWidth(pg_tiplayer, tipw);
+    pg_set_style(pg_tiplayer, "width", tipw + "px");
     moveToAbsolute(pg_tiplayer, pgx, pgy);
+    htr_setzindex(pg_tiplayer, 99999);
     htr_setvisibility(pg_tiplayer, "inherit");
     }
 

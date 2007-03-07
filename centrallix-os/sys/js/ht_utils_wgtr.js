@@ -201,6 +201,12 @@ function wgtrWalk(tree, x)
     }
 
 
+function wgtrIsNode(tree)
+    {
+    return(tree && tree.__WgtrName);
+    }
+
+
 function wgtrGetContainer(tree)
     {
     if (!tree.__WgtrContainer) return null;
