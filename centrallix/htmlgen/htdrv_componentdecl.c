@@ -48,10 +48,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.7 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.8 2007/03/10 02:57:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.8  2007/03/10 02:57:41  gbeeley
+    - (bugfix) setup graft point for static components as well as dynamically
+      loaded ones, and allow nested components by saving and restoring previous
+      graft points.
+
     Revision 1.7  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -212,6 +217,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     int rval = 0;
     int is_visual = 1;
     char gbuf[256];
+    char* gname;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -247,8 +253,34 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	/** Include the js module **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_componentdecl.js", 0);
 
+	/** DOM Linkages **/
+	if (s->GraftPoint)
+	    {
+	    strtcpy(gbuf, s->GraftPoint, sizeof(gbuf));
+	    gname = strchr(gbuf,':');
+	    if (!gname)
+		{
+		mssError(1,"HTCMPD", "Invalid graft point");
+		goto htcmpd_cleanup;
+		}
+	    *(gname++) = '\0';
+	    if (strpbrk(gname,"'\"\\<>\r\n\t ") || strspn(gbuf,"w0123456789abcdef") != strlen(gbuf))
+		{
+		mssError(1,"HTCMPD", "Invalid graft point");
+		goto htcmpd_cleanup;
+		}
+	    htrAddWgtrCtrLinkage_va(s, tree, 
+		    "wgtrGetContainer(wgtrGetNode(%s,\"%s\"))", gbuf, gname);
+	    htrAddBodyItem_va(s, "<a id=\"dname\" target=\"%s\" href=\".\"></a>", s->Namespace->DName);
+	    }
+	else
+	    {
+	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	    }
+
 	/** Init component **/
-	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%s\"], %d);\n", name, is_visual);
+	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%s\"], {vis:%d, gns:%s, gname:'%s'});\n", 
+		name, is_visual, gbuf, gname);
 
 	/** Hunt for parameters for this component **/
 	xaInit(&attrs, 16);
@@ -409,31 +441,6 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** End init for component **/
 	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%s\"]);\n", name);
-
-	/** DOM Linkages **/
-	if (s->GraftPoint)
-	    {
-	    strtcpy(gbuf, s->GraftPoint, sizeof(gbuf));
-	    ptr = strchr(gbuf,':');
-	    if (!ptr)
-		{
-		mssError(1,"HTCMPD", "Invalid graft point");
-		goto htcmpd_cleanup;
-		}
-	    *(ptr++) = '\0';
-	    if (strpbrk(ptr,"'\"\\<>\r\n\t ") || strspn(gbuf,"w0123456789abcdef") != strlen(gbuf))
-		{
-		mssError(1,"HTCMPD", "Invalid graft point");
-		goto htcmpd_cleanup;
-		}
-	    htrAddWgtrCtrLinkage_va(s, tree, 
-		    "wgtrGetContainer(wgtrGetNode(%s,\"%s\"))", gbuf, ptr);
-	    htrAddBodyItem_va(s, "<a id=\"dname\" target=\"%s\" href=\".\"></a>", s->Namespace->DName);
-	    }
-	else
-	    {
-	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-	    }
 
 	/** Do subwidgets **/
 	htrRenderSubwidgets(s, tree, z+2);

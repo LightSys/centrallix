@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.3 2006/11/16 20:15:53 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.4 2007/03/10 02:57:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.4  2007/03/10 02:57:40  gbeeley
+    - (bugfix) setup graft point for static components as well as dynamically
+      loaded ones, and allow nested components by saving and restoring previous
+      graft points.
+
     Revision 1.3  2006/11/16 20:15:53  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.
@@ -101,6 +106,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     int rval = -1;
     WgtrClientInfo wgtr_params;
     int is_static;
+    char* old_graft = NULL;
+    char sbuf[128];
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -149,6 +156,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	/** If static mode, load the component **/
 	if (is_static)
 	    {
+	    old_graft = s->GraftPoint;
+	    snprintf(sbuf, sizeof(sbuf), "%s:%s", wgtrGetRootDName(tree), name);
+	    s->GraftPoint = nmSysStrdup(sbuf);
+
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
 		    "    cmp_init({node:nodes[\"%s\"], is_static:true});\n",
@@ -191,6 +202,11 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Switch the namespace back **/
 	    htrLeaveNamespace(s);
+
+	    /** Restore original graft point, if one **/
+	    nmSysFree(s->GraftPoint);
+	    s->GraftPoint = old_graft;
+	    old_graft = NULL;
 	    }
 	else
 	    {
@@ -209,6 +225,12 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
     out:
 	/** Clean up **/
+	if (s->GraftPoint && old_graft)
+	    {
+	    nmSysFree(s->GraftPoint);
+	    s->GraftPoint = old_graft;
+	    old_graft = NULL;
+	    }
 	if (cmp_obj) objClose(cmp_obj);
 	if (cmp_tree) wgtrFree(cmp_tree);
 
