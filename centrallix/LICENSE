@@ -4,7 +4,7 @@ in the file "COPYING".  You may also use this software under
 any later version of the GNU GPL published by the Free Software
 Foundation.
 
-Copyright (C) 1998-2006 LightSys Technology Services, Inc.
+Copyright (C) 1998-2007 LightSys Technology Services, Inc.
 
 You may download the source to this software at:
 
@@ -14,6 +14,12 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
+
+OpenSSL:  As a special additional permission, you may link this
+application with the OpenSSL cryptographic library.  If you
+copy or distribute Centrallix, you are not required to retain
+this additional restriction.  In that case, simply delete it 
+from this LICENSE file when you make the copy.
 
 We also must point out that due to the content of the generated
 DHTML output of this program (it contains extensive javascript
