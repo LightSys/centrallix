@@ -324,31 +324,21 @@ function form_action_edit(aparam)
 function form_show_3bconfirm()
     {
     var discard,save,cancel;
-    if(cx__capabilities.Dom1HTML)
-	var lay=this._3bconfirmwindow.ContentLayer.getElementsByTagName('div');
-    else if(cx__capabilities.Dom0NS)
-	var lay=this._3bconfirmwindow.ContentLayer.layers;
-    else if(cx__capabilities.Dom0IE)
-	var lay=this._3bconfirmwindow.ContentLayer.all;
-    else
-	return false;
-    for(var i in lay)
+    if (!this._3bconfirmwindow || !wgtrIsNode(this._3bconfirmwindow) || wgtrGetType(this._3bconfirmwindow) != 'widget/childwindow')
 	{
-	if(lay[i] && lay[i].buttonName)
-	    {
-	    switch(lay[i].buttonName)
-		{
-		case '_3bConfirmCancel':
-		    cancel=lay[i];
-		    break;
-		case '_3bConfirmSave':
-		    save=lay[i];
-		    break;
-		case '_3bConfirmDiscard':
-		    discard=lay[i];
-		    break;
-		}
-	    }
+	alert('Some data is unsaved.  Please either save or cancel your changes first.');
+	this._3bconfirm_cancel();
+	return false;
+	}
+    var nodes = wgtrAllSubNodes(this._3bconfirmwindow);
+    for(var n in nodes)
+	{
+	if (nodes[n].buttonName == '_3bConfirmCancel' || nodes[n].buttonText == 'Cancel')
+	    cancel = nodes[n];
+	if (nodes[n].buttonName == '_3bConfirmSave' || nodes[n].buttonText == 'Save')
+	    save = nodes[n];
+	if (nodes[n].buttonName == '_3bConfirmDiscard' || nodes[n].buttonText == 'Discard')
+	    discard = nodes[n];
 	}
     if(!(save && discard && cancel))
 	{
@@ -956,6 +946,7 @@ function form_init(form,param)
     form.cb['_3bConfirmCancel'] = new form_cbobj('_3bConfirmCancel');
     form.cb['_3bConfirmSave'] = new form_cbobj('_3bConfirmSave');
     form.cb['_3bConfirmDiscard'] = new form_cbobj('_3bConfirmDiscard');
+    form._form_form = form;
 
 /** indicator flags for other objects to use **/
     form.is_savable = false;

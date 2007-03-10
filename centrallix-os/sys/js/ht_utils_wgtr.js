@@ -229,6 +229,24 @@ function wgtrNodeList(node)
     }
 
 
+// Get all subnodes, recursively, within the namespace
+function wgtrAllSubNodes(node)
+    {
+	if (!node || !node.__WgtrName) 
+	    { pg_debug("wgtrAllSubNodes - node was not a WgtrNode!\n"); return false; }
+
+	var nodearr = node.__WgtrChildren.slice(0);
+	var subnodearr = new Array();
+	for(var n in nodearr)
+	    {
+	    subnodearr = subnodearr.concat(wgtrAllSubNodes(nodearr[n]));
+	    }
+	nodearr = nodearr.concat(subnodearr);
+
+	return nodearr;
+    }
+
+
 function wgtrReplaceNode(oldnode, newnode, newcont)
     {
 	// make sure this is actually a tree

@@ -29,6 +29,7 @@ function tb_init(param)
 	param.left.nofocus = true;
 	}
     l.buttonName = param.name;
+    l.buttonText = param.text;
 
     l.l2 = l2;
     l.l3 = l3;
