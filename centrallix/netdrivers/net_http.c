@@ -66,10 +66,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.68 2007/03/05 20:04:45 gbeeley Exp $
+    $Id: net_http.c,v 1.69 2007/03/10 05:13:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.69  2007/03/10 05:13:03  gbeeley
+    - (change) log session starts
+
     Revision 1.68  2007/03/05 20:04:45  gbeeley
     - (feature) allow session cookie name to be specified in centrallix.conf.
     - (workaround) put a <br> after each attr when sending attr-value list to
@@ -3807,6 +3810,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    usr->SessionCnt++;
 	    xaAddItem(&(NHT.Sessions), (void*)nsess);
 	    conn->NhtSession = nsess;
+	    printf("NHT: new session for username [%s], cookie [%s]\n", nsess->Username, nsess->Cookie);
 	    }
 
 	//printf("%s\n",urlptr);
