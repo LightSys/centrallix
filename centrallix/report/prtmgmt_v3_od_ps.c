@@ -50,10 +50,14 @@
 
 /**CVSDATA***************************************************************
  
-    $Id: prtmgmt_v3_od_ps.c,v 1.4 2007/02/28 06:07:56 gbeeley Exp $
+    $Id: prtmgmt_v3_od_ps.c,v 1.5 2007/03/10 05:14:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
  
     $Log: prtmgmt_v3_od_ps.c,v $
+    Revision 1.5  2007/03/10 05:14:54  gbeeley
+    - (performance) This one little fix improves report writer PDF output
+      performance by approximately 10-fold.
+
     Revision 1.4  2007/02/28 06:07:56  gbeeley
     - (workaround) This is a workaround for an apparent bug in Ghostscript,
       or possibly in the way Centrallix generates the postscript data,
@@ -196,7 +200,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.4 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.5 $ \n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
@@ -511,6 +515,7 @@ prt_psod_OpenPDF(pPrtSession session)
 
 	/** get the file handle thru mtask **/
 	context->TransWPipe = fdOpenFD(wfds[0], O_RDWR);
+	fdSetOptions(context->TransWPipe, FD_UF_WRBUF);
 	context->TransRPipe = fdOpenFD(rfds[0], O_RDWR);
 	context->CompletionSem = syCreateSem(0, 0);
 
