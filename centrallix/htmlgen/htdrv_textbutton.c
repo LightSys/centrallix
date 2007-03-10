@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.36 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.37 2007/03/10 03:49:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.37  2007/03/10 03:49:30  gbeeley
+    - (change) pass button text to client as a param
+
     Revision 1.36  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -356,8 +359,10 @@ int
 httbtnRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
+    char* ptr2;
     char name[64];
     char text[64];
+    char* text2;
     char fgcolor1[64];
     char fgcolor2[64];
     char bgcolor[128];
@@ -432,6 +437,15 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 	strtcpy(text,ptr,sizeof(text));
+	text2 = nmSysMalloc(strlen(text)*2);
+	ptr=text;
+	ptr2=text2;
+	do  {
+	    if (*ptr == '\'') *(ptr2++) = '\\';
+	    *(ptr2++) = *(ptr);
+	    }
+	    while (*(ptr++));
+
 
 	/** Get fgnd colors 1,2, and background color **/
 	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -487,8 +501,8 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s,"\t#tb%dlft { POSITION:absolute; VISIBILITY:%s; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%d; }\n",id,is_ts?"hidden":"inherit",z+2);
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:htr_subel(%s, \"tb%dpane2\"), layer3:htr_subel(%s, \"tb%dpane3\"), top:htr_subel(%s, \"tb%dtop\"), bottom:htr_subel(%s, \"tb%dbtm\"), right:htr_subel(%s, \"tb%drgt\"), left:htr_subel(%s, \"tb%dlft\"), width:%d, height:%d, tristate:%d, name:\"%s\"});\n",
-		    dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, w, h, is_ts, name);
+	    htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:htr_subel(%s, \"tb%dpane2\"), layer3:htr_subel(%s, \"tb%dpane3\"), top:htr_subel(%s, \"tb%dtop\"), bottom:htr_subel(%s, \"tb%dbtm\"), right:htr_subel(%s, \"tb%drgt\"), left:htr_subel(%s, \"tb%dlft\"), width:%d, height:%d, tristate:%d, name:\"%s\", text:'%s'});\n",
+		    dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, w, h, is_ts, name, text2);
 
 	    /** HTML body <DIV> elements for the layers. **/
 	    if (h >= 0)
@@ -533,14 +547,16 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem_va(s,"</DIV>");
 
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:htr_subel(%s, \"tb%dpane2\"), layer3:htr_subel(%s, \"tb%dpane3\"), top:null, bottom:null, right:null, left:null, width:%d, height:%d, tristate:%d, name:\"%s\"});\n",
-		    dptr, dptr, id, dptr, id, w, h, is_ts, name);
+	    htrAddScriptInit_va(s, "    tb_init({layer:%s, layer2:htr_subel(%s, \"tb%dpane2\"), layer3:htr_subel(%s, \"tb%dpane3\"), top:null, bottom:null, right:null, left:null, width:%d, height:%d, tristate:%d, name:\"%s\", text:'%s'});\n",
+		    dptr, dptr, id, dptr, id, w, h, is_ts, name, text2);
 	    }
 	else
 	    {
 	    mssError(0,"HTTBTN","Unable to render for this browser");
+	    nmSysFree(text2);
 	    return -1;
 	    }
+	nmSysFree(text2);
 
 	/** Add the event handling scripts **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "tb", "tb_mousedown");
