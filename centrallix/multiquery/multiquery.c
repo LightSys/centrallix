@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.22 2007/03/04 05:04:47 gbeeley Exp $
+    $Id: multiquery.c,v 1.23 2007/03/10 17:57:48 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.23  2007/03/10 17:57:48  gbeeley
+    - minor tweaks to INSERT function in multiquery; needed to commit in order
+      to transfer work to a different location...
+
     Revision 1.22  2007/03/04 05:04:47  gbeeley
     - (change) This is a change to the way that expressions track which
       objects they were last evaluated against.  The old method was causing
@@ -934,10 +938,11 @@ mq_internal_SyntaxParse(pLxSession lxs)
 				ptr = mlxStringVal(lxs,NULL);
 				if (!strcasecmp(ptr,"into"))
 				    {
-				    if (mlxNextToken(lxs) != MLX_TOK_KEYWORD)
+				    t = mlxNextToken(lxs);
+				    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
 				        {
 				    	next_state = ParseError;
-				    	mssError(1,"MQ","Expected table name after INSERT INTO");
+				    	mssError(1,"MQ","Expected pathname after INSERT INTO");
 				    	mlxNoteError(lxs);
 				    	break;
 					}
@@ -945,15 +950,15 @@ mq_internal_SyntaxParse(pLxSession lxs)
 				else
 				    {
 				    next_state = ParseError;
-				    mssError(1,"MQ","Expected table name or INTO after INSERT, got <%s>",ptr);
+				    mssError(1,"MQ","Expected pathname or INTO after INSERT, got <%s>",ptr);
 				    mlxNoteError(lxs);
 				    break;
 				    }
 				}
-			    else if (t != MLX_TOK_KEYWORD)
+			    else if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
 			        {
 				next_state = ParseError;
-				mssError(1,"MQ","Expected table name or INTO after INSERT");
+				mssError(1,"MQ","Expected pathname or INTO after INSERT");
 				mlxNoteError(lxs);
 				break;
 				}
@@ -1154,8 +1159,7 @@ mq_internal_SyntaxParse(pLxSession lxs)
 			if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
 			if (t == MLX_TOK_EQUALS && new_qs->Presentation[0] == 0)
 			    {
-			    memccpy(new_qs->Presentation, new_qs->RawData.String,0,31);
-			    new_qs->Presentation[31] = 0;
+			    strtcpy(new_qs->Presentation, new_qs->RawData.String, sizeof(new_qs->Presentation));
 			    if (strrchr(new_qs->Presentation,' '))
 			        *(strrchr(new_qs->Presentation,' ')) = '\0';
 			    xsCopy(&new_qs->RawData,"",-1);
