@@ -1639,7 +1639,7 @@ function pg_reveal_register_listener(l)
     var trigger_layer = l;
     do  {
 	trigger_layer = wgtrGetParent(trigger_layer);
-	} while (trigger_layer && !trigger_layer.__pg_reveal_is_triggerer && wgtrGetRoot(trigger_layer) != trigger_layer);
+	} while (trigger_layer && !trigger_layer.__pg_reveal_is_triggerer && !wgtrIsRoot(trigger_layer));
     if (!trigger_layer) trigger_layer = wgtrGetRoot(l);
 
     // Add us to the triggerer
@@ -1659,7 +1659,7 @@ function pg_reveal_register_triggerer(l)
     l.__pg_reveal_listener_fn = pg_reveal_internal;
     l.__pg_reveal_triggerer_fn = l.Reveal;
     l.__pg_reveal_busy = false;
-    if (l != window && l != document)
+    if (!wgtrIsRoot(l))
 	l.__pg_reveal_parent_visible = pg_reveal_register_listener(l);
     else
 	l.__pg_reveal_parent_visible = true;
@@ -1945,7 +1945,7 @@ function pg_canceltip(id)
 	{
 	if (pg_tiptmout) pg_delsched(pg_tiptmout);
 	pg_tiptmout = null;
-	htr_setvisibility(pg_tiplayer, "hidden");
+	if (pg_tiplayer) htr_setvisibility(pg_tiplayer, "hidden");
 	pg_tipindex++;
 	return true;
 	}
@@ -2052,6 +2052,7 @@ function pg_mousedown(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
+    pg_canceltip(pg_tipindex);
     if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -2117,6 +2118,7 @@ function pg_mouseup(e)
 
 function pg_keydown(e)
     {
+    pg_canceltip(pg_tipindex);
     if (cx__capabilities.Dom0NS)
 	{
         k = e.which;

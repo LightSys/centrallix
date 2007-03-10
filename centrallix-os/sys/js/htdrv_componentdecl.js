@@ -9,33 +9,50 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-function cmpd_init(node, is_visual)
+function cmpd_init(node, param)
     {
     // component is access point for stuff inside, shell is access point for stuff outside.
     var component = node;
-    var shell = new Object();
+    var shell = wgtrGetNode(param.gns, param.gname);
 
     // interface init
     ifc_init_widget(component);
-    ifc_init_widget(shell);
     component.ifcProbeAdd(ifAction);
     component.ifcProbeAdd(ifEvent);
-    shell.ifcProbeAdd(ifAction);
-    shell.ifcProbeAdd(ifEvent);
+    shell.RegisterComponent(component);
 
-    shell.setContext = cmpd_shell_set_context;
-    shell.handleAction = cmpd_shell_handle_action;
-    shell.context = null;
     component.addAction = cmpd_add_action;
     component.addEvent = cmpd_add_event;
     component.addProp = cmpd_add_prop;
     component.handleAction = cmpd_handle_action;
     component.ifcProbe(ifAction).Add('ModifyProperty', cmpd_action_modify_property);
-    shell.ifcProbe(ifEvent).Add('ModifyProperty');
     component.shell = shell;
-    component.is_visual = is_visual;
-    shell.component = component;
+    component.is_visual = param.vis;
+
+    // Obscure/Reveal
+    component.HandleReveal = cmpd_handle_reveal;
+    component.Reveal = cmpd_cb_reveal;
+    pg_reveal_register_triggerer(component);
+
     return component;
+    }
+
+function cmpd_cb_reveal(e)
+    {
+    switch(e.eventName)
+	{
+	case 'RevealOK':
+	case 'ObscureOK':
+	case 'RevealFailed':
+	case 'ObscureFailed':
+	    return this.shell.HandleReveal(e.eventName, e.c);
+	}
+    return true;
+    }
+
+function cmpd_handle_reveal(ename, ctx)
+    {
+    return pg_reveal_event(this, ctx, ename);
     }
 
 function cmpd_endinit(c)

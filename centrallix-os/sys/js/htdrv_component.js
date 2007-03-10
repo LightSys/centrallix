@@ -130,6 +130,56 @@ function cmp_destroy(aparam)
 	}
     }
 
+function cmp_register_component(c)
+    {
+    this.component = c;
+    if (this.is_visible)
+	pg_addsched_fn(this.component, 'HandleReveal', ['Reveal', null], 0);
+    }
+
+function cmp_cb_reveal(e)
+    {
+    var rval = true;
+    switch(e.eventName)
+	{
+	case 'Reveal':
+	    this.is_visible = true;
+	    if (this.component && this.component.HandleReveal)
+		rval = this.component.HandleReveal(e.eventName, e);
+	    break;
+	case 'Obscure':
+	    this.is_visible = false;
+	    if (this.component && this.component.HandleReveal)
+		rval = this.component.HandleReveal(e.eventName, e);
+	    break;
+	case 'RevealCheck':
+	case 'ObscureCheck':
+	    if (this.component && this.component.HandleReveal)
+		rval = this.component.HandleReveal(e.eventName, e);
+	    else
+		pg_reveal_check_ok(e);
+	    break;
+	}
+    return rval;
+    }
+
+
+// Called from the embedded component itself
+function cmp_cb_handle_reveal(e,ctx)
+    {
+    switch(e)
+	{
+	case 'RevealOK':
+	case 'ObscureOK':
+	    return pg_reveal_check_ok(ctx);
+	case 'RevealFailed':
+	case 'ObscureFailed':
+	    return pg_reveal_check_veto(ctx);
+	}
+    return true;
+    }
+
+
 function cmp_init(param)
     {
     var node = param.node;
@@ -149,12 +199,24 @@ function cmp_init(param)
 	    htr_setvisibility(node.loader2, 'hidden');
 	    }
 	}
+    node.component = null;
+    node.is_visible = false;
     node.cmp_cb_load_complete = cmp_cb_load_complete;
     node.cmp_cb_load_complete_2 = cmp_cb_load_complete_2;
     node.cmp_cb_load_complete_2ns = cmp_cb_load_complete_2ns;
     node.cmp_cb_load_complete_3 = cmp_cb_load_complete_3;
     node.cmp_cb_load_complete_4 = cmp_cb_load_complete_4;
     ifc_init_widget(node);
+
+    node.RegisterComponent = cmp_register_component;
+
+    // Obscure/Reveal
+    node.Reveal = cmp_cb_reveal; // from other widgets in same NS
+    node.HandleReveal = cmp_cb_handle_reveal; // from component
+    if (pg_reveal_register_listener(node))
+	{
+	node.is_visible = true;
+	}
 
     // Events
     var ie = node.ifcProbeAdd(ifEvent);

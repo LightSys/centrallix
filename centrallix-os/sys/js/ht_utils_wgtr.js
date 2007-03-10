@@ -207,6 +207,12 @@ function wgtrIsNode(tree)
     }
 
 
+function wgtrIsRoot(tree)
+    {
+    return tree == tree.__WgtrRoot;
+    }
+
+
 function wgtrGetContainer(tree)
     {
     if (!tree.__WgtrContainer) return null;
