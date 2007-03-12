@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_generator.c,v 1.9 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: exp_generator.c,v 1.10 2007/03/12 19:18:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_generator.c,v $
 
     $Log: exp_generator.c,v $
+    Revision 1.10  2007/03/12 19:18:32  gbeeley
+    - (change) use a function to fetch a prop value in a JS expression, so we
+      can catch undefined properties and objects.
+
     Revision 1.9  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -453,6 +457,7 @@ int
 exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
     {
     int i;
+    int prop_func;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -660,14 +665,25 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 	    
 	    case EXPR_N_OBJECT:
+		prop_func = 0;
+	        if (exp->Children.nItems != 1) return -1;
 	        if (exp->ObjID == -1 && exp->Name) 
 		    {
+		    if (((pExpression)(exp->Children.Items[0]))->NodeType == EXPR_N_PROPERTY)
+			prop_func = 1;
+		    if (prop_func)
+			exp_internal_WriteText(eg, "wgtrGetAttrValue(");
 		    exp_internal_WriteText(eg, "wgtrGetNode(_context,\"");
 		    exp_internal_WriteText(eg, exp->Name);
 		    exp_internal_WriteText(eg, "\")");
-		    exp_internal_WriteText(eg, ".");
+		    if (prop_func)
+			exp_internal_WriteText(eg, ",\"");
+		    else
+			exp_internal_WriteText(eg, ".");
 		    }
-	        if (exp->Children.nItems != 1 || exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
+		if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
+		if (prop_func)
+		    exp_internal_WriteText(eg, "\")");
 		break;
 
 	    case EXPR_N_PROPERTY:
