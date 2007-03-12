@@ -150,6 +150,7 @@ function wgtrGetNode(tree, node_name)
 	    }*/
 	if (tree.__WgtrRoot.__WgtrChildList[node_name]) 
 	    return tree.__WgtrRoot.__WgtrChildList[node_name];
+	alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
 	return null;
     }
 
@@ -328,4 +329,14 @@ function wgtrGetRoot(node)
 	if (!node || !node.__WgtrName) 
 	    { pg_debug("wgtrGetRoot - node was not a WgtrNode!\n"); return false; }
 	return node.__WgtrRoot;
+    }
+
+function wgtrGetAttrValue(node, attrname)
+    {
+	// make sure this is actually a tree
+	if (!node || !node.__WgtrName) 
+	    { pg_debug("wgtrGetAttrValue - node was not a WgtrNode!\n"); return null; }
+	if (typeof (node[attrname]) == 'undefined')
+	    alert('Application error: "' + attrname + '" is undefined for object "' + wgtrGetName(node) + '"');
+	return node[attrname];
     }
