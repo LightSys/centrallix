@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.23 2007/03/10 17:57:48 gbeeley Exp $
+    $Id: multiquery.c,v 1.24 2007/03/15 17:39:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.24  2007/03/15 17:39:59  gbeeley
+    - (bugfix) reset the NULL flag on mqSetAttrValue
+
     Revision 1.23  2007/03/10 17:57:48  gbeeley
     - minor tweaks to INSERT function in multiquery; needed to commit in order
       to transfer work to a different location...
@@ -2094,6 +2097,7 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 	    }
 
 	/** Set the expression result to the given value. **/
+	exp->Flags &= ~(EXPR_F_NULL);
 	switch(exp->DataType)
 	    {
 	    case DATA_T_INTEGER: 
