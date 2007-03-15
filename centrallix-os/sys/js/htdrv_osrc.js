@@ -367,6 +367,7 @@ function osrc_action_modify_cb()
 		    cr[j].value = server_rec[i].value;
 		    cr[j].type = server_rec[i].type;
 		    diff = 1;
+		    //alert(cr[j].value + " != " + server_rec[i].value);
 		    }
 		}
 	

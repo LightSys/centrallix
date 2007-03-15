@@ -11,6 +11,7 @@
 
 function tbld_update(p1)
     {
+    var txt;
     var t=this.down;
     this.windowsize=(this.osrc.LastRecord-this.osrc.FirstRecord+1)<this.maxwindowsize?this.osrc.LastRecord-this.osrc.FirstRecord+1:this.maxwindowsize;
     if(this.startat+this.windowsize-1>this.osrc.LastRecord)
@@ -44,6 +45,7 @@ function tbld_update(p1)
 	this.scrolldoc.b.y=this.scrolldoc.height/2-9;
     if(t.m.length%t.q==52) for(var j=t.m.length;j>0;j-=2)
 	t.m=t.m.substring(0,j-2)+'%'+t.m.substring(j-2);
+
     for(var i=1;i<this.windowsize+1;i++)
 	{
 	if(this.osrc.FirstRecord>this.SlotToRecnum(i) || this.osrc.LastRecord<this.SlotToRecnum(i))
@@ -61,7 +63,7 @@ function tbld_update(p1)
 	    temp+="\n";
 	    confirm(temp);
 	    }
-	
+
 	this.rows[i].y=((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1));
 	this.rows[i].fg.visibility='inherit';
 	this.rows[i].visibility='inherit';
@@ -79,10 +81,16 @@ function tbld_update(p1)
 			if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
 			    this.rows[i].fg.cols[j].data='';
 			if(this.textcolor)
-			    this.rows[i].fg.cols[j].document.write('<font color='+this.textcolor+'>'+this.rows[i].fg.cols[j].data+'<font>');
+			    txt = '<font color='+this.textcolor+'>'+this.rows[i].fg.cols[j].data+'<font>';
 			else
-			    this.rows[i].fg.cols[j].document.write(this.rows[i].fg.cols[j].data);
-			this.rows[i].fg.cols[j].document.close();
+			    txt = this.rows[i].fg.cols[j].data;
+			if (this.rows[i].fg.cols[j].content != txt)
+			    {
+			    pg_serialized_write(this.rows[i].fg.cols[j], txt, null);
+			    //this.rows[i].fg.cols[j].document.write(txt);
+			    //this.rows[i].fg.cols[j].document.close();
+			    this.rows[i].fg.cols[j].content = txt;
+			    }
 			}
 		    }
 		}
@@ -126,13 +134,20 @@ function tbld_clear_layers()
 
 function tbld_select()
     {
+    var txt;
     eval('this.'+this.table.row_bgndhigh+';');
     for(var i in this.cols)
 	{
 	if(this.table.textcolorhighlight)
 	    {
-	    this.cols[i].document.write('<font color='+this.table.textcolorhighlight+'>'+this.cols[i].data+'<font>');
-	    this.cols[i].document.close();
+	    txt = '<font color='+this.table.textcolorhighlight+'>'+this.cols[i].data+'<font>';
+	    if (txt != this.cols[i].content)
+		{
+		pg_serialized_write(this.cols[i], txt, null);
+		//this.cols[i].document.write(txt);
+		//this.cols[i].document.close();
+		this.cols[i].content = txt;
+		}
 	    }
 	}
     if(tbld_current==this)
@@ -144,16 +159,23 @@ function tbld_select()
 
 function tbld_deselect()
     {
+    var txt;
     eval('this.'+(this.recnum%2?this.table.row_bgnd1:this.table.row_bgnd2)+';');
     for(var i in this.cols)
 	{
 	if(this.table.textcolorhighlight)
 	    {
 	    if(this.table.textcolor)
-		this.cols[i].document.write('<font color='+this.table.textcolor+'>'+this.cols[i].data+'<font>');
+		txt = '<font color='+this.table.textcolor+'>'+this.cols[i].data+'<font>';
 	    else
-		this.cols[i].document.write(this.cols[i].data);
-	    this.cols[i].document.close();
+		txt = this.cols[i].data;
+	    if (txt != this.cols[i].content)
+		{
+		pg_serialized_write(this.cols[i], txt, null);
+		//this.cols[i].document.write(txt);
+		//this.cols[i].document.close();
+		this.cols[i].content = txt;
+		}
 	    }
 	}
     }
@@ -193,7 +215,7 @@ function tbld_bar_click(e)
 	e.target.table.startat+=e.target.table.windowsize;
 	e.target.table.osrc.ScrollTo(e.target.table.startat+e.target.table.windowsize-1);
 	}
-    if(e.y<e.target.b.y)
+    else if(e.y<e.target.b.y)
 	{
 	e.target.table.startat-=e.target.table.windowsize;
 	if(e.target.table.startat<1) e.target.table.startat=1;
@@ -269,12 +291,14 @@ function tbld_cb_reveal(event)
     }
 
 
+
 function tbld_init(param)
     {
     var t = param.table;
     var scroll = param.scroll;
     ifc_init_widget(t);
     t.startat=1;
+    t.prevstartat=1;
     t.tablename = param.tablename;
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
@@ -337,8 +361,8 @@ function tbld_init(param)
     t.windowsize = param.windowsize > 0 ? param.windowsize : t.osrc.replicasize;
 
     // Sanity bounds checks on visible records
-    if (t.windowsize > param.height/t.rowheight)
-	t.windowsize = Math.floor(param.height/t.rowheight);
+    if (t.windowsize > (param.height - t.rowheight)/t.rowheight)
+	t.windowsize = Math.floor((param.height - t.rowheight)/t.rowheight);
     if (t.windowsize > t.osrc.replicasize)
 	t.windowsize = t.osrc.replicasize;
 
@@ -461,8 +485,8 @@ function tbld_init(param)
     t.ObjectModified=tbld_object_modified;
     
     t.Update=tbld_update;
-    t.RecnumToSlot=tbld_recnum_to_slot
-    t.SlotToRecnum=tbld_slot_to_recnum
+    t.RecnumToSlot=tbld_recnum_to_slot;
+    t.SlotToRecnum=tbld_slot_to_recnum;
 
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
@@ -649,7 +673,8 @@ function tbld_mousedown(e)
                         neworder.splice(i,1);
                 neworder.unshift(':'+colname+' asc');
                 }
-            ly.row.table.osrc.ActionOrderObject(neworder);
+	    ly.row.table.osrc.ifcProbe(ifAction).Invoke("OrderObject", {orderobj:neworder});
+            //ly.row.table.osrc.ActionOrderObject(neworder);
             }
         if(ly.subkind=='up' || ly.subkind=='bar' || ly.subkind=='down' || ly.subkind=='box')
             {
