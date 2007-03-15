@@ -34,6 +34,8 @@ function eb_clearvalue()
 	this.charOffset = 0;
 	this.cursorCol = 0;
 	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
+	eb_set_l_img(this, false);
+	eb_set_r_img(this, false);
 	}
     else
 	{
