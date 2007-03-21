@@ -14,6 +14,7 @@
 
 function dd_getvalue() 
     {
+    if (!this.VisLayer.index) return null;
     return this.Values[this.VisLayer.index].value;
     }
 
