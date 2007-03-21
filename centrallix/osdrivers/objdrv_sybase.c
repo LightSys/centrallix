@@ -70,10 +70,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.23 2005/10/12 23:00:49 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.24 2007/03/21 04:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.24  2007/03/21 04:48:09  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.23  2005/10/12 23:00:49  gbeeley
     - (bugfix) added some checks to the code that loads the types list from
       Sybase.
@@ -2157,6 +2180,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		    new_oxt = obj_internal_AllocTree();
 		    new_oxt->AllocObj = 1;
 		    new_oxt->Object = (void*)nmMalloc(sizeof(Object));
+		    memset(new_oxt->Object, 0, sizeof(Object));
 		    new_oxt->OpType = OXT_OP_CREATE;
 		    new_oxt->Status = OXT_S_VISITED;
 		    ((pObject)(new_oxt->Object))->Pathname = 
@@ -2165,6 +2189,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		    new_oxt = obj_internal_AllocTree();
 		    new_oxt->AllocObj = 1;
 		    new_oxt->Object = (void*)nmMalloc(sizeof(Object));
+		    memset(new_oxt->Object, 0, sizeof(Object));
 		    new_oxt->OpType = OXT_OP_CREATE;
 		    new_oxt->Status = OXT_S_VISITED;
 		    ((pObject)(new_oxt->Object))->Pathname = 

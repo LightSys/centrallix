@@ -48,10 +48,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.12 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: obj_attr.c,v 1.13 2007/03/21 04:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.13  2007/03/21 04:48:09  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.12  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -202,6 +225,8 @@ int
 objGetAttrType(pObject this, char* attrname)
     {
     pObjVirtualAttr va;
+    int rval, expval;
+    pExpression exp;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -228,7 +253,30 @@ objGetAttrType(pObject this, char* attrname)
 		return va->TypeFn(this->Session, this, attrname, va->Context);
 	    }
 
-    return this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
+	/** Get the type from the lowlevel driver **/
+	rval = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
+
+	if (this->EvalContext && rval == DATA_T_CODE)
+	    {
+	    if (this->Driver->GetAttrValue(this->Data, attrname, rval, POD(&exp), &(this->Session->Trx)) == 0)
+		{
+		if (exp->Flags & EXPR_F_RUNSERVER)
+		    {
+		    exp = expDuplicateExpression(exp);
+		    if (exp)
+			{
+			expBindExpression(exp, this->EvalContext, EXPR_F_RUNSERVER);
+			if ((expval = expEvalTree(exp, this->EvalContext)) >= 0)
+			    {
+			    rval = exp->DataType;
+			    }
+			expFreeExpression(exp);
+			}
+		    }
+		}
+	    }
+
+    return rval;
     }
 
 
@@ -243,6 +291,9 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     char* ptr;
     int rval;
     pObjVirtualAttr va;
+    int osmltype;
+    pExpression exp;
+    int used_expr;
 
 	ASSERTMAGIC(this, MGK_OBJECT);
 
@@ -312,8 +363,42 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		return va->GetFn(this->Session, this, attrname, va->Context, data_type, val);
 	    }
 
+	/** Get the type from the lowlevel driver **/
+	used_expr = 0;
+	osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
+	if (this->EvalContext && osmltype == DATA_T_CODE)
+	    {
+	    if (this->Driver->GetAttrValue(this->Data, attrname, osmltype, POD(&exp), &(this->Session->Trx)) == 0)
+		{
+		if (exp->Flags & EXPR_F_RUNSERVER)
+		    {
+		    exp = expDuplicateExpression(exp);
+		    if (exp)
+			{
+			expBindExpression(exp, this->EvalContext, EXPR_F_RUNSERVER);
+			if ((rval = expEvalTree(exp, this->EvalContext)) >= 0)
+			    {
+			    if (exp->DataType != data_type)
+				{
+				mssError(1,"OSML","Type mismatch accessing value '%s'", attrname);
+				expFreeExpression(exp);
+				return -1;
+				}
+			    if (exp->Flags & EXPR_F_NULL)
+				rval = 1;
+			    used_expr = 1;
+			    if (expExpressionToPod(exp, data_type, val) < 0)
+				rval = -1;
+			    }
+			expFreeExpression(exp);
+			}
+		    }
+		}
+	    }
+
 	/** Call the driver. **/
-	rval = this->Driver->GetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
+	if (!used_expr)
+	    rval = this->Driver->GetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
 
     	/** Inner/content type, and OSML has a better idea than driver? **/
 	if ((!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && rval==0 && this->Type)
@@ -442,6 +527,7 @@ objOpenAttr(pObject this, char* attrname, int mode)
 	/** Allocate memory and initialize the object descriptor **/
 	obj = (pObject)nmMalloc(sizeof(Object));
 	if (!obj) return NULL;
+	obj->EvalContext = NULL;
 	obj->VAttrs = NULL;
 	obj->Data = obj_data;
 	obj->Obj = this;
@@ -518,6 +604,22 @@ objFreeHints(pObjPresentationHints ph)
 	/** How about the list of possible values? **/
 	for(i=0;i<ph->EnumList.nItems;i++) nmSysFree(ph->EnumList.Items[i]);
 	xaDeInit(&(ph->EnumList));
+
+    return 0;
+    }
+
+
+/*** objSetEvalContext() - sets an object list (objlist) to be used in
+ *** the evaluation of property values that use runserver() expressions.
+ ***/
+int
+objSetEvalContext(pObject this, void* objlist_v)
+    {
+    pParamObjects objlist = (pParamObjects)objlist_v;
+
+	ASSERTMAGIC(this, MGK_OBJECT);
+	
+	this->EvalContext = (void*)objlist;
 
     return 0;
     }

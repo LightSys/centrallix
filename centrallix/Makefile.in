@@ -138,6 +138,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_osrc.o \
 	wgtdrv_page.o \
 	wgtdrv_pane.o \
+	wgtdrv_parameter.o \
 	wgtdrv_radiobutton.o \
 	wgtdrv_remotectl.o \
 	wgtdrv_scrollbar.o \
@@ -199,6 +200,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_hints.o \
 	   htdrv_formbar.o \
 	   htdrv_objcanvas.o \
+	   htdrv_parameter.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS)) \
 	   utility/iface_html.o

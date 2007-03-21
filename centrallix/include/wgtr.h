@@ -64,8 +64,12 @@ typedef struct
 
 typedef struct
     {
+    int				Type;		/** data type DATA_T_xxx **/
+    char			Name[32];
+    pObjPresentationHints	Hints;		/** controls to apply to the param, incl defaults **/
+    pTObjData			Value;		/** Value set by client **/
     }
-    WgtrAppParams, *pWgtrAppParams;
+    WgtrAppParam, *pWgtrAppParam;
 
 
 typedef struct _WN
@@ -151,7 +155,7 @@ char* wgtrGetRootDName(pWgtrNode widget);	/** returns the deployment name of the
 char* wgtrGetDName(pWgtrNode widget);	/** returns the deployment name of the tree node **/
 
 /** modifiers **/
-int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val); /** add a property to the widget **/
+int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int isnull); /** add a property to the widget **/
 int wgtrDeleteProperty(pWgtrNode widget, char* name);	/** deletes the property from the widget **/
 int wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val);	/** sets the widget property val **/
 int wgtrRenameProperty(pWgtrNode widget, char* oldname, char* newname);	/* used to handle deprecated property names */

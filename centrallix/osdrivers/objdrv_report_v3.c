@@ -58,10 +58,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.13 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.14 2007/03/21 04:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.14  2007/03/21 04:48:09  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.13  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -348,6 +371,7 @@ pStructInf
 rpt_internal_GetParam(pRptData inf, char* paramname)
     {
     pStructInf find_inf;
+    pStructInf attr_inf;
 
     	/** Look for it in the param override structure first **/
 	find_inf = stLookup(inf->AttrOverride, paramname);
@@ -365,7 +389,8 @@ rpt_internal_GetParam(pRptData inf, char* paramname)
 		/** Version 2: system/parameter, default attr **/
 		find_inf = stLookup(inf->Node->Data, paramname);
 		if (!find_inf) return NULL;
-		find_inf = stLookup(find_inf,"default");
+		attr_inf = stLookup(find_inf,"default");
+		if (attr_inf) find_inf = attr_inf;
 		}
 	    }
 
@@ -815,6 +840,8 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
     int inner_mode = 0;
     int outer_mode = 0;
     char* endptr;
+    pStructInf sql_inf;
+    pExpression exp = NULL;
 
 	/** Lookup the database query information **/
 	stAttrValue(stLookup(object,"source"),NULL,&src,index);
@@ -859,7 +886,29 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	/** Construct the SQL statement, doing any necessary link substitution **/
 	/** First, we find the sql itself for the query **/
 	sql=NULL;
-	stAttrValue(stLookup(qy->UserInf,"sql"),NULL,&sql,0);
+	sql_inf = stLookup(qy->UserInf, "sql");
+	if (sql_inf)
+	    {
+	    t = stGetAttrType(sql_inf, 0);
+	    if (t == DATA_T_STRING)
+		{
+		stGetAttrValue(sql_inf, t, POD(&sql), 0);
+		}
+	    else if (t == DATA_T_CODE)
+		{
+		exp = NULL;
+		stGetAttrValue(sql_inf, t, POD(&exp), 0);
+		if (exp)
+		    {
+		    exp = expDuplicateExpression(exp);
+		    expBindExpression(exp, inf->ObjList, EXPR_F_RUNSERVER);
+		    if (expEvalTree(exp, inf->ObjList) == 0)
+			{
+			expExpressionToPod(exp, DATA_T_STRING, POD(&sql));
+			}
+		    }
+		}
+	    }
 	if (!sql)
 	    {
             mssError(1,"RPT","Table/Form query source '%s' does not specify sql=", src);
@@ -1023,6 +1072,8 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    return NULL;
 	    }
 	xaDeInit(&links);
+
+	if (exp) expFreeExpression(exp);
     
     return qy;
     }
@@ -1653,36 +1704,21 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 int
 rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int container_handle)
     {
-    char* ptr;
-    int titlebar=1;
-    int style,oldstyle=0;
-    int cnt,v,colmask,len,i;
+    int i;
     pQueryConn qy = NULL;
-    char* cname;
-    char* cname2;
-    pStructInf ui;
-    int t,n;
-    char nbuf[32];
-    void* p;
+    int n;
     double dbl;
     char oldmfmt[32],olddfmt[32],oldnfmt[32];
-    char* saved_font = NULL;
     int err = 0;
     int reclimit = -1;
     double colsep = 1.0;
-    pXArray xa = (pXArray)(table->UserData);
-    pExpression exp;
     pRptActiveQueries ac;
     int reccnt;
     int rval;
-    int is_rel_cols = 1;
     int no_data_msg = 1;
-    int lower_sep = 0;
     int has_source = 0;
     double cwidths[64];
-    unsigned char cflagslist[64];
-    unsigned char hflagslist[64];
-    int table_handle, tablerow_handle, tablecell_handle, area_handle;
+    int table_handle, tablerow_handle, area_handle;
     int flags;
     double x,y,w,h;
     int numcols;
@@ -2102,7 +2138,6 @@ rpt_internal_WritePOD(pRptSession rs, int t, pObjData pod, int container_handle)
 int
 rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container_handle)
     {
-    int attr=0,oldattr=0;
     char* ptr = NULL;
     char oldmfmt[32],olddfmt[32],oldnfmt[32];
     int nl = 0;
@@ -2430,13 +2465,11 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 int
 rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container_handle)
     {
-    int i;
     pQueryConn qy;
     int rulesep=0,ffsep=0;
     char* ptr;
     int err=0;
     char oldmfmt[32],olddfmt[32], oldnfmt[32];
-    char* saved_font = NULL;
     int relylimit = -1;
     int reclimit = -1;
     int outer_mode = 0;
@@ -3009,13 +3042,9 @@ int
 rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamObjects objlist)
     {
     pParamObjects use_objlist;
-    int i,t,rval;
-    pStructInf ck_inf;
-    char* ptr;
+    int i;
     pXArray xa = NULL;
-    pExpression exp;
     int err = 0;
-    pXString subst_value;
     pStructInf expr_inf;
 
 	/** Check recursion **/
@@ -3203,17 +3232,15 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
     {
     char* title = NULL;
     char* ptr=NULL;
-    char sbuf[128];
     XHashTable queries;
     pStructInf subreq,req = inf->Node->Data;
     pObjSession s = inf->Obj->Session;
-    int i,j,n_lines;
+    int i,j;
     pQueryConn qc;
     pRptSession rs;
     int err = 0;
     pXString title_str = NULL;
     pXString subst_str;
-    time_t cur_time;
     int no_title_bar = 0;
     pExpression exp;
     char oldmfmt[32],olddfmt[32], oldnfmt[32];
@@ -3649,10 +3676,11 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     int rval;
     char* node_path;
     pSnNode node = NULL;
-    int i;
+    int i, t, n;
     pStruct paramdata;
     pStructInf newparam;
     pStructInf ct_param;
+    pStructInf find_inf;
     char* ptr;
 
     	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
@@ -3690,17 +3718,6 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	xaInit(&(inf->UserDataSlots), 16);
 	inf->NextUserDataSlot = 1;
 
-	/** Lookup attribute/param override data in the openctl **/
-	if (obj->Pathname->OpenCtl[obj->SubPtr-1])
-	    {
-	    paramdata = obj->Pathname->OpenCtl[obj->SubPtr-1];
-	    for(i=0;i<paramdata->nSubInf;i++)
-		{
-		newparam = stAddAttr(inf->AttrOverride, paramdata->SubInf[i]->Name);
-		stSetAttrValue(newparam, DATA_T_STRING, POD(&(paramdata->SubInf[i]->StrVal)), 0);
-		}
-	    }
-
 	/** Content type must be application/octet-stream or more specific. **/
 	rval = obj_internal_IsA(inf->ContentType, "application/octet-stream");
 	if (rval == OBJSYS_NOT_ISA)
@@ -3724,7 +3741,41 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 	/** Check format version **/
 	if (stAttrValue(stLookup(inf->Node->Data,"version"),&(inf->Version),NULL,0) < 0)
-	    inf->Version = 1;
+	    inf->Version = 2;
+
+	/** Lookup attribute/param override data in the openctl **/
+	if (obj->Pathname->OpenCtl[obj->SubPtr-1])
+	    {
+	    paramdata = obj->Pathname->OpenCtl[obj->SubPtr-1];
+	    for(i=0;i<paramdata->nSubInf;i++)
+		{
+		/** Determine type of attr **/
+		t = DATA_T_STRING;
+		if (inf->Version == 2)
+		    {
+		    find_inf = stLookup(inf->Node->Data, paramdata->SubInf[i]->Name);
+		    if (find_inf && stStructType(find_inf) == ST_T_SUBGROUP && !strcmp(find_inf->UsrType, "report/parameter"))
+			{
+			ptr = NULL;
+			stGetAttrValue(stLookup(find_inf, "type"), DATA_T_STRING, POD(&ptr), 0);
+			if (ptr)
+			    t = objTypeID(ptr);
+			if (t != DATA_T_INTEGER && t != DATA_T_STRING)
+			    t = DATA_T_STRING;
+			}
+		    }
+		newparam = stAddAttr(inf->AttrOverride, paramdata->SubInf[i]->Name);
+		if (t == DATA_T_INTEGER)
+		    {
+		    n = objDataToInteger(DATA_T_STRING, paramdata->SubInf[i]->StrVal, NULL);
+		    stSetAttrValue(newparam, DATA_T_INTEGER, POD(&n), 0);
+		    }
+		else
+		    {
+		    stSetAttrValue(newparam, DATA_T_STRING, POD(&(paramdata->SubInf[i]->StrVal)), 0);
+		    }
+		}
+	    }
 
 	/** Lookup forced content type param **/
 	if ((ct_param = rpt_internal_GetParam(inf, "document_format")) != NULL)
@@ -3957,26 +4008,21 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    value_inf = stLookup(find_inf,"type");
 	    ptr="";
 	    stAttrValue(value_inf,NULL,&ptr,0);
-	    if (!strcmp(ptr,"integer")) return DATA_T_INTEGER;
-	    else if (!strcmp(ptr,"string")) return DATA_T_STRING;
-	    else if (!strcmp(ptr,"datetime")) return DATA_T_DATETIME;
-	    else if (!strcmp(ptr,"double")) return DATA_T_DOUBLE;
-	    else if (!strcmp(ptr,"money")) return DATA_T_MONEY;
-	    else
-	        {
-		value_inf = stLookup(find_inf,"default");
-		if (!value_inf) return DATA_T_UNAVAILABLE;
+	    t = objTypeID(ptr);
+	    if (t >= 0) return t;
 
-		t = stGetAttrType(value_inf, 0);
-		if (stAttrIsList(value_inf))
-		    {
-		    if (t == DATA_T_INTEGER) return DATA_T_INTVEC;
-		    else return DATA_T_STRINGVEC;
-		    }
-		else
-		    {
-		    return t;
-		    }
+	    value_inf = stLookup(find_inf,"default");
+	    if (!value_inf) return DATA_T_UNAVAILABLE;
+
+	    t = stGetAttrType(value_inf, 0);
+	    if (stAttrIsList(value_inf))
+		{
+		if (t == DATA_T_INTEGER) return DATA_T_INTVEC;
+		else return DATA_T_STRINGVEC;
+		}
+	    else
+		{
+		return t;
 		}
 	    }
 
@@ -4107,14 +4153,24 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	        tmp_inf = stLookup(find_inf,"type");
 	        ptr="";
 	        stAttrValue(tmp_inf,NULL,&ptr,0);
-	        if (!strcmp(ptr,"integer"))
+		if (datatype != objTypeID(ptr))
 		    {
+		    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be %s)", attrname, ptr);
+		    return -1;
 		    }
-	        else if (!strcmp(ptr,"string"))
+		return stGetAttrValue(value_inf, datatype, POD(val), 0);
+#if 0
+	        if (!strcmp(ptr,"integer") && datatype == DATA_T_INTEGER)
 		    {
+		    return stGetAttrValue(value_inf, datatype, POD(val), 0);
 		    }
-	        else if (!strcmp(ptr,"datetime"))
+	        else if (!strcmp(ptr,"string") && datatype == DATA_T_STRING)
 		    {
+		    return stGetAttrValue(value_inf, datatype, POD(val), 0);
+		    }
+	        else if (!strcmp(ptr,"datetime") && datatype == DATA_T_DATETIME)
+		    {
+		    return stGetAttrValue(value_inf, datatype, POD(val), 0);
 		    }
 	        else if (!strcmp(ptr,"double"))
 		    {
@@ -4152,6 +4208,7 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 			stGetAttrValue(value_inf, datatype, POD(val), 0);
 			}
 		    }
+#endif
 		}
             }
 
@@ -4199,7 +4256,7 @@ rptGetNextAttr(void* inf_v, pObjTrxTree *oxt)
 	    else
 	        {
 		/** Version 2: top-level subgroup with default attr **/
-		if (stStructType(subinf) == ST_T_SUBGROUP && !strcmp(subinf->UsrType,"system/attribute"))
+		if (stStructType(subinf) == ST_T_SUBGROUP && !strcmp(subinf->UsrType,"report/parameter"))
 		    {
 		    inf->AttrID = i+1;
 		    return subinf->Name;

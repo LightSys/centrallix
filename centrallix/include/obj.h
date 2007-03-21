@@ -35,10 +35,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.34 2007/03/01 21:54:05 gbeeley Exp $
+    $Id: obj.h,v 1.35 2007/03/21 04:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.35  2007/03/21 04:48:09  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.34  2007/03/01 21:54:05  gbeeley
     - (feature) stub out code for 'createonly' presentation hints style flag
 
@@ -625,6 +648,7 @@ typedef struct _OF
     ObjectInfo	AdditionalInfo;	/* see ObjectInfo definition above */
     void*	NotifyItem;	/* pObjReqNotifyItem; not-null when notifies are active on this */
     pObjVirtualAttr VAttrs;	/* virtual attributes - call external fn()'s to obtain the data */
+    void*	EvalContext;	/* a pParamObjects list -- for evaluation of runserver() exprs */
     }
     Object, *pObject;
 
@@ -862,7 +886,7 @@ int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
 
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);
-int objGetAttrValueWithContext(pObject this, char* attrname, pObjData val, void* objlist);
+int objSetEvalContext(pObject this, void* objlist);
 #if 1
 int objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
 int objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
@@ -921,6 +945,8 @@ char* objDataToWords(int data_type, void* data_ptr);
 int objCopyData(pObjData src, pObjData dst, int type);
 int objTypeID(char* name);
 int objDebugDate(pDateTime dt);
+int objDataFromString(pObjData pod, int type, char* str);
+
 
 /** objectsystem replication services - open object notification (Rn) system **/
 int objRequestNotify(pObject this, int (*callback_fn)(), void* context, int what);

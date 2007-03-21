@@ -40,6 +40,7 @@
 #include "obj.h"
 #include "wgtr.h"
 #include "apos.h"
+#include "hints.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/magic.h"
@@ -48,13 +49,17 @@
 #include "ht_render.h"
 
 
+#define WGTR_MAX_PARAMS		(16)
+
+
 /** Generic property struct **/
 typedef struct
     {
     int		    Magic;			/** Magic Number **/
     void*	    Reserved;
     char	    Name[64];
-    int		    Type;
+    short	    Type;
+    short	    Flags;
     ObjData	    Val;
     union
 	{
@@ -67,6 +72,8 @@ typedef struct
 	Buf;	/** buffer for various data types **/
     } ObjProperty, *pObjProperty;
 
+
+#define WGTR_PROP_F_NULL	(1)
 
 
 /** Widget Driver information structure **/
@@ -110,6 +117,134 @@ wgtr_internal_LookupDriver(pWgtrNode node)
 	    mssError(1, "WGTR", "No driver registered for type '%s'", node->Type+7);
 
     return drv;
+    }
+
+
+int
+wgtr_param_Free(pWgtrAppParam param)
+    {
+
+	if (param->Hints)
+	    objFreeHints(param->Hints);
+	if (param->Value)
+	    ptodFree(param->Value);
+	nmFree(param, sizeof(WgtrAppParam));
+
+    return 0;
+    }
+
+
+
+/*** wgtrParseParameter - parse one 'widget/parameter' and build the
+ *** corresponding data structure
+ ***/
+pWgtrAppParam
+wgtrParseParameter(pObject obj, pStruct inf)
+    {
+    pWgtrAppParam param = NULL;
+    char* str;
+    pStruct find_inf;
+    int t;
+
+	/** Allocate **/
+	param = (pWgtrAppParam)nmMalloc(sizeof(WgtrAppParam));
+	if (!param) goto error;
+
+	/** Set up hints... OK if null **/
+	param->Hints = hntObjToHints(obj);
+
+	/** Allocate the typed obj data **/
+	param->Value = ptodAllocate();
+	if (!param->Value)
+	    goto error;
+
+	/** Get name, type, and value **/
+	if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&str)) != 0)
+	    goto error;
+	strtcpy(param->Name, str, sizeof(param->Name));
+	if (objGetAttrValue(obj, "type", DATA_T_STRING, POD(&str)) != 0)
+	    {
+	    mssError(0, "WGTR", "Parameter '%s' must have a valid type", param->Name);
+	    goto error;
+	    }
+	t = objTypeID(str);
+	if (t < 0)
+	    {
+	    mssError(0, "WGTR", "Invalid type '%s' for parameter '%s'", str, param->Name);
+	    goto error;
+	    }
+	param->Value->DataType = t;
+	find_inf = stLookup_ne(inf, param->Name);
+	if (find_inf)
+	    {
+	    /** Use value from client **/
+	    str = NULL;
+	    stAttrValue_ne(find_inf, &str);
+	    if (str)
+		{
+		if (objDataFromString(&(param->Value->Data), param->Value->DataType, str) < 0)
+		    {
+		    mssError(1, "WGTR", "Parameter '%s' specified incorrectly", param->Name);
+		    goto error;
+		    }
+		param->Value->Flags &= ~(DATA_TF_NULL);
+		}
+	    else
+		{
+		mssError(1, "WGTR", "Parameter '%s' specified incorrectly", param->Name);
+		goto error;
+		}
+	    }
+
+	/** set default value and/or verify that the given value is valid **/
+	if (hntVerifyHints(param->Hints, param->Value, &str, NULL) < 0)
+	    {
+	    mssError(1, "WGTR", "Parameter '%s' specified incorrectly: %s", param->Name, str);
+	    goto error;
+	    }
+
+	return param;
+
+    error:
+	if (param)
+	    wgtr_param_Free(param);
+	return NULL;
+    }
+
+
+
+int
+wgtr_param_GetAttrType(pWgtrAppParam params[], char* attrname)
+    {
+    int i;
+
+	for(i=0;i<WGTR_MAX_PARAMS;i++)
+	    if (params[i] && !strcmp(attrname, params[i]->Name))
+		return ptodTypeOf(params[i]->Value);
+
+    return -1;
+    }
+
+
+int
+wgtr_param_GetAttrValue(pWgtrAppParam params[], char* attrname, int type, pObjData value)
+    {
+    int i;
+
+	for(i=0;i<WGTR_MAX_PARAMS;i++)
+	    {
+	    if (params[i] && !strcmp(attrname, params[i]->Name))
+		{
+		if (ptodTypeOf(params[i]->Value) != type && type != DATA_T_ANY)
+		    return -1;
+		if (params[i]->Value->Flags & DATA_TF_NULL)
+		    return 1;
+		objCopyData(&(params[i]->Value->Data), value, params[i]->Value->DataType);
+		return 0;
+		}
+	    }
+
+    return -1;
     }
 
 
@@ -177,7 +312,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 		    }
 		}
 
-	    wgtrAddProperty(tree, p->Name, t, &val);
+	    wgtrAddProperty(tree, p->Name, t, &val, 0);
 	    if (code) expFreeExpression(code);
 	    }
 
@@ -269,54 +404,92 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
 
 
 pWgtrNode 
-wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct params)
+wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params)
     {
-    pWgtrNode	this_node, child_node;
+    pWgtrNode	this_node = NULL, child_node;
+    pWgtrAppParam param;
     char   name[64], type[64], * prop_name;
     int rx, ry, rwidth, rheight;
     int flx, fly, flwidth, flheight;
     int prop_type;
     char* class;
     ObjData	val;
-    pObject child_obj;
-    pObjQuery qy;
+    pObject child_obj = NULL;
+    pObjQuery qy = NULL;
     pWgtrNode my_template = template;
+    pWgtrAppParam paramlist[WGTR_MAX_PARAMS];
+    int n_params;
+    int created_objlist = 0;
+    int i;
+    int rval;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
 	    mssError(1,"WGTR","Could not load widget tree: resource exhaustion occurred");
-	    return NULL;
+	    goto error;
 	    }
 
 	/** check the outer_type of obj tobe sure it's a widget **/
 	if (objGetAttrValue(obj, "outer_type", DATA_T_STRING, &val) < 0)
 	    {
 	    mssError(0, "WGTR", "Couldn't get outer_type for %s", obj->Pathname->Pathbuf);
-	    return NULL;
+	    goto error;
 	    }
 	
 	if (strncmp(val.String, "widget/", 7) != 0)
 	    {
 	    mssError(1, "WGTR", "Object %s is not a widget", obj->Pathname->Pathbuf);
-	    return NULL;
+	    goto error;
 	    }
 	strncpy(type, val.String, 64);
+
+	/** get the name from the OSML **/
+	if (objGetAttrValue(obj, "name", DATA_T_STRING, &val) < 0)
+	    {
+	    mssError(0, "WGTR", "Bark!  Couldn't get name of %s", obj->Pathname->Pathbuf);
+	    goto error;
+	    }
+	strncpy(name, val.String, 64);
 
 	/** Before we do anything else, examine any application parameters
 	 ** that could be present.
 	 **/
-	if (!context_objlist)
+	if (!context_objlist && (!strcmp(type,"widget/page") || !strcmp(type,"widget/component-decl")))
 	    {
+	    context_objlist = expCreateParamList();
+	    if (!context_objlist) 
+		goto error;
+	    n_params = 0;
+	    memset(paramlist, 0, sizeof(paramlist));
+	    created_objlist = 1;
+	    expAddParamToList(context_objlist, "this", (void*)paramlist, 0);
+	    expSetParamFunctions(context_objlist, "this", wgtr_param_GetAttrType, wgtr_param_GetAttrValue, NULL);
+	    if ( (qy = objOpenQuery(obj, ":outer_type = 'widget/parameter'", NULL, NULL, NULL)) != NULL)
+		{
+		while ( (child_obj = objQueryFetch(qy, O_RDONLY)) != NULL)
+		    {
+		    if (n_params >= sizeof(paramlist)/sizeof(pWgtrAppParam))
+			{
+			mssError(1, "WGTR", "Too many parameters for application '%s'", name);
+			goto error;
+			}
+		    if (context_objlist)
+			{
+			param = wgtrParseParameter(child_obj, client_params);
+			if (!param)
+			    goto error;
+			paramlist[n_params] = param;
+			n_params++;
+			}
+		    objClose(child_obj);
+		    child_obj = NULL;
+		    }
+		objQueryClose(qy);
+		qy = NULL;
+		}
+	    objSetEvalContext(obj, context_objlist);
 	    }
-
-	/** get the name, r_*, fl_*, from calls to the OSML **/
-	if (objGetAttrValue(obj, "name", DATA_T_STRING, &val) < 0)
-	    {
-	    mssError(0, "WGTR", "couldn't get 'type' for %s", obj->Pathname->Pathbuf);
-	    return NULL;
-	    }
-	strncpy(name, val.String, 64);
 
 	/** Load a new template? **/
 	if (objGetAttrValue(obj, "widget_template", DATA_T_STRING, &val) == 0)
@@ -325,7 +498,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	    if (!my_template)
 		{
 		mssError(0, "WGTR", "Could not load widget_template '%s'", val.String);
-		return NULL;
+		goto error;
 		}
 	    }
 
@@ -334,7 +507,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, -1, -1)) == NULL)
 	    {
 	    mssError(0, "WGTR", "Couldn't create node %s", name);
-	    return NULL;
+	    goto error;
 	    }
 
 	/** Copy in template data **/
@@ -354,7 +527,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 		goto error;
 		}
 	    /** get the value **/ 
-	    if ( objGetAttrValue(obj, prop_name, prop_type, &val) < 0)
+	    if ((rval = objGetAttrValue(obj, prop_name, prop_type, &val)) < 0)
 		{
 		mssError(0, "WGTR", "Couldn't get value for property %s", prop_name);
 		goto error;
@@ -373,9 +546,9 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
 		else if (!strcmp(prop_name,"fl_width")) this_node->fl_width = val.Integer;
 		else if (!strcmp(prop_name,"fl_height")) this_node->fl_height = val.Integer;
-		else wgtrAddProperty(this_node, prop_name, prop_type, &val);
+		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 		}
-	    else wgtrAddProperty(this_node, prop_name, prop_type, &val);
+	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 
 	    /** get the name of the next one **/
 	    prop_name = objGetNextAttr(obj);
@@ -402,17 +575,17 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	    {
 	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
 		{
-		if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,my_template,this_node->Root, context_objlist, params)) != NULL) wgtrAddChild(this_node, child_node);
+		if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,my_template,this_node->Root, context_objlist, client_params)) != NULL) wgtrAddChild(this_node, child_node);
 		else
 		    {
 		    mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
-		    objClose(child_obj);
-		    objQueryClose(qy);
 		    goto error;
 		    }
 		objClose(child_obj);
+		child_obj = NULL;
 		}
 	    objQueryClose(qy);
+	    qy = NULL;
 	    }
 
 	/** Free the template if we created it here. **/
@@ -425,7 +598,18 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
     error:
 	if (my_template != template)
 	    wgtrFree(my_template);
-	wgtrFree(this_node);
+	if (this_node)
+	    wgtrFree(this_node);
+	if (created_objlist)
+	    {
+	    objSetEvalContext(obj, NULL);
+	    expFreeParamList(context_objlist);
+	    for(i=0;i<n_params;i++) wgtr_param_Free(paramlist[i]);
+	    }
+	if (child_obj)
+	    objClose(child_obj);
+	if (qy)
+	    objQueryClose(qy);
 	return NULL;
     }
 
@@ -444,10 +628,10 @@ void wgtr_internal_FreeProperty(pObjProperty prop)
 	switch (prop->Type)
 	    {
 	    case DATA_T_STRING:
-		nmSysFree(prop->Val.String);
+		if (prop->Val.String) nmSysFree(prop->Val.String);
 		break;
 	    case DATA_T_CODE:
-		expFreeExpression((pExpression)prop->Val.Generic);
+		if (prop->Val.Generic) expFreeExpression((pExpression)prop->Val.Generic);
 		break;
 	    }
 	nmFree(prop, sizeof(ObjProperty));
@@ -522,7 +706,7 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	if (!strcmp(name, "name")) return DATA_T_STRING;
-	else if (!strcmp(name, "type") || !strcmp(name, "outer_type")) return DATA_T_STRING;
+	else if (!strcmp(name, "outer_type")) return DATA_T_STRING;
 	else if (!strncmp(name, "r_",2) || !strncmp(name, "fl_", 3)) return DATA_T_INTEGER;
 	else if (!strcmp(name, "x") || !strcmp(name, "y") || !strcmp(name, "width") || !strcmp(name, "height"))
 	    return DATA_T_INTEGER;
@@ -570,7 +754,7 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 	else if (datatype == DATA_T_STRING)
 	    {
 	    if (!strcmp(name, "name")) { val->String = widget->Name; return 0; }
-	    else if (!strcmp(name, "type") || !strcmp(name, "outer_type")) { val->String = widget->Type; return 0; }
+	    else if (!strcmp(name, "outer_type")) { val->String = widget->Type; return 0; }
 	    }
 	    
 	/** if we didn't find it there, loop through the list of properties until we do **/
@@ -581,6 +765,8 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 	    if (prop && !strcmp(name, prop->Name)) break;
 	    }
 	if (i == count || datatype != prop->Type) return -1;
+
+	if (prop->Flags & WGTR_PROP_F_NULL) return 1;
 
 	objCopyData(&(prop->Val), val, prop->Type);
 
@@ -610,7 +796,7 @@ wgtrNextPropertyName(pWgtrNode widget)
 
     
 int 
-wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
+wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int isnull)
     /** XXX Should this check for duplicates? **/
     {
     pObjProperty prop, old_prop;
@@ -623,40 +809,48 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 	memset(prop, 0, sizeof(ObjProperty));
 	strncpy(prop->Name, name, 64);
 	prop->Type = datatype;
-	/** Make sure the value is assigned correctly. A little nasty when these
-	 ** two interfaces meet
-	 **/
-	switch (datatype)
-	    /** XXX Is this right? XXX **/
+
+	if (isnull)
 	    {
-	    case DATA_T_INTEGER: 
-		prop->Val.Integer = val->Integer; 
-		break;
-	    case DATA_T_STRING: 
-		prop->Val.String = nmSysStrdup(val->String); 
-		break;
-	    case DATA_T_DOUBLE: 
-		prop->Val.Double = val->Double; 
-		break;
-	    case DATA_T_DATETIME: 
-		prop->Buf.Date = *(val->DateTime);
-		prop->Val.DateTime = &(prop->Buf.Date);
-		break;	
-	    case DATA_T_MONEY:
-		prop->Buf.Money = *(val->Money);
-		prop->Val.Money = &(prop->Buf.Money);
-		break;
-	    case DATA_T_INTVEC:
-		prop->Buf.IV = *(val->IntVec);
-		prop->Val.IntVec = &(prop->Buf.IV);
-		break;
-	    case DATA_T_STRINGVEC:
-		prop->Buf.SV = *(val->StringVec);
-		prop->Val.StringVec = &(prop->Buf.SV);
-		break;
-	    case DATA_T_CODE:
-		prop->Val.Generic = (void*)expDuplicateExpression((pExpression)val->Generic);    
-		break;
+	    prop->Flags |= WGTR_PROP_F_NULL;
+	    }
+	else
+	    {
+	    /** Make sure the value is assigned correctly. A little nasty when these
+	     ** two interfaces meet
+	     **/
+	    switch (datatype)
+		/** XXX Is this right? XXX **/
+		{
+		case DATA_T_INTEGER: 
+		    prop->Val.Integer = val->Integer; 
+		    break;
+		case DATA_T_STRING: 
+		    prop->Val.String = nmSysStrdup(val->String); 
+		    break;
+		case DATA_T_DOUBLE: 
+		    prop->Val.Double = val->Double; 
+		    break;
+		case DATA_T_DATETIME: 
+		    prop->Buf.Date = *(val->DateTime);
+		    prop->Val.DateTime = &(prop->Buf.Date);
+		    break;	
+		case DATA_T_MONEY:
+		    prop->Buf.Money = *(val->Money);
+		    prop->Val.Money = &(prop->Buf.Money);
+		    break;
+		case DATA_T_INTVEC:
+		    prop->Buf.IV = *(val->IntVec);
+		    prop->Val.IntVec = &(prop->Buf.IV);
+		    break;
+		case DATA_T_STRINGVEC:
+		    prop->Buf.SV = *(val->StringVec);
+		    prop->Val.StringVec = &(prop->Buf.SV);
+		    break;
+		case DATA_T_CODE:
+		    prop->Val.Generic = (void*)expDuplicateExpression((pExpression)val->Generic);    
+		    break;
+		}
 	    }
 
 	/** Remove existing property? **/
@@ -1270,6 +1464,7 @@ wgtrInitialize()
 	wgtvblInitialize();
 	wgtwinInitialize();
 	wgttplInitialize();
+	wgtpaInitialize();
 
     return 0;
     }

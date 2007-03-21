@@ -47,10 +47,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: stparse.c,v 1.14 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: stparse.c,v 1.15 2007/03/21 04:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/stparse.c,v $
 
     $Log: stparse.c,v $
+    Revision 1.15  2007/03/21 04:48:09  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.14  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -510,6 +533,7 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 	    }
 
 	/** Correct type requested? **/
+	if (find_exp->Flags & EXPR_F_NULL) return 1;
 	if (type != DATA_T_ANY && type != find_exp->DataType) return -1;
 
     return expExpressionToPod(find_exp, find_exp->DataType, pod);

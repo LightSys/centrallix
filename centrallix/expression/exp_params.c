@@ -46,10 +46,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.7 2007/03/04 05:04:47 gbeeley Exp $
+    $Id: exp_params.c,v 1.8 2007/03/21 04:48:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.8  2007/03/21 04:48:08  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.7  2007/03/04 05:04:47  gbeeley
     - (change) This is a change to the way that expressions track which
       objects they were last evaluated against.  The old method was causing
@@ -134,6 +157,27 @@ expFreeParamList(pParamObjects this)
 
 	/** Free the structure. **/
 	nmFree(this, sizeof(ParamObjects));
+
+    return 0;
+    }
+
+
+/*** expFreeParamListWithCB - free the parameter list, but also call a callback
+ *** function on each param that is in the list.
+ ***/
+int
+expFreeParamListWithCB(pParamObjects this, int (*free_fn)())
+    {
+    int i;
+
+	/** Go through em **/
+	for(i=0;i<EXPR_MAX_PARAMS;i++) if (this->Names[i])
+	    {
+	    free_fn(this->Objects[i]);
+	    }
+
+	/** Free it up **/
+	expFreeParamList(this);
 
     return 0;
     }

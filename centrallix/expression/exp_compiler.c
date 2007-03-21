@@ -47,10 +47,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_compiler.c,v 1.15 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: exp_compiler.c,v 1.16 2007/03/21 04:48:08 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_compiler.c,v $
 
     $Log: exp_compiler.c,v $
+    Revision 1.16  2007/03/21 04:48:08  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.15  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -369,7 +392,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				}
 			    else
 			        {
-				if (!strcmp(etmp->String,"NULL")) etmp->Flags |= (EXPR_F_NULL | EXPR_F_PERMNULL);
+				if (!strcasecmp(etmp->String,"NULL")) etmp->Flags |= (EXPR_F_NULL | EXPR_F_PERMNULL);
 				mlxHoldToken(lxs);
 				}
 			    }

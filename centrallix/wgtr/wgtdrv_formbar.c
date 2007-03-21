@@ -57,7 +57,7 @@ wgtfb_internal_AddStringProp(pWgtrNode node, char* name, char* str)
     ObjData val;
 	
 	val.String = str;
-	return wgtrAddProperty(node, name, DATA_T_STRING, &val);
+	return wgtrAddProperty(node, name, DATA_T_STRING, &val, 0);
     }
 
 
@@ -105,9 +105,9 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    return -1;
 	    }
 	val.String = "raised";
-	wgtrAddProperty(subtree, "style", DATA_T_STRING, &val);
+	wgtrAddProperty(subtree, "style", DATA_T_STRING, &val, 0);
 	val.String = "/sys/images/grey_gradient3.png";
-	wgtrAddProperty(subtree, "background", DATA_T_STRING, &val);
+	wgtrAddProperty(subtree, "background", DATA_T_STRING, &val, 0);
 	wgtrAddChild(this, subtree);
 	wgtrScheduleVerify(s, subtree);
 	/** Next the formstatus widget **/
@@ -118,7 +118,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    return -1;
 	    }
 	val.String = "largeflat";
-	wgtrAddProperty(newnode, "style", DATA_T_STRING, &val);
+	wgtrAddProperty(newnode, "style", DATA_T_STRING, &val, 0);
 	wgtrAddChild(subtree, newnode);
 	wgtrScheduleVerify(s, newnode);
 
@@ -137,7 +137,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	snprintf(exp_txt, 256, "runclient(:%s:recid > 1)", form_name);
 	if ( (val.Generic = expCompileExpression(exp_txt, NULL, 0, 0)) != NULL)
 	    {
-	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val);
+	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val, 0);
 	    expFreeExpression(val.Generic);
 	    }
 
@@ -172,7 +172,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	snprintf(exp_txt, 256, "runclient(:%s:recid > 1)", form_name);
 	if ( (val.Generic = expCompileExpression(exp_txt, NULL, 0, 0)) != NULL)
 	    {
-	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val);
+	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val, 0);
 	    expFreeExpression(val.Generic);
 	    }
 
@@ -207,7 +207,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	snprintf(exp_txt, 256, "runclient(not (:%s:recid == :%s:lastrecid))", form_name, form_name);
 	if ( (val.Generic = expCompileExpression(exp_txt, NULL, 0, 0)) != NULL)
 	    {
-	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val);
+	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val, 0);
 	    expFreeExpression(val.Generic);
 	    }
 
@@ -242,7 +242,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	snprintf(exp_txt, 256, "runclient(not (:%s:recid == :%s:lastrecid))", form_name, form_name);
 	if ( (val.Generic = expCompileExpression(exp_txt, NULL, 0, 0)) != NULL)
 	    {
-	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val);
+	    wgtrAddProperty(newnode, "enabled", DATA_T_CODE, &val, 0);
 	    expFreeExpression(val.Generic);
 	    }
 

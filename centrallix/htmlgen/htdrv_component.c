@@ -10,6 +10,7 @@
 #include "cxlib/mtsession.h"
 #include "hints.h"
 #include "cxlib/cxsec.h"
+#include "stparse_ne.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,10 +46,33 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.4 2007/03/10 02:57:40 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.5 2007/03/21 04:48:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.5  2007/03/21 04:48:09  gbeeley
+    - (feature) component multi-instantiation.
+    - (feature) component Destroy now works correctly, and "should" free the
+      component up for the garbage collector in the browser to clean it up.
+    - (feature) application, component, and report parameters now work and
+      are normalized across those three.  Adding "widget/parameter".
+    - (feature) adding "Submit" action on the form widget - causes the form
+      to be submitted as parameters to a component, or when loading a new
+      application or report.
+    - (change) allow the label widget to receive obscure/reveal events.
+    - (bugfix) prevent osrc Sync from causing an infinite loop of sync's.
+    - (bugfix) use HAVING clause in an osrc if the WHERE clause is already
+      spoken for.  This is not a good long-term solution as it will be
+      inefficient in many cases.  The AML should address this issue.
+    - (feature) add "Please Wait..." indication when there are things going
+      on in the background.  Not very polished yet, but it basically works.
+    - (change) recognize both null and NULL as a null value in the SQL parsing.
+    - (feature) adding objSetEvalContext() functionality to permit automatic
+      handling of runserver() expressions within the OSML API.  Facilitates
+      app and component parameters.
+    - (feature) allow sql= value in queries inside a report to be runserver()
+      and thus dynamically built.
+
     Revision 1.4  2007/03/10 02:57:40  gbeeley
     - (bugfix) setup graft point for static components as well as dynamically
       loaded ones, and allow nested components by saving and restoring previous
@@ -91,6 +115,69 @@ static struct
     HTCMP;
 
 
+/*** htcmp_internal_CreateParams() - scan the instantiation for
+ *** parameters, and build a pStruct parameter tree to pass to
+ *** the wgtr rendering.
+ ***/
+pStruct
+htcmp_internal_CreateParams(pWgtrNode tree)
+    {
+    pStruct params = NULL;
+    pStruct attr_inf;
+    char* attrname;
+    char* reserved_attrs[] = {"x", "y", "width", "height", "name", "inner_type", "outer_type",
+	    "annotation", "content_type", "path", "mode", NULL};
+    int i;
+    int found;
+    int t;
+    ObjData od;
+
+	/** Create the struct **/
+	params = stCreateStruct_ne("parameters");
+
+	/** Scan and add attributes **/
+	attrname = wgtrFirstPropertyName(tree);
+	while(attrname)
+	    {
+	    found=0;
+	    for(i=0;reserved_attrs[i];i++)
+		{
+		if (!strcmp(attrname, reserved_attrs[i]))
+		    {
+		    /** Reserved attr.  Don't add it **/
+		    found = 1;
+		    break;
+		    }
+		}
+	    if (!found && cxsecVerifySymbol(attrname) >= 0)
+		{
+		/** Not a reserved attr.  Add it if we can. **/
+		t = wgtrGetPropertyType(tree, attrname);
+		if (t >= 0)
+		    {
+		    if (wgtrGetPropertyValue(tree, attrname, t, &od) == 0)
+			{
+			attr_inf = stAddAttr_ne(params, attrname);
+			switch(t)
+			    {
+			    case DATA_T_INTEGER:
+			    case DATA_T_DOUBLE:
+				stAddValue_ne(attr_inf, objDataToStringTmp(t, &od, 0));
+				break;
+			    case DATA_T_STRING:
+				stAddValue_ne(attr_inf, objDataToStringTmp(t, od.String, 0));
+				break;
+			    }
+			}
+		    }
+		}
+	    attrname = wgtrNextPropertyName(tree);
+	    }
+
+    return params;
+    }
+
+
 /*** htcmpRender - generate the HTML code for the component.
  ***/
 int
@@ -106,8 +193,11 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     int rval = -1;
     WgtrClientInfo wgtr_params;
     int is_static;
+    int allow_multi, auto_destroy;
     char* old_graft = NULL;
     char sbuf[128];
+    pStruct params = NULL;
+    int i,j;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -150,8 +240,19 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    is_static = 1;
 
+	/** multiple-instantiation? **/
+	allow_multi = htrGetBoolean(tree, "multiple_instantiation", 0);
+	if (allow_multi < 0) return -1;
+
+	/** multiple-instantiation? **/
+	auto_destroy = htrGetBoolean(tree, "auto_destroy", 1);
+	if (auto_destroy < 0) return -1;
+
 	/** Include the js module **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_component.js", 0);
+
+	/** Get list of parameters **/
+	params = htcmp_internal_CreateParams(tree);
 
 	/** If static mode, load the component **/
 	if (is_static)
@@ -162,7 +263,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%s\"], is_static:true});\n",
+		    "    cmp_init({node:nodes[\"%s\"], is_static:true, allow_multi:false, auto_destroy:false});\n",
 		    name);
 
 	    /** Open and parse the component **/
@@ -172,7 +273,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, NULL);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, params);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
@@ -212,8 +313,26 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%s\"], is_static:false, path:\"%s\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), \"cmp%d\")});\n",
-		    name, cmp_path, name, id);
+		    "    cmp_init({node:nodes[\"%s\"], is_static:false, allow_multi:%d, auto_destroy:%d, path:\"%s\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), \"cmp%d\")});\n",
+		    name, allow_multi, auto_destroy, cmp_path, name, id);
+
+	    /** Set Params **/
+	    if (params)
+		{
+		for(i=0;i<params->nSubInf;i++)
+		    {
+		    htrAddScriptInit_va(s, "    nodes[\"%s\"].AddParam(\"%s\",%s",
+			name, params->SubInf[i]->Name, params->SubInf[i]->StrVal?"\"":"null);\n");
+		    if (params->SubInf[i]->StrVal)
+			{
+			for(j=0;j<strlen(params->SubInf[i]->StrVal);j++)
+			    {
+			    htrAddScriptInit_va(s, "%2.2x", params->SubInf[i]->StrVal[j]);
+			    }
+			htrAddScriptInit(s, "\");\n");
+			}
+		    }
+		}
 
 	    /** Dynamic mode -- load from client **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
@@ -225,6 +344,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
     out:
 	/** Clean up **/
+	if (params)
+	    stFreeInf_ne(params);
 	if (s->GraftPoint && old_graft)
 	    {
 	    nmSysFree(s->GraftPoint);
