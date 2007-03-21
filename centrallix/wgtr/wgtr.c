@@ -94,6 +94,8 @@ struct
     } WGTR;
 
 
+pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
+int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
 
 pWgtrDriver
 wgtr_internal_LookupDriver(pWgtrNode node)
@@ -403,10 +405,84 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
     }
 
 
-pWgtrNode 
-wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params)
+int
+wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
-    pWgtrNode	this_node = NULL, child_node;
+    pObject child_obj = NULL;
+    pObjQuery qy = NULL;
+    int t, rval;
+    pWgtrNode child_node;
+    ObjData val;
+    int nxo=0, nyo=0;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"WGTR","Could not load widget tree: resource exhaustion occurred");
+	    goto error;
+	    }
+
+	/** loop through subobjects, and call ourselves recursively to add
+	 ** child nodes.
+	 **/
+	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
+	    {
+	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
+		{
+		/** Conditional rendering? **/
+		t = objGetAttrType(child_obj, "condition");
+		if (t != DATA_T_INTEGER || (rval=objGetAttrValue(child_obj, "condition", t, &val)) != 0 || val.Integer != 0)
+		    {
+		    /** Try to add it. **/
+		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,template,this_node->Root, context_objlist, client_params, xoffset, yoffset)) != NULL)
+			{
+			wgtrAddChild(this_node, child_node);
+			}
+		    else
+			{
+			mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
+			goto error;
+			}
+		    }
+		else if (t == DATA_T_INTEGER && rval == 0 && val.Integer == 0)
+		    {
+		    /** Add children of child_obj anyhow? **/
+		    t = objGetAttrType(child_obj, "cond_add_children");
+		    if (t == DATA_T_INTEGER || t == DATA_T_STRING)
+			{
+			rval = objGetAttrValue(child_obj, "cond_add_children", t, &val);
+			if (rval == 0 && ((t == DATA_T_INTEGER && val.Integer != 0) ||
+				(t == DATA_T_STRING && !strcasecmp(val.String, "yes"))))
+			    {
+			    objGetAttrValue(child_obj, "x", DATA_T_INTEGER, POD(&nxo));
+			    objGetAttrValue(child_obj, "y", DATA_T_INTEGER, POD(&nyo));
+			    if (wgtr_internal_AddChildren(child_obj, this_node, template, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
+				goto error;
+			    }
+			}
+		    }
+		objClose(child_obj);
+		child_obj = NULL;
+		}
+	    objQueryClose(qy);
+	    qy = NULL;
+	    }
+
+	return 0;
+
+    error:
+	if (child_obj)
+	    objClose(child_obj);
+	if (qy)
+	    objQueryClose(qy);
+	return -1;
+    }
+
+
+pWgtrNode 
+wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
+    {
+    pWgtrNode	this_node = NULL;
     pWgtrAppParam param;
     char   name[64], type[64], * prop_name;
     int rx, ry, rwidth, rheight;
@@ -553,6 +629,15 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	    /** get the name of the next one **/
 	    prop_name = objGetNextAttr(obj);
 	    }
+
+	/** Add offsets? **/
+	if (this_node->r_x >= 0) this_node->r_x += xoffset;
+	if (this_node->r_y >= 0) this_node->r_y += yoffset;
+	if (!(this_node->Flags & WGTR_F_NONVISUAL))
+	    {
+	    xoffset = 0;
+	    yoffset = 0;
+	    }
 	
 	/** initialize all other struct members **/
 	this_node->x = this_node->r_x;
@@ -568,25 +653,9 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	else
 	    this_node->Root = this_node;
 
-	/** loop through subobjects, and call ourselves recursively to add
-	 ** child nodes.
-	 **/
-	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
-	    {
-	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
-		{
-		if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,my_template,this_node->Root, context_objlist, client_params)) != NULL) wgtrAddChild(this_node, child_node);
-		else
-		    {
-		    mssError(0, "WGTR", "Couldn't parse subobject '%s'", child_obj->Pathname->Pathbuf);
-		    goto error;
-		    }
-		objClose(child_obj);
-		child_obj = NULL;
-		}
-	    objQueryClose(qy);
-	    qy = NULL;
-	    }
+	/** Add all of the child widgets under this one. **/
+	if (wgtr_internal_AddChildren(obj, this_node, my_template, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
+	    goto error;
 
 	/** Free the template if we created it here. **/
 	if (my_template != template)
@@ -617,7 +686,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 pWgtrNode
 wgtrParseOpenObject(pObject obj, pStruct params)
     {
-    return wgtr_internal_ParseOpenObject(obj, NULL, NULL, NULL, params);
+    return wgtr_internal_ParseOpenObject(obj, NULL, NULL, NULL, params, 0, 0);
     }
 
 
