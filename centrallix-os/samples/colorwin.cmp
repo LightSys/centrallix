@@ -1,0 +1,83 @@
+$Version=2$
+colorwin "widget/component-decl"
+    {
+    // Component declared design width/height
+    width = 600;
+    height = 434;
+    visual = yes;
+
+    backcolor "widget/parameter"
+	{
+	type=string;
+	default=white;
+	allowchars="abcdefghijklmnopqrstuvwxyz0123456789#";
+	}
+
+    win_title "widget/parameter"
+	{
+	type=string;
+	default="Default Title";
+	badchars="<>&'\"";
+	}
+
+    whatwidget "widget/parameter"
+	{
+	type=string;
+	default="none selected";
+	badchars="<>&'\"";
+	}
+
+    // And here is what is inside the component...
+    mainwin "widget/childwindow"
+	{
+	x=0;y=0;width=600;height=434;
+	//hdr_bgcolor='#e0e0e0';
+	hdr_background='/sys/images/window_hdr.png';
+	bgcolor=runserver(:this:backcolor);
+	title=runserver(:this:win_title);
+	visible=true;
+	style=dialog;
+
+	none_label "widget/label"
+	    {
+	    condition=runserver(:this:whatwidget == 'none selected');
+	    x=0;y=200;width=598;height=20;
+	    fgcolor=runserver(condition(:this:backcolor == '#000000', "white", "black"));
+	    text="You did not select a widget.";
+	    align=center;
+	    }
+
+	apane "widget/pane"
+	    {
+	    condition=runserver(:this:whatwidget == 'pane');
+	    x=10; y=10; width=578; height=388;
+	    style = raised;
+	    bgcolor="#808080";
+	    }
+
+	animgborder "widget/pane"
+	    {
+	    x=100;y=158;width=398;height=90;
+	    style=raised;
+	    condition=runserver(:this:whatwidget == 'imagebdr');
+	    cond_add_children=yes;
+	    animage "widget/image"
+		{
+		condition=runserver(substring(:this:whatwidget,1,5) == 'image');
+		x=12;y=12;width=374; height=66;
+		source="/sys/images/centrallix_374x66.png";
+		}
+	    }
+
+	tabctl "widget/tab"
+	    {
+	    condition=runserver(:this:whatwidget == 'tab');
+	    bgcolor="#c0c0c0";
+	    x=10; y=10; width=578; height=368;
+
+	    tab1 "widget/tabpage" { title = "Tab One"; }
+	    tab2 "widget/tabpage" { title = "Tab Two"; }
+	    }
+	}
+    }
+
