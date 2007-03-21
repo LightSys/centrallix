@@ -463,7 +463,8 @@ function htr_getbgimage(l)
 function htr_setbgimage(l,v)
     {
     if (cx__capabilities.Dom0NS)
-	l.background.src = v;
+	//l.background.src = v;
+	pg_serialized_load(l.background, v, null);
     else if (cx__capabilities.Dom1HTML)
 	//pg_set_style_string(l,"backgroundImage",v);
 	l.style.backgroundImage = "URL('" + v + "')";
@@ -539,12 +540,34 @@ function htr_get_parent_div(o)
     }
 
 
+function htr_new_loader(p)
+    {
+    var nl = null;
+
+	if (cx__capabilities.Dom0NS)
+	    {
+	    nl = htr_new_layer(pg_width, p);
+	    }
+	else if (cx__capabilities.Dom1HTML)
+	    {
+	    if (!p || p == document || p == window) p = document.body;
+	    nl = document.createElement('iframe');
+	    nl.style.width = pg_width + "px";
+	    pg_set_style(nl, 'position','absolute');
+	    p.appendChild(nl);
+	    }
+
+    return nl;
+    }
+
+
 function htr_new_layer(w,p)
     {
     var nl;
 
 	if (cx__capabilities.Dom0NS)
 	    {
+	    if (p == document) p = window;
 	    if (!p)
 		nl = new Layer(w);
 	    else
@@ -552,7 +575,7 @@ function htr_new_layer(w,p)
 	    }
 	else if (cx__capabilities.Dom1HTML)
 	    {
-	    if (!p) p = document.body;
+	    if (!p || p == document || p == window) p = document.body;
 	    nl = document.createElement('div');
 	    nl.style.width = w + "px";
 	    pg_set_style(nl, 'position','absolute');

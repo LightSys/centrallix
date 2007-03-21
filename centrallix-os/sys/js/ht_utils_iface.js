@@ -338,6 +338,7 @@ function ifEvent()
     function ifevent_activate(e,ep)
 	{
 	var rval = null;
+	ep._Origin = wgtrGetName(this.obj);
 	if (this.Events[e])
 	    {
 	    for(var ev=0; ev<this.Events[e].length;ev++)
@@ -372,6 +373,7 @@ function ifEvent()
 	var ai = t.ifcProbe(ifAction);
 	if (!ai) return null;
 	var ap = new Object;
+	ap._Origin = ep._Origin;
 	for(var pn in this.paramlist)
 	    {
 	    var p = this.paramlist[pn];

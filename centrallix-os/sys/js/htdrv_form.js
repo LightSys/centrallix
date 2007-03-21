@@ -293,7 +293,7 @@ function form_action_discard(aparam)
 	{
 	case "Modify":
 	    this.ClearAll();
-	    this.osrc.MoveToRecord(this.recid);
+	    if (this.osrc) this.osrc.MoveToRecord(this.recid);
 	    this.ChangeMode("View");
 	    break;
 	case "New":
@@ -762,6 +762,41 @@ function form_action_save()
 	}
     }
 
+
+function form_action_submit(aparam)
+    {
+    var node;
+    if (aparam.Target)
+	node = wgtrGetNode(this, aparam.Target);
+    else
+	node = wgtrFindContainer(this, "widget/page");
+    if (!node) return false;
+    var param = new Object;
+    for(var ap in aparam)
+	{
+	if (ap != 'Target' && ap != 'NewPage')
+	    param[ap] = aparam[ap];
+	}
+    for(var i in this.elements)
+	{
+	var v = this.elements[i].getvalue();
+	if (v != null)
+	    {
+	    param[this.elements[i].fieldname] = v;
+	    }
+	}
+    var nodetype = wgtrGetType(node);
+    if (nodetype == "widget/component")
+	node.ifcProbe(ifAction).Invoke("Instantiate", param);
+    else if (nodetype == "widget/page" && aparam.NewPage)
+	node.ifcProbe(ifAction).Invoke("Launch", param);
+    else if (nodetype == "widget/page")
+	node.ifcProbe(ifAction).Invoke("LoadPage", param);
+    else
+	return false;
+    }
+
+
 /** Helper function to build a query */
 function form_build_query(base,where,ro)
     {
@@ -1016,6 +1051,7 @@ function form_init(form,param)
     ia.Add("QueryExec", form_action_queryexec);
     ia.Add("QueryToggle", form_action_querytoggle);
     ia.Add("Save", form_action_save);
+    ia.Add("Submit", form_action_submit);
 
     // Events
     var ie = form.ifcProbeAdd(ifEvent);

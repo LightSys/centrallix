@@ -71,6 +71,29 @@ function wgtrAddToTree	(   obj,	    // the object to graft into the tree
 
     }
 
+
+function wgtrDeinitTree(tree)
+    {
+	if (!tree || !tree.__WgtrName) 
+	    { pg_debug("wgtrDeinitTree - node was not a WgtrNode!\n"); return false; }
+
+	for(var c in tree.__WgtrChildren)
+	    wgtrDeinitTree(tree.__WgtrChildren[c]);
+	if (tree.destroy_widget)
+	    tree.destroy_widget();
+    }
+
+
+function wgtrRemoveNamespace(ns)
+    {
+    if (!pg_namespaces[ns]) return false;
+    pg_namespaces[ns] = null;
+    window[ns] = null;
+    window['startup_' + ns] = null;
+    window['build_wgtr_' + ns] = null;
+    }
+
+
 // wgtrGetPropertyValue - returns the value of a given property
 // returns null on failure
 function wgtrGetProperty(node, prop_name)
@@ -82,13 +105,28 @@ function wgtrGetProperty(node, prop_name)
 { 
 	pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; }
 
+	// If the Page or Component-decl widget, check for params
+	if (node.__WgtrType == "widget/component-decl" || node.__WgtrType == "widget/page")
+	    {
+	    for(var child in node.__WgtrChildren)
+		{
+		child = node.__WgtrChildren[child];
+		if (child.__WgtrType == 'widget/parameter' && child.__WgtrName == prop_name)
+		    {
+		    return child.getvalue();
+		    }
+		}
+	    }
+
 	// check for the existence of the asked-for property
-	prop = node[prop_name];
-	if (typeof prop == "undefined") 
-	    { 
+	if (typeof (node[prop_name]) == 'undefined')
+	    {
+	    alert('Application error: "' + prop_name + '" is undefined for object "' + wgtrGetName(node) + '"');
 	    //pg_debug("wgtrGetProperty - widget node "+node.WgtrName+" does not have property "+prop_name+'\n');
 	    return null;
 	    }
+
+	prop = node[prop_name];
 
 	// return the property value
 	return prop;

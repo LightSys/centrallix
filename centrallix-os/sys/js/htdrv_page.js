@@ -1106,6 +1106,19 @@ function pg_launch(aparam)
 	w_name = "new_window";
     else
 	w_name = aparam.Name;
+
+    // build the URL with parameters
+    var url = new String(aparam.Source);
+    for(var p in aparam)
+	{
+	var v = aparam[p];
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += (htutil_escape(p) + '=' + htutil_escape(v));
+	}
+    
     if (aparam.Multi != null && aparam.Multi == true)
 	{
 	for(var i = 0; i < 32; i++) // 32 max multi-instanced windows
@@ -1120,7 +1133,7 @@ function pg_launch(aparam)
 	window.windowlist[w_name].close();
 	w_exists = false;
 	}
-    if (!w_exists) window.windowlist[w_name] = window.open(aparam.Source, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",resizable=no,personalbar=no,menubar=no,status=no");
+    if (!w_exists) window.windowlist[w_name] = window.open(url, w_name, "toolbar=no,scrollbars=no,innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",resizable=no,personalbar=no,menubar=no,status=no");
     }
 
 function pg_mvpginpt(ly)
@@ -1535,6 +1548,19 @@ function pg_toplevel_layer(l)
 // don't overlap.
 function pg_serialized_load(l, newsrc, cb)
     {
+    if (!pg_waitlyr || !pg_waitlyr.vis)
+	{
+	if (!pg_waitlyr)
+	    {
+	    pg_waitlyr = htr_new_layer(96);
+	    htr_write_content(pg_waitlyr, "<table width='100' bgcolor='black' cellspacing='0' cellpadding='2' border='0'><tr><td><table width='96' bgcolor='#ffff80' cellspacing='0' cellpadding='3' border='0'><tr><td align='center'>Please Wait...</td></tr></table></td></tr></table>");
+	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
+	    htr_setzindex(pg_waitlyr, 99999);
+	    }
+	pg_waitlyr.vis = true;
+	//pg_addsched('pg_waitlyr.vis && htr_setvisibility(pg_waitlyr, "inherit")',window,0);
+	htr_setvisibility(pg_waitlyr, "inherit");
+	}
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
     pg_loadqueue.push({lyr:l, src:newsrc, cb:cb});
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
@@ -1559,6 +1585,11 @@ function pg_serialized_load_doone()
     if (pg_loadqueue.length == 0) 
 	{
 	pg_loadqueue_busy = false;
+	if (pg_waitlyr) 
+	    {
+	    pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 100);
+	    pg_waitlyr.vis = false;
+	    }
 	return;
 	}
     pg_loadqueue_busy = true;
@@ -1595,7 +1626,14 @@ function pg_serialized_load_doone()
 	    pg_loadqueue_busy = false;
 	    }
 	//one_item.lyr.onload = pg_serialized_load_cb;
-	if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
+	if (pg_loadqueue.length > 0)
+	    pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
+	else
+	    if (pg_waitlyr) 
+		{
+		pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 100);
+		pg_waitlyr.vis = false;
+		}
 	}
     }
 
@@ -1614,7 +1652,14 @@ function pg_serialized_load_cb()
 	//pg_debug('pg_serialized_load_cb (no cb fn): ' + pg_loadqueue.length + ': ' + this.name + '\n');
 	}
     //pg_debug('pg_serialized_load_cb: ' + pg_loadqueue.length + ': ' + this.name + '\n');
-    if (pg_loadqueue.length > 0) pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
+    if (pg_loadqueue.length > 0)
+	pg_addsched_fn(window, 'pg_serialized_load_doone', new Array(), 0);
+    else
+	if (pg_waitlyr)
+	    {
+	    pg_addsched('pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden")', window, 100);
+	    pg_waitlyr.vis = false;
+	    }
     }
 
 
@@ -1844,7 +1889,11 @@ function pg_debug_register_log(l)
 // send debug msg
 function pg_debug(msg)
     {
-    if (pg_debug_log) pg_debug_log.ifcProbe(ifAction).Invoke("AddText", {Text:msg, ContentType:'text/plain'});
+    if (pg_debug_log)
+	{
+	var ia = pg_debug_log.ifcProbe(ifAction);
+	if (ia && ia.Invoke) ia.Invoke("AddText", {Text:msg, ContentType:'text/plain'});
+	}
     }
 
 // send error msg - for now just redirect to debug

@@ -78,6 +78,23 @@ function lb_update()
     pg_serialized_write(this, this.stylestr + htutil_encode(this.content) + "</font></td></tr></table>", null);
     }
 
+function lb_cb_reveal(e)
+    {
+    switch (e.eventName) 
+	{
+	case 'Reveal':
+	case 'Obscure':
+	    if (this.form) this.form.Reveal(this,e);
+	    break;
+	case 'RevealCheck':
+	case 'ObscureCheck':
+	    if (this.form) this.form.Reveal(this,e);
+	    else pg_reveal_check_ok(e);
+	    break;
+	}
+    return true;
+    }
+
 // DO NOT COPY! TOP SECRET FUNCTION!
 function lbl_init(l, wparam)
     {
@@ -124,6 +141,13 @@ function lbl_init(l, wparam)
 	{
 	l.form = null;
 	}
+
+    // Request reveal/obscure notifications
+    l.Reveal = lb_cb_reveal;
+    if (pg_reveal_register_listener(l)) {
+	// already visible
+	if (l.form) l.form.Reveal(l,{ eventName:'Reveal' });
+    }
 
     return l;
     }

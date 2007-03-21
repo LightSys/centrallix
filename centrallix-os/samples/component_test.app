@@ -30,6 +30,7 @@ component_test "widget/page"
 	{
 	mode=dynamic;
 	x=100;y=10;
+	multiple_instantiation=yes;
 	path="/samples/debugwin.cmp";
 	}
     }

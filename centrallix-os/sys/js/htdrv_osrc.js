@@ -29,6 +29,9 @@ function osrc_action_query_object(aparam) //q, formobj, readonly)
     var formobj = aparam.client;
     var readonly = aparam.ro;
 
+    if (!aparam.fromsync)
+	this.SyncID = osrc_syncid++;
+
     if(this.pending)
 	{
 	alert('There is already a query or movement in progress...');
@@ -36,11 +39,15 @@ function osrc_action_query_object(aparam) //q, formobj, readonly)
 	}
     this.pendingqueryobject=q;
     var statement=this.sql;
+    if (statement.indexOf(' WHERE ') != -1)
+	var sep = ' HAVING ';
+    else
+	var sep = ' WHERE ';
     var firstone=true;
     
     if(this.filter)
 	{
-	statement+=' WHERE ('+this.filter+')';
+	statement+= (sep + '('+this.filter+')');
 	firstone=false;
 	}
     //if(!confirm(osrc_make_filter(q)))
@@ -48,7 +55,7 @@ function osrc_action_query_object(aparam) //q, formobj, readonly)
     if(q && q.joinstring && q[0])
 	{
 	if(firstone)
-	    statement+=' WHERE ';
+	    statement+=sep;
 	else
 	    statement+=' '+q.joinstring+' ';
 	statement+=osrc_make_filter(q);
@@ -225,11 +232,11 @@ function osrc_action_delete_cb()
 	    if (this.CurrentRecord > this.LastRecord)
 		{
 		this.CurrentRecord--;
-		this.MoveToRecord(this.CurrentRecord+1);
+		this.MoveToRecord(this.CurrentRecord+1, true);
 		}
 	    else
 		{
-		this.MoveToRecord(this.CurrentRecord);
+		this.MoveToRecord(this.CurrentRecord, true);
 		}
 	    }
 	this.formobj.OperationComplete(true);
@@ -435,7 +442,7 @@ function osrc_cb_query_continue(o)
 	}
     else
 	{ // movement
-	this.MoveToRecordCB(this.RecordToMoveTo);
+	this.MoveToRecordCB(this.RecordToMoveTo, true);
 	this.RecordToMoveTo=null;
 	}
     this.pending=false;
@@ -501,7 +508,10 @@ function osrc_open_query()
 function osrc_get_qid()
     {
     //return;
-    this.qid=pg_links(this)[0].target;
+    if (pg_links(this)[0])
+	this.qid=pg_links(this)[0].target;
+    else
+	this.qid = null;
     //confirm(this.baseobj + " ==> " + this.qid);
     if (!this.qid)
 	{
@@ -731,7 +741,7 @@ function osrc_close_session()
 
 function osrc_move_first(aparam)
     {
-    this.MoveToRecord(1);
+    this.MoveToRecord(1, true);
     }
 
 function osrc_give_all_current_record()
@@ -753,7 +763,7 @@ function osrc_tell_all_replica_moved()
     }
 
 
-function osrc_move_to_record(recnum)
+function osrc_move_to_record(recnum, from_internal)
     {
     if(recnum<1)
 	{
@@ -768,6 +778,8 @@ function osrc_move_to_record(recnum)
     this.pending=true;
     var someunsaved=false;
     this.RecordToMoveTo=recnum;
+    if (!from_internal)
+	this.SyncID = osrc_syncid++;
     for(var i in this.child)
 	 {
 	 if(this.child[i].IsUnsaved)
@@ -910,17 +922,17 @@ function osrc_get_qid_startat()
 
 function osrc_move_next(aparam)
     {
-    this.MoveToRecord(this.CurrentRecord+1);
+    this.MoveToRecord(this.CurrentRecord+1, true);
     }
 
 function osrc_move_prev(aparam)
     {
-    this.MoveToRecord(this.CurrentRecord-1);
+    this.MoveToRecord(this.CurrentRecord-1, true);
     }
 
 function osrc_move_last(aparam)
     {
-    this.MoveToRecord(Number.MAX_VALUE); /* FIXME */
+    this.MoveToRecord(Number.MAX_VALUE, true); /* FIXME */
     //alert("do YOU know where the end is? I sure don't.");
     }
 
@@ -1019,15 +1031,23 @@ function osrc_cleanup()
 	{ /* why does the browser load a blank page when you try to move away? */
 	this.onLoad=null;
 	pg_set(this,'src',"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid);
-	this.qid=null
+	this.qid=null;
 	}
     }
 
 function osrc_action_sync(param)
     {
     this.parentosrc=param.ParentOSRC;
+    if (!this.parentosrc) 
+	this.parentosrc = wgtrGetNode(this, param._Origin);
     this.ParentKey=new Array();
     this.ChildKey=new Array();
+
+    // Prevent sync loops
+    if (this.SyncID == this.parentosrc.SyncID)
+	return;
+    this.SyncID = this.parentosrc.SyncID;
+
     var query = new Array();
     query.oid=null;
     query.joinstring='AND';
@@ -1062,7 +1082,7 @@ function osrc_action_sync(param)
 		}
 	    }
 	}
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null,ro:this.readonly});
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null,ro:this.readonly, fromsync:true});
     }
 
 function osrc_action_double_sync(param)
@@ -1101,7 +1121,7 @@ function osrc_action_double_sync(param)
 		}
 	    }
 	}
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null, ro:this.readonly});
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null, ro:this.readonly, fromsync:true});
     }
 
 function osrc_action_double_sync_cb()

@@ -14,14 +14,19 @@ function cmp_cb_load_complete_4()
     var dname = pg_links(this.cmp.loader)[0].target;
     var startupname = "startup_" + dname;
     window[startupname]();
+    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
     }
 
 function cmp_cb_load_complete_3()
     {
     var larr = htr_get_layers(this.cmp.loader2);
+    this._oarr = new Array();
     for(var i=0;i<larr.length;i++)
+	{
 	this.cmp.loader.parentNode.appendChild(larr[i]);
-    this.cmp.larr = larr;
+	this._oarr.push(larr[i]);
+	}
+    //this.cmp.larr = larr;
     var scripts = document.getElementsByTagName('script');
     var css = document.getElementsByTagName('style');
     var head = document.getElementsByTagName('head')[0];
@@ -41,6 +46,7 @@ function cmp_cb_load_complete_3()
 	if (oldscript.language) newscript.language = oldscript.language;
 	if (oldscript.text) newscript.text = oldscript.text;
 	head.appendChild(newscript);
+	this._oarr.push(newscript);
 	}
     for(var i=0;i<css.length;i++)
 	{
@@ -50,6 +56,7 @@ function cmp_cb_load_complete_3()
     for(var i=0;i<css_to_move.length;i++)
 	{
 	head.appendChild(css_to_move[i]);
+	this._oarr.push(css_to_move[i]);
 	}
     pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_4', [], 200);
     }
@@ -65,76 +72,217 @@ function cmp_cb_load_complete_2ns()
     var lnks = pg_links(this.loader);
     var dname = lnks[0].target;
     this.loader['startup_' + dname]();
+    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
     }
 
 function cmp_cb_load_complete()
     {
     if (cx__capabilities.Dom0NS)
 	{
-	var larr = pg_layers(this);
-	//htr_alert(document.layers,1);
-	var lname = larr[0].id;
+	var larr = pg_layers(this.cmp.loader);
 	var layers_to_move = new Array();
 	for(var i=0;i<larr.length;i++)
 	    {
 	    layers_to_move.push(larr[i]);
-	    //window.document.body.appendChild(larr[i]);
-	    //alert('id ' + i + ' = ' + larr[i].id);
-	    //moveAbove(larr[i], this.cmp.loader);
 	    }
 	for(var i=0;i<layers_to_move.length;i++)
 	    {
 	    moveAbove(layers_to_move[i], this.cmp.loader);
 	    if (!this.cmp.loader.parentLayer.document.layers[layers_to_move[i].id])
 		this.cmp.loader.parentLayer.document.layers[layers_to_move[i].id] = layers_to_move[i];
+	    this.cmp._oarr.push(layers_to_move[i]);
 	    }
-	this.cmp.larr = larr;
 	pg_addsched_fn(this.cmp, 'cmp_cb_load_complete_2ns', [], 300);
 	}
     else
 	{
 	pg_serialized_write(this.cmp.loader2, this.contentWindow.document.getElementsByTagName("html")[0].innerHTML, cmp_cb_load_complete_2);
 	}
-    this.cmp.ifcProbe(ifEvent).Activate('LoadComplete', {});
     }
+
 
 function cmp_instantiate(aparam)
     {
+    if (this.components.length > 0 && !this.allow_multi)
+	{
+	if (this.auto_destroy)
+	    {
+	    this.ifcProbe(ifAction).Invoke('Destroy', {_inst_aparam:aparam});
+	    return true;
+	    }
+	return false;
+	}
+    if (this.is_static)
+	return false;
     var p = wgtrGetContainer(wgtrGetParent(this));
     var geom = tohex16(getWidth(p)) + tohex16(getHeight(p)) + tohex16(pg_charw) + tohex16(pg_charh) + tohex16(pg_parah);
     var graft = wgtrGetNamespace(this) + ':' + wgtrGetName(this);
-    pg_serialized_load(this.loader, this.path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft), cmp_cb_load_complete);
+    var url = this.path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft);
+
+    // Get params supplied in the app first
+    for(var pr in this.Params)
+	{
+	if (typeof aparam[pr] == 'undefined')
+	    {
+	    var v = this.Params[pr];
+	    if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+		url += '&';
+	    else
+		url += '?';
+	    url += (htutil_escape(pr) + '=' + htutil_escape(v));
+	    }
+	}
+
+    // Second, get params supplied in the connector (overrides app params)
+    for(var pr in aparam)
+	{
+	var v = aparam[pr];
+	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+	    url += '&';
+	else
+	    url += '?';
+	url += (htutil_escape(pr) + '=' + htutil_escape(v));
+	}
+    this._graft = graft;
+    this._url = url;
+    this._geom = geom;
+    this._name = aparam.Name;
+    if (cx__capabilities.Dom0NS)
+	{
+	moveAbove(this.loader, this.stublayer);
+	this.loader = htr_new_loader(p);
+	this.loader.cmp = this;
+	htr_setvisibility(this.loader, 'hidden');
+	htr_init_layer(this.loader,this,'cmp');
+	}
+    pg_addsched_fn(this.cmp, 'cmp_instantiate_2', [url], 100);
+    return true;
+    }
+
+function cmp_instantiate_2(url)
+    {
+    pg_serialized_load(this.loader, url, cmp_cb_load_complete);
+    return true;
     }
 
 function cmp_destroy(aparam)
     {
-    var oldChild;
-    //htr_alert(this,1);
-    if (cx__capabilities.Dom1HTML)
+    if (this.is_static)
+	return false;
+    var cmps_to_destroy = new Array();
+    for(var i in this.components)
 	{
-	for (var i = 0; i < this.larr.length;i++)
+	var cmp = this.components[i];
+	if (aparam.Namespace == cmp.cmpnamespace || aparam.Name == cmp.name || (!aparam.Namespace && !aparam.Name))
+	    cmps_to_destroy.push(cmp);
+	}
+    var onecmp = cmps_to_destroy.shift();
+    if (onecmp)
+	onecmp.cmp.HandleReveal("ObscureCheck", {destroyctx:true, inst_aparam:aparam._inst_aparam, cmplist:cmps_to_destroy, donelist:[onecmp], curcmp:onecmp, cmpobj:this});
+    }
+
+
+function cmp_destroy_2(ctx)
+    {
+    var cmps_to_destroy = ctx.cmplist;
+    onecmp = cmps_to_destroy.shift();
+    if (onecmp)
+	{
+	ctx.curcmp = onecmp;
+	ctx.donelist.push(onecmp);
+	onecmp.cmp.HandleReveal("ObscureCheck", ctx);
+	return;
+	}
+
+    // Ok, done with obscurecheck.  Now do obscure.
+    for(var i in ctx.donelist)
+	{
+	ctx.donelist[i].cmp.HandleReveal("Obscure", ctx);
+	}
+
+    // Shutdown the widgets
+    for(var i in ctx.donelist)
+	{
+	wgtrDeinitTree(ctx.donelist[i].cmp);
+	wgtrRemoveNamespace(ctx.donelist[i].cmpnamespace);
+	}
+
+    // Move everything out of the main workspace.
+    // Hopefully GC is smart enough to clean it up.
+    for(var i in ctx.donelist)
+	{
+	var cmp = ctx.donelist[i];
+
+	//htr_alert(this,1);
+	if (cx__capabilities.Dom1HTML)
 	    {
-	    oldChild = window.document.body.removeChild(this.larr[i]);
-	    delete oldChild;
-	    delete this.larr[i];
+	    for (var j = 0; j<cmp.objects.length;j++)
+		{
+		if (cmp.objects[j].tagName == 'DIV')
+		    {
+		    moveAbove(cmp.objects[j], this.stublayer);
+		    }
+		else
+		    {
+		    var oldChild = cmp.objects[j].parentNode.removeChild(cmp.objects[j]);
+		    delete oldChild;
+		    delete cmp.objects[j];
+		    }
+		}
+	    }
+	else if (cx__capabilities.Dom0NS)
+	    {
+	    // For NS4, all objects are Layers.
+	    for (var j = 0; j<cmp.objects.length;j++)
+		{
+		moveAbove(cmp.objects[j], this.stublayer);
+		}
+	    }
+
+	// Remove it from the list
+	for(var j in this.components)
+	    {
+	    if (cmp == this.components[j])
+		{
+		this.components.splice(j, 1);
+		break;
+		}
 	    }
 	}
-    else if (cx__capabilities.Dom0NS)
+
+    // Go go gadget garbage collector!
+    if (cx__capabilities.Dom0NS)
 	{
-	for (var i = 0; i < this.larr.length;i++)
-	    {
-	    var id = this.larr[i].id;
-	    var p = this.larr[i].parentLayer;
-	    delete p.document.layers[id];
-	    }
+	this.stublayer.parentLayer.cmp = this;
+	this.stublayer.parentLayer.cmp_destroy_3 = cmp_destroy_3;
+	pg_serialized_write(this.stublayer.parentLayer, "<html><body></body></html>", cmp_destroy_3);
 	}
+    else if (cx__capabilities.Dom1HTML)
+	{
+	this.stublayer.parentNode.cmp = this;
+	this.stublayer.parentNode.cmp_destroy_3 = cmp_destroy_3;
+	pg_serialized_write(this.stublayer.parentNode, "<html><body></body></html>", cmp_destroy_3);
+	}
+
+    if (ctx.inst_aparam)
+	this.ifcProbe(ifAction).Invoke('Instantiate', ctx.inst_aparam);
+
+    return true;
+    }
+
+function cmp_destroy_3()
+    {
+    this.cmp.stublayer = htr_new_layer(pg_width, this);
+    htr_setvisibility(this.cmp.stublayer, 'hidden');
     }
 
 function cmp_register_component(c)
     {
-    this.component = c;
+    var newcmp = {cmp:c, cmpnamespace:wgtrGetNamespace(c), cmpname:wgtrGetName(c), objects:this._oarr, graft:this._graft, geom:this._geom, url:this._url, name:this._name};
+    this.components.push(newcmp);
     if (this.is_visible)
-	pg_addsched_fn(this.component, 'HandleReveal', ['Reveal', null], 0);
+	pg_addsched_fn(newcmp.cmp, 'HandleReveal', ['Reveal', null], 0);
+    this._oarr = new Array();
     }
 
 function cmp_cb_reveal(e)
@@ -144,20 +292,35 @@ function cmp_cb_reveal(e)
 	{
 	case 'Reveal':
 	    this.is_visible = true;
-	    if (this.component && this.component.HandleReveal)
-		rval = this.component.HandleReveal(e.eventName, e);
+	    for(var c in this.components)
+		{
+		var cmp = this.components[c];
+		if (cmp && cmp.cmp && cmp.cmp.HandleReveal)
+		    rval = (rval && cmp.cmp.HandleReveal(e.eventName, e));
+		}
 	    break;
 	case 'Obscure':
 	    this.is_visible = false;
-	    if (this.component && this.component.HandleReveal)
-		rval = this.component.HandleReveal(e.eventName, e);
+	    for(var c in this.components)
+		{
+		var cmp = this.components[c];
+		if (cmp && cmp.cmp && cmp.cmp.HandleReveal)
+		    rval = (rval && cmp.cmp.HandleReveal(e.eventName, e));
+		}
 	    break;
 	case 'RevealCheck':
 	case 'ObscureCheck':
-	    if (this.component && this.component.HandleReveal)
-		rval = this.component.HandleReveal(e.eventName, e);
-	    else
+	    e.cmp_revealcmps = new Array();
+	    for(var c in this.components)
+		{
+		var cmp = this.components[c];
+		if (cmp && cmp.cmp && cmp.cmp.HandleReveal)
+		    e.cmp_revealcmps.push(cmp);
+		}
+	    if (e.cmp_revealcmps.length == 0)
 		pg_reveal_check_ok(e);
+	    else
+		rval = e.cmp_revealcmps[0].cmp.HandleReveal(e.eventName, e);
 	    break;
 	}
     return rval;
@@ -171,12 +334,28 @@ function cmp_cb_handle_reveal(e,ctx)
 	{
 	case 'RevealOK':
 	case 'ObscureOK':
-	    return pg_reveal_check_ok(ctx);
+	    if (e == 'ObscureOK' && ctx && ctx.destroyctx)
+		{
+		return this.cmp_destroy_2(ctx);
+		}
+	    ctx.cmp_revealcmps.shift();
+	    if (ctx.cmp_revealcmps.length == 0)
+		return pg_reveal_check_ok(ctx);
+	    else
+		return ctx.cmp_revealcmps[0].cmp.HandleReveal(e, ctx);
 	case 'RevealFailed':
 	case 'ObscureFailed':
+	    if (e.eventName == 'ObscureFailed' && ctx && ctx.destroyctx)
+		return true;
 	    return pg_reveal_check_veto(ctx);
 	}
     return true;
+    }
+
+
+function cmp_add_param(name, value)
+    {
+    this.Params[name] = htutil_unpack(value);
     }
 
 
@@ -184,13 +363,21 @@ function cmp_init(param)
     {
     var node = param.node;
     node.is_static = param.is_static;
+    node.allow_multi = param.allow_multi;
+    node.auto_destroy = param.auto_destroy;
     node.cmp = node;
+    node._oarr = new Array();
+    node.components = new Array();
     if (!param.is_static)
 	{
 	node.loader = param.loader;
 	node.loader.cmp = node;
 	node.path = param.path;
 	htr_init_layer(node.loader,node,'cmp');
+	node.stublayer = htr_new_layer(pg_width);
+	htr_setvisibility(node.stublayer, 'hidden');
+	node.stublayer = htr_new_layer(pg_width, node.stublayer);
+	htr_setvisibility(node.stublayer, 'hidden');
 
 	if (cx__capabilities.Dom1HTML)
 	    {
@@ -199,16 +386,20 @@ function cmp_init(param)
 	    htr_setvisibility(node.loader2, 'hidden');
 	    }
 	}
-    node.component = null;
     node.is_visible = false;
     node.cmp_cb_load_complete = cmp_cb_load_complete;
     node.cmp_cb_load_complete_2 = cmp_cb_load_complete_2;
     node.cmp_cb_load_complete_2ns = cmp_cb_load_complete_2ns;
     node.cmp_cb_load_complete_3 = cmp_cb_load_complete_3;
     node.cmp_cb_load_complete_4 = cmp_cb_load_complete_4;
+
+    node.cmp_instantiate_2 = cmp_instantiate_2;
+    node.cmp_destroy_2 = cmp_destroy_2;
     ifc_init_widget(node);
 
     node.RegisterComponent = cmp_register_component;
+    node.AddParam = cmp_add_param;
+    node.Params = new Array();
 
     // Obscure/Reveal
     node.Reveal = cmp_cb_reveal; // from other widgets in same NS
