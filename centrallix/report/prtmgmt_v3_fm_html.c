@@ -53,10 +53,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_html.c,v 1.6 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_html.c,v 1.7 2007/03/21 04:42:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html.c,v $
 
     $Log: prtmgmt_v3_fm_html.c,v $
+    Revision 1.7  2007/03/21 04:42:02  gbeeley
+    - (bugfix) various fixes in the HTML formatter for the report writer.
+
     Revision 1.6  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -618,6 +621,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    id = PRT_HTMLFM.ImageID++;
 		    w = obj->Width*PRT_HTMLFM_XPIXEL;
 		    h = obj->Height*PRT_HTMLFM_YPIXEL;
+		    if (w <= 0) w = 1;
+		    if (h <= 0) h = 1;
 		    path = (char*)nmMalloc(256);
 		    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
@@ -666,6 +671,14 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	/** Write the page header **/
 	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
+	/** Write a table to handle page margins **/
+	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginLeft*PRT_HTMLFM_XPIXEL+0.001));
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL));
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001));
+	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%d\"></td><td></td><td></td></tr><tr><td></td><td>\n", 
+		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL));
+
 	/** We need to scan the absolute-positioned content to figure out how many
 	 ** "columns" and "rows" we need to put in the "table" used for layout
 	 ** purposes.
@@ -675,17 +688,20 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    if (n_cols < PRT_HTMLFM_MAXCOLS)
 		{
 		/** Search for the X position in the 'colpos' list **/
-		found = -1;
+		found = n_cols;
 		for(i=0;i<n_cols;i++)
 		    {
-		    if (subobj->X == colpos[i]) break;
+		    if (subobj->X == colpos[i]) 
+			{
+			found = -1;
+			break;
+			}
 		    if (subobj->X < colpos[i])
 			{
 			found=i;
 			break;
 			}
 		    }
-		if (n_cols == 0) found = 0;
 		if (found != -1)
 		    {
 		    for(i=n_cols-1;i>=found;i--) colpos[i+1] = colpos[i];
@@ -696,17 +712,20 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    if (n_rows < PRT_HTMLFM_MAXROWS)
 		{
 		/** Search for the Y position in the 'rowpos' list **/
-		found = -1;
+		found = n_rows;
 		for(i=0;i<n_rows;i++)
 		    {
-		    if (subobj->Y == rowpos[i]) break;
+		    if (subobj->Y == rowpos[i]) 
+			{
+			found = -1;
+			break;
+			}
 		    if (subobj->Y < rowpos[i])
 			{
 			found=i;
 			break;
 			}
 		    }
-		if (n_rows == 0) found = 0;
 		if (found != -1)
 		    {
 		    for(i=n_rows-1;i>=found;i--) rowpos[i+1] = rowpos[i];
@@ -738,7 +757,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		/** Next row? **/
 		if (subobj->Y > rowpos[cur_row])
 		    {
-		    while(subobj->Y > rowpos[cur_row] && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
+		    while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
 		    prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
 		    cur_col = 0;
 		    }
@@ -747,7 +766,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		if (subobj->X > colpos[cur_col])
 		    {
 		    i=0;
-		    while(subobj->X > colpos[cur_col] && cur_col < PRT_HTMLFM_MAXCOLS-1)
+		    while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1)
 			{
 			i++;
 			cur_col++;
@@ -757,9 +776,9 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 		/** Figure rowspan and colspan **/
 		cs=1;
-		while(cur_col+cs < n_cols && colpos[cur_col+cs] < subobj->X + subobj->Width) cs++;
+		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
 		rs=1;
-		while(cur_row+rs < n_rows && rowpos[cur_row+rs] < subobj->Y + subobj->Height) rs++;
+		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
 		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
 		prt_htmlfm_Generate_r(context, subobj);
 		prt_htmlfm_Output(context, "</td>", 5);
@@ -771,6 +790,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 
 	/** Write the page footer **/
+	prt_htmlfm_OutputPrintf(context, "</td><td></td></tr><tr><td height=\"%d\"></td><td></td><td></td></tr></table>\n", 
+		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL));
 	prt_htmlfm_Output(context, PRT_HTMLFM_PAGEFOOTER, -1);
 
     return 0;
