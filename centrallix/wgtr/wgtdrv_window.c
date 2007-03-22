@@ -50,6 +50,8 @@
 int
 wgtwinVerify(pWgtrVerifySession s)
     {
+    pWgtrNode window = s->CurrWidget;
+
     return 0;
     }
 
@@ -62,10 +64,29 @@ wgtwinVerify(pWgtrVerifySession s)
 int
 wgtwinNew(pWgtrNode node)
     {
+    int has_titlebar = 1, is_dialog_style = 0;
+    char* ptr;
+
 	node->Flags |= WGTR_F_CONTAINER | WGTR_F_FLOATING;
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
 	
+        /** No titlebar? **/
+        if (wgtrGetPropertyValue(node,"titlebar",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no"))
+            has_titlebar = 0;
+
+        /** Dialog or node style? **/
+        if (wgtrGetPropertyValue(node,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
+            is_dialog_style = 1;
+
+	if (is_dialog_style)
+	    node->left = node->right = node->top = node->bottom = 1;
+	else
+	    node->left = node->right = node->top = node->bottom = 2;
+
+	if (has_titlebar)
+	    node->top = (26 - node->top);
+
     return 0;
     }
 

@@ -30,7 +30,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	wgtr/wgtdrv_pane.c						*/
+/* Module: 	wgtr/wgtdrv_pane.c					*/
 /* Author:	Matt McGill (MJM)		 			*/
 /* Creation:	June 30, 2004						*/
 /* Description:								*/
@@ -65,6 +65,8 @@ wgtpnNew(pWgtrNode node)
 	node->Flags |= WGTR_F_CONTAINER;   
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
+
+	node->top = node->bottom = node->left = node->right = 1;
 	
     return 0;
     }

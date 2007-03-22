@@ -30,10 +30,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.9 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: apos.c,v 1.10 2007/03/22 16:29:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.10  2007/03/22 16:29:28  gbeeley
+    - (feature) Autolayout widget, better known as hbox and vbox.  Now you
+      don't have to manually compute all those X's and Y's!  Only hbox and
+      vbox supported right now; other layouts are planned (any takers?)
+    - (bugfix) cond_add_children with condition=false on conditional rendering
+      now compensates for x/y container offset of nonrendered widget.
+    - (change) allow drv->New code in wgtr to have access to the properties
+      for the given widget, by moving the ->New call later in the parse-open-
+      widget process.
+
     Revision 1.9  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -236,18 +246,19 @@ int i=0, childCount=xaCount(&(Parent->Children));
         {
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
 	    
-	    /**set the flexibility of the given container, if it is visual**/
-	    if(!(Parent->Flags & WGTR_F_NONVISUAL))
-		if(aposSetContainerFlex(Parent) < 0)
-		    {
-			mssError(0, "APOS", "aposPrepareTree: Couldn't set %s's flexibility", Parent->Name);
-			return -1;
-		    }
 	    if (aposSetFlexibilities(Child) < 0)
 		{
 		    return -1;
 		}
 	}
+
+    /**set the flexibility of the given container, if it is visual**/
+    if(!(Parent->Flags & WGTR_F_NONVISUAL))
+	if(aposSetContainerFlex(Parent) < 0)
+	    {
+		mssError(0, "APOS", "aposPrepareTree: Couldn't set %s's flexibility", Parent->Name);
+		return -1;
+	    }
 
     return 0;
 }

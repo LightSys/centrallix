@@ -76,15 +76,6 @@ typedef struct
 #define WGTR_PROP_F_NULL	(1)
 
 
-/** Widget Driver information structure **/
-typedef struct
-    {
-    char	    Name[64];		    /* Driver name */
-    int		    (*Verify)();	    /* Function for verifying the widget */
-    int		    (*New)();		    /* Function for initializing a widget */
-    XArray	    Types;		    /* Pseudo-types this widget driver will handle */
-    } WgtrDriver, *pWgtrDriver;
-
 struct
     {
     XHashTable	    Methods;		    /* deployment methods */
@@ -328,6 +319,9 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
 		return -1;
 
+	    if (wgtrSetupNode(new_node) < 0)
+		return -1;
+
 	    wgtrCopyInTemplate(new_node, tree_obj, subtree, base_name);
 	    wgtrAddChild(tree, new_node);
 	    }
@@ -406,14 +400,144 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
 
 
 int
+wgtr_internal_GetTypeAndName(pObject obj, char* name, size_t name_len, char* type, size_t type_len)
+    {
+    ObjData val;
+
+	/** Get type and verify it **/
+	if (objGetAttrValue(obj, "outer_type", DATA_T_STRING, &val) < 0)
+	    {
+	    mssError(0, "WGTR", "Couldn't get outer_type for %s", obj->Pathname->Pathbuf);
+	    goto error;
+	    }
+	
+	if (strncmp(val.String, "widget/", 7) != 0)
+	    {
+	    mssError(1, "WGTR", "Object %s is not a widget", obj->Pathname->Pathbuf);
+	    goto error;
+	    }
+	strtcpy(type, val.String, type_len);
+
+	/** get the name from the OSML **/
+	if (objGetAttrValue(obj, "name", DATA_T_STRING, &val) < 0)
+	    {
+	    mssError(0, "WGTR", "Bark!  Couldn't get name of %s", obj->Pathname->Pathbuf);
+	    goto error;
+	    }
+	strtcpy(name, val.String, name_len);
+
+	return 0;
+
+    error:
+	return -1;
+    }
+
+
+pWgtrNode
+wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template, pWgtrNode root, int xoffset, int yoffset)
+    {
+    int rx, ry, rwidth, rheight, flx, fly, flwidth, flheight;
+    pWgtrNode this_node = NULL;
+    char* class;
+    char* prop_name;
+    ObjData val;
+    int prop_type;
+    int rval;
+
+	/** create this node **/
+	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
+	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, -1, -1)) == NULL)
+	    {
+	    mssError(0, "WGTR", "Couldn't create node %s", name);
+	    goto error;
+	    }
+
+	/** Copy in template data **/
+	class = NULL;
+	objGetAttrValue(obj, "widget_class", DATA_T_STRING, POD(&class));
+	if (template)
+	    wgtrCheckTemplate(this_node, obj, template, class);
+	
+	/** loop through attributes to fill out the properties array **/
+	prop_name = objGetFirstAttr(obj);
+	while (prop_name)
+	    {
+	    /** Get the type **/
+	    if ( (prop_type = objGetAttrType(obj, prop_name)) < 0) 
+		{
+		mssError(0, "WGTR", "Couldn't get type for property %s", prop_name);
+		goto error;
+		}
+	    /** get the value **/ 
+	    if ((rval = objGetAttrValue(obj, prop_name, prop_type, &val)) < 0)
+		{
+		mssError(0, "WGTR", "Couldn't get value for property %s", prop_name);
+		goto error;
+		}
+
+	    /** add property to node **/
+
+	    /** see if it's a property we want to alias for easy access **/
+	    if (prop_type == DATA_T_INTEGER)
+		{
+		if (!strcmp(prop_name,"x")) this_node->r_x = val.Integer;
+		else if (!strcmp(prop_name,"y")) this_node->r_y = val.Integer;
+		else if (!strcmp(prop_name,"width")) this_node->r_width = val.Integer;
+		else if (!strcmp(prop_name,"height")) this_node->r_height = val.Integer;
+		else if (!strcmp(prop_name,"fl_x")) this_node->fl_x = val.Integer;
+		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
+		else if (!strcmp(prop_name,"fl_width")) this_node->fl_width = val.Integer;
+		else if (!strcmp(prop_name,"fl_height")) this_node->fl_height = val.Integer;
+		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
+		}
+	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
+
+	    /** get the name of the next one **/
+	    prop_name = objGetNextAttr(obj);
+	    }
+
+	/** Add offsets? **/
+	if (this_node->r_x >= 0) this_node->r_x += xoffset;
+	if (this_node->r_y >= 0) this_node->r_y += yoffset;
+	
+	/** initialize all other struct members **/
+	this_node->x = this_node->r_x;
+	this_node->y = this_node->r_y;
+	this_node->width = this_node->r_width;
+	this_node->height = this_node->r_height;
+	this_node->pre_x = this_node->r_x;
+	this_node->pre_y = this_node->r_y;
+	this_node->pre_width = this_node->r_width;
+	this_node->pre_height = this_node->r_height;
+	if (root)
+	    this_node->Root = root;
+	else
+	    this_node->Root = this_node;
+
+	/** Setup (call driver New function) **/
+	if (wgtrSetupNode(this_node) < 0)
+	    goto error;
+
+	return this_node;
+
+    error:
+	if (this_node)
+	    wgtrFree(this_node);
+	return NULL;
+    }
+
+
+int
 wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
     pObject child_obj = NULL;
     pObjQuery qy = NULL;
     int t, rval;
-    pWgtrNode child_node;
+    pWgtrNode child_node = NULL;
     ObjData val;
     int nxo=0, nyo=0;
+    char name[64];
+    char type[64];
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -437,6 +561,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, 
 		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,template,this_node->Root, context_objlist, client_params, xoffset, yoffset)) != NULL)
 			{
 			wgtrAddChild(this_node, child_node);
+			child_node = NULL;
 			}
 		    else
 			{
@@ -454,8 +579,25 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, 
 			if (rval == 0 && ((t == DATA_T_INTEGER && val.Integer != 0) ||
 				(t == DATA_T_STRING && !strcasecmp(val.String, "yes"))))
 			    {
-			    objGetAttrValue(child_obj, "x", DATA_T_INTEGER, POD(&nxo));
-			    objGetAttrValue(child_obj, "y", DATA_T_INTEGER, POD(&nyo));
+			    /** Get the type and name of the widget **/
+			    if (wgtr_internal_GetTypeAndName(child_obj, name, sizeof(name), type, sizeof(type)) < 0)
+				goto error;
+
+			    /** Load in the properties and copy in the template **/
+			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, template, root, xoffset, yoffset)) == NULL)
+				goto error;
+
+			    /** compute actual offsets that would have been used had the
+			     ** widget really been rendered
+			     **/
+			    nxo = child_node->x + child_node->left;
+			    nyo = child_node->y + child_node->top;
+			    wgtrFree(child_node);
+			    child_node = NULL;
+
+			    /** Add the grandchildren without actually rendering the child node
+			     ** in question here
+			     **/
 			    if (wgtr_internal_AddChildren(child_obj, this_node, template, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
 				goto error;
 			    }
@@ -471,6 +613,8 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, 
 	return 0;
 
     error:
+	if (child_node)
+	    wgtrFree(child_node);
 	if (child_obj)
 	    objClose(child_obj);
 	if (qy)
@@ -484,11 +628,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
     {
     pWgtrNode	this_node = NULL;
     pWgtrAppParam param;
-    char   name[64], type[64], * prop_name;
-    int rx, ry, rwidth, rheight;
-    int flx, fly, flwidth, flheight;
-    int prop_type;
-    char* class;
+    char   name[64], type[64];
     ObjData	val;
     pObject child_obj = NULL;
     pObjQuery qy = NULL;
@@ -497,7 +637,6 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
     int n_params;
     int created_objlist = 0;
     int i;
-    int rval;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -507,26 +646,8 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	    }
 
 	/** check the outer_type of obj tobe sure it's a widget **/
-	if (objGetAttrValue(obj, "outer_type", DATA_T_STRING, &val) < 0)
-	    {
-	    mssError(0, "WGTR", "Couldn't get outer_type for %s", obj->Pathname->Pathbuf);
+	if (wgtr_internal_GetTypeAndName(obj, name, sizeof(name), type, sizeof(type)) < 0)
 	    goto error;
-	    }
-	
-	if (strncmp(val.String, "widget/", 7) != 0)
-	    {
-	    mssError(1, "WGTR", "Object %s is not a widget", obj->Pathname->Pathbuf);
-	    goto error;
-	    }
-	strncpy(type, val.String, 64);
-
-	/** get the name from the OSML **/
-	if (objGetAttrValue(obj, "name", DATA_T_STRING, &val) < 0)
-	    {
-	    mssError(0, "WGTR", "Bark!  Couldn't get name of %s", obj->Pathname->Pathbuf);
-	    goto error;
-	    }
-	strncpy(name, val.String, 64);
 
 	/** Before we do anything else, examine any application parameters
 	 ** that could be present.
@@ -578,80 +699,16 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 		}
 	    }
 
-	/** create this node **/
-	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
-	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, -1, -1)) == NULL)
-	    {
-	    mssError(0, "WGTR", "Couldn't create node %s", name);
+	/** Load in the properties and copy in the template **/
+	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_template, root, xoffset, yoffset)) == NULL)
 	    goto error;
-	    }
 
-	/** Copy in template data **/
-	class = NULL;
-	objGetAttrValue(obj, "widget_class", DATA_T_STRING, POD(&class));
-	if (my_template)
-	    wgtrCheckTemplate(this_node, obj, my_template, class);
-	
-	/** loop through attributes to fill out the properties array **/
-	prop_name = objGetFirstAttr(obj);
-	while (prop_name)
-	    {
-	    /** Get the type **/
-	    if ( (prop_type = objGetAttrType(obj, prop_name)) < 0) 
-		{
-		mssError(0, "WGTR", "Couldn't get type for property %s", prop_name);
-		goto error;
-		}
-	    /** get the value **/ 
-	    if ((rval = objGetAttrValue(obj, prop_name, prop_type, &val)) < 0)
-		{
-		mssError(0, "WGTR", "Couldn't get value for property %s", prop_name);
-		goto error;
-		}
-
-	    /** add property to node **/
-
-	    /** see if it's a property we want to alias for easy access **/
-	    if (prop_type == DATA_T_INTEGER)
-		{
-		if (!strcmp(prop_name,"x")) this_node->r_x = val.Integer;
-		else if (!strcmp(prop_name,"y")) this_node->r_y = val.Integer;
-		else if (!strcmp(prop_name,"width")) this_node->r_width = val.Integer;
-		else if (!strcmp(prop_name,"height")) this_node->r_height = val.Integer;
-		else if (!strcmp(prop_name,"fl_x")) this_node->fl_x = val.Integer;
-		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
-		else if (!strcmp(prop_name,"fl_width")) this_node->fl_width = val.Integer;
-		else if (!strcmp(prop_name,"fl_height")) this_node->fl_height = val.Integer;
-		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
-		}
-	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
-
-	    /** get the name of the next one **/
-	    prop_name = objGetNextAttr(obj);
-	    }
-
-	/** Add offsets? **/
-	if (this_node->r_x >= 0) this_node->r_x += xoffset;
-	if (this_node->r_y >= 0) this_node->r_y += yoffset;
+	/** If this is a visual widget, clear the x/y offsets **/
 	if (!(this_node->Flags & WGTR_F_NONVISUAL))
 	    {
 	    xoffset = 0;
 	    yoffset = 0;
 	    }
-	
-	/** initialize all other struct members **/
-	this_node->x = this_node->r_x;
-	this_node->y = this_node->r_y;
-	this_node->width = this_node->r_width;
-	this_node->height = this_node->r_height;
-	this_node->pre_x = this_node->r_x;
-	this_node->pre_y = this_node->r_y;
-	this_node->pre_width = this_node->r_width;
-	this_node->pre_height = this_node->r_height;
-	if (root)
-	    this_node->Root = root;
-	else
-	    this_node->Root = this_node;
 
 	/** Add all of the child widgets under this one. **/
 	if (wgtr_internal_AddChildren(obj, this_node, my_template, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
@@ -661,7 +718,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	if (my_template != template)
 	    wgtrFree(my_template);
 
-	/** return the struct **/
+	/** return the completed node and subtree **/
 	return this_node;
 
     error:
@@ -876,7 +933,7 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int is
 	if ( (prop = (pObjProperty)nmMalloc(sizeof(ObjProperty))) == NULL) return -1;
 
 	memset(prop, 0, sizeof(ObjProperty));
-	strncpy(prop->Name, name, 64);
+	strtcpy(prop->Name, name, sizeof(prop->Name));
 	prop->Type = datatype;
 
 	if (isnull)
@@ -1018,7 +1075,6 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 		int flx, int fly, int flwidth, int flheight)
     {
     pWgtrNode node;
-    pWgtrDriver drv;
 
 	if ( (node = (pWgtrNode)nmMalloc(sizeof(WgtrNode))) == NULL)
 	    {
@@ -1028,8 +1084,8 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	memset(node, 0, sizeof(WgtrNode));
 	SETMAGIC(node, MGK_WGTR);
 
-	strncpy(node->Name, name, 64);
-	strncpy(node->Type, type, 64);
+	strtcpy(node->Name, name, sizeof(node->Name));
+	strtcpy(node->Type, type, sizeof(node->Name));
 	snprintf(node->DName, sizeof(node->DName), "w%8.8lx", WGTR.SerialID++);
 	node->x = node->r_x = rx;
 	node->y = node->r_y = ry;
@@ -1046,25 +1102,36 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->LayoutGrid = NULL;
 	node->Root = node;  /* this will change when it is added as a child */
 	node->DMPrivate = NULL;
+	node->top = node->bottom = node->right = node->left = 0;
+	node->Verified = 0;
 
 	xaInit(&(node->Properties), 16);
 	xaInit(&(node->Children), 16);
 	xaInit(&(node->Interfaces), 8);
 
+	return node;
+    }
+
+
+int
+wgtrSetupNode(pWgtrNode node)
+    {
+    pWgtrDriver drv;
+
 	/** look up the 'new' function and call it on the now-init'd struct **/
 	if ( (drv = wgtr_internal_LookupDriver(node)) == NULL) 
 	    {
 	    wgtrFree(node);
-	    return NULL;
+	    return -1;
 	    }
 	if (drv->New(node) < 0)
 	    {
 	    mssError(1, "WGTR", "Error initializing new widget node '%s'", node->Name);
 	    wgtrFree(node);
-	    return NULL;
+	    return -1;
 	    }
 
-	return node;
+    return 0;
     }
 
     
@@ -1448,6 +1515,18 @@ wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget)
     }
 
 
+int
+wgtrReverify(pWgtrVerifySession vs, pWgtrNode widget)
+    {
+	if (widget->Verified)
+	    {
+	    widget->Verified = 0;
+	    return wgtrScheduleVerify(vs, widget);
+	    }
+	return 0;
+    }
+
+
 int 
 wgtrCancelVerify(pWgtrVerifySession vs, pWgtrNode widget)
     {
@@ -1534,6 +1613,7 @@ wgtrInitialize()
 	wgtwinInitialize();
 	wgttplInitialize();
 	wgtpaInitialize();
+	wgtalInitialize();
 
     return 0;
     }
@@ -1564,7 +1644,7 @@ wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
 	    return -1;
 	    }
 	memset(drv, 0, sizeof(WgtrDriver));
-	strncpy(drv->Name, name, 64);
+	strtcpy(drv->Name, name, sizeof(drv->Name));
 	drv->New = New;
 	drv->Verify = Verify;
 	xaInit(&(drv->Types), 4);

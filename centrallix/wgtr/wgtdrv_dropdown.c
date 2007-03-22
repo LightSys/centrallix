@@ -70,10 +70,9 @@ wgtddNew(pWgtrNode node)
 
 	if(node->fl_width < 0) node->fl_width = 10;
 	if(node->fl_height < 0) node->fl_height = 1;
-	if (node->r_height == -1) 
+	if (node->r_height < 0) 
 	    {
-	    node->r_height = 20;
-	    node->pre_height = 20;
+	    node->r_height = node->pre_height = node->height = 20;
 	    }
 	
     return 0;

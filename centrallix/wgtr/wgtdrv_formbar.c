@@ -4,6 +4,7 @@
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "wgtr.h"
 #include "expression.h"
 
@@ -88,7 +89,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    mssError(1, "WGTFB", "Form bar '%s' must have a 'target' property", this->Name);
 	    return -1;
 	    }
-	strncpy(form_name, val.String, 64);
+	strtcpy(form_name, val.String, sizeof(form_name));
 
        /*
        if (wgtrGetPropertyValue(this,"width",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -108,6 +109,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	wgtrAddProperty(subtree, "style", DATA_T_STRING, &val, 0);
 	val.String = "/sys/images/grey_gradient3.png";
 	wgtrAddProperty(subtree, "background", DATA_T_STRING, &val, 0);
+	wgtrSetupNode(subtree);
 	wgtrAddChild(this, subtree);
 	wgtrScheduleVerify(s, subtree);
 	/** Next the formstatus widget **/
@@ -119,6 +121,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    }
 	val.String = "largeflat";
 	wgtrAddProperty(newnode, "style", DATA_T_STRING, &val, 0);
+	wgtrSetupNode(newnode);
 	wgtrAddChild(subtree, newnode);
 	wgtrScheduleVerify(s, newnode);
 
@@ -141,6 +144,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    expFreeExpression(val.Generic);
 	    }
 
+	wgtrSetupNode(newnode);
 	wgtrAddChild(subtree, newnode);
 	wgtrScheduleVerify(s, newnode);
 
@@ -154,6 +158,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	wgtfb_internal_AddStringProp(newcn, "event", "Click");
 	wgtfb_internal_AddStringProp(newcn, "target", form_name);
 	wgtfb_internal_AddStringProp(newcn, "action", "First");
+	wgtrSetupNode(newcn);
 	wgtrAddChild(newnode, newcn);
 	wgtrScheduleVerify(s, newcn);
 
@@ -176,6 +181,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    expFreeExpression(val.Generic);
 	    }
 
+	wgtrSetupNode(newnode);
 	wgtrAddChild(subtree, newnode);
 	wgtrScheduleVerify(s, newnode);
 
@@ -189,6 +195,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	wgtfb_internal_AddStringProp(newcn, "event", "Click");
 	wgtfb_internal_AddStringProp(newcn, "target", form_name);
 	wgtfb_internal_AddStringProp(newcn, "action", "Prev");
+	wgtrSetupNode(newcn);
 	wgtrAddChild(newnode, newcn);
 	wgtrScheduleVerify(s, newcn);
 	
@@ -211,6 +218,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    expFreeExpression(val.Generic);
 	    }
 
+	wgtrSetupNode(newnode);
 	wgtrAddChild(subtree, newnode);
 	wgtrScheduleVerify(s, newnode);
 
@@ -224,6 +232,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	wgtfb_internal_AddStringProp(newcn, "event", "Click");
 	wgtfb_internal_AddStringProp(newcn, "target", form_name);
 	wgtfb_internal_AddStringProp(newcn, "action", "Next");
+	wgtrSetupNode(newcn);
 	wgtrAddChild(newnode, newcn);
 	wgtrScheduleVerify(s, newcn);
 	
@@ -246,6 +255,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	    expFreeExpression(val.Generic);
 	    }
 
+	wgtrSetupNode(newnode);
 	wgtrAddChild(subtree, newnode);
 	wgtrScheduleVerify(s, newnode);
 
@@ -259,6 +269,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	wgtfb_internal_AddStringProp(newcn, "event", "Click");
 	wgtfb_internal_AddStringProp(newcn, "target", form_name);
 	wgtfb_internal_AddStringProp(newcn, "action", "Last");
+	wgtrSetupNode(newcn);
 	wgtrAddChild(newnode, newcn);
 	wgtrScheduleVerify(s, newcn);
 	

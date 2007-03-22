@@ -54,10 +54,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.40 2007/03/21 04:48:08 gbeeley Exp $
+    $Id: centrallix.c,v 1.41 2007/03/22 16:29:28 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.41  2007/03/22 16:29:28  gbeeley
+    - (feature) Autolayout widget, better known as hbox and vbox.  Now you
+      don't have to manually compute all those X's and Y's!  Only hbox and
+      vbox supported right now; other layouts are planned (any takers?)
+    - (bugfix) cond_add_children with condition=false on conditional rendering
+      now compensates for x/y container offset of nonrendered widget.
+    - (change) allow drv->New code in wgtr to have access to the properties
+      for the given widget, by moving the ->New call later in the parse-open-
+      widget process.
+
     Revision 1.40  2007/03/21 04:48:08  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -755,6 +765,7 @@ cxHtInit()
 	httermInitialize();			/* terminal module */
 	hthintInitialize();			/* pres. hints module */
 	htparamInitialize();			/* parameter module */
+	htalInitialize();			/* autolayout module */
 
 	htcmpdInitialize();			/* component declaration */
 	htcmpInitialize();			/* component instance */

@@ -127,6 +127,17 @@ typedef struct
     } WgtrVerifySession, *pWgtrVerifySession;
 
 
+/** Widget Driver information structure **/
+typedef struct
+    {
+    char	    Name[64];		    /* Driver name */
+    int		    (*Verify)();	    /* Function for verifying the widget */
+    int		    (*New)();		    /* Function for initializing a widget */
+    XArray	    Types;		    /* Pseudo-types this widget driver will handle */
+    }
+    WgtrDriver, *pWgtrDriver;
+
+
 
 /** traversal methods for iterators **/
 #define WGTR_TM_LEVELORDER	1
@@ -140,6 +151,7 @@ void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
 			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
+int wgtrSetupNode(pWgtrNode node);
 
 /** wgtr iterator functions **/
 pWgtrIterator wgtrGetIterator(pWgtrNode tree, int traversal_type);	/** returns an iterator for the tree **/
@@ -178,6 +190,7 @@ pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression
 int wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info);	/** Verify a widget-tree. s must be pHtSession **/
 int wgtrScheduleVerify(pWgtrVerifySession vs, pWgtrNode widget); /** add a widget to the Verify Queue **/
 int wgtrCancelVerify(pWgtrVerifySession cs, pWgtrNode widget);	/** remove a widget from the Verify Queue **/
+int wgtrReverify(pWgtrVerifySession vs, pWgtrNode widget);	/** add to queue only if not already waiting **/
 
 /** wgtr driver-related functions **/
 int wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)());	/** registers a widget driver **/
