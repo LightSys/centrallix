@@ -1,0 +1,185 @@
+$Version=2$
+form_controls "widget/component-decl"
+    {
+    width=400;
+    height=26;
+
+    form "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/form";
+	}
+
+    bgcolor "widget/parameter"
+	{
+	type = "string";
+	allowchars = "abcdefghijklmnopqrstuvwxyz0123456789#";
+	default = null;
+	}
+
+    background "widget/parameter"
+	{
+	type = "string";
+	default = null;
+	}
+
+    form_ctl_pane "widget/pane"
+	{
+	x=0;y=0;width=400;height=26;
+	fl_height=0;
+	style=raised;
+	bgcolor=runserver(:this:bgcolor);
+	background=runserver(:this:background);
+
+	form_ctl_hbox "widget/hbox"
+	    {
+	    x=4;y=0;height=24;cellsize=22;spacing=2;
+
+	    fs "widget/formstatus"
+		{
+		y=2;
+		height=20;
+		width=90;
+		style=largeflat;
+		form=form;
+		}
+
+	    sp1 "widget/autolayoutspacer" { width=8; }
+
+	    btnFirst "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico16aa.gif";
+		pointimage="/sys/images/ico16ab.gif";
+		clickimage="/sys/images/ico16ac.gif";
+		disabledimage="/sys/images/ico16ad.gif";
+		enabled = runclient(:form:recid > 1);
+		cnFirst "widget/connector" { event="Click"; target=form; action="First"; }
+		}
+	    btnBack "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico16ba.gif";
+		pointimage="/sys/images/ico16bb.gif";
+		clickimage="/sys/images/ico16bc.gif";
+		disabledimage="/sys/images/ico16bd.gif";
+		enabled = runclient(:form:recid > 1);
+		cnBack "widget/connector" { event="Click"; target=form; action="Prev"; }
+		}
+	    ebPosition "widget/editbox"
+		{
+		readonly=yes;
+		fieldname="__position";
+		width=40;
+		y=3;
+		height=18;
+		form=form;
+		bgcolor=white;
+		fl_width=5;
+		}
+	    btnNext "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico16ca.gif";
+		pointimage="/sys/images/ico16cb.gif";
+		clickimage="/sys/images/ico16cc.gif";
+		disabledimage="/sys/images/ico16cd.gif";
+		enabled = runclient(not(:form:recid == :form:lastrecid));
+		cnNext "widget/connector" { event="Click"; target=form; action="Next"; }
+		}
+	    btnLast "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico16da.gif";
+		pointimage="/sys/images/ico16db.gif";
+		clickimage="/sys/images/ico16dc.gif";
+		disabledimage="/sys/images/ico16dd.gif";
+		enabled = runclient(not(:form:recid == :form:lastrecid));
+		cnLast "widget/connector" { event="Click"; target=form; action="Last"; }
+		}
+		
+	    sp2 "widget/autolayoutspacer" { width=8; }
+
+	    btnSave "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico20a.gif";
+		pointimage="/sys/images/ico20b.gif";
+		clickimage="/sys/images/ico20c.gif";
+		disabledimage="/sys/images/ico20d.gif";
+		enabled = runclient(:form:is_savable);
+		cnSave "widget/connector" { event="Click"; target=form; action="Save"; }
+		}
+	    btnSearch "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico21a.gif";
+		pointimage="/sys/images/ico21b.gif";
+		clickimage="/sys/images/ico21c.gif";
+		disabledimage="/sys/images/ico21d.gif";
+		enabled = runclient(:form:is_queryable or :form:is_queryexecutable);
+		cnSearch "widget/connector" { event="Click"; target=form; action="QueryToggle"; }
+		}
+	    btnCancel "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico22a.gif";
+		pointimage="/sys/images/ico22b.gif";
+		clickimage="/sys/images/ico22c.gif";
+		disabledimage="/sys/images/ico22d.gif";
+		enabled = runclient(:form:is_discardable);
+		cnCancel "widget/connector" { event="Click"; target=form; action="Discard"; }
+		}
+	    btnEdit "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico23a.gif";
+		pointimage="/sys/images/ico23b.gif";
+		clickimage="/sys/images/ico23c.gif";
+		disabledimage="/sys/images/ico23d.gif";
+		enabled = runclient(:form:is_editable);
+		cnEdit "widget/connector" { event="Click"; target=form; action="Edit"; }
+		}
+	    btnNew "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico25a.gif";
+		pointimage="/sys/images/ico25b.gif";
+		clickimage="/sys/images/ico25c.gif";
+		disabledimage="/sys/images/ico25d.gif";
+		enabled = runclient(:form:is_newable);
+		cnNew "widget/connector" { event="Click"; target=form; action="New"; }
+		}
+	    btnDelete "widget/imagebutton"
+		{
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico24a.gif";
+		pointimage="/sys/images/ico24b.gif";
+		clickimage="/sys/images/ico24c.gif";
+		disabledimage="/sys/images/ico24d.gif";
+		enabled = runclient(:form:is_editable);
+		cnDelete "widget/connector" { event="Click"; target=form; action="Delete"; }
+		}
+	    }
+	}
+    }

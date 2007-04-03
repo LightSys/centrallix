@@ -134,7 +134,9 @@ function lbl_init(l, wparam)
     l.isFormStatusWidget = false;
     if (l.fieldname)
 	{
-	l.form = wgtrFindContainer(l, "widget/form");
+	l.form = null;
+	if (wparam.form) l.form = wgtrGetNode(l, wparam.form);
+	if (!l.form) l.form = wgtrFindContainer(l, "widget/form");
 	if (l.form) l.form.Register(l);
 	}
     else

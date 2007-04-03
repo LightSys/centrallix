@@ -99,11 +99,17 @@ function wgtrRemoveNamespace(ns)
 function wgtrGetProperty(node, prop_name)
     {
     var prop;
+    var newnode;
 
 	// make sure the parameters are legitimate
 	if (!node || !node.__WgtrName) 
-{ 
-	pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; }
+	    { 
+	    pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; 
+	    }
+
+	// Indirect reference?
+	if (node.reference && (newnode = node.reference()))
+	    node = newnode;
 
 	// If the Page or Component-decl widget, check for params
 	if (node.__WgtrType == "widget/component-decl" || node.__WgtrType == "widget/page")
@@ -176,6 +182,8 @@ function wgtrGetNode(tree, node_name)
     {
     var i;
     var child;
+    var node = null;
+    var newnode;
 
 	// make sure the parameters are legitimate
 	if (!tree || !tree.__WgtrName) 
@@ -187,9 +195,17 @@ function wgtrGetNode(tree, node_name)
 	    if ( (child = wgtrGetNode(tree.WgtrChildren[i], node_name)) != null) return child;
 	    }*/
 	if (tree.__WgtrRoot.__WgtrChildList[node_name]) 
-	    return tree.__WgtrRoot.__WgtrChildList[node_name];
-	alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
-	return null;
+	    node = tree.__WgtrRoot.__WgtrChildList[node_name];
+	else
+	    alert('Application error: "' + node_name + '" is undefined in application/component "' + wgtrGetName(tree) + '"');
+
+	// Indirect reference?
+	if (node && node.reference && (newnode = node.reference()))
+	    {
+	    node = newnode;
+	    }
+
+	return node;
     }
 
 // wgtrAddEventFunc - associate a function with an event for a particular widget.
@@ -330,14 +346,16 @@ function wgtrGetType(node)
 // element.  Replacement for the old fm_current logic.
 function wgtrFindContainer(node,type)
     {
-    var t,p;
+    var t,p,n;
     // make sure this is actually a tree
     if (!node || !node.__WgtrName) 
 	{ pg_debug("wgtrFindContainer - oldnode was not a WgtrNode!\n"); return false; }
     while(1)
 	{
-	t = wgtrGetType(node);
 	p = wgtrGetParent(node);
+	if (node.reference && (n = node.reference()))
+	    node = n;
+	t = wgtrGetType(node);
 	if (t == type) return node;
 	if (!p) return null;
 	node = p;
@@ -369,7 +387,7 @@ function wgtrGetRoot(node)
 	return node.__WgtrRoot;
     }
 
-function wgtrGetAttrValue(node, attrname)
+/*function wgtrGetAttrValue(node, attrname)
     {
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
@@ -377,4 +395,28 @@ function wgtrGetAttrValue(node, attrname)
 	if (typeof (node[attrname]) == 'undefined')
 	    alert('Application error: "' + attrname + '" is undefined for object "' + wgtrGetName(node) + '"');
 	return node[attrname];
+    }*/
+
+function wgtrCheckReference(v)
+    {
+    if (wgtrIsNode(v))
+	{
+	if (v.reference) v = v.reference();
+	return wgtrGetNamespace(v) + ":" + wgtrGetName(v);
+	}
+    return null;
     }
+
+function wgtrDereference(r)
+    {
+    if (!r || !r.split) return null;
+    var n = r.split(":", 2);
+    if (!n || !n[0] || !n[1]) return null;
+    if (!pg_namespaces[n[0]])
+	{
+	alert('Application error: namespace "' + n[0] + '" is undefined');
+	return null;
+	}
+    return wgtrGetNode(pg_namespaces[n[0]], n[1]);
+    }
+

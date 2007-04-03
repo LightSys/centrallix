@@ -179,18 +179,36 @@ function form_cb_object_available(data)
 	    {
 	    if(this.elements[i]._form_fieldid==undefined)
 		{
-		for(var j in this.data)
+		if (this.elements[i].fieldname == '__position')
+		    this.elements[i]._form_fieldid = '__position';
+		else
 		    {
-		    if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)
+		    for(var j in this.data)
 			{
-			this.elements[i]._form_type=data[j].type;
-			this.elements[i]._form_fieldid=j;
+			if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)
+			    {
+			    this.elements[i]._form_type=data[j].type;
+			    this.elements[i]._form_fieldid=j;
+			    }
 			}
 		    }
 		if(this.elements[i]._form_fieldid==undefined)
 		    this.elements[i]._form_fieldid=null;
 		}
-	    if(this.elements[i]._form_fieldid!=null && this.data[this.elements[i]._form_fieldid].value)
+	    if (this.elements[i]._form_fieldid == '__position')
+		{
+		var txt = "";
+		if (this.recid && this.recid > 0)
+		    txt += (this.recid);
+		else
+		    txt += "??";
+		if (this.lastrecid && this.lastrecid > 0)
+		    txt += ("/" + this.lastrecid);
+		else
+		    txt += "";
+		this.elements[i].setvalue(txt);
+		}
+	    else if (this.elements[i]._form_fieldid!=null && this.data[this.elements[i]._form_fieldid].value)
 		{
 		this.elements[i].setvalue(this.data[this.elements[i]._form_fieldid].value);
 		cx_set_hints(this.elements[i], this.data[this.elements[i]._form_fieldid].hints, 'data');

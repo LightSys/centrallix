@@ -104,7 +104,9 @@ function fs_init(param) {
     l.isFormStatusWidget = true;
     l.setvalue = fs_setvalue;
     l.imagestyle = param.style;
-    l.form = wgtrFindContainer(l,"widget/form");
+    l.form = null;
+    if (param.form) l.form = wgtrGetNode(l, param.form);
+    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
     if (l.form) {
 	l.form.Register(l);
     }

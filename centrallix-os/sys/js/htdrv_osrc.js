@@ -490,7 +490,13 @@ function osrc_open_session(cb)
 function osrc_open_query()
     {
     //Open Query
-    if(!this.sid) this.sid=pg_links(this)[0].target;
+    if(!this.sid)
+	{
+	var lnks = pg_links(this);
+	if (!lnks || !lnks[0] || !lnks[0].target)
+	    return false;
+	this.sid=pg_links(this)[0].target;
+	}
     if(this.qid)
 	{
 	pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid, osrc_open_query);

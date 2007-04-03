@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2007 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -28,6 +28,7 @@ function cmpd_init(node, param)
     component.ifcProbe(ifAction).Add('ModifyProperty', cmpd_action_modify_property);
     component.shell = shell;
     component.is_visual = param.vis;
+    component.FindContainer = cmpd_find_container;
 
     // Obscure/Reveal
     component.HandleReveal = cmpd_handle_reveal;
@@ -35,6 +36,11 @@ function cmpd_init(node, param)
     pg_reveal_register_triggerer(component);
 
     return component;
+    }
+
+function cmpd_find_container(t)
+    {
+    return wgtrFindContainer(this.shell, t);
     }
 
 function cmpd_cb_reveal(e)

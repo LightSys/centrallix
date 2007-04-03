@@ -24,13 +24,21 @@ function pa_getvalue()
 
 function pa_setvalue(v)
     {
-    this.value = v;
+    if (this.datatype == 'object')
+	this.value = wgtrDereference(v);
+    else
+	this.value = v;
     }
 
 function pa_verify()
     {
     cx_hints_startnew(this);
-    this.value = cx_hints_checkmodify(this, this.value, this.newvalue, this.datatype);
+    this.setvalue(cx_hints_checkmodify(this, this.value, this.newvalue, this.datatype));
+    }
+
+function pa_reference()
+    {
+    return this.value;
     }
 
 function pa_init(l, wparam)
@@ -45,12 +53,19 @@ function pa_init(l, wparam)
 	l.newvalue = htutil_unpack(l.newvalue);
 	}
     l.datatype = wparam.type;
+    l.findcontainer = wparam.findc;
+
+    if (l.findcontainer && wgtrGetType(wgtrGetParent(l)) == 'widget/component-decl')
+	{
+	l.newvalue = wgtrCheckReference(wgtrGetParent(l).FindContainer(l.findcontainer));
+	}
 
     // Callbacks
     l.getvalue = pa_getvalue;
     l.setvalue = pa_setvalue;
-
     l.Verify = pa_verify;
+    if (l.datatype == 'object')
+	l.reference = pa_reference;
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

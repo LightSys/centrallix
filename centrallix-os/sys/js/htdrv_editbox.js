@@ -422,7 +422,9 @@ function eb_init(param)
 	pg_addarea(l, -1,-1,getClipWidth(l)+1,getClipHeight(l)+1, 'ebox', 'ebox', param.isReadOnly?0:3);
     setRelativeY(c1, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
     setRelativeY(c2, (getClipHeight(l) - text_metric.charHeight)/2 + (cx__capabilities.CSSBox?1:0));
-    l.form = wgtrFindContainer(l,"widget/form");
+    l.form = null;
+    if (param.form) l.form = wgtrGetNode(l, param.form);
+    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
     if (l.form) l.form.Register(l);
     l.changed = false;
 

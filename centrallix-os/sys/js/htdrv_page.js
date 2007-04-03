@@ -326,9 +326,10 @@ function pg_ping_send(p)
         p = document.getElementById('pgping');
 	}
 	        
-    p.onload=pg_ping_recieve;
-    
-    if(cx__capabilities.Dom1HTML)
+    //p.onload=pg_ping_recieve;
+   
+    pg_serialized_load(p, '/INTERNAL/ping', pg_ping_recieve);
+    /*if(cx__capabilities.Dom1HTML)
 	{
 	p.setAttribute('src','/INTERNAL/ping');
 	}
@@ -336,7 +337,7 @@ function pg_ping_send(p)
 	{
 	//alert(p);
 	p.src='/INTERNAL/ping';
-	}
+	}*/
     }
 
 /** Function to get the links attacked to a layer **/
@@ -1287,8 +1288,11 @@ function pg_expression(o,p,e,l,c)
     for(var i=0; i<l.length; i++)
 	{
 	var item = l[i];
+	var ref;
 	//item[2] = eval(item[0]); // get obj reference
 	item[2] = nodelist[item[0]]; // get obj reference
+	if (item[2].reference && (ref = item[2].reference()))
+	    item[2] = ref;
 	item[2].pg_expchange = pg_expchange;
 	htr_watch(item[2],item[1],"pg_expchange");
 	//item[2].watch(item[1], pg_expchange);
@@ -2016,8 +2020,8 @@ function pg_dotip_complete()
     var x2 = getRelativeX(imgs[1]);
     if (isNaN(x2)) x2 = imgs[1].offsetLeft + imgs[1].offsetParent.offsetLeft;
     var tipw = (x2 - x1) + 6;
-    var pgx = pg_tipinfo.x + 16;
-    var pgy = pg_tipinfo.y;
+    var pgx = pg_tipinfo.x;
+    var pgy = pg_tipinfo.y + 20;
     if (pgx + tipw > pg_width) pgx = pg_width - tipw;
     if (pgx < 0) pgx = 0;
     setClipWidth(pg_tiplayer, tipw);

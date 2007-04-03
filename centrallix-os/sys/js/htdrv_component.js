@@ -137,6 +137,8 @@ function cmp_instantiate(aparam)
     for(var pr in aparam)
 	{
 	var v = aparam[pr];
+	var r = wgtrCheckReference(v);
+	if (r) v = r;
 	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
 	    url += '&';
 	else
