@@ -323,7 +323,10 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 		return -1;
 
 	    if (wgtrSetupNode(new_node) < 0)
+		{
+		wgtrFree(new_node);
 		return -1;
+		}
 
 	    wgtrCopyInTemplate(new_node, tree_obj, subtree, base_name);
 	    wgtrAddChild(tree, new_node);
@@ -1124,13 +1127,11 @@ wgtrSetupNode(pWgtrNode node)
 	/** look up the 'new' function and call it on the now-init'd struct **/
 	if ( (drv = wgtr_internal_LookupDriver(node)) == NULL) 
 	    {
-	    wgtrFree(node);
 	    return -1;
 	    }
 	if (drv->New(node) < 0)
 	    {
 	    mssError(1, "WGTR", "Error initializing new widget node '%s'", node->Name);
-	    wgtrFree(node);
 	    return -1;
 	    }
 

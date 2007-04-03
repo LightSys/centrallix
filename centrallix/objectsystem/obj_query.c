@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.14 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: obj_query.c,v 1.15 2007/04/03 19:31:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.15  2007/04/03 19:31:35  gbeeley
+    - (bugfix) memory leak in objOpenQuery as the mlx session was not closed.
+    - (security) error introduced by cut-and-paste of code in wgtr - free()
+      done in wrong place, caused assertion failure due to use of free'd object
+
     Revision 1.14  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -321,10 +326,10 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     pObjQuery this = NULL;
     pExpression tree = (pExpression)tree_v;
     pExpression *orderbyexp = (pExpression*)orderby_exp_v;
-    int i,n,len,j;
+    int i,n,len,j,t;
     short sn;
     pExpression sort_item;
-    pLxSession lxs;
+    pLxSession lxs = NULL;
     pObject tmp_obj;
     char* ptr;
     char* start_ptr;
@@ -380,6 +385,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    {
 	    for(i=0;orderbyexp[i];i++)
 	        {
+		if (i >= sizeof(this->SortBy)/sizeof(void*)) break;
 		this->SortBy[i] = orderbyexp[i];
 		}
 	    this->SortBy[i] = orderbyexp[i];
@@ -389,9 +395,21 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    lxs = mlxStringSession(order_by, MLX_F_EOF | MLX_F_FILENAMES | MLX_F_ICASER);
 	    for(i=0;(sort_item=exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC));i++)
 	        {
+		if (i >= sizeof(this->SortBy)/sizeof(void*)) break;
 		this->SortBy[i] = sort_item;
+		t = mlxNextToken(lxs);
+		if (t == MLX_TOK_EOF)
+		    {
+		    i++;
+		    break;
+		    }
+		if (t == MLX_TOK_COMMA) continue;
+		mssError(1,"OSML","Invalid search criteria '%s'", order_by);
+		goto error_return;
 		}
 	    this->SortBy[i] = NULL;
+	    mlxCloseSession(lxs);
+	    lxs = NULL;
 	    }
 	else
 	    {
@@ -542,6 +560,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 
     error_return:
 
+	if (lxs) mlxCloseSession(lxs);
 	if (this && order_by && !orderbyexp) for(i=0;this->SortBy[i];i++) expFreeExpression(this->SortBy[i]);
 	if (linked_obj) objClose(linked_obj); /* unlink */
 	if (this && this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
