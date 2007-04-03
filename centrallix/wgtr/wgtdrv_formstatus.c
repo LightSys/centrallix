@@ -55,13 +55,13 @@ wgtfsVerify(pWgtrVerifySession s)
 	
 	wgtrGetPropertyValue(s->CurrWidget, "style", DATA_T_STRING, &val);
 	
-	s->CurrWidget->height = s->CurrWidget->r_height = 20;
+	s->CurrWidget->height = s->CurrWidget->pre_height = s->CurrWidget->r_height = 20;
 	
 	
 	if((val.String == NULL) || !strcmp(val.String, "small")) 
-	    s->CurrWidget->width = s->CurrWidget->r_width = 30;
+	    s->CurrWidget->width = s->CurrWidget->r_width = s->CurrWidget->pre_width = 30;
 	else 
-	    s->CurrWidget->width = s->CurrWidget->r_width = 88;
+	    s->CurrWidget->width = s->CurrWidget->r_width = s->CurrWidget->pre_width = 90;
 	    
     return 0;
     }

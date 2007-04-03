@@ -160,7 +160,10 @@ wgtrParseParameter(pObject obj, pStruct inf)
 	    mssError(0, "WGTR", "Parameter '%s' must have a valid type", param->Name);
 	    goto error;
 	    }
-	t = objTypeID(str);
+	if (!strcmp(str,"object"))
+	    t = DATA_T_STRING;
+	else
+	    t = objTypeID(str);
 	if (t < 0)
 	    {
 	    mssError(0, "WGTR", "Invalid type '%s' for parameter '%s'", str, param->Name);

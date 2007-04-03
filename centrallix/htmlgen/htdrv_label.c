@@ -43,6 +43,12 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.30  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.29  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -328,6 +334,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char fgcolor[64];
     char fieldname[HT_FIELDNAME_SIZE];
+    char form[64];
     int x=-1,y=-1,w,h;
     int id, i;
     int fontsize;
@@ -401,13 +408,13 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Field name **/
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
 	    strtcpy(fieldname,ptr,sizeof(fieldname));
-	    }
 	else
-	    {
 	    fieldname[0]='\0';
-	    }
+	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(form,ptr,sizeof(form));
+	else
+	    form[0]='\0';
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -421,8 +428,8 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	snprintf(stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>",
 		w,align,fontsize,fgcolor);
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%s'], {field:'%s', text:'%s', style:'%s'});\n",
-		name, fieldname, text2, stylestr);
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%s'], {field:'%s', form:'%s', text:'%s', style:'%s'});\n",
+		name, fieldname, form, text2, stylestr);
 	nmSysFree(text2);
 
 	/** Script include to get functions **/

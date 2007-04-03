@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.45 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.46 2007/04/03 15:50:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.46  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.45  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -398,6 +404,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
+    char form[64];
     int box_offset;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
@@ -454,13 +461,14 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
 	    strtcpy(fieldname,ptr,sizeof(fieldname));
-	    }
 	else
-	    {
 	    fieldname[0]='\0';
-	    }
+
+	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(form,ptr,sizeof(form));
+	else
+	    form[0]='\0';
 
 	if (s->Capabilities.CSSBox)
 	    box_offset = 1;
@@ -497,9 +505,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%s'], c1:htr_subel(nodes['%s'],\"eb%dcon1\"), c2:htr_subel(nodes['%s'],\"eb%dcon2\"), fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
+	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%s'], c1:htr_subel(nodes['%s'],\"eb%dcon1\"), c2:htr_subel(nodes['%s'],\"eb%dcon2\"), form:\"%s\", fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
 	    name,  name,id,  name,id, 
-	    fieldname, is_readonly, main_bg);
+	    form, fieldname, is_readonly, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);

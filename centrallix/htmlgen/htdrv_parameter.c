@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.1 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.2 2007/04/03 15:50:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.2  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.1  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -92,6 +98,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char type[32];
+    char findcontainer[64];
     int id;
     int i;
     XString xs;
@@ -114,11 +121,15 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"type",DATA_T_STRING,POD(&ptr)) != 0)
 	    ptr = "string";
 	strtcpy(type,ptr,sizeof(type));
-	if (objTypeID(type) < 0)
+	if (objTypeID(type) < 0 && strcmp(type,"object"))
 	    {
 	    mssError(1,"HTPARAM","Invalid parameter data type for '%s'", name);
 	    return -1;
 	    }
+	if (!strcmp(type, "object") && wgtrGetPropertyValue(tree,"find_container",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(findcontainer, ptr, sizeof(findcontainer));
+	else
+	    findcontainer[0] = '\0';
 
 	/** JavaScript include file **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_parameter.js", 0);
@@ -127,8 +138,8 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	find_inf = stLookup_ne(s->Params, name);
 
 	/** Script init **/
-	htrAddScriptInit_va(s, "    pa_init(nodes[\"%s\"], {type:'%s', val:%s", 
-		name, type, find_inf?"\"":"null");
+	htrAddScriptInit_va(s, "    pa_init(nodes[\"%s\"], {type:'%s', findc:'%s', val:%s", 
+		name, type, findcontainer, find_inf?"\"":"null");
 	if (find_inf)
 	    {
 	    for(i=0;i<strlen(find_inf->StrVal);i++)

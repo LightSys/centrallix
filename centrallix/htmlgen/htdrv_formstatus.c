@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.23 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.24 2007/04/03 15:50:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.24  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.23  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -290,6 +296,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    int x=-1,y=-1;
    int id;
    char name[64];
+   char form[64];
    char* ptr;
    char* style;
    int w;
@@ -317,6 +324,10 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    /** Write named global **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    strtcpy(name,ptr,sizeof(name));
+   if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) != 0)
+       form[0] = '\0';
+   else
+       strtcpy(form,ptr,sizeof(form));
    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"fs%dmain\")", id);
 
    /** Ok, write the style header items. **/
@@ -325,8 +336,8 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%s\"],style:\"%s\"});\n",
-	    name, style);
+   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%s\"],form:\"%s\",style:\"%s\"});\n",
+	    name, form, style);
 
    /** HTML body <DIV> element for the layers. **/
    if (!strcmp(style,"large"))

@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.5 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.6 2007/04/03 15:50:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.6  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.5  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -178,6 +184,52 @@ htcmp_internal_CreateParams(pWgtrNode tree)
     }
 
 
+/*** htcmp_internal_CheckReferences() - go through the top level of
+ *** the widget tree for the component, and compare against the parameters
+ *** inside 'params', and add the namespace reference as needed.
+ ***/
+int
+htcmp_internal_CheckReferences(pWgtrNode tree, pStruct params, char* ns)
+    {
+    int i, cnt, j;
+    char* str;
+    char* name;
+    pWgtrNode param_node;
+    pStruct one_param;
+    char refname[128];
+
+	/** search for 'object' parameters **/
+	cnt = xaCount(&tree->Children);
+	for(i=0;i<cnt;i++)
+	    {
+	    param_node = (pWgtrNode)xaGetItem(&tree->Children, i);
+	    if (param_node && !strcmp(param_node->Type, "widget/parameter"))
+		{
+		if (wgtrGetPropertyValue(param_node, "type", DATA_T_STRING, POD(&str)) == 0 && !strcmp(str,"object"))
+		    {
+		    /** Found one - see if there is a corresponding ref
+		     ** in the pStruct params list provided by the component
+		     ** instantiation
+		     **/
+		    wgtrGetPropertyValue(param_node, "name", DATA_T_STRING, POD(&name));
+		    for(j=0;j<params->nSubInf;j++)
+			{
+			one_param = params->SubInf[j];
+			if (!strcmp(one_param->Name, name))
+			    {
+			    snprintf(refname, sizeof(refname), "%s:%s", ns, one_param->StrVal);
+			    stAddValue_ne(one_param, refname);
+			    break;
+			    }
+			}
+		    }
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** htcmpRender - generate the HTML code for the component.
  ***/
 int
@@ -197,6 +249,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char* old_graft = NULL;
     char sbuf[128];
     pStruct params = NULL;
+    pStruct old_params = NULL;
     int i,j;
 
 	/** Verify capabilities **/
@@ -257,9 +310,12 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	/** If static mode, load the component **/
 	if (is_static)
 	    {
+	    /** Save the current graft point and render parameters **/
 	    old_graft = s->GraftPoint;
 	    snprintf(sbuf, sizeof(sbuf), "%s:%s", wgtrGetRootDName(tree), name);
 	    s->GraftPoint = nmSysStrdup(sbuf);
+	    old_params = s->Params;
+	    s->Params = params;
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
@@ -293,6 +349,9 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    wgtrMoveChildren(cmp_tree, x, y);
 
+	    /** Check param references **/
+	    htcmp_internal_CheckReferences(cmp_tree, params, s->Namespace->DName);
+
 	    /** Switch namespaces **/
 	    htrAddNamespace(s, tree, wgtrGetRootDName(cmp_tree));
 
@@ -304,7 +363,9 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Switch the namespace back **/
 	    htrLeaveNamespace(s);
 
-	    /** Restore original graft point, if one **/
+	    /** Restore original graft point and parameters **/
+	    s->Params = old_params;
+	    old_params = NULL;
 	    nmSysFree(s->GraftPoint);
 	    s->GraftPoint = old_graft;
 	    old_graft = NULL;
@@ -351,6 +412,11 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    nmSysFree(s->GraftPoint);
 	    s->GraftPoint = old_graft;
 	    old_graft = NULL;
+	    }
+	if (s->Params && old_params)
+	    {
+	    s->Params = old_params;
+	    old_params = NULL;
 	    }
 	if (cmp_obj) objClose(cmp_obj);
 	if (cmp_tree) wgtrFree(cmp_tree);

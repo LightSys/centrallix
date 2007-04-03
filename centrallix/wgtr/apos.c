@@ -30,10 +30,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.10 2007/03/22 16:29:28 gbeeley Exp $
+    $Id: apos.c,v 1.11 2007/04/03 15:50:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.11  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.10  2007/03/22 16:29:28  gbeeley
     - (feature) Autolayout widget, better known as hbox and vbox.  Now you
       don't have to manually compute all those X's and Y's!  Only hbox and
@@ -152,6 +158,13 @@ pWgtrNode child;
 		    printf("%*.*s        y=%d h=%d", indent*4, indent*4, "", section->StartLine->Loc, section->Width);
 		    printf("\n");
 		}
+	    sectionCnt = xaCount(&AGRID(tree->LayoutGrid)->Cols);
+	    for(i=0;i<sectionCnt;i++)
+		{
+		    section = (pAposSection)xaGetItem(&AGRID(tree->LayoutGrid)->Cols, i);
+		    printf("%*.*s        x=%d w=%d", indent*4, indent*4, "", section->StartLine->Loc, section->Width);
+		    printf("\n");
+		}
 	}
     childCnt = xaCount(&tree->Children);
     for(i=0;i<childCnt;i++)
@@ -231,8 +244,11 @@ int i=0, count=0;
 int
 aposSetFlexibilities(pWgtrNode Parent)
 {
+pAposGrid theGrid = AGRID(Parent->LayoutGrid);
+pAposSection Sect;
 pWgtrNode Child;
 int i=0, childCount=xaCount(&(Parent->Children));
+int sectCount;
 
     /** Check recursion **/
     if (thExcessiveRecursion())
@@ -249,6 +265,23 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	    if (aposSetFlexibilities(Child) < 0)
 		{
 		    return -1;
+		}
+	}
+
+    /** Reset flexibility values in the grid **/
+    if (theGrid && childCount > 0 && !(Parent->Flags & WGTR_F_NONVISUAL))
+	{
+	    sectCount = xaCount(&(theGrid->Rows));
+	    for(i=0;i<sectCount;i++)
+		{
+		    Sect = (pAposSection)xaGetItem(&theGrid->Rows, i);
+		    aposSetSectionFlex(Sect, APOS_ROW);
+		}
+	    sectCount = xaCount(&(theGrid->Cols));
+	    for(i=0;i<sectCount;i++)
+		{
+		    Sect = (pAposSection)xaGetItem(&theGrid->Cols, i);
+		    aposSetSectionFlex(Sect, APOS_COL);
 		}
 	}
 
@@ -997,11 +1030,28 @@ int count=0, i=0;
 }
 
 int
+aposSetSectionFlex(pAposSection sect, int type)
+{
+int sCount = xaCount(&(sect->StartLine->SWidgets));
+int cCount = xaCount(&(sect->StartLine->CWidgets));
+
+    /** Set flex to 0 if the section is a spacer or contains non-flexible children, 
+    *** otherwise set it to the average of the children. If none of those apply
+    *** it must be a wide, widgetless gap, assign a default flexibility **/
+    if((sect->isSpacer) || (aposNonFlexChildren(sect->StartLine, type)))
+        sect->Flex = 0;
+    else if(sCount || cCount) 
+        sect->Flex = aposMinimumChildFlex(sect->StartLine, type);
+    else
+	return -1;
+
+    return 0;
+}
+
+int
 aposCreateSection(pXArray Sections, pAposLine StartL, pAposLine EndL, int Diff, int type)
 {
 pAposSection NewSect;
-int sCount = xaCount(&(StartL->SWidgets));
-int cCount = xaCount(&(StartL->CWidgets));
     
     /**Allocate and initiallize a new section**/
     if((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0)
@@ -1022,17 +1072,16 @@ int cCount = xaCount(&(StartL->CWidgets));
     /** Need to adjust section width/height? **/
     if (EndL->Adj)
 	NewSect->DesiredWidth = NewSect->Width + EndL->Adj;
-    
-    /** Set flex to 0 if the section is a spacer or contains non-flexible children, 
-    *** otherwise set it to the average of the children. If none of those apply
-    *** it must be a wide, widgetless gap, assign a default flexibility **/
-    if((NewSect->isSpacer) || (aposNonFlexChildren(StartL, type)))
-        NewSect->Flex = 0;
-    else if(sCount || cCount) 
-        NewSect->Flex = aposMinimumChildFlex(StartL, type);
-    else if (Diff < 0) NewSect->Flex = APOS_CGAPFLEX;
-    else NewSect->Flex = APOS_EGAPFLEX;
-    
+   
+    /** Set section flexibility **/
+    if (aposSetSectionFlex(NewSect, type) < 0)
+	{
+	if (Diff < 0)
+	    NewSect->Flex = APOS_CGAPFLEX;
+	else
+	    NewSect->Flex = APOS_EGAPFLEX;
+	}
+
     xaAddItem(Sections, NewSect);
     
     return 0;
@@ -1181,7 +1230,9 @@ aposSpaceOutLines(pXArray Lines, pXArray Sections, int Diff)
 pAposLine CurrLine, PrevLine;
 pAposSection PrevSect, CurrSect;
 int TotalFlex=0, TotalFlexibleSpace=0, Adj=0, i=0, Extra=0, count=xaCount(Sections);
+int FlexibleSections=0;
 float FlexWeight=0, SizeWeight=0;
+float TotalSum=0;
 
     /**if there are no sections, don't bother going on**/
     if(!count) return 0;
@@ -1192,7 +1243,10 @@ float FlexWeight=0, SizeWeight=0;
 	    CurrSect = ((pAposSection)xaGetItem(Sections, i));
 	    TotalFlex += CurrSect->Flex;
 	    if(CurrSect->Flex)
-	        TotalFlexibleSpace += CurrSect->Width;
+		{
+		    FlexibleSections++;
+		    TotalFlexibleSpace += CurrSect->Width;
+		}
 	}
     
     /** if there is no flexibility for expansion or contraction return 0**/
@@ -1201,6 +1255,17 @@ float FlexWeight=0, SizeWeight=0;
     /** sets each line's location equal to the previous line's location
     *** plus the adjusted width of the preceding section **/
     count = xaCount(Lines);
+    for(i=1; i<count; ++i)
+	{
+	    PrevSect = (pAposSection)xaGetItem(Sections, (i-1));
+	    FlexWeight = (float)(PrevSect->Flex) / (float)(TotalFlex);
+	    SizeWeight = 0;
+	    if(FlexWeight > 0)
+	        SizeWeight = (float)(PrevSect->Width) / (float)(TotalFlexibleSpace);
+
+	    TotalSum += (FlexWeight * SizeWeight);
+	}
+
     for(i=1; i<count; ++i)	//starts at i=1 to skip the first borderline
         {
 	    CurrLine = (pAposLine)xaGetItem(Lines, i);
@@ -1216,14 +1281,16 @@ float FlexWeight=0, SizeWeight=0;
 	    /**for expanding lines**/
 	    if(Diff > 0)
 	        {
-		    Adj = APOS_FUDGEFACTOR + (float)(Diff) * ((float)(FlexWeight+SizeWeight)/2.0);
+		    /*Adj = APOS_FUDGEFACTOR + (float)(Diff) * ((float)(FlexWeight+SizeWeight)/2.0);*/
+		    Adj = APOS_FUDGEFACTOR + (float)(Diff) * ((float)(FlexWeight*SizeWeight)/TotalSum);
 		    CurrLine->Loc = PrevLine->Loc + PrevSect->Width + Adj;
 		    PrevSect->Width += Adj;
 		}
 	    /**for contracting lines**/
 	    else if(Diff < 0)
 		{
-		    Adj = (float)(Diff) * ((float)(FlexWeight+SizeWeight)/2.0) - APOS_FUDGEFACTOR;
+		    /*Adj = (float)(Diff) * ((float)(FlexWeight+SizeWeight)/2.0) - APOS_FUDGEFACTOR;*/
+		    Adj = (float)(Diff) * ((float)(FlexWeight*SizeWeight)/TotalSum) - APOS_FUDGEFACTOR;
 		    
 		    /** if the section width will be unacceptably 
 		    *** narrow or negative after the adjustment **/
@@ -1294,7 +1361,9 @@ pWgtrNode Widget;
 		    if(flag==APOS_ROW  &&  Widget->fl_height)
 			{
 			    newsize = CurrLine->Loc - Widget->y - isTopTab*24;
-			    if(newsize > APOS_MINWIDTH || newsize > Widget->pre_height)
+			    if (newsize < APOS_MINWIDTH && Widget->pre_height >= APOS_MINWIDTH)
+				Widget->height = APOS_MINWIDTH;
+			    else if(newsize >= APOS_MINWIDTH || newsize >= Widget->pre_height)
 				Widget->height = newsize;
 			    else 
 				/*Widget->height = APOS_MINWIDTH;*/
@@ -1303,7 +1372,9 @@ pWgtrNode Widget;
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
 		        {
 			    newsize = CurrLine->Loc - Widget->x - isSideTab*tabWidth;
-			    if(newsize > APOS_MINWIDTH || newsize > Widget->pre_width)
+			    if (newsize < APOS_MINWIDTH && Widget->pre_width >= APOS_MINWIDTH)
+				Widget->width = APOS_MINWIDTH;
+			    else if (newsize >= APOS_MINWIDTH || newsize >= Widget->pre_width)
 				Widget->width = newsize;
 			    else
 				/*Widget->width = APOS_MINWIDTH;*/

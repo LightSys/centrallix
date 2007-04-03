@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_autolayout.c,v 1.1 2007/03/22 16:29:28 gbeeley Exp $
+    $Id: htdrv_autolayout.c,v 1.2 2007/04/03 15:50:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_autolayout.c,v $
 
     $Log: htdrv_autolayout.c,v $
+    Revision 1.2  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.1  2007/03/22 16:29:28  gbeeley
     - (feature) Autolayout widget, better known as hbox and vbox.  Now you
       don't have to manually compute all those X's and Y's!  Only hbox and
@@ -110,7 +116,10 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Add the stylesheet for the layer **/
-	htrAddStylesheetItem_va(s,"\t#al%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#al%dbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; CLIP:rect(%dpx,%dpx,%dpx,%dpx); Z-INDEX:%d; }\n",
+		id,x,y,w,h,
+		-1, w+1, h+1, -1,
+		z);
 
 	/** Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"al%dbase\")",id);

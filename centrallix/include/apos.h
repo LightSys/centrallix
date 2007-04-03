@@ -96,6 +96,7 @@ int aposPrepareTree(pWgtrNode, pXArray);	/**Prepares widget tree for auto-positi
 int aposPatchNegativeHeight(pWgtrNode, pXArray);/**Temporarily sets unspecified heights**/
 int aposSetContainerFlex(pWgtrNode);		/**Determines a container's flexibility**/
 int aposSetFlexibilities(pWgtrNode);		/**Determines a container's flexibility**/
+int aposSetSectionFlex(pAposSection sect, int type);
 
 /**Line Creation**/
 int aposAddLinesToGrid(pWgtrNode, pXArray, pXArray);	/**Adds all of the necessary lines to the grid**/

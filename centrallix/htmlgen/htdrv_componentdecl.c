@@ -48,10 +48,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.8 2007/03/10 02:57:41 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.9 2007/04/03 15:50:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.9  2007/04/03 15:50:04  gbeeley
+    - (feature) adding capability to pass a widget to a component as a
+      parameter (by reference).
+    - (bugfix) changed the layout logic slightly in the apos module to better
+      handle ratios of flexibility and size when resizing.
+
     Revision 1.8  2007/03/10 02:57:41  gbeeley
     - (bugfix) setup graft point for static components as well as dynamically
       loaded ones, and allow nested components by saving and restoring previous
@@ -237,8 +243,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	memccpy(name,ptr,0,63);
-	name[63] = 0;
+	strtcpy(name, ptr, sizeof(name));
 	if (cxsecVerifySymbol(name) < 0)
 	    {
 	    mssError(1,"HTCMPD","Invalid name '%s' for component", name);
@@ -275,6 +280,8 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
+	    strcpy(gbuf,"null");
+	    gname="";
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 	    }
 
@@ -284,11 +291,10 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Hunt for parameters for this component **/
 	xaInit(&attrs, 16);
+#if 0
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	//if ((subobj_qy = objOpenQuery(w_obj,":outer_type == 'system/parameter'",NULL,NULL,NULL)) != NULL)
 	    {
 	    /** Loop through each param we get **/
-	    //while((subobj = objQueryFetch(subobj_qy, O_RDONLY)) != NULL)
 	    sub_tree = xaGetItem(&(tree->Children), i);
 	    if (!strcmp(sub_tree->Type, "system/parameter"))
 		{
@@ -336,12 +342,11 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		    }
 
 		/** Close the object **/
-//		objClose(subobj);
 		sub_tree = NULL;
 		}
-//	    objQueryClose(subobj_qy);
 	    subobj_qy = NULL;
 	    }
+#endif
 
 	/** Build the typed pod values for each data value **/
 	for(i=0;i<attrs.nItems;i++)
@@ -407,36 +412,30 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Add actions, events, and client properties **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-//	if ((subobj_qy=objOpenQuery(w_obj,NULL,NULL,NULL,NULL)) != NULL)
 	    {
 	    sub_tree = xaGetItem(&(tree->Children), i);
-//	    while((subobj=objQueryFetch(subobj_qy,O_RDONLY)) != NULL)
-//		{
-		/** Get component action/event/cprop name **/
-		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr));
-		memccpy(subobj_name, ptr, 0, sizeof(subobj_name)-1);
-		subobj_name[sizeof(subobj_name)-1] = '\0';
-		if (cxsecVerifySymbol(subobj_name) < 0)
-		    {
-		    mssError(1,"HTCMPD","Invalid name '%s' for action/event/cprop in component '%s'", subobj_name, name);
-		    rval = -1;
-		    goto htcmpd_cleanup;
-		    }
+	    sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
-		/** Get type **/
-		wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
-		if (!strcmp(ptr,"widget/component-decl-action"))
-		    htrAddScriptInit_va(s, "    nodes[\"%s\"].addAction('%s');\n", name, subobj_name);
-		else if (!strcmp(ptr,"widget/component-decl-event"))
-		    htrAddScriptInit_va(s, "    nodes[\"%s\"].addEvent('%s');\n", name, subobj_name);
-		else if (!strcmp(ptr,"widget/component-decl-cprop"))
-		    htrAddScriptInit_va(s, "    nodes[\"%s\"].addProp('%s');\n", name, subobj_name);
+	    /** Get component action/event/cprop name **/
+	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr));
+	    strtcpy(subobj_name, ptr, sizeof(subobj_name));
+	    if (cxsecVerifySymbol(subobj_name) < 0)
+		{
+		mssError(1,"HTCMPD","Invalid name '%s' for action/event/cprop in component '%s'", subobj_name, name);
+		rval = -1;
+		goto htcmpd_cleanup;
+		}
 
-//		objClose(subobj);
-		sub_tree = NULL;
-//		}
-//	    objQueryClose(subobj_qy);
-	    subobj_qy = NULL;
+	    /** Get type **/
+	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
+	    if (!strcmp(ptr,"widget/component-decl-action"))
+		htrAddScriptInit_va(s, "    nodes[\"%s\"].addAction('%s');\n", name, subobj_name);
+	    else if (!strcmp(ptr,"widget/component-decl-event"))
+		htrAddScriptInit_va(s, "    nodes[\"%s\"].addEvent('%s');\n", name, subobj_name);
+	    else if (!strcmp(ptr,"widget/component-decl-cprop"))
+		htrAddScriptInit_va(s, "    nodes[\"%s\"].addProp('%s');\n", name, subobj_name);
+
+	    sub_tree = NULL;
 	    }
 
 	/** End init for component **/

@@ -154,7 +154,8 @@ wgtalVerify(pWgtrVerifySession s)
 		if (al_type == 0)	/* hbox */
 		    {
 		    child->x = child->r_x = child->pre_x = xo;
-		    child->y = 0;
+		    if (child->r_y < 0)
+			child->r_y = child->pre_y = child->y = 0;
 		    if (child->r_height < 0 && al->r_height >= 0)
 			child->r_height = child->pre_height = child->height = al->r_height;
 		    if (child->r_width < 0 && cellsize >= 0)
@@ -168,7 +169,8 @@ wgtalVerify(pWgtrVerifySession s)
 		    }
 		else if (al_type == 1)	/* vbox */
 		    {
-		    child->x = 0;
+		    if (child->r_x < 0)
+			child->r_x = child->pre_x = child->x = 0;
 		    child->y = child->r_y = child->pre_y = yo;
 		    if (child->r_width < 0 && al->r_width >= 0)
 			child->r_width = child->pre_width = child->width = al->r_width;
