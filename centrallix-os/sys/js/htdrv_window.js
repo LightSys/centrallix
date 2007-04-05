@@ -412,7 +412,7 @@ function wn_domove()
 function wn_adjust_z(l,zi)
     {
     var cur_z = htr_getzindex(l);
-    if (zi)
+    if (zi && (typeof cur_z != undefined))
 	{
 	cur_z += zi;
 	htr_setzindex(l,cur_z);
