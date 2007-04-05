@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2007 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -60,10 +60,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.49 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.50 2007/04/05 03:34:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.50  2007/04/05 03:34:54  gbeeley
+    - (feature) Port of the widget/table to Mozilla
+
     Revision 1.49  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -517,16 +520,16 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     int i;
     pWgtrNode sub_tree;
 
-	if(!s->Capabilities.Dom0NS)
+	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 	    {
-	    mssError(1,"HTTBL","Netscape DOM support required");
+	    mssError(1,"HTTBL","Netscape 4 DOM or W3C DOM support required");
 	    return -1;
 	    }
 
 	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; } \n",t->id,t->x,t->y,t->w-18,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:18; HEIGHT:%d; Z-INDEX:%d; }\n",t->id,t->x+t->w-18,t->y+t->rowheight,t->h-t->rowheight,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0; TOP:18; WIDTH:18; HEIGHT:18; Z-INDEX:%d; }\n",t->id,z+2);
+	htrAddStylesheetItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; } \n",t->id,t->x,t->y,t->w-18,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:18px; HEIGHT:%dpx; Z-INDEX:%d; }\n",t->id,t->x+t->w-18,t->y+t->rowheight,t->h-t->rowheight,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; HEIGHT:18px; Z-INDEX:%d; }\n",t->id,z+2);
 
 	/** HTML body <DIV> element for the layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dpane\"></DIV>\n",t->id);
