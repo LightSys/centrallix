@@ -267,7 +267,7 @@ basicform2 "widget/page"
 		    hdr_bgcolor = "#c0c0c0";
 		    textcolorhighlight = "#ffffff";
 		    textcolor = "#000000";
-		    gridinemptyrows = 1;
+		    gridinemptyrows = 0;
 
 		    first_name2 "widget/table-column" { fieldname="first_name"; title = "First Name"; width = 110; }
 		    last_name2 "widget/table-column" { fieldname="last_name"; title = "Last Name"; width = 110; }

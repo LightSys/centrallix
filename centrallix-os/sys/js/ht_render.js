@@ -267,6 +267,14 @@ function htr_init_layer(l,ml,kind)
     if (l.document) l.document.cxSubElement = htr_get_subelement;
     }
 
+function htr_set_event_target(l, et)
+    {
+    if (l.document && l.document != document)
+	l.document.layer = et;
+    else
+	l.layer = et;
+    }
+
 function htr_search_element(e,id)
     {
     var sl = e.firstChild;
@@ -469,6 +477,14 @@ function htr_setbgimage(l,v)
 	//pg_set_style_string(l,"backgroundImage",v);
 	l.style.backgroundImage = "URL('" + v + "')";
     return null;
+    }
+
+function htr_setbackground(l, v)
+    {
+    var bgimg = htr_extract_bgimage(v);
+    var bgcol = htr_extract_bgcolor(v);
+    if (bgimg) htr_setbgimage(l, bgimg);
+    if (bgcol) htr_setbgcolor(l, bgcol);
     }
 
 function htr_getphyswidth(l)

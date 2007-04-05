@@ -315,6 +315,7 @@ function ClipObject_SetAll(top,right,bottom,left)
 	    + right + "px, " 
 	    + bottom + "px, "
 	    + left + "px)";
+    this.arr = {1:top,2:right,3:bottom,4:left};
     this.obj.style.setProperty('clip',str,"");
     }
 
@@ -326,7 +327,9 @@ function ClipObject_GetPart(n)
     var clip = this.obj.style.clip;
     if(!clip)
 	clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
-    var a = ClipRegexp.exec(clip);
+    var a = this.arr;
+    if (!a)
+	a = this.arr = ClipRegexp.exec(clip);
     if(a)
 	return parseInt(a[n]);
     else

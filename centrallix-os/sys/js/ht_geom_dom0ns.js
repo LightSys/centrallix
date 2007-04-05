@@ -192,7 +192,7 @@ function setRelativeX(l, value)
 
 function getRelativeY(l)
    {
-   return l.y
+   return l.y;
    }
 
 function setRelativeY(l, value)
