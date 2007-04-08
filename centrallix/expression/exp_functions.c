@@ -56,10 +56,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.9 2005/09/30 04:37:10 gbeeley Exp $
+    $Id: exp_functions.c,v 1.10 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.10  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.9  2005/09/30 04:37:10  gbeeley
     - (change) modified expExpressionToPod to take the type.
     - (feature) got eval() working
@@ -1344,8 +1353,6 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    pExpression exp,subexp;
-
     /** Initialize the aggexp tree? **/
     if (!(i0->Flags & EXPR_F_NULL) && !(tree->Flags & EXPR_F_AGGLOCKED))
         {
@@ -1362,8 +1369,6 @@ int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    pExpression exp,subexp;
-
     /** Initialize the aggexp tree? **/
     if (!(i0->Flags & EXPR_F_NULL) && !(tree->Flags & EXPR_F_AGGLOCKED))
         {

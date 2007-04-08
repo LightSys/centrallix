@@ -51,10 +51,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.66 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: ht_render.c,v 1.67 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.67  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.66  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -2443,6 +2452,8 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 
 	if (s->GraftPoint) nmSysFree(s->GraftPoint);
 
+	htr_internal_FreeDMPrivateData(tree);
+
 	nmFree(s,sizeof(HtSession));
 
     return 0;
@@ -2697,6 +2708,32 @@ htr_internal_CheckDMPrivateData(pWgtrNode widget)
 	    }
 
     return inf;
+    }
+
+
+/*** htr_internal_FreeDMPrivateData() - walk through the widget tree, and
+ *** free up our DMPrivateData structures.
+ ***/
+int
+htr_internal_FreeDMPrivateData(pWgtrNode widget)
+    {
+    pHtDMPrivateData inf = wgtrGetDMPrivateData(widget);
+    int i, cnt;
+
+	cnt = xaCount(&widget->Children);
+	for(i=0;i<cnt;i++)
+	    htr_internal_FreeDMPrivateData((pWgtrNode)xaGetItem(&widget->Children, i));
+
+	if (inf)
+	    {
+	    if (inf->ObjectLinkage) nmSysFree(inf->ObjectLinkage);
+	    if (inf->ContainerLinkage) nmSysFree(inf->ContainerLinkage);
+	    if (inf->Param) nmSysFree(inf->Param);
+	    nmFree(inf, sizeof(HtDMPrivateData));
+	    wgtrSetDMPrivateData(widget, NULL);
+	    }
+
+    return 0;
     }
 
 

@@ -57,10 +57,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_audio.c,v 1.5 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: objdrv_audio.c,v 1.6 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_audio.c,v $
 
     $Log: objdrv_audio.c,v $
+    Revision 1.6  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.5  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -669,7 +678,7 @@ audExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree *oxt
 int
 audInfo(void* inf_v, pObjectInfo info)
     {
-    pAudData inf = AUD(inf_v);
+    /*pAudData inf = AUD(inf_v);*/
 
 	info->Flags |= (OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | 
 		OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT | 

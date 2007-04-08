@@ -54,10 +54,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: lsmain.c,v 1.33 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: lsmain.c,v 1.34 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/lsmain.c,v $
 
     $Log: lsmain.c,v $
+    Revision 1.34  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.33  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -349,6 +358,8 @@ main(int argc, char* argv[])
     char* name;
     unsigned int seed;
     int fd;
+
+	nmInitialize();				/* memory manager */
 
 	/** Seed random number generator **/
 	fd = open("/dev/urandom", O_RDONLY);

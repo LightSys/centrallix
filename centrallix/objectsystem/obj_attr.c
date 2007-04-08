@@ -48,10 +48,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.13 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: obj_attr.c,v 1.14 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.14  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.13  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -256,7 +265,7 @@ objGetAttrType(pObject this, char* attrname)
 	/** Get the type from the lowlevel driver **/
 	rval = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
 
-	if (this->EvalContext && rval == DATA_T_CODE)
+	if (this->EvalContext && rval == DATA_T_CODE && (!this->AttrExpName || strcmp(attrname, this->AttrExpName)))
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, rval, POD(&exp), &(this->Session->Trx)) == 0)
 		{
@@ -265,14 +274,24 @@ objGetAttrType(pObject this, char* attrname)
 		    exp = expDuplicateExpression(exp);
 		    if (exp)
 			{
-			expBindExpression(exp, this->EvalContext, EXPR_F_RUNSERVER);
-			if ((expval = expEvalTree(exp, this->EvalContext)) >= 0)
-			    {
-			    rval = exp->DataType;
-			    }
-			expFreeExpression(exp);
+			if (this->AttrExpName)
+			    nmSysFree(this->AttrExpName);
+			this->AttrExpName = nmSysStrdup(attrname);
+			if (this->AttrExp)
+			    expFreeExpression(this->AttrExp);
+			this->AttrExp = exp;
 			}
 		    }
+		}
+	    }
+
+	/** Already an attr exp for this? **/
+	if (this->EvalContext && rval == DATA_T_CODE && this->AttrExpName && !strcmp(this->AttrExpName, attrname))
+	    {
+	    expBindExpression(this->AttrExp, this->EvalContext, EXPR_F_RUNSERVER);
+	    if ((expval = expEvalTree(this->AttrExp, this->EvalContext)) >= 0)
+		{
+		rval = ((pExpression)(this->AttrExp))->DataType;
 		}
 	    }
 
@@ -366,7 +385,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	/** Get the type from the lowlevel driver **/
 	used_expr = 0;
 	osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
-	if (this->EvalContext && osmltype == DATA_T_CODE)
+	if (this->EvalContext && osmltype == DATA_T_CODE && (!this->AttrExpName || strcmp(attrname, this->AttrExpName)))
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, osmltype, POD(&exp), &(this->Session->Trx)) == 0)
 		{
@@ -375,24 +394,32 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		    exp = expDuplicateExpression(exp);
 		    if (exp)
 			{
-			expBindExpression(exp, this->EvalContext, EXPR_F_RUNSERVER);
-			if ((rval = expEvalTree(exp, this->EvalContext)) >= 0)
-			    {
-			    if (exp->DataType != data_type)
-				{
-				mssError(1,"OSML","Type mismatch accessing value '%s'", attrname);
-				expFreeExpression(exp);
-				return -1;
-				}
-			    if (exp->Flags & EXPR_F_NULL)
-				rval = 1;
-			    used_expr = 1;
-			    if (expExpressionToPod(exp, data_type, val) < 0)
-				rval = -1;
-			    }
-			expFreeExpression(exp);
+			if (this->AttrExpName)
+			    nmSysFree(this->AttrExpName);
+			this->AttrExpName = nmSysStrdup(attrname);
+			if (this->AttrExp)
+			    expFreeExpression(this->AttrExp);
+			this->AttrExp = exp;
 			}
 		    }
+		}
+	    }
+
+	if (this->EvalContext && osmltype == DATA_T_CODE && this->AttrExpName && !strcmp(this->AttrExpName, attrname))
+	    {
+	    expBindExpression(this->AttrExp, this->EvalContext, EXPR_F_RUNSERVER);
+	    if ((rval = expEvalTree(this->AttrExp, this->EvalContext)) >= 0)
+		{
+		if (((pExpression)(this->AttrExp))->DataType != data_type)
+		    {
+		    mssError(1,"OSML","Type mismatch accessing value '%s'", attrname);
+		    return -1;
+		    }
+		if (((pExpression)(this->AttrExp))->Flags & EXPR_F_NULL)
+		    rval = 1;
+		used_expr = 1;
+		if (expExpressionToPod(this->AttrExp, data_type, val) < 0)
+		    rval = -1;
 		}
 	    }
 
@@ -525,13 +552,11 @@ objOpenAttr(pObject this, char* attrname, int mode)
 	if (!obj_data) return NULL;
 
 	/** Allocate memory and initialize the object descriptor **/
-	obj = (pObject)nmMalloc(sizeof(Object));
+	/*obj = (pObject)nmMalloc(sizeof(Object));*/
+	obj = obj_internal_AllocObj();
 	if (!obj) return NULL;
-	obj->EvalContext = NULL;
-	obj->VAttrs = NULL;
 	obj->Data = obj_data;
 	obj->Obj = this;
-	obj->Magic = MGK_OBJECT;
 	xaAddItem(&(this->Attrs), (void*)obj);
 	obj->Driver = this->Driver;
 	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
@@ -540,8 +565,6 @@ objOpenAttr(pObject this, char* attrname, int mode)
 	obj->SubPtr++;
 	obj->Mode = mode;
 	obj->Session = this->Session;
-	obj->ContentPtr = NULL;
-	obj->Type = NULL;
 
     return obj;
     }
@@ -604,6 +627,8 @@ objFreeHints(pObjPresentationHints ph)
 	/** How about the list of possible values? **/
 	for(i=0;i<ph->EnumList.nItems;i++) nmSysFree(ph->EnumList.Items[i]);
 	xaDeInit(&(ph->EnumList));
+
+	nmFree(ph, sizeof(ObjPresentationHints));
 
     return 0;
     }

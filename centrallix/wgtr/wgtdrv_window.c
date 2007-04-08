@@ -50,7 +50,7 @@
 int
 wgtwinVerify(pWgtrVerifySession s)
     {
-    pWgtrNode window = s->CurrWidget;
+    /*pWgtrNode window = s->CurrWidget;*/
 
     return 0;
     }

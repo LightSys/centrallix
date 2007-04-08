@@ -47,10 +47,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.15 2007/04/03 19:31:35 gbeeley Exp $
+    $Id: obj_query.c,v 1.16 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.16  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.15  2007/04/03 19:31:35  gbeeley
     - (bugfix) memory leak in objOpenQuery as the mlx session was not closed.
     - (security) error introduced by cut-and-paste of code in wgtr - free()
@@ -624,30 +633,18 @@ objQueryFetch(pObjQuery this, int mode)
     	/** Multiquery? **/
 	if (this->Drv) 
 	    {
-	    obj = (pObject)nmMalloc(sizeof(Object));
+	    /*obj = (pObject)nmMalloc(sizeof(Object));*/
+	    obj = obj_internal_AllocObj();
 	    if (!obj) return NULL;
 	    if ((obj->Data = this->Drv->QueryFetch(this->Data, obj, mode, NULL)) == NULL)
 	        {
-		nmFree(obj,sizeof(Object));
+		/*nmFree(obj,sizeof(Object));*/
+		obj_internal_FreeObj(obj);
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
 		return NULL;
 		}
-	    obj->EvalContext = NULL;
 	    obj->Driver = this->Drv;
-	    obj->TLowLevelDriver = NULL;
-	    obj->ILowLevelDriver = NULL;
 	    obj->Session = this->QySession;
-	    obj->LinkCnt = 1;
-	    obj->Obj = NULL;
-	    obj->ContentPtr = NULL;
-	    obj->Magic = MGK_OBJECT;
-	    obj->Flags = 0;
-	    obj->Prev = NULL;
-	    obj->Next = NULL;
-	    obj->Type = NULL;
-	    obj->NotifyItem = NULL;
-	    obj->VAttrs = NULL;
-	    xaInit(&obj->Attrs,4);
             xaAddItem(&(this->QySession->OpenObjects),(void*)obj);
 	    obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
 	    memset(obj->Pathname, 0, sizeof(Pathname));
@@ -672,28 +669,20 @@ objQueryFetch(pObjQuery this, int mode)
 	    }
 
 	/** Open up the object descriptor **/
-	obj = (pObject)nmMalloc(sizeof(Object));
+	/*obj = (pObject)nmMalloc(sizeof(Object));*/
+	obj = obj_internal_AllocObj();
 	if (!obj) return NULL;
 	obj->EvalContext = this->Obj->EvalContext;	/* inherit from parent */
 	obj->Driver = this->Obj->Driver;
 	obj->ILowLevelDriver = this->Obj->ILowLevelDriver;
 	obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
-	obj->Obj = NULL;
-	xaInit(&(obj->Attrs),4);
 	obj->Mode = mode;
 	obj->Session = this->Obj->Session;
 	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
 	obj->Pathname->LinkCnt = 1;
 	obj->Pathname->OpenCtlBuf = NULL;
-	obj->LinkCnt = 1;
-	obj->ContentPtr = NULL;
 	objLinkTo(this->Obj->Prev);
 	obj->Prev = this->Obj->Prev;
-	obj->Magic = MGK_OBJECT;
-	obj->Flags = 0;
-	obj->Type = NULL;
-	obj->NotifyItem = NULL;
-	obj->VAttrs = NULL;
 
 	/** Scan objects til we find one matching the query. **/
 	while(1)
@@ -708,11 +697,12 @@ objQueryFetch(pObjQuery this, int mode)
             obj_data = this->Obj->Driver->QueryFetch(this->Data, obj, mode, &(obj->Session->Trx));
             if (!obj_data) 
 	        {
-		objClose(obj->Prev); /* unlink */
-		xaDeInit(&(obj->Attrs));
 		/*nmFree(obj->Pathname,sizeof(Pathname));*/
+		/*objClose(obj->Prev);
+		xaDeInit(&(obj->Attrs));
 		obj_internal_FreePath(obj->Pathname);
-                nmFree(obj,sizeof(Object));
+                nmFree(obj,sizeof(Object));*/
+		obj_internal_FreeObj(obj);
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
 		return NULL;
 		}
@@ -721,12 +711,13 @@ objQueryFetch(pObjQuery this, int mode)
             this->Obj->Driver->GetAttrValue(obj_data, "name", DATA_T_STRING, &name, NULL);
             if (strlen(name) + strlen(this->Obj->Pathname->Pathbuf) + 2 > OBJSYS_MAX_PATH) 
                 {
-		this->Obj->Driver->Close(obj_data, &(obj->Session->Trx));
-		objClose(obj->Prev); /* unlink */
-		xaDeInit(&(obj->Attrs));
+		/*this->Obj->Driver->Close(obj_data, &(obj->Session->Trx));*/
 		/*nmFree(obj->Pathname,sizeof(Pathname));*/
+		/*objClose(obj->Prev);
+		xaDeInit(&(obj->Attrs));
 		obj_internal_FreePath(obj->Pathname);
-                nmFree(obj,sizeof(Object));
+                nmFree(obj,sizeof(Object));*/
+		obj_internal_FreeObj(obj);
 		mssError(1,"OSML","Filename in query result exceeded internal limits");
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
                 return NULL;
@@ -742,6 +733,7 @@ objQueryFetch(pObjQuery this, int mode)
 		    !(((pExpression)(this->Tree))->Integer))
 		    {
 		    this->Obj->Driver->Close(obj_data, &(obj->Session->Trx));
+		    obj->Data = NULL;
 		    continue;
 		    }
 		}
@@ -786,28 +778,19 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	    }
 
 	/** Open up the new object descriptor **/
-	new_obj = (pObject)nmMalloc(sizeof(Object));
+	/*new_obj = (pObject)nmMalloc(sizeof(Object));*/
+	new_obj = obj_internal_AllocObj();
 	if (!new_obj) return NULL;
-	new_obj->EvalContext = NULL;
 	new_obj->Driver = this->Obj->Driver;
 	new_obj->ILowLevelDriver = this->Obj->ILowLevelDriver;
 	new_obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
-	new_obj->Obj = NULL;
-	xaInit(&(new_obj->Attrs),4);
 	new_obj->Mode = mode;
 	new_obj->Session = this->Obj->Session;
 	new_obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
 	new_obj->Pathname->LinkCnt = 1;
 	new_obj->Pathname->OpenCtlBuf = NULL;
-	new_obj->LinkCnt = 1;
-	new_obj->ContentPtr = NULL;
 	objLinkTo(this->Obj->Prev);
 	new_obj->Prev = this->Obj->Prev;
-	new_obj->Magic = MGK_OBJECT;
-	new_obj->Flags = 0;
-	new_obj->Type = NULL;
-	new_obj->NotifyItem = NULL;
-	new_obj->VAttrs = NULL;
 
 	/** Does driver support QueryCreate? **/
 	if (new_obj->Driver->QueryCreate && 
@@ -819,10 +802,11 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	    if (!rval)
 		{
 		/** Call failed.  Free up the obj structure **/
-		objClose(new_obj->Prev); /* unlink */
+		obj_internal_FreeObj(new_obj);
+		/*objClose(new_obj->Prev);
 		xaDeInit(&(new_obj->Attrs));
 		obj_internal_FreePath(new_obj->Pathname);
-                nmFree(new_obj,sizeof(Object));
+                nmFree(new_obj,sizeof(Object));*/
 		return NULL;
 		}
 
@@ -835,10 +819,11 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	     ** that condition is not yet handled.  Sorry... (FIXME)
 	     **/
 	    mssError(1,"OSML","Bark!  Unimplemented functionality in objQueryCreate()");
-	    objClose(new_obj->Prev); /* unlink */
+	    obj_internal_FreeObj(new_obj);
+	    /*objClose(new_obj->Prev);
 	    xaDeInit(&(new_obj->Attrs));
 	    obj_internal_FreePath(new_obj->Pathname);
-	    nmFree(new_obj,sizeof(Object));
+	    nmFree(new_obj,sizeof(Object));*/
 	    return NULL;
 	    }
 
@@ -847,11 +832,12 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	if (strlen(newname) + strlen(new_obj->Pathname->Pathbuf) + 2 > OBJSYS_MAX_PATH || new_obj->Pathname->nElements + 1 > OBJSYS_MAX_ELEMENTS)
 	    {
 	    new_obj->Driver->Close(new_obj->Data, &(new_obj->Session->Trx));
-	    objClose(new_obj->Prev); /* unlink */
-	    xaDeInit(&(new_obj->Attrs));
+	    obj_internal_FreeObj(new_obj);
 	    /*nmFree(obj->Pathname,sizeof(Pathname));*/
+	    /*objClose(new_obj->Prev);
+	    xaDeInit(&(new_obj->Attrs));
 	    obj_internal_FreePath(new_obj->Pathname);
-	    nmFree(new_obj,sizeof(Object));
+	    nmFree(new_obj,sizeof(Object));*/
 	    mssError(1,"OSML","Filename in query result exceeded internal limits");
 	    return NULL;
 	    }

@@ -46,10 +46,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_main.c,v 1.8 2007/03/04 05:04:47 gbeeley Exp $
+    $Id: exp_main.c,v 1.9 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_main.c,v $
 
     $Log: exp_main.c,v $
+    Revision 1.9  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.8  2007/03/04 05:04:47  gbeeley
     - (change) This is a change to the way that expressions track which
       objects they were last evaluated against.  The old method was causing
@@ -129,6 +138,7 @@ expAllocExpression()
 	if (!expr) return NULL;
 	xaInit(&(expr->Children),4);
 	expr->Alloc = 0;
+	expr->Name = NULL;
 	expr->NameAlloc = 0;
 	expr->Parent = NULL;
 	expr->Flags = EXPR_F_NEW;
@@ -136,11 +146,13 @@ expAllocExpression()
 	expr->ObjID = -1;
 	expr->AggExp = NULL;
 	expr->AggCount = 0;
+	expr->AggLevel = 0;
 	expr->Control = NULL;
 	expr->ListCount = 1;
 	expr->ListTrackCnt = 1;
 	expr->Magic = MGK_EXPRESSION;
 	expr->LinkCnt = 1;
+	expr->DataType = DATA_T_UNAVAILABLE;
 
     return expr;
     }
@@ -179,8 +191,8 @@ expFreeExpression(pExpression this)
 
 	/** Free this itself. **/
 	xaDeInit(&(this->Children));
-	if (this->String && this->Alloc) nmSysFree(this->String);
-	if (this->Name && this->NameAlloc) nmSysFree(this->Name);
+	if (this->Alloc && this->String) nmSysFree(this->String);
+	if (this->NameAlloc && this->Name) nmSysFree(this->Name);
 	if (this->AggExp) expFreeExpression(this->AggExp);
 	nmFree(this,sizeof(Expression));
 
@@ -234,17 +246,16 @@ exp_internal_CopyNode(pExpression src, pExpression dst)
 	memcpy(&(new_tree->Types), &(src->Types), sizeof(src->Types));
 
 	/** String fields may need to be allocated.. **/
-	if (new_tree->Alloc) 
+	if (new_tree->DataType == DATA_T_STRING)
 	    {
-	    new_tree->String = nmSysStrdup(src->String);
+	    if (new_tree->Alloc)
+		new_tree->String = nmSysStrdup(src->String);
+	    else
+		new_tree->String = new_tree->Types.StringBuf;
 	    }
 	if (new_tree->NameAlloc)
 	    {
 	    new_tree->Name = nmSysStrdup(src->Name);
-	    }
-	if (src->String == src->Types.StringBuf)
-	    {
-	    new_tree->String = new_tree->Types.StringBuf;
 	    }
 
     return 0;
@@ -439,7 +450,7 @@ expDumpExpression(pExpression this)
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
 	    {
 	    if (this->Control->ObjSeqID[i])
-		printf("%d:%d ", i, this->Control->ObjSeqID);
+		printf("%d:%d ", i, this->Control->ObjSeqID[i]);
 	    }
 	printf("\n");
 	if (this->Control->Remapped)
@@ -477,7 +488,7 @@ expCopyValue(pExpression src, pExpression dst, int make_independent)
 	dst->Flags &= ~EXPR_F_NULL;
 
 	/** Release the string from dst if allocated. **/
-	if (dst->String && dst->Alloc)
+	if (dst->Alloc && dst->String)
 	    {
 	    nmSysFree(dst->String);
 	    dst->String = NULL;

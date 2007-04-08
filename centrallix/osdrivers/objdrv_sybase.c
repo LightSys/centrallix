@@ -70,10 +70,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.24 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.25 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.25  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.24  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -2179,8 +2188,9 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		    {
 		    new_oxt = obj_internal_AllocTree();
 		    new_oxt->AllocObj = 1;
-		    new_oxt->Object = (void*)nmMalloc(sizeof(Object));
-		    memset(new_oxt->Object, 0, sizeof(Object));
+		    /*new_oxt->Object = (void*)nmMalloc(sizeof(Object));
+		    memset(new_oxt->Object, 0, sizeof(Object));*/
+		    new_oxt->Object = obj_internal_AllocObj();
 		    new_oxt->OpType = OXT_OP_CREATE;
 		    new_oxt->Status = OXT_S_VISITED;
 		    ((pObject)(new_oxt->Object))->Pathname = 
@@ -2188,8 +2198,9 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		    obj_internal_AddChildTree(*oxt,new_oxt);
 		    new_oxt = obj_internal_AllocTree();
 		    new_oxt->AllocObj = 1;
-		    new_oxt->Object = (void*)nmMalloc(sizeof(Object));
-		    memset(new_oxt->Object, 0, sizeof(Object));
+		    /*new_oxt->Object = (void*)nmMalloc(sizeof(Object));
+		    memset(new_oxt->Object, 0, sizeof(Object));*/
+		    new_oxt->Object = obj_internal_AllocObj();
 		    new_oxt->OpType = OXT_OP_CREATE;
 		    new_oxt->Status = OXT_S_VISITED;
 		    ((pObject)(new_oxt->Object))->Pathname = 

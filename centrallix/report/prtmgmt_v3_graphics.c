@@ -58,10 +58,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_graphics.c,v 1.7 2007/02/17 04:34:51 gbeeley Exp $
+    $Id: prtmgmt_v3_graphics.c,v 1.8 2007/04/08 03:52:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_graphics.c,v $
 
     $Log: prtmgmt_v3_graphics.c,v $
+    Revision 1.8  2007/04/08 03:52:01  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.7  2007/02/17 04:34:51  gbeeley
     - (bugfix) test_obj should open destination objects with O_TRUNC
     - (bugfix) prtmgmt should remember 'configured' line height, so it can
@@ -337,7 +346,7 @@ prt_png_Write(png_structp png_ptr, png_bytep data, png_size_t length)
 void
 prt_png_Flush(png_structp png_ptr)
     {
-    pPrtPngIOInfo write_info = png_get_io_ptr(png_ptr);
+    /*pPrtPngIOInfo write_info = png_get_io_ptr(png_ptr);*/
     return;
     }
 
@@ -547,7 +556,7 @@ prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width
 int
 prt_internal_GetPixelAntialias(pPrtImage img, double xoffset, double yoffset)
     {
-    int color,x,y,bit,datawidth;
+    int color,x,y;
     double x1,x2,y1,y2,pw,ph;
     int color11, color12, color21, color22;
     int r11, r12, r21, r22;

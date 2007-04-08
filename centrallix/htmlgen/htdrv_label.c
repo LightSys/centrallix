@@ -43,6 +43,15 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.31  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.30  2007/04/03 15:50:04  gbeeley
     - (feature) adding capability to pass a widget to a component as a
       parameter (by reference).
@@ -373,7 +382,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    text=nmSysStrdup("");
 	    }
-	text2 = nmSysMalloc(strlen(text)*2);
+	text2 = nmSysMalloc((strlen(text)+1)*2);
 	ptr=text;
 	ptr2=text2;
 	do  {

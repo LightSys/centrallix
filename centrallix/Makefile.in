@@ -304,6 +304,7 @@ CXINCDIR=@CXINCDIR@
 CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
 LIBS=@LIBS@ @STATIC_LIBS@
+STATIC_LIBS=@STATIC_LIBS@
 
 BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS) $(CXSSMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
@@ -325,7 +326,7 @@ all:	centrallix mods config
 
 centrallix.o: $(V3LSOBJS) centrallix.c
 
-centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS)
+centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	@echo ''
 	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo

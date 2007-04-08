@@ -43,10 +43,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.24 2007/03/15 17:39:59 gbeeley Exp $
+    $Id: multiquery.c,v 1.25 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.25  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.24  2007/03/15 17:39:59  gbeeley
     - (bugfix) reset the NULL flag on mqSetAttrValue
 
@@ -602,24 +611,30 @@ mq_internal_OptimizeExpr(pExpression *expr)
     pExpression i0, i1;
     int i;
 
-    	/** Do some 'shortcut' assignments **/
-	i0 = (pExpression)((*expr)->Children.Items[0]);
-	i1 = (pExpression)((*expr)->Children.Items[1]);
+	if ((*expr)->Children.nItems == 0) return 0;
 
     	/** Perform AND TRUE optimization **/
-	if (i1 && (*expr)->NodeType == EXPR_N_AND && i0->NodeType == EXPR_N_INTEGER && i0->Integer == 1)
+	if ((*expr)->Children.nItems == 2)
 	    {
-	    expr_tmp = *expr;
-	    *expr = i1;
-	    xaRemoveItem(&(expr_tmp->Children),1);
-	    expFreeExpression(expr_tmp);
-	    }
-	else if (i1 && (*expr)->NodeType == EXPR_N_AND && i1->NodeType == EXPR_N_INTEGER && i1->Integer == 1)
-	    {
-	    expr_tmp = *expr;
-	    *expr = i0;
-	    xaRemoveItem(&(expr_tmp->Children),0);
-	    expFreeExpression(expr_tmp);
+	    /** Do some 'shortcut' assignments **/
+	    i0 = (pExpression)((*expr)->Children.Items[0]);
+	    i1 = (pExpression)((*expr)->Children.Items[1]);
+
+	    /** Weed out ___ AND TRUE or TRUE AND ___ **/
+	    if (i1 && (*expr)->NodeType == EXPR_N_AND && i0->NodeType == EXPR_N_INTEGER && i0->Integer == 1)
+		{
+		expr_tmp = *expr;
+		*expr = i1;
+		xaRemoveItem(&(expr_tmp->Children),1);
+		expFreeExpression(expr_tmp);
+		}
+	    else if (i1 && (*expr)->NodeType == EXPR_N_AND && i1->NodeType == EXPR_N_INTEGER && i1->Integer == 1)
+		{
+		expr_tmp = *expr;
+		*expr = i0;
+		xaRemoveItem(&(expr_tmp->Children),0);
+		expFreeExpression(expr_tmp);
+		}
 	    }
 
 	/** Optimize sub-expressions **/
@@ -2274,7 +2289,7 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	    {
 	    if (e->ObjID >= 0)
 		{
-		obj = p->Query->QTree->ObjList->Objects[e->ObjID];
+		obj = p->Query->QTree->ObjList->Objects[(int)e->ObjID];
 		ph = objPresentationHints(obj, attrname);
 		return ph;
 		}

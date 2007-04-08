@@ -724,6 +724,14 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	if (my_template != template)
 	    wgtrFree(my_template);
 
+	/** Free up the context objlist, if need be **/
+	if (created_objlist)
+	    {
+	    objSetEvalContext(obj, NULL);
+	    expFreeParamList(context_objlist);
+	    for(i=0;i<n_params;i++) wgtr_param_Free(paramlist[i]);
+	    }
+
 	/** return the completed node and subtree **/
 	return this_node;
 

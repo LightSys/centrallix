@@ -50,10 +50,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_od_pcl.c,v 1.17 2005/03/01 07:10:23 gbeeley Exp $
+    $Id: prtmgmt_v3_od_pcl.c,v 1.18 2007/04/08 03:52:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_pcl.c,v $
 
     $Log: prtmgmt_v3_od_pcl.c,v $
+    Revision 1.18  2007/04/08 03:52:01  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.17  2005/03/01 07:10:23  gbeeley
     - adjust PCL driver for changes to the way page margins are handled.
 
@@ -610,7 +619,6 @@ prt_pclod_WriteText(void* context_v, char* str)
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[64];
     double bl;
-    unsigned long cmyk_color;
 
 	/** Temporarily move the cursor position to adjust for the baseline. **/
 	bl = prt_pclod_GetCharacterBaseline(context_v, NULL);
@@ -657,7 +665,6 @@ prt_pclod_WriteRasterData(void* context_v, pPrtImage img, double width, double h
     char pclbuf[80];
     unsigned char* rowbuf;
     unsigned char* colptr;
-    unsigned char* origcolptr;
     int rows,cols,y,x,b,color,p,planes;
     double actual_height;
     int planeshift[4] = {0, 24, 16, 8};

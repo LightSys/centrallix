@@ -48,10 +48,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.9 2007/04/03 15:50:04 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.10 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.10  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.9  2007/04/03 15:50:04  gbeeley
     - (feature) adding capability to pass a widget to a component as a
       parameter (by reference).
@@ -216,10 +225,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     char* nptr;
 //    pObject subobj = NULL;
     pWgtrNode sub_tree = NULL;
-    pObjQuery subobj_qy = NULL;
     XArray attrs;
     pHTCmpdParam param;
-    int i,t;
+    int i;
     int rval = 0;
     int is_visual = 1;
     char gbuf[256];

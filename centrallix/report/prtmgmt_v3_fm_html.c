@@ -53,10 +53,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_fm_html.c,v 1.7 2007/03/21 04:42:02 gbeeley Exp $
+    $Id: prtmgmt_v3_fm_html.c,v 1.8 2007/04/08 03:52:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_fm_html.c,v $
 
     $Log: prtmgmt_v3_fm_html.c,v $
+    Revision 1.8  2007/04/08 03:52:01  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.7  2007/03/21 04:42:02  gbeeley
     - (bugfix) various fixes in the HTML formatter for the report writer.
 
@@ -279,7 +288,7 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 int
 prt_htmlfm_GetNearestFontSize(void* context_v, int req_size)
     {
-    pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
+    /*pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;*/
     int i;
 
 	/** Check min/max **/
@@ -305,7 +314,7 @@ prt_htmlfm_GetNearestFontSize(void* context_v, int req_size)
 double
 prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style)
     {
-    pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
+    /*pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;*/
     double n;
     int a;
     
@@ -344,7 +353,7 @@ prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style)
 double
 prt_htmlfm_GetCharacterBaseline(void* context_v, pPrtTextStyle style)
     {
-    pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
+    /*pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;*/
     return 0.75*style->FontSize/12.0;
     }
 
@@ -575,7 +584,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     {
     char* path;
     void* arg;
-    int w,h,id;
+    int w,h;
+    unsigned long id;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())

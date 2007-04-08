@@ -101,6 +101,13 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
  	)
 	AC_SUBST(CXINCDIR, $centrallix_incdir)
 
+	AC_ARG_WITH(static-libcentrallix,
+	    AC_HELP_STRING([--with-static-libcentrallix],
+		[Enable to link in libCentrallix statically instead of dynamically]
+	    ),
+	    go_static="yes",
+	    go_static="no"
+	)
 	AC_ARG_WITH(centrallix-lib,
 	    AC_HELP_STRING([--with-centrallix-lib=DIR],
 		[Location of centrallix-libs lib directory (default is PREFIX/lib)]
@@ -115,11 +122,15 @@ AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
 
 	temp=$LIBS
  	LIBS="$LIBS -L$centrallix_libdir"
- 	AC_CHECK_LIB(Centrallix, 
-	    mtInitialize,
-	    [],
- 	    AC_MSG_ERROR([Please ensure that Centrallix-libs is installed and use --with-centrallix-lib=DIR to specify the path to the library])
- 	)
+	if test "$go_static" = "no"; then
+	    AC_CHECK_LIB(Centrallix, 
+		mtInitialize,
+		[],
+		AC_MSG_ERROR([Please ensure that Centrallix-libs is installed and use --with-centrallix-lib=DIR to specify the path to the library])
+	    )
+	else
+	    STATIC_LIBS="$STATIC_LIBS $centrallix_libdir/libCentrallix.a"
+	fi
 	AC_SUBST(CXLIBDIR, $centrallix_libdir)
     ]
 )

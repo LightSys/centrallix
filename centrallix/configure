@@ -871,6 +871,9 @@ Optional Packages:
   --with-centrallix-inc=DIR
                           Location of centrallix-lib include directory
                           (default is PREFIX/include)
+  --with-static-libcentrallix
+                          Enable to link in libCentrallix statically instead
+                          of dynamically
   --with-centrallix-lib=DIR
                           Location of centrallix-libs lib directory (default
                           is PREFIX/lib)
@@ -4886,6 +4889,15 @@ fi
 
 
 
+# Check whether --with-static-libcentrallix or --without-static-libcentrallix was given.
+if test "${with_static_libcentrallix+set}" = set; then
+  withval="$with_static_libcentrallix"
+  go_static="yes"
+else
+  go_static="no"
+
+fi;
+
 # Check whether --with-centrallix-lib or --without-centrallix-lib was given.
 if test "${with_centrallix_lib+set}" = set; then
   withval="$with_centrallix_lib"
@@ -4901,6 +4913,7 @@ fi;
 
 	temp=$LIBS
  	LIBS="$LIBS -L$centrallix_libdir"
+	if test "$go_static" = "no"; then
 
 echo "$as_me:$LINENO: checking for mtInitialize in -lCentrallix" >&5
 echo $ECHO_N "checking for mtInitialize in -lCentrallix... $ECHO_C" >&6
@@ -4980,6 +4993,9 @@ echo "$as_me: error: Please ensure that Centrallix-libs is installed and use --w
 
 fi
 
+	else
+	    STATIC_LIBS="$STATIC_LIBS $centrallix_libdir/libCentrallix.a"
+	fi
 	CXLIBDIR=$centrallix_libdir
 
 

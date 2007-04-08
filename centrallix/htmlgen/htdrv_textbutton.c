@@ -44,10 +44,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textbutton.c,v 1.37 2007/03/10 03:49:30 gbeeley Exp $
+    $Id: htdrv_textbutton.c,v 1.38 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textbutton.c,v $
 
     $Log: htdrv_textbutton.c,v $
+    Revision 1.38  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.37  2007/03/10 03:49:30  gbeeley
     - (change) pass button text to client as a param
 
@@ -437,7 +446,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    return -1;
 	    }
 	strtcpy(text,ptr,sizeof(text));
-	text2 = nmSysMalloc(strlen(text)*2);
+	text2 = nmSysMalloc((strlen(text)+1)*2);
 	ptr=text;
 	ptr2=text2;
 	do  {

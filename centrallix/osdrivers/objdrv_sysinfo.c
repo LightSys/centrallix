@@ -47,10 +47,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sysinfo.c,v 1.2 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: objdrv_sysinfo.c,v 1.3 2007/04/08 03:52:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sysinfo.c,v $
 
     $Log: objdrv_sysinfo.c,v $
+    Revision 1.3  2007/04/08 03:52:01  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.2  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -103,7 +112,7 @@ struct
     pSysInfoData	Root;
     int			StartUID;
     int			sys_thr_ids[256];
-    char*		sys_thr_names[256][3];
+    char		sys_thr_names[256][3];
     char*		sys_thr_desc[256];
     int			sys_thr_status[256];
     char*		sys_thr_status_char[256];
@@ -1167,7 +1176,6 @@ int
 sys_internal_MtaskLoad()
     {
     int i;
-    char sbuf[64];
 
 	if (mtLastTick() <= SYS_INF.sys_mt_last_tick) return 0;
 

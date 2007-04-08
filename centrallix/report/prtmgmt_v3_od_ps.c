@@ -50,10 +50,19 @@
 
 /**CVSDATA***************************************************************
  
-    $Id: prtmgmt_v3_od_ps.c,v 1.5 2007/03/10 05:14:54 gbeeley Exp $
+    $Id: prtmgmt_v3_od_ps.c,v 1.6 2007/04/08 03:52:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
  
     $Log: prtmgmt_v3_od_ps.c,v $
+    Revision 1.6  2007/04/08 03:52:01  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.5  2007/03/10 05:14:54  gbeeley
     - (performance) This one little fix improves report writer PDF output
       performance by approximately 10-fold.
@@ -200,7 +209,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.5 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.6 $ \n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
@@ -701,12 +710,9 @@ int
 prt_psod_SetTextStyle(void* context_v, pPrtTextStyle style)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
-    char psbuf[64];
     int onattr, offattr;
-    int color;
     char* fontname;
     char* fontattr;
-    int issue_font_cmd = 0;
 
 	prt_psod_BeforeDraw(context);
 
@@ -837,7 +843,6 @@ double
 prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double height, double next_y)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
-    char psbuf[80];
     int rows,cols,x,y,pix;
 
 	/** Determine how many actual rows/cols we are looking at for the
@@ -922,7 +927,6 @@ double
 prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
-    char psbuf[80];
     double x1,x2,y1,y2;
 
 	/** Make sure width and height meet the minimum required by the

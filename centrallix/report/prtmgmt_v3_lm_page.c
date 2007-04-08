@@ -52,10 +52,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: prtmgmt_v3_lm_page.c,v 1.11 2005/03/01 07:12:32 gbeeley Exp $
+    $Id: prtmgmt_v3_lm_page.c,v 1.12 2007/04/08 03:52:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_lm_page.c,v $
 
     $Log: prtmgmt_v3_lm_page.c,v $
+    Revision 1.12  2007/04/08 03:52:01  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.11  2005/03/01 07:12:32  gbeeley
     - rudimentary top-to-bottom layout flow for the page layout manager if
       x and/or y aren't supplied on an object.
@@ -136,8 +145,6 @@ int
 prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
     {
     pPrtObjStream next_page;
-    int page_handle_id;
-    pPrtHandle h;
 
 	/** Need to create the next page? **/
 	if (!this->Next)

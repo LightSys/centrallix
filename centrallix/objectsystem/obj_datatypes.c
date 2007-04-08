@@ -51,10 +51,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.16 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.17 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.17  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.16  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -1296,6 +1305,8 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
     char* endptr2;
     double dbl;
     int is_neg = 0;
+    unsigned long intval;
+    int scale;
 
     	/** Select the correct type. **/
 	switch(data_type)
@@ -1309,11 +1320,31 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    ptr++;
 		    }
 		if (*ptr == '$') ptr++;
+		if (*ptr == '-')
+		    {
+		    is_neg = !is_neg;
+		    ptr++;
+		    }
+		intval = 0;
 		m->FractionPart = 0;
-		m->WholePart = strtol(ptr, &endptr, 10);
+		m->WholePart = 0;
+		intval = strtoul(ptr, &endptr, 10);
+		if (intval > 0x7FFFFFFFUL)
+		    return -1;
+		if ((endptr - ptr) != strspn(ptr, "0123456789"))
+		    return -1;
+		m->WholePart = intval;
 		if (is_neg) m->WholePart = -m->WholePart;
-		if (endptr != ptr && *endptr == '.') m->FractionPart = strtol(endptr+1, &endptr2, 10)*100;
-		if (endptr2 == endptr+2) m->FractionPart *= 10;
+		if (*endptr == '.')
+		    {
+		    intval = strtoul(endptr+1, &endptr2, 10);
+		    scale = endptr2 - (endptr+1);
+		    if (scale != strspn(endptr+1, "0123456789"))
+			return -1;
+		    while(scale < 4) { scale++; intval *= 10; }
+		    while(scale > 4) { scale--; intval /= 10; }
+		    m->FractionPart = intval;
+		    }
 		if (m->WholePart < 0 && m->FractionPart != 0)
 		    {
 		    m->WholePart--;
@@ -1884,7 +1915,7 @@ objDataFromString(pObjData pod, int type, char* str)
 		break;
 
 	    case DATA_T_MONEY:
-		pod->Money = (pDateTime)nmMalloc(sizeof(MoneyType));
+		pod->Money = (pMoneyType)nmMalloc(sizeof(MoneyType));
 		if (!pod->Money) return -1;
 		objDataToMoney(DATA_T_STRING, str, pod->Money);
 		break;

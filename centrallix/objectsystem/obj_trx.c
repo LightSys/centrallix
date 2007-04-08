@@ -45,10 +45,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.11 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_trx.c,v 1.12 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.12  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.11  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -239,8 +248,9 @@ obj_internal_FreeTree(pObjTrxTree oxt)
 	if (oxt->AttrValue) nmSysFree(oxt->AttrValue);
 	if (oxt->AllocObj)
 	    {
-	    xaDeInit(&(((pObject)(oxt->Object))->Attrs));
-	    nmFree(oxt->Object,sizeof(Object));
+	    /*xaDeInit(&(((pObject)(oxt->Object))->Attrs));
+	    nmFree(oxt->Object,sizeof(Object));*/
+	    obj_internal_FreeObj(oxt->Object);
 	    }
 	nmFree(oxt,sizeof(ObjTrxTree));
     

@@ -49,10 +49,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.25 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: obj_object.c,v 1.26 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.26  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.25  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -455,9 +464,14 @@ obj_internal_AllocObj()
 	this->Type = NULL;
 	this->NotifyItem = NULL;
 	this->VAttrs = NULL;
+	this->ILowLevelDriver = NULL;
+	this->TLowLevelDriver = NULL;
+	this->Driver = NULL;
+	this->AttrExp = NULL;
+	this->AttrExpName = NULL;
+	this->LinkCnt = 1;
 	memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
 	xaInit(&(this->Attrs),16);
-
 
     return this;
     }
@@ -491,6 +505,8 @@ obj_internal_FreeObj(pObject this)
 		    else
 			del->Driver->Close(del->Data,&(s->Trx));
 		    }
+		if (del->AttrExpName) nmSysFree(del->AttrExpName);
+		if (del->AttrExp) expFreeExpression(del->AttrExp);
 		xaDeInit(&(del->Attrs));
 	        nmFree(del,sizeof(Object));
 	    
@@ -586,7 +602,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pXHQElement xe;
     char prevname[256];
     int used_openas;
-    int len;
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -697,7 +712,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    this->SubCnt = 2;
 	    this->Session = s;
 	    first_obj = this;
-	    this->LinkCnt = 1;
 	    }
 
 	/** Now enter the intermediate-open loop, calling relevant drivers according **/
@@ -805,7 +819,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    this = this->Next;
 	    this->Driver = drv;
 	    this->Session = s;
-	    this->LinkCnt = 1;
 	    this->Mode = mode;
 
 	    /** Set object type **/
@@ -985,6 +998,7 @@ obj_internal_NormalizePath(char* cwd, char* name)
     	/** Allocate the path structure **/
 	path = (pPathname)nmMalloc(sizeof(Pathname));
 	if (!path) return NULL;
+	memset(path, 0, sizeof(Pathname));
 	path->OpenCtlBuf = NULL;
 
 	/** Initialize structure and incremental pointer **/
@@ -992,6 +1006,7 @@ obj_internal_NormalizePath(char* cwd, char* name)
         strcpy(path->Pathbuf,".");
 	path->nElements = 1;
 	path->Elements[0] = path->Pathbuf;
+	path->LinkCnt = 1;
 
     	/** Process through the CWD first if relative path. **/
 	if (name[0] != '/')
@@ -1353,8 +1368,6 @@ pObject
 objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type)
     {
     pObject this;
-    int len;
-
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 

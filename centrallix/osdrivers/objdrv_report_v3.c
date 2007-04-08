@@ -58,10 +58,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.14 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.15 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.15  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.14  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -1583,6 +1592,12 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 	/** Create the table row **/
 	tablerow_handle = prtAddObject(table_handle, PRT_OBJ_T_TABLEROW, -1,-1,-1,-1, flags, "header", is_header, "footer", is_footer, 
 		"outerborder", ob, "innerborder", ib, "topborder", tb, "bottomborder", bb, "leftborder", lb, "rightborder", rb, NULL);
+	if (ob) prtFreeBorder(ob);
+	if (ib) prtFreeBorder(ib);
+	if (tb) prtFreeBorder(tb);
+	if (bb) prtFreeBorder(bb);
+	if (rb) prtFreeBorder(rb);
+	if (lb) prtFreeBorder(lb);
 	if (tablerow_handle < 0)
 	    {
 	    mssError(0,"RPT","could not build table row object '%s'", tablerow->Name);
@@ -1766,6 +1781,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	if (rpt_internal_GetDouble(table, "colsep", &colsep, 0) != 0) colsep = 1.0;
 
 	/** Check for borders / shadow **/
+	outerborder = innerborder = shadow = tb = bb = lb = rb = NULL;
 	if (rpt_internal_GetDouble(table, "outerborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
 	    outerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 	if (rpt_internal_GetDouble(table, "innerborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
@@ -1786,6 +1802,13 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		"numcols", numcols, "colwidths", cwidths, "colsep", colsep, "outerborder", outerborder,
 		"innerborder", innerborder, "shadow", shadow, "topborder", tb, "bottomborder", bb,
 		"leftborder", lb, "rightborder", rb, NULL);
+	if (outerborder) prtFreeBorder(outerborder);
+	if (innerborder) prtFreeBorder(innerborder);
+	if (shadow) prtFreeBorder(shadow);
+	if (tb) prtFreeBorder(tb);
+	if (bb) prtFreeBorder(bb);
+	if (rb) prtFreeBorder(rb);
+	if (lb) prtFreeBorder(lb);
 	if (table_handle < 0)
 	    {
 	    mssError(0, "RPT", "Could not create table '%s'", table->Name);

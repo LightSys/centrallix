@@ -45,10 +45,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htmlparse.c,v 1.4 2006/11/16 20:15:54 gbeeley Exp $
+    $Id: htmlparse.c,v 1.5 2007/04/08 03:52:01 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/htmlparse.c,v $
 
     $Log: htmlparse.c,v $
+    Revision 1.5  2007/04/08 03:52:01  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.4  2006/11/16 20:15:54  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.
@@ -466,7 +475,6 @@ htsParseURL(char* url)
     char* dst;
     char* last_slash;
     int len;
-    int in_params = 0;
 
         /** Allocate the main inf for the filename. **/
         main_inf = stAllocInf_ne();

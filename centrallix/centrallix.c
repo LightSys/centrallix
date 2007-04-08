@@ -54,10 +54,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.41 2007/03/22 16:29:28 gbeeley Exp $
+    $Id: centrallix.c,v 1.42 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.42  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.41  2007/03/22 16:29:28  gbeeley
     - (feature) Autolayout widget, better known as hbox and vbox.  Now you
       don't have to manually compute all those X's and Y's!  Only hbox and
@@ -627,7 +636,6 @@ cxInitialize(void* v)
 	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
 
 	/** Initialize the various parts **/
-	nmInitialize();				/* memory manager */
 	expInitialize();			/* expression processor/compiler */
 	if (objInitialize() < 0) return -1;	/* OSML */
 	snInitialize();				/* Node structure file handler */

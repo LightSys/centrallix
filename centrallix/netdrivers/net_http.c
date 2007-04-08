@@ -66,10 +66,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.69 2007/03/10 05:13:03 gbeeley Exp $
+    $Id: net_http.c,v 1.70 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.70  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.69  2007/03/10 05:13:03  gbeeley
     - (change) log session starts
 
@@ -1872,6 +1881,7 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 	xsInit(&hints);
 	ph = objPresentationHints(obj, attrname);
 	hntEncodeHints(ph, &hints);
+	objFreeHints(ph);
 
 	/** Get value **/
 	rval = objGetAttrValue(obj,attrname,type,&od);
@@ -2712,7 +2722,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* aptr;
     char* acceptencoding;
     pObject target_obj, sub_obj, tmp_obj;
-    pWgtrNode widget_tree;
     char* bufptr;
     char path[256];
     int rowid;
@@ -3646,7 +3655,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	    //printf("%s",sbuf);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    netCloseTCP(conn->ConnFD,1000,0);
+	    nht_internal_FreeConn(conn);
 	    thExit();
 	    }
 
@@ -3661,7 +3670,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "\r\n"
 			 "<H1>400 Bad Request</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    netCloseTCP(conn->ConnFD,1000,0);
+	    nht_internal_FreeConn(conn);
 	    thExit();
 	    }
 
@@ -3672,6 +3681,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    conn->NhtSession = (pNhtSessionData)xhLookup(&(NHT.CookieSessions), cookie);
 	    if (conn->NhtSession)
 	        {
+		nht_internal_LinkSess(conn->NhtSession);
 		if (strcmp(conn->NhtSession->Username,usrname) || strcmp(passwd,conn->NhtSession->Password))
 		    {
 	    	    snprintf(sbuf,160,"HTTP/1.0 401 Unauthorized\r\n"
@@ -3681,7 +3691,7 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	            fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	            netCloseTCP(conn->ConnFD,1000,0);
+		    nht_internal_FreeConn(conn);
 	            thExit();
 		    }
 		thSetParam(NULL,"mss",conn->NhtSession->Session);
@@ -3710,7 +3720,7 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		    netCloseTCP(conn->ConnFD,1000,0);
+		    nht_internal_FreeConn(conn);
 		    thExit();
 		    }
 		else
@@ -3722,7 +3732,7 @@ nht_internal_ConnHandler(void* connfd_v)
 				 "\r\n"
 				 "<A HREF=/ TARGET=OK></A>\r\n",NHT.ServerString);
 		    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		    netCloseTCP(conn->ConnFD,1000,0);
+		    nht_internal_FreeConn(conn);
 		    thExit();
 		    }
 		}
@@ -3739,7 +3749,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		netCloseTCP(conn->ConnFD,1000,0);
+		nht_internal_FreeConn(conn);
 		thExit();
 		}
 	    }
@@ -3755,7 +3765,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		netCloseTCP(conn->ConnFD,1000,0);
+		nht_internal_FreeConn(conn);
 		thExit();
 		}
 	    }
@@ -3772,7 +3782,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<H1>Unauthorized</H1>\r\n",NHT.ServerString,NHT.Realm);
 	        fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	        netCloseTCP(conn->ConnFD,1000,0);
+		nht_internal_FreeConn(conn);
 	        thExit();
 		}
 	    usr = (pNhtUser)xhLookup(&(NHT.Users), usrname);
@@ -3789,7 +3799,7 @@ nht_internal_ConnHandler(void* connfd_v)
 		}
 	    nsess = (pNhtSessionData)nmMalloc(sizeof(NhtSessionData));
 	    strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
-	    strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Username));
+	    strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Password));
 	    nsess->User = usr;
 	    nsess->Session = thGetParam(NULL,"mss");
 	    nsess->IsNewCookie = 1;
@@ -3803,7 +3813,7 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xaInit(&nsess->ErrorList,16);
 	    xaInit(&nsess->ControlMsgsList,16);
 	    nht_internal_CreateCookie(nsess->Cookie);
-	    cxssGenerateKey(akey, sizeof(akey));
+	    cxssGenerateKey((unsigned char*)akey, sizeof(akey));
 	    sprintf(nsess->AKey, "%8.8x%8.8x", akey[0], akey[1]);
 	    xhnInitContext(&(nsess->Hctx));
 	    xhAdd(&(NHT.CookieSessions), nsess->Cookie, (void*)nsess);
@@ -3811,10 +3821,8 @@ nht_internal_ConnHandler(void* connfd_v)
 	    xaAddItem(&(NHT.Sessions), (void*)nsess);
 	    conn->NhtSession = nsess;
 	    printf("NHT: new session for username [%s], cookie [%s]\n", nsess->Username, nsess->Cookie);
+	    nht_internal_LinkSess(conn->NhtSession);
 	    }
-
-	//printf("%s\n",urlptr);
-	nht_internal_LinkSess(conn->NhtSession);
 
 	/** Set nht session http ver **/
 	strtcpy(conn->NhtSession->HTTPVer, http_ver, sizeof(conn->NhtSession->HTTPVer));
@@ -3861,7 +3869,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			 "\r\n"
 			 "<H1>500 Internal Server Error</H1>\r\n",NHT.ServerString);
 	    fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-	    netCloseTCP(conn->ConnFD,1000,0);
+	    nht_internal_FreeConn(conn);
 	    conn = NULL;
 	    }
 	nht_internal_ConstructPathname(url_inf);
@@ -3886,7 +3894,7 @@ nht_internal_ConnHandler(void* connfd_v)
 			     "\r\n"
 			     "<A HREF=/ TARGET=ERR></A>\r\n",NHT.ServerString);
 		fdWrite(conn->ConnFD,sbuf,strlen(sbuf),0,0);
-		netCloseTCP(conn->ConnFD,1000,0);
+		nht_internal_FreeConn(conn);
 		thExit();
 		}
 	    if (!strcasecmp(find_inf->StrVal,"get"))
@@ -3961,12 +3969,12 @@ nht_internal_ConnHandler(void* connfd_v)
 	/** End a trigger? **/
 	if (tid != -1) nht_internal_EndTrigger(conn->NhtSession,tid);
 
-	nht_internal_UnlinkSess(conn->NhtSession);
+	/*nht_internal_UnlinkSess(conn->NhtSession);*/
 
 	/** Close and exit. **/
 	if (url_inf) stFreeInf_ne(url_inf);
 	if (did_alloc) nmSysFree(urlptr);
-	netCloseTCP(conn->ConnFD,1000,0);
+	nht_internal_FreeConn(conn);
 	conn = NULL;
 
     thExit();

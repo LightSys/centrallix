@@ -50,10 +50,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.10 2007/03/02 22:30:39 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.11 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.11  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.10  2007/03/02 22:30:39  gbeeley
     - (bugfix) problem with the setting up of the Pathname structure in this
       driver was causing subtree select to crash on structure file items.
@@ -781,13 +790,12 @@ stxAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
 	new_inf = stAddAttr(inf->Data, attrname);
 	if (type == DATA_T_STRING)
 	    {
-	    ptr = (char*)nmSysMalloc(strlen(val->String));
-	    strcpy(ptr, val->String);
+	    ptr = (char*)nmSysStrdup(val->String);
 	    stAddValue(new_inf, ptr, 0);
 	    }
 	else if (type == DATA_T_INTEGER)
 	    {
-	    stAddValue(new_inf, NULL, val->String);
+	    stAddValue(new_inf, NULL, val->Integer);
 	    }
 	else
 	    {

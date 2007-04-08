@@ -55,10 +55,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.17 2007/03/01 21:57:26 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.18 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.18  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.17  2007/03/01 21:57:26  gbeeley
     - (bugfix) allow trailing spaces on a row to be used (properly) as space
       for the row to grow instead of being absorbed into the last field in
@@ -744,7 +753,8 @@ dat_internal_UpdateRowIDPtrCache(pDatNode node, pDatRowInfo ri, int rowid)
     	/** Scan the row id ptrs **/
 	for(i=0;i<DAT_NODE_ROWIDPTRS;i++)
 	    {
-	    if (node->RowIDPtrCache[i].RowID == rowid) return 0;
+	    if (!(node->RowIDPtrCache[i].Flags & DAT_RI_F_EMPTY) && node->RowIDPtrCache[i].RowID == rowid)
+		return 0;
 	    if (node->RowIDPtrCache[i].Flags & DAT_RI_F_EMPTY)
 	        {
 		best = i;
@@ -1915,7 +1925,7 @@ unsigned char*
 dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrxTree oxt)
     {
     pObjTrxTree sub_oxt;
-    int i,len,j,d,s,a;
+    int i,len,j,d,s;
     unsigned char* buf;
     unsigned char* bufptr;
     int maxlen;
@@ -2829,7 +2839,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    qy->Row.Offset = new_offset;
 		    ptr = qy->Row.Pages[page]->Data + qy->Row.Offset;
 		    len = 0;
-		    while(*ptr != '\n')
+		    while(new_offset < qy->Row.Pages[page]->Length && *ptr != '\n')
 		        {
 			/** End of row, but row deleted? **/
 			if (*ptr == 1)
@@ -3580,7 +3590,6 @@ int
 datInfo(void* inf_v, pObjectInfo info)
     {
 	pDatData inf = DAT(inf_v);
-	pDatRowInfo ri;
 
 	info->Flags |= (OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | 
 	    OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT );

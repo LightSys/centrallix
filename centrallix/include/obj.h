@@ -35,10 +35,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.35 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: obj.h,v 1.36 2007/04/08 03:52:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.36  2007/04/08 03:52:00  gbeeley
+    - (bugfix) various code quality fixes, including removal of memory leaks,
+      removal of unused local variables (which create compiler warnings),
+      fixes to code that inadvertently accessed memory that had already been
+      free()ed, etc.
+    - (feature) ability to link in libCentrallix statically for debugging and
+      performance testing.
+    - Have a Happy Easter, everyone.  It's a great day to celebrate :)
+
     Revision 1.35  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -649,6 +658,8 @@ typedef struct _OF
     void*	NotifyItem;	/* pObjReqNotifyItem; not-null when notifies are active on this */
     pObjVirtualAttr VAttrs;	/* virtual attributes - call external fn()'s to obtain the data */
     void*	EvalContext;	/* a pParamObjects list -- for evaluation of runserver() exprs */
+    void*	AttrExp;	/* an expression used for the above */
+    char*	AttrExpName;	/* Name of attr for above expression */
     }
     Object, *pObject;
 
@@ -919,6 +930,8 @@ int obj_internal_IsA(char* type1, char* type2);
 int obj_internal_FreePath(pPathname this);
 pPathname obj_internal_NormalizePath(char* cwd, char* name);
 int obj_internal_AddChildTree(pObjTrxTree parent_oxt, pObjTrxTree child_oxt);
+pObject obj_internal_AllocObj();
+int obj_internal_FreeObj(pObject);
 
 /** objectsystem transaction functions **/
 int obj_internal_FreeTree(pObjTrxTree oxt);

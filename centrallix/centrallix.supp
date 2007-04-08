@@ -9,5 +9,360 @@
    fun:__mcount_internal
    fun:_mcount
 }
-
+{
+   syb1
+   Memcheck:Addr4
+   fun:com__path_charfile
+   fun:com__open_charfile
+   fun:com__intl_load_charset
+   fun:com__intl_load_new
+   fun:com_intl_load
+   fun:cs__loc_set
+   fun:cs__loc_set_all
+   fun:cs_locale
+   fun:cs_ctx_alloc
+   fun:sybdInitialize
+   fun:moduleInitialize
+   fun:cx_internal_LoadModules
+}
+{
+   syb2
+   Memcheck:Addr4
+   fun:com__path_charfile
+   fun:com__open_charfile
+   fun:com__get_charset
+   fun:com__build_class1
+   fun:com__intl_load_charset
+   fun:com__intl_load_new
+   fun:com_intl_load
+   fun:cs__loc_set
+   fun:cs__loc_set_all
+   fun:cs_locale
+   fun:cs_ctx_alloc
+   fun:sybdInitialize
+}
+{
+   syb3
+   Memcheck:Addr4
+   fun:com__path_locfile
+   fun:com__open_locfile
+   fun:com__read_common
+   fun:com__intl_load_new
+   fun:com_intl_load
+   fun:cs__loc_set
+   fun:cs__loc_set_all
+   fun:cs_locale
+   fun:cs_ctx_alloc
+   fun:sybdInitialize
+   fun:moduleInitialize
+   fun:cx_internal_LoadModules
+}
+{
+   syb4
+   Memcheck:Addr4
+   fun:com_err_init
+   fun:cs__errinit
+   fun:cs_ctx_alloc
+   fun:sybdInitialize
+   fun:moduleInitialize
+   fun:cx_internal_LoadModules
+   fun:cxInitialize
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   syb5
+   Memcheck:Addr4
+   fun:com__path_locfile
+   fun:com__open_locfile
+   fun:com_err_init
+   fun:cs__errinit
+   fun:cs_ctx_alloc
+   fun:sybdInitialize
+   fun:moduleInitialize
+   fun:cx_internal_LoadModules
+   fun:cxInitialize
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+}
+{
+   syb6
+   Memcheck:Addr4
+   fun:com__path_locfile
+   fun:com__open_locfile
+   fun:com_err_init
+   fun:ct__api_errinit
+   fun:ct__lib_init
+   fun:ct_init
+   fun:sybdInitialize
+   fun:moduleInitialize
+   fun:cx_internal_LoadModules
+   fun:cxInitialize
+   fun:start
+   fun:r_mtRun_Spacer
+}
+{
+   syb7
+   Memcheck:Addr4
+   fun:com_err_init
+   fun:net_init
+   fun:np_init
+   fun:ct_gp_init
+   fun:ct__lib_init
+   fun:ct_init
+   fun:sybdInitialize
+   fun:moduleInitialize
+   fun:cx_internal_LoadModules
+   fun:cxInitialize
+   fun:start
+   fun:r_mtRun_Spacer
+}
+{
+   syb8
+   Memcheck:Addr4
+   fun:com__path_locfile
+   fun:com__open_locfile
+   fun:com_err_init
+   fun:net_init
+   fun:np_init
+   fun:ct_gp_init
+   fun:ct__lib_init
+   fun:ct_init
+   fun:sybdInitialize
+   fun:moduleInitialize
+   fun:cx_internal_LoadModules
+   fun:cxInitialize
+}
+{
+   mtask1
+   Memcheck:Value4
+   fun:mtSched
+   fun:nhtInitialize
+   fun:cxNetworkInit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask2
+   Memcheck:Value4
+   fun:thCreate
+   fun:nhtInitialize
+   fun:cxNetworkInit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask2a
+   Memcheck:Addr4
+   fun:mtSched
+   fun:thCreate
+   fun:nhtInitialize
+   fun:cxNetworkInit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask3
+   Memcheck:Value4
+   fun:thCreate
+   fun:cxNetworkInit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask4
+   Memcheck:Value4
+   fun:nhtInitialize
+   fun:cxNetworkInit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask5
+   Memcheck:Value4
+   fun:cxNetworkInit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask6
+   Memcheck:Value4
+   fun:cxNetworkInit
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask7
+   Memcheck:Addr4
+   fun:thExit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask8
+   Memcheck:Addr4
+   fun:mtSched
+   fun:thExit
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask9
+   Memcheck:Cond
+   fun:mssErrorErrno
+   fun:nht_internal_Handler
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask10
+   Memcheck:Cond
+   fun:mtSched
+   fun:netAcceptTCP
+   fun:nht_internal_Handler
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask10a
+   Memcheck:Value4
+   fun:mtSched
+   fun:netAcceptTCP
+   fun:nht_internal_Handler
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   mtask11
+   Memcheck:Value4
+   fun:nhtInitialize
+   fun:start
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   bdqs1
+   Memcheck:Cond
+   fun:thExit
+   fun:bnet_internal_Handler
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   bdqs2
+   Memcheck:Cond
+   fun:mtSched
+   fun:thExit
+   fun:bnet_internal_Handler
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   bdqs3
+   Memcheck:Value4
+   fun:mtSched
+   fun:thExit
+   fun:bnet_internal_Handler
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   bdqs4
+   Memcheck:Cond
+   fun:__divdi3
+   fun:mtSched
+   fun:thExit
+   fun:bnet_internal_Handler
+   fun:r_mtRun_Spacer
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:r_mtRunStartFn
+   fun:mtRunStartFn
+   obj:/usr/local/lib/libCentrallix.so
+}
+{
+   thr1
+   Memcheck:Addr4
+   fun:r_mtRunStartFn
+}
+{
+   thr2
+   Memcheck:Addr4
+   fun:mcount
+}
+{
+   sybct1
+   Memcheck:Addr4
+   fun:com__path_charfile
+}
+{
+   sybct2
+   Memcheck:Addr4
+   fun:com__path_locfile
+}
+{
+   sybct3
+   Memcheck:Addr4
+   fun:com_err_init
+}
 
