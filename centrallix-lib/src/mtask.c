@@ -26,6 +26,10 @@
 #include <stdarg.h>
 #include "qprintf.h"
 
+#ifdef USING_VALGRIND
+#include "valgrind/valgrind.h"
+#endif
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -51,10 +55,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.36 2007/03/06 03:51:57 gbeeley Exp $
+    $Id: mtask.c,v 1.37 2007/04/08 03:43:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.37  2007/04/08 03:43:06  gbeeley
+    - (bugfix) some code quality fixes
+    - (feature) MTASK integration with the Valgrind debugger.  Still some
+      problems to be sorted out, but this does help.  Left to themselves,
+      MTASK and Valgrind do not get along, due to the approach to threading.
+
     Revision 1.36  2007/03/06 03:51:57  gbeeley
     - (security) Adding a function to aid in recursion depth limiting, since
       stack space is at a premium when using MTask.
@@ -702,6 +712,8 @@ mtInitialize(int flags, void (*start_fn)())
     register int i;
     gid_t grouplist[1];
 
+	memset(&MTASK, 0, sizeof(MTASK));
+
     	/** Initialize the thread table. **/
 	MTASK.nThreads = 0;
 	for(i=0;i<MAX_THREADS;i++) MTASK.ThreadTable[i] = NULL;
@@ -739,6 +751,12 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.CurrentThread->StartParam = NULL;
 	MTASK.CurrentThread->SecContext.UserID = geteuid();
 	MTASK.CurrentThread->SecContext.GroupID = getegid();
+	MTASK.CurrentThread->SecContext.ThrParam = NULL;
+	MTASK.CurrentThread->Stack = NULL;
+	MTASK.CurrentThread->StackBottom = NULL;
+#ifdef USING_VALGRIND
+	MTASK.CurrentThread->ValgrindStackID = 0;
+#endif
 	MTASK.StartUserID = geteuid();
 	MTASK.CurUserID = geteuid();
 	MTASK.CurGroupID = getegid();
@@ -795,7 +813,7 @@ mtRunStartFn(pThread new_thr, int idx)
 
 	/** We need these static variables because the automatic **/
 	/** variables get clobbered when we do the longjmp **/
-        r_newidx = idx;
+        r_newidx = idx + 1;
         r_newthr = new_thr;
 
         /** if thr is null, we prime the jmp buffer **/
@@ -825,6 +843,10 @@ r_mtRun_Spacer()
 
     /*mprotect((char*)((int)(buf-MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
     MTASK.CurrentThread->Stack = (unsigned char*)buf;
+#ifdef USING_VALGRIND
+    MTASK.CurrentThread->ValgrindStackID = VALGRIND_STACK_REGISTER(buf - MAX_STACK + MT_TASKSEP, buf + MT_TASKSEP + 20);
+#endif
+    if (!MTASK.CurrentThread->StackBottom) MTASK.CurrentThread->StackBottom = (unsigned char*)buf;
     r_newthr->StartFn(r_newthr->StartParam);
     return 0; /* never returns */
     }
@@ -841,7 +863,7 @@ r_mtRunStartFn()
     buf[0] = buf[0];
 
     if (r_newidx < 0) return 0;
-    if (r_newidx--) r_mtRunStartFn();
+    if (--r_newidx) r_mtRunStartFn();
     r_mtRunStartFn();
     r_mtRun_Spacer();
     /* thExit(); */
@@ -898,6 +920,7 @@ mtSched()
     pEventReq event;
     int k = 0;
     int arg,len;
+    int x[1];
 
     	dbg_write(0,"x",1);
 
@@ -909,6 +932,7 @@ mtSched()
 	tx=mtRealTicks();
 	if (MTASK.CurrentThread != NULL)
 	    {
+	    MTASK.CurrentThread->StackBottom = (unsigned char*)x;
 	    /** If no tick and thread exec'able, return now; 0 means 'didnt run' **/
 	    /** If caller of mtSched sets status to runnable instead of **/
 	    /** executing,then this code will force a scheduler 'round' **/
@@ -1403,6 +1427,11 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->StartParam = start_param;
 	thr->SecContext.UserID = MTASK.CurUserID;
 	thr->SecContext.GroupID = MTASK.CurGroupID;
+	thr->Stack = NULL;
+	thr->StackBottom = NULL;
+#ifdef USING_VALGRIND
+	thr->ValgrindStackID = 0;
+#endif
 	/** copy the thread param from the current thread, if there is one
 	      this allows the signal handler, which will sometimes get called while
 	      the scheduler is in a select() call to spawn a new thread **/
@@ -1484,6 +1513,10 @@ thExit()
 	    MTASK.EventWaitTable[i]->Thr->Status = THR_S_RUNNABLE;
 	    }
 
+#ifdef USING_VALGRIND
+	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
+#endif
+
 	/** Destroy the thread's descriptor **/
 	nmFree(MTASK.CurrentThread,sizeof(Thread));
 	MTASK.CurrentThread = NULL;
@@ -1542,6 +1575,10 @@ thKill(pThread thr)
 	    MTASK.nThreads--;
 	    break;
 	    }
+
+#ifdef USING_VALGRIND
+	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
+#endif
 
 	/** Free the structure. **/
 	nmFree(thr, sizeof(Thread));

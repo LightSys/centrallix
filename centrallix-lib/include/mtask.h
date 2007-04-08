@@ -23,10 +23,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.19 2007/03/06 03:51:57 gbeeley Exp $
+    $Id: mtask.h,v 1.20 2007/04/08 03:43:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.20  2007/04/08 03:43:06  gbeeley
+    - (bugfix) some code quality fixes
+    - (feature) MTASK integration with the Valgrind debugger.  Still some
+      problems to be sorted out, but this does help.  Left to themselves,
+      MTASK and Valgrind do not get along, due to the approach to threading.
+
     Revision 1.19  2007/03/06 03:51:57  gbeeley
     - (security) Adding a function to aid in recursion depth limiting, since
       stack space is at a premium when using MTask.
@@ -142,7 +148,7 @@
 
 #ifdef HAVE_CONFIG_H
 #ifdef CXLIB_INTERNAL
-#include "cxlibconfig.h"
+#include "cxlibconfig-internal.h"
 #else
 #include "cxlib/cxlibconfig.h"
 #endif /* defined CXLIB_INTERNAL */
@@ -222,6 +228,10 @@ typedef struct _THR
     int		BlkReturnCode;			/* Return code for longjmp */
     jmp_buf	SavedEnv;			/* for context switches */
     unsigned char*  Stack;			/* approx. stack start ptr */
+    unsigned char*  StackBottom;		/* stack ptr at last entry into mtSched */
+#ifdef USING_VALGRIND
+    unsigned int    ValgrindStackID;
+#endif
     }
     Thread, *pThread;
 

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "magic.h"
+#include "newmalloc.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -37,10 +38,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.6 2003/04/03 04:32:39 gbeeley Exp $
+    $Id: newmalloc.c,v 1.7 2007/04/08 03:43:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
+    Revision 1.7  2007/04/08 03:43:06  gbeeley
+    - (bugfix) some code quality fixes
+    - (feature) MTASK integration with the Valgrind debugger.  Still some
+      problems to be sorted out, but this does help.  Left to themselves,
+      MTASK and Valgrind do not get along, due to the approach to threading.
+
     Revision 1.6  2003/04/03 04:32:39  gbeeley
     Added new cxsec module which implements some optional-use security
     hardening measures designed to protect data structures and stack
@@ -81,13 +88,6 @@
  **END-CVSDATA***********************************************************/
 
 
-typedef struct _ov
-    {
-    int		Magic;
-    struct _ov 	*Next;
-    }
-    Overlay,*pOverlay;
-
 /** define BUFFER_OVERFLOW_CHECKING for buffer overflow checking
 ***   this works off of magic numbers in the 4 bytes on either end
 ***   of the buffer that is returned to the user, at the cost of
@@ -118,12 +118,6 @@ typedef struct _mem
 pMemStruct startMemList;
 #endif
 
-
-#define OVERLAY(x) ((pOverlay)(x))
-#define MAX_SIZE (8192)
-#define MIN_SIZE (sizeof(Overlay))
-#define DUP_FREE_CHECK 1
-
 pOverlay lists[MAX_SIZE+1];
 int listcnt[MAX_SIZE+1];
 int outcnt[MAX_SIZE+1];
@@ -134,6 +128,11 @@ int nmMallocCnt;
 int nmMallocHits;
 int nmMallocTooBig;
 int nmMallocLargest;
+
+#ifdef BLK_LEAK_CHECK
+void* blks[MAX_BLOCKS];
+int blksiz[MAX_BLOCKS];
+#endif
 
 int isinit=0;
 int (*err_fn)() = NULL;
@@ -165,6 +164,7 @@ nmInitialize()
 	for(i=0;i<=MAX_SIZE;i++) usagecnt[i] = 0;
 	for(i=0;i<=MAX_SIZE;i++) nmsys_outcnt[i] = 0;
 	for(i=0;i<=MAX_SIZE;i++) nmsys_outcnt_delta[i] = 0;
+	for(i=0;i<MAX_BLOCKS;i++) blks[i] = NULL;
 	nmFreeCnt=0;
 	nmMallocCnt=0;
 	nmMallocHits=0;
@@ -315,6 +315,7 @@ nmMalloc(size)
     int size;
     {
     void* tmp;
+    int i;
 
     	if (!isinit) nmInitialize();
 
@@ -350,6 +351,18 @@ nmMalloc(size)
 	else OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
 
 	nmCheckAll();
+
+#ifdef BLK_LEAK_CHECK
+	for(i=0;i<MAX_BLOCKS;i++)
+	    {
+	    if (blks[i] == NULL)
+		{
+		blks[i] = tmp;
+		blksiz[i] = size;
+		break;
+		}
+	    }
+#endif
 	
     return tmp;
     }
@@ -361,6 +374,7 @@ nmFree(ptr,size)
     int size;
     {
     pOverlay tmp;
+    int i;
 
     	ASSERTNOTMAGIC(ptr,MGK_FREEMEM);
 
@@ -372,6 +386,19 @@ nmFree(ptr,size)
 
 	nmCheckAll();
 
+#ifdef BLK_LEAK_CHECK
+	for(i=0;i<MAX_BLOCKS;i++)
+	    {
+	    if (blks[i] == ptr)
+		{
+		blks[i] = NULL;
+		blksiz[i] = 0;
+		break;
+		}
+	    }
+#endif
+
+#ifndef NO_BLK_CACHE
     	if (size <= MAX_SIZE && size >= MIN_SIZE)
 	    {
 #ifdef DUP_FREE_CHECK
@@ -396,8 +423,11 @@ nmFree(ptr,size)
 	    }
 	else
 	    {
+#endif
 	    nmDebugFree(ptr);
+#ifndef NO_BLK_CACHE
 	    }
+#endif
 
 	nmCheckAll();
 
@@ -480,15 +510,17 @@ nmDebug()
 void
 nmDeltas()
     {
-    int i;
+    int i, total;
     pRegisteredBlockType blk;
 
+	total = 0;
 	printf("size\tdelta\tnames\n-------\t-------\t-------\n");
     	for(i=0;i<=MAX_SIZE;i++)
 	    {
 	    if (outcnt[i] != outcnt_delta[i])
 	        {
 		printf("%d\t%d\t",i,outcnt[i] - outcnt_delta[i]);
+		total += (i * (outcnt[i] - outcnt_delta[i]));
 		blk = blknames[i];
 		while(blk)
 		    {
@@ -506,10 +538,12 @@ nmDeltas()
 	    if (nmsys_outcnt[i] != nmsys_outcnt_delta[i])
 	        {
 		printf("%d\t%d\n",i,nmsys_outcnt[i] - nmsys_outcnt_delta[i]);
+		total += (i * (nmsys_outcnt[i] - nmsys_outcnt_delta[i]));
 		nmsys_outcnt_delta[i] = nmsys_outcnt[i];
 		}
 	    }
 	printf("\n");
+	printf("delta %d total bytes\n", total);
 
     return;
     }

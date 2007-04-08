@@ -138,5 +138,32 @@ dnl	AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the 
     fi
     ]
 )
+
+dnl Check for Valgrind integration.  Valgrind is a tool used to check for memory
+dnl management and pointer related problems.  But it does NOT get along with
+dnl MTASK under normal conditions.  Here we try to fix that.
+AC_DEFUN(CHECK_VALGRIND,
+    [
+    AC_MSG_CHECKING(if valgrind integration is desired)
+    AC_ARG_ENABLE(valgrind-integration,
+	AC_HELP_STRING([--enable-valgrind-integration],
+	    [Valgrind integration allows libCentrallix programs to be debugged using the Valgrind tool; incompatible with optimization]
+	),
+	WITH_VALGRIND="$enableval",
+	WITH_VALGRIND="no"
+    )
+    if test "$WITH_VALGRIND" = "yes"; then
+	if test "$WITH_OPTIMIZATION" = "yes"; then
+	    AC_MSG_ERROR([Valgrind integration and Optimization are mutually exclusive; please at most specify one or the other but not both])
+	else
+	    AC_CHECK_HEADER([valgrind/valgrind.h],
+		[], 
+		AC_MSG_ERROR([Header file valgrind/valgrind.h not found.  Please install Valgrind if you want to build with Valgrind integration.])
+	    )
+	    AC_DEFINE(USING_VALGRIND,1,[defined to 1 if valgrind integration is enabled])
+	fi
+    fi
+    ]
+)
 	    
 	    

@@ -52,6 +52,9 @@ CHECK_HARDENING
 dnl Check optimization
 CHECK_OPTIMIZE
 
+dnl Check for Valgrind integration
+CHECK_VALGRIND
+
 dnl Build shared libCentrallix
 SHARED_LIBCENTRALLIX
 

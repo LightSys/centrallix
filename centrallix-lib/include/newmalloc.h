@@ -1,6 +1,14 @@
 #ifndef _NEWMALLOC_H
 #define _NEWMALLOC_H
 
+#ifdef HAVE_CONFIG_H
+#ifdef CXLIB_INTERNAL
+#include "cxlibconfig-internal.h"
+#else
+#include "cxlib/cxlibconfig.h"
+#endif /* defined CXLIB_INTERNAL */
+#endif /* defined HAVE_CONFIG_H */
+
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -20,10 +28,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.h,v 1.2 2003/03/04 06:28:22 jorupp Exp $
+    $Id: newmalloc.h,v 1.3 2007/04/08 03:43:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/newmalloc.h,v $
 
     $Log: newmalloc.h,v $
+    Revision 1.3  2007/04/08 03:43:06  gbeeley
+    - (bugfix) some code quality fixes
+    - (feature) MTASK integration with the Valgrind debugger.  Still some
+      problems to be sorted out, but this does help.  Left to themselves,
+      MTASK and Valgrind do not get along, due to the approach to threading.
+
     Revision 1.2  2003/03/04 06:28:22  jorupp
      * added buffer overflow checking to newmalloc
     	-- define BUFFER_OVERFLOW_CHECKING in newmalloc.c to enable
@@ -37,6 +51,35 @@
 
  **END-CVSDATA***********************************************************/
 
+typedef struct _ov
+    {
+    int		Magic;
+    struct _ov 	*Next;
+    }
+    Overlay,*pOverlay;
+
+#define BLK_LEAK_CHECK	0
+
+#define DUP_FREE_CHECK	1
+
+/** nmMalloc block caching causes Valgrind to lose track of what call
+ ** stack actually allocated the block to begin with.  So if we're using
+ ** valgrind, turn off block caching altogether.
+ **/
+#ifdef USING_VALGRIND
+#define NO_BLK_CACHE	1
+#endif
+
+#define OVERLAY(x)	((pOverlay)(x))
+#define MAX_SIZE	(8192)
+#define MIN_SIZE	(sizeof(Overlay))
+
+#ifdef BLK_LEAK_CHECK
+#define MAX_BLOCKS	65536
+extern void* blks[MAX_BLOCKS];
+extern int blksiz[MAX_BLOCKS];
+#endif
+extern pOverlay lists[MAX_SIZE+1];
 
 void nmInitialize();
 void nmSetErrFunction(int (*error_fn)());

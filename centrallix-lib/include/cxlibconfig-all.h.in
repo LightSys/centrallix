@@ -115,5 +115,8 @@
 /* defined to 1 if -On is being passed to the compiler */
 #undef USING_OPTIMIZATION
 
+/* defined to 1 if valgrind integration is enabled */
+#undef USING_VALGRIND
+
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
