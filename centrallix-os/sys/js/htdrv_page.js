@@ -311,10 +311,12 @@ function pg_ping_recieve()
 	{
 	return false;
 	}
-    if(link.target!=='OK')
+    if(!link || link.target!=='OK')
 	{
 	clearInterval(this.tid);
-	confirm('you have been disconnected from the server');
+	if (!window.pg_disconnected)
+	    confirm('you have been disconnected from the server');
+	window.pg_disconnected = true;
 	}
     }
     
