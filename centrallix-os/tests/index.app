@@ -54,9 +54,9 @@ Page1 "widget/page"
 		    inner_border=0;
 		    inner_padding=2;
 		    bgcolor="#c0c0c0";
-		    row_bgcolor1="#a0a0a0";
-		    row_bgcolor2="#a0a0a0";
-		    row_bgcolorhighlight="#909090";
+		    row1_bgcolor="#a0a0a0";
+		    row2_bgcolor="#a0a0a0";
+		    rowhighlight_bgcolor="#909090";
 		    hdr_bgcolor="#b0b0b0";
 		    textcolor="black";
 		    textcolorhighlight="black";

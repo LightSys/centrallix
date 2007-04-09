@@ -48,8 +48,8 @@ ReportingSystem "widget/page"
 		    inner_border=2;
 		    inner_padding=1;
 		    bgcolor="#c0c0c0";
-		    row_bgcolor1="#e0e0e0";
-		    //row_bgcolor2="#d0d0d0";
+		    row1_bgcolor="#e0e0e0";
+		    //row2_bgcolor="#d0d0d0";
 		    hdr_bgcolor="white";
 		    textcolor=black;
 		    name1 "widget/table-column" { fieldname="name"; title="Object Name"; width=20; }
@@ -108,8 +108,8 @@ ReportingSystem "widget/page"
 		    inner_border=2;
 		    inner_padding=1;
 		    bgcolor="#c0c0c0";
-		    row_bgcolor1="#e0e0e0";
-		    //row_bgcolor2="#d0d0d0";
+		    row1_bgcolor="#e0e0e0";
+		    //row2_bgcolor="#d0d0d0";
 		    hdr_bgcolor="white";
 		    textcolor=black;
 		    name2 "widget/table-column" { fieldname="name"; title = "Printer"; width=10; }

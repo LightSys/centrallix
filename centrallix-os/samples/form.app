@@ -359,9 +359,9 @@ wholePage "widget/page"
 		inner_border=1;
 		inner_padding=1;
 		bgcolor="#c0c0c0";
-		row_bgcolor1="#c0c0c0";
-		row_bgcolor2="#a0a0a0";
-		row_bgcolorhighlight="black";
+		row1_bgcolor="#c0c0c0";
+		row2_bgcolor="#a0a0a0";
+		rowhighlight_bgcolor="black";
 		hdr_bgcolor="white";
 		textcolor="black";
 		textcolorhighlight="white";

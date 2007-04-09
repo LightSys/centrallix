@@ -259,9 +259,9 @@ basicform2 "widget/page"
 		    mode = dynamicrow;
 		    x=0;y=0;width=248;height=168;
 
-		    row_bgcolor1 = "#ffffff";
-		    row_bgcolor2 = "#e0e0e0";
-		    row_bgcolorhighlight = "#000080";
+		    row1_bgcolor = "#ffffff";
+		    row2_bgcolor = "#e0e0e0";
+		    rowhighlight_bgcolor = "#000080";
 		    rowheight = 20;
 		    windowsize = 8;
 		    hdr_bgcolor = "#c0c0c0";
@@ -302,9 +302,9 @@ basicform2 "widget/page"
 		    mode = dynamicrow;
 		    x=0;y=0;width=588;height=168;
 
-		    row_bgcolor1 = "#ffffff";
-		    row_bgcolor2 = "#e0e0e0";
-		    row_bgcolorhighlight = "#000080";
+		    row1_bgcolor = "#ffffff";
+		    row2_bgcolor = "#e0e0e0";
+		    rowhighlight_bgcolor = "#000080";
 		    rowheight = 18;
 		    windowsize = 8;
 		    hdr_bgcolor = "#c0c0c0";
