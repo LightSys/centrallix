@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.29 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.30 2007/04/10 17:38:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.30  2007/04/10 17:38:06  gbeeley
+    - (feature) port of radiobutton panel to mozilla.
+
     Revision 1.29  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -333,17 +336,25 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    char sbuf2[200];
    //char bigbuf[4096];
    char textcolor[32];
-   char main_bgcolor[32];
    char main_background[128];
-   char outline_bg[64];
+   char outline_background[128];
+   char form[64];
    pWgtrNode radiobutton_obj, sub_tree;
    int x=-1,y=-1,w,h;
+   int top_offset;
+   int cover_height, cover_width;
+   int item_spacing;
    int id, i, j;
+   int is_selected;
+   int rb_cnt;
+   int cover_margin;
    char fieldname[32];
+   char value[64];
+   char label[64];
 
-   if(!s->Capabilities.Dom0NS)
+   if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
        {
-       mssError(1,"HTRB","Netscape DOM support required");
+       mssError(1,"HTRB","Netscape 4.x or W3C DOM support required");
        return -1;
        }
 
@@ -363,15 +374,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    }
 
    /** Background color/image? **/
-   if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-      strtcpy(main_bgcolor,ptr,sizeof(main_bgcolor));
-   else 
-      strcpy(main_bgcolor,"");
-
-   if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-      strtcpy(main_background,ptr,sizeof(main_background));
-   else
-      strcpy(main_background,"");
+   htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS,main_background,sizeof(main_background));
 
    /** Text color? **/
    if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -380,10 +383,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
       strcpy(textcolor,"black");
 
    /** Outline color? **/
-   if (wgtrGetPropertyValue(tree,"outlinecolor",DATA_T_STRING,POD(&ptr)) == 0)
-      strtcpy(outline_bg,ptr,sizeof(outline_bg));
-   else
-      strcpy(outline_bg,"black");
+   htrGetBackground(tree,"outline",!s->Capabilities.Dom0NS,outline_background,sizeof(outline_background));
 
    /** Get name **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -403,42 +403,56 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
       fieldname[0]='\0';
       } 
 
+   if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+      strtcpy(form,ptr,sizeof(form));
+   else
+      form[0]='\0';
+
    htrAddScriptInclude(s, "/sys/js/htdrv_radiobutton.js", 0);
+   htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dparentpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+   top_offset = s->ClientInfo->ParagraphHeight*3/4+1;
+   cover_height = h-(top_offset+3+2);
+   cover_width = w-(2*3 +2);
+   htrAddStylesheetItem_va(s,"\t#rb%dparent    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
            id,x,y,w,h,z,w,h);
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dborderpane    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
-           id,3,12,w-(2*3),h-(12+3),z+1,w-(2*3),h-(12+3));
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dcoverpane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
-           id,1,1,w-(2*3 +2),h-(12+3 +2),z+2,w-(2*3 +2),h-(12+3 +2));
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%dtitlepane     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",
-           id,10,1,w/2,17,z+3);
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanelbuttonsetpane   { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
-           5,5,12,12,z+2,12,12);
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanelbuttonunsetpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
-           5,5,12,12,z+2,12,12);
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanelvaluepane       { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
-           5,5,12,12,z+2,12,12);
-   htrAddStylesheetItem_va(s,"\t#radiobuttonpanellabelpane       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
-           27,2,w-(2*3 +2+27+1),24,z+2,w-(2*3 +2+27+1),24);
+   htrAddStylesheetItem_va(s,"\t#rb%dborder    { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+           id,3,top_offset,w-(2*3),h-(top_offset+3),z+1,w-(2*3),h-(top_offset+3));
+   htrAddStylesheetItem_va(s,"\t#rb%dcover     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+           id,1,1,cover_width,cover_height,z+2,cover_width,cover_height);
+   htrAddStylesheetItem_va(s,"\t#rb%dtitle     { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",
+           id,10,1,w/2,s->ClientInfo->ParagraphHeight,z+3);
    
    htrAddScriptGlobal(s, "radiobutton", "null", 0);
 
    /** DOM linkages **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"radiobuttonpanel%dparentpane\")",id);
-   htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj,\"radiobuttonpanel%dborderpane\"),\"radiobuttonpanel%dcoverpane\")",id,id);
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"rb%dparent\")",id);
+   htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj,\"rb%dborder\"),\"rb%dcover\")",id,id);
 
     /** Loop through each radiobutton and flag it NOOBJECT **/
-    for (i=0;i<xaCount(&(tree->Children));i++)
+    rb_cnt = 0;
+    for (j=0;j<xaCount(&(tree->Children));j++)
 	{
-	radiobutton_obj = xaGetItem(&(tree->Children), i);
+	radiobutton_obj = xaGetItem(&(tree->Children), j);
 	radiobutton_obj->RenderFlags |= HT_WGTF_NOOBJECT;
+	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
+	if (!strcmp(ptr,"widget/radiobutton"))
+	    {
+	    rb_cnt++;
+	    }
 	}
    /*
       Now lets loop through and create a style sheet for each optionpane on the
       radiobuttonpanel
    */   
+    item_spacing = 12 + s->ClientInfo->ParagraphHeight;
+    cover_margin = 10;
+    if (item_spacing*rb_cnt+2*cover_margin > cover_height)
+	item_spacing = (cover_height-2*cover_margin)/rb_cnt;
+    if (item_spacing*rb_cnt+2*cover_margin > cover_height)
+	cover_margin = (cover_height-(item_spacing*rb_cnt))/2;
+    if (cover_margin < 2) cover_margin = 2;
     i = 1;
     for (j=0;j<xaCount(&(tree->Children));j++)
 	{
@@ -446,29 +460,23 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 	if (!strcmp(ptr,"widget/radiobutton"))
 	    {
-	    htrAddStylesheetItem_va(s,"\t#radiobuttonpanel%doption%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
-		    id,i,7,10+((i-1)*25)+3,w-(2*3 +2+7),25,z+2,w-(2*3 +2+7),25);
+	    htrAddStylesheetItem_va(s,"\t#rb%doption%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx, %dpx); }\n",
+		    id,i,7,cover_margin+((i-1)*item_spacing)+3,cover_width-7,item_spacing,z+2,cover_width-7,item_spacing);
 	    i++;
 	    }
 	}
 
    /** Script initialization call. **/
-   if (strlen(main_bgcolor) > 0) {
+   if (strlen(main_background) > 0) {
       htrAddScriptInit_va(s,"    radiobuttonpanel_init({\n"
-        "    parentPane:nodes[\"%s\"], fieldname:\"%s\", flag:1,\n"
-        "    borderPane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\n"
-        "    coverPane:htr_subel(htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\"radiobuttonpanel%dcoverpane\"),\n"
-        "    titlePane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dtitlepane\"),\n"
-	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", name, fieldname, name,id, name,id,id, name,id, main_bgcolor, outline_bg);
-   } else if (strlen(main_background) > 0) {
-      htrAddScriptInit_va(s,"    radiobuttonpanel_init({\n"
-        "    parentPane:nodes[\"%s\"], fieldname:\"%s\", flag:2,\n"
-        "    borderPane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\n"
-        "    coverPane:htr_subel(htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dborderpane\"),\"radiobuttonpanel%dcoverpane\"),\n"
-        "    titlePane:htr_subel(nodes[\"%s\"],\"radiobuttonpanel%dtitlepane\"),\n"
-	"    mainBackground:\"%s\", outlineBackground:\"%s\"});\n", name, fieldname, name,id, name,id,id, name,id, main_background, outline_bg);
+        "    parentPane:nodes[\"%s\"], fieldname:\"%s\",\n"
+        "    borderPane:htr_subel(nodes[\"%s\"],\"rb%dborder\"),\n"
+        "    coverPane:htr_subel(htr_subel(nodes[\"%s\"],\"rb%dborder\"),\"rb%dcover\"),\n"
+        "    titlePane:htr_subel(nodes[\"%s\"],\"rb%dtitle\"),\n"
+	"    mainBackground:\"%s\", outlineBackground:\"%s\", form:\"%s\"});\n",
+	    name, fieldname, name,id, name,id,id, name,id, main_background, outline_background, form);
    } else {
-      htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:nodes[\"%s\"], fieldname:\"%s\", flag:0, borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0});\n", name,fieldname);
+      htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:nodes[\"%s\"], fieldname:\"%s\", borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0, form:\"%s\"});\n", name, fieldname, form);
    }
 
    htrAddEventHandlerFunction(s, "document", "MOUSEUP", "radiobutton", "radiobutton_mouseup");
@@ -486,16 +494,23 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 	wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
         if (!strcmp(ptr,"widget/radiobutton")) 
 	    {
-            if (wgtrGetPropertyValue(sub_tree,"selected",DATA_T_STRING,POD(&ptr)) != 0)
-		strcpy(sbuf2,"false");
-            else 
-		{
-		strtcpy(sbuf2,ptr,sizeof(sbuf2));
-		}
-	    htrAddWgtrObjLinkage_va(s,sub_tree,"htr_subel(_parentctr,\"radiobuttonpanel%doption%dpane\")",id,i);
-
+	    if (wgtrGetPropertyValue(sub_tree,"value",DATA_T_STRING,POD(&ptr)) == 0)
+		strtcpy(value, ptr, sizeof(value));
+	    else
+		value[0] = '\0';
+	    if (wgtrGetPropertyValue(sub_tree,"label",DATA_T_STRING,POD(&ptr)) == 0)
+		strtcpy(label, ptr, sizeof(label));
+	    else
+		label[0] = '\0';
+	    is_selected = htrGetBoolean(sub_tree, "selected", 0);
+	    if (is_selected < 0) is_selected = 0;
+	    htrAddWgtrObjLinkage_va(s,sub_tree,"htr_subel(_parentctr,\"rb%doption%d\")",id,i);
 	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
-            htrAddScriptInit_va(s,"    add_radiobutton(nodes[\"%s\"], %s);\n", ptr, sbuf2);
+            htrAddScriptInit_va(s,"    add_radiobutton(nodes[\"%s\"], {selected:%d, buttonset:htr_subel(nodes[\"%s\"], \"rb%dbuttonset%d\"), buttonunset:htr_subel(nodes[\"%s\"], \"rb%dbuttonunset%d\"), value:htr_subel(nodes[\"%s\"], \"rb%dvalue%d\"), label:htr_subel(nodes[\"%s\"], \"rb%dlabel%d\"), valuestr:\"%s\", labelstr:\"%s\"});\n", 
+		    ptr, is_selected,
+		    ptr, id, i, ptr, id, i,
+		    ptr, id, i, ptr, id, i,
+		    value, label);
             i++;
 	    }
 	 else 
@@ -507,9 +522,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    /*
       Do the HTML layers
    */
-   htrAddBodyItem_va(s,"   <DIV ID=\"radiobuttonpanel%dparentpane\">\n", id);
-   htrAddBodyItem_va(s,"      <DIV ID=\"radiobuttonpanel%dborderpane\">\n", id);
-   htrAddBodyItem_va(s,"         <DIV ID=\"radiobuttonpanel%dcoverpane\">\n", id);
+   htrAddBodyItem_va(s,"   <DIV ID=\"rb%dparent\">\n", id);
+   htrAddBodyItem_va(s,"      <DIV ID=\"rb%dborder\">\n", id);
+   htrAddBodyItem_va(s,"         <DIV ID=\"rb%dcover\">\n", id);
 
    /* Loop through each radio button and do the option pane and sub layers */
     i = 1;
@@ -519,13 +534,25 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
         wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
         if (!strcmp(ptr,"widget/radiobutton")) 
 	    {
-            htrAddBodyItem_va(s,"            <DIV ID=\"radiobuttonpanel%doption%dpane\">\n", id, i);
-            htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelbuttonsetpane\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n");
-            htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelbuttonunsetpane\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n");
+	    /** CSS layers **/
+	    htrAddStylesheetItem_va(s,"\t#rb%dbuttonset%d   { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); CURSOR:pointer; }\n",
+		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
+	    htrAddStylesheetItem_va(s,"\t#rb%dbuttonunset%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); CURSOR:pointer; }\n",
+		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
+	    htrAddStylesheetItem_va(s,"\t#rb%dvalue%d       { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); }\n",
+		   id,i,5,5,12,12,z+2,12,12);
+	    htrAddStylesheetItem_va(s,"\t#rb%dlabel%d       { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(%dpx,%dpx); CURSOR:pointer; }\n",
+		   id,i,27,2,cover_width-(27+1),item_spacing-1,z+2,cover_width-(27+1),item_spacing-1);
+
+	    /** Body layers **/
+            htrAddBodyItem_va(s,"            <DIV ID=\"rb%doption%d\">\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%dbuttonset%d\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%dbuttonunset%d\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n", id, i);
  
             wgtrGetPropertyValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
 	    strtcpy(sbuf2,ptr,sizeof(sbuf2));
-            htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanellabelpane\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", textcolor, sbuf2);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%dlabel%d\" NOWRAP><FONT COLOR=\"%s\">%s</FONT></DIV>\n", 
+		    id, i, textcolor, sbuf2);
 
 	    /* use label (from above) as default value if no value given */
 	    if(wgtrGetPropertyValue(radiobutton_obj,"value",DATA_T_STRING,POD(&ptr))==0)
@@ -533,7 +560,8 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 		strtcpy(sbuf2,ptr,sizeof(sbuf2));
 		}
 
-            htrAddBodyItem_va(s,"               <DIV ID=\"radiobuttonpanelvaluepane\" VISIBILITY=\"hidden\"><A NAME=\"%s\"></A></DIV>\n", sbuf2);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%dvalue%d\" VISIBILITY=\"hidden\"><A HREF=\".\">%s</A></DIV>\n",
+		    id, i, sbuf2);
             htrAddBodyItem_va(s,"            </DIV>\n");
             i++;
 	    }
@@ -541,7 +569,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    
    htrAddBodyItem_va(s,"         </DIV>\n");
    htrAddBodyItem_va(s,"      </DIV>\n");
-   htrAddBodyItem_va(s,"      <DIV ID=\"radiobuttonpanel%dtitlepane\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%s\">%s</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
+   htrAddBodyItem_va(s,"      <DIV ID=\"rb%dtitle\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%s\">%s</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
    htrAddBodyItem_va(s,"   </DIV>\n");
 
    return 0;
