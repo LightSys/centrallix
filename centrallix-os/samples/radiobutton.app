@@ -12,7 +12,8 @@ editbox_test "widget/page" {
 	width=150;
 	height=80;
 	title="test";
-	bgcolor="#ffffff";
+	bgcolor="#e0e0e0";
+	outline_bgcolor="black";
 
 	label1 "widget/radiobutton" {
 	    label="basketball";

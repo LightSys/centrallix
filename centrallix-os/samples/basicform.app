@@ -61,7 +61,7 @@ basicform "widget/page"
 
 	    mainpane "widget/pane"
 		{
-		x = 20; y=20; width=610; height=225;
+		x = 20; y=20; width=610; height=305;
 		//bgcolor="#c0c0c0";
 		background="/sys/images/slate2.gif";
 
@@ -271,19 +271,34 @@ basicform "widget/page"
 		    days_dd_3 "widget/dropdownitem" { label="31 Days"; value="31"; }
 		    }
 
-		ldays_label "widget/label"
+//		ldays_label "widget/label"
+//		    {
+//		    x=100;y=157;width=130; height=20;
+//		    text="Leapyear Days:";
+//		    align=right;
+//		    }
+		ldays_rb_pane "widget/pane"
 		    {
-		    x=100;y=157;width=130; height=20;
-		    text="Leapyear Days:";
-		    align=right;
+		    x=100;y=157;width=240;height=124;
+		    ldays_rb "widget/radiobuttonpanel"
+			{
+			outline_bgcolor=black;
+			bgcolor="#e0e0e0";
+			title = "Leap Year Days";
+			x=0;y=0;width=238;height=122;
+			fieldname="num_leapyear_days";
+			ldays_rd_1 "widget/radiobutton" { label="29 Days"; value="29"; }
+			ldays_rd_2 "widget/radiobutton" { label="30 Days"; value="30"; }
+			ldays_rd_3 "widget/radiobutton" { label="31 Days"; value="31"; }
+			}
 		    }
-		ldays "widget/editbox"
-		    {
-		    style=lowered;
-		    bgcolor=white;
-		    x=240;y=157;width=100;height=20;
-		    fieldname="num_leapyear_days";
-		    }
+//		ldays "widget/editbox"
+//		    {
+//		    style=lowered;
+//		    bgcolor=white;
+//		    x=240;y=157;width=100;height=20;
+//		    fieldname="num_leapyear_days";
+//		    }
 	        }
 	    }
 	}

@@ -752,7 +752,8 @@ function pg_resize_area(a,w,h,xo,yo)
 function pg_addarea(pl,x,y,w,h,cls,nm,f)
     {    
     var a = new pg_area(pl,x,y,w,h,cls,nm,f);
-    pg_arealist.splice(0,0,a);
+    //pg_arealist.splice(0,0,a);
+    pg_arealist.push(a);
     return a;
     }
 
@@ -1021,9 +1022,11 @@ function pg_keyhandler_internal(k,m,e)
     // on any layer requesting focus with pg_addarea().
     // It is set up in the corresponding widget drivers.
     if (pg_curkbdlayer != null && 
-    pg_curkbdlayer.keyhandler != null && 
-    pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) 
+	pg_curkbdlayer.keyhandler != null && 
+	pg_curkbdlayer.keyhandler(pg_curkbdlayer,e,k) == true) 
+	{
     	return false;       
+	}
       
     for(i=0;i<pg_keylist.length;i++)
 	{
@@ -1450,6 +1453,12 @@ function pg_setkbdfocus(l, a, xo, yo)
 	{
 	a = pg_findfocusarea(l, xo, yo);
 	}
+    if (!a)
+	{
+	a = pg_findfocusarea(l, null, null);
+	}
+    if (!a)
+	return false;
 
     var x = getPageX(a.layer)+a.x;
     var y = getPageY(a.layer)+a.y;
