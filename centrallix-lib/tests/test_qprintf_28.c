@@ -25,10 +25,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
-	    qpfPrintf(buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
-	    qpfPrintf(buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
-	    rval = qpfPrintf(buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
+	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
 	    assert(!strcmp(buf+4, "Here is the str:        '\\\"ain\\'t\\\""));
 	    assert(rval == 39);
 	    assert(buf[43] == '\n');

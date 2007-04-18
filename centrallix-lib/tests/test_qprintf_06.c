@@ -28,10 +28,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(buf+4, 1, "this is a string overflow test.");
-	    qpfPrintf(buf+4, 1, "this is a string overflow test.");
-	    qpfPrintf(buf+4, 1, "this is a string overflow test.");
-	    qpfPrintf(buf+4, 1, "this is a string overflow test.");
+	    qpfPrintf(NULL, buf+4, 1, "this is a string overflow test.");
+	    qpfPrintf(NULL, buf+4, 1, "this is a string overflow test.");
+	    qpfPrintf(NULL, buf+4, 1, "this is a string overflow test.");
+	    qpfPrintf(NULL, buf+4, 1, "this is a string overflow test.");
 	    assert(!strcmp(buf+4, ""));
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

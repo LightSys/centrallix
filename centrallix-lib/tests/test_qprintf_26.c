@@ -25,10 +25,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
-	    qpfPrintf(buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
-	    qpfPrintf(buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
-	    rval = qpfPrintf(buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
+	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

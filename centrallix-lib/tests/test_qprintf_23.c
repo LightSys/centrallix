@@ -25,10 +25,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
-	    qpfPrintf(buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
-	    qpfPrintf(buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
-	    rval = qpfPrintf(buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
+	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
 	    assert(!strcmp(buf+4, "Here is the str: STR..."));
 	    assert(rval == 23);
 	    assert(buf[43] == '\n');

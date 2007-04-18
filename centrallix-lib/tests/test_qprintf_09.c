@@ -25,10 +25,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(buf+4, 36, "%STR is our data today.", "STRING");
-	    qpfPrintf(buf+4, 36, "%STR is our data today.", "STRING");
-	    qpfPrintf(buf+4, 36, "%STR is our data today.", "STRING");
-	    rval = qpfPrintf(buf+4, 36, "%STR is our data today.", "STRING");
+	    qpfPrintf(NULL, buf+4, 36, "%STR is our data today.", "STRING");
+	    qpfPrintf(NULL, buf+4, 36, "%STR is our data today.", "STRING");
+	    qpfPrintf(NULL, buf+4, 36, "%STR is our data today.", "STRING");
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR is our data today.", "STRING");
 	    assert(!strcmp(buf+4, "STRING is our data today."));
 	    assert(rval == 25);
 	    assert(buf[43] == '\n');

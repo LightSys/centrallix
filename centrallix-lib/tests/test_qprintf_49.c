@@ -13,7 +13,7 @@ test(char** tname)
     int iter;
     unsigned char buf[44];
 
-	*tname = "qprintf-19 %*STR insertion in middle with insert overflow";
+	*tname = "qprintf-49 %STR&DQUOT in middle without overflow";
 	iter = 200000;
 	for(i=0;i<iter;i++)
 	    {
@@ -25,12 +25,12 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "Here is the string: %*STR...", 8, "STRINGSTR");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the string: %*STR...", 8, "STRINGSTR");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the string: %*STR...", 8, "STRINGSTR");
-	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the string: %*STR...", 8, "STRINGSTR");
-	    assert(!strcmp(buf+4, "Here is the string: STRINGST..."));
-	    assert(rval == 31);
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    assert(!strcmp(buf+4, "Here is the str: \"\\\"ain\\'t\\\"\"..."));
+	    assert(rval == 32);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

@@ -26,10 +26,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(buf+4, 36, "Here is the integer: %POS...", -12345);
-	    qpfPrintf(buf+4, 36, "Here is the integer: %POS...", -12345);
-	    qpfPrintf(buf+4, 36, "Here is the integer: %POS...", -12345);
-	    rval = qpfPrintf(buf+4, 36, "Here is the integer: %POS...", -12345);
+	    qpfPrintf(NULL, buf+4, 36, "Here is the integer: %POS...", -12345);
+	    qpfPrintf(NULL, buf+4, 36, "Here is the integer: %POS...", -12345);
+	    qpfPrintf(NULL, buf+4, 36, "Here is the integer: %POS...", -12345);
+	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the integer: %POS...", -12345);
 	    assert(strlen(buf+4) <= 30);
 	    assert(rval == -EINVAL);
 	    assert(buf[43] == '\n');

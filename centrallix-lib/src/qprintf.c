@@ -36,10 +36,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.2 2006/10/27 19:21:32 gbeeley Exp $
+    $Id: qprintf.c,v 1.3 2007/04/18 18:42:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.3  2007/04/18 18:42:07  gbeeley
+    - (feature) hex encoding in qprintf (&HEX filter).
+    - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
+    - (bugfix) %[ %] conditional formatting didn't exclude everything.
+    - (bugfix) need to ignore, rather than error, on &nbsp; following filters.
+    - (performance) significant performance improvements in HEX, ESCQ, HTE.
+    - (change) qprintf API change - optional session, cumulative errors/flags
+    - (testsuite) lots of added testsuite entries.
+
     Revision 1.2  2006/10/27 19:21:32  gbeeley
     - (bugfix) qpfPrintf() %[ %] conditional formatting needs to still chomp
       va_arg()'s that occur within the %[ %], to preserve the positions of
@@ -155,17 +164,47 @@ int qpf_spec_len[QPF_SPEC_T_MAXSPEC+1];
 
 typedef struct
     {
+    char*	Matrix[QPF_MATRIX_SIZE];
+    unsigned char MatrixLen[QPF_MATRIX_SIZE];
+    int		MaxExpand;
+    }
+    QPConvTable, *pQPConvTable;
+
+typedef struct
+    {
     int		n_ext;
     int		is_init;
     char*	ext_specs[QPF_MAX_EXTS];
     int		(*ext_fns[QPF_MAX_EXTS])();
     char	is_source[QPF_MAX_EXTS];
-    char*	quote_matrix[QPF_MATRIX_SIZE];
-    char*	hte_matrix[QPF_MATRIX_SIZE];
+    QPConvTable	quote_matrix;
+    QPConvTable	hte_matrix;
+    QPConvTable	hex_matrix;
     }
     QPF_t;
     
 static QPF_t QPF = { n_ext:0, is_init:0 };
+
+int
+qpf_internal_SetupTable(pQPConvTable table)
+    {
+    int i;
+    int mx = 1;
+    int n;
+
+	for(i=0;i<QPF_MATRIX_SIZE;i++)
+	    {
+	    if (table->Matrix[i])
+		{
+		n = strlen(table->Matrix[i]);
+		if (n > mx) mx = n;
+		table->MatrixLen[i] = n;
+		}
+	    }
+	table->MaxExpand = mx;
+
+    return 0;
+    }
 
 
 /*** qpfInitialize() - inits the QPF suite.
@@ -174,18 +213,34 @@ int
 qpfInitialize()
     {
     int i;
+    char buf[3];
+    char hex[] = "0123456789abcdef";
 
-	memset(QPF.quote_matrix, 0, sizeof(QPF.quote_matrix));
-	QPF.quote_matrix['\''] = "\\'";
-	QPF.quote_matrix['"'] = "\\\"";
+	memset(&QPF.quote_matrix, 0, sizeof(QPF.quote_matrix));
+	QPF.quote_matrix.Matrix['\''] = "\\'";
+	QPF.quote_matrix.Matrix['"'] = "\\\"";
+	QPF.quote_matrix.Matrix['\\'] = "\\\\";
+	qpf_internal_SetupTable(&QPF.quote_matrix);
 
-	memset(QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
-	QPF.hte_matrix['<'] = "&lt;";
-	QPF.hte_matrix['>'] = "&gt;";
-	QPF.hte_matrix['&'] = "&amp;";
-	QPF.hte_matrix['"'] = "&quot;";
-	QPF.hte_matrix['\''] = "&#39;";
-	QPF.hte_matrix['\0'] = "&#0;";
+	memset(&QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
+	QPF.hte_matrix.Matrix['<'] = "&lt;";
+	QPF.hte_matrix.Matrix['>'] = "&gt;";
+	QPF.hte_matrix.Matrix['&'] = "&amp;";
+	QPF.hte_matrix.Matrix['"'] = "&quot;";
+	QPF.hte_matrix.Matrix['\''] = "&#39;";
+	QPF.hte_matrix.Matrix[';'] = "&#59;";
+	QPF.hte_matrix.Matrix['}'] = "&#125;";
+	QPF.hte_matrix.Matrix['\0'] = "&#0;";
+	qpf_internal_SetupTable(&QPF.hte_matrix);
+
+	for(i=0;i<QPF_MATRIX_SIZE;i++)
+	    {
+	    buf[0] = hex[(i>>4)&0x0F];
+	    buf[1] = hex[i&0x0F];
+	    buf[2] = '\0';
+	    QPF.hex_matrix.Matrix[i] = nmSysStrdup(buf);
+	    }
+	qpf_internal_SetupTable(&QPF.hex_matrix);
 
 	for(i=0;i<=QPF_SPEC_T_MAXSPEC;i++)
 	    {
@@ -194,6 +249,59 @@ qpfInitialize()
 	    }
 
 	QPF.is_init = 1;
+
+    return 0;
+    }
+
+
+/*** qpfOpenSession() - open a new qprintf session.  The session is used for
+ *** storing cumulative error information, to make error handling much cleaner
+ *** for any caller that wants to do so.
+ ***/
+pQPSession
+qpfOpenSession()
+    {
+    pQPSession s = NULL;
+
+	if (!QPF.is_init) 
+	    {
+	    if (qpfInitialize() < 0) return NULL;
+	    }
+
+	s = (pQPSession)nmMalloc(sizeof(QPSession));
+	if (!s) return NULL;
+	s->Errors = 0;
+
+    return s;
+    }
+
+
+/*** qpfErrors() - return the current error mask.
+ ***/
+unsigned int
+qpfErrors(pQPSession s)
+    {
+    return s->Errors;
+    }
+
+
+/*** qpfClearErrors() - reset the errors mask.
+ ***/
+int
+qpfClearErrors(pQPSession s)
+    {
+    s->Errors = 0;
+    return 0;
+    }
+
+
+/*** qpfCloseSession() - close a qprintf session.
+ ***/
+int
+qpfCloseSession(pQPSession s)
+    {
+	
+	nmFree(s, sizeof(QPSession));
 
     return 0;
     }
@@ -240,14 +348,14 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
  *** function call.
  ***/
 int 
-qpfPrintf(char* str, size_t size, const char* format, ...)
+qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
     {
     va_list va;
     int rval;
 
 	/** Grab the va ptr and call the _va version **/
 	va_start(va, format);
-	rval = qpfPrintf_va(str, size, format, va);
+	rval = qpfPrintf_va(s, str, size, format, va);
 	va_end(va);
 
     return rval;
@@ -267,9 +375,9 @@ qpfPrintf_grow(char** str, size_t* size, void* arg, int req_size)
  *** a list of arguments.
  ***/
 int 
-qpfPrintf_va(char* str, size_t size, const char* format, va_list ap)
+qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list ap)
     {
-    return qpfPrintf_va_internal(&str, &size, qpfPrintf_grow, NULL, format, ap);
+    return qpfPrintf_va_internal(s, &str, &size, qpfPrintf_grow, NULL, format, ap);
     }
 
 
@@ -279,9 +387,14 @@ qpfPrintf_va(char* str, size_t size, const char* format, va_list ap)
  *** placed in dstbuf had there been enough room (or, if there was enough
  *** room, the actual # chars placed in dstbuf); NOTE - does NOT return
  *** the number of chars pulled from the srcbuf!!!
+ ***
+ *** min_room applies to 'dstsize' only -- we must leave at least that much
+ *** room in dstbuf once we are done.  Often this is "1", to leave room for
+ *** a null terminator, or "2" to leave room for a closing quote mark and a
+ *** null terminator, for instance.
  ***/
 static inline int
-qpf_internal_Translate(const char* srcbuf, size_t srcsize, char** dstbuf, int* dstoffs, int* dstsize, int limit, char* table[], int(*grow_fn)(), void* grow_arg)
+qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** dstbuf, int* dstoffs, int* dstsize, int limit, pQPConvTable table, int(*grow_fn)(), void* grow_arg, int min_room)
     {
     int rval = 0;
     int tlen, i;
@@ -291,48 +404,73 @@ qpf_internal_Translate(const char* srcbuf, size_t srcsize, char** dstbuf, int* d
 	if (srcsize)
 	    {
 	    rval += srcsize;
-	    for(i=0;i<srcsize;i++)
+	    if ((srcsize*table->MaxExpand) <= limit && (srcsize*table->MaxExpand + min_room) <= (*dstsize - *dstoffs))
 		{
-		if (__builtin_expect(((trans = table[(unsigned char)(srcbuf[i])]) != NULL), 0))
+		/** Easy route - definitely enough space! **/
+		for(i=0;i<srcsize;i++)
 		    {
-		    tlen = strlen(trans);
-		    if (__builtin_expect(limit >= tlen, 1))
+		    if (__builtin_expect(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL), 0))
 			{
+			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
+			while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
 			rval += (tlen-1);
-			if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+tlen+1 <= (*dstsize), 1) || 
-			      (grow_fn(dstbuf, dstsize, grow_arg, (*dstoffs)+tlen+1))))
-			    {
-			    while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
-			    limit -= tlen;
-			    }
-			else
-			    {
-			    nogrow = 1;
-			    }
 			}
 		    else
 			{
-			rval--;
+			(*dstbuf)[(*dstoffs)++] = srcbuf[i];
 			}
 		    }
-		else
+		}
+	    else
+		{
+		/** Hard route - may or may not be enough space! **/
+		for(i=0;i<srcsize;i++)
 		    {
-		    if (__builtin_expect(limit > 0, 1))
+		    if (__builtin_expect(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL), 0))
 			{
-			if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+2 <= (*dstsize), 1) || 
-			      (grow_fn(dstbuf, dstsize, grow_arg, (*dstoffs)+2))))
+			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
+			if (__builtin_expect(limit >= tlen, 1))
 			    {
-			    (*dstbuf)[(*dstoffs)++] = srcbuf[i];
-			    limit--;
+			    rval += (tlen-1);
+			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+tlen+min_room <= (*dstsize), 1) || 
+				  (grow_fn(dstbuf, dstsize, grow_arg, (*dstoffs)+tlen+min_room))))
+				{
+				while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
+				limit -= tlen;
+				}
+			    else
+				{
+				QPERR(QPF_ERR_T_BUFOVERFLOW);
+				nogrow = 1;
+				}
 			    }
 			else
 			    {
-			    nogrow = 1;
+			    QPERR(QPF_ERR_T_INSOVERFLOW);
+			    rval--;
 			    }
 			}
 		    else
 			{
-			rval--;
+			if (__builtin_expect(limit > 0, 1))
+			    {
+			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+1+min_room <= (*dstsize), 1) || 
+				  (grow_fn(dstbuf, dstsize, grow_arg, (*dstoffs)+1+min_room))))
+				{
+				(*dstbuf)[(*dstoffs)++] = srcbuf[i];
+				limit--;
+				}
+			    else
+				{
+				QPERR(QPF_ERR_T_BUFOVERFLOW);
+				nogrow = 1;
+				}
+			    }
+			else
+			    {
+			    QPERR(QPF_ERR_T_INSOVERFLOW);
+			    rval--;
+			    }
 			}
 		    }
 		}
@@ -343,10 +481,15 @@ qpf_internal_Translate(const char* srcbuf, size_t srcsize, char** dstbuf, int* d
 
 
 /*** qpfPrintf_va_internal() - does all of the guts work of the qpfPrintf
- *** family of functions
+ *** family of functions.
+ ***
+ *** A warning to those who would modify this:  the 'str' parameter may
+ *** change out from under this function to a new buffer if a realloc is
+ *** done by the grow_fn function.  Do not store pointers to 'str'.  Go
+ *** solely by offsets.
  ***/
 int
-qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg, const char* format, va_list ap)
+qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), void* grow_arg, const char* format, va_list ap)
     {
     const char* specptr;
     const char* endptr;
@@ -371,17 +514,27 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
     int endspec;
     int maxdst;
     int ignore = 0;
+    pQPConvTable table;
+    QPSession null_session;
+    int min_room;
+    char quote;
 
 	if (!QPF.is_init) 
 	    {
 	    if (qpfInitialize() < 0) return -ENOMEM;
 	    }
 
+	if (!s)
+	    {
+	    null_session.Errors = 0;
+	    s=&null_session;
+	    }
+
 	/** this all fall apart if there isn't at least room for the
 	 ** null terminator!
 	 **/
 	if ((!*str || *size < 1) && !grow_fn(str, size, grow_arg, 1)) 
-	    { rval = -EINVAL; goto error; }
+	    { rval = -EINVAL; QPERR(QPF_ERR_T_BUFOVERFLOW); goto error; }
 
 	/** search for %this-and-that (specifiers), copy everything else **/
 	do  {
@@ -390,16 +543,20 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 	    endptr = specptr?specptr:(format+strlen(format));
 
 	    /** Copy the plain section of string **/
-	    cplen = (endptr - format);
-	    if (__builtin_expect(nogrow, 0)) cplen = 0;
-	    if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (nogrow || !grow_fn(str, size, grow_arg, cpoffset+cplen+1)))
+	    if (!ignore)
 		{
-		cplen = (*size)-cpoffset-1;
-		nogrow = 1;
+		cplen = (endptr - format);
+		if (__builtin_expect(nogrow, 0)) cplen = 0;
+		if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (nogrow || !grow_fn(str, size, grow_arg, cpoffset+cplen+1)))
+		    {
+		    QPERR(QPF_ERR_T_BUFOVERFLOW);
+		    cplen = (*size)-cpoffset-1;
+		    nogrow = 1;
+		    }
+		if (cplen) memcpy((*str) + cpoffset, format, cplen);
+		cpoffset += cplen;
+		copied += (endptr - format);
 		}
-	    if (cplen) memcpy((*str) + cpoffset, format, cplen);
-	    cpoffset += cplen;
-	    copied += (endptr - format);
 	    format = endptr;
 
 	    /** Handle specifiers **/
@@ -413,7 +570,10 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '%';
 		    else
+			{
+			QPERR(QPF_ERR_T_BUFOVERFLOW);
 			nogrow = 1;
+			}
 		    copied++;
 		    format++;
 		    }
@@ -422,7 +582,10 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '&';
 		    else
+			{
+			QPERR(QPF_ERR_T_BUFOVERFLOW);
 			nogrow = 1;
+			}
 		    copied++;
 		    format++;
 		    }
@@ -493,13 +656,24 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 
 			/** Did we find it? **/
 			if (__builtin_expect(!found, 0))
-			    { rval = -EINVAL; goto error; }
+			    { 
+			    if (n_specs == 0)
+				{
+				/** need at least one spec **/
+				rval = -EINVAL;
+				QPERR(QPF_ERR_T_BADFORMAT);
+				goto error;
+				}
+			    /** invalid spec, ignore and print **/
+			    format--;
+			    break;
+			    }
 
 			/** More? **/
 			if (*format == '&')
 			    {
 			    if (__builtin_expect(n_specs == QPF_MAX_SPECS,0))
-				{ rval = -ENOMEM; goto error; }
+				{ rval = -ENOMEM; QPERR(QPF_ERR_T_RESOURCE); goto error; }
 			    format++;
 			    }
 			else
@@ -520,14 +694,14 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 			case QPF_SPEC_T_STR:
 			    strval = va_arg(ap, const char*);
 			    if (__builtin_expect(strval == NULL && !ignore, 0))
-				{ rval = -EINVAL; goto error; }
+				{ rval = -EINVAL; QPERR(QPF_ERR_T_NULL); goto error; }
 			    cplen = strlen(strval);
 			    break;
 
 			case QPF_SPEC_T_POS:
 			    intval = va_arg(ap, int);
 			    if (__builtin_expect(intval < 0 && !ignore, 0))
-				{ rval = -EINVAL; goto error; }
+				{ rval = -EINVAL; QPERR(QPF_ERR_T_NOTPOSITIVE); goto error; }
 			    cplen = qpf_internal_itoa(tmpbuf, sizeof(tmpbuf), intval);
 			    strval = tmpbuf;
 			    break;
@@ -541,7 +715,7 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 			case QPF_SPEC_T_NSTR:
 			    strval = va_arg(ap, const char*);
 			    if (__builtin_expect(strval == NULL && !ignore, 0))
-				{ rval = -EINVAL; goto error; }
+				{ rval = -EINVAL; QPERR(QPF_ERR_T_NULL); goto error; }
 			    cplen = specchain_n[0];
 			    break;
 
@@ -553,14 +727,15 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 
 			default:
 			    rval = -EINVAL;
+			    QPERR(QPF_ERR_T_BADFORMAT);
 			    goto error;
-			    }
+			}
 
 		    if (!ignore)
 			{
 			/** Length problem? **/
 			if (__builtin_expect(cplen < 0, 0))
-			    { rval = -EINVAL; goto error; }
+			    { rval = -EINVAL; QPERR(QPF_ERR_T_BADLENGTH); goto error; }
 
 			/** Filters? **/
 			for (i=1;i<n_specs;i++)
@@ -568,69 +743,123 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 			    switch(specchain[i])
 				{
 				case QPF_SPEC_T_NLEN:
-				    if (cplen > specchain_n[i]) cplen = specchain_n[i];
+				    if (cplen > specchain_n[i])
+					{
+					QPERR(QPF_ERR_T_INSOVERFLOW);
+					cplen = specchain_n[i];
+					}
 				    break;
 
 				case QPF_SPEC_T_SYM:
 				    if (cxsecVerifySymbol_n(strval, cplen) < 0)
-					{ rval = -EINVAL; goto error; }
+					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADSYMBOL); goto error; }
 				    break;
 				
 				case QPF_SPEC_T_ESCQ:
-				    /** We need to special-case this both for performance
-				     ** and for security so that \' doesn't get truncated
-				     ** with just the \ and no ', for instance.
-				     **/
+				case QPF_SPEC_T_QUOT:
+				case QPF_SPEC_T_DQUOT:
+				case QPF_SPEC_T_HTE:
+				case QPF_SPEC_T_HEX:
 				    if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
 					{
 					if (n_specs-i == 2)
 					    maxdst = specchain_n[i+1];
 					else
 					    maxdst = INT_MAX;
+					switch(specchain[i])
+					    {
+					    case QPF_SPEC_T_ESCQ:	table = &QPF.quote_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_QUOT:	table = &QPF.quote_matrix; 
+									min_room = 2;
+									quote = '\'';
+									break;
+					    case QPF_SPEC_T_DQUOT:	table = &QPF.quote_matrix;
+									min_room = 2;
+									quote = '"';
+									break;
+					    case QPF_SPEC_T_HTE:	table = &QPF.hte_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_HEX:	table = &QPF.hex_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    default:			table = NULL; 
+									quote = 0;
+									min_room = 1;
+									QPERR(QPF_ERR_T_INTERNAL);
+									break;
+					    }
+					if (quote && specchain[0] != QPF_SPEC_T_STR)
+					    {
+					    /** don't quote things other than strings **/
+					    if (cplen > maxdst)
+						{
+						QPERR(QPF_ERR_T_INSOVERFLOW);
+						cplen = maxdst;
+						}
+					    break;
+					    }
+					if (quote) maxdst -= 2;
+					if (maxdst < 0)
+					    {
+					    QPERR(QPF_ERR_T_BADFORMAT);
+					    rval = -EINVAL;
+					    goto error;
+					    }
+					if (quote)
+					    {
+					    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+1+1))))
+						{
+						(*str)[cpoffset++] = quote;
+						}
+					    else
+						{
+						QPERR(QPF_ERR_T_BUFOVERFLOW);
+						nogrow = 1;
+						}
+					    copied++;
+					    }
 					oldcpoffset = cpoffset;
-					n = qpf_internal_Translate(strval, cplen, str, &cpoffset, size, maxdst, QPF.quote_matrix, nogrow?NULL:grow_fn, grow_arg);
+					n = qpf_internal_Translate(s, strval, cplen, str, &cpoffset, size, maxdst, table, nogrow?NULL:grow_fn, grow_arg, min_room);
 					if (n < 0) 
 					    {
+					    QPERR(QPF_ERR_T_INTERNAL);
 					    rval = n;
 					    goto error;
 					    }
 					if (n != cpoffset - oldcpoffset) nogrow = 1;
+					if (quote)
+					    {
+					    if ((__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+1+1))))
+						{
+						(*str)[cpoffset++] = quote;
+						}
+					    else
+						{
+						QPERR(QPF_ERR_T_BUFOVERFLOW);
+						nogrow = 1;
+						}
+					    copied++;
+					    }
 					copied += n;
 					cplen = 0;
 					}
 				    else
 					{
+					QPERR(QPF_ERR_T_NOTIMPL);
 					rval = -ENOSYS;
 					goto error;
 					}
 				    break;
 
-				case QPF_SPEC_T_HTE:
-				    if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
-					{
-					if (n_specs-i == 2)
-					    maxdst = specchain_n[i+1];
-					else
-					    maxdst = INT_MAX;
-					oldcpoffset = cpoffset;
-					n = qpf_internal_Translate(strval, cplen, str, &cpoffset, size, maxdst, QPF.hte_matrix, nogrow?NULL:grow_fn, grow_arg);
-					if (n < 0) 
-					    {
-					    rval = n;
-					    goto error;
-					    }
-					if (n != cpoffset - oldcpoffset) nogrow = 1;
-					copied += n;
-					cplen = 0;
-					}
-				    else
-					{
-					rval = -ENOSYS;
-					}
-				    break;
-
 				default:
 				    /** Unimplemented filter **/
+				    QPERR(QPF_ERR_T_NOTIMPL);
 				    rval = -ENOSYS;
 				    goto error;
 				}
@@ -643,6 +872,7 @@ qpfPrintf_va_internal(char** str, size_t* size, int (*grow_fn)(), void* grow_arg
 			    if (__builtin_expect(nogrow, 0)) cplen = 0;
 			    if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (!grow_fn(str, size, grow_arg, cpoffset+cplen+1)))
 				{
+				QPERR(QPF_ERR_T_BUFOVERFLOW);
 				cplen = (*size) - cpoffset - 1;
 				nogrow = 1;
 				}

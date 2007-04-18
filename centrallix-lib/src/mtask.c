@@ -55,10 +55,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.37 2007/04/08 03:43:06 gbeeley Exp $
+    $Id: mtask.c,v 1.38 2007/04/18 18:42:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.38  2007/04/18 18:42:07  gbeeley
+    - (feature) hex encoding in qprintf (&HEX filter).
+    - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
+    - (bugfix) %[ %] conditional formatting didn't exclude everything.
+    - (bugfix) need to ignore, rather than error, on &nbsp; following filters.
+    - (performance) significant performance improvements in HEX, ESCQ, HTE.
+    - (change) qprintf API change - optional session, cumulative errors/flags
+    - (testsuite) lots of added testsuite entries.
+
     Revision 1.37  2007/04/08 03:43:06  gbeeley
     - (bugfix) some code quality fixes
     - (feature) MTASK integration with the Valgrind debugger.  Still some
@@ -2833,7 +2842,7 @@ fdQPrintf_va(pFile filedesc, const char* fmt, va_list va)
 	size = filedesc->PrintfBufSize;
 
 	/** Print it **/
-	rval = qpfPrintf_va_internal(&buf, &size, fdQPrintf_Grow, filedesc, fmt, va);
+	rval = qpfPrintf_va_internal(NULL, &buf, &size, fdQPrintf_Grow, filedesc, fmt, va);
 	fdWrite(filedesc, filedesc->PrintfBuf, size - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
    
     return rval;

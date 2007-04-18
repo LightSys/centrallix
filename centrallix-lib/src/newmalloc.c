@@ -38,10 +38,19 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.7 2007/04/08 03:43:06 gbeeley Exp $
+    $Id: newmalloc.c,v 1.8 2007/04/18 18:42:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
+    Revision 1.8  2007/04/18 18:42:07  gbeeley
+    - (feature) hex encoding in qprintf (&HEX filter).
+    - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
+    - (bugfix) %[ %] conditional formatting didn't exclude everything.
+    - (bugfix) need to ignore, rather than error, on &nbsp; following filters.
+    - (performance) significant performance improvements in HEX, ESCQ, HTE.
+    - (change) qprintf API change - optional session, cumulative errors/flags
+    - (testsuite) lots of added testsuite entries.
+
     Revision 1.7  2007/04/08 03:43:06  gbeeley
     - (bugfix) some code quality fixes
     - (feature) MTASK integration with the Valgrind debugger.  Still some
@@ -373,7 +382,11 @@ nmFree(ptr,size)
     void* ptr;
     int size;
     {
+#ifndef NO_BLK_CACHE
+#ifdef DUP_FREE_CHECK
     pOverlay tmp;
+#endif
+#endif
     int i;
 
     	ASSERTNOTMAGIC(ptr,MGK_FREEMEM);

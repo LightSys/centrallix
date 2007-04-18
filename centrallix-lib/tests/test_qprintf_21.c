@@ -25,10 +25,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(buf+4, 36, "Here is the value: %DBL...", 3.14159);
-	    qpfPrintf(buf+4, 36, "Here is the value: %DBL...", 3.14159);
-	    qpfPrintf(buf+4, 36, "Here is the value: %DBL...", 3.14159);
-	    rval = qpfPrintf(buf+4, 36, "Here is the value: %DBL...", 3.14159);
+	    qpfPrintf(NULL, buf+4, 36, "Here is the value: %DBL...", 3.14159);
+	    qpfPrintf(NULL, buf+4, 36, "Here is the value: %DBL...", 3.14159);
+	    qpfPrintf(NULL, buf+4, 36, "Here is the value: %DBL...", 3.14159);
+	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the value: %DBL...", 3.14159);
 	    assert(!strcmp(buf+4, "Here is the value: 3.141590..."));
 	    assert(rval == 30);
 	    assert(buf[43] == '\n');
