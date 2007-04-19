@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_autolayout.c,v 1.2 2007/04/03 15:50:04 gbeeley Exp $
+    $Id: htdrv_autolayout.c,v 1.3 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_autolayout.c,v $
 
     $Log: htdrv_autolayout.c,v $
+    Revision 1.3  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.2  2007/04/03 15:50:04  gbeeley
     - (feature) adding capability to pass a widget to a component as a
       parameter (by reference).
@@ -116,22 +126,22 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Add the stylesheet for the layer **/
-	htrAddStylesheetItem_va(s,"\t#al%dbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; CLIP:rect(%dpx,%dpx,%dpx,%dpx); Z-INDEX:%d; }\n",
+	htrAddStylesheetItem_va(s,"\t#al%POSbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; CLIP:rect(%INTpx,%INTpx,%INTpx,%INTpx); Z-INDEX:%POS; }\n",
 		id,x,y,w,h,
 		-1, w+1, h+1, -1,
 		z);
 
 	/** Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"al%dbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"al%POSbase\")",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_autolayout.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    al_init(nodes['%s'], {});\n", name);
+	htrAddScriptInit_va(s, "    al_init(nodes['%STR&SYM'], {});\n", name);
 
 	/** Start of container **/
-	htrAddBodyItemLayerStart(s, 0, "al%dbase", id);
+	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id);
 
 	/** Check for objects within this autolayout widget. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

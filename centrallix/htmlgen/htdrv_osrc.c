@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.62 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.63 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.63  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.62  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -570,16 +580,16 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       filter = nmSysStrdup("");
 
    /** create our instance variable **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"osrc%dloader\")",id);
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"osrc%POSloader\")",id);
    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
    htrAddScriptGlobal(s, "osrc_syncid", "0", 0);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"        #osrc%dloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
+   htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%s\"], readahead:%i, scrollahead:%i, replicasize:%i, sql:\"%s\", filter:\"%s\", baseobj:\"%s\", name:\"%s\", autoquery:%d, requestupdates:%d});\n",
+   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&ESCQ\", filter:\"%STR&ESCQ\", baseobj:\"%STR&ESCQ\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT});\n",
 	 name,readahead,scrollahead,replicasize,sql,filter,
 	 baseobj?baseobj:"",name,aq,receive_updates);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
@@ -589,7 +599,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
    /** HTML body element for the frame **/
-   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%dloader",id);
+   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%POSloader",id);
    htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
    htrAddBodyItem(s, "\n");
 

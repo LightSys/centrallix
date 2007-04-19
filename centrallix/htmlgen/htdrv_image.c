@@ -43,6 +43,16 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_image.c,v $
+    Revision 1.8  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.7  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -227,12 +237,12 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#img%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#img%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
 	/** Init image widget (?) **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"img%d\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"img%POS\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
-	htrAddScriptInit_va(s, "    im_init(nodes['%s']);\n", name);
+	htrAddScriptInit_va(s, "    im_init(nodes['%STR&SYM']);\n", name);
 	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
 
 	/** Event Handlers **/
@@ -243,8 +253,8 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "img%d", id, 
-	    "\n<img id=im%d width=%d height=%d src=\"%s\">\n",id,w,h,src);
+	htrAddBodyItemLayer_va(s, 0, "img%POS", id, 
+	    "\n<img id=im%POS width=%POS height=%POS src=\"%STR&HTE\">\n",id,w,h,src);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

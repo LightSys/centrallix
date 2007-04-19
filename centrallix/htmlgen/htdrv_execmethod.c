@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_execmethod.c,v 1.20 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_execmethod.c,v 1.21 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_execmethod.c,v $
 
     $Log: htdrv_execmethod.c,v $
+    Revision 1.21  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.20  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -294,7 +304,7 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name, ptr, sizeof(name));
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ex_init({node:nodes[\"%s\"], objname:'%s', methname:'%s', methparam:'%s'});\n", 
+	htrAddScriptInit_va(s, "    ex_init({node:nodes[\"%STR&SYM\"], objname:'%STR&SYM', methname:'%STR&SYM', methparam:'%STR&ESCQ'});\n", 
 		name, objname, methodname, methodparam);
 
 	/** Check for objects within the exec method object. **/

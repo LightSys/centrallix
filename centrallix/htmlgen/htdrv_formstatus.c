@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.24 2007/04/03 15:50:04 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.25 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.25  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.24  2007/04/03 15:50:04  gbeeley
     - (feature) adding capability to pass a widget to a component as a
       parameter (by reference).
@@ -328,24 +338,24 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
        form[0] = '\0';
    else
        strtcpy(form,ptr,sizeof(form));
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"fs%dmain\")", id);
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"fs%POSmain\")", id);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#fs%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+   htrAddStylesheetItem_va(s,"\t#fs%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%s\"],form:\"%s\",style:\"%s\"});\n",
+   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%STR&SYM\"],form:\"%STR&ESCQ\",style:\"%STR&ESCQ\"});\n",
 	    name, form, style);
 
    /** HTML body <DIV> element for the layers. **/
    if (!strcmp(style,"large"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstatL01.png></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatL01.png></DIV>\n", id);
    else if (!strcmp(style,"largeflat"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstatLF01.png></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatLF01.png></DIV>\n", id);
    else
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%dmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
 
    htrAddEventHandlerFunction(s,"document","MOUSEDOWN","fs","fs_mousedown");
    htrAddEventHandlerFunction(s,"document","MOUSEUP",  "fs","fs_mouseup");

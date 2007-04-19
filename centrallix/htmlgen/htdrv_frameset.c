@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_frameset.c,v 1.12 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_frameset.c,v 1.13 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_frameset.c,v $
 
     $Log: htdrv_frameset.c,v $
+    Revision 1.13  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.12  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -208,7 +219,7 @@ htsetRender(pHtSession s, pWgtrNode tree, int z)
     	/** Check for a title. **/
 	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddHeaderItem_va(s,"    <TITLE>%s</TITLE>\n",ptr);
+	    htrAddHeaderItem_va(s,"    <TITLE>%STR&HTE</TITLE>\n",ptr);
 	    }
 
 	/** Loop through the frames (widget/page items) for geometry data **/
@@ -224,7 +235,7 @@ htsetRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (t == DATA_T_INTEGER)
 		{
 		wgtrGetPropertyValue(sub_tree, "framesize", DATA_T_INTEGER,POD(&n));
-		snprintf(nbuf,sizeof(nbuf),"%d",n);
+		qpfPrintf(NULL, nbuf,sizeof(nbuf),"%INT",n);
 		}
 	    else if (t == DATA_T_STRING)
 		{
@@ -255,20 +266,20 @@ htsetRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Build the frameset tag. **/
-	htrAddBodyItem_va(s, "<FRAMESET %s=%s border=%d>\n", direc?"rows":"cols", geom_str, bdr);
+	htrAddBodyItem_va(s, "<FRAMESET %STR=%STR&HTE border=%POS>\n", direc?"rows":"cols", geom_str, bdr);
 
 	/** Check for more sub-widgets within the page. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
 	    if (wgtrGetPropertyValue(sub_tree,"marginwidth",DATA_T_INTEGER,POD(&n)) != 0)
-		htrAddBodyItem_va(s,"    <FRAME SRC=./%s>\n",ptr);
+		htrAddBodyItem_va(s,"    <FRAME SRC=\"./%STR&HTE\">\n",ptr);
 	    else
-		htrAddBodyItem_va(s,"    <FRAME SRC=./%s MARGINWIDTH=%d>\n",ptr,n);
+		htrAddBodyItem_va(s,"    <FRAME SRC=\"./%STR&HTE\" MARGINWIDTH=%POS>\n",ptr,n);
 	    }
 
 	/** End the framset. **/
-	htrAddBodyItem_va(s, "</FRAMESET>\n");
+	htrAddBodyItem(s, "</FRAMESET>\n");
 
     return 0;
     }

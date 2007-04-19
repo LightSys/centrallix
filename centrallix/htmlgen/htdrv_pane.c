@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_pane.c,v 1.33 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_pane.c,v 1.34 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_pane.c,v $
 
     $Log: htdrv_pane.c,v $
+    Revision 1.34  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.33  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -432,20 +442,20 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if(s->Capabilities.Dom0NS /*|| s->Capabilities.Dom0IE*/)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,1,1,w-2,h-2,z+1);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,1,1,w-2,h-2,z+1);
 	    }
 	else if(s->Capabilities.CSS1)
 	    {
 	    if (style == 2) /* flat */
 		{
-		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-		htrAddStylesheetItem_va(s,"\t#pn%dmain { %s}\n",id,main_bg);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { %STR}\n",id,main_bg);
 		}
 	    else /* lowered or raised */
 		{
-		htrAddStylesheetItem_va(s,"\t#pn%dmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-		htrAddStylesheetItem_va(s,"\t#pn%dmain { border-style: solid; border-width: 1px; border-color: %s %s %s %s; %s}\n",id,c1,c2,c2,c1,main_bg);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+		htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; %STR}\n",id,c1,c2,c2,c1,main_bg);
 		}
 	    }
 	else
@@ -457,13 +467,13 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (s->Capabilities.Dom0NS)
 	    {
 	    htrAddWgtrObjLinkage_va(s, tree, 
-		    "htr_subel(_parentctr, \"pn%dbase\")",id);
+		    "htr_subel(_parentctr, \"pn%POSbase\")",id);
 	    htrAddWgtrCtrLinkage_va(s, tree, 
-		    "htr_subel(_obj, \"pn%dmain\")",id);
+		    "htr_subel(_obj, \"pn%POSmain\")",id);
 	    }
 	else
 	    htrAddWgtrObjLinkage_va(s, tree, 
-		    "htr_subel(_parentctr, \"pn%dmain\")",id);
+		    "htr_subel(_parentctr, \"pn%POSmain\")",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);
@@ -480,42 +490,54 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes['%s'], layer:htr_subel(nodes['%s'], \"pn%dmain\")});\n", 
+		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes['%STR&SYM'], layer:htr_subel(nodes['%STR&SYM'], \"pn%POSmain\")});\n", 
 			name, name, id);
 	    else
-		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes[\"%s\"], layer:nodes[\"%s\"]});\n",
+		htrAddScriptInit_va(s, "    pn_init({mainlayer:nodes[\"%STR&SYM\"], layer:nodes[\"%STR&SYM\"]});\n",
 			name, name);
 
 	    /** HTML body <DIV> element for the base layer. **/
 	    if (s->Capabilities.Dom0NS)
 		{
-		htrAddBodyItem_va(s,"<DIV ID=\"pn%dbase\">\n",id);
-		htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s height=%d>\n",w,main_bg,h);
+		htrAddBodyItem_va(s,"<DIV ID=\"pn%POSbase\">\n",id);
+		htrAddBodyItem_va(s,"    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR height=%POS>\n",w,main_bg,h);
 		if (style == 2) /* flat */
 		    {
-		    htrAddBodyItem_va(s,"        <TR><TD><img src=/sys/images/trans_1.gif></TD></TR>\n    </TABLE>\n\n");
+		    htrAddBodyItem(s,   "        <TR><TD><img src=/sys/images/trans_1.gif></TD></TR>\n    </TABLE>\n\n");
 		    }
 		else /* lowered or raised */
 		    {
-		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-		    htrAddBodyItem_va(s,"            <TD><img src=/sys/images/trans_1.gif></TD>\n");
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
+		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
+		    htrAddBodyItem(s,   "            <TD><img src=/sys/images/trans_1.gif></TD>\n");
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
+		    htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2);
+		    htrAddBodyItem_va(s,"            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
 		    }
+		htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
+
+		/** Check for objects within the pane. **/
+		htrRenderSubwidgets(s, tree, z+2);
+
+		/** End the containing layer. **/
+		htrAddBodyItem(s, "</td></tr></table></DIV>\n");
+
+		htrAddBodyItem(s, "</DIV>\n");
 		}
-	    htrAddBodyItem_va(s,"<DIV ID=\"pn%dmain\"><table width=%d height=%d cellspacing=0 cellpadding=0 border=0><tr><td>\n",id, w-2, h-2);
+	    else
+		{
+		htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
 
-	    /** Check for objects within the pane. **/
-	    htrRenderSubwidgets(s, tree, z+2);
+		/** Check for objects within the pane. **/
+		htrRenderSubwidgets(s, tree, z+2);
 
-	    /** End the containing layer. **/
-	    htrAddBodyItem(s, "</td></tr></table></DIV>\n");
-	    if (s->Capabilities.Dom0NS) htrAddBodyItem(s, "</DIV>\n");
+		/** End the containing layer. **/
+		htrAddBodyItem(s, "</DIV>\n");
+		}
+
 	    }
 	else
 	    {

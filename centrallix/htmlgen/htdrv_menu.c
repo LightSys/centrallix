@@ -52,7 +52,7 @@ static struct
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
     {
-    htrAddBodyItem_va(s,"<td valign=\"%s\"><img align=\"%s\" name=\"xy_%s%d\" width=\"1\" height=\"%d\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
+    htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" name=\"xy_%STR&SYM%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
     return 0;
     }
 
@@ -67,7 +67,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	xsPrintf(xs, "enabled:1, onright:%d", is_onright);
 
 	if (!is_horizontal)
-	    htrAddBodyItem_va(s, "<tr>");
+	    htrAddBodyItem(s, "<tr>");
 
 	/** image used to track position **/
 	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
@@ -78,17 +78,17 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** icon **/
 	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%s\"></td>", ptr);
-	    xsConcatPrintf(xs, ", icon:'%s'", ptr);
+	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%STR&HTE\"></td>", ptr);
+	    xsConcatQPrintf(xs, ", icon:'%STR&ESCQ'", ptr);
 	    }
 	else
-	    htrAddBodyItem_va(s, "<td>&nbsp;</td>");
+	    htrAddBodyItem(s, "<td>&nbsp;</td>");
 
 	/** checkbox **/
 	if ( (rval=htrGetBoolean(menu_item, "checked", -1)) >= 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img name=\"cb_%d\" src=\"/sys/images/checkbox_%s.gif\"></td>", mcnt, rval?"checked":"unchecked");
-	    xsConcatPrintf(xs, ", check:%s", rval?"true":"false");
+	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img name=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked");
+	    xsConcatQPrintf(xs, ", check:%STR", rval?"true":"false");
 
 	    /** User requesting expression for value? **/
 	    if (wgtrGetPropertyType(menu_item,"value") == DATA_T_CODE)
@@ -98,41 +98,41 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 		}
 	    }
 	else
-	    htrAddBodyItem_va(s, "<td></td>");
+	    htrAddBodyItem(s, "<td></td>");
 
 	/** Text **/
 	if (wgtrGetPropertyValue(menu_item,"label",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%s</td>", ptr);
-	    xsConcatPrintf(xs, ", label:'%s'", ptr);
+	    htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%STR&HTE</td>", ptr);
+	    xsConcatQPrintf(xs, ", label:'%STR&ESCQ'", ptr);
 	    }
 	else
-	    htrAddBodyItem_va(s, "<td></td>");
+	    htrAddBodyItem(s, "<td></td>");
 	if (wgtrGetPropertyValue(menu_item, "value", DATA_T_STRING, POD(&ptr)) == 0)
-	    xsConcatPrintf(xs, ", value:'%s'", ptr);
+	    xsConcatQPrintf(xs, ", value:'%STR&ESCQ'", ptr);
 	else if (wgtrGetPropertyValue(menu_item, "value", DATA_T_INTEGER, POD(&n)) == 0)
-	    xsConcatPrintf(xs, ", value:%d", n);
+	    xsConcatQPrintf(xs, ", value:%INT", n);
 
 	/** Submenu arrow **/
 	if (is_submenu && !is_horizontal)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"/sys/images/menu_arrow.gif\"></td>");
+	    htrAddBodyItem(s, "<td valign=\"middle\"><img src=\"/sys/images/menu_arrow.gif\"></td>");
 	    }
 	else
-	    htrAddBodyItem_va(s, "<td>&nbsp;</td>");
+	    htrAddBodyItem(s, "<td>&nbsp;</td>");
 
 	if (!is_horizontal)
-	    htrAddBodyItem_va(s, "</tr>");
+	    htrAddBodyItem(s, "</tr>");
 
 	if (is_submenu)
 	    {
-	    xsConcatPrintf(xs, ", submenu:'%s'", name);
+	    xsConcatQPrintf(xs, ", submenu:'%STR&SYM'", name);
 	    }
 
 	if (is_submenu) 
-	    htrAddScriptInit_va(s, "    nodes[\"%s\"].AddItem({%s});\n", nptr, xs->String);
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddItem({%STR});\n", nptr, xs->String);
 	else
-	    htrAddScriptInit_va(s, "    wgtrReplaceNode(nodes[\"%s\"], nodes[\"%s\"].AddItem({%s}));\n", name, nptr, xs->String);
+	    htrAddScriptInit_va(s, "    wgtrReplaceNode(nodes[\"%STR&SYM\"], nodes[\"%STR&SYM\"].AddItem({%STR}));\n", name, nptr, xs->String);
 
     return 0;
     }
@@ -143,20 +143,20 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
     {
 
 	if (!is_horizontal)
-	    htrAddBodyItem_va(s, "<tr>");
+	    htrAddBodyItem(s, "<tr>");
 
 	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
 
 	/** If vertical, add a separating line.  If horiz, just add some space **/
 	if (is_horizontal)  
 	    {
-	    htrAddBodyItem_va(s, "<td>&nbsp;&nbsp;&nbsp;</td>");
+	    htrAddBodyItem(s, "<td>&nbsp;&nbsp;&nbsp;</td>");
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
+	    htrAddBodyItem(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
 	    }
-	htrAddScriptInit_va(s, "    nodes[\"%s\"].AddItem({sep:true});\n", nptr);
+	htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddItem({sep:true});\n", nptr);
 
     return 0;
     }
@@ -224,37 +224,37 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	/** Write the main style header item. **/
 	if (h != -1 && w == -1)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit", x,y,h-2*bx,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; HEIGHT:%dpx; Z-INDEX:%d; }\n", id, h-2*bx, z+1);
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x,y,h-2*bx,z);
+	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n", id, h-2*bx, z+1);
 	    }
 	else if (h == -1 && w != -1)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit",x,y,w-2*bx,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d; }\n", id, w-2*bx, z+1);
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit",x,y,w-2*bx,z);
+	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS; }\n", id, w-2*bx, z+1);
 	    }
 	else if (h != -1 && w != -1)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; CLIP:rect(0px,%dpx,%dpx,0px); }\n",
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
 		    id,is_popup?"hidden":"inherit",x,y,w-2*bx,h-2*bx,z,w,h);
-	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n", 
+	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n", 
 		    id, w-2*bx,h-2*bx, z+1);
 	    }
 	else
 	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%dmain { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; Z-INDEX:%d; }\n", id,is_popup?"hidden":"inherit",x,y,z);
-	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; Z-INDEX:%d; }\n", id, z+1);
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit",x,y,z);
+	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; Z-INDEX:%POS; }\n", id, z+1);
 	    }
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%dmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; %s }\n", id, bgstr);
+	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; %STR }\n", id, bgstr);
 
 	/** content layer **/
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%dcontent { overflow:hidden; cursor:default; }\n", id );
+	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { overflow:hidden; cursor:default; }\n", id );
 
 	/** highlight bar **/
-	htrAddStylesheetItem_va(s, "\t#mn%dhigh { POSITION:absolute; VISIBILITY: hidden; LEFT:0px; TOP:0px; Z-INDEX:%d; }\n", id, z);
+	htrAddStylesheetItem_va(s, "\t#mn%POShigh { POSITION:absolute; VISIBILITY: hidden; LEFT:0px; TOP:0px; Z-INDEX:%POS; }\n", id, z);
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%dhigh { overflow:hidden; }\n", id );
+	    htrAddStylesheetItem_va(s,"\t#mn%POShigh { overflow:hidden; }\n", id );
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(menu,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -268,8 +268,8 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddScriptGlobal(s, "mn_pop_x", "0", 0);
 	htrAddScriptGlobal(s, "mn_pop_y", "0", 0);
 	htrAddScriptGlobal(s, "mn_mouseangle", "0", 0);
-	htrAddWgtrObjLinkage_va(s, menu, "htr_subel(mn_parent(_parentobj), \"mn%dmain\")",id);
-	htrAddWgtrCtrLinkage_va(s, menu, "htr_subel(_obj, \"mn%dcontent\")",id);
+	htrAddWgtrObjLinkage_va(s, menu, "htr_subel(mn_parent(_parentobj), \"mn%POSmain\")",id);
+	htrAddWgtrCtrLinkage_va(s, menu, "htr_subel(_obj, \"mn%POScontent\")",id);
 
 	/** Scripts **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
@@ -277,7 +277,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
 
 	/** Initialization **/
-	htrAddScriptInit_va(s,"    mn_init({layer:nodes[\"%s\"], clayer:wgtrGetContainer(nodes[\"%s\"]), hlayer:htr_subel(nodes[\"%s\"], \"mn%dhigh\"), bgnd:\"%s\", high:\"%s\", actv:\"%s\", txt:\"%s\", w:%d, h:%d, horiz:%d, pop:%d, name:\"%s\"});\n", 
+	htrAddScriptInit_va(s,"    mn_init({layer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), hlayer:htr_subel(nodes[\"%STR&SYM\"], \"mn%POShigh\"), bgnd:\"%STR&ESCQ\", high:\"%STR&ESCQ\", actv:\"%STR&ESCQ\", txt:\"%STR&ESCQ\", w:%INT, h:%INT, horiz:%INT, pop:%INT, name:\"%STR&SYM\"});\n", 
 		name, name, name, id, 
 		bgstr, highlight, active, textcolor, 
 		w, h, is_horizontal, is_popup, name);
@@ -289,34 +289,34 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "mn", "mn_mousedown");
 
 	/** Beginning of code for menu **/
-	htrAddBodyItem_va(s,"<div id=\"mn%dmain\">", id);
+	htrAddBodyItem_va(s,"<div id=\"mn%POSmain\">", id);
 	if (s->Capabilities.Dom0NS)
-	    htrAddBodyItem_va(s,"<body %s>",bgstr);
-	htrAddBodyItem_va(s,"<div id=\"mn%dcontent\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %s>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
+	    htrAddBodyItem_va(s,"<body %STR>",bgstr);
+	htrAddBodyItem_va(s,"<div id=\"mn%POScontent\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %STR>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
 
 	/** Only draw border if it is NS4 **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
 	    if (w != -1)
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%d\"></td>", w-2);
+		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
 	    else
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+		htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+	    htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
 	    if (h != -1)
-		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%d\" width=\"1\"></td><td>", h-2);
+		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td><td>", h-2);
 	    else
-		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td><td>");
+		htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td><td>");
 	    }
 	else
-	    htrAddBodyItem_va(s,"<tr><td valign=\"middle\">");
+	    htrAddBodyItem(s,"<tr><td valign=\"middle\">");
 
 	/** Add 'meat' of menu... **/
 	xs = (pXString)nmMalloc(sizeof(XString));
 	xsInit(xs);
 	mcnt=0;
-	htrAddBodyItem_va(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%%\"><tr><td align=\"left\" valign=\"middle\">\n");
-	htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%s\n", is_horizontal?"<tr>":"");
+	htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%%\"><tr><td align=\"left\" valign=\"middle\">\n");
+	htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%[<tr>%]\n", is_horizontal);
 	cnt = xaCount(&(menu->Children));
 	for (i=0;i<cnt;i++)
 	    {
@@ -341,16 +341,16 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
 	else
 	    {
-	    htrAddBodyItem_va(s, "<tr>");
+	    htrAddBodyItem(s, "<tr>");
 	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
-	    htrAddBodyItem_va(s, "<td colspan=\"4\"></td></tr>");
+	    htrAddBodyItem(s, "<td colspan=\"4\"></td></tr>");
 	    }
 	mcnt++;
-	htrAddBodyItem_va(s,"%s</table></td>", is_horizontal?"</tr>":"");
+	htrAddBodyItem_va(s,"%[</tr>%]</table></td>", is_horizontal);
 	if (is_horizontal)
 	    {
-	    htrAddBodyItem_va(s,"<td align=\"right\" valign=\"middle\">\n");
-	    htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\"><tr>\n");
+	    htrAddBodyItem(s,"<td align=\"right\" valign=\"middle\">\n");
+	    htrAddBodyItem(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\"><tr>\n");
 	    for (i=0;i<cnt;i++)
 		{
 		sub_tree = xaGetItem(&(menu->Children), i);
@@ -372,32 +372,32 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		}
 	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
 	    mcnt++;
-	    htrAddBodyItem_va(s,"</tr></table></td>\n");
+	    htrAddBodyItem(s,"</tr></table></td>\n");
 	    }
-	htrAddBodyItem_va(s,"</tr></table>\n");
+	htrAddBodyItem(s,"</tr></table>\n");
 
 	/** closing border for NS4 **/
 	if (s->Capabilities.Dom0NS)
 	    {
 	    if (h != -1)
-		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%d\" width=\"1\"></td></tr>\n", h-2);
+		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td></tr>\n", h-2);
 	    else
-		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-	    htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+		htrAddBodyItem(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
 	    if (w != -1)
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%d\"></td>", w-2);
+		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
 	    else
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+		htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+	    htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
 	    }
 	else
-	    htrAddBodyItem_va(s,"</td></tr>");
+	    htrAddBodyItem(s,"</td></tr>");
 
 	/** Ending of layer **/
 	if (s->Capabilities.Dom0NS)
-	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%dhigh\"></div></body></div>", id);
+	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></body></div>", id);
 	else
-	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%dhigh\"></div></div>\n", id);
+	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></div>\n", id);
 
 	xsDeInit(xs);
 	nmFree(xs, sizeof(XString));

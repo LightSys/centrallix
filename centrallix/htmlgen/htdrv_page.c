@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.77 2007/03/21 04:48:09 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.78 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.78  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.77  2007/03/21 04:48:09  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -637,12 +647,11 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     	/** Check for a title. **/
 	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddHeaderItem_va(s, "    <TITLE>%s</TITLE>\n",ptr);
+	    htrAddHeaderItem_va(s, "    <TITLE>%STR&HTE</TITLE>\n",ptr);
 	    }
 
     	/** Check for page load status **/
 	show = htrGetBoolean(tree, "loadstatus", 0);
-	strcpy(bgstr, "");
 
 	/** Initialize the html-related interface stuff **/
 	if (ifcHtmlInit(s, tree) < 0)
@@ -651,25 +660,19 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Auto-call startup and cleanup **/
-	htrAddBodyParam_va(s, " onLoad=\"startup_%s();\" onUnload=\"cleanup();\"",
+	htrAddBodyParam_va(s, " onLoad=\"startup_%STR&SYM();\" onUnload=\"cleanup();\"",
 		s->Namespace->DName);
 
 	/** Check for bgcolor. **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (htrGetBackground(tree, NULL, 0, bgstr, sizeof(bgstr)) == 0)
 	    {
-	    snprintf(bgstr, 128, " BGCOLOR=%s", ptr);
-	    htrAddBodyParam_va(s, " BGCOLOR=%s",ptr);
-	    }
-	if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    snprintf(bgstr, 128, " BACKGROUND=\"%s\"", ptr);
-	    htrAddBodyParam_va(s, " BACKGROUND=\"%s\"",ptr);
+	    htrAddBodyParam_va(s, " %STR",bgstr);
 	    }
 
 	/** Check for text color **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyParam_va(s, " TEXT=%s",ptr);
+	    htrAddBodyParam_va(s, " TEXT=\"%STR&HTE\"",ptr);
 	    }
 
 	/** Keyboard Focus Indicator colors 1 and 2 **/
@@ -774,14 +777,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrObjLinkage(s, tree, "window");
 	htrAddWgtrCtrLinkage(s, tree, "document");
 
-	htrAddScriptInit_va(s, "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
-	htrAddScriptInit_va(s, "    pg_init(nodes['%s'],%d);\n", name, attract);
-	htrAddScriptInit_va(s, "    pg_username = '%s';\n", mssUserName());
-	htrAddScriptInit_va(s, "    pg_width = %d;\n", w);
-	htrAddScriptInit_va(s, "    pg_height = %d;\n", h);
-	htrAddScriptInit_va(s, "    pg_charw = %d;\n", s->ClientInfo->CharWidth);
-	htrAddScriptInit_va(s, "    pg_charh = %d;\n", s->ClientInfo->CharHeight);
-	htrAddScriptInit_va(s, "    pg_parah = %d;\n", s->ClientInfo->ParagraphHeight);
+	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
+	htrAddScriptInit_va(s, "    pg_init(nodes['%STR&SYM'],%INT);\n", name, attract);
+	htrAddScriptInit_va(s, "    pg_username = '%STR&ESCQ';\n", mssUserName());
+	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
+	htrAddScriptInit_va(s, "    pg_height = %INT;\n", h);
+	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
+	htrAddScriptInit_va(s, "    pg_charh = %INT;\n", s->ClientInfo->CharHeight);
+	htrAddScriptInit_va(s, "    pg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
 
 	if(s->Capabilities.HTML40)
 	    {
@@ -822,7 +825,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddStylesheetItem(s, "\t#pgstat { POSITION:absolute; VISIBILITY:visible; LEFT:0;TOP:0;WIDTH:100%;HEIGHT:99%; Z-INDEX:100000;}\n");
 	    htrAddBodyItemLayerStart(s,0,"pgstat",0);
-	    htrAddBodyItem_va(s, "<BODY%s>", bgstr);
+	    htrAddBodyItem_va(s, "<BODY %STR>", bgstr);
 	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
@@ -844,7 +847,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s, "\n");
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
-	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(nodes[\"%s\"],\"pgping\"),%i);\n",name,watchdogtimer/2*1000);
+	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(nodes[\"%STR&SYM\"],\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "pg", "pg_mousemove");
@@ -863,9 +866,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Set colors for the focus layers **/
-	htrAddScriptInit_va(s, "    page.kbcolor1 = '%s';\n    page.kbcolor2 = '%s';\n",kbfocus1,kbfocus2);
-	htrAddScriptInit_va(s, "    page.mscolor1 = '%s';\n    page.mscolor2 = '%s';\n",msfocus1,msfocus2);
-	htrAddScriptInit_va(s, "    page.dtcolor1 = '%s';\n    page.dtcolor2 = '%s';\n",dtfocus1,dtfocus2);
+	htrAddScriptInit_va(s, "    page.kbcolor1 = '%STR&ESCQ';\n    page.kbcolor2 = '%STR&ESCQ';\n",kbfocus1,kbfocus2);
+	htrAddScriptInit_va(s, "    page.mscolor1 = '%STR&ESCQ';\n    page.mscolor2 = '%STR&ESCQ';\n",msfocus1,msfocus2);
+	htrAddScriptInit_va(s, "    page.dtcolor1 = '%STR&ESCQ';\n    page.dtcolor2 = '%STR&ESCQ';\n",dtfocus1,dtfocus2);
 	/*htrAddScriptInit(s, "    document.LSParent = null;\n");*/
 
 	htrAddScriptInit(s, "    pg_togglecursor();\n");

@@ -17,6 +17,8 @@
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
 #include "expression.h"
+#include "cxlib/qprintf.h"
+#include <assert.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -51,10 +53,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.67 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: ht_render.c,v 1.68 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.68  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.67  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -1015,6 +1027,68 @@ htrAddBodyParam(pHtSession s, char* html_param)
 
 extern int __data_start;
 
+
+/*** htr_internal_GrowFn() - qPrintf grow function to resize tmp buffer on
+ *** the fly.
+ ***/
+int
+htr_internal_GrowFn(char** str, size_t* size, void* arg, int req_size)
+    {
+    pHtSession s = (pHtSession)arg;
+    char* new_buf;
+    int new_buf_size;
+
+	if (*size >= req_size) return 1;
+
+	assert(*str == s->Tmpbuf);
+	assert(*size == s->TmpbufSize);
+	new_buf_size = s->TmpbufSize * 2;
+	while(new_buf_size < req_size) new_buf_size *= 2;
+	new_buf = nmSysRealloc(s->Tmpbuf, new_buf_size);
+	if (!new_buf)
+	    return 0;
+	*str = s->Tmpbuf = new_buf;
+	*size = s->TmpbufSize = new_buf_size;
+
+    return 1; /* OK */
+    }
+
+
+/*** htr_internal_QPAddText() - same as below function, but uses qprintf
+ *** instead of snprintf.
+ ***/
+int
+htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
+    {
+    int rval;
+
+	/** Print a warning if we think the format string isn't a constant.
+	 ** We'll need to upgrade this once htdrivers start being loaded as
+	 ** modules, since their text segments will have different addresses
+	 ** and we'll then have to read /proc/self/maps manually.
+	 **/
+#ifdef WITH_SECWARN
+	if ((unsigned int)fmt > (unsigned int)(&__data_start))
+	    {
+	    printf("***WARNING*** htrXxxYyy_va() format string '%s' at address 0x%X > 0x%X may not be a constant.\n",fmt,(unsigned int)fmt,(unsigned int)(&__data_start));
+	    }
+#endif
+
+	rval = qpfPrintf_va_internal(NULL, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va);
+	if (rval < 0)
+	    {
+	    printf("WARNING:  QPAddText() failed for format: %s\n", fmt);
+	    }
+	if (rval < 0 || rval > (s->TmpbufSize - 1))
+	    return -1;
+
+	/** Ok, now add the tmpbuf normally. **/
+	fn(s, s->Tmpbuf);
+
+    return 0;
+    }
+
+
 /*** htr_internal_AddText() - use vararg mechanism to add text using one of
  *** the standard add routines.
  ***/
@@ -1084,7 +1158,7 @@ htrAddBodyItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddBodyItem, fmt, va);
+	htr_internal_QPAddText(s, htrAddBodyItem, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1100,7 +1174,7 @@ htrAddExpressionItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddExpressionItem, fmt, va);
+	htr_internal_QPAddText(s, htrAddExpressionItem, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1116,7 +1190,7 @@ htrAddStylesheetItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddStylesheetItem, fmt, va);
+	htr_internal_QPAddText(s, htrAddStylesheetItem, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1132,7 +1206,7 @@ htrAddHeaderItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddHeaderItem, fmt, va);
+	htr_internal_QPAddText(s, htrAddHeaderItem, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1148,7 +1222,7 @@ htrAddBodyParam_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddBodyParam, fmt, va);
+	htr_internal_QPAddText(s, htrAddBodyParam, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1164,7 +1238,7 @@ htrAddScriptWgtr_va(pHtSession s, char* fmt, ...)
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddScriptWgtr, fmt, va);
+	htr_internal_QPAddText(s, htrAddScriptWgtr, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1181,7 +1255,7 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddScriptInit, fmt, va);
+	htr_internal_QPAddText(s, htrAddScriptInit, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1196,7 +1270,7 @@ htrAddScriptCleanup_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddScriptCleanup, fmt, va);
+	htr_internal_QPAddText(s, htrAddScriptCleanup, fmt, va);
 	va_end(va);
 
     return 0;
@@ -1538,7 +1612,7 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* f
 
 	/** Add the content **/
 	va_start(va, fmt);
-	htr_internal_AddText(s, htrAddBodyItem, (char*)fmt, va);
+	htr_internal_QPAddText(s, htrAddBodyItem, (char*)fmt, va);
 	va_end(va);
 
 	/** Add the closing tag **/
@@ -1574,8 +1648,8 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
 	    }
 
 	/** Add it. **/
-	snprintf(id_sbuf,sizeof(id_sbuf),id,cnt);
-	htrAddBodyItem_va(s, "<%s id=\"%s\">", starttag, id_sbuf);
+	qpfPrintf(NULL, id_sbuf,sizeof(id_sbuf),id,cnt);
+	htrAddBodyItem_va(s, "<%STR id=\"%STR&HTE\">", starttag, id_sbuf);
 
     return 0;
     }
@@ -1602,7 +1676,7 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
 	    }
 
 	/** Add it. **/
-	htrAddBodyItem_va(s, "</%s>", endtag);
+	htrAddBodyItem_va(s, "</%STR>", endtag);
 
     return 0;
     }
@@ -1638,13 +1712,13 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    prop = (char*)(props.Items[i]);
 	    if (obj && prop)
 		{
-		xsConcatPrintf(&xs,"%snew Array('%s','%s')",first?"":",",obj,prop);
+		xsConcatQPrintf(&xs,"%[,%]new Array('%STR&SYM','%STR&SYM')", !first, obj, prop);
 		first = 0;
 		}
 	    }
 	xsConcatenate(&xs,")",1);
 	expGenerateText(exp, NULL, xsWrite, &exptxt, '\\', "javascript");
-	htrAddExpressionItem_va(s, "    pg_expression('%s','%s','%s',%s,'%s');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
+	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&ESCQ',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1819,15 +1893,15 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %*.*s{name:'%s', obj:%s, cobj:%s, type:'%s', vis:%s, sub:", 
-		indent*4, indent*4, "",
+		"        %STR&*LEN{name:'%STR&SYM', obj:%STR, cobj:%STR, type:'%STR&ESCQ', vis:%STR, sub:", 
+		indent*4, "                                        ",
 		tree->Name, objinit?objinit:"\"new Object()\"",
 		ctrinit?ctrinit:"\"_obj\"",
 		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
 
 	if (childcnt)
 	    {
-	    htrAddScriptWgtr_va(s, "\n        %*.*s    [\n", indent*4, indent*4, "");
+	    htrAddScriptWgtr_va(s, "\n        %STR&*LEN    [\n", indent*4, "                                        ");
 	    for(i=0;i<childcnt;i++)
 		{
 		if (htr_internal_BuildClientWgtr_r(s, xaGetItem(&(tree->Children), i), indent+1) < 0)
@@ -1837,7 +1911,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 		else
 		    htrAddScriptWgtr(s, ",\n");
 		}
-	    htrAddScriptWgtr_va(s, "        %*.*s    ] }", indent*4, indent*4, "");
+	    htrAddScriptWgtr_va(s, "        %STR&*LEN    ] }", indent*4, "                                        ");
 	    }
 	else
 	    {
@@ -1852,7 +1926,7 @@ htrBuildClientWgtr(pHtSession s, pWgtrNode tree)
     {
 
 	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
-	htrAddScriptWgtr_va(s, "    pre_%s =\n", tree->DName);
+	htrAddScriptWgtr_va(s, "    pre_%STR&SYM =\n", tree->DName);
 	htr_internal_BuildClientWgtr_r(s, tree, 0);
 	htrAddScriptWgtr(s, ";\n");
 
@@ -1873,12 +1947,12 @@ htr_internal_InitNamespace(pHtSession s, pHtNamespace ns)
 	 ** empty.
 	 **/
 	if (ns->ParentCtr[0] && ns->Parent)
-	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, \"%s\", {cobj:wgtrGetContainer(wgtrGetNode(%s,\"%s\"))});\n",
+	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", {cobj:wgtrGetContainer(wgtrGetNode(%STR&SYM,\"%STR&SYM\"))});\n",
 		    ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
 	else
-	    htrAddScriptWgtr_va(s, "    %s = wgtrSetupTree(pre_%s, \"%s\", null);\n", 
+	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", null);\n", 
 		    ns->DName, ns->DName, ns->DName);
-	htrAddScriptWgtr_va(s, "    pg_namespaces[\"%s\"] = %s;\n",
+	htrAddScriptWgtr_va(s, "    pg_namespaces[\"%STR&SYM\"] = %STR&SYM;\n",
 		ns->DName, ns->DName);
 
 	/** Init child namespaces too **/
@@ -2048,14 +2122,14 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	s->DisableBody = 0;
 
 	/** first thing in the startup() function should be calling build_wgtr **/
-	htrAddScriptInit_va(s, "    build_wgtr_%s();\n",
+	htrAddScriptInit_va(s, "    build_wgtr_%STR&SYM();\n",
 		s->Namespace->DName);
-	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%s);\n"
-			       "    var rootname = \"%s\";\n",
+	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%STR&SYM);\n"
+			       "    var rootname = \"%STR&SYM\";\n",
 		s->Namespace->DName, s->Namespace->DName);
 
 	/** Set the application key **/
-	htrAddScriptInit_va(s, "    akey = '%s';\n", c_info->AKey);
+	htrAddScriptInit_va(s, "    akey = '%STR&ESCQ';\n", c_info->AKey);
 
 	/** Render the top-level widget. **/
 	rval = htrRenderWidget(s, tree, 10);
@@ -2070,7 +2144,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 
 	/** Add wgtr debug window **/
 #ifdef WGTR_DBG_WINDOW
-	htrAddScriptWgtr_va(s, "    wgtrWalk(%s);\n", tree->Name);
+	htrAddScriptWgtr_va(s, "    wgtrWalk(%STR&SYM);\n", tree->Name);
 	htrAddScriptWgtr(s, "    ifcLoadDef(\"net/centrallix/button.ifc\");\n");
 	htrAddStylesheetItem(s, "\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
 	htrAddBodyItem(s,   "<div id=\"dbgwnd\"><form name=\"dbgform\">"
@@ -2130,9 +2204,9 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
 	    if (sv->Value[0])
-		snprintf(sbuf,HT_SBUF_SIZE,"if (typeof %s == 'undefined') var %s = %s;\n", sv->Name, sv->Name, sv->Value);
+		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"if (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n", sv->Name, sv->Name, sv->Value);
 	    else
-		snprintf(sbuf,HT_SBUF_SIZE,"var %s;\n", sv->Name);
+		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"var %STR&SYM;\n", sv->Name);
 	    fdWrite(output, sbuf, strlen(sbuf),0,FD_U_PACKET);
 	    }
 
@@ -2588,8 +2662,8 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	/** Prefix supplied? **/
 	if (prefix && *prefix)
 	    {
-	    snprintf(bgcolor_name,sizeof(bgcolor_name),"%s_bgcolor",prefix);
-	    snprintf(background_name,sizeof(background_name),"%s_background",prefix);
+	    qpfPrintf(NULL, bgcolor_name,sizeof(bgcolor_name),"%STR&SYM_bgcolor",prefix);
+	    qpfPrintf(NULL, background_name,sizeof(background_name),"%STR&SYM_background",prefix);
 	    bgcolor = bgcolor_name;
 	    background = background_name;
 	    }
@@ -2599,18 +2673,18 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    {
 	    if (strpbrk(ptr,"\"'\n\r\t")) return -1;
 	    if (as_style)
-		snprintf(buf,buflen,"background-image: URL('%s');",ptr);
+		qpfPrintf(NULL, buf,buflen,"background-image: URL('%STR&HTE');",ptr);
 	    else
-		snprintf(buf,buflen,"background='%s'",ptr);
+		qpfPrintf(NULL, buf,buflen,"background='%STR&HTE'",ptr);
 	    }
 	else if (wgtrGetPropertyValue(tree, bgcolor, DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    /** Background color **/
 	    if (strpbrk(ptr,"\"'\n\r\t;}<>&")) return -1;
 	    if (as_style)
-		snprintf(buf,buflen,"background-color: %s;",ptr);
+		qpfPrintf(NULL, buf,buflen,"background-color: %STR&HTE;",ptr);
 	    else
-		snprintf(buf,buflen,"bgColor='%s'",ptr);
+		qpfPrintf(NULL, buf,buflen,"bgColor='%STR&HTE'",ptr);
 	    }
 	else
 	    {
@@ -2761,7 +2835,7 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     char buf[256];
 
 	va_start(va, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, va);
+	qpfPrintf_va(NULL, buf, sizeof(buf), fmt, va);
 	va_end(va);
 
     return htrAddWgtrObjLinkage(s, widget, buf);
@@ -2792,7 +2866,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     char buf[256];
 
 	va_start(va, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, va);
+	qpfPrintf_va(NULL, buf, sizeof(buf), fmt, va);
 	va_end(va);
 
     return htrAddWgtrCtrLinkage(s, widget, buf);
@@ -2842,8 +2916,8 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
 	s->Namespace = new_ns;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%s);\n"
-			       "    rootname = \"%s\";\n",
+	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
+			       "    rootname = \"%STR&SYM\";\n",
 		nspace, nspace);
 
     return 0;
@@ -2860,8 +2934,8 @@ htrLeaveNamespace(pHtSession s)
 	s->Namespace = s->Namespace->Parent;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%s);\n"
-			       "    rootname = \"%s\";\n",
+	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
+			       "    rootname = \"%STR&SYM\";\n",
 		s->Namespace->DName, s->Namespace->DName);
 
     return 0;

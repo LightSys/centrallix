@@ -40,10 +40,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.8 2007/03/01 21:54:05 gbeeley Exp $
+    $Id: hints.c,v 1.9 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.9  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.8  2007/03/01 21:54:05  gbeeley
     - (feature) stub out code for 'createonly' presentation hints style flag
 
@@ -161,15 +171,17 @@ hnt_internal_SetStyleItem(pObjPresentationHints ph, char* style)
 				    "strnull","grouped","readonly","hidden",
 				    "password","multiline","highlight","uppercase",
 				    "lowercase","tabpage","sepwindow","alwaysdef",
-				    "createonly", NULL };
+				    "createonly", "multiselect", NULL };
     static int style_ids[] = {	OBJ_PH_STYLE_BITMASK, OBJ_PH_STYLE_LIST, OBJ_PH_STYLE_BUTTONS, OBJ_PH_STYLE_NOTNULL,
 				OBJ_PH_STYLE_STRNULL, OBJ_PH_STYLE_GROUPED, OBJ_PH_STYLE_READONLY, OBJ_PH_STYLE_HIDDEN,
 				OBJ_PH_STYLE_PASSWORD, OBJ_PH_STYLE_MULTILINE, OBJ_PH_STYLE_HIGHLIGHT, OBJ_PH_STYLE_UPPERCASE,
-				OBJ_PH_STYLE_LOWERCASE, OBJ_PH_STYLE_TABPAGE, OBJ_PH_STYLE_SEPWINDOW, OBJ_PH_STYLE_ALWAYSDEF };
+				OBJ_PH_STYLE_LOWERCASE, OBJ_PH_STYLE_TABPAGE, OBJ_PH_STYLE_SEPWINDOW, OBJ_PH_STYLE_ALWAYSDEF,
+				OBJ_PH_STYLE_CREATEONLY, OBJ_PH_STYLE_MULTISEL };
     static char* nstyle_names[] = { "nobitmask","nolist","nobuttons","allownull",
 				    "nostrnull","nogrouped","modifiable","visible",
 				    "nopassword","singleline","nohighlight","mixedcase",
 				    "mixedcase","notabpage","nosepwindow","noalwaysdef",
+				    "nocreateonly","singleselect",
 				    NULL };
     int i;
 

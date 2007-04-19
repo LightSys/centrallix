@@ -48,10 +48,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.10 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.11 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.11  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.10  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -283,8 +293,8 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		goto htcmpd_cleanup;
 		}
 	    htrAddWgtrCtrLinkage_va(s, tree, 
-		    "wgtrGetContainer(wgtrGetNode(%s,\"%s\"))", gbuf, gname);
-	    htrAddBodyItem_va(s, "<a id=\"dname\" target=\"%s\" href=\".\"></a>", s->Namespace->DName);
+		    "wgtrGetContainer(wgtrGetNode(%STR&SYM,\"%STR&SYM\"))", gbuf, gname);
+	    htrAddBodyItem_va(s, "<a id=\"dname\" target=\"%STR&SYM\" href=\".\"></a>", s->Namespace->DName);
 	    }
 	else
 	    {
@@ -294,7 +304,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Init component **/
-	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%s\"], {vis:%d, gns:%s, gname:'%s'});\n", 
+	htrAddScriptInit_va(s, "    cmpd_init(nodes[\"%STR&SYM\"], {vis:%POS, gns:%STR&SYM, gname:'%STR&SYM'});\n", 
 		name, is_visual, gbuf, gname);
 
 	/** Hunt for parameters for this component **/
@@ -437,17 +447,17 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Get type **/
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
 	    if (!strcmp(ptr,"widget/component-decl-action"))
-		htrAddScriptInit_va(s, "    nodes[\"%s\"].addAction('%s');\n", name, subobj_name);
+		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addAction('%STR&SYM');\n", name, subobj_name);
 	    else if (!strcmp(ptr,"widget/component-decl-event"))
-		htrAddScriptInit_va(s, "    nodes[\"%s\"].addEvent('%s');\n", name, subobj_name);
+		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addEvent('%STR&SYM');\n", name, subobj_name);
 	    else if (!strcmp(ptr,"widget/component-decl-cprop"))
-		htrAddScriptInit_va(s, "    nodes[\"%s\"].addProp('%s');\n", name, subobj_name);
+		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addProp('%STR&SYM');\n", name, subobj_name);
 
 	    sub_tree = NULL;
 	    }
 
 	/** End init for component **/
-	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%s\"]);\n", name);
+	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%STR&SYM\"]);\n", name);
 
 	/** Do subwidgets **/
 	htrRenderSubwidgets(s, tree, z+2);

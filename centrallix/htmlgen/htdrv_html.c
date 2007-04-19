@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_html.c,v 1.27 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_html.c,v 1.28 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_html.c,v $
 
     $Log: htdrv_html.c,v $
+    Revision 1.28  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.27  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -380,27 +390,27 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Only give x and y if supplied. **/
 	    if (x < 0 || y < 0)
 	        {
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w,z+1);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w,z+1);
 	        }
 	    else
 	        {
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%d; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%d; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%dfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%d; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z+1);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z+1);
 	        }
 
 	    if (s->Capabilities.CSS1)
 		{
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane { overflow:hidden; }\n",id);
-	        htrAddStylesheetItem_va(s,"\t#ht%dpane2 { overflow:hidden; }\n",id);
-	        htrAddStylesheetItem_va(s,"\t#ht%dfader { overflow:hidden; }\n",id);
-		htrAddStylesheetItem_va(s,"\t#ht%dloader { overflow:hidden; visibility:hidden; position:absolute; top:0px; left:0px; width:0px; height:0px; }\n", id);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSpane { overflow:hidden; }\n",id);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { overflow:hidden; }\n",id);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSfader { overflow:hidden; }\n",id);
+		htrAddStylesheetItem_va(s,"\t#ht%POSloader { overflow:hidden; visibility:hidden; position:absolute; top:0px; left:0px; width:0px; height:0px; }\n", id);
 		}
 
             /** Write named global **/
-	    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"ht%dpane\")",id);
+	    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"ht%POSpane\")",id);
 	    htrAddWgtrCtrLinkage(s, tree, "_obj");
 
             htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
@@ -418,20 +428,20 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 
             /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%s\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dfader\"), source:\"%s\", width:%d, height:%d, loader:null});\n",
+		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&ESCQ\", width:%INT, height:%INT, loader:null});\n",
                     name, name, id, name, id, 
 		    src, w,h);
 	    else
-		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%s\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"ht%dfader\"), source:\"%s\", width:%d, height:%d, loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), \"ht%dloader\")});\n",
+		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&ESCQ\", width:%INT, height:%INT, loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"ht%POSloader\")});\n",
                     name, name, id, name, id, 
 		    src, w,h, name, id);
     
             /** HTML body <DIV> element for the layer. **/
-            htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%dfader\"></DIV>",id);
-	    htrAddBodyItemLayer_va(s, 0, "ht%dpane2", id, "");
+            htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%POSfader\"></DIV>",id);
+	    htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, "");
 	    if (!s->Capabilities.Dom0NS)
-		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%dloader", id, "");
-	    htrAddBodyItemLayerStart(s, 0, "ht%dpane", id);
+		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, "");
+	    htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id);
 	    }
 	else
 	    {

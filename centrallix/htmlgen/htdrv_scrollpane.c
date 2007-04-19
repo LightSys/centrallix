@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollpane.c,v 1.29 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_scrollpane.c,v 1.30 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollpane.c,v $
 
     $Log: htdrv_scrollpane.c,v $
+    Revision 1.30  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.29  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -370,9 +380,9 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	    htrAddStylesheetItem_va(s,"\t#sp%darea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d; }\n",id,w-18,z+1);
-	    htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%d; }\n",id,w-18,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSarea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w-18,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:18px; WIDTH:18px; Z-INDEX:%POS; }\n",id,w-18,z+1);
 	    }
 
 	/** Write globals for internal use **/
@@ -385,37 +395,37 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "sp_cur_mainlayer","null",0);
 
 	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sp%dpane\")",id);
-	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"sp%darea\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sp%POSpane\")",id);
+	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"sp%POSarea\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
-	htrAddScriptInit_va(s,"    sp_init({layer:nodes[\"%s\"], aname:\"sp%darea\", tname:\"sp%dthum\"});\n", name,id,id);
+	htrAddScriptInit_va(s,"    sp_init({layer:nodes[\"%STR&SYM\"], aname:\"sp%POSarea\", tname:\"sp%POSthum\"});\n", name,id,id);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if(s->Capabilities.Dom0NS)
 	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\"><TABLE %s%s %s%s border='0' cellspacing='0' cellpadding='0' width='%d'>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
-	    htrAddBodyItem_va(s,"<TR><TD align=right><IMG SRC='/sys/images/ico13b.gif' NAME='u'></TD></TR><TR><TD align=right>");
-	    htrAddBodyItem_va(s,"<IMG SRC='/sys/images/trans_1.gif' height='%dpx' width='18px' name='b'>",h-36);
-	    htrAddBodyItem_va(s,"</TD></TR><TR><TD align=right><IMG SRC='/sys/images/ico12b.gif' NAME='d'></TD></TR></TABLE>\n");
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n<DIV ID=\"sp%darea\"><table border='0' cellpadding='0' cellspacing='0' width='%dpx' height='%dpx'><tr><td>",id,id,w-2,h-2);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\"><TABLE %[bgcolor=%STR&DQUOT%] %[background=%STR&DQUOT%] border='0' cellspacing='0' cellpadding='0' width='%POS'>", id, *bcolor, bcolor, *bimage, bimage, w);
+	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC='/sys/images/ico13b.gif' NAME='u'></TD></TR><TR><TD align=right>");
+	    htrAddBodyItem_va(s,"<IMG SRC='/sys/images/trans_1.gif' height='%POSpx' width='18px' name='b'>",h-36);
+	    htrAddBodyItem(s,   "</TD></TR><TR><TD align=right><IMG SRC='/sys/images/ico12b.gif' NAME='d'></TD></TR></TABLE>\n");
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSthum\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n<DIV ID=\"sp%POSarea\"><table border='0' cellpadding='0' cellspacing='0' width='%POSpx' height='%POSpx'><tr><td>",id,id,w-2,h-2);
 	    }
 	else if(s->Capabilities.Dom1HTML)
 	    {
 	    //htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	    //htrAddStylesheetItem_va(s,"\t#sp%darea { HEIGHT: %dpx; WIDTH:%dpx; }\n",id, h, w-18);
 	    //htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dpane\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d;\">\n",id,visible?"inherit":"hidden",x,y,w,h,w,h,z);
-	    htrAddBodyItem_va(s,"<IMG ID=\"sp%dup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
-	    htrAddBodyItem_va(s,"<IMG ID=\"sp%dbar\" SRC='/sys/images/trans_1.gif' NAME='b'/>", id);
-	    htrAddBodyItem_va(s,"<IMG ID=\"sp%ddown\" SRC='/sys/images/ico12b.gif' NAME='d'/>", id);
-	    htrAddStylesheetItem_va(s,"\t#sp%dup { POSITION: absolute; LEFT: %dpx; TOP: 0px; }\n",id, w-18);
-	    htrAddStylesheetItem_va(s,"\t#sp%dbar { POSITION: absolute; LEFT: %dpx; TOP: 18px; WIDTH: 18px; HEIGHT: %dpx;}\n",id, w-18, h-36);
-	    htrAddStylesheetItem_va(s,"\t#sp%ddown { POSITION: absolute; LEFT: %dpx; TOP: %dpx; }\n",id, w-18, h-18);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%dthum\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%d;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%darea\" style=\"HEIGHT: %dpx; POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%dpx; Z-INDEX:%d;\">",id,h,w-18,z+1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS;\">\n",id,visible?"inherit":"hidden",x,y,w,h,w,h,z);
+	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
+	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSbar\" SRC='/sys/images/trans_1.gif' NAME='b'/>", id);
+	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSdown\" SRC='/sys/images/ico12b.gif' NAME='d'/>", id);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSup { POSITION: absolute; LEFT: %INTpx; TOP: 0px; }\n",id, w-18);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSbar { POSITION: absolute; LEFT: %INTpx; TOP: 18px; WIDTH: 18px; HEIGHT: %POSpx;}\n",id, w-18, h-36);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSdown { POSITION: absolute; LEFT: %INTpx; TOP: %INTpx; }\n",id, w-18, h-18);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSthum\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:18px; WIDTH:18px; Z-INDEX:%POS;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSarea\" style=\"HEIGHT: %POSpx; POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS;\">",id,h,w-18,z+1);
 	    }
 	else
 	    {

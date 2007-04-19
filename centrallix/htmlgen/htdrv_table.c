@@ -60,10 +60,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.50 2007/04/05 03:34:54 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.51 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.51  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.50  2007/04/05 03:34:54  gbeeley
     - (feature) Port of the widget/table to Mozilla
 
@@ -527,19 +537,19 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    }
 
 	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#tbld%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; } \n",t->id,t->x,t->y,t->w-18,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%dscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:18px; HEIGHT:%dpx; Z-INDEX:%d; }\n",t->id,t->x+t->w-18,t->y+t->rowheight,t->h-t->rowheight,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%dbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; HEIGHT:18px; Z-INDEX:%d; }\n",t->id,z+2);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,t->w-18,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,t->x+t->w-18,t->y+t->rowheight,t->h-t->rowheight,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; HEIGHT:18px; Z-INDEX:%POS; }\n",t->id,z+2);
 
 	/** HTML body <DIV> element for the layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dpane\"></DIV>\n",t->id);
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dscroll\">\n",t->id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSpane\"></DIV>\n",t->id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSscroll\">\n",t->id);
 	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
 	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
-	htrAddBodyItem_va(s,"<TR><TD height=%d></TD></TR>\n",t->h-2*18-t->rowheight-t->cellvspacing);
+	htrAddBodyItem_va(s,"<TR><TD height=%POS></TD></TR>\n",t->h-2*18-t->rowheight-t->cellvspacing);
 	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
 	htrAddBodyItem(s,"</TABLE>\n");
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%dbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);
 	htrAddBodyItem(s,"</DIV>\n");
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
@@ -549,9 +559,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%dpane\")",t->id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%s', table:nodes[\"%s\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"tbld%dscroll\"), boxname:\"tbld%dbox\", name:\"%s\", height:%d, width:%d, innerpadding:%d, innerborder:%d, windowsize:%d, rowheight:%d, cellhspacing:%d, cellvspacing:%d, textcolor:\"%s\", textcolorhighlight:\"%s\", titlecolor:\"%s\", rowbgnd1:\"%s\", rowbgnd2:\"%s\", rowbgndhigh:\"%s\", hdrbgnd:\"%s\", followcurrent:%i, dragcols:%i, colsep:%i, gridinemptyrows:%i, cols:new Array(",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&ESCQ\", textcolorhighlight:\"%STR&ESCQ\", titlecolor:\"%STR&ESCQ\", rowbgnd1:\"%STR&ESCQ\", rowbgnd2:\"%STR&ESCQ\", rowbgndhigh:\"%STR&ESCQ\", hdrbgnd:\"%STR&ESCQ\", followcurrent:%INT, dragcols:%INT, colsep:%INT, gridinemptyrows:%INT, cols:new Array(",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->rowheight,
 		t->cellvspacing, t->cellhspacing,t->textcolor, 
@@ -563,7 +573,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    {
 	    stAttrValue(stLookup(t->col_infs[colid],"title"),NULL,&coltitle,0);
 	    stAttrValue(stLookup(t->col_infs[colid],"width"),&colw,NULL,0);
-	    htrAddScriptInit_va(s,"new Array(\"%s\",\"%s\",%d),",t->col_infs[colid]->Name,coltitle,colw);
+	    htrAddScriptInit_va(s,"new Array(\"%STR&SYM\",\"%STR&ESCQ\",%POS),",t->col_infs[colid]->Name,coltitle,colw);
 	    }
 
 	htrAddScriptInit(s,"null)});\n");
@@ -598,17 +608,16 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     ObjData od;
     int colid;
     int n;
-    char tmpbuf[64];
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 
 	/** flag ourselves as not having an associated layer **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
-	if (t->w >= 0) snprintf(tmpbuf,sizeof(tmpbuf),"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
-	htrAddBodyItem_va(s,"<TABLE %s border=%d cellspacing=0 cellpadding=0 %s><TR><TD>\n", tmpbuf, t->outer_border, t->tbl_bgnd);
-	if (t->w >= 0) snprintf(tmpbuf,sizeof(tmpbuf),"width=%d",t->w - (t->outer_border + (t->outer_border?1:0))*2); else tmpbuf[0] = 0;
-	htrAddBodyItem_va(s,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%d cellpadding=%d %s>\n", t->inner_border, t->inner_padding, tmpbuf);
+	htrAddBodyItem_va(s,"<TABLE %[width=%POS%] border=%POS cellspacing=0 cellpadding=0 %STR><TR><TD>\n", 
+		t->w >= 0, t->w - (t->outer_border + (t->outer_border?1:0))*2, t->outer_border, t->tbl_bgnd);
+	htrAddBodyItem_va(s,"<TABLE border=0 background=/sys/images/trans_1.gif cellspacing=%POS cellpadding=%POS %[width=%POS%]>\n",
+		t->inner_border, t->inner_padding, t->w >= 0, t->w - (t->outer_border + (t->outer_border?1:0))*2);
 	if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0)
 	    {
 	    mssError(1,"HTTBL","Static datatable must have SQL property");
@@ -626,20 +635,20 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    if (rowid == 0)
 		{
 		/** Do table header if header data provided. **/
-		htrAddBodyItem_va(s,"    <TR %s>", t->hdr_bgnd);
+		htrAddBodyItem_va(s,"    <TR %STR>", t->hdr_bgnd);
 		if (t->ncols == 0)
 		    {
 		    for(colid=0,attr = objGetFirstAttr(qy_obj); attr; colid++,attr = objGetNextAttr(qy_obj))
 			{
 			if (colid==0)
 			    {
-			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t->name, "");
+			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%STR&SYM_\" src=/sys/images/trans_1.gif align=top>", t->name);
 			    }
 			else
 			    htrAddBodyItem(s,"<TH align=left>");
 			if (*(t->titlecolor))
 			    {
-			    htrAddBodyItem_va(s,"<FONT color='%s'>",t->titlecolor);
+			    htrAddBodyItem_va(s,"<FONT color='%STR&HTE'>",t->titlecolor);
 			    }
 			htrAddBodyItem(s,attr);
 			if (*(t->titlecolor)) htrAddBodyItem(s,"</FONT>");
@@ -653,7 +662,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 			attr = t->col_infs[colid]->Name;
 			if (colid==0)
 			    {
-			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t->name, "");
+			    htrAddBodyItem_va(s,"<TH align=left><IMG name=\"xy_%STR&SYM_\" src=/sys/images/trans_1.gif align=top>", t->name);
 			    }
 			else
 			    {
@@ -661,7 +670,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 			    }
 			if (*(t->titlecolor))
 			    {
-			    htrAddBodyItem_va(s,"<FONT color='%s'>",t->titlecolor);
+			    htrAddBodyItem_va(s,"<FONT color='%STR&HTE'>",t->titlecolor);
 			    }
 			if (stAttrValue(stLookup(t->col_infs[colid],"title"), NULL, &ptr, 0) == 0)
 			    htrAddBodyItem(s,ptr);
@@ -673,7 +682,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		    }
 		htrAddBodyItem(s,"</TR>\n");
 		}
-	    htrAddBodyItem_va(s,"    <TR %s>", (rowid&1)?((*(t->row_bgnd2))?t->row_bgnd2:t->row_bgnd1):t->row_bgnd1);
+	    htrAddBodyItem_va(s,"    <TR %STR>", (rowid&1)?((*(t->row_bgnd2))?t->row_bgnd2:t->row_bgnd1):t->row_bgnd1);
 
 	    /** Build the row contents -- loop through attrs and convert to strings **/
 	    colid = 0;
@@ -685,7 +694,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		{
 		if (t->ncols && stAttrValue(stLookup(t->col_infs[colid],"width"),&n,NULL,0) == 0 && n >= 0)
 		    {
-		    htrAddBodyItem_va(s,"<TD width=%d nowrap>",n*7);
+		    htrAddBodyItem_va(s,"<TD width=%POS nowrap>",n*7);
 		    }
 		else
 		    {
@@ -710,11 +719,11 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		    }
 		if (colid==0)
 		    {
-		    htrAddBodyItem_va(s,"<IMG name=\"xy_%s_%s\" src=/sys/images/trans_1.gif align=top>", t->name, str?str:"");
+		    htrAddBodyItem_va(s,"<IMG name=\"xy_%STR&SYM_%STR&HTE\" src=/sys/images/trans_1.gif align=top>", t->name, str?str:"");
 		    }
 		if (*(t->textcolor))
 		    {
-		    htrAddBodyItem_va(s,"<FONT COLOR=%s>",t->textcolor);
+		    htrAddBodyItem_va(s,"<FONT COLOR=\"%STR&HTE\">",t->textcolor);
 		    }
 		if (str) htrAddBodyItem(s,str);
 		if (*(t->textcolor))
@@ -737,7 +746,7 @@ httblRenderStatic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddBodyItem(s,"</TABLE></TD></TR></TABLE>\n");
 
 	/** Call init function **/
- 	htrAddScriptInit_va(s,"    tbls_init({parentLayer:wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), name:\"%s\", width:%d, cp:%d, cs:%d});\n",t->name,t->name,t->w,t->inner_padding,t->inner_border);
+ 	htrAddScriptInit_va(s,"    tbls_init({parentLayer:wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), name:\"%STR&SYM\", width:%INT, cp:%INT, cs:%INT});\n",t->name,t->name,t->w,t->inner_padding,t->inner_border);
  
     return 0;
     }

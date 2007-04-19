@@ -35,10 +35,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.36 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: obj.h,v 1.37 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.37  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.36  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -474,6 +484,7 @@ typedef struct _PH
 #define OBJ_PH_STYLE_SEPWINDOW	16384	/* Prefer separate windows for grouped fields */
 #define OBJ_PH_STYLE_ALWAYSDEF	32768	/* Always reset default value on any modify */
 #define OBJ_PH_STYLE_CREATEONLY	65536	/* Writable only during record creation */
+#define OBJ_PH_STYLE_MULTISEL	131072	/* Multiple select */
 
 
 /** objectsystem driver **/

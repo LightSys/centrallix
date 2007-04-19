@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_hints.c,v 1.6 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_hints.c,v 1.7 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_hints.c,v $
 
     $Log: htdrv_hints.c,v $
+    Revision 1.7  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.6  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -192,7 +202,7 @@ hthintRender(pHtSession s, pWgtrNode tree, int z)
 	xsInit(&xs);
 	hntEncodeHints(hints, &xs);
 	wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&nptr));
-	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(nodes[\"%s\"]), '%s', 'app');\n",
+	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(nodes[\"%STR&SYM\"]), '%STR&ESCQ', 'app');\n",
 		nptr, xs.String);
 	xsDeInit(&xs);
 

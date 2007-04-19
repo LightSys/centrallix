@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_clock.c,v 1.19 2006/10/27 05:57:22 gbeeley Exp $
+    $Id: htdrv_clock.c,v 1.20 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_clock.c,v $
 
     $Log: htdrv_clock.c,v $
+    Revision 1.20  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.19  2006/10/27 05:57:22  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -360,12 +370,12 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    fieldname[0]='\0';
 
 	/** Write Style header items. **/
-	htrAddStylesheetItem_va(s,"\t#cl%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#cl%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,0,0,w,z+2);
-	htrAddStylesheetItem_va(s,"\t#cl%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,0,0,w,z+2);
+	htrAddStylesheetItem_va(s,"\t#cl%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#cl%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
+	htrAddStylesheetItem_va(s,"\t#cl%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
 
 	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"cl%dbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"cl%POSbase\")",id);
 
 	/** Other global variables **/
 	htrAddScriptGlobal(s, "cl_move", "false", 0);
@@ -384,7 +394,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    cl_init({layer:nodes[\"%s\"], c1:htr_subel(nodes[\"%s\"],\"cl%dcon1\"), c2:htr_subel(nodes[\"%s\"],\"cl%dcon2\"), fieldname:\"%s\", background:\"%s\", shadowed:%d, foreground1:\"%s\", foreground2:\"%s\", fontsize:%d, moveable:%d, bold:%d, sox:%d, soy:%d, showSecs:%d, showAmPm:%d, milTime:%d});\n",
+	htrAddScriptInit_va(s, "    cl_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"],\"cl%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"],\"cl%POScon2\"), fieldname:\"%STR&ESCQ\", background:\"%STR&ESCQ\", shadowed:%POS, foreground1:\"%STR&ESCQ\", foreground2:\"%STR&ESCQ\", fontsize:%INT, moveable:%INT, bold:%INT, sox:%INT, soy:%INT, showSecs:%INT, showAmPm:%INT, milTime:%INT});\n",
 	    name,
 	    name, id,
 	    name, id,
@@ -395,10 +405,10 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    showsecs, showampm, miltime);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"cl%dbase\">\n",id);
-	htrAddBodyItem_va(s, "    <BODY %s><TABLE width=%d height=%d border=0 cellpadding=0 cellspacing=0><TR><TD></TD></TR></TABLE></BODY>\n",main_bg,w,h);
-	htrAddBodyItem_va(s, "    <DIV ID=\"cl%dcon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "    <DIV ID=\"cl%dcon2\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"cl%POSbase\">\n",id);
+	htrAddBodyItem_va(s, "    <BODY %STR><TABLE width=%POS height=%POS border=0 cellpadding=0 cellspacing=0><TR><TD></TD></TR></TABLE></BODY>\n",main_bg,w,h);
+	htrAddBodyItem_va(s, "    <DIV ID=\"cl%POScon1\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "    <DIV ID=\"cl%POScon2\"></DIV>\n",id);
 	htrAddBodyItem(s,    "</DIV>\n");
 
 	/** Check for more sub-widgets **/

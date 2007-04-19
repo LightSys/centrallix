@@ -11,6 +11,7 @@
 #include "hints.h"
 #include "cxlib/cxsec.h"
 #include "stparse_ne.h"
+#include "cxlib/qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -46,10 +47,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.6 2007/04/03 15:50:04 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.7 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.7  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.6  2007/04/03 15:50:04  gbeeley
     - (feature) adding capability to pass a widget to a component as a
       parameter (by reference).
@@ -217,7 +228,7 @@ htcmp_internal_CheckReferences(pWgtrNode tree, pStruct params, char* ns)
 			one_param = params->SubInf[j];
 			if (!strcmp(one_param->Name, name))
 			    {
-			    snprintf(refname, sizeof(refname), "%s:%s", ns, one_param->StrVal);
+			    qpfPrintf(NULL, refname, sizeof(refname), "%STR&SYM:%STR&SYM", ns, one_param->StrVal);
 			    stAddValue_ne(one_param, refname);
 			    break;
 			    }
@@ -250,7 +261,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char sbuf[128];
     pStruct params = NULL;
     pStruct old_params = NULL;
-    int i,j;
+    int i;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -312,14 +323,14 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Save the current graft point and render parameters **/
 	    old_graft = s->GraftPoint;
-	    snprintf(sbuf, sizeof(sbuf), "%s:%s", wgtrGetRootDName(tree), name);
+	    qpfPrintf(NULL, sbuf, sizeof(sbuf), "%STR&SYM:%STR&SYM", wgtrGetRootDName(tree), name);
 	    s->GraftPoint = nmSysStrdup(sbuf);
 	    old_params = s->Params;
 	    s->Params = params;
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%s\"], is_static:true, allow_multi:false, auto_destroy:false});\n",
+		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:true, allow_multi:false, auto_destroy:false});\n",
 		    name);
 
 	    /** Open and parse the component **/
@@ -374,7 +385,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%s\"], is_static:false, allow_multi:%d, auto_destroy:%d, path:\"%s\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])), \"cmp%d\")});\n",
+		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\")});\n",
 		    name, allow_multi, auto_destroy, cmp_path, name, id);
 
 	    /** Set Params **/
@@ -382,23 +393,16 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		for(i=0;i<params->nSubInf;i++)
 		    {
-		    htrAddScriptInit_va(s, "    nodes[\"%s\"].AddParam(\"%s\",%s",
-			name, params->SubInf[i]->Name, params->SubInf[i]->StrVal?"\"":"null);\n");
-		    if (params->SubInf[i]->StrVal)
-			{
-			for(j=0;j<strlen(params->SubInf[i]->StrVal);j++)
-			    {
-			    htrAddScriptInit_va(s, "%2.2x", params->SubInf[i]->StrVal[j]);
-			    }
-			htrAddScriptInit(s, "\");\n");
-			}
+		    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddParam(\"%STR&SYM\",%[null%]%[\"%STR&HEX\"%]);\n",
+			name, params->SubInf[i]->Name, !params->SubInf[i]->StrVal, params->SubInf[i]->StrVal,
+			params->SubInf[i]->StrVal);
 		    }
 		}
 
 	    /** Dynamic mode -- load from client **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%d", id, "");
-	    htrAddStylesheetItem_va(s,"\t#cmp%d { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n", id);
+	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, "");
+	    htrAddStylesheetItem_va(s,"\t#cmp%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n", id);
 	    }
 
 	rval = 0;

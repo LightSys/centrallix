@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.37 2006/10/27 05:57:22 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.38 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.38  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.37  2006/10/27 05:57:22  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -365,11 +375,11 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    enabled = htrGetBoolean(tree, "enabled", 1);
 
    /** Write named global **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"cb%dmain\")", id);
+   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"cb%INTmain\")", id);
    htrAddWgtrCtrLinkage(s, tree, "_obj");
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#cb%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%d; }\n",id,x,y,z);
+   htrAddStylesheetItem_va(s,"\t#cb%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
    htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js",0);
 
@@ -380,20 +390,20 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "checkbox", "checkbox_mousemove");
    
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%s\"], fieldname:\"%s\", checked:%d, enabled:%d});\n", name, fieldname,checked,enabled);
+   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", checked:%INT, enabled:%INT});\n", name, fieldname,checked,enabled);
 
    /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItemLayerStart(s, 0, "cb%dmain", id);
+   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id);
    switch(checked)
 	{
 	case 1:
-	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_checked%s.gif\">\n",enabled?"":"_dis");
+	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_checked%[_dis%].gif\">\n",!enabled);
 	    break;
 	case 0:
-	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_unchecked%s.gif\">\n",enabled?"":"_dis");
+	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_unchecked%[_dis%].gif\">\n",!enabled);
 	    break;
 	case -1: /* null */
-	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_null%s.gif\">\n",enabled?"":"_dis");
+	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_null%[_dis%].gif\">\n",!enabled);
 	    break;
 	}
 

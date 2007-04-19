@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_objcanvas.c,v 1.3 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_objcanvas.c,v 1.4 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_objcanvas.c,v $
 
     $Log: htdrv_objcanvas.c,v $
+    Revision 1.4  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.3  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -144,11 +154,11 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 
 	/** Add css item for the layer **/
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#oc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; overflow: hidden; %s}\n",id,x,y,w,h,z,main_bg);
+	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n",id,x,y,w,h,z,main_bg);
 	else
-	    htrAddStylesheetItem_va(s,"\t#oc%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 
-	htrAddWgtrObjLinkage_va(s, oc_node, "htr_subel(_parentctr,\"oc%dbase\")",id);
+	htrAddWgtrObjLinkage_va(s, oc_node, "htr_subel(_parentctr,\"oc%POSbase\")",id);
 
 	/** Include our necessary supporting js files **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_objcanvas.js", 0);
@@ -162,19 +172,19 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "oc", "oc_mouseout");
    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    oc_init({layer:nodes[\"%s\"], osrc:nodes[\"%s\"], allow_select:%d, show_select:%d, name:\"%s\"});\n",
+	htrAddScriptInit_va(s, "    oc_init({layer:nodes[\"%STR&SYM\"], osrc:nodes[\"%STR&SYM\"], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
 		name, osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"oc%dbase\">\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"oc%POSbase\">\n",id);
 	if (!s->Capabilities.CSS2) 
-	    htrAddBodyItem_va(s,"<BODY %s><table width=%d><tr><td>&nbsp;</td></tr></table>\n",main_bg,w);
+	    htrAddBodyItem_va(s,"<BODY %STR><table width=%POS><tr><td>&nbsp;</td></tr></table>\n",main_bg,w);
 
 	/** Check for objects within the pane. **/
 	htrRenderSubwidgets(s, oc_node, z+2);
 
 	/** End the containing layer. **/
-	if (!s->Capabilities.CSS2) htrAddBodyItem_va(s, "</BODY>");
+	if (!s->Capabilities.CSS2) htrAddBodyItem(s, "</BODY>");
 	htrAddBodyItem(s, "</DIV>\n");
 
     return 0;

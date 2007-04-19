@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_variable.c,v 1.12 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_variable.c,v 1.13 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_variable.c,v $
 
     $Log: htdrv_variable.c,v $
+    Revision 1.13  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.12  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -226,25 +236,25 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	t = wgtrGetPropertyType(tree,"value");
 	if (t < 0)
 	    {
-	    htrAddScriptInit_va(s, "    nodes[\"%s\"].type = 'ERR';\n",
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].type = 'ERR';\n",
 		    name);
 	    }
 	else
 	    {
-	    htrAddScriptInit_va(s, "    nodes[\"%s\"].type = '%s';\n",
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].type = '%STR&ESCQ';\n",
 		    name, obj_type_names[t]);
 	    }
 
 	if (t == DATA_T_STRING)
 	    {
 	    wgtrGetPropertyValue(tree,"value",DATA_T_STRING,POD(&vptr));
-	    htrAddScriptInit_va(s, "    nodes[\"%s\"].value = %s;\n",
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].value = %STR;\n",
 		    name, objDataToStringTmp(DATA_T_STRING, vptr, DATA_F_QUOTED));
 	    }
 	else if (t == DATA_T_INTEGER)
 	    {
 	    wgtrGetPropertyValue(tree,"value",DATA_T_INTEGER,POD(&t));
-	    htrAddScriptInit_va(s, "    nodes[\"%s\"].value = %d;\n", 
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].value = %INT;\n", 
 		    name, t);
 	    }
 

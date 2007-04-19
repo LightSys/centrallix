@@ -44,6 +44,16 @@
 /**CVSDATA***************************************************************
  
     $Log: htdrv_alerter.c,v $
+    Revision 1.20  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.19  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -290,7 +300,7 @@ htalrtRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 
-	htrAddScriptInit_va(s,"    alrt_init(nodes[\"%s\"]);\n", ptr);
+	htrAddScriptInit_va(s,"    alrt_init(nodes[\"%STR&SYM\"]);\n", ptr);
 
 	htrAddScriptInclude(s,"/sys/js/htdrv_alerter.js",0);
 

@@ -45,6 +45,16 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_form.c,v $
+    Revision 1.60  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.59  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -522,10 +532,10 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    form_init(nodes[\"%s\"], {aq:%i, an:%i, am:%i, av:%i, and:%i, me:%i, name:'%s', _3b:nodes[\"%s\"], ro:%i, ao:%i});\n",
+	htrAddScriptInit_va(s,"\n    form_init(nodes[\"%STR&SYM\"], {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, me:%INT, name:'%STR&SYM', _3b:nodes[\"%STR&SYM\"], ro:%INT, ao:%INT});\n",
 		name,allowquery,allownew,allowmodify,allowview,allownodata,
 		multienter,name,_3bconfirmwindow,readonly,allowobscure);
-	htrAddScriptInit_va(s,"    nodes[\"%s\"].ChangeMode('NoData');\n",name);
+	htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].ChangeMode('NoData');\n",name);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/

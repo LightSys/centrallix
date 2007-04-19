@@ -42,10 +42,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.38 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.39 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.39  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.38  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -421,9 +431,9 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#tv%droot { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,show_root?"inherit":"hidden",x,y,w,z);
+	    htrAddStylesheetItem_va(s,"\t#tv%POSroot { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,show_root?"inherit":"hidden",x,y,w,z);
 	    }
-	htrAddStylesheetItem_va(s,"\t#tv%dload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
+	htrAddStylesheetItem_va(s,"\t#tv%POSload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
@@ -433,11 +443,11 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "tv_cache_cnt","0",0);
 
 	/** DOM Linkage on client **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tv%droot\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tv%POSroot\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%s\"], fname:\"%s\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%s\"])),\"tv%dload\"), width:%d, newroot:null, branches:%d});\n",
+	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT});\n",
 		name, src, name, id, w, show_branches);
 
 	/** Script includes **/
@@ -448,13 +458,13 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	/** HTML body <DIV> elements for the layers. **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,src);
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\"></DIV>\n",id);
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%POSroot\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%STR&HTE</DIV>\n",id,src);
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%POSload\"></DIV>\n",id);
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%droot\" style=\"POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d;\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%s</DIV>\n",id,show_root?"inherit":"hidden",x,y,w,z,src);
-	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%dload", id, "");
+	    htrAddBodyItem_va(s, "<DIV ID=\"tv%POSroot\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS;\"><IMG SRC=/sys/images/ico02b.gif align=left>&nbsp;%STR&HTE</DIV>\n",id,show_root?"inherit":"hidden",x,y,w,z,src);
+	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, "");
 	    /*htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);*/
 	    }
 

@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.46 2007/04/03 15:50:04 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.47 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.47  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.46  2007/04/03 15:50:04  gbeeley
     - (feature) adding capability to pass a widget to a component as a
       parameter (by reference).
@@ -477,15 +487,15 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom1HTML)
-	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 	else if (s->Capabilities.Dom0NS)
-	    htrAddStylesheetItem_va(s,"\t#eb%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
-	htrAddStylesheetItem_va(s,"\t#eb%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
-	htrAddStylesheetItem_va(s,"\t#eb%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,5,1,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,1,w-10,z+1);
 
 	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"eb%dbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"eb%POSbase\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Global for ibeam cursor layer **/
@@ -505,44 +515,44 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%s'], c1:htr_subel(nodes['%s'],\"eb%dcon1\"), c2:htr_subel(nodes['%s'],\"eb%dcon2\"), form:\"%s\", fieldname:\"%s\", isReadOnly:%d, mainBackground:\"%s\"});\n",
+	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"), form:\"%STR&ESCQ\", fieldname:\"%STR&ESCQ\", isReadOnly:%INT, mainBackground:\"%STR&ESCQ\"});\n",
 	    name,  name,id,  name,id, 
 	    form, fieldname, is_readonly, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%dbase\">\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
 
 	/** Use CSS border or table for drawing? **/
 	if (s->Capabilities.CSS2)
 	    {
 	    if (is_raised)
-		htrAddStylesheetItem_va(s,"\t#eb%dbase { border-style:solid; border-width:1px; border-color: white gray gray white; %s }\n",id, main_bg);
+		htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n",id, main_bg);
 	    else
-		htrAddStylesheetItem_va(s,"\t#eb%dbase { border-style:solid; border-width:1px; border-color: gray white white gray; %s }\n",id, main_bg);
+		htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
 	    if (h >= 0)
-		htrAddStylesheetItem_va(s,"\t#eb%dbase { height:%dpx; }\n", id, h-2*box_offset);
+		htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n", id, h-2*box_offset);
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s, "    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w,main_bg);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	    htrAddBodyItem_va(s, "            <TD>");
+	    htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w,main_bg);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
+	    htrAddBodyItem(s,    "            <TD>");
 	    }
-	htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%d'><tr><td align='left' valign='middle' height='%d'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
+	htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
 	if (!s->Capabilities.CSS2)
 	    {
-	    htrAddBodyItem_va(s, "</TD>\n");
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2);
-	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
+	    htrAddBodyItem(s,    "</TD>\n");
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
+	    htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2);
+	    htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
 	    }
 
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon1\">&nbsp;</DIV>\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%dcon2\">&nbsp;</DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\">&nbsp;</DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon2\">&nbsp;</DIV>\n",id);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

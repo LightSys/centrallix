@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_spinner.c,v 1.19 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_spinner.c,v 1.20 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_spinner.c,v $
 
     $Log: htdrv_spinner.c,v $
+    Revision 1.20  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.19  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -333,15 +343,15 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#spnr%dmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-12,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%dcon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr%dcon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; Z-INDEX:%d; }\n",1+w-12,1+9,w,z);
+	htrAddStylesheetItem_va(s,"\t#spnr%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#spnr%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-12,z);
+	htrAddStylesheetItem_va(s,"\t#spnr%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
+	htrAddStylesheetItem_va(s,"\t#spnr%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
+	htrAddStylesheetItem_va(s,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1,w,z);
+	htrAddStylesheetItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1+9,w,z);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"spnr%dmain\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"spnr%POSmain\")",id);
 
 	/** Global for ibeam cursor layer **/
 	htrAddScriptGlobal(s, "spnr_ibeam", "null", 0);
@@ -353,32 +363,32 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "spnr", "spnr_mousedown");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    spnr_init({main:nodes[\"%s\"], layer:htr_subel(nodes[\"%s\"],\"spnr%dbase\"), c1:htr_subel(htr_subel(nodes[\"%s\"],\"spnr%dbase\"),\"spnr%dcon1\"), c2:htr_subel(htr_subel(nodes[\"%s\"],\"spnr%dbase\"),\"spnr%dcon2\")});\n",
+	htrAddScriptInit_va(s,"    spnr_init({main:nodes[\"%STR&SYM\"], layer:htr_subel(nodes[\"%STR&SYM\"],\"spnr%POSbase\"), c1:htr_subel(htr_subel(nodes[\"%STR&SYM\"],\"spnr%POSbase\"),\"spnr%POScon1\"), c2:htr_subel(htr_subel(nodes[\"%STR&SYM\"],\"spnr%POSbase\"),\"spnr%POScon2\")});\n",
 		name,
                 name, id,
 		name, id, id, 
 		name, id, id);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"spnr%dmain\">\n",id);
-	htrAddBodyItem_va(s,"<DIV ID=\"spnr%dbase\">\n",id);
-	htrAddBodyItem_va(s,"    <TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w-12,main_bg);
-	htrAddBodyItem_va(s,"        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c1);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c1,w-2-12);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n",c1);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s height=%d width=1></TD>\n",c1,h-2);
-	htrAddBodyItem_va(s, "            <TD>&nbsp;</TD>\n");
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=%d width=1></TD></TR>\n",c2,h-2);
-	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%s></TD>\n",c2);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s height=1 width=%d></TD>\n",c2,w-2-12);
-	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%s></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%dcon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%dcon2\"></DIV>\n",id);
-	htrAddBodyItem(s, "</DIV>\n");
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSmain\">\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSbase\">\n",id);
+	htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w-12,main_bg);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2-12);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n",c1);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD>\n",c1,h-2);
+	htrAddBodyItem(s,    "            <TD>&nbsp;</TD>\n");
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=%POS width=1></TD></TR>\n",c2,h-2);
+	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2-12);
+	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon1\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon2\"></DIV>\n",id);
+	htrAddBodyItem(s,    "</DIV>\n");
 	/*Add the spinner buttons*/
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
-  	htrAddBodyItem(s, "</DIV>\n"); 
+	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
+	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
+  	htrAddBodyItem(s,    "</DIV>\n"); 
 
 	return 0;
     }

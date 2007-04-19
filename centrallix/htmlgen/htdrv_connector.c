@@ -46,10 +46,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_connector.c,v 1.23 2006/10/16 18:34:33 gbeeley Exp $
+    $Id: htdrv_connector.c,v 1.24 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_connector.c,v $
 
     $Log: htdrv_connector.c,v $
+    Revision 1.24  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.23  2006/10/16 18:34:33  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -297,7 +307,6 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
     int vint;
     double vdbl;
     char name[64];
-    char sbuf[HT_SBUF_SIZE];
     char event[32];
     char target[32];
     char action[32];
@@ -351,35 +360,34 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	        {
 		case DATA_T_CODE:
 		    wgtrGetPropertyValue(tree, ptr, DATA_T_CODE, POD(&code));
-		    xsConcatPrintf(&xs,"%s:{type:'exp', value:'", ptr);
+		    xsConcatQPrintf(&xs,"%STR&SYM:{type:'exp', value:'", ptr);
 		    expGenerateText(code, NULL, xsWrite, &xs, '\'', "javascript");
 		    xsConcatenate(&xs,"'}",2);
 		    break;
 		case DATA_T_INTEGER:
 	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_INTEGER,POD(&vint));
-		    xsConcatPrintf(&xs,"%s:{type:'int', value:%d}",ptr,vint);
+		    xsConcatQPrintf(&xs,"%STR&SYM:{type:'int', value:%INT}",ptr,vint);
 		    break;
 		case DATA_T_DOUBLE:
 		    wgtrGetPropertyValue(tree, ptr, DATA_T_DOUBLE,POD(&vdbl));
-		    snprintf(sbuf, HT_SBUF_SIZE, "%s:{type:'dbl', value:%f}",ptr,vdbl);
-		    xsConcatenate(&xs,sbuf,-1);
+		    xsConcatQPrintf(&xs,"%STR&SYM:{type:'dbl', value:%DBL}", ptr, vdbl);
 		    break;
 		case DATA_T_STRING:
 	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_STRING,POD(&vstr));
 		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
 		        {
-			xsConcatPrintf(&xs, "%s:{type:'sym', value:'%s'}", ptr, vstr);
+			xsConcatQPrintf(&xs, "%STR&SYM:{type:'sym', value:'%STR&SYM'}", ptr, vstr);
 			}
 		    else
 		        {
-			xsConcatPrintf(&xs, "%s:{type:'str', value:'%s'}", ptr, vstr);
+			xsConcatQPrintf(&xs, "%STR&SYM:{type:'str', value:'%STR&ESCQ'}", ptr, vstr);
 			}
 		    break;
 		}
 	    }
 
 	/** Add a script init to install the connector **/
-	htrAddScriptInit_va(s, "    wgtrGetParent(nodes[\"%s\"]).ifcProbe(ifEvent).Connect('%s', '%s', '%s', {%s});\n",
+	htrAddScriptInit_va(s, "    wgtrGetParent(nodes[\"%STR&SYM\"]).ifcProbe(ifEvent).Connect('%STR&SYM', '%STR&SYM', '%STR&SYM', {%STR});\n",
 		name, event, target, action, xs.String);
 	xsDeInit(&xs);
 

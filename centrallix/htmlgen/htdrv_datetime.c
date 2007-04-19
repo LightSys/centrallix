@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "wgtr.h"
+#include "cxlib/qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -164,7 +165,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	if (strlen(initialdate))
 	    {
 	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
-	    snprintf(initialdate, sizeof(initialdate), "%s %d %d, %d:%d:%d", obj_short_months[dt.Part.Month], 
+	    qpfPrintf(NULL, initialdate, sizeof(initialdate), "%STR %INT %INT, %INT:%INT:%INT", obj_short_months[dt.Part.Month], 
 	                          dt.Part.Day+1,
 	                          dt.Part.Year+1900,
 	                          dt.Part.Hour,
@@ -193,9 +194,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%dbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,x,y,w,h,z);
-	htrAddStylesheetItem_va(s,"\t#dt%dcon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
-	htrAddStylesheetItem_va(s,"\t#dt%dcon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%dpx; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 
 	/** Write named global **/
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
@@ -203,7 +204,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0);
 	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dt%dbtn\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dt%POSbtn\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script includes **/
@@ -213,28 +214,28 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%s\"],c1:htr_subel(nodes[\"%s\"],\"dt%dcon1\"),c2:htr_subel(nodes[\"%s\"],\"dt%dcon2\"),id:\"%s\", background:\"%s\", foreground:\"%s\", fieldname:\"%s\", width:%d, height:%d, width2:%d, height2:%d})\n",
+	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&ESCQ\", background:\"%STR&ESCQ\", foreground:\"%STR&ESCQ\", fieldname:\"%STR&ESCQ\", width:%INT, height:%INT, width2:%INT, height2:%INT})\n",
 	    name,
 	    name,id, 
 	    name,id, 
 	    initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%dbtn\">\n", id);
-	htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0 %s>\n",w, bgcolor);
-	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
-	htrAddBodyItem_va(s,"       <TD align=right valign=middle><IMG SRC=/sys/images/ico17.gif></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
-	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-	htrAddBodyItem_va(s,"</TABLE>\n");
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%dcon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%dcon2\"></DIV>\n",id);
-	htrAddBodyItem_va(s,"</DIV>\n");
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n", id);
+	htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w, bgcolor);
+	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
+	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
+	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%POS width=1></TD>\n",h-2);
+	htrAddBodyItem(s,   "       <TD align=right valign=middle><IMG SRC=/sys/images/ico17.gif></TD>\n");
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%POS width=1></TD></TR>\n",h-2);
+	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
+	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
+	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
+	htrAddBodyItem(s,   "</TABLE>\n");
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon1\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon2\"></DIV>\n",id);
+	htrAddBodyItem(s,   "</DIV>\n");
 
 	/** Add the event handling scripts **/
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","dt","dt_mousedown");
@@ -290,10 +291,20 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.36 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.37 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.37  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.36  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.

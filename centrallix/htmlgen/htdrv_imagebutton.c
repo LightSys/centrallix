@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.35 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.36 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.36  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.35  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -429,10 +439,10 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ib%dpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#ib%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
 	htrAddScriptGlobal(s, "ib_cur_img", "null", 0);
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"ib%dpane\")", id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"ib%POSpane\")", id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
 
@@ -444,20 +454,20 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
-	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%s\"], n:'%s', p:'%s', c:'%s', d:'%s', width:%d, height:%d, name:'%s', enable:%d});\n",
+	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT});\n",
 	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)
 	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\"></DIV>\n",id,n_img);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,n_img);
 	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\"></DIV>\n",id,d_img);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,d_img);
 	else
 	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\" width=\"%d\" height=\"%d\"></DIV>\n",id,n_img,w,h);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,n_img,w,h);
 	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%dpane\"><IMG SRC=\"%s\" border=\"0\" width=\"%d\" height=\"%d\"></DIV>\n",id,d_img,w,h);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,d_img,w,h);
 
 	/** Add the event handling scripts **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "ib", "ib_mousedown");

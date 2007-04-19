@@ -34,10 +34,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.33 2007/02/22 23:25:14 gbeeley Exp $
+    $Id: ht_render.h,v 1.34 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.34  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.33  2007/02/22 23:25:14  gbeeley
     - (feature) adding initial framework for CXSS, the security subsystem.
     - (feature) CXSS entropy pool and key generation, basic framework.
@@ -597,22 +607,28 @@ typedef struct
 
 /** Rendering engine functions **/
 int htrAddHeaderItem(pHtSession s, char* html_text);
-int htrAddHeaderItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
+/*int htrAddHeaderItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
+int htrAddHeaderItem_va(pHtSession s, char* fmt, ... );
 int htrAddBodyItem(pHtSession s, char* html_text);
-int htrAddBodyItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
+/*int htrAddBodyItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
+int htrAddBodyItem_va(pHtSession s, char* fmt, ... );
 int htrAddBodyParam(pHtSession s, char* html_param);
-int htrAddBodyParam_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
+/*int htrAddBodyParam_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
+int htrAddBodyParam_va(pHtSession s, char* fmt, ... );
 int htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code);
 int htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function);
 int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
 int htrAddScriptInit(pHtSession s, char* init_text);
-int htrAddScriptInit_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
+/*int htrAddScriptInit_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
+int htrAddScriptInit_va(pHtSession s, char* fmt, ... );
 int htrAddScriptCleanup(pHtSession s, char* init_text);
-int htrAddScriptCleanup_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
+/*int htrAddScriptCleanup_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
+int htrAddScriptCleanup_va(pHtSession s, char* fmt, ... );
 int htrAddScriptInclude(pHtSession s, char* filename, int flags);
 int htrAddStylesheetItem(pHtSession s, char* html_text);
-int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));
+/*int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
+int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... );
 
 int htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp);
 int htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property);
@@ -621,11 +637,14 @@ int htrRenderWidget(pHtSession session, pWgtrNode widget, int z);
 int htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel);
 
 int htrAddScriptWgtr(pHtSession s, char* wgtr_text);
-int htrAddScriptWgtr_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3))); 
+/*int htrAddScriptWgtr_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3))); */
+int htrAddScriptWgtr_va(pHtSession s, char* fmt, ... );
 int htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage);
-int htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));
+/*int htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));*/
+int htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...);
 int htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage);
-int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));
+/*int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));*/
+int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...);
 int htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...);
 int htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace);
 int htrLeaveNamespace(pHtSession s);

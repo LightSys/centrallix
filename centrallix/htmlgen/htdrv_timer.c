@@ -44,10 +44,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_timer.c,v 1.15 2006/10/16 18:34:34 gbeeley Exp $
+    $Id: htdrv_timer.c,v 1.16 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_timer.c,v $
 
     $Log: htdrv_timer.c,v $
+    Revision 1.16  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.15  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -278,7 +288,7 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tm_init({node:nodes[\"%s\"], time:%d, autoreset:%d, autostart:%d});\n", name, msec, auto_reset, auto_start);
+	htrAddScriptInit_va(s, "    tm_init({node:nodes[\"%STR&SYM\"], time:%INT, autoreset:%INT, autostart:%INT});\n", name, msec, auto_reset, auto_start);
 
 	/** Check for objects within the timer. **/
 	htrRenderSubwidgets(s, tree, z+2);

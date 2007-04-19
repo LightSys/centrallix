@@ -117,9 +117,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%dbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; HEIGHT:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,h,w,z);
-    htrAddStylesheetItem_va(s,"\t#dd%dcon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,h-2,z+1);
-    htrAddStylesheetItem_va(s,"\t#dd%dcon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%dpx; Z-INDEX:%d; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,h,w,z);
+    htrAddStylesheetItem_va(s,"\t#dd%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
 
     htrAddScriptGlobal(s, "dd_current", "null", 0);
     htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
@@ -130,7 +130,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddScriptGlobal(s, "dd_click_y","0",0);
     htrAddScriptGlobal(s, "dd_incr","0",0);
     htrAddScriptGlobal(s, "dd_cur_mainlayer","null",0);
-    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dd%dbtn\")", id);
+    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dd%POSbtn\")", id);
     htrAddWgtrCtrLinkage(s, tree, "_obj");
 
     htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
@@ -161,30 +161,30 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
     }
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%s\"], c1:htr_subel(nodes[\"%s\"], \"dd%dcon1\"), c2:htr_subel(nodes[\"%s\"], \"dd%dcon2\"), background:'%s', highlight:'%s', fieldname:'%s', numDisplay:%d, mode:%d, sql:'%s', width:%d, height:%d});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql, w, h);
+    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&ESCQ', highlight:'%STR&ESCQ', fieldname:'%STR&ESCQ', numDisplay:%INT, mode:%INT, sql:'%STR&ESCQ', width:%INT, height:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h);
 
     /** HTML body <DIV> element for the layers. **/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%dbtn\">\n", id);
-    htrAddBodyItem_va(s,"<TABLE width=%d cellspacing=0 cellpadding=0 border=0 bgcolor=\"%s\">\n",w, bgstr);
-    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%d></TD>\n",w-2);
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%d width=1></TD>\n",h-2);
-    htrAddBodyItem_va(s,"       <TD align=right valign=middle><IMG SRC=/sys/images/ico15b.gif></TD>\n");
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%d width=1></TD></TR>\n",h-2);
-    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%d></TD>\n",w-2);
-    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-    htrAddBodyItem_va(s,"</TABLE>\n");
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%dcon1\"></DIV>\n",id);
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%dcon2\"></DIV>\n",id);
-    htrAddBodyItem_va(s,"</DIV>\n");
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);
+    htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0 bgcolor=\"%STR&HTE\">\n",w, bgstr);
+    htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
+    htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
+    htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%POS width=1></TD>\n",h-2);
+    htrAddBodyItem(s,   "       <TD align=right valign=middle><IMG SRC=/sys/images/ico15b.gif></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%POS width=1></TD></TR>\n",h-2);
+    htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
+    htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
+    htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
+    htrAddBodyItem(s,   "</TABLE>\n");
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon1\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon2\"></DIV>\n",id);
+    htrAddBodyItem(s,   "</DIV>\n");
     
     /* Read and initialize the dropdown items */
     if (mode == 1) {
 	if ((qy = objMultiQuery(s->ObjSession, sql))) {
 	    flag=0;
-	    htrAddScriptInit_va(s,"    dd_add_items(nodes[\"%s\"], [",name);
+	    htrAddScriptInit_va(s,"    dd_add_items(nodes[\"%STR&SYM\"], [",name);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
 		// Label
 		attr = objGetFirstAttr(qy_obj);
@@ -202,7 +202,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		    str = objDataToStringTmp(type, (void*)(od.String), DATA_F_QUOTED);
 		}
 		if (flag) htrAddScriptInit(s,",");
-		htrAddScriptInit_va(s,"{wname:null, label:%s,",str);
+		htrAddScriptInit_va(s,"{wname:null, label:%STR,",str);
 		// Value
 		attr = objGetNextAttr(qy_obj);
 		if (!attr) {
@@ -219,11 +219,11 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		} else {
 		    str = objDataToStringTmp(type, (void*)(od.String), DATA_F_QUOTED);
 		}
-		htrAddScriptInit_va(s,"value:%s}", str);
+		htrAddScriptInit_va(s,"value:%STR}", str);
 		objClose(qy_obj);
 		flag=1;
 	    }
-	    htrAddScriptInit_va(s,"]);\n");
+	    htrAddScriptInit(s,"]);\n");
 	    objQueryClose(qy);
 	}
     }
@@ -246,16 +246,16 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    strtcpy(string, ptr, sizeof(string));
 	    if (flag) 
 		{
-		xsConcatPrintf(&xs, ",");
+		xsConcatenate(&xs, ",", 1);
 		}
 	    else 
 		{
 		xsInit(&xs);
-		xsConcatPrintf(&xs, "    dd_add_items(nodes[\"%s\"], [", name, id);
+		xsConcatQPrintf(&xs, "    dd_add_items(nodes[\"%STR&SYM\"], [", name);
 		flag=1;
 		}
 	    wgtrGetPropertyValue(subtree,"name",DATA_T_STRING,POD(&ptr));
-	    xsConcatPrintf(&xs,"{wname:'%s', label:'%s',", ptr, string);
+	    xsConcatQPrintf(&xs,"{wname:'%STR&SYM', label:'%STR&ESCQ',", ptr, string);
 
 	    if (wgtrGetPropertyValue(subtree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
@@ -263,7 +263,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		return -1;
 		}
 	    strtcpy(string,ptr, sizeof(string));
-	    xsConcatPrintf(&xs,"value:'%s'}", string);
+	    xsConcatQPrintf(&xs,"value:'%STR&ESCQ'}", string);
 	    } 
 	else 
 	    {
@@ -272,7 +272,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	}
     if (flag) 
 	{
-	xsConcatPrintf(&xs, "]);\n");
+	xsConcatenate(&xs, "]);\n", 4);
 	htrAddScriptInit(s,xs.String);
 	xsDeInit(&xs);
 	}
@@ -320,10 +320,20 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.55 2006/11/16 20:15:53 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.56 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.56  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.55  2006/11/16 20:15:53  gbeeley
     - (change) move away from emulation of NS4 properties in Moz; add a separate
       dom1html geom module for Moz.

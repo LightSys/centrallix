@@ -47,10 +47,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_calendar.c,v 1.10 2006/10/27 05:57:22 gbeeley Exp $
+    $Id: htdrv_calendar.c,v 1.11 2007/04/19 21:26:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_calendar.c,v $
 
     $Log: htdrv_calendar.c,v $
+    Revision 1.11  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.10  2006/10/27 05:57:22  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -296,7 +306,7 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ca%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%d; TOP:%d; WIDTH:%d; HEIGHT:%d; Z-INDEX:%d; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#ca%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_calendar.js", 0);
@@ -309,14 +319,14 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ca", "ca_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ca_init(nodes[\"%s\"], \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d);\n",
+	htrAddScriptInit_va(s, "    ca_init(nodes[\"%STR&SYM\"], \"%STR&ESCQ\", \"%STR&ESCQ\", \"%STR&ESCQ\", \"%STR&ESCQ\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", %INT, %INT, %INT);\n",
 	    name,
 	    main_bg, cell_bg, textcolor, dispmode,
 	    eventdatefield, eventdescfield, eventnamefield, eventpriofield,
 	    minpriority, w, h);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"ca%dbase\"><BODY %s text='%s'>\n",id, main_bg, textcolor);
+	htrAddBodyItem_va(s, "<DIV ID=\"ca%POSbase\"><BODY %STR text='%STR&HTE'>\n",id, main_bg, textcolor);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

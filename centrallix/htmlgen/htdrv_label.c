@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,6 +44,16 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.32  2007/04/19 21:26:49  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.31  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -337,7 +348,6 @@ int
 htlblRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
-    char* ptr2;
     char name[64];
     char align[64];
     char main_bg[128];
@@ -348,7 +358,6 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int id, i;
     int fontsize;
     char *text;
-    char *text2;
     char stylestr[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -382,18 +391,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    text=nmSysStrdup("");
 	    }
-	text2 = nmSysMalloc((strlen(text)+1)*2);
-	ptr=text;
-	ptr2=text2;
-	do  {
-	    if (*ptr == '\'') *(ptr2++) = '\\';
-	    *(ptr2++) = *(ptr);
-	    }
-	    while (*(ptr++));
 
 	/** label text color **/
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    snprintf(fgcolor,sizeof(fgcolor)," color=\"%.40s\"",ptr);
+	    qpfPrintf(NULL, fgcolor,sizeof(fgcolor)," color=%STR&DQUOT",ptr);
 	else
 	    fgcolor[0] = '\0';
 
@@ -408,12 +409,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(align,"left");
 	
 	/** Background color/image? **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    snprintf(main_bg,sizeof(main_bg), "bgcolor='%.40s'",ptr);
-	else if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
-	    snprintf(main_bg,sizeof(main_bg), "background='%.110s'",ptr);
-	else
-	    strcpy(main_bg,"");
+	htrGetBackground(tree, NULL, 0, main_bg, sizeof(main_bg));
 
 	/** Field name **/
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
@@ -430,16 +426,15 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%d { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; Z-INDEX:%d; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%d\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
-	snprintf(stylestr,sizeof(stylestr),
-		"<table border=0 width=\"%i\"><tr><td align=\"%s\"><font size=%d %s>",
+	qpfPrintf(NULL, stylestr,sizeof(stylestr),
+		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\"><font size=%POS %STR>",
 		w,align,fontsize,fgcolor);
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%s'], {field:'%s', form:'%s', text:'%s', style:'%s'});\n",
-		name, fieldname, form, text2, stylestr);
-	nmSysFree(text2);
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&ESCQ', form:'%STR&ESCQ', text:'%STR&ESCQ', style:'%STR&ESCQ'});\n",
+		name, fieldname, form, text, stylestr);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
@@ -452,8 +447,8 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "lbl%d", id, 
-	    "\n%s%s</font></td></tr></table>\n", stylestr, text);
+	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, 
+	    "\n%STR%STR&HTE</font></td></tr></table>\n", stylestr, text);
 
 	/** Check for more sub-widgets **/
 	for (i=0;xaCount(&(tree->Children));i++)

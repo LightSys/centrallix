@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -44,6 +45,16 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_terminal.c,v $
+    Revision 1.10  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.9  2006/10/16 18:34:34  gbeeley
     - (feature) ported all widgets to use widget-tree (wgtr) alone to resolve
       references on client side.  removed all named globals for widgets on
@@ -232,7 +243,7 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 	for(i=0;i<MAX_COLORS;i++)
 	    {
 	    char color[32];
-	    sprintf(color,"color%i",i);
+	    qpfPrintf(NULL, color, sizeof(color), "color%POS",i);
 	    if (wgtrGetPropertyValue(tree,color,DATA_T_STRING,POD(&ptr)) == 0) 
 		{
 		strtcpy(colors[i],ptr,MAX_COLOR_LEN);
@@ -290,24 +301,24 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** HTML body <IFRAME> element to use as the base **/
-	htrAddBodyItem_va(s,"    <DIV ID=\"term%dbase\"></DIV>\n",id);
-	htrAddBodyItem_va(s,"    <IFRAME ID=\"term%dreader\"></IFRAME>\n",id);
-	htrAddBodyItem_va(s,"    <IFRAME ID=\"term%dwriter\"></IFRAME>\n",id);
+	htrAddBodyItem_va(s,"    <DIV ID=\"term%POSbase\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"    <IFRAME ID=\"term%POSreader\"></IFRAME>\n",id);
+	htrAddBodyItem_va(s,"    <IFRAME ID=\"term%POSwriter\"></IFRAME>\n",id);
 	
 	/** write the stylesheet header element **/
-	htrAddStylesheetItem_va(s,"        #term%dbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%i; TOP:%i;  WIDTH:%i; HEIGHT:%i; Z-INDEX:%i; }\n",id,x,y,cols*fontsize,rows*fontsize,z);
-	htrAddStylesheetItem_va(s,"        #term%dreader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
-	htrAddStylesheetItem_va(s,"        #term%dwriter { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
-	htrAddStylesheetItem_va(s,"        .fixed%d {font-family: fixed; }\n",id);
+	htrAddStylesheetItem_va(s,"        #term%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT;  WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,cols*fontsize,rows*fontsize,z);
+	htrAddStylesheetItem_va(s,"        #term%POSreader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
+	htrAddStylesheetItem_va(s,"        #term%POSwriter { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
+	htrAddStylesheetItem_va(s,"        .fixed%POS {font-family: fixed; }\n",id);
 
 	/** init line **/
-	htrAddScriptInit_va(s,"    terminal_init({layer:nodes[\"%s\"], rdr:\"term%dreader\", wtr:\"term%dwriter\", fxd:\"fixed%d\", root:rootname, source:'%s', rows:%d, cols:%d, colors:new Array(",
+	htrAddScriptInit_va(s,"    terminal_init({layer:nodes[\"%STR&SYM\"], rdr:\"term%POSreader\", wtr:\"term%POSwriter\", fxd:\"fixed%POS\", root:rootname, source:'%STR&ESCQ', rows:%INT, cols:%INT, colors:new Array(",
 		name,id,id,id,source.String,rows,cols);
 	for(i=0;i<MAX_COLORS;i++)
 	    {
 	    if(i!=0)
 		htrAddScriptInit(s,",");
-	    htrAddScriptInit_va(s,"'%s'",colors[i]);
+	    htrAddScriptInit_va(s,"'%STR&ESCQ'",colors[i]);
 	    }
 	htrAddScriptInit(s,")});\n");
 

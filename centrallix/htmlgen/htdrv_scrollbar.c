@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.11 2006/10/27 05:57:23 gbeeley Exp $
+    $Id: htdrv_scrollbar.c,v 1.12 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.12  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.11  2006/10/27 05:57:23  gbeeley
     - (change) All widgets switched over to use event handler functions instead
       of inline event scripts in the main .app generated DHTML file.
@@ -326,11 +336,11 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#sb%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	htrAddStylesheetItem_va(s,"\t#sb%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	if (is_horizontal)
-	    htrAddStylesheetItem_va(s,"\t#sb%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:18px; TOP:0px; WIDTH:18px; Z-INDEX:%d; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:18px; TOP:0px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
 	else
-	    htrAddStylesheetItem_va(s,"\t#sb%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; Z-INDEX:%d; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sb_target_img", "null", 0);
@@ -343,29 +353,29 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "sb_cur_mainlayer","null",0);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sb%dpane\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sb%POSpane\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollbar.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    sb_init({layer:nodes[\"%s\"], tname:\"sb%dthum\", isHorizontal:%d, range:%d});\n", name, id, is_horizontal, r);
+	htrAddScriptInit_va(s,"    sb_init({layer:nodes[\"%STR&SYM\"], tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"sb%dpane\"><TABLE %s%s %s%s border=0 cellspacing=0 cellpadding=0 width=%d>",id,(*bcolor)?"bgcolor=":"",bcolor, (*bimage)?"background=":"",bimage, w);
+	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\"><TABLE %[bgcolor=%]%STR&DQUOT %[background=%]%STR&DQUOT border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);
 	if (is_horizontal)
 	    {
-	    htrAddBodyItem_va(s,"<TR><TD align=right><IMG SRC=/sys/images/ico19b.gif width=18 height=18 NAME=u></TD><TD align=right>");
-	    htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=18 width=%d name='b'>",w-36);
-	    htrAddBodyItem_va(s,"</TD><TD align=right><IMG SRC=/sys/images/ico18b.gif width=18 height=18 NAME=d></TD></TR></TABLE>\n");
+	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC=/sys/images/ico19b.gif width=18 height=18 NAME=u></TD><TD align=right>");
+	    htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=18 width=%POS name='b'>",w-36);
+	    htrAddBodyItem(s,   "</TD><TD align=right><IMG SRC=/sys/images/ico18b.gif width=18 height=18 NAME=d></TD></TR></TABLE>\n");
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s,"<TR><TD align=right><IMG SRC=/sys/images/ico13b.gif width=18 height=18 NAME=u></TD></TR><TR><TD align=right>");
-	    htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=%d width=18 name='b'>",h-36);
-	    htrAddBodyItem_va(s,"</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif width=18 height=18 NAME=d></TD></TR></TABLE>\n");
+	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC=/sys/images/ico13b.gif width=18 height=18 NAME=u></TD></TR><TR><TD align=right>");
+	    htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=%POS width=18 name='b'>",h-36);
+	    htrAddBodyItem(s,   "</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif width=18 height=18 NAME=d></TD></TR></TABLE>\n");
 	    }
-	htrAddBodyItem_va(s,"<DIV ID=\"sb%dthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>",id);
 
 	/** Add the event handling scripts **/
 

@@ -46,10 +46,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.3 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.4 2007/04/19 21:26:50 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.4  2007/04/19 21:26:50  gbeeley
+    - (change/security) Big conversion.  HTML generator now uses qprintf
+      semantics for building strings instead of sprintf.  See centrallix-lib
+      for information on qprintf (quoting printf).  Now that apps can take
+      parameters, we need to do this to help protect against "cross site
+      scripting" issues, but it in any case improves the robustness of the
+      application generation process.
+    - (change) Changed many htrAddXxxYyyItem_va() to just htrAddXxxYyyItem()
+      if just a constant string was used with no %s/%d/etc conversions.
+
     Revision 1.3  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -147,17 +157,8 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	find_inf = stLookup_ne(s->Params, name);
 
 	/** Script init **/
-	htrAddScriptInit_va(s, "    pa_init(nodes[\"%s\"], {type:'%s', findc:'%s', val:%s", 
-		name, type, findcontainer, find_inf?"\"":"null");
-	if (find_inf)
-	    {
-	    for(i=0;i<strlen(find_inf->StrVal);i++)
-		{
-		htrAddScriptInit_va(s, "%2.2x", find_inf->StrVal[i]);
-		}
-	    htrAddScriptInit(s, "\"");
-	    }
-	htrAddScriptInit(s, "});\n");
+	htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {type:'%STR&ESCQ', findc:'%STR&ESCQ', val:%[null%]%[\"%STR&HEX\"%]});\n", 
+		name, type, findcontainer, !find_inf, find_inf, find_inf?find_inf->StrVal:"");
 
 	/** Parameter has presentation-hints components to it.  Set those. **/
 	hints = wgtrWgtToHints(tree);
@@ -168,10 +169,10 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	xsInit(&xs);
 	hntEncodeHints(hints, &xs);
-	htrAddScriptInit_va(s, "    cx_set_hints(nodes[\"%s\"], '%s', 'app');\n",
+	htrAddScriptInit_va(s, "    cx_set_hints(nodes[\"%STR&SYM\"], '%STR&ESCQ', 'app');\n",
 		name, xs.String);
 	xsDeInit(&xs);
-	htrAddScriptInit_va(s, "    nodes[\"%s\"].Verify();\n", name);
+	htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].Verify();\n", name);
 
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
