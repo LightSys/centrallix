@@ -28,10 +28,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.h,v 1.11 2005/02/26 04:32:02 gbeeley Exp $
+    $Id: xstring.h,v 1.12 2007/04/19 21:14:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/xstring.h,v $
 
     $Log: xstring.h,v $
+    Revision 1.12  2007/04/19 21:14:13  gbeeley
+    - (feature) adding &FILE and &PATH filters to qprintf.
+    - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
+    - (tests) more tests cases (of course...)
+    - (feature) adding qprintf functionality to XString.
+
     Revision 1.11  2005/02/26 04:32:02  gbeeley
     - moving include file install directory to include a "cxlib/" prefix
       instead of just putting 'em all in /usr/include with everything else.
@@ -130,6 +136,8 @@ int xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int
 int xsInsertAfter(pXString this, char* ins, int inslen, int offset);
 int xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, ...);
 int xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, va_list va);
+int xsQPrintf(pXString this, char* fmt, ...);
+int xsConcatQPrintf(pXString this, char* fmt, ...);
 
 #define XS_U_SEEK	2
 

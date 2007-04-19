@@ -36,10 +36,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.3 2007/04/18 18:42:07 gbeeley Exp $
+    $Id: qprintf.c,v 1.4 2007/04/19 21:14:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.4  2007/04/19 21:14:13  gbeeley
+    - (feature) adding &FILE and &PATH filters to qprintf.
+    - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
+    - (tests) more tests cases (of course...)
+    - (feature) adding qprintf functionality to XString.
+
     Revision 1.3  2007/04/18 18:42:07  gbeeley
     - (feature) hex encoding in qprintf (&HEX filter).
     - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
@@ -184,6 +190,26 @@ typedef struct
     QPF_t;
     
 static QPF_t QPF = { n_ext:0, is_init:0 };
+
+int
+qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needle, size_t needlelen)
+    {
+    int pos;
+    char* ptr;
+    if (needlelen > haystacklen) return -1;
+    if (needlelen == 0) return 0;
+    pos = 0;
+    while(pos <= haystacklen - needlelen)
+	{
+	ptr = memchr(haystack+pos, needle[0], haystacklen - pos);
+	if (!ptr) return -1;
+	if (memcmp(ptr, needle, needlelen) == 0)
+	    return (ptr - haystack);
+	pos = (ptr - haystack) + 1;
+	}
+    return -1;
+    }
+
 
 int
 qpf_internal_SetupTable(pQPConvTable table)
@@ -751,8 +777,33 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 				    break;
 
 				case QPF_SPEC_T_SYM:
+				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
+					cplen = specchain_n[i+1];
 				    if (cxsecVerifySymbol_n(strval, cplen) < 0)
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADSYMBOL); goto error; }
+				    break;
+
+				case QPF_SPEC_T_FILE:
+				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
+					cplen = specchain_n[i+1];
+				    if ((cplen == 1 && strval[0] == '.') || 
+					    (cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
+					    memchr(strval, '/', cplen) || 
+					    memchr(strval, '\0', cplen) ||
+					    cplen == 0)
+					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADFILE); goto error; }
+				    break;
+
+				case QPF_SPEC_T_PATH:
+				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
+					cplen = specchain_n[i+1];
+				    if ((cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
+					    (cplen > 2 && strval[0] == '.' && strval[1] == '.' && strval[2] == '/') ||
+					    memchr(strval, '\0', cplen) ||
+					    cplen == 0 ||
+					    (cplen > 2 && strval[cplen-1] == '.' && strval[cplen-2] == '.' && strval[cplen-3] == '/') ||
+					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0)
+					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
 				    break;
 				
 				case QPF_SPEC_T_ESCQ:

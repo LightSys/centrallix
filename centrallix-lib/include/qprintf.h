@@ -31,10 +31,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.h,v 1.2 2007/04/18 18:42:07 gbeeley Exp $
+    $Id: qprintf.h,v 1.3 2007/04/19 21:14:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/qprintf.h,v $
 
     $Log: qprintf.h,v $
+    Revision 1.3  2007/04/19 21:14:13  gbeeley
+    - (feature) adding &FILE and &PATH filters to qprintf.
+    - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
+    - (tests) more tests cases (of course...)
+    - (feature) adding qprintf functionality to XString.
+
     Revision 1.2  2007/04/18 18:42:07  gbeeley
     - (feature) hex encoding in qprintf (&HEX filter).
     - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
@@ -69,6 +75,8 @@ typedef struct _QPS
 #define QPF_ERR_T_RESOURCE	256	/* Internal resource limit hit */
 #define QPF_ERR_T_NULL		512	/* NULL pointer passed (e.g. as a string) */
 #define QPF_ERR_T_INTERNAL	1024	/* Uncorrectable internal error. */
+#define QPF_ERR_T_BADFILE	2048	/* Bad filename for &FILE filter */
+#define QPF_ERR_T_BADPATH	4096	/* Bad pathname for &PATH filter */
 
 #define QPERR(x) (s->Errors |= (x))
 

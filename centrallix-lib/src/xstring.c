@@ -11,6 +11,7 @@
 #include "xstring.h"
 #include "mtask.h"
 #include "newmalloc.h"
+#include "qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -31,10 +32,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.15 2005/02/06 02:35:41 gbeeley Exp $
+    $Id: xstring.c,v 1.16 2007/04/19 21:14:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.16  2007/04/19 21:14:13  gbeeley
+    - (feature) adding &FILE and &PATH filters to qprintf.
+    - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
+    - (tests) more tests cases (of course...)
+    - (feature) adding qprintf functionality to XString.
+
     Revision 1.15  2005/02/06 02:35:41  gbeeley
     - Adding 'mkrpm' script for automating the RPM build process for this
       package (script is portable to other packages).
@@ -906,3 +913,97 @@ xsString(pXString this)
     CXSEC_EXIT(XS_FN_KEY);
     return this->String;
     }
+
+
+/*** xs_internal_Grow - grow function needed by QPrintf
+ ***/
+int
+xs_internal_Grow(char** str, size_t* size, void* arg, int req_size)
+    {
+    pXString this = (pXString)arg;
+    int offset;
+
+	if (req_size <= *size) return 1; /* OK */
+
+	/** Remember offset, since we may be qprintf'ing not at beginning of xs->String **/
+	offset = *str - this->String;
+	CXSEC_UPDATE(*this); /* qprintf does not honor XString's ds integrity cksum */
+	/** need to add in offset below because QPrintf does not update xs->Length **/
+	if (xsCheckAlloc(this, req_size - *size + offset) < 0) return 0;
+	*str = this->String + offset;
+	*size = this->AllocLen - offset;
+
+    return 1;
+    }
+
+
+/*** xs_internal_QPrintf - same as xs_internal_Printf, but use QPrintf
+ *** instead.
+ ***/
+int
+xs_internal_QPrintf(pXString this, char* fmt, va_list vl)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    int rval;
+    char* str;
+    size_t len;
+
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+	str = this->String + this->Length;
+	len = this->AllocLen - this->Length;
+	rval = qpfPrintf_va_internal(NULL, &str, &len, xs_internal_Grow, this, fmt, vl);
+	if (rval < 0)
+	    printf("WARN:  qpfPrintf returned < 0 for format '%s'\n", fmt);
+	else if (rval + this->Length + 1 <= this->AllocLen)
+	    this->Length += rval;
+	CXSEC_UPDATE(*this);
+
+    CXSEC_EXIT(XS_FN_KEY);
+    return rval;
+    }
+
+
+/*** xsQPrintf - do a quoting printf into an xstring
+ ***/
+int
+xsQPrintf(pXString this, char* fmt, ...)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    int rval;
+    va_list va;
+
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
+	va_start(va, fmt);
+	this->Length = 0;
+	CXSEC_UPDATE(*this);
+	rval = xs_internal_QPrintf(this, fmt, va);
+	va_end(va);
+
+    CXSEC_EXIT(XS_FN_KEY);
+    return rval;
+    }
+
+
+/*** xsConcatQPrintf - append a quoting printf to the xstring
+ ***/
+int
+xsConcatQPrintf(pXString this, char* fmt, ...)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    int rval;
+    va_list va;
+
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+
+	va_start(va, fmt);
+	rval = xs_internal_QPrintf(this, fmt, va);
+	va_end(va);
+
+    CXSEC_EXIT(XS_FN_KEY);
+    return rval;
+    }
+
