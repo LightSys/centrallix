@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.71 2007/04/19 21:22:54 gbeeley Exp $
+    $Id: net_http.c,v 1.72 2007/05/29 15:17:13 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.72  2007/05/29 15:17:13  gbeeley
+    - CLK_TCK deprecation has finally taken form.  This was fixed in centrallix-lib
+      but not in this module.
+
     Revision 1.71  2007/04/19 21:22:54  gbeeley
     - (change) slightly reworked ConnHandler function, added stub for POST
       method.
@@ -712,6 +716,7 @@ struct
     long long	AccCnt;
     pFile	AccessLogFD;
     char	AccessLogFile[256];
+    int		ClkTck;
     }
     NHT;
 
@@ -1209,7 +1214,7 @@ nht_internal_Watchdog(void* v)
 		ev[0]->Object = NULL;
 		ev[0]->ObjType = OBJ_T_MTASK;
 		ev[0]->EventType = EV_T_MT_TIMER;
-		ev[0]->ReqLen = (next_tick - cur_tick)*(1000/CLK_TCK);
+		ev[0]->ReqLen = (next_tick - cur_tick)*(1000/NHT.ClkTck);
 		ev[1]->Object = NHT.TimerUpdateSem;
 		ev[1]->ObjType = OBJ_T_SEM;
 		ev[1]->EventType = EV_T_SEM_GET;
@@ -1279,7 +1284,7 @@ nht_internal_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg)
 	t->ExpireFn = expire_fn;
 	t->ExpireArg = expire_arg;
 	t->Time = timer_msec;
-	t->ExpireTick = mtLastTick() + (timer_msec*CLK_TCK/1000);
+	t->ExpireTick = mtLastTick() + (timer_msec*NHT.ClkTck/1000);
         t->Handle = xhnAllocHandle(&(NHT.TimerHctx), t);
 
 	/** Add it to the list... **/
@@ -1340,7 +1345,7 @@ nht_internal_ResetWatchdog(handle_t th)
 	/** Find the timer on the list, if it exists. **/
 	syGetSem(NHT.TimerDataMutex, 1, 0);
 	idx = xaFindItem(&(NHT.Timers), (void*)t);
-	if (idx >= 0) t->ExpireTick = mtLastTick() + (t->Time*CLK_TCK/1000);
+	if (idx >= 0) t->ExpireTick = mtLastTick() + (t->Time*NHT.ClkTck/1000);
 	syPostSem(NHT.TimerDataMutex, 1, 0);
 
 	/** ... and let the watchdog thread know about it **/
@@ -4213,6 +4218,12 @@ nhtInitialize()
 	NHT.UserSessionLimit = 100;
 	xhInit(&(NHT.Users), 255, 0);
 	NHT.AccCnt = 0;
+
+#ifdef _SC_CLK_TCK
+        NHT.ClkTck = sysconf(_SC_CLK_TCK);
+#else
+        NHT.ClkTck = CLK_TCK;
+#endif
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
