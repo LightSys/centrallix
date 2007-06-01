@@ -16,7 +16,7 @@ function dt_getvalue() {
 	    return null;
 }
 
-function dt_setvalue(v) {
+function dt_setvalue(v,drawdate) {
 	if (v) {
 		this.DateObj = new Date(v);
 		this.TmpDateObj = new Date(v);
@@ -28,7 +28,7 @@ function dt_setvalue(v) {
 		this.DateObj = null;
 		this.TmpDateObj = null;
 	}
-	dt_drawdate(this, this.DateObj);
+	if(drawdate) dt_drawdate(this, this.DateObj);
 	if (this.PaneLayer) {
 		dt_drawmonth(this.PaneLayer, this.DateObj);
 		dt_drawtime(this.PaneLayer, this.DateObj);
@@ -74,6 +74,7 @@ function dt_init(param){
 	var h = param.height;
 	var h2 = param.height2;
 	l.enabled = 'full';
+	
 	//l.mainlayer = l;
 	//c1.mainlayer = l;
 	//c2.mainlayer = l;
@@ -142,6 +143,7 @@ function dt_prepare(l) {
 	if (!l.PaneLayer) {
 		l.PaneLayer = dt_create_pane(l,l.ubg,l.w2,l.h2,l.h);
 		l.PaneLayer.ml = l;
+
 		l.PaneLayer.HidLayer.Areas = l.PaneLayer.VisLayer.Areas = new Array();
 		l.PaneLayer.VisLayer.getfocushandler = dt_getfocus_day;
 		l.PaneLayer.HidLayer.getfocushandler = dt_getfocus_day;
@@ -228,7 +230,7 @@ function dt_drawmonth(l, d) {
 		}
 		v+='</TD>';
 	}
-	for (;i <= 31; i++) {  }
+	//for (;i <= 31; i++) {  }
 
 	// write items for No Date (null) and Today.
 	v+='</tr><tr><td colspan=4 align=center height=18 valign=middle><i>(<u>N</u>o Date)</i></td><td colspan=3 align=center height=18 valign=middle><i>(<u>T</u>oday)</i></td>';
@@ -291,20 +293,23 @@ function dt_drawtime(l, d) {
 	// need to create time layers?
 	var tvl = l.TimeVisLayer;
 	if (!tvl.hours) {
-		tvl.hours = htr_new_layer(60,tvl);
+		tvl.hours = htr_new_layer(20,tvl);
+		htr_init_layer(tvl.hours,l,'dt_pn');
 		moveTo(tvl.hours,16,10);
 		htr_setvisibility(tvl.hours,'inherit');
 	}
 	htr_write_content(tvl.hours, d?htutil_strpad(d.getHours(),0,2):'');
 	if (!tvl.minutes) {
-		tvl.minutes = htr_new_layer(60,tvl);
+		tvl.minutes = htr_new_layer(20,tvl);
 		moveTo(tvl.minutes,52,10);
+		htr_init_layer(tvl.minutes,l,'dt_pn');
 		htr_setvisibility(tvl.minutes,'inherit');
 	}
 	htr_write_content(tvl.minutes, ':&nbsp;' + (d?htutil_strpad(d.getMinutes(),0,2):''));
 	if (!tvl.seconds) {
-		tvl.seconds = htr_new_layer(60,tvl);
+		tvl.seconds = htr_new_layer(20,tvl);
 		moveTo(tvl.seconds,90,10);
+		htr_init_layer(tvl.seconds,l,'dt_pn');
 		htr_setvisibility(tvl.seconds,'inherit');
 	}
 	htr_write_content(tvl.seconds, ':&nbsp;' + (d?htutil_strpad(d.getSeconds(),0,2):''));
@@ -336,7 +341,7 @@ function dt_toggle(l) {
 
 // sets the value and indicates to the form a data change event
 function dt_setdata(l,d) {
-	l.setvalue(d);
+	l.setvalue(d,true);
 	if (l.form) l.form.DataNotify(l);
 	cn_activate(l, 'DataChange');
 }
@@ -431,13 +436,28 @@ function dt_keyhandler(l,e,k) {
 	return false;
 }
 
+function dt_parse_date(dt,content,drawdate){
+    var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
+    var vals = regex_dateformat.exec(content);
+    var origdate = dt_current.TmpDateObj;
+    var d = new Date();
+    pg_debug(vals[1]+"\n");
+    vals[1]--;
+    d.setMonth((vals[1]>=0)?vals[1]:origdate.getMonth());
+    d.setDate((vals[2])?vals[2]:origdate.getDate());
+    d.setYear((vals[3])?vals[3]:origdate.getFullYear());
+    d.setHours((vals[4])?vals[4]:origdate.getHours());
+    d.setMinutes((vals[5])?vals[5]:origdate.getMinutes());
+    dt.setvalue(d,drawdate);
+    if (dt.form) dt.form.DataNotify(dt);
+    cn_activate(dt, 'DataChange');
+}
 
 // dt_update_typed takes the typed-in content and updates the values of
 // the visible control
 function dt_update_typed(l) {
 	dt_writedate(l,l.typed_content);
-	
-	// FIXME - put incremental updates to visible control here
+	dt_parse_date(l,l.typed_content,false);	
 }
 
 
@@ -503,7 +523,8 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	var imgs;
 	//l = new Layer(1024);
 	var l = htr_new_layer(1024,ml);
-	//htr_init_layer(l,ml,'dt_pn');
+	htr_setbackground(l,bg);
+	htr_init_layer(l,l,'dt_pn'); //dkasper uncommented
 	htr_setvisibility(l,'hidden');
 
 	str = "<BODY "+bg+">";
@@ -538,7 +559,6 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	str += "</BODY>";
 	//l.document.close();
 	htr_write_content(l,str);
-	//htr_setbgcolor(l,bg);
 	pg_stackpopup(l,ml);
 	setClipHeight(l,h);
 	setClipWidth(l,w);
@@ -548,24 +568,35 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	//l.VisLayer = new Layer(1024, l);
 	l.VisLayer = htr_new_layer(1024,l);
 	//l.MonHidLayer = new Layer(1024, l);
-	l.MonHidLayer = htr_new_layer(1024,l);
+	l.MonHidLayer = htr_new_layer(116,l);
 	//l.MonVisLayer = new Layer(1024, l);
-	l.MonVisLayer = htr_new_layer(1024,l);
+	l.MonVisLayer = htr_new_layer(116,l);
+	moveTo(l.HidLayer, 0, 48);
+	moveTo(l.VisLayer, 0, 48);
+	moveTo(l.MonHidLayer, 38, 2);
+	moveTo(l.MonVisLayer, 38, 2);
 	l.TimeHidLayer = htr_new_layer(1024, l);
 	l.TimeVisLayer = htr_new_layer(1024, l);
 	moveTo(l.TimeHidLayer, 0, 156);
 	moveTo(l.TimeVisLayer, 0, 156);
-	l.HidLayer.y = l.VisLayer.y = 48;
-	l.MonHidLayer.x = l.MonVisLayer.x = 38;
-	l.MonHidLayer.y = l.MonVisLayer.y = 2;
+	//l.HidLayer.y = l.VisLayer.y = 48;
+	//l.MonHidLayer.x = l.MonVisLayer.x = 38;
+	//l.MonHidLayer.y = l.MonVisLayer.y = 2;
 	l.x = ml.pageX;
 	l.y = ml.pageY+h2;
-	l.ml = ml;
-	
-	l.kind = l.HidLayer.kind = l.VisLayer.kind = l.MonHidLayer.kind = l.MonVisLayer.kind = 'dt_pn';
-	l.document.layer = l.HidLayer.document.layer = l.VisLayer.document.layer = l;
-	l.MonVisLayer.document.layer = l.MonHidLayer.document.layer = l;
-	
+	//l.ml = ml;
+	//l.kind = l.HidLayer.kind = l.VisLayer.kind = l.MonHidLayer.kind = l.MonVisLayer.kind = 'dt_pn';
+	//l.document.layer = l.HidLayer.document.layer = l.VisLayer.document.layer = l;
+	//l.MonVisLayer.document.layer = l.MonHidLayer.document.layer = l;
+
+	l.HidLayer.kind = 'dt_pn';
+	l.VisLayer.kind = 'dt_pn';
+	//htr_init_layer(l.HidLayer,l,'dt_pn');
+	//htr_init_layer(l.VisLayer,l,'dt_pn');
+	htr_init_layer(l.MonHidLayer,l,'dt_pn');
+	htr_init_layer(l.MonVisLayer,l,'dt_pn');
+	htr_init_layer(l.TimeHidLayer,l,'dt_pn');
+	htr_init_layer(l.TimeVisLayer,l,'dt_pn');
 	//dt_tag_images(l.document, 'dt_pn', l);
 	htutil_tag_images(l,'dt_pn',l,l);
 	imgs = pg_images(l);
@@ -577,7 +608,6 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	imgs[6].kind = 'dtimg_mnup';
 	//l.document.images[7].kind = 'dtimg_yrup';
 	imgs[7].kind = 'dtimg_yrup';
-
 	dt_inittime(l);
 	return l;
 }
@@ -631,6 +661,7 @@ function dt_domouseup(l) {
 }
 
 function dt_set_rocker(i,y) {
+	pg_debug("y=" + y + "\n");
 	if (!y) 
 	    i.src = '/sys/images/spnr_both.gif';
 	else if (y < 20)
@@ -672,36 +703,44 @@ function dt_mnup(first) {
 	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
 }
 
-function dt_edhr(first,y) {
-	if (first) dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.hr_img, y);
-	dt_current.TmpDateObj.setHours(dt_current.TmpDateObj.getHours() + ((y>19)?-1:1));
+function dt_edhr(first,pagey) {
+	if (first){ var y = pagey - getPageY(dt_current.PaneLayer.TimeVisLayer);
+		    dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.hr_img, y);
+		    dt_img_y = y;
+		    dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	//used to use y instead of dt_img_y, but this doesn't work because of the way y gets set now
+	dt_current.TmpDateObj.setHours(dt_current.TmpDateObj.getHours() + ((dt_img_y>19)?-1:1));
 	dt_drawtime(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_edhr;
-	dt_img_y = y;
-	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
 }
 
-function dt_edmn(first,y) {
-	if (first) dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.mn_img, y);
-	dt_current.TmpDateObj.setMinutes(dt_current.TmpDateObj.getMinutes() + ((y>19)?-1:1));
+function dt_edmn(first,pagey) {
+	if (first){ var y = pagey - getPageY(dt_current.PaneLayer.TimeVisLayer);
+		    dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.mn_img, y);
+		    dt_img_y = y;
+		    dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	dt_current.TmpDateObj.setMinutes(dt_current.TmpDateObj.getMinutes() + ((dt_img_y>19)?-1:1));
 	dt_drawtime(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_edmn;
-	dt_img_y = y;
-	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
 }
 
-function dt_edsc(first,y) {
-	if (first) dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.sc_img, y);
-	dt_current.TmpDateObj.setSeconds(dt_current.TmpDateObj.getSeconds() + ((y>19)?-1:1));
+function dt_edsc(first,pagey) {
+	if (first){ var y = pagey - getPageY(dt_current.PaneLayer.TimeVisLayer);
+		    dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.sc_img, y);
+		    dt_img_y = y;
+		    dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	dt_current.TmpDateObj.setSeconds(dt_current.TmpDateObj.getSeconds() + ((dt_img_y>19)?-1:1));
 	dt_drawtime(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_edsc;
-	dt_img_y = y;
-	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
 }
 
 function dt_mousedown(e) {
+	//pg_debug(e.target.kind + 'y=' + e.pageY + '\n');
 	if (e.target.kind && e.target.kind.substr(0,5) == 'dtimg') {
-		eval('dt_' + e.target.kind.substr(6,4)+'(true,'+e.y + ')');
+		eval('dt_' + e.target.kind.substr(6,4)+'(true,'+e.pageY + ')');
 	} else {
 		if (e.kind && e.kind.substr(0,2) == 'dt') {
 			dt_domousedown(e.layer);
