@@ -319,6 +319,16 @@ function dd_expand(l)
 	}
     }
 
+function dd_contextmenu(e){
+    //if inside widget
+    if(e.kind == 'dd_itm')
+	{
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+}
+
 function dd_select_item(l,i)
     {
     /*if (l.Values && l.Values[i] && l.Values[i].label)
@@ -626,7 +636,7 @@ function dd_mouseup(e)
     if (e.mainlayer && e.mainkind == 'dd')
         {
         cn_activate(e.mainlayer, 'MouseUp');
-        }
+	}
     if (dd_timeout != null)
         {
         clearTimeout(dd_timeout);
@@ -652,6 +662,13 @@ function dd_mousedown(e)
     dd_target_img = e.target;
     if (e.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')
         {
+	if(e.which == 2 || e.which == 3)
+	    {
+	    e.mainlayer.ifcProbe(ifEvent).Activate('RightClick',{Label:e.mainlayer.Values[e.layer.index].label,Value:e.mainlayer.Values[e.layer.index].value,X:e.pageX, Y:e.pageY});
+            dd_select_item(dd_current, e.layer.index);
+            dd_datachange(dd_current);
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	    }
         dd_select_item(dd_current, e.layer.index);
         dd_datachange(dd_current);
         dd_collapse(dd_current);
@@ -765,6 +782,7 @@ function dd_init(param)
     ie.Add("DataChange");
     ie.Add("GetFocus");
     ie.Add("LoseFocus");
+    ie.Add("RightClick");
 
     return l;
     }
