@@ -141,6 +141,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddEventHandlerFunction(s, "document","MOUSEOVER", "dd", "dd_mouseover");
     htrAddEventHandlerFunction(s, "document","MOUSEUP", "dd", "dd_mouseup");
     htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "dd", "dd_mousedown");
+    if (s->Capabilities.Dom1HTML)
+       htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "dd", "dd_contextmenu");
+
 
     /** Get the mode (default to 1, dynamicpage) **/
     mode = 0;
@@ -320,10 +323,13 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.56 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.57 2007/06/01 21:05:55 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.57  2007/06/01 21:05:55  dkasper
+    - Added hook for context menu event
+
     Revision 1.56  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
