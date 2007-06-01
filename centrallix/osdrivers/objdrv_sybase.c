@@ -70,10 +70,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.25 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.26 2007/06/01 18:24:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.26  2007/06/01 18:24:09  gbeeley
+    - (bugfix) presentation hints structure was being zapped by memset after
+      the xaInit, causing a deallocation failure on FreeHints later on.
+      Caused a crash on saving a record.
+
     Revision 1.25  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -4395,8 +4400,8 @@ sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname, "last_modification"))
 	    {
 	    if ( (hints = (pObjPresentationHints)nmMalloc(sizeof(ObjPresentationHints))) == NULL) return NULL;
-	    xaInit(&(hints->EnumList), 8);
 	    memset(hints, 0, sizeof(ObjPresentationHints));
+	    xaInit(&(hints->EnumList), 8);
 	    hints->GroupID=-1;
 	    hints->VisualLength2=1;
 	    if (!strcmp(attrname, "annotation")) hints->VisualLength = 60;
