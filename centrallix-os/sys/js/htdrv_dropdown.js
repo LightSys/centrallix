@@ -664,6 +664,11 @@ function dd_mousedown(e)
         {
 	if(e.which == 2 || e.which == 3)
 	    {
+	    /*	FIXME
+		In NS4 after you have right clicked the widget will not let you select a new item until after
+		you have left clicked (which collapses the menu)
+		A related issue is that after you right click, the next click outside the widget will be trapped.
+	    */
 	    e.mainlayer.ifcProbe(ifEvent).Activate('RightClick',{Label:e.mainlayer.Values[e.layer.index].label,Value:e.mainlayer.Values[e.layer.index].value,X:e.pageX, Y:e.pageY});
             dd_select_item(dd_current, e.layer.index);
             dd_datachange(dd_current);
