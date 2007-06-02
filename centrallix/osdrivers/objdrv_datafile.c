@@ -55,10 +55,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.18 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.19 2007/06/02 16:29:27 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.19  2007/06/02 16:29:27  gbeeley
+    - (bugfix) crash occurred when an update to a CSV file crossed a 4K page
+      boundary, and only when the boundary was within the end-of-row padding
+      rather than in the data part of the row.
+
     Revision 1.18  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -279,6 +284,7 @@ typedef struct
     char		Ext[8];
     unsigned char	FieldSep;
     int			Flags;
+    int			NewRowPadding;
     pSemaphore		FlushSem;
     DatRowIDPtr		RowIDPtrCache[DAT_NODE_ROWIDPTRS];
     int			RowAccessCnt;
@@ -1634,6 +1640,13 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    ptr=NULL;
 	    stAttrValue(stLookup(dn->Node->Data,"key_is_rowid"),NULL,&ptr,0);
 	    if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_ROWIDKEY;
+	    n = -1;
+	    stAttrValue(stLookup(dn->Node->Data,"new_row_padding"),&n,NULL,0);
+	    if (n > DAT_CACHE_PAGESIZE) n = DAT_CACHE_PAGESIZE;
+	    if (n >= 0)
+		dn->NewRowPadding = n;
+	    else
+		dn->NewRowPadding = 0;
 
 	    /** Load other information, such as annotation info **/
 	    ptr=NULL;
@@ -2122,6 +2135,7 @@ dat_internal_FindLastRow(pDatData context, pDatNode node)
 	    return 0;
 	    }
 	node->nRows = node->RealMaxRowID + 1;
+	if (node->Flags & DAT_NODE_F_HDRROW) node->nRows--;
 
     return 0;
     }
@@ -2274,12 +2288,14 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
     pDatPage pg;
     unsigned char* ptr;
     int is_missing_nl = 0;
-    int len,i;
+    int len,len2,i;
     int n_pages;
     unsigned char ch;
+    unsigned char* endptr;
 
     	/** Hmm... is row too big? **/
-	len = strlen(rowdata) + 1;
+	len = strlen(rowdata) + 1 + node->NewRowPadding;
+	endptr = rowdata + strlen(rowdata);
 	if (len > DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1))
 	    {
 	    mssError(1,"DAT","Length %d for new row exceeds maximum of %d bytes",len,DAT_CACHE_PAGESIZE*(DAT_ROW_MAXPAGESPAN-1));
@@ -2336,6 +2352,7 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
 	    }
 
 	/** Ok, found last record in the file.  How many more pages do we need? **/
+	len2 = len;
 	len += (is_missing_nl?1:0);
 	len -= (DAT_CACHE_PAGESIZE - pg->Length);
 	n_pages = (len + DAT_CACHE_PAGESIZE - 1)/DAT_CACHE_PAGESIZE;
@@ -2361,16 +2378,22 @@ dat_internal_InsertRow(pDatData context, pDatNode node, unsigned char* rowdata)
 	ptr = ri->Pages[0]->Data + ri->Pages[0]->Length;
 	ri->Pages[0]->Flags |= DAT_CACHE_F_DIRTY;
 	curpg = 0;
-	while(*rowdata || is_missing_nl)
+	while(len2 || is_missing_nl)
 	    {
 	    if (is_missing_nl)
 	        {
 		is_missing_nl = 0;
 		*(ptr++) = '\n';
 		}
-	    else
+	    else if (rowdata < endptr)
 	        {
 		*(ptr++) = *(rowdata++);
+		len2--;
+		}
+	    else 
+		{
+		*(ptr++) = ' ';
+		len2--;
 		}
 	    if (ptr == ri->Pages[curpg]->Data + DAT_CACHE_PAGESIZE)
 	        {
@@ -3455,7 +3478,16 @@ datSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 			    ri->Pages[curpg]->Flags |= DAT_CACHE_F_DIRTY;
 			    }
 			}
-		    while(*dstptr != '\n') *(dstptr++) = ' ';
+		    while(*dstptr != '\n')
+			{
+			*(dstptr++) = ' ';
+			if (dstptr >= ri->Pages[curpg]->Data + ri->Pages[curpg]->Length)
+			    {
+			    curpg++;
+			    dstptr = ri->Pages[curpg]->Data;
+			    ri->Pages[curpg]->Flags |= DAT_CACHE_F_DIRTY;
+			    }
+			}
 		    for(i=1;i<=curpg;i++) dat_internal_UnlockPage(ri->Pages[curpg]);
 		    dat_internal_FlushPages(inf,ri->Pages[0]);
 		    nmFree(ri,sizeof(DatRowInfo));
