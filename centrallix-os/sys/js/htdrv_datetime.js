@@ -358,10 +358,12 @@ function dt_keyhandler(l,e,k) {
 			dt_collapse(dt);
 			dt_current = null;
 			if (dt.typed_content) {
-				var d = new Date(dt.typed_content);
+				/*var d = new Date(dt.typed_content);
 				if (d.getFullYear() < (new Date()).getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0)
 					d.setFullYear(d.getFullYear() + 100);
 				dt_setdata(dt,d);
+				*/
+				dt_parse_date(dt,dt.typed_content,true); //true tells it to actually set the date not just display it in the pane
 			} else {
 				dt_setdata(dt,dt.TmpDateObj);
 			}
@@ -381,10 +383,12 @@ function dt_keyhandler(l,e,k) {
 			dt_collapse(dt);
 			dt_current = null;
 			if (dt.typed_content) {
-				var d = new Date(dt.typed_content);
+				/*var d = new Date(dt.typed_content);
 				if (d.getFullYear() < (new Date()).getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0)
 					d.setFullYear(d.getFullYear() + 100);
 				dt_setdata(dt,d);
+				*/
+				dt_parse_date(dt,dt.typed_content,true);
 			} else {
 				dt_setdata(dt,dt.TmpDateObj);
 			}
@@ -428,6 +432,7 @@ function dt_keyhandler(l,e,k) {
 		}
 	} else if (k == 8) {		// backspace
 		if (dt_current && dt.typed_content) {
+			dt_current = dt;
 			dt.typed_content = dt.typed_content.substr(0,dt.typed_content.length-1);
 			dt_update_typed(dt);
 		}
@@ -437,17 +442,26 @@ function dt_keyhandler(l,e,k) {
 }
 
 function dt_parse_date(dt,content,drawdate){
+    if(drawdate) dt_setdata(dt,d);
     var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
     var vals = regex_dateformat.exec(content);
-    var origdate = dt_current.TmpDateObj;
     var d = new Date();
-    pg_debug(vals[1]+"\n");
+    var now = new Date();
+    var origdate = (dt_current)?dt_current.TmpDateObj:now;
     vals[1]--;
     d.setMonth((vals[1]>=0)?vals[1]:origdate.getMonth());
     d.setDate((vals[2])?vals[2]:origdate.getDate());
     d.setYear((vals[3])?vals[3]:origdate.getFullYear());
     d.setHours((vals[4])?vals[4]:origdate.getHours());
-    d.setMinutes((vals[5])?vals[5]:origdate.getMinutes());
+    d.setMinutes((vals[5])?vals[5]:origdate.getMinutes());    
+    if (d.getFullYear() < now.getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0) //ten year window
+	d.setFullYear(d.getFullYear() + 100);
+    if(!(vals[3])){ //year not entered 
+	if (d.getMonth()==11) //one month window
+	    d.setFullYear(now.getFullYear()-1);
+	else
+	    d.setFullYear(now.getFullYear());
+    }
     dt.setvalue(d,drawdate);
     if (dt.form) dt.form.DataNotify(dt);
     cn_activate(dt, 'DataChange');
