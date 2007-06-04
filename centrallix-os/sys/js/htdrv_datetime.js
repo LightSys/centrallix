@@ -457,7 +457,7 @@ function dt_parse_date(dt,content,drawdate){
     if (d.getFullYear() < now.getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0) //ten year window
 	d.setFullYear(d.getFullYear() + 100);
     if(!(vals[3])){ //year not entered 
-	if (d.getMonth()==11) //one month window
+	if (d.getMonth()==11 && now.getMonth()==0) //one month window
 	    d.setFullYear(now.getFullYear()-1);
 	else
 	    d.setFullYear(now.getFullYear());
