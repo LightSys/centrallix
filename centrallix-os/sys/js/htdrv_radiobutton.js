@@ -267,7 +267,7 @@ function rb_keyhandler(l, e, k)
 		radiobutton_toggle(this.lastmatch);
 		if (this.lastmatch)
 		    {
-		    this.kbdSelected = this.buttonList[i];
+		    this.kbdSelected = this.lastmatch;
 		    pg_setkbdfocus(this, null, 10, this.kbdSelected.yOffset+1);
 		    }
 	    	this.match = true;
