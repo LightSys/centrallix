@@ -62,6 +62,7 @@ function tc_makecurrent()
     }
 
 
+
 // Adds a new tab to the tab control
 function tc_addtab(l_tab, l_page, l, nm)
     {
@@ -168,7 +169,8 @@ function tc_addtab(l_tab, l_page, l, nm)
     l_tab.Reveal = tc_cb_reveal;
     pg_reveal_register_triggerer(l_tab);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
-
+    htr_watch(l_tab,"visible", "tc_visible_changed"); //visible property
+    l_tab.tc_visible_changed = tc_visible_changed;
     // Show Container API
     l_page.showcontainer = tc_showcontainer;
 
@@ -293,7 +295,105 @@ function tc_init(param)
 	}
     return l;
     }
-
+function tc_visible_changed(prop,o,n)
+    {
+    var t = this.tabctl;
+    var xo = t.xo;
+    var yo = t.yo;
+    if(n) htr_setvisibility(this, 'inherit');
+    else htr_setvisibility(this, 'hidden');
+    // which tab should be selected? 
+    //why is visibility ending up as 'hide' in ns4?!?
+    if(htr_getvisibility(t.tabs[t.selected_index-1])!='inherit')
+	{
+	//try default tab
+	if(htr_getvisibility(t.init_tab)=='inherit')
+	    {
+	    t.tabs[t.init_tab.tabindex-1].makeCurrent();
+	    }
+	else //otherwise find first tab not hidden
+	    {
+	    for(var i=0; i<t.tabs.length;i++)
+		{
+		if(htr_getvisibility(t.tabs[i])=='inherit')
+		    {
+		    t.tabs[i].makeCurrent();
+		    break;
+		    }
+		}
+	    }
+	}
+    
+    if(this.tabctl.tloc == 2) //left
+	{
+	var currx = getRelativeX(t)-getClipWidth(t.tabs[0])+4, curry = getRelativeY(t); //initial values
+	for(var i = 0; i< this.tabctl.tabs.length; i++)
+	    {
+	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+		{
+		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
+		moveTo(this.tabctl.tabs[i],currx,curry);
+		curry+=getClipHeight(this.tabctl.tabs[i])+1;
+		if(this.tabctl.selected_index-1 == i)
+		    {
+		    curry+=yo; currx+=xo;
+		    }
+		}
+	    }
+	}
+    else if(this.tabctl.tloc == 0) //top
+	{
+	var currx = getRelativeX(t), curry = getRelativeY(t)-20; //currently height is fixed at 26
+	for(var i = 0; i< this.tabctl.tabs.length; i++)
+	    {
+	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+		{
+		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
+		moveTo(this.tabctl.tabs[i],currx,curry);
+		currx+=getClipWidth(this.tabctl.tabs[i])+2;
+		if(this.tabctl.selected_index-1 == i)
+		    {
+		    currx+=xo; curry+=yo;
+		    }
+		}
+	    }
+	}
+    else if(this.tabctl.tloc == 3) //right
+	{
+	var currx = getRelativeX(t)+getClipWidth(t)-3, curry = getRelativeY(t); //currently height is fixed at 26
+	for(var i = 0; i< this.tabctl.tabs.length; i++)
+	    {
+	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+		{
+		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
+		moveTo(this.tabctl.tabs[i],currx,curry);
+		curry+=getClipHeight(this.tabctl.tabs[i])+1;
+		if(this.tabctl.selected_index-1 == i)
+		    {
+		    curry+=yo; currx+=xo;
+		    }
+		}
+	    }
+	}
+    else //bottom
+	{    
+	var currx = getRelativeX(t), curry = getRelativeY(t)+getClipHeight(t)-3; //currently height is fixed at 26
+	for(var i = 0; i< this.tabctl.tabs.length; i++)
+	    {
+	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
+		{
+		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
+		moveTo(this.tabctl.tabs[i],currx,curry);
+		currx+=getClipWidth(this.tabctl.tabs[i])+2;
+		if(this.tabctl.selected_index-1 == i)
+		    {
+		    currx+=xo; curry+=yo;
+		    }
+		}
+	    }
+	}
+    
+    }
 
 // Reveal() interface function - called when a triggerer event occurs.
 // c == tab (not tabpage) to make current.
