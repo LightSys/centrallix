@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_checkbox.c,v 1.38 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_checkbox.c,v 1.39 2007/06/05 16:45:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_checkbox.c,v $
 
     $Log: htdrv_checkbox.c,v $
+    Revision 1.39  2007/06/05 16:45:49  gbeeley
+    - (feature) allow form to be passed as a parameter; needed for use inside
+      a component when the form is outside the component
+
     Revision 1.38  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -345,6 +349,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    int id, i;
    char *ptr;
    char name[64];
+   char form[64];
    int enabled = 0;
 
    if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -368,6 +373,11 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    else 
       fieldname[0]='\0';
 
+   if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+       strtcpy(form,ptr,sizeof(form));
+   else
+       form[0]='\0';
+
    /** Is it checked? **/
    checked = htrGetBoolean(tree, "checked", -1);
 
@@ -390,7 +400,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "checkbox", "checkbox_mousemove");
    
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", checked:%INT, enabled:%INT});\n", name, fieldname,checked,enabled);
+   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", checked:%INT, enabled:%INT, form:\"%STR&ESCQ\"});\n", name, fieldname,checked,enabled,form);
 
    /** HTML body <DIV> element for the layers. **/
    htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id);
