@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.33 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.34 2007/06/05 22:07:32 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.34  2007/06/05 22:07:32  dkasper
+    - Added the visible property so that it can be watched for changes allowing
+      dynamic tab hiding/showing
+
     Revision 1.33  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -719,6 +723,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddBodyItem(s, "</DIV>\n");
 
 		nmSysFree(subnptr);
+		/** Add the visible property **/
+		htrCheckAddExpression(s, tabpage_obj, ptr, "visible");
 		}
 	    else if (!strcmp(ptr,"widget/connector"))
 		{
