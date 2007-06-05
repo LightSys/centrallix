@@ -162,10 +162,12 @@ function checkbox_init(param)
     l.is_checked = param.checked;
     l.is_checked_initial = param.checked;
     l.enabled = param.enabled;
-    l.form = wgtrFindContainer(l,"widget/form");
+    if (param.form) l.form = wgtrGetNode(l, param.form);
+    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
     var imgs = pg_images(l);
     imgs[0].kind = 'checkbox';
     imgs[0].layer = l;
+    imgs[0].mainlayer = l;
     l.img = imgs[0];
 
     // image filenames
