@@ -16,7 +16,7 @@ function dt_getvalue() {
 	    return null;
 }
 
-function dt_setvalue(v,drawdate) {
+function dt_setvalue(v,nodrawdate) {
 	if (v) {
 		this.DateObj = new Date(v);
 		this.TmpDateObj = new Date(v);
@@ -28,7 +28,7 @@ function dt_setvalue(v,drawdate) {
 		this.DateObj = null;
 		this.TmpDateObj = null;
 	}
-	if(drawdate) dt_drawdate(this, this.DateObj);
+	if(!nodrawdate) dt_drawdate(this, this.DateObj);
 	if (this.PaneLayer) {
 		dt_drawmonth(this.PaneLayer, this.DateObj);
 		dt_drawtime(this.PaneLayer, this.DateObj);
@@ -102,7 +102,6 @@ function dt_init(param){
 	l.fg = param.foreground;
 	l.w2 = w2;
 	l.h2 = h2;
-	l.form = wgtrFindContainer(l,"widget/form");
 	l.DateStr = param.id;
 	l.MonthsAbbrev = Array('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
 	l.VisLayer = c1;
@@ -116,6 +115,8 @@ function dt_init(param){
 		l.TmpDateObj = new Date();
 		dt_drawdate(l, '');
 	}
+	if (param.form) l.form = wgtrGetNode(l, param.form);
+	if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
 	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dt', 'dt', 3);
 
@@ -341,7 +342,7 @@ function dt_toggle(l) {
 
 // sets the value and indicates to the form a data change event
 function dt_setdata(l,d) {
-	l.setvalue(d,true);
+	l.setvalue(d,false);
 	if (l.form) l.form.DataNotify(l);
 	cn_activate(l, 'DataChange');
 }
@@ -441,8 +442,8 @@ function dt_keyhandler(l,e,k) {
 	return false;
 }
 
-function dt_parse_date(dt,content,drawdate){
-    if(drawdate) dt_setdata(dt,d);
+function dt_parse_date(dt,content,nodrawdate){
+    if(!nodrawdate) dt_setdata(dt,d);
     var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
     var vals = regex_dateformat.exec(content);
     var d = new Date();
@@ -462,7 +463,7 @@ function dt_parse_date(dt,content,drawdate){
 	else
 	    d.setFullYear(now.getFullYear());
     }
-    dt.setvalue(d,drawdate);
+    dt.setvalue(d,nodrawdate);
     if (dt.form) dt.form.DataNotify(dt);
     cn_activate(dt, 'DataChange');
 }
