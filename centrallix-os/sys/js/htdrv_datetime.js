@@ -442,8 +442,8 @@ function dt_keyhandler(l,e,k) {
 	return false;
 }
 
-function dt_parse_date(dt,content,nodrawdate){
-    if(!nodrawdate) dt_setdata(dt,d);
+function dt_parse_date(dt,content,drawdate){
+    if(drawdate) dt_setdata(dt,d);
     var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
     var vals = regex_dateformat.exec(content);
     var d = new Date();
@@ -463,7 +463,7 @@ function dt_parse_date(dt,content,nodrawdate){
 	else
 	    d.setFullYear(now.getFullYear());
     }
-    dt.setvalue(d,nodrawdate);
+    dt.setvalue(d,!drawdate);
     if (dt.form) dt.form.DataNotify(dt);
     cn_activate(dt, 'DataChange');
 }
