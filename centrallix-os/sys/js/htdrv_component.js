@@ -117,7 +117,22 @@ function cmp_instantiate(aparam)
     var p = wgtrGetContainer(wgtrGetParent(this));
     var geom = tohex16(getWidth(p)) + tohex16(getHeight(p)) + tohex16(pg_charw) + tohex16(pg_charh) + tohex16(pg_parah);
     var graft = wgtrGetNamespace(this) + ':' + wgtrGetName(this);
-    var url = this.path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft);
+    var url = this.path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft) + "&cx__akey=" + escape(akey);
+
+    if (this.templates.length > 0)
+	{
+	url += "&cx__templates=";
+	var cnt = 0;
+	for(var i=0;i<this.templates.length;i++)
+	    {
+	    if (this.templates[i].indexOf("|") == -1)
+		{
+		if (cnt != 0) url += "|";
+		url += htutil_escape(this.templates[i]);
+		cnt++
+		}
+	    }
+	}
 
     // Get params supplied in the app first
     for(var pr in this.Params)
@@ -280,7 +295,7 @@ function cmp_destroy_3()
 
 function cmp_register_component(c)
     {
-    var newcmp = {cmp:c, cmpnamespace:wgtrGetNamespace(c), cmpname:wgtrGetName(c), objects:this._oarr, graft:this._graft, geom:this._geom, url:this._url, name:this._name};
+    var newcmp = {cmp:c, cmpnamespace:wgtrGetNamespace(c), cmpname:wgtrGetName(c), objects:this._oarr, graft:this._graft, geom:this._geom, url:this._url, name:this._name, events:[], actions:[]};
     this.components.push(newcmp);
     if (this.is_visible)
 	pg_addsched_fn(newcmp.cmp, 'HandleReveal', ['Reveal', null], 0);
@@ -361,6 +376,46 @@ function cmp_add_param(name, value)
     }
 
 
+function cmp_add_action(cmp, actionname)
+    {
+    var re = /^[A-Za-z_][A-Za-z0-9_]*$/;
+    if (!re.test(actionname)) return false;
+    for(var i=0;i<this.components.length;i++)
+	if (this.components[i].cmp == cmp)
+	    this.components[i].actions.push(actionname);
+    if (!this.ifcProbe(ifAction).Exists(actionname))
+	this.ifcProbe(ifAction).Add(actionname, new Function("aparam", "this.cmp_action(\"" + actionname + "\", aparam);"));
+    }
+
+
+function cmp_action(aname, aparam)
+    {
+    for(var i=0;i<this.components.length;i++)
+	{
+	for(var j=0;i<this.components[i].actions.length;i++)
+	    {
+	    if (this.components[i].actions[j] == aname)
+		{
+		this.components[i].cmp.ifcProbe(ifEvent).Activate(aname, aparam);
+		break;
+		}
+	    }
+	}
+    }
+
+
+function cmp_add_event(cmp, eventname)
+    {
+    var re = /^[A-Za-z_][A-Za-z0-9_]*$/;
+    if (!re.test(eventname)) return false;
+    for(var i=0;i<this.components.length;i++)
+	if (this.components[i].cmp == cmp)
+	    this.components[i].events.push(eventname);
+    if (!this.ifcProbe(ifEvent).Exists(eventname))
+	this.ifcProbe(ifEvent).Add(eventname);
+    }
+
+
 function cmp_init(param)
     {
     var node = param.node;
@@ -370,6 +425,7 @@ function cmp_init(param)
     node.cmp = node;
     node._oarr = new Array();
     node.components = new Array();
+    node.templates = new Array();
     if (!param.is_static)
 	{
 	node.loader = param.loader;
@@ -394,6 +450,7 @@ function cmp_init(param)
     node.cmp_cb_load_complete_2ns = cmp_cb_load_complete_2ns;
     node.cmp_cb_load_complete_3 = cmp_cb_load_complete_3;
     node.cmp_cb_load_complete_4 = cmp_cb_load_complete_4;
+    node.cmp_action = cmp_action;
 
     node.cmp_instantiate_2 = cmp_instantiate_2;
     node.cmp_destroy_2 = cmp_destroy_2;
@@ -410,6 +467,10 @@ function cmp_init(param)
 	{
 	node.is_visible = true;
 	}
+
+    // Event/Action handling for components instantiated inside this one
+    node.AddAction = cmp_add_action;
+    node.AddEvent = cmp_add_event;
 
     // Events
     var ie = node.ifcProbeAdd(ifEvent);
