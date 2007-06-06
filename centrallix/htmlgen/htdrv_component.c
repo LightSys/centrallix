@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.7 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.8 2007/06/06 15:20:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.8  2007/06/06 15:20:09  gbeeley
+    - (feature) pass templates on to components, etc.
+
     Revision 1.7  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -262,6 +265,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     pStruct params = NULL;
     pStruct old_params = NULL;
     int i;
+    char* path;
+    char* templates[WGTR_MAX_TEMPLATE];
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -333,6 +338,12 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:true, allow_multi:false, auto_destroy:false});\n",
 		    name);
 
+	    /** Are there any templates we should use **/
+	    memset(templates, 0, sizeof(templates));
+	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
+		    templates[i] = path;
+
 	    /** Open and parse the component **/
 	    cmp_obj = objOpen(s->ObjSession, cmp_path, O_RDONLY, 0600, "system/structure");
 	    if (!cmp_obj)
@@ -340,19 +351,21 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
 		goto out;
 		}
-	    cmp_tree = wgtrParseOpenObject(cmp_obj, params);
+	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, templates);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
 		goto out;
 		}
 
-	    /** Do the layout for the component **/
+	    /** Set up client params **/
 	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
 	    wgtr_params.MaxHeight = h;
 	    wgtr_params.MinHeight = h;
 	    wgtr_params.MaxWidth = w;
 	    wgtr_params.MinWidth = w;
+	    
+	    /** Do the layout for the component **/
 	    if (wgtrVerify(cmp_tree, &wgtr_params) < 0)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
@@ -387,6 +400,14 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddScriptInit_va(s, 
 		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\")});\n",
 		    name, allow_multi, auto_destroy, cmp_path, name, id);
+
+	    /** Add template paths **/
+	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+		{
+		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
+		    htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&ESCQ');\n",
+			name, path);
+		}
 
 	    /** Set Params **/
 	    if (params)

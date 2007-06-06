@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.78 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.79 2007/06/06 15:20:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.79  2007/06/06 15:20:09  gbeeley
+    - (feature) pass templates on to components, etc.
+
     Revision 1.78  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -622,6 +625,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     char dtfocus2[64];
     int show_diag = 0;
     int w,h;
+    char* path;
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -785,6 +789,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
 	htrAddScriptInit_va(s, "    pg_charh = %INT;\n", s->ClientInfo->CharHeight);
 	htrAddScriptInit_va(s, "    pg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
+
+	/** Add template paths **/
+	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    {
+	    if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
+		htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&ESCQ');\n",
+		    name, path);
+	    }
 
 	if(s->Capabilities.HTML40)
 	    {

@@ -42,6 +42,7 @@
 #include "cxlib/xarray.h"
 #include "iface.h"
 
+#define WGTR_MAX_TEMPLATE	8	/** Maximum templates concurrently applying to page **/
 
 #define WGTR_F_NONVISUAL    1		/** a widget is visual by default, non-visual if this is set **/
 #define WGTR_F_CONTAINER    2		/** set for container widgets **/
@@ -103,6 +104,8 @@ typedef struct _WN
     void*	StartVLine;
     void*	EndVLine;
     void*	DMPrivate;			/** private data for use by deployment method **/
+    char*	ThisTemplatePath;
+    char*	TemplatePaths[WGTR_MAX_TEMPLATE];
     }
     WgtrNode, *pWgtrNode;
 
@@ -145,8 +148,8 @@ typedef struct
 #define WGTR_TM_POSTORDER	3
 
 /** wgtr creation and destruction **/
-pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params);  /** parse osml object **/
-pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params);	/** parses an open OSML object into a widget tree **/
+pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct app_params, char* templates[]);  /** parse osml object **/
+pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, char* templates[]);	/** parses an open OSML object into a widget tree **/
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
@@ -165,6 +168,7 @@ char* wgtrFirstPropertyName(pWgtrNode widget);	/** returns name of first propert
 char* wgtrNextPropertyName(pWgtrNode widget);	/** returns next name in property array **/
 char* wgtrGetRootDName(pWgtrNode widget);	/** returns the deployment name of the tree root **/
 char* wgtrGetDName(pWgtrNode widget);	/** returns the deployment name of the tree node **/
+char* wgtrGetTemplatePath(pWgtrNode widget, int n);	/** returns the path to the template used **/
 
 /** modifiers **/
 int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int isnull); /** add a property to the widget **/
@@ -197,7 +201,7 @@ int wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)());	/** registers
 int wgtrAddType(char* name, char* type_name);	    /** associate a type with a wgtr driver **/
 int wgtrAddDeploymentMethod(char* method, int (*Render)());	/** add a deployment method to a driver **/
 int wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method);
-int wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method);
+int wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* templates[], char* method);
 
 /** for debugging **/
 void wgtrPrint(pWgtrNode tree, int indent);	/** for debug purposes **/
