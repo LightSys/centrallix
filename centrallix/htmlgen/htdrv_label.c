@@ -44,6 +44,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.33  2007/06/06 15:21:58  gbeeley
+    - (feature) allow label, textarea, datetime to specify the form directly,
+      for use inside a component
+
     Revision 1.32  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -358,6 +362,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int id, i;
     int fontsize;
     char *text;
+    char* tooltip;
     char stylestr[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -384,13 +389,14 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
 	    text=nmSysStrdup(ptr);
-	    }
 	else
-	    {
 	    text=nmSysStrdup("");
-	    }
+
+	if(wgtrGetPropertyValue(tree,"tooltip",DATA_T_STRING,POD(&ptr)) == 0)
+	    tooltip=nmSysStrdup(ptr);
+	else
+	    tooltip=nmSysStrdup("");
 
 	/** label text color **/
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
@@ -433,8 +439,8 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	qpfPrintf(NULL, stylestr,sizeof(stylestr),
 		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\"><font size=%POS %STR>",
 		w,align,fontsize,fgcolor);
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&ESCQ', form:'%STR&ESCQ', text:'%STR&ESCQ', style:'%STR&ESCQ'});\n",
-		name, fieldname, form, text, stylestr);
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&ESCQ', form:'%STR&ESCQ', text:'%STR&ESCQ', style:'%STR&ESCQ', tooltip:'%STR&ESCQ'});\n",
+		name, fieldname, form, text, stylestr, tooltip);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
@@ -455,6 +461,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    htrRenderWidget(s, tree, z+1);
 
 	nmSysFree(text);
+	nmSysFree(tooltip);
 
     return 0;
     }

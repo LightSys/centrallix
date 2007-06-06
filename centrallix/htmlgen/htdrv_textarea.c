@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_textarea.c,v 1.25 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_textarea.c,v 1.26 2007/06/06 15:21:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_textarea.c,v $
 
     $Log: htdrv_textarea.c,v $
+    Revision 1.26  2007/06/06 15:21:57  gbeeley
+    - (feature) allow label, textarea, datetime to specify the form directly,
+      for use inside a component
+
     Revision 1.25  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -274,6 +278,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     char* c2;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
+    char form[64];
     int box_offset;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
@@ -338,6 +343,11 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    c2 = "white_1x1.png";
 	    }
 
+	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(form,ptr,sizeof(form));
+	else
+	    form[0]='\0';
+
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
 	    {
 	    strtcpy(fieldname,ptr,HT_FIELDNAME_SIZE);
@@ -377,8 +387,8 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&ESCQ\"});\n",
-	    name, fieldname, is_readonly, mode, main_bg);
+	htrAddScriptInit_va(s, "    tx_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&ESCQ\", form:\"%STR&ESCQ\", isReadonly:%INT, mode:%INT, mainBackground:\"%STR&ESCQ\"});\n",
+	    name, fieldname, form, is_readonly, mode, main_bg);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"tx%POSbase\">\n",id);

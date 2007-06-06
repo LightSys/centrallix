@@ -62,7 +62,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     char initialdate[64];
     char fgcolor[64];
     char bgcolor[128];
-    char fieldname[30];
+    char fieldname[HT_FIELDNAME_SIZE];
+    char form[64];
     int type;
     int x,y,w,h,w2=184,h2=190;
     int id, i;
@@ -99,6 +100,11 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTDT","Date/Time widget must have a 'height' property");
 	    return -1;
 	    }
+
+	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(form,ptr,sizeof(form));
+	else
+	    form[0]='\0';
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) 
 	    strtcpy(fieldname,ptr,sizeof(fieldname));
@@ -214,11 +220,11 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&ESCQ\", background:\"%STR&ESCQ\", foreground:\"%STR&ESCQ\", fieldname:\"%STR&ESCQ\", width:%INT, height:%INT, width2:%INT, height2:%INT})\n",
+	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&ESCQ\", background:\"%STR&ESCQ\", foreground:\"%STR&ESCQ\", fieldname:\"%STR&ESCQ\", form:\"%STR&ESCQ\", width:%INT, height:%INT, width2:%INT, height2:%INT})\n",
 	    name,
 	    name,id, 
 	    name,id, 
-	    initialdate, bgcolor, fgcolor, fieldname, w-20, h, w2,h2);
+	    initialdate, bgcolor, fgcolor, fieldname, form, w-20, h, w2,h2);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n", id);
@@ -291,10 +297,14 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.37 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.38 2007/06/06 15:21:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.38  2007/06/06 15:21:58  gbeeley
+    - (feature) allow label, textarea, datetime to specify the form directly,
+      for use inside a component
+
     Revision 1.37  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
