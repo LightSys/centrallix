@@ -73,22 +73,25 @@ function tx_clearvalue()
 /** Enable control function **/
 function tx_enable()
     {
-    eval('this.document.'+this.bg);
+    htr_setbackground(this, this.bg);
+    //eval('this.document.'+this.bg);
     this.enabled='full';
     }
 
 /** Disable control function **/
 function tx_disable()
     {
-    this.document.background='';
-    this.document.bgColor='#e0e0e0';
+    htr_setbackground(this, "bgcolor='#e0e0e0'");
+    //this.document.background='';
+    //this.document.bgColor='#e0e0e0';
     this.enabled='disabled';
     }
 
 /** Readonly-mode function **/
 function tx_readonly()
     {
-    eval('this.document.'+this.bg);
+    htr_setbackground(this, this.bg);
+    //eval('this.document.'+this.bg);
     this.enabled='readonly';
     }
 
@@ -578,7 +581,8 @@ function tx_init(param)
 	}
     else
 	{
-	l.bg = "bgcolor='#c0c0c0'";
+	//l.bg = "bgcolor='#c0c0c0'";
+	l.bg = param.mainBackground;
 	}
     htutil_tag_images(l.document,'tx',l,l);
     htr_init_layer(l,l,'tx');
@@ -614,7 +618,8 @@ function tx_init(param)
 	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'tbox', 'tbox', param.isReadonly?0:3);
     else
 	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'tbox', 'tbox', param.isReadonly?0:3);
-    l.form = wgtrFindContainer(l,"widget/form");
+    if (param.form) l.form = wgtrGetNode(l, param.form);
+    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
     if (l.form) l.form.Register(l);
     l.changed = false;
 
