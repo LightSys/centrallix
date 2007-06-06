@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_inherit.c,v 1.2 2005/02/26 06:42:39 gbeeley Exp $
+    $Id: obj_inherit.c,v 1.3 2007/06/06 15:16:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_inherit.c,v $
 
     $Log: obj_inherit.c,v $
+    Revision 1.3  2007/06/06 15:16:36  gbeeley
+    - (change) getting the obj_inherit module into the build
+
     Revision 1.2  2005/02/26 06:42:39  gbeeley
     - Massive change: centrallix-lib include files moved.  Affected nearly
       every source file in the tree.
@@ -90,7 +93,7 @@ typedef struct
 /*** oihOpen - open a new object.
  ***/
 void*
-oihOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjInhTree* oxt)
+oihOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pObjInhPtr inf;
 
@@ -116,7 +119,7 @@ oihOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjInhTree*
 /*** oihClose - close an open object of some sort.
  ***/
 int
-oihClose(void* this_v, pObjInhTree* oxt)
+oihClose(void* this_v, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     int rval;
@@ -134,7 +137,7 @@ oihClose(void* this_v, pObjInhTree* oxt)
 /*** oihCommit - commit changes
  ***/
 int
-oihCommit(void* this_v, pObjInhTree* oxt)
+oihCommit(void* this_v, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     int rval;
@@ -151,7 +154,7 @@ oihCommit(void* this_v, pObjInhTree* oxt)
  *** logic to oihOpen.
  ***/
 int
-oihCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjInhTree* oxt)
+oihCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     int rval;
 
@@ -166,7 +169,7 @@ oihCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjInhTre
  *** that found in oihCreate and oihOpen.
  ***/
 int
-oihDelete(pObject obj, pObjInhTree* oxt)
+oihDelete(pObject obj, pObjTrxTree* oxt)
     {
     int rval;
 
@@ -180,7 +183,7 @@ oihDelete(pObject obj, pObjInhTree* oxt)
 /*** oihSetAttrValue - set the value of an attribute.
  ***/
 int
-oihSetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjInhTree* oxt)
+oihSetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     int rval;
@@ -196,7 +199,7 @@ oihSetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjInhTr
  *** reading and/or writing to its content.
  ***/
 void*
-oihOpenAttr(void* this_v, char* attrname, pObjInhTree* oxt)
+oihOpenAttr(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)this_v;
     pObjInhPtr new_this;
@@ -222,7 +225,7 @@ oihOpenAttr(void* this_v, char* attrname, pObjInhTree* oxt)
 /*** oihGetAttrValue -- even this is passthru for now.  Sigh.
  ***/
 int
-oihGetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjInhTree* oxt)
+oihGetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->GetAttrValue(this->LLParam, attrname, datatype, val, oxt);
@@ -232,7 +235,7 @@ oihGetAttrValue(void* this_v, char* attrname, int datatype, void* val, pObjInhTr
 /*** oihOpenQuery -- passthru for now.
  ***/
 void*
-oihOpenQuery(void* this_v, char* query, pObjInhTree* oxt)
+oihOpenQuery(void* this_v, char* query, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     pObjInhQuery qy;
@@ -257,7 +260,7 @@ oihOpenQuery(void* this_v, char* query, pObjInhTree* oxt)
 /*** oihQueryDelete -- passthru for now.
  ***/
 int
-oihQueryDelete(void* qy_v, pObjInhTree* oxt)
+oihQueryDelete(void* qy_v, pObjTrxTree* oxt)
     {
     pObjInhQuery qy = (pObjInhQuery)(qy_v);
     return qy->Obj->ILowLevelDriver->QueryDelete(qy->LLParam, oxt);
@@ -267,7 +270,7 @@ oihQueryDelete(void* qy_v, pObjInhTree* oxt)
 /*** oihQueryFetch -- passthru for now.
  ***/
 void*
-oihQueryFetch(void* qy_v, pObject obj, int mode, pObjInhTree* oxt)
+oihQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pObjInhPtr subobj;
     pObjInhQuery qy = (pObjInhQuery)qy_v;
@@ -292,7 +295,7 @@ oihQueryFetch(void* qy_v, pObject obj, int mode, pObjInhTree* oxt)
 /*** oihQueryClose -- passthru for now.
  ***/
 int
-oihQueryClose(void* qy_v, pObjInhTree* oxt)
+oihQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pObjInhQuery qy = (pObjInhQuery)qy_v;
 
@@ -308,7 +311,7 @@ oihQueryClose(void* qy_v, pObjInhTree* oxt)
  *** the trans layer.
  ***/
 int
-oihWrite(void* this_v, char* buffer, int cnt, int offset, int flags, pObjInhTree* oxt)
+oihWrite(void* this_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->Write(this->LLParam,buffer,cnt,offset,flags,oxt);
@@ -319,7 +322,7 @@ oihWrite(void* this_v, char* buffer, int cnt, int offset, int flags, pObjInhTree
  *** not be passthru later when we implement the whole trans layer.
  ***/
 int
-oihRead(void* this_v, char* buffer, int maxcnt, int offset, int flags, pObjInhTree* oxt)
+oihRead(void* this_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->Read(this->LLParam,buffer,maxcnt,offset,flags,oxt);
@@ -329,7 +332,7 @@ oihRead(void* this_v, char* buffer, int maxcnt, int offset, int flags, pObjInhTr
 /*** oihGetAttrType -- passthru to lowlevel.
  ***/
 int
-oihGetAttrType(void* this_v, char* attrname, pObjInhTree* oxt)
+oihGetAttrType(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->GetAttrType(this->LLParam,attrname,oxt);
@@ -340,7 +343,7 @@ oihGetAttrType(void* this_v, char* attrname, pObjInhTree* oxt)
  *** transaction functionality, this may have to change.
  ***/
 int
-oihAddAttr(void* this_v, char* attrname, int type, void* val, pObjInhTree* oxt)
+oihAddAttr(void* this_v, char* attrname, int type, void* val, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->AddAttr(this->LLParam, oxt);
@@ -350,7 +353,7 @@ oihAddAttr(void* this_v, char* attrname, int type, void* val, pObjInhTree* oxt)
 /*** oihGetFirstAttr - passthru to lowlevel.
  ***/
 char*
-oihGetFirstAttr(void* this_v, pObjInhTree* oxt)
+oihGetFirstAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->GetFirstAttr(this->LLParam,oxt);
@@ -360,7 +363,7 @@ oihGetFirstAttr(void* this_v, pObjInhTree* oxt)
 /*** oihGetNextAttr - passthru to lowlevel.
  ***/
 char*
-oihGetNextAttr(void* this_v, pObjInhTree* oxt)
+oihGetNextAttr(void* this_v, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->GetNextAttr(this->LLParam,oxt);
@@ -370,7 +373,7 @@ oihGetNextAttr(void* this_v, pObjInhTree* oxt)
 /*** oihGetFirstMethod - passthru to lowlevel.
  ***/
 char*
-oihGetFirstMethod(void* this_v, pObjInhTree* oxt)
+oihGetFirstMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->GetFirstMethod(this->LLParam,oxt);
@@ -380,7 +383,7 @@ oihGetFirstMethod(void* this_v, pObjInhTree* oxt)
 /*** oihGetNextMethod - passthru to lowlevel.
  ***/
 char*
-oihGetNextMethod(void* this_v, pObjInhTree* oxt)
+oihGetNextMethod(void* this_v, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->GetNextMethod(this->LLParam,oxt);
@@ -390,7 +393,7 @@ oihGetNextMethod(void* this_v, pObjInhTree* oxt)
 /*** oihExecuteMethod - passthru to lowlevel.
  ***/
 int
-oihExecuteMethod(void* this_v, char* methodname, void* param, pObjInhTree* oxt)
+oihExecuteMethod(void* this_v, char* methodname, void* param, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->ExecuteMethod(this->LLParam,methodname,param,oxt);
@@ -400,7 +403,7 @@ oihExecuteMethod(void* this_v, char* methodname, void* param, pObjInhTree* oxt)
 /*** oihPresentationHints - passthru.
  ***/
 pObjPresentationHints
-oihPresentationHints(void* this_v, char* attrname, pObjInhTree* oxt)
+oihPresentationHints(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
     return this->Obj->ILowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);

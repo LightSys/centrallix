@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_struct.c,v 1.11 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: objdrv_struct.c,v 1.12 2007/06/06 15:16:36 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_struct.c,v $
 
     $Log: objdrv_struct.c,v $
+    Revision 1.12  2007/06/06 15:16:36  gbeeley
+    - (change) getting the obj_inherit module into the build
+
     Revision 1.11  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -893,7 +896,7 @@ stxInitialize()
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"STX - Structure File Driver");
-	drv->Capabilities = 0;
+	drv->Capabilities = OBJDRV_C_INHERIT;
 	xaInit(&(drv->RootContentTypes),16);
 	xaAddItem(&(drv->RootContentTypes),"system/structure");
 
