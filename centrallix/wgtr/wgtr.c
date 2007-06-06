@@ -85,8 +85,8 @@ struct
     } WGTR;
 
 
-pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
-int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
+pWgtrNode wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
+int wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset);
 
 pWgtrDriver
 wgtr_internal_LookupDriver(pWgtrNode node)
@@ -372,7 +372,7 @@ wgtrLoadTemplate(pObjSession s, char* path)
     {
     pWgtrNode template;
 
-	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", NULL);
+	template = wgtrParseObject(s, path, OBJ_O_RDONLY, 0600, "system/structure", NULL, NULL);
 	if (!template) return NULL;
 	if (strcmp(template->Type, "widget/template"))
 	    {
@@ -380,13 +380,14 @@ wgtrLoadTemplate(pObjSession s, char* path)
 	    mssError(1, "WGTR", "Object '%s' does not appear to be a widget template.", path);
 	    return NULL;
 	    }
+	template->ThisTemplatePath = nmSysStrdup(path);
 
     return template;
     }
 
 
 pWgtrNode 
-wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params)
+wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type, pStruct params, char* templates[])
     {
     pObject obj;
     pWgtrNode results;
@@ -399,7 +400,7 @@ wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* 
 	    }
 
 	/** call wgtrParseOpenObject and return results **/
-	results = wgtrParseOpenObject(obj, params);
+	results = wgtrParseOpenObject(obj, params, templates);
 	objClose(obj);
         return results;
     }
@@ -440,7 +441,7 @@ wgtr_internal_GetTypeAndName(pObject obj, char* name, size_t name_len, char* typ
 
 
 pWgtrNode
-wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template, pWgtrNode root, int xoffset, int yoffset)
+wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode templates[], pWgtrNode root, int xoffset, int yoffset)
     {
     int rx, ry, rwidth, rheight, flx, fly, flwidth, flheight;
     pWgtrNode this_node = NULL;
@@ -449,6 +450,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
     ObjData val;
     int prop_type;
     int rval;
+    int i;
 
 	/** create this node **/
 	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
@@ -461,8 +463,12 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 	/** Copy in template data **/
 	class = NULL;
 	objGetAttrValue(obj, "widget_class", DATA_T_STRING, POD(&class));
-	if (template)
-	    wgtrCheckTemplate(this_node, obj, template, class);
+	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    if (templates[i])
+		{
+		wgtrCheckTemplate(this_node, obj, templates[i], class);
+		this_node->TemplatePaths[i] = nmSysStrdup(templates[i]->ThisTemplatePath);
+		}
 	
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
@@ -534,7 +540,7 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 
 
 int
-wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
+wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[], pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
     pObject child_obj = NULL;
     pObjQuery qy = NULL;
@@ -564,7 +570,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, 
 		if (t != DATA_T_INTEGER || (rval=objGetAttrValue(child_obj, "condition", t, &val)) != 0 || val.Integer != 0)
 		    {
 		    /** Try to add it. **/
-		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,template,this_node->Root, context_objlist, client_params, xoffset, yoffset)) != NULL)
+		    if ( (child_node = wgtr_internal_ParseOpenObject(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset)) != NULL)
 			{
 			wgtrAddChild(this_node, child_node);
 			child_node = NULL;
@@ -590,7 +596,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, 
 				goto error;
 
 			    /** Load in the properties and copy in the template **/
-			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, template, root, xoffset, yoffset)) == NULL)
+			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, root, xoffset, yoffset)) == NULL)
 				goto error;
 
 			    /** compute actual offsets that would have been used had the
@@ -604,7 +610,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, 
 			    /** Add the grandchildren without actually rendering the child node
 			     ** in question here
 			     **/
-			    if (wgtr_internal_AddChildren(child_obj, this_node, template, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
+			    if (wgtr_internal_AddChildren(child_obj, this_node, templates, this_node->Root, context_objlist, client_params, xoffset + nxo, yoffset + nyo) < 0)
 				goto error;
 			    }
 			}
@@ -630,7 +636,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode template, 
 
 
 pWgtrNode 
-wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
+wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
     pWgtrNode	this_node = NULL;
     pWgtrAppParam param;
@@ -638,11 +644,11 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
     ObjData	val;
     pObject child_obj = NULL;
     pObjQuery qy = NULL;
-    pWgtrNode my_template = template;
+    pWgtrNode my_templates[WGTR_MAX_TEMPLATE];
     pWgtrAppParam paramlist[WGTR_MAX_PARAMS];
     int n_params;
     int created_objlist = 0;
-    int i;
+    int i,startat;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -650,6 +656,9 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	    mssError(1,"WGTR","Could not load widget tree: resource exhaustion occurred");
 	    goto error;
 	    }
+
+	/** Copy in templates **/
+	memcpy(my_templates, templates, sizeof(my_templates));
 
 	/** check the outer_type of obj tobe sure it's a widget **/
 	if (wgtr_internal_GetTypeAndName(obj, name, sizeof(name), type, sizeof(type)) < 0)
@@ -694,19 +703,46 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	    objSetEvalContext(obj, context_objlist);
 	    }
 
-	/** Load a new template? **/
-	if (objGetAttrValue(obj, "widget_template", DATA_T_STRING, &val) == 0)
+	/** Load new templates? **/
+	startat = -1;
+	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    {
-	    my_template = wgtrLoadTemplate(obj->Session, val.String);
-	    if (!my_template)
+	    if (my_templates[i] == NULL)
 		{
-		mssError(0, "WGTR", "Could not load widget_template '%s'", val.String);
-		goto error;
+		startat = i;
+		break;
+		}
+	    }
+	if (startat >= 0)
+	    {
+	    if (objGetAttrType(obj, "widget_template") == DATA_T_STRINGVEC)
+		{
+		if (objGetAttrValue(obj, "widget_template", DATA_T_STRINGVEC, &val) == 0)
+		    {
+		    for(i=0;i<val.StringVec->nStrings && (i+startat)<WGTR_MAX_TEMPLATE; i++)
+			{
+			my_templates[i+startat] = wgtrLoadTemplate(obj->Session, val.StringVec->Strings[i]);
+			if (!my_templates[i+startat])
+			    {
+			    mssError(0, "WGTR", "Could not load widget_template '%s'", val.StringVec->Strings[i]);
+			    goto error;
+			    }
+			}
+		    }
+		}
+	    else if (objGetAttrValue(obj, "widget_template", DATA_T_STRING, &val) == 0)
+		{
+		my_templates[startat] = wgtrLoadTemplate(obj->Session, val.String);
+		if (!my_templates[startat])
+		    {
+		    mssError(0, "WGTR", "Could not load widget_template '%s'", val.String);
+		    goto error;
+		    }
 		}
 	    }
 
 	/** Load in the properties and copy in the template **/
-	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_template, root, xoffset, yoffset)) == NULL)
+	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, root, xoffset, yoffset)) == NULL)
 	    goto error;
 
 	/** If this is a visual widget, clear the x/y offsets **/
@@ -717,12 +753,13 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	    }
 
 	/** Add all of the child widgets under this one. **/
-	if (wgtr_internal_AddChildren(obj, this_node, my_template, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
+	if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 	    goto error;
 
 	/** Free the template if we created it here. **/
-	if (my_template != template)
-	    wgtrFree(my_template);
+	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    if (my_templates[i] != templates[i])
+		wgtrFree(my_templates[i]);
 
 	/** Free up the context objlist, if need be **/
 	if (created_objlist)
@@ -736,8 +773,9 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 	return this_node;
 
     error:
-	if (my_template != template)
-	    wgtrFree(my_template);
+	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    if (my_templates[i] != templates[i])
+		wgtrFree(my_templates[i]);
 	if (this_node)
 	    wgtrFree(this_node);
 	if (created_objlist)
@@ -755,9 +793,21 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode template, pWgtrNode root, p
 
 
 pWgtrNode
-wgtrParseOpenObject(pObject obj, pStruct params)
+wgtrParseOpenObject(pObject obj, pStruct params, char* templates[])
     {
-    return wgtr_internal_ParseOpenObject(obj, NULL, NULL, NULL, params, 0, 0);
+    pWgtrNode template_arr[WGTR_MAX_TEMPLATE];
+    int i;
+
+	/** Load templates? **/
+	memset(template_arr, 0, sizeof(template_arr));
+	if (templates)
+	    {
+	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+		if (templates[i])
+		    template_arr[i] = wgtrLoadTemplate(obj->Session, templates[i]);
+	    }
+
+    return wgtr_internal_ParseOpenObject(obj, template_arr, NULL, NULL, NULL, params, 0, 0);
     }
 
 
@@ -813,6 +863,9 @@ wgtrFree(pWgtrNode tree)
 	xaDeInit(&(tree->Interfaces));
 
 	/** free the node itself **/
+	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    if (tree->TemplatePaths[i]) nmSysFree(tree->TemplatePaths[i]);
+	if (tree->ThisTemplatePath) nmSysFree(tree->ThisTemplatePath);
 	nmFree(tree, sizeof(WgtrNode));
     }
 
@@ -1844,6 +1897,17 @@ wgtrGetContainerWidth(pWgtrNode tree)
     }
 
 
+/*** wgtrGetTemplatePath() - return the path to the nth template used for
+ *** a widget.  Up to WGTR_MAX_TEMPLATE templates are possible.
+ ***/
+char*
+wgtrGetTemplatePath(pWgtrNode tree, int n)
+    {
+    if (n < 0 || n >= WGTR_MAX_TEMPLATE) return NULL;
+    return tree->TemplatePaths[n];
+    }
+
+
 /*** wgtrMoveChildren() - given a widget tree node, adjust the positioning
  *** of all children by the given amount.  If some children are nonvisual,
  *** then this function adjusts the children in those nonvisual containers,
@@ -1880,13 +1944,13 @@ wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset)
  *** and expressions.
  ***/
 int
-wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method)
+wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* templates[], char* method)
     {
     pWgtrNode tree;
     int rval;
 
 	/** Parse it **/
-	tree = wgtrParseOpenObject(obj, app_params);
+	tree = wgtrParseOpenObject(obj, app_params, templates);
 	if (!tree) return -1;
 
 	/** Verify **/
