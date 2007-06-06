@@ -1086,6 +1086,8 @@ function pg_init(l,a,gs,ct)
     pg_addsched('pg_msg_init()', window,0);
     ifc_init_widget(window);
 
+    l.templates = new Array();
+
     // Actions
     var ia = window.ifcProbeAdd(ifAction);
     ia.Add("LoadPage", pg_load_page);
@@ -1371,6 +1373,8 @@ function pg_removekbdfocus()
     if (pg_curkbdlayer)
 	{
 	if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler()) return false;
+	pg_curkbdlayer = null;
+	pg_curkbdarea = null;
 	if (cx__capabilities.Dom0NS)
 	    {
 	    pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
