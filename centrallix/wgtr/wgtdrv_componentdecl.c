@@ -64,7 +64,8 @@ wgtcmpdNew(pWgtrNode node)
     {
 
 	node->Flags |= WGTR_F_NONVISUAL;
-	node->Flags |= WGTR_F_CONTAINER;
+	if (!strcmp(node->Type, "widget/component-decl"))
+	    node->Flags |= WGTR_F_CONTAINER;
 
     return 0;
     }
@@ -77,6 +78,9 @@ wgtcmpdInitialize()
 
 	wgtrRegisterDriver(name, wgtcmpdVerify, wgtcmpdNew);
 	wgtrAddType(name, "component-decl");
+	wgtrAddType(name, "component-decl-event");
+	wgtrAddType(name, "component-decl-action");
+	wgtrAddType(name, "component-decl-cprop");
 
 	return 0;
     }
