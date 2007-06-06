@@ -50,10 +50,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: cxss_entropy.c,v 1.1 2007/02/22 23:25:14 gbeeley Exp $
+    $Id: cxss_entropy.c,v 1.2 2007/06/06 15:18:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/cxss/cxss_entropy.c,v $
 
     $Log: cxss_entropy.c,v $
+    Revision 1.2  2007/06/06 15:18:12  gbeeley
+    - (bugfix) fixing an issue with entropy pool handling
+
     Revision 1.1  2007/02/22 23:25:14  gbeeley
     - (feature) adding initial framework for CXSS, the security subsystem.
     - (feature) CXSS entropy pool and key generation, basic framework.
@@ -166,6 +169,7 @@ cxss_internal_AddToPool(unsigned char* data, size_t n_bytes, int entropy_bits_es
     int bytes_to_add;
 
 	/** Add to pool, stirring if we end up filling up the new bytes buffer **/
+	CXSS.Entropy.NextEstimate += entropy_bits_estimate;
 	while(byte_cnt < n_bytes)
 	    {
 	    bytes_to_add = n_bytes - byte_cnt;
@@ -259,7 +263,10 @@ cxss_internal_GetBytes(unsigned char* data, size_t n_bytes)
 		cxss_internal_StirPool();
 
 	    /** Adjust the estimate **/
-	    CXSS.Entropy.CurEstimate -= 8;
+	    if (!CXSS.Entropy.RunningDry)
+		CXSS.Entropy.CurEstimate -= 8;
+	    else if (CXSS.Entropy.NextEstimate)
+		cxss_internal_StirPool();
 
 	    /** Did we exhaust the available entropy? **/
 	    if (CXSS.Entropy.CurEstimate < 0)
