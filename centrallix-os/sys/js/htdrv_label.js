@@ -22,24 +22,38 @@ function lbl_mouseup(e)
 function lbl_mousedown(e)
     {
     if (e.kind == 'lbl') cn_activate(e.layer, 'MouseDown');
+    if (this.tipid) { pg_canceltip(this.tipid); this.tipid = null; }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function lbl_mouseover(e)
     {
-    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseOver');
+    if (e.kind == 'lbl')
+	{
+	cn_activate(e.layer, 'MouseOver');
+	if (e.layer.tooltip) e.layer.tipid = pg_tooltip(e.layer.tooltip, e.pageX, e.pageY);
+	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function lbl_mouseout(e)
     {
-    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseOut');
+    if (e.kind == 'lbl')
+	{
+	cn_activate(e.layer, 'MouseOut');
+	if (e.layer.tipid) { pg_canceltip(e.layer.tipid); e.layer.tipid = null; }
+	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function lbl_mousemove(e)
     {
-    if (e.kind == 'lbl') cn_activate(e.layer, 'MouseMove');
+    if (e.kind == 'lbl')
+	{
+	cn_activate(e.layer, 'MouseMove');
+	if (e.layer.tipid) { pg_canceltip(e.layer.tipid); e.layer.tipid = null; }
+	if (e.layer.tooltip) e.layer.tipid = pg_tooltip(e.layer.tooltip, e.pageX, e.pageY);
+	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -105,6 +119,8 @@ function lbl_init(l, wparam)
     l.content = wparam.text;
     l.fieldname = wparam.field;
     l.stylestr = wparam.style;
+    l.tooltip = wparam.tooltip;
+    l.tipid = null;
 
     // Callbacks
     l.getvalue = lb_getvalue;
