@@ -46,10 +46,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_main.c,v 1.14 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: obj_main.c,v 1.15 2007/06/06 15:17:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_main.c,v $
 
     $Log: obj_main.c,v $
+    Revision 1.15  2007/06/06 15:17:39  gbeeley
+    - (change) getting the obj_inherit code into the build
+
     Revision 1.14  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -534,6 +537,9 @@ objInitialize()
 
 	/** Load the OXT driver. **/
 	oxtInitialize();
+
+	/** Load the inheritance driver **/
+	oihInitialize();
 
 	nmRegister(sizeof(Object),"Object");
 	nmRegister(sizeof(ObjQuery),"ObjQuery");

@@ -78,6 +78,7 @@ XOBJECTSYSTEM=obj_main.o \
 	      obj_content.o \
 	      obj_params.o \
 	      obj_trx.o \
+	      obj_inherit.o \
 	      obj_datatypes.o \
 	      obj_rootnode.o \
 	      obj_replica.o
