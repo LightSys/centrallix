@@ -68,7 +68,8 @@ function cmpd_endinit(c)
 
 function cmpd_add_action(a)
     {
-    this.shell.ifcProbe(ifAction).Add(a, new Function('aparam','this.handleAction("' + a + '",aparam);'));
+    //this.shell.ifcProbe(ifAction).Add(a, new Function('aparam','this.handleAction("' + a + '",aparam);'));
+    this.shell.AddAction(this, a);
     this.ifcProbe(ifEvent).Add(a);
     return;
     }
