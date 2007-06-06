@@ -528,7 +528,7 @@ function osrc_get_qid()
 	{
 	for(var i in this.child)
 	    this.child[i].DataAvailable();
-	this.ifcProbe(ifAction).Invoke("First", {});
+	this.ifcProbe(ifAction).Invoke("First", {from_internal:true});
 	}
 /** normally don't actually load the data...just let children know that the data is available **/
     }
@@ -747,7 +747,7 @@ function osrc_close_session()
 
 function osrc_move_first(aparam)
     {
-    this.MoveToRecord(1, true);
+    this.MoveToRecord(1, aparam.from_internal);
     }
 
 function osrc_give_all_current_record()
@@ -928,17 +928,17 @@ function osrc_get_qid_startat()
 
 function osrc_move_next(aparam)
     {
-    this.MoveToRecord(this.CurrentRecord+1, true);
+    this.MoveToRecord(this.CurrentRecord+1, false);
     }
 
 function osrc_move_prev(aparam)
     {
-    this.MoveToRecord(this.CurrentRecord-1, true);
+    this.MoveToRecord(this.CurrentRecord-1, false);
     }
 
 function osrc_move_last(aparam)
     {
-    this.MoveToRecord(Number.MAX_VALUE, true); /* FIXME */
+    this.MoveToRecord(Number.MAX_VALUE, false); /* FIXME */
     //alert("do YOU know where the end is? I sure don't.");
     }
 
@@ -967,6 +967,7 @@ function osrc_scroll_to(recnum)
     {
     this.moveop=false;
     this.TargetRecord=recnum;
+    this.SyncID = osrc_syncid++;
     if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)
 	{
 	this.TellAllReplicaMoved();
@@ -1051,7 +1052,9 @@ function osrc_action_sync(param)
 
     // Prevent sync loops
     if (this.SyncID == this.parentosrc.SyncID)
+	{
 	return;
+	}
     this.SyncID = this.parentosrc.SyncID;
 
     var query = new Array();
