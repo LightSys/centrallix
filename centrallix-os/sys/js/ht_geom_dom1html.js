@@ -265,7 +265,12 @@ function moveAbove(lt, lb)
 	if (cx__capabilities.Dom1HTML && lt.parentLayer)
 	    lt.parentLayer.appendChild(lt);
         var z = htr_getzindex(lb);
-        htr_setzindex(lt,++z);
+	if (isNaN(z) && lt.parentLayer)
+	    z = htr_getzindex(lt.parentLayer);
+        if (!isNaN(z))
+	    htr_setzindex(lt,++z);
+	else
+	    htr_setzindex(lt,100);
 	}
     }
     
@@ -277,7 +282,12 @@ function moveBelow(lt, lb)
 	if (cx__capabilities.Dom1HTML && lt.parentLayer)
 	    lt.parentLayer.appendChild(lt);
         var z = htr_getzindex(lb);
-        htr_setzindex(lt,--z);
+	if (isNaN(z) && lt.parentLayer)
+	    z = htr_getzindex(lt.parentLayer);
+        if (!isNaN(z))
+	    htr_setzindex(lt,--z);
+	else
+	    htr_setzindex(lt,1);
 	}
     }
 
