@@ -46,7 +46,7 @@ tabsandtree "widget/page"
 
 	TabOne "widget/tabpage"
 	    {
-	    title = "&nbsp;<b>TabOne</b>&nbsp;";
+	    title = "TabOne";
 
 	    tbOne "widget/textbutton"
 	        {
@@ -67,7 +67,7 @@ tabsandtree "widget/page"
 	    }
 	TabTwo "widget/tabpage"
 	    {
-	    title = "&nbsp;<b>TabTwo</b>&nbsp;";
+	    title = "TabTwo";
 	    sp2 "widget/scrollpane"
 		{
 		x=0;y=0;width=598;height=398;
@@ -81,7 +81,7 @@ tabsandtree "widget/page"
 	    }
 	TabThree "widget/tabpage"
 	    {
-	    title = "&nbsp;<b>TabThree</b>&nbsp;";
+	    title = "TabThree";
 
 	    sp3 "widget/scrollpane"
 		{

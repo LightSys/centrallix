@@ -17,14 +17,14 @@ colorwin "widget/component-decl"
 	{
 	type=string;
 	default="Default Title";
-	badchars="<>&'\"";
+	//badchars="<>&'\"";
 	}
 
     whatwidget "widget/parameter"
 	{
 	type=string;
 	default="none selected";
-	badchars="<>&'\"";
+	//badchars="<>&'\"";
 	}
 
     // And here is what is inside the component...

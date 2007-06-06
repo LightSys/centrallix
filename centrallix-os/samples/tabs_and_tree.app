@@ -42,7 +42,7 @@ tabs_and_tree "widget/page"
 
 	TabOne "widget/tabpage"
 	    {
-	    title = "&nbsp;<b>TabOne</b>&nbsp;";
+	    title = "TabOne";
 
 	    tbOne "widget/textbutton"
 	        {
@@ -63,7 +63,7 @@ tabs_and_tree "widget/page"
 	    }
 	TabTwo "widget/tabpage"
 	    {
-	    title = "&nbsp;<b>TabTwo</b>&nbsp;";
+	    title = "TabTwo";
 
 	    sp2 "widget/scrollpane"
 		{

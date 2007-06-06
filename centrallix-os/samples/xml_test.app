@@ -59,7 +59,7 @@ wholePage "widget/page"
 	lbl1 "widget/label"
 	    {
 	    x=10;y=10;width=702;height=20;
-	    text="<b>Current FreeBSD News Headlines (from http://freebsd.org):</b>";
+	    text="Current FreeBSD News Headlines (from http://freebsd.org):";
 	    }
 
 	osrc1 "widget/osrc"

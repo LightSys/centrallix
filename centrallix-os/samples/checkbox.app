@@ -19,11 +19,11 @@ editbox_test "widget/page"
     label1 "widget/label"
     	{
 	    x = 40; y = 17; width = 150; height = 12;
-	    text = "<b>First Checkbox</b>";
+	    text = "First Checkbox";
 	}
     label2 "widget/label"
     	{
 	    x = 40; y = 37; width = 150; height = 12;
-	    text = "<b>Second Checkbox</b>";
+	    text = "Second Checkbox";
 	}
     }
