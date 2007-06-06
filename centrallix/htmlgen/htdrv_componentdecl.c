@@ -48,10 +48,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_componentdecl.c,v 1.11 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_componentdecl.c,v 1.12 2007/06/06 15:23:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_componentdecl.c,v $
 
     $Log: htdrv_componentdecl.c,v $
+    Revision 1.12  2007/06/06 15:23:40  gbeeley
+    - (bugfix) better handle difference between componentdecl- subwidgets and
+      other (normal) subwidgets.
+
     Revision 1.11  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -432,7 +436,6 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    sub_tree = xaGetItem(&(tree->Children), i);
-	    sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
 	    /** Get component action/event/cprop name **/
 	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr));
@@ -447,11 +450,20 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Get type **/
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
 	    if (!strcmp(ptr,"widget/component-decl-action"))
+		{
 		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addAction('%STR&SYM');\n", name, subobj_name);
+		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
+		}
 	    else if (!strcmp(ptr,"widget/component-decl-event"))
+		{
 		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addEvent('%STR&SYM');\n", name, subobj_name);
+		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
+		}
 	    else if (!strcmp(ptr,"widget/component-decl-cprop"))
+		{
 		htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].addProp('%STR&SYM');\n", name, subobj_name);
+		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
+		}
 
 	    sub_tree = NULL;
 	    }
@@ -460,7 +472,17 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    cmpd_endinit(nodes[\"%STR&SYM\"]);\n", name);
 
 	/** Do subwidgets **/
-	htrRenderSubwidgets(s, tree, z+2);
+	/*htrRenderSubwidgets(s, tree, z+2);*/
+	for (i=0;i<xaCount(&(tree->Children));i++)
+	    {
+	    sub_tree = xaGetItem(&(tree->Children), i);
+	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
+	    if (strcmp(ptr,"widget/component-decl-action") && 
+		    strcmp(ptr,"widget/component-decl-event") &&
+		    strcmp(ptr,"widget/component-decl-cprop"))
+		htrRenderWidget(s, sub_tree, z+2);
+	    sub_tree = NULL;
+	    }
 
     htcmpd_cleanup:
 //	if (subobj) objClose(subobj);
