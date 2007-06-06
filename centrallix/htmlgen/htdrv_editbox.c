@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_editbox.c,v 1.47 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_editbox.c,v 1.48 2007/06/06 15:22:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_editbox.c,v $
 
     $Log: htdrv_editbox.c,v $
+    Revision 1.48  2007/06/06 15:22:47  gbeeley
+    - (feature) allow tooltip on editbox, but tooltip will be overridden if
+      there is overly long content
+
     Revision 1.47  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -412,6 +416,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     int is_raised = 0;
     char* c1;
     char* c2;
+    char* tooltip;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
@@ -475,6 +480,11 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    fieldname[0]='\0';
 
+	if(wgtrGetPropertyValue(tree,"tooltip",DATA_T_STRING,POD(&ptr)) == 0)
+	    tooltip=nmSysStrdup(ptr);
+	else
+	    tooltip=nmSysStrdup("");
+
 	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(form,ptr,sizeof(form));
 	else
@@ -515,9 +525,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"), form:\"%STR&ESCQ\", fieldname:\"%STR&ESCQ\", isReadOnly:%INT, mainBackground:\"%STR&ESCQ\"});\n",
+	htrAddScriptInit_va(s, "    eb_init({layer:nodes['%STR&SYM'], c1:htr_subel(nodes['%STR&SYM'],\"eb%POScon1\"), c2:htr_subel(nodes['%STR&SYM'],\"eb%POScon2\"), form:\"%STR&ESCQ\", fieldname:\"%STR&ESCQ\", isReadOnly:%INT, mainBackground:\"%STR&ESCQ\", tooltip:\"%STR&ESCQ\"});\n",
 	    name,  name,id,  name,id, 
-	    form, fieldname, is_readonly, main_bg);
+	    form, fieldname, is_readonly, main_bg, tooltip);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
