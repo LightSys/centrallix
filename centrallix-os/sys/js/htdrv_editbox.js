@@ -87,9 +87,9 @@ function eb_settext_cb()
     {
     htr_setvisibility(this.mainlayer.HiddenLayer, 'inherit');
     htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
-    setRelativeX(this.mainlayer.ContentLayer, getRelativeX(this.mainlayer.HiddenLayer));
-    setClipLeft(this.mainlayer.ContentLayer, getClipLeft(this.mainlayer.HiddenLayer));
-    setClipWidth(this.mainlayer.ContentLayer, getClipWidth(this.mainlayer.HiddenLayer));
+    //setRelativeX(this.mainlayer.ContentLayer, getRelativeX(this.mainlayer.HiddenLayer));
+    //setClipLeft(this.mainlayer.ContentLayer, getClipLeft(this.mainlayer.HiddenLayer));
+    //setClipWidth(this.mainlayer.ContentLayer, getClipWidth(this.mainlayer.HiddenLayer));
     
     var tmp = this.mainlayer.ContentLayer;
     this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
@@ -177,9 +177,21 @@ function eb_update(txt, cursor)
     newx = 5 - this.charOffset*text_metric.charWidth;
     newclipl = this.charOffset*text_metric.charWidth;
     newclipw = this.charWidth*text_metric.charWidth;
-    setRelativeX(this.HiddenLayer, newx);
-    setClipLeft(this.HiddenLayer, newclipl);
-    setClipWidth(this.HiddenLayer, newclipw);
+    if (this.HiddenLayer._eb_x != newx)
+	{
+	setRelativeX(this.HiddenLayer, newx);
+	this.HiddenLayer._eb_x = newx;
+	}
+    if (this.HiddenLayer._eb_clipl != newclipl)
+	{
+	setClipLeft(this.HiddenLayer, newclipl);
+	this.HiddenLayer._eb_clipl = newclipl;
+	}
+    if (this.HiddenLayer._eb_clipw != newclipw)
+	{
+	setClipWidth(this.HiddenLayer, newclipw);
+	this.HiddenLayer._eb_clipw = newclipw;
+	}
     if (eb_current == this)
 	moveToAbsolute(ibeam_current, getPageX(this.HiddenLayer) + this.cursorCol*text_metric.charWidth, getPageY(this.HiddenLayer));
     eb_settext(this, txt);
@@ -290,7 +302,9 @@ function eb_deselect()
 function eb_mselect(x,y,l,c,n,a)
     {
     if (this.charOffset > 0 || this.charOffset + this.charWidth < this.content.length)
-	this.tipid = pg_tooltip(this.content, getPageX(this) + x, getPageY(this) + y);
+	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, getPageX(this) + x, getPageY(this) + y);
+    else if (this.tooltip)
+	this.tipid = pg_tooltip(this.tooltip, getPageX(this) + x, getPageY(this) + y);
     return 1;
     }
 
@@ -368,6 +382,7 @@ function eb_init(param)
     htr_init_layer(c2,l,'eb');
     ifc_init_widget(l);
     l.fieldname = param.fieldname;
+    l.tooltip = param.tooltip;
     ibeam_init();
 
     // Left/Right arrow images
