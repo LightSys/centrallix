@@ -44,10 +44,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.49 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.50 2007/06/09 18:30:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.50  2007/06/09 18:30:04  gbeeley
+    - (feature) 'toplevel' property on childwindows allows them to be placed
+      at the top level even if they are embedded within another widget such as
+      a component, tab, or another childwindow.
+
     Revision 1.49  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -434,6 +439,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int gshade = 0;
     int closetype = 0;
     int box_offset = 1;
+    int is_toplevel = 0;
     char icon[128];
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -468,6 +474,9 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
+
+	/** Is this a toplevel window? **/
+	is_toplevel = htrGetBoolean(tree, "toplevel", 0);
 
 	/** Check background color **/
 	htrGetBackground(tree, NULL, 1, bgnd_style, sizeof(bgnd_style));
@@ -638,20 +647,20 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Script initialization call. **/
 	    if (has_titlebar)
 		{
-		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, titlebar:htr_subel(nodes[\"%STR&SYM\"],'wn%POStitlebar')});\n", 
-			name,name,gshade,closetype, name, id);
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, toplevel:%INT, titlebar:htr_subel(nodes[\"%STR&SYM\"],'wn%POStitlebar')});\n", 
+			name,name,gshade,closetype, is_toplevel, name, id);
 		}
 	    else
 		{
-		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:nodes[\"%STR&SYM\"], gshade:%INT, closetype:%INT, titlebar:null});\n", 
-			name,name,gshade,closetype);
+		htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:nodes[\"%STR&SYM\"], gshade:%INT, closetype:%INT, toplevel:%INT, titlebar:null});\n", 
+			name,name,gshade,closetype, is_toplevel);
 		}
 	    }
 	else if(s->Capabilities.Dom0NS)
 	    {
 	    /** Script initialization call. **/
-	    htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, titlebar:null});\n", 
-		    name,name,gshade,closetype);
+	    htrAddScriptInit_va(s,"    wn_init({mainlayer:nodes[\"%STR&SYM\"], clayer:wgtrGetContainer(nodes[\"%STR&SYM\"]), gshade:%INT, closetype:%INT, toplevel:%INT, titlebar:null});\n", 
+		    name,name,gshade,closetype,is_toplevel);
 	    }
 
 	/** HTML body <DIV> elements for the layers. **/
