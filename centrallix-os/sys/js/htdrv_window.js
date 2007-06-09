@@ -63,6 +63,18 @@ function wn_init(param)
 	if (pg_images(titlebar)[i].name == 'close')
 	    l.has_titlebar = 1;
 	}
+
+    if (param.toplevel == 1)
+	{
+	var tl = pg_toplevel_layer(l);
+	if (tl && tl != window && tl != document && tl != l)
+	    {
+	    var x = getPageX(l);
+	    var y = getPageY(l);
+	    moveAbove(l, tl);
+	    moveToAbsolute(l, x, y);
+	    }
+	}
     
     wn_list.push(l);
     wn_bring_top(l);
