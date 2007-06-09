@@ -35,10 +35,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj.h,v 1.37 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: obj.h,v 1.38 2007/06/09 19:53:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/obj.h,v $
 
     $Log: obj.h,v $
+    Revision 1.38  2007/06/09 19:53:46  gbeeley
+    - (feature) adding objGetPathname() method to return the full path of an
+      object that is already open.
+
     Revision 1.37  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -893,6 +897,7 @@ int objDelete(pObjSession session, char* path);
 int objDeleteObj(pObject this);
 pObject objLinkTo(pObject this);
 pObjectInfo objInfo(pObject this);
+char* objGetPathname(pObject this);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query);

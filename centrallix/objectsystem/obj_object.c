@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.26 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: obj_object.c,v 1.27 2007/06/09 19:53:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.27  2007/06/09 19:53:46  gbeeley
+    - (feature) adding objGetPathname() method to return the full path of an
+      object that is already open.
+
     Revision 1.26  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -1580,5 +1584,15 @@ objDeleteObj(pObject this)
 	this->Flags |= OBJ_F_DELETE;
 
     return objClose(this);
+    }
+
+
+/*** objGetPathname - return the full pathname of an open object.
+ ***/
+char*
+objGetPathname(pObject this)
+    {
+    ASSERTMAGIC(this,MGK_OBJECT);
+    return (obj_internal_PathPart(this->Pathname, 0, 0) + 1); 
     }
 
