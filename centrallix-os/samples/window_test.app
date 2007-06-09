@@ -30,6 +30,21 @@ window_test "widget/page"
 	x=450; y=240; width=200; height=200;
 	}
 
+    win3 "widget/childwindow"
+	{
+	style = dialog;
+	bgcolor = "#c0c0c0";
+	x=400; y=32; width=250; height=250;
+
+	win4 "widget/childwindow"
+	    {
+	    style = dialog;
+	    bgcolor = "#b0b0b0";
+	    x=420; y=52; width=250; height=250;
+	    toplevel = yes;
+	    }
+	}
+
     window1 "widget/childwindow"
 	{
 	//bgcolor="#c0c0c0";
