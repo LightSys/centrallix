@@ -89,3 +89,23 @@ function htutil_escape(s)
     var re2 = /\+/g;
     return new_s.replace(re, "%2f").replace(re2, "%2b");
     }
+
+function htutil_obscure(s)
+    {
+    if (!obscure_data) return s;
+    var new_s = String('');
+    s = String(s);
+    for (var i=0;i<s.length;i++)
+	{
+	if (s.charAt(i) >= '0' && s.charAt(i) <= '9')
+	    new_s += String.fromCharCode(Math.random()*10+48);
+	else if (s.charAt(i) >= 'A' && s.charAt(i) <= 'Z')
+	    new_s += String.fromCharCode(Math.random()*26+65);
+	else if (s.charAt(i) >= 'a' && s.charAt(i) <= 'z')
+	    new_s += String.fromCharCode(Math.random()*26+97);
+	else
+	    new_s += s.charAt(i);
+	}
+    return new_s;
+    }
+

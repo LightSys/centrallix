@@ -106,7 +106,7 @@ function eb_settext(l,txt)
 	{
 	l.is_busy = true;
 	l.set_content(txt);
-	pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(txt) + '</pre> ', eb_settext_cb);
+	pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(txt)) + '</pre> ', eb_settext_cb);
 	}
     }
 

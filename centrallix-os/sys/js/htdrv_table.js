@@ -77,7 +77,7 @@ function tbld_update(p1)
 		    {
 		    if(this.osrc.replica[this.rows[i].fg.recnum][k].oid==this.cols[j][0])
 			{
-			this.rows[i].fg.cols[j].data=this.osrc.replica[this.rows[i].fg.recnum][k].value;
+			this.rows[i].fg.cols[j].data=htutil_obscure(this.osrc.replica[this.rows[i].fg.recnum][k].value);
 			if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
 			    this.rows[i].fg.cols[j].data='';
 			if(this.textcolor)
