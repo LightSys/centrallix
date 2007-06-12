@@ -60,10 +60,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.51 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.52 2007/06/12 15:05:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.52  2007/06/12 15:05:35  gbeeley
+    - (feature) if cx__obscure=yes is included in the URL as a param, the
+      system will automatically randomize alphanumeric text in editboxes,
+      tables, and textareas, so that a running system with confidential
+      data can be demo'd
+
     Revision 1.51  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -558,6 +564,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddScriptGlobal(s,"tbldbdbl_current","null",0);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
+	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
 

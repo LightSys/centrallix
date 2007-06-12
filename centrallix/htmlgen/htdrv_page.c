@@ -12,6 +12,7 @@
 #include "centrallix.h"
 #include "wgtr.h"
 #include "iface.h"
+#include "stparse.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -45,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.79 2007/06/06 15:20:09 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.80 2007/06/12 15:05:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.80  2007/06/12 15:05:35  gbeeley
+    - (feature) if cx__obscure=yes is included in the URL as a param, the
+      system will automatically randomize alphanumeric text in editboxes,
+      tables, and textareas, so that a running system with confidential
+      data can be demo'd
+
     Revision 1.79  2007/06/06 15:20:09  gbeeley
     - (feature) pass templates on to components, etc.
 
@@ -626,6 +633,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     int show_diag = 0;
     int w,h;
     char* path;
+    pStruct c_param;
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -789,6 +797,12 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
 	htrAddScriptInit_va(s, "    pg_charh = %INT;\n", s->ClientInfo->CharHeight);
 	htrAddScriptInit_va(s, "    pg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
+
+	c_param = stLookup_ne(s->Params, "cx__obscure");
+	if (c_param && !strcasecmp(c_param->StrVal,"yes"))
+	    htrAddScriptInit(s, "    obscure_data = true;\n");
+	else
+	    htrAddScriptInit(s, "    obscure_data = false;\n");
 
 	/** Add template paths **/
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
