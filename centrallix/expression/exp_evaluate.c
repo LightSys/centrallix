@@ -66,10 +66,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.16 2007/03/06 16:16:55 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.17 2007/06/15 19:27:51 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.17  2007/06/15 19:27:51  gbeeley
+    - (bugfix) sql query selecting properties without a from clause caused a
+      null pointer dereference, due to insufficient checking during expression
+      evaluation
+
     Revision 1.16  2007/03/06 16:16:55  gbeeley
     - (security) Implementing recursion depth / stack usage checks in
       certain critical areas.
@@ -1089,9 +1094,18 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	else
 	    {
 	    id = expObjID(tree,objlist);
-	    if (id == EXPR_CTL_CONSTANT) return 0;
-	    obj = objlist->Objects[id];
-	    getfn = objlist->GetAttrFn[id];
+	    if (id == EXPR_CTL_CONSTANT)
+		return 0;
+	    else if (id < 0)
+		{
+		mssError(1,"EXP","Undefined object property '%s' - no such object", tree->Name);
+		return -1;
+		}
+	    else
+		{
+		obj = objlist->Objects[id];
+		getfn = objlist->GetAttrFn[id];
+		}
 	    }
 
 	/** If no object, set result to NULL. **/
