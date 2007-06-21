@@ -1637,6 +1637,7 @@ wgtrInitialize()
 	 ** become dynamically loaded modules. Then it'll make more sense
 	 **/
 	wgtalrtInitialize();
+	wgtbtnInitialize();
 	wgtcaInitialize();
 	wgtcbInitialize();
 	wgtclInitialize();

@@ -116,6 +116,7 @@ V3OBJDRIVERS=$(patsubst %,osdrivers/%,$(XV3OBJDRIVERS))
 # WGTR system, including wgt drivers and main wgtr code
 XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_autolayout.o \
+	wgtdrv_button.o \
 	wgtdrv_calendar.o \
 	wgtdrv_checkbox.o \
 	wgtdrv_clock.o \
@@ -168,6 +169,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_treeview.o \
 	   htdrv_html.o \
 	   htdrv_connector.o \
+	   htdrv_button.o \
 	   htdrv_imagebutton.o \
 	   htdrv_textbutton.o \
 	   htdrv_menu.o \

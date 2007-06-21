@@ -54,10 +54,22 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.42 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: centrallix.c,v 1.43 2007/06/21 21:41:15 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.43  2007/06/21 21:41:15  dkasper
+    - Added a new 'generic' button widget based off of the imagebutton and
+      textbutton widgets.  There are currently 7 different types of buttons
+      supported by the button widget:
+        1. image (only)
+        2. text (only)
+        3. topimage (display image on top of text)
+        4. bottomimage
+        5. leftimage
+        6. rightimage
+        7. textoverimage (display text on top of an image background)
+
     Revision 1.42  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -740,6 +752,7 @@ cxHtInit()
 	httreeInitialize();			/* treeview module */
 	hthtmlInitialize();			/* html pane module */
 	htconnInitialize();			/* connector nonvisual module */
+	htbtnInitialize();			/* generic button module */
 	htibtnInitialize();			/* image button module */
 	httbtnInitialize();			/* text button module */
 	htmenuInitialize();			/* dropdown/popup menu module */
