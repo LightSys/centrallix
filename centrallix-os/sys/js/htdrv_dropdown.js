@@ -296,7 +296,17 @@ function dd_collapse(l)
 
 function dd_expand(l)
     {
-    var offs;
+    var offs; 
+    if (!cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull))
+	{
+	var nullitem = new Array();
+	if (l.mainlayer.w < 108)
+	    nullitem.label = '(none)';
+	else
+	    nullitem.label = '(none selected)';
+	nullitem.value = null;
+	l.Values.splice(0,0,nullitem);
+	}
     if (l && !l.PaneLayer) 
 	l.PaneLayer = dd_create_pane(l);
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
@@ -361,6 +371,12 @@ function dd_select_item(l,i)
 	l.value = l.Values[l.VisLayer.index].value;
     else
 	l.value = null;
+    if(l.Mode == 3)
+	{
+	//change record
+	//alert(i);
+	l.osrc.MoveToRecord(i);
+	}
     cn_activate(l, "DataChange");
     }
 
@@ -457,16 +473,16 @@ function dd_scroll(t)
 function dd_create_pane(l)
     {
     // First, check to see if we need a NULL entry
-    if (!cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull))
-	{
-	var nullitem = new Array();
-	if (l.mainlayer.w < 108)
-	    nullitem.label = '(none)';
-	else
-	    nullitem.label = '(none selected)';
-	nullitem.value = null;
-	l.Values.splice(0,0,nullitem);
-	}
+    //if (!cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull))
+//	{
+//	var nullitem = new Array();
+//	if (l.mainlayer.w < 108)
+//	    nullitem.label = '(none)';
+//	else
+//	    nullitem.label = '(none selected)';
+//	nullitem.value = null;
+//	l.Values.splice(0,0,nullitem);
+//	}
 
     // Create the layer
     l.NumElements = l.Values.length;
@@ -653,6 +669,7 @@ function dd_mouseup(e)
         {
         dd_toggle(e.mainlayer,false);
         }
+    if (e.which == 2 || e.which == 3) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -674,9 +691,18 @@ function dd_mousedown(e)
             dd_datachange(dd_current);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
-        dd_select_item(dd_current, e.layer.index);
-        dd_datachange(dd_current);
-        dd_collapse(dd_current);
+	    if(e.mainlayer.Mode == 3)
+		{
+		e.mainlayer.osrc.MoveToRecord(e.layer.index);
+		dd_collapse(dd_current);
+		return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+		}
+	    else
+		{
+		dd_select_item(dd_current, e.layer.index);
+		dd_datachange(dd_current);
+		}
+	    dd_collapse(dd_current);
         }
     else if (e.kind == 'dd_sc')
         {
@@ -729,6 +755,34 @@ function dd_mousedown(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function dd_update(p1)
+    {
+    var osrc = this.osrc;
+    var l = this.mainlayer;
+    //make array of labels and values wnames are irrelevant because there are no corresponding widgets
+    var vals = new Array();
+    for(var i in osrc.replica)
+	{
+	var rec = osrc.replica[i];
+	for(var k in rec)
+	    {
+	    if(rec[k].oid == l.fieldname)
+		{
+		vals[vals.length] = new Object({wname: rec[k].oid, label: rec[k].value, value: rec[k].value}); //append object
+		}
+	    }
+	}
+    l.additems(l,vals);
+    dd_select_item(l,p1.id-1); //select the correct index (not zero based)
+    }
+
+function dd_clear_layers()
+    {
+    var vals = new Array();
+    var l = this.mainlayer;
+    l.additems(l,vals);
+    }
+
 function dd_init(param)
     {
     var l = param.layer;
@@ -755,6 +809,24 @@ function dd_init(param)
     l.clearvalue = dd_clearvalue;
     l.resetvalue = dd_resetvalue;
     l.keyhandler = dd_keyhandler;
+    l.additems = dd_add_items;
+    if(l.Mode == 3)
+	{
+	l.osrc = wgtrFindContainer(l, "widget/osrc");
+        if(!l.osrc)
+	    {
+	    alert("Drop Down in objectsource mode needs to be inside an osrc widget!");
+	    }
+	l.osrc.Register(l);
+	l.IsDiscardReady=new Function('return true;');
+	l.DataAvailable=dd_clear_layers;
+	l.ObjectAvailable=dd_update;
+	l.ReplicaMoved=dd_update;
+	l.OperationComplete=new Function();
+	l.ObjectDeleted=dd_update;
+	l.ObjectCreated=dd_update;
+	//l.ObjectModified=dd_object_modified;
+	}
     l.losefocushandler = dd_losefocus;
     l.getfocushandler = dd_getfocus;
     l.bg = param.background;
