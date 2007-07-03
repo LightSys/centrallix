@@ -152,6 +152,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	else if (!strcmp(ptr,"dynamic_server")) mode = 1;
 	else if (!strcmp(ptr,"dynamic")) mode = 2;
 	else if (!strcmp(ptr,"dynamic_client")) mode = 2;
+	else if (!strcmp(ptr,"objectsource")) mode = 3;
 	else {
 	    mssError(1,"HTDD","Dropdown widget has not specified a valid mode.");
 	    return -1;
@@ -159,7 +160,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     }
 
     sql = 0;
-    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != 0) {
+    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != 0 && mode != 3) {
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
     }
@@ -230,7 +231,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    objQueryClose(qy);
 	}
     }
-
+    else if(mode==3) {
+	/* get objects from form */
+    }
 
 
     flag=0;
@@ -323,10 +326,13 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.57 2007/06/01 21:05:55 dkasper Exp $
+    $Id: htdrv_dropdown.c,v 1.58 2007/07/03 22:44:59 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.58  2007/07/03 22:44:59  dkasper
+    - Added a new mode to the dropdown called object source.
+
     Revision 1.57  2007/06/01 21:05:55  dkasper
     - Added hook for context menu event
 
