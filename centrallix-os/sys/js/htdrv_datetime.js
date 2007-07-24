@@ -195,7 +195,7 @@ function dt_drawdate(l, d) {
 }
 
 function dt_drawmonth(l, d) {
-	var dy=0,r=-1;
+	var dy=0,r=-1,rows=5;
 	var TmpDate;
 	if (d) 
 	    TmpDate = new Date(d);
@@ -213,9 +213,13 @@ function dt_drawmonth(l, d) {
 	var cur_dy = null;
 	if (l.ml.DateObj && TmpDate.getMonth() == l.ml.DateObj.getMonth() && TmpDate.getYear() == l.ml.DateObj.getYear())
 	    cur_dy = l.ml.DateObj.getDate();
-
-	var v='<TABLE width=175 height=100 border=0 cellpadding=0 cellspacing=0>';
-	for (var i=0; i<35; i++) {
+	rows=Math.ceil((num+col)/7);
+	pg_set_style(l,'height',rows*20+90);
+	setClipHeight(l,rows*20+90);
+	moveTo(l.TimeHidLayer,0,rows*20+56);
+	moveTo(l.TimeVisLayer,0,rows*20+56);
+	var v='<TABLE width=175 height='+rows*20  +' border=0 cellpadding=0 cellspacing=0>';
+	for (var i=0; i<7*rows; i++) {
 		if (i!=0 && i%7==0) v+='</TR>';
 		if (i%7==0) {v+='<TR>\n';r++}
 		v+='<TD width=25 height=18 valign=middle align=right>';
@@ -291,7 +295,6 @@ function dt_inittime(l) {
 }
 
 function dt_drawtime(l, d) {
-	// need to create time layers?
 	var tvl = l.TimeVisLayer;
 	if (!tvl.hours) {
 		tvl.hours = htr_new_layer(20,tvl);
@@ -543,7 +546,7 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	htr_setvisibility(l,'hidden');
 
 	str = "<BODY "+bg+">";
-	str += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+w+" height="+h+">";
+	str += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+w+" height="+(h+20)+">";
 	str += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>";
 	str += "	<TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(w-2)+"></TD>";
 	str += "	<TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>";
