@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_autolayout.c,v 1.3 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_autolayout.c,v 1.4 2007/07/24 23:06:23 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_autolayout.c,v $
 
     $Log: htdrv_autolayout.c,v $
+    Revision 1.4  2007/07/24 23:06:23  dkasper
+    - It was necessary to add a few lines that make the autolayout render all
+      of the subwidgets of a repeat widgets, while not trying to render the
+      repeat widget itself.
+
     Revision 1.3  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -93,7 +98,8 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
     int x=-1,y=-1,w,h;
     int id;
     pWgtrNode subtree;
-    int i;
+    pWgtrNode rptsubtree;
+    int i,rpti;
 
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
 	    {
@@ -149,10 +155,21 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    subtree = xaGetItem(&(tree->Children), i);
 	    if (!strcmp(subtree->Type, "widget/autolayoutspacer")) 
 		subtree->RenderFlags |= HT_WGTF_NOOBJECT;
+	    else if(!strcmp(subtree->Type, "widget/repeat"))
+		{
+		for(rpti=0;rpti<xaCount(&(subtree->Children));rpti++)
+		    {
+		    rptsubtree = xaGetItem(&(subtree->Children),rpti);
+		    htrRenderWidget(s,rptsubtree, z+1);
+		    //mssError(1,"HTAL","Found a subwidget to a repeat");
+		    }
+		}
 	    else
+		{
 		htrRenderWidget(s, subtree, z+1);
+		//mssError(1,"HTAL","Found a subwidget");
+		}
 	    }
-
 	/** End of container **/
 	htrAddBodyItemLayerEnd(s, 0);
 
