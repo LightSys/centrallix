@@ -52,6 +52,7 @@ function htutil_subst_last(str,subst)
 
 function htutil_rtrim(str) 
     {
+    str = new String(str);
     for (var i=str.length-1; i>=0 && (str.charAt(i) == ' ' || str.charAt(i)=='\t' || str.charAt(i)=='\xCA'); i--);
     return str.substring(0, i+1);
     }
