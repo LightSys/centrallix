@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.8 2007/06/06 15:20:09 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.9 2007/07/25 16:53:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.9  2007/07/25 16:53:41  gbeeley
+    - (feature) adding "toplevel" boolean property to component, so that
+      component windows can be brought into the application at the top level
+      instead of being clipped by the object that they are inside.
+
     Revision 1.8  2007/06/06 15:20:09  gbeeley
     - (feature) pass templates on to components, etc.
 
@@ -267,6 +272,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     int i;
     char* path;
     char* templates[WGTR_MAX_TEMPLATE];
+    int is_toplevel;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -278,13 +284,26 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get an id for this. **/
 	id = (HTCMP.idcnt++);
 
+	/** Is this a toplevel component? **/
+	is_toplevel = htrGetBoolean(tree, "toplevel", 0);
+
         /** Get x,y,w,h of this object **/
         if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x = 0;
         if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
-        if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
-	    w = wgtrGetContainerWidth(tree) - x;
-        if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) 
-	    h = wgtrGetContainerHeight(tree) - y;
+	if (is_toplevel)
+	    {
+	    if (wgtrGetPropertyValue(wgtrGetRoot(tree),"width",DATA_T_INTEGER,POD(&w)) != 0)
+		w = wgtrGetContainerWidth(tree) - x;
+	    if (wgtrGetPropertyValue(wgtrGetRoot(tree),"height",DATA_T_INTEGER,POD(&h)) != 0) 
+		h = wgtrGetContainerHeight(tree) - y;
+	    }
+	else
+	    {
+	    if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
+		w = wgtrGetContainerWidth(tree) - x;
+	    if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) 
+		h = wgtrGetContainerHeight(tree) - y;
+	    }
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -398,8 +417,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\")});\n",
-		    name, allow_multi, auto_destroy, cmp_path, name, id);
+		    "    cmp_init({node:nodes[\"%STR&SYM\"], is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"cmp%POS\")});\n",
+		    name, is_toplevel, allow_multi, auto_destroy, cmp_path, name, id);
 
 	    /** Add template paths **/
 	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
