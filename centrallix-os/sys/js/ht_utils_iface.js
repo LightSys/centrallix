@@ -419,6 +419,45 @@ function ifEvent()
     }
 
 
+// Value interface
+function ifValue()
+    {
+    function ifvalue_getvalue(n)
+	{
+	if (this.Values[n])
+	    return this.Values[n].call(this.obj, n);
+	else if (pg_diag && this.NullNotExist == false)
+	    alert("Get value: " + this.obj.id + " does not implement value " + n);
+	return null;
+	}
+    function ifvalue_exists(n)
+	{
+	var v = this.Values[n]?true:false;
+	if (this.NullNotExist && v == false) return true;
+	return v;
+	}
+    function ifvalue_add(n, cb)	
+	{
+	this.Values[n] = cb;
+	}
+    function ifvalue_remove(n)
+	{
+	this.Values[n] = null;
+	}
+    function ifvalue_setnonexistentbehavior(b)
+	{
+	this.NullNotExist = b;
+	}
+    this.NullNotExist = false;
+    this.Values = new Object();
+    this.getValue = ifvalue_getvalue;
+    this.Exists = ifvalue_exists;
+    this.Add = ifvalue_add;
+    this.Remove = ifvalue_remove;
+    this.SetNonexistentBehavior = ifvalue_setnonexistentbehavior;
+    }
+
+
 // Form Element interface
 function ifFormElement(field)
     {

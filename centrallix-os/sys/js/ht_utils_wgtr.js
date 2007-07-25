@@ -124,6 +124,20 @@ function wgtrGetProperty(node, prop_name)
 		}
 	    }
 
+	// If widget has a get-value function, use it
+	if (node.ifcProbe(ifValue))
+	    {
+	    if (node.ifcProbe(ifValue).Exists(prop_name))
+		{
+		return node.ifcProbe(ifValue).getValue(prop_name);
+		}
+	    else
+		{
+		alert('Application error: "' + prop_name + '" is undefined for object "' + wgtrGetName(node) + '"');
+		return null;
+		}
+	    }
+
 	// check for the existence of the asked-for property
 	if (typeof (node[prop_name]) == 'undefined')
 	    {
@@ -420,3 +434,12 @@ function wgtrDereference(r)
     return wgtrGetNode(pg_namespaces[n[0]], n[1]);
     }
 
+function wgtrFind(v)
+    {
+    for(var n in pg_namespaces)
+	{
+	if ((typeof pg_namespaces[n].__WgtrChildList[v]) != 'undefined')
+	    return pg_namespaces[n].__WgtrChildList[v];
+	}
+    return null;
+    }

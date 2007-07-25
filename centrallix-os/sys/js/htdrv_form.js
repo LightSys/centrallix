@@ -19,13 +19,51 @@ function form_cb_register(element)
     else
 	{
 	this.elements.push(element);
+	if (element.fieldname)
+	    this.ifcProbe(ifValue).Add(element.fieldname, form_cb_getvalue);
 	}
     }
 
+function form_cb_getvalue(v)
+    {
+    if (v == 'recid') return this.recid;
+    else if (v == 'lastrecid') return this.lastrecid;
+    else if (v == 'is_savable') return this.is_savable;
+    else if (v == 'is_editable') return this.is_editable;
+    else if (v == 'is_newable') return this.is_newable;
+    else if (v == 'is_discardable') return this.is_discardable;
+    else if (v == 'is_queryable') return this.is_queryable;
+    else if (v == 'is_queryexecutable') return this.is_queryexecutable;
+    var dv = null;
+    if (this.data)
+	{
+	for(var j in this.data)
+	    {
+	    if (this.data[j].oid == v)
+		{
+		dv = this.data[j].value;
+		break;
+		}
+	    }
+	}
+    for(var i=0;i<this.elements.length;i++)
+	{
+	if(this.elements[i].fieldname==v)
+	    {
+	    dv = this.elements[i].getvalue();
+	    }
+	}
+    return dv;
+    }
+
 /** A child 'control' has changed it's data **/
-function form_cb_data_notify(control)
+function form_cb_data_notify(control, user_modify)
     {
     control._form_IsChanged=true;
+    if (user_modify)
+	{
+	this.FocusNotify(control);
+	}
     if(this.mode=='New' || this.mode=='Modify')
 	{
 	if(!this.IsUnsaved)
@@ -158,6 +196,7 @@ function form_cb_is_discard_ready()
 /** Objectsource says our object is available **/
 function form_cb_object_available(data)
     {
+    this.data=data;
     if (data)
 	{
 	if(this.mode!='View') this.ChangeMode('View');
@@ -168,10 +207,14 @@ function form_cb_object_available(data)
 	this.recid = 1;
 	this.lastrecid = 1;
 	}
-    this.data=data;
     this.ClearAll();
     if (this.data)
 	{
+	for(var j in this.data)
+	    {
+	    if (!this.ifcProbe(ifValue).Exists(this.data[j].oid))
+		this.ifcProbe(ifValue).Add(this.data[j].oid, form_cb_getvalue);
+	    }
 	if (this.didsearch && (this.didsearchlast || data.id == this.recid))
 	    this.lastrecid = data.id;
 	this.recid = data.id;
@@ -218,6 +261,7 @@ function form_cb_object_available(data)
 		this.elements[i].clearvalue();
 		}
 	    }
+	this.SendEvent('DataLoaded');
 	}
     this.didsearch = false;
     this.didsearchlast = false;
@@ -1020,6 +1064,7 @@ function form_init(form,param)
     form.multienter = param.me;
     form.allowobscure = param.ao;
 /** initialize actions and callbacks **/
+    form.form_cb_getvalue = form_cb_getvalue;
     form._3bconfirmwindow = param._3b;
     form._3bconfirm_discard = form_3bconfirm_discard;
     form._3bconfirm_cancel = form_3bconfirm_cancel;
@@ -1075,12 +1120,25 @@ function form_init(form,param)
     var ie = form.ifcProbeAdd(ifEvent);
     ie.Add("StatusChange");
     ie.Add("DataChange");
+    ie.Add("DataLoaded");
     ie.Add("DataSaved");
     ie.Add("NoData");
     ie.Add("View");
     ie.Add("New");
     ie.Add("Modify");
     ie.Add("Search");
+
+    // Values
+    var iv = form.ifcProbeAdd(ifValue);
+    iv.Add("is_savable",form_cb_getvalue);
+    iv.Add("is_discardable",form_cb_getvalue);
+    iv.Add("is_newable",form_cb_getvalue);
+    iv.Add("is_editable",form_cb_getvalue);
+    iv.Add("is_queryable",form_cb_getvalue);
+    iv.Add("is_queryexecutable",form_cb_getvalue);
+    iv.Add("recid",form_cb_getvalue);
+    iv.Add("lastrecid",form_cb_getvalue);
+    iv.SetNonexistentBehavior(true);
 
     return form;
     }
