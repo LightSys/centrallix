@@ -654,7 +654,7 @@ function tbld_mousedown(e)
                     ly.table.osrc.MoveToRecord(ly.recnum);
                     }
                 }
-            if(ly.table.EventClick != null)
+            if(ly.table.ifcProbe(ifEvent).Exists("Click"))
                 {
                 var event = new Object();
                 event.Caller = ly.table;
@@ -672,7 +672,7 @@ function tbld_mousedown(e)
                 cn_activate(ly.table,'Click', event);
                 delete event;
                 }
-            if(ly.table.EventDblClick != null)
+            if(ly.table.ifcProbe(ifEvent).Exists("DblClick"))
                 {
                 if (!ly.table.clicked || !ly.table.clicked[ly.recnum])
                     {
