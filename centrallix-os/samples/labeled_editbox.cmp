@@ -1,12 +1,54 @@
 $Version=2$
 labeled_editbox "widget/component-decl"
     {
-    width=200;height=20;
+    width=220;height=20;
 
     form "widget/parameter" { type=object; find_container="widget/form";}
     field "widget/parameter" { type=string; }
     text "widget/parameter" { type=string; }
+    lookup_with "widget/parameter" { type=string; default=null;}
+    type "widget/parameter" { type=string; default="standard"; }
+
+    SetValue "widget/component-decl-action" { }
+    sv_cn "widget/connector" { event="SetValue"; target=editbox; action="SetValue"; Value=runclient(:Value); }
+    //sv_cn "widget/connector" { event="SetValue"; target=editbox; action="SetValue"; Value=runclient(12345); }
 
     label "widget/label" { x=0;y=0;height=20;width=95; text=runserver(:this:text); align=right; }
-    editbox "widget/editbox" { x=100;y=0;height=20;width=100; bgcolor=white; fieldname=runserver(:this:field); form=form; }
+    editbox "widget/editbox" 
+	{
+	x=100;y=0;height=20;
+	width=runserver(condition(char_length(:this:lookup_with) > 0, 100, 120));
+	bgcolor=white; 
+	fieldname=runserver(:this:field); 
+	form=form; 
+        create_hints "widget/hints" { condition=runserver(:this:type == 'create'); default = runclient(user_name()); style=readonly; }
+        ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
+	}
+    lookup_btn "widget/textbutton"
+	{ 
+	condition=runserver(char_length(:this:lookup_with) > 0); 
+	x=202; y=0; height=20; width=18; 
+	tristate=no; 
+	fgcolor1=black; 
+	fgcolor2=white; 
+	text="?"; 
+	bgcolor=''; 
+	enabled=runclient(:form:is_discardable);
+
+	lookup_cn "widget/connector"
+	    {
+	    event = "Click";
+	    target = lookup_cmp;
+	    action = "Instantiate";
+	    dest_editbox = editbox;
+	    desc = runserver(:this:text);
+	    }
+	}
+    lookup_cmp "widget/component"
+	{
+	toplevel = yes;
+	condition=runserver(char_length(:this:lookup_with) > 0); 
+	mode=dynamic;
+	path=runserver(:this:lookup_with);
+	}
     }
