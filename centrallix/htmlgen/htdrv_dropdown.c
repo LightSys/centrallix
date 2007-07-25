@@ -55,6 +55,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
    char fieldname[30];
+   char form[64];
    char name[64];
    char *ptr;
    char *sql;
@@ -112,6 +113,11 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	fieldname[0]='\0';
    }
 
+   if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
+	strtcpy(form,ptr,sizeof(form));
+   else
+	form[0]='\0';
+
     /** Get name **/
     if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
     strtcpy(name,ptr,sizeof(name));
@@ -165,7 +171,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
     }
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&ESCQ', highlight:'%STR&ESCQ', fieldname:'%STR&ESCQ', numDisplay:%INT, mode:%INT, sql:'%STR&ESCQ', width:%INT, height:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h);
+    htrAddScriptInit_va(s,"    dd_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"], \"dd%POScon2\"), background:'%STR&ESCQ', highlight:'%STR&ESCQ', fieldname:'%STR&ESCQ', numDisplay:%INT, mode:%INT, sql:'%STR&ESCQ', width:%INT, height:%INT, form:'%STR&ESCQ'});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form);
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);
@@ -326,10 +332,14 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.58 2007/07/03 22:44:59 dkasper Exp $
+    $Id: htdrv_dropdown.c,v 1.59 2007/07/25 16:54:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.59  2007/07/25 16:54:29  gbeeley
+    - (feature) allow dropdown widget to directly specify what form it is
+      using instead of just defaulting to a containing form.
+
     Revision 1.58  2007/07/03 22:44:59  dkasper
     - Added a new mode to the dropdown called object source.
 
