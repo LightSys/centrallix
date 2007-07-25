@@ -834,7 +834,8 @@ function dd_init(param)
     l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
-    l.form = wgtrFindContainer(l,"widget/form");
+    if (param.form) l.form = wgtrGetNode(l, param.form);
+    if (!l.form) l.form = wgtrFindContainer(l,"widget/form");
     l.value = null;
     htr_init_layer(l,l,'dd');
     htutil_tag_images(l,'dd',l,l);
