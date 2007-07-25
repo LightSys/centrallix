@@ -297,7 +297,7 @@ function dd_collapse(l)
 function dd_expand(l)
     {
     var offs; 
-    if (!cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull))
+    if (!cx_hints_teststyle(l.mainlayer, cx_hints_style.notnull) && l.Values[0].value != null)
 	{
 	var nullitem = new Array();
 	if (l.mainlayer.w < 108)
