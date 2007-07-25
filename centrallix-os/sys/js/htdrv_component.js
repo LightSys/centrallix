@@ -115,7 +115,11 @@ function cmp_instantiate(aparam)
     if (this.is_static)
 	return false;
     var p = wgtrGetContainer(wgtrGetParent(this));
-    var geom = tohex16(getWidth(p)) + tohex16(getHeight(p)) + tohex16(pg_charw) + tohex16(pg_charh) + tohex16(pg_parah);
+    var geom;
+    if (this.is_toplevel)
+	geom = tohex16(pg_width) + tohex16(pg_height) + tohex16(pg_charw) + tohex16(pg_charh) + tohex16(pg_parah);
+    else
+	geom = tohex16(getWidth(p)) + tohex16(getHeight(p)) + tohex16(pg_charw) + tohex16(pg_charh) + tohex16(pg_parah);
     var graft = wgtrGetNamespace(this) + ':' + wgtrGetName(this);
     var url = this.path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft) + "&cx__akey=" + escape(akey);
 
@@ -396,6 +400,7 @@ function cmp_action(aname, aparam)
 	    {
 	    if (this.components[i].actions[j] == aname)
 		{
+		//htr_alert(aparam,1);
 		this.components[i].cmp.ifcProbe(ifEvent).Activate(aname, aparam);
 		break;
 		}
@@ -420,6 +425,7 @@ function cmp_init(param)
     {
     var node = param.node;
     node.is_static = param.is_static;
+    node.is_toplevel = param.is_top;
     node.allow_multi = param.allow_multi;
     node.auto_destroy = param.auto_destroy;
     node.cmp = node;
