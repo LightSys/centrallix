@@ -324,12 +324,15 @@ function ifEvent()
 	else if (pg_diag)
 	    alert("Clear events: " + this.obj.id + " does not implement event " + e);
 	}
-    function ifevent_hook(e,f)
+    function ifevent_hook(e,f,t)
 	{
 	if (this.Events[e])
 	    {
 	    eo = {fn:f, name:e};
-	    eo.eo = this.obj;
+	    if (t)
+		eo.eo = t;
+	    else
+		eo.eo = this.obj;
 	    this.Events[e].push(eo);
 	    }
 	else if (pg_diag)
