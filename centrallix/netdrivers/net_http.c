@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.73 2007/06/06 15:20:09 gbeeley Exp $
+    $Id: net_http.c,v 1.74 2007/07/25 16:57:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.74  2007/07/25 16:57:23  gbeeley
+    - (change) prepping codebase for addition of layered/reverse-inheritance
+      development.
+
     Revision 1.73  2007/06/06 15:20:09  gbeeley
     - (feature) pass templates on to components, etc.
 
@@ -2775,9 +2779,11 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     int i;
     WgtrClientInfo wgtr_params;
     int akey_match = 0;
-    char* templates[WGTR_MAX_TEMPLATE];
     char* tptr;
     char* tptr2;
+    char* lptr;
+    char* lptr2;
+    char* pptr;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -3010,7 +3016,6 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    fdSetOptions(conn->ConnFD, FD_UF_GZIP);
 
 		/** Check for template specs **/
-		memset(templates, 0, sizeof(templates));
 		tptr = NULL;
 		if (akey_match && stAttrValue_ne(stLookup_ne(url_inf,"cx__templates"),&tptr) == 0 && tptr)
 		    {
@@ -3021,24 +3026,49 @@ nht_internal_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			{
 			if (cnt < WGTR_MAX_TEMPLATE)
 			    {
-			    templates[cnt] = tptr2;
+			    wgtr_params.Templates[cnt] = tptr2;
 			    cnt++;
 			    }
 			tptr2 = strtok(NULL, "|");
 			}
 		    }
 
+		/** Check for application layering **/
+		lptr = NULL;
+		if (akey_match && stAttrValue_ne(stLookup_ne(url_inf,"cx__overlays"),&lptr) == 0 && lptr)
+		    {
+		    cnt = 0;
+		    lptr = nmSysStrdup(lptr);
+		    lptr2 = strtok(lptr,"|");
+		    while(lptr2)
+			{
+			if (cnt < WGTR_MAX_TEMPLATE)
+			    {
+			    wgtr_params.Overlays[cnt] = lptr2;
+			    cnt++;
+			    }
+			lptr2 = strtok(NULL, "|");
+			}
+		    }
+		pptr = NULL;
+		if (akey_match && stAttrValue_ne(stLookup_ne(url_inf,"cx__app_path"),&pptr) == 0 && pptr)
+		    {
+		    wgtr_params.AppPath = pptr;
+		    }
+
 		/** Read the app spec, verify it, and generate it to DHTML **/
-		if (wgtrRenderObject(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, templates, "DHTML") < 0)
+		if (wgtrRenderObject(conn->ConnFD, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML") < 0)
 		    {
 		    mssError(0, "HTTP", "Invalid application %s of type %s", url_inf->StrVal, ptr);
 		    fdPrintf(conn->ConnFD,"<h1>An error occurred while constructing the application:</h1><pre>");
 		    mssPrintError(conn->ConnFD);
 		    objClose(target_obj);
 		    if (tptr) nmSysFree(tptr);
+		    if (lptr) nmSysFree(lptr);
 		    return -1;
 		    }
 		if (tptr) nmSysFree(tptr);
+		if (lptr) nmSysFree(lptr);
 	        }
 	    /** a client app requested an interface definition **/ 
 	    else if (!strcmp(ptr, "iface/definition"))

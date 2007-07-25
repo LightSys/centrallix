@@ -2269,14 +2269,23 @@ wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset)
  *** and expressions.
  ***/
 int
-wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* templates[], char* method)
+wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method)
     {
     pWgtrNode tree;
     int rval;
+    char* objpath;
 
 	/** Parse it **/
-	tree = wgtrParseOpenObject(obj, app_params, templates);
+	tree = wgtrParseOpenObject(obj, app_params, client_info->Templates);
 	if (!tree) return -1;
+
+	/** Merge overlays, if any **/
+	objpath = objGetPathname(obj);
+	if (wgtrMergeOverlays(tree, objpath, client_info->AppPath, client_info->Overlays, client_info->Templates) < 0)
+	    {
+	    wgtrFree(tree);
+	    return -1;
+	    }
 
 	/** Verify **/
 	if (wgtrVerify(tree, client_info) < 0)
@@ -2294,3 +2303,18 @@ wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, p
     return rval;
     }
 
+
+/*** wgtrMergeOverlays() - given a list of overlays, merge them on top of the
+ *** given widget tree, according to standard overlay/inherit semantics
+ ***/
+int
+wgtrMergeOverlays(pWgtrNode tree, char* objpath, char* app_path, char* overlays[], char* templates[])
+    {
+    return 0;
+    }
+
+pWgtrNode
+wgtrGetRoot(pWgtrNode tree)
+    {
+    return tree->Root;
+    }

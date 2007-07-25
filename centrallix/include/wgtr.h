@@ -43,6 +43,7 @@
 #include "iface.h"
 
 #define WGTR_MAX_TEMPLATE	8	/** Maximum templates concurrently applying to page **/
+#define WGTR_MAX_OVERLAY	16	/** Maximum overlays in an app **/
 
 #define WGTR_F_NONVISUAL    1		/** a widget is visual by default, non-visual if this is set **/
 #define WGTR_F_CONTAINER    2		/** set for container widgets **/
@@ -59,6 +60,9 @@ typedef struct
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
     char	AKey[64];
+    char*	Templates[WGTR_MAX_TEMPLATE];
+    char*	Overlays[WGTR_MAX_OVERLAY];
+    char*	AppPath;
     }
     WgtrClientInfo, *pWgtrClientInfo;
 
@@ -155,6 +159,7 @@ pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
 			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
 int wgtrSetupNode(pWgtrNode node);
+int wgtrMergeOverlays(pWgtrNode node, char* objpath, char* app_path, char* overlays[], char* templates[]);
 
 /** wgtr iterator functions **/
 pWgtrIterator wgtrGetIterator(pWgtrNode tree, int traversal_type);	/** returns an iterator for the tree **/
@@ -169,6 +174,7 @@ char* wgtrNextPropertyName(pWgtrNode widget);	/** returns next name in property 
 char* wgtrGetRootDName(pWgtrNode widget);	/** returns the deployment name of the tree root **/
 char* wgtrGetDName(pWgtrNode widget);	/** returns the deployment name of the tree node **/
 char* wgtrGetTemplatePath(pWgtrNode widget, int n);	/** returns the path to the template used **/
+pWgtrNode wgtrGetRoot(pWgtrNode widget);
 
 /** modifiers **/
 int wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int isnull); /** add a property to the widget **/
@@ -201,7 +207,7 @@ int wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)());	/** registers
 int wgtrAddType(char* name, char* type_name);	    /** associate a type with a wgtr driver **/
 int wgtrAddDeploymentMethod(char* method, int (*Render)());	/** add a deployment method to a driver **/
 int wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method);
-int wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* templates[], char* method);
+int wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method);
 
 /** for debugging **/
 void wgtrPrint(pWgtrNode tree, int indent);	/** for debug purposes **/
