@@ -53,6 +53,7 @@ function wn_init(param)
     l.closetype = param.closetype;
     l.working = false;
     l.shaded = false;
+    l.loaded = false;
 
     /** make sure the images are set up **/
     l.has_titlebar = 0;
@@ -92,6 +93,9 @@ function wn_init(param)
     ie.Add("MouseOver");
     ie.Add("MouseOut");
     ie.Add("MouseMove");
+    ie.Add("Load");
+    ie.Add("Open");
+    ie.Add("Close");
 
     //l.RegisterOSRC = wn_register_osrc;
 
@@ -100,6 +104,7 @@ function wn_init(param)
     l.SetVisibilityTH = wn_setvisibility_th;
     l.Reveal = wn_cb_reveal;
     pg_reveal_register_triggerer(l);
+    pg_reveal_register_listener(l);
     if (htr_getvisibility(l) == 'inherit' || htr_getvisibility(l) == 'visible')
 	{
 	pg_addsched_fn(window, "pg_reveal_event", new Array(l,l,'Reveal'), 0);
@@ -131,6 +136,15 @@ function wn_cb_reveal(e)
     {
     if ((e.eventName == 'RevealOK' && e.c == true) || (e.eventName == 'ObscureOK' && e.c == false))
 	this.SetVisibilityBH(e.c);
+    if (e.eventName == 'Reveal' && htr_getvisibility(this) == 'inherit')
+	{
+	if (!this.loaded)
+	    {
+	    this.loaded = true;
+	    this.ifcProbe(ifEvent).Activate("Load", {});
+	    }
+	this.ifcProbe(ifEvent).Activate("Open", {});
+	}
     return true;
     }
 
@@ -152,11 +166,18 @@ function wn_setvisibility_bh(v)
     if (!v)
 	{
 	pg_reveal_event(this, v, 'Obscure');
+	this.ifcProbe(ifEvent).Activate("Close", {});
 	wn_close(this);
 	}
     else
 	{
 	pg_reveal_event(this, v, 'Reveal');
+	if (!this.loaded)
+	    {
+	    this.loaded = true;
+	    this.ifcProbe(ifEvent).Activate("Load", {});
+	    }
+	this.ifcProbe(ifEvent).Activate("Open", {});
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
 	if (this.is_modal) pg_setmodal(this);
@@ -376,7 +397,7 @@ function wn_openwin(aparam)
 
 function wn_setvisibility(aparam)
     {
-    if (aparam.IsVisible == null || aparam.IsVisible == 1 || aparam.IsVisible == '1')
+    if (aparam.IsVisible == null || aparam.IsVisible == 1 || aparam.IsVisible == '1' || aparam.IsVisible == true)
 	{
 	/*wn_bring_top(this);
 	this.visibility = 'inherit';
