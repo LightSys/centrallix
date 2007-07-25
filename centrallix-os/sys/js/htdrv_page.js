@@ -974,6 +974,7 @@ function pg_removekey(kd)
     
 function pg_keytimeout()
     {
+    pg_keyschedid = 0;
     if (pg_lastkey != -1)
 	{
 	e = new Object();
@@ -997,7 +998,6 @@ function pg_keypresshandler(k,m,e)
 function pg_keyhandler(k,m,e)
     {
     //alert(this.caller);
-    pg_lastmodifiers = m;
 
     // block non-special codes for IE here - handle em in keypress, not keydown.
     if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
@@ -1620,7 +1620,7 @@ function pg_serialized_load_doone()
 	one_item.lyr.onload = pg_serialized_load_cb;
 	pg_set(one_item.lyr, 'src', one_item.src);
 	}
-    else if (one_item.text)
+    else if ((typeof one_item.text) != 'undefined')
 	{
 	if (cx__capabilities.Dom0NS)
 	    {
@@ -1746,6 +1746,12 @@ function pg_reveal_internal(e)
     var was_visible = (this.__pg_reveal_parent_visible && this.__pg_reveal_visible);
     var going_to_be_visible = ((e.eventName == 'RevealCheck' || e.eventName == 'Reveal') && this.__pg_reveal_visible);
     var vis_changing = (was_visible != going_to_be_visible);
+
+    // Is this both a triggerer and a listener?
+    if (vis_changing && this.__pg_reveal_is_listener && this.__pg_reveal_is_triggerer && (e.eventName == 'Reveal' || e.eventName == 'Obscure'))
+	{
+	this.Reveal(e);
+	}
 
     // For Reveal and Obscure, simply filter the events down.
     if (vis_changing && (e.eventName == 'Reveal' || e.eventName == 'Obscure')) 
@@ -2192,10 +2198,13 @@ function pg_keydown(e)
         k = e.which;
         if (k > 65280) k -= 65280;
         if (k >= 128) k -= 128;
-        if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        if (k == pg_lastkey && e.modifiers == pg_lastmodifiers) 
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
+	pg_lastmodifiers = e.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
+	if (pg_keyschedid) pg_delsched(pg_keyschedid);
+        pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
         if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
@@ -2206,10 +2215,13 @@ function pg_keydown(e)
         k = e.keyCode;
         if (k > 65280) k -= 65280;
         //if (k >= 128) k -= 128;
-        if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        if (k == pg_lastkey && e.modifiers == pg_lastmodifiers) 
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
+	pg_lastmodifiers = e.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
+	if (pg_keyschedid) pg_delsched(pg_keyschedid);
+        pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
         if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
@@ -2218,10 +2230,13 @@ function pg_keydown(e)
     else if (cx__capabilities.Dom2Events)
 	{
 	k = e.Dom2Event.which;
-        if (k == pg_lastkey) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+        if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
+	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
+	pg_lastmodifiers = e.Dom2Event.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
+	if (pg_keyschedid) pg_delsched(pg_keyschedid);
+        pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
         if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
