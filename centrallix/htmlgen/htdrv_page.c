@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.80 2007/06/12 15:05:35 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.81 2007/07/25 16:55:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.81  2007/07/25 16:55:57  gbeeley
+    - (bugfix) try to keep keystrokes from getting jumbled up by deleting any
+      scheduled key repeat callback as needed.
+
     Revision 1.80  2007/06/12 15:05:35  gbeeley
     - (feature) if cx__obscure=yes is included in the URL as a param, the
       system will automatically randomize alphanumeric text in editboxes,
@@ -736,6 +740,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_lastkey", "-1", 0);
 	htrAddScriptGlobal(s, "pg_lastmodifiers", "null", 0);
 	htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0);
+	htrAddScriptGlobal(s, "pg_keyschedid", "0", 0);
 	htrAddScriptGlobal(s, "pg_modallayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_key_ie_shifted", "false", 0);
 	htrAddScriptGlobal(s, "pg_attract", "null", 0);
