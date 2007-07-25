@@ -80,6 +80,7 @@ form_controls "widget/component-decl"
 		form=form;
 		bgcolor=white;
 		fl_width=5;
+		ebp_hints "widget/hints" { style=readonly; }
 		}
 	    btnNext "widget/imagebutton"
 		{
