@@ -63,6 +63,15 @@ function dt_disable() {
 	if (this.bg) htr_setbgcolor(this, '#e0e0e0');
 }
 
+function dt_actionsetvalue(aparam) {
+    //htr_alert(aparam,1);
+    if ((typeof aparam.Value) != 'undefined') {
+	this.setvalue(aparam.Value, false);
+	if (this.form) this.form.DataNotify(this, true);
+	cn_activate(this,"DataChange", {});
+    }
+}
+
 // Date/Time Functions
 function dt_init(param){
 	var l = param.layer;
@@ -132,6 +141,10 @@ function dt_init(param){
 	ie.Add('MouseOver');
 	ie.Add('MouseOut');
 	ie.Add('MouseMove');
+
+	// Actions
+	var ia = l.ifcProbeAdd(ifAction);
+	ia.Add("SetValue", dt_actionsetvalue);
 
 	return l;
 }
@@ -414,6 +427,8 @@ function dt_keyhandler(l,e,k) {
 			dt_current = null;
 			dt_setdata(dt,null);
 		}
+		if (dt.form) dt.form.DataNotify(dt);
+		cn_activate(dt, 'DataChange');
 	} else if (k == 't'.charCodeAt() || k == 'T'.charCodeAt()) {
 		if (dt_current) {
 			dt_collapse(dt);
@@ -422,6 +437,8 @@ function dt_keyhandler(l,e,k) {
 		} else {
 			dt_setdata(dt,new Date());
 		}
+		if (dt.form) dt.form.DataNotify(dt);
+		cn_activate(dt, 'DataChange');
 	} else if (k >= 48 && k < 58) { // 0 - 9
 		if (!dt_current) {
 			dt_expand(dt);
