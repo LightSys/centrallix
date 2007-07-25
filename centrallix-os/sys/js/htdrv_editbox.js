@@ -16,12 +16,23 @@ function eb_getvalue()
 
 function eb_actionsetvalue(aparam)
     {
-    if (aparam.Value) this.setvalue(aparam.Value);
+    //htr_alert(aparam,1);
+    if ((typeof aparam.Value) != 'undefined')
+	{
+	this.setvalue(aparam.Value);
+	if (this.form) this.form.DataNotify(this, true);
+	this.changed=true;
+	cn_activate(this,"DataChange", {});
+	}
     }
 
 function eb_setvalue(v,f)
     {
-    this.Update(v, 0);
+    v = new String(v);
+    var c = 0;
+    if (eb_current == this)
+	c = v.length;
+    this.Update(v, c);
     }
 
 function eb_clearvalue()
@@ -30,7 +41,7 @@ function eb_clearvalue()
     if (this != eb_current)
 	{
 	this.set_content('');
-	this.tmpcontent = '';
+	this.viscontent = '';
 	this.charOffset = 0;
 	this.cursorCol = 0;
 	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
@@ -51,9 +62,12 @@ function eb_content_changed(p,o,n)
 
 function eb_set_content(v)
     {
-    htr_unwatch(this, "content", "content_changed");
-    this.content = v;
-    htr_watch(this, "content", "content_changed");
+    if (this.content != v)
+	{
+	htr_unwatch(this, "content", "content_changed");
+	this.content = v;
+	htr_watch(this, "content", "content_changed");
+	}
     }
 
 function eb_enable()
@@ -95,18 +109,26 @@ function eb_settext_cb()
     this.mainlayer.ContentLayer = this.mainlayer.HiddenLayer;
     this.mainlayer.HiddenLayer = tmp;
     this.mainlayer.is_busy = false;
-    if (this.mainlayer.content != this.mainlayer.tmpcontent)
-	eb_settext(this.mainlayer, this.mainlayer.tmpcontent);
+    if (this.mainlayer.content != this.mainlayer.viscontent)
+	eb_settext(this.mainlayer, this.mainlayer.content);
     }
 
 function eb_settext(l,txt)
     {
-    l.tmpcontent = txt;
+    l.set_content(txt);
     if (!l.is_busy)
 	{
 	l.is_busy = true;
-	l.set_content(txt);
-	pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(txt)) + '</pre> ', eb_settext_cb);
+	l.viscontent = txt;
+	if (cx__capabilities.Dom0NS) // only serialize EB's for NS4
+	    {
+	    pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(txt)) + '</pre> ', eb_settext_cb);
+	    }
+	else
+	    {
+	    htr_write_content(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(txt)) + '</pre> ');
+	    l.eb_settext_cb();
+	    }
 	}
     }
 
@@ -176,7 +198,7 @@ function eb_update(txt, cursor)
 	pg_set_style(ibeam_current, 'visibility', 'hidden');
     newx = 5 - this.charOffset*text_metric.charWidth;
     newclipl = this.charOffset*text_metric.charWidth;
-    newclipw = this.charWidth*text_metric.charWidth;
+    newclipr = newclipl + this.charWidth*text_metric.charWidth;
     if (this.HiddenLayer._eb_x != newx)
 	{
 	setRelativeX(this.HiddenLayer, newx);
@@ -187,10 +209,10 @@ function eb_update(txt, cursor)
 	setClipLeft(this.HiddenLayer, newclipl);
 	this.HiddenLayer._eb_clipl = newclipl;
 	}
-    if (this.HiddenLayer._eb_clipw != newclipw)
+    if (this.HiddenLayer._eb_clipr != newclipr)
 	{
-	setClipWidth(this.HiddenLayer, newclipw);
-	this.HiddenLayer._eb_clipw = newclipw;
+	setClipRight(this.HiddenLayer, newclipr);
+	this.HiddenLayer._eb_clipr = newclipr;
 	}
     if (eb_current == this)
 	moveToAbsolute(ibeam_current, getPageX(this.HiddenLayer) + this.cursorCol*text_metric.charWidth, getPageY(this.HiddenLayer));
@@ -207,7 +229,7 @@ function eb_keyhandler(l,e,k)
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
     var txt = l.content;
-    var newtxt;
+    var newtxt = txt;
     var cursoradj = 0;
     if (k == 9)
 	{
@@ -240,6 +262,11 @@ function eb_keyhandler(l,e,k)
 	    cursoradj = -1;
 	    }
 	}
+    else if (k == 21 && txt.length > 0)
+	{
+	newtxt = "";
+	cursoradj = -l.cursorCol;
+	}
     else if (k == 127 && l.cursorCol < txt.length)
 	{
 	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + txt.substr(l.cursorCol+1,txt.length));
@@ -259,6 +286,7 @@ function eb_keyhandler(l,e,k)
 	l.changed=true;
 	cn_activate(l,"DataChange", {});
 	}
+    cn_activate(l, "KeyPress", {Key:k, Modifiers:e.modifiers, Content:l.content});
     return false;
     }
 
@@ -398,12 +426,15 @@ function eb_init(param)
     // Set up params for displaying the content.
     l.ContentLayer = c1;
     l.HiddenLayer = c2;
+    l.ContentLayer._eb_x = l.HiddenLayer._eb_x = -1;
+    l.ContentLayer._eb_clipr = l.HiddenLayer._eb_clipr = -1;
+    l.ContentLayer._eb_clipl = l.HiddenLayer._eb_clipl = -1;
     l.is_busy = false;
     l.charWidth = Math.floor((getClipWidth(l)-10)/text_metric.charWidth);
     l.cursorCol = 0;
     l.charOffset = 0;
+    l.viscontent = '';
     l.content = '';
-    l.tmpcontent = '';
     l.Update = eb_update;
 
     // Callbacks
@@ -420,6 +451,7 @@ function eb_init(param)
     l.enablenew = eb_enable;  // We have added enablenew and enablemodify.  See docs
     l.disable = eb_disable;
     l.readonly = eb_readonly;
+    l.eb_settext_cb = eb_settext_cb;
     if (param.isReadOnly)
 	{
 	l.enablemodify = eb_disable;
@@ -461,6 +493,7 @@ function eb_init(param)
     ie.Add("GetFocus");
     ie.Add("LoseFocus");
     ie.Add("DataChange");
+    ie.Add("KeyPress");
     ie.Add("TabPressed");
     ie.Add("ReturnPressed");
     ie.Add("EscapePressed");
