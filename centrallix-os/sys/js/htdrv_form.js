@@ -744,6 +744,8 @@ function form_action_queryexec()
 		t.oid=this.elements[i].fieldname;
 		t.value=v;
 		t.type=this.elements[i]._form_type;
+		if(v.length>1)
+		    t.type+='array';
 		query.push(t);
 		}
 	    }
