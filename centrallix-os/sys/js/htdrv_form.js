@@ -715,6 +715,16 @@ function form_action_querytoggle()
 	return this.ifcProbe(ifAction).Invoke("Query");
     }
 
+function isArray()
+    {
+    if (typeof arguments[0] == 'object')
+	{ 
+	var criterion = arguments[0].constructor.toString().match(/array/i); 
+	return (criterion != null);
+	}
+    return false;
+    }
+
 /** Execute query **/
 function form_action_queryexec()
     {
@@ -744,7 +754,7 @@ function form_action_queryexec()
 		t.oid=this.elements[i].fieldname;
 		t.value=v;
 		t.type=this.elements[i]._form_type;
-		if(v.length>1)
+		if(isArray(v))
 		    t.type+='array';
 		query.push(t);
 		}
