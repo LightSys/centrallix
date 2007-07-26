@@ -863,7 +863,11 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 	if (!strcmp(type,"widget/repeat"))
 	    {
 	    //get the rows for the sql
-	    objGetAttrValue(obj,"sql",DATA_T_STRING,&rptqysql);
+	    if(objGetAttrValue(obj,"sql",DATA_T_STRING,&rptqysql) != 0)
+		{
+		mssError(1,"WGTR","Repeat widget %s must have a sql attribute", this_node->Name);
+		goto error;
+		}
 	    //mssError(1,"WGTR","%s",rptqysql);
 	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String)) != NULL)
 		{
@@ -1059,7 +1063,11 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	    {
 	   // mssError(1,"WGTR","parseopenobject found repeat widget");
 	    //get the rows for the sql
-	    objGetAttrValue(obj,"sql",DATA_T_STRING,&rptqysql);
+	    if(objGetAttrValue(obj,"sql",DATA_T_STRING,&rptqysql) != 0)
+		{
+		mssError(1,"WGTR","Repeat widget %s must have a sql attribute", this_node->Name);
+		goto error;
+		}
 	    //mssError(1,"WGTR","%s",rptqysql);
 	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String)) != NULL)
 		{
