@@ -10,7 +10,15 @@
 // GNU Lesser General Public License for more details.
 
 function rb_getvalue() {
-	if (this.selectedOption)/* return "" if nothing is selected */
+	if (this.form.mode == "Query"){
+	    var vals = new Array();
+	    for(var i in this.buttonList){
+		if(htr_getvisibility(this.buttonList[i].optionPane.setPane) == 'inherit')
+		    vals.push(this.buttonList[i].optionValue);
+	    }
+	    return vals;
+	}
+	if (this.selectedOption) /* return "" if nothing is selected */
 		return this.selectedOption.optionValue;
 	 else
 		return null;
@@ -19,7 +27,7 @@ function rb_getvalue() {
 // Luke (03/04/02) -
 // The behavior of this is in direct combination with the clearvalue function.
 // if set_value() gets called with a value that _is_ in the list of values, then
-// obviously that button gets marked.  However, if the called parameter is not
+/// obviously that button gets marked.  However, if the called parameter is not
 // in the list, an alert message pops up.  SEE ALSO:  Note on clearvalue()
 function rb_setvalue(v) {
 	for (var i=0; i < this.buttonList.length; i++) {
@@ -34,7 +42,8 @@ function rb_setvalue(v) {
 
 /*  Luke (03/04/02)  This unchecks ALL radio buttons.  As such, nothing is selected. */
 function rb_clearvalue() {
-	if (this.selectedOption) {
+
+	if(this.SelectedOption){
 		htr_setvisibility(this.selectedOption.unsetPane, 'inherit');
 		htr_setvisibility(this.selectedOption.setPane, 'hidden');
 		this.selectedOption = null;
@@ -169,7 +178,7 @@ function rb_keyhandler(l, e, k)
 	}
     else if (k == 13) // return pressed
 	{
-	if (this.kbdSelected)
+	if (this.kbdSelected && this.form.mode != "Query")
 	    radiobutton_toggle(this.kbdSelected);
 	if (this.form) this.form.RetNotify(this);
 	}
@@ -277,6 +286,52 @@ function rb_keyhandler(l, e, k)
     return false;
     }
 
+function rb_changemode(){
+    if(this.form.mode == 'Query'){
+	for (i=0;i<this.buttonList.length;i++) {
+		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/checkbox_checked.gif');
+		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/checkbox_unchecked.gif');
+		//htutil_tag_images(this.buttonList[i].optionPane.setPane, 'radiobutton', this.buttonList[i].optionPane.setPane, 'rb');	
+		//htutil_tag_images(this.buttonList[i].optionPane.unsetPane, 'radiobutton', this.buttonList[i].optionPane.unsetPane, 'rb');
+	}
+	//clear the value
+	if(this.mainlayer.selectedOption){
+		htr_setvisibility(this.mainlayer.selectedOption.unsetPane, 'inherit');
+		htr_setvisibility(this.mainlayer.selectedOption.setPane, 'hidden');
+		this.mainlayer.selectedOption = null;
+	}
+
+    }
+    else {
+	if(this.mainlayer.enabled)
+	    for (i=0;i<this.buttonList.length;i++) {
+		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/radiobutton_set.gif');
+		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/radiobutton_unset.gif');
+		if(this.buttonList[i].optionPane != this.mainlayer.selectedOption){
+		    htr_setvisibility(this.buttonList[i].optionPane.unsetPane, 'inherit');
+		    htr_setvisibility(this.buttonList[i].optionPane.setPane, 'hidden');
+		}
+		else{
+		    htr_setvisibility(this.buttonList[i].optionPane.unsetPane, 'hidden');
+		    htr_setvisibility(this.buttonList[i].optionPane.setPane, 'inherit');
+		}
+	    }
+	else
+	    for (i=0;i<this.buttonList.length;i++) {
+		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/radiobutton_set_dis.gif');
+		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/radiobutton_unset_dis.gif');
+		if(this.buttonList[i].optionPane != this.mainlayer.selectedOption){
+		    htr_setvisibility(this.buttonList[i].optionPane.unsetPane, 'inherit');
+		    htr_setvisibility(this.buttonList[i].optionPane.setPane, 'hidden');
+		}
+		else{
+		    htr_setvisibility(this.buttonList[i].optionPane.unsetPane, 'hidden');
+		    htr_setvisibility(this.buttonList[i].optionPane.setPane, 'inherit');
+		}
+	    }
+    }
+}
+
 function radiobuttonpanel_init(param) {
 	var parentPane = param.parentPane;
 	var borderpane = param.borderPane;
@@ -340,18 +395,33 @@ function radiobuttonpanel_init(param) {
 	ie.Add("MouseOut");
 	ie.Add("MouseMove");
 	ie.Add("DataChange");
-	
+	if(parentPane.form){
+	    parentPane.form.ifcProbe(ifEvent).Hook("StatusChange",rb_changemode,parentPane);
+	}
 	return parentPane;
 }
 
 function radiobutton_toggle(layer) {
 	if(!layer) return;
+	if(layer.mainlayer.form.mode == "Query"){
+	    layer.mainlayer.form.DataNotify(layer.mainlayer);
+	    if(htr_getvisibility(layer.optionPane.unsetPane) == 'inherit'){
+		htr_setvisibility(layer.optionPane.unsetPane, 'hidden');
+		htr_setvisibility(layer.optionPane.setPane, 'inherit');
+	    }
+	    else {
+		htr_setvisibility(layer.optionPane.unsetPane, 'inherit');
+		htr_setvisibility(layer.optionPane.setPane, 'hidden');
+	    }
+	    cn_activate(layer.mainlayer, 'DataChange');
+	    return;
+	}
 	if (layer.mainlayer.selectedOption != layer.optionPane) {
 		if(layer.mainlayer.form)
-			layer.mainlayer.form.DataNotify(layer.mainlayer);
+		    layer.mainlayer.form.DataNotify(layer.mainlayer);
 		if (layer.mainlayer.selectedOption) {
-			htr_setvisibility(layer.mainlayer.selectedOption.unsetPane, 'inherit');
-			htr_setvisibility(layer.mainlayer.selectedOption.setPane, 'hidden');
+		    htr_setvisibility(layer.mainlayer.selectedOption.unsetPane, 'inherit');
+		    htr_setvisibility(layer.mainlayer.selectedOption.setPane, 'hidden');
 		}
 		htr_setvisibility(layer.optionPane.setPane, 'inherit');
 		htr_setvisibility(layer.optionPane.unsetPane, 'hidden');
@@ -363,10 +433,6 @@ function radiobutton_toggle(layer) {
 function radiobutton_mouseup(e) {
         if (e.layer != null && e.kind == 'radiobutton') {
 		if (e.mainlayer.enabled) {
-			if(e.layer.optionPane) {
-				if (e.mainlayer.form) e.mainlayer.form.FocusNotify(e.mainlayer);
-					radiobutton_toggle(e.layer);
-			}
 			cn_activate(e.mainlayer, 'Click');
 			cn_activate(e.mainlayer, 'MouseUp');
 		}
@@ -376,8 +442,13 @@ function radiobutton_mouseup(e) {
 
 function radiobutton_mousedown(e) {
 	if (e.layer != null && e.kind == 'radiobutton') {
-		if (e.mainlayer.enabled) 
+		if (e.mainlayer.enabled){
+			if(e.layer.optionPane) {
+				if (e.mainlayer.form) e.mainlayer.form.FocusNotify(e.mainlayer);
+					radiobutton_toggle(e.layer);
+			}
 			cn_activate(e.mainlayer, 'MouseDown');
+		}
 	}
 	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 }
