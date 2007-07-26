@@ -107,6 +107,19 @@ function osrc_make_filter(q)
 			else
 			    str=':'+q[i].oid+'='+val;
 			break;
+		    case 'integerarray':
+			if (val == null)
+			    str=':'+q[i].oid+' is null ';
+			else
+			    {
+			    str='(:'+q[i].oid+'='+val[0];
+			    for(var j=1;j<val.length;j++)
+				{
+				str+=' OR :'+q[i].oid+'='+val[j];
+				}
+			    str+=')';
+			    }
+			break;
 		    default:
 			if(val.substring(0,2)=='>=')
 			    str=':'+q[i].oid+' >= '+val.substring(2);
