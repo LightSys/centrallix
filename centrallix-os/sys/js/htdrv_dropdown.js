@@ -11,9 +11,15 @@
 
 // Form manipulation
 
-
 function dd_getvalue() 
     {
+    if (this.form.mode == 'Query')
+	{
+	var vals = new Array();
+	for(var j in this.selectedItems)
+	    vals.push(this.Values[this.selectedItems[j]].value);
+	return vals;
+	}
     if (!this.VisLayer.index) return null;
     return this.Values[this.VisLayer.index].value;
     }
@@ -348,10 +354,51 @@ function dd_select_item(l,i)
     var c = "<TABLE height=" + (pg_parah) + " cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>";
     if (i!=null)
 	{
-	if (!(i==0 && l.Values[i].value==null)) 
+	if(l.form.mode == 'Query'){
+	if(!l.selectedItems)
+	    {
+	    l.selectedItems = new Array();
+	    l.selectedItems[0]=i;
+	    }
+	else
+	    {
+	    for(var k=0;k<l.selectedItems.length;k++)
+		if(l.selectedItems[k]==i)
+		    break;
+	    if(k == l.selectedItems.length)
+		l.selectedItems.push(i);
+	    }
+	/*if (!(i==0 && l.Values[i].value==null)) 
 	    c += l.Values[i].label;
 	else
-	    c += '<i>' + l.Values[i].label + '</i>';
+	    c += '<i>' + l.Values[i].label + '</i>';*/
+	var firstone = true;
+	var items = '';
+	for(j in l.selectedItems)
+	    {
+	    if(!firstone)
+		items += ', ';
+	    firstone = false;
+	    if( !(l.selectedItems[j]==0 && l.Values[l.selectedItems[j]].value==null))
+		{
+		items += l.Values[l.selectedItems[j]].label; //this should be the only value if they pick none
+		}
+	    else
+		{
+		items = '<i>' + l.Values[l.selectedItems[j]].label + '</i>';
+		l.selectedItems = null;
+		break;
+		}
+	    }
+	    c+= items;
+	}
+	else
+	    {
+	    if( !(i==0 && l.Values[i].value==null))
+		c += l.Values[i].label;
+	    else
+		c += '<i>' + l.Values[i].label + '</i>';
+	    }
 	}
     c += "</TD></TR></TABLE>";
     //htr_write_content(l.HidLayer, c);
@@ -691,18 +738,18 @@ function dd_mousedown(e)
             dd_datachange(dd_current);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
-	    if(e.mainlayer.Mode == 3)
-		{
-		e.mainlayer.osrc.MoveToRecord(e.layer.index);
+		if(e.mainlayer.Mode == 3)
+		    {
+		    e.mainlayer.osrc.MoveToRecord(e.layer.index);
+		    dd_collapse(dd_current);
+		    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+		    }
+		else
+		    {
+		    dd_select_item(dd_current, e.layer.index);
+		    dd_datachange(dd_current);
+		    }
 		dd_collapse(dd_current);
-		return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-		}
-	    else
-		{
-		dd_select_item(dd_current, e.layer.index);
-		dd_datachange(dd_current);
-		}
-	    dd_collapse(dd_current);
         }
     else if (e.kind == 'dd_sc')
         {
@@ -783,6 +830,19 @@ function dd_clear_layers()
     l.additems(l,vals);
     }
 
+function dd_changemode()
+    {
+    //this==l
+    if(this.form.mode == "Query")
+	{
+	this.selectedItems = null;
+	}
+    else
+	{
+	//don't worry about it	
+	}
+}
+
 function dd_init(param)
     {
     var l = param.layer;
@@ -861,6 +921,11 @@ function dd_init(param)
     ie.Add("GetFocus");
     ie.Add("LoseFocus");
     ie.Add("RightClick");
+
+    if (l.form)
+	{
+	l.form.ifcProbe(ifEvent).Hook('StatusChange',dd_changemode,l);
+	}
 
     return l;
     }
