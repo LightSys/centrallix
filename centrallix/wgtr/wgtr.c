@@ -636,10 +636,8 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 	return 0;
 
     error:
-	if (widgetname){
-	    nmSysFree(widgetname);
-	    widgetname = NULL;
-	    }
+	if (widgetname)
+	    nmSysFree(widgetname);   
 	if (child_node)
 	    wgtrFree(child_node);
 	if (child_obj)
@@ -871,26 +869,21 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		mssError(1,"WGTR","Repeat widget %s must have a sql attribute", this_node->Name);
 		goto error;
 		}
-	    //mssError(1,"WGTR","%s",rptqysql);
 	    if((rptqy = objMultiQuery(obj->Session,rptqysql.String)) != NULL)
 		{
-		//the name will have to be changed from repeat to something unique
+		/*the name will have to be changed from repeat to something unique */
 		expAddParamToList(context_objlist,this_node->Name,NULL,0);
 		while((rptrow = objQueryFetch(rptqy, O_RDONLY)) != NULL)
 		    {
-		    //test to show that sql is being properly fetched
-		    //objGetAttrValue(rptrow,"name",DATA_T_STRING,&rptqyname);
-		    //mssError(1,"WGTR","%s",rptqyname);
 		    expModifyParam(context_objlist,this_node->Name, rptrow);
-		    //mssError(1,"WGTR","%s", rptrow);
-		    //add children without adding the repeat
-		    //objSetEvalContext(obj, context_objlist);
 		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 			goto error;
 		    objClose(rptrow);
+		    rptrow = NULL;
 		    }
 		expRemoveParamFromList(context_objlist, "repeat");
 		objQueryClose(rptqy);
+		rptqy = NULL;
 		}
 	    /*if((rptqy = objMultiQuery(obj, rptqysql)) != NULL)
 		{
