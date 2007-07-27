@@ -207,6 +207,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_objcanvas.o \
 	   htdrv_parameter.o \
 	   htdrv_autolayout.o \
+	   htdrv_repeat.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS)) \
 	   utility/iface_html.o

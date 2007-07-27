@@ -54,10 +54,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.43 2007/06/21 21:41:15 dkasper Exp $
+    $Id: centrallix.c,v 1.44 2007/07/27 00:25:24 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.44  2007/07/27 00:25:24  dkasper
+    - Added the repeat widget html driver file.
+
     Revision 1.43  2007/06/21 21:41:15  dkasper
     - Added a new 'generic' button widget based off of the imagebutton and
       textbutton widgets.  There are currently 7 different types of buttons
@@ -787,6 +790,7 @@ cxHtInit()
 	hthintInitialize();			/* pres. hints module */
 	htparamInitialize();			/* parameter module */
 	htalInitialize();			/* autolayout module */
+	htrptInitialize();			/* repeat module */
 
 	htcmpdInitialize();			/* component declaration */
 	htcmpInitialize();			/* component instance */
