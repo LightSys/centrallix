@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_autolayout.c,v 1.4 2007/07/24 23:06:23 dkasper Exp $
+    $Id: htdrv_autolayout.c,v 1.5 2007/07/27 00:23:53 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_autolayout.c,v $
 
     $Log: htdrv_autolayout.c,v $
+    Revision 1.5  2007/07/27 00:23:53  dkasper
+    - No longer render each subwidget of a repeat widget here.  That is handled
+      by the repeat widget driver.
+
     Revision 1.4  2007/07/24 23:06:23  dkasper
     - It was necessary to add a few lines that make the autolayout render all
       of the subwidgets of a repeat widgets, while not trying to render the
@@ -155,6 +159,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    subtree = xaGetItem(&(tree->Children), i);
 	    if (!strcmp(subtree->Type, "widget/autolayoutspacer")) 
 		subtree->RenderFlags |= HT_WGTF_NOOBJECT;
+	    /*
 	    else if(!strcmp(subtree->Type, "widget/repeat"))
 		{
 		for(rpti=0;rpti<xaCount(&(subtree->Children));rpti++)
@@ -163,7 +168,8 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 		    htrRenderWidget(s,rptsubtree, z+1);
 		    //mssError(1,"HTAL","Found a subwidget to a repeat");
 		    }
-		}
+		    htrRenderWidget(s, subtree, z+1);
+		}*/
 	    else
 		{
 		htrRenderWidget(s, subtree, z+1);
