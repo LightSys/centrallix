@@ -576,15 +576,13 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 		if (t != DATA_T_INTEGER || (rval=objGetAttrValue(child_obj, "condition", t, &val)) != 0 || val.Integer != 0)
 		    {
 		    /** Try to add it. **/
-			    //is this a possible memory bug?	    
 			    objGetAttrValue(child_obj, "name", DATA_T_STRING, &val2);
 			    widgetname = nmSysMalloc(strlen(val2.String)+23);
 			    qpfPrintf(NULL,widgetname,strlen(val2.String)+23,"_internalrpt%STR%POS",val2.String,prefix++);
-			    //objSetAttrValue(child_obj, "name", DATA_T_STRING, POD(&widgetname));
 		    if ( (child_node = wgtr_internal_ParseOpenObjectRepeat(child_obj,templates,this_node->Root, this_node, context_objlist, client_params, xoffset, yoffset)) != NULL)
 			{
 			strtcpy(child_node->Name,widgetname,sizeof(child_node->Name));
-			//mssError(1,"WGTR","Name:%s",widgetname);
+			nmSysFree(widgetname);
 			wgtrAddChild(this_node, child_node);
 			child_node = NULL;
 			}
@@ -637,6 +635,8 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 	return 0;
 
     error:
+	if (widgetname)
+	    nmSysFree(widgetname);
 	if (child_node)
 	    wgtrFree(child_node);
 	if (child_obj)
@@ -757,7 +757,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
     int n_params;
     int created_objlist = 0;
     int i,startat;
-    ObjData rptqysql,rptqyname;
+    ObjData rptqysql;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -885,7 +885,8 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 			goto error;
 		    }
-		//expRemoveParamFromList(context_objlist, "repeat");
+		expRemoveParamFromList(context_objlist, "repeat");
+		objQueryClose(rptqy);
 		}
 	    /*if((rptqy = objMultiQuery(obj, rptqysql)) != NULL)
 		{
@@ -937,6 +938,8 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 	    }
 	if (child_obj)
 	    objClose(child_obj);
+	if (rptqy)
+	    objQueryClose(rptqy);
 	if (qy)
 	    objQueryClose(qy);
 	return NULL;
@@ -947,7 +950,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
     pWgtrNode	this_node = NULL;
     pWgtrAppParam param;
     char   name[64], type[64];
-    ObjData	val,val3;
+    ObjData	val;
     pObject child_obj = NULL, rptrow = NULL;
     pObjQuery qy = NULL,rptqy = NULL;
     pWgtrNode my_templates[WGTR_MAX_TEMPLATE];
@@ -955,7 +958,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
     int n_params;
     int created_objlist = 0;
     int i,startat;
-    ObjData rptqysql,rptqyname;
+    ObjData rptqysql;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1081,7 +1084,8 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 			goto error;
 		    }
-		//expRemoveParamFromList(context_objlist, "repeat");
+		expRemoveParamFromList(context_objlist, "repeat");
+		objQueryClose(rptqy);
 		}
 	    }
 	else if (wgtr_internal_AddChildren(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
@@ -1107,6 +1111,8 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    if (my_templates[i] != templates[i])
 		wgtrFree(my_templates[i]);
+	if (rptqy)
+	    objQueryClose(rptqy);
 	if (this_node)
 	    wgtrFree(this_node);
 	if (created_objlist)
