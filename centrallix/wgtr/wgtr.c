@@ -556,7 +556,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
     int nxo=0, nyo=0;
     char name[64];
     char type[64];
-    char * widgetname;
+    char * widgetname = NULL;
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -583,6 +583,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 			{
 			strtcpy(child_node->Name,widgetname,sizeof(child_node->Name));
 			nmSysFree(widgetname);
+			widgetname = NULL;
 			wgtrAddChild(this_node, child_node);
 			child_node = NULL;
 			}
@@ -635,8 +636,10 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 	return 0;
 
     error:
-	if (widgetname)
+	if (widgetname){
 	    nmSysFree(widgetname);
+	    widgetname = NULL;
+	    }
 	if (child_node)
 	    wgtrFree(child_node);
 	if (child_obj)
@@ -884,6 +887,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 		    //objSetEvalContext(obj, context_objlist);
 		    if (wgtr_internal_AddChildrenRepeat(obj, this_node, my_templates, this_node->Root, context_objlist, client_params, xoffset, yoffset) < 0)
 			goto error;
+		    objClose(rptrow);
 		    }
 		expRemoveParamFromList(context_objlist, "repeat");
 		objQueryClose(rptqy);
@@ -928,6 +932,8 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    if (my_templates[i] != templates[i])
 		wgtrFree(my_templates[i]);
+	if (rptrow)
+	    objClose(rptrow);
 	if (this_node)
 	    wgtrFree(this_node);
 	if (created_objlist)
