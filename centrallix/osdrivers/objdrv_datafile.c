@@ -55,10 +55,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.19 2007/06/02 16:29:27 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.20 2007/07/31 18:07:53 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.20  2007/07/31 18:07:53  gbeeley
+    - (bugfix) something's fishy here.  Not sure why ParseRow was being
+      called when a colsobj was being opened.  Sigh...
+
     Revision 1.19  2007/06/02 16:29:27  gbeeley
     - (bugfix) crash occurred when an update to a CSV file crossed a 4K page
       boundary, and only when the boundary was within the end-of-row padding
@@ -3231,11 +3235,11 @@ datGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	    /** Get the table info. **/
 	    tdata=inf->TData;
-	    if (!(inf->Flags & DAT_F_ROWPARSED))
+	    /*if (!(inf->Flags & DAT_F_ROWPARSED))
 	        {
 		inf->Flags |= DAT_F_ROWPARSED;
 		dat_csv_ParseRow(inf, inf->TData);
-		}
+		}*/
 
 	    /** Search table info for this column. **/
 	    for(i=0;i<tdata->nCols;i++) if (!strcmp(tdata->Cols[i],inf->RowColPtr))
