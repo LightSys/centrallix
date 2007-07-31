@@ -446,16 +446,20 @@ wgtr_internal_GetTypeAndName(pObject obj, char* name, size_t name_len, char* typ
 
 
 pWgtrNode
-wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode templates[], pWgtrNode root, int xoffset, int yoffset)
+wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode templates[], pWgtrNode root, int xoffset, int yoffset, pStruct client_params)
     {
     int rx, ry, rwidth, rheight, flx, fly, flwidth, flheight;
     pWgtrNode this_node = NULL;
     char* class;
     char* prop_name;
+    char* ptr;
     ObjData val;
     int prop_type;
     int rval;
-    int i;
+    int i,j;
+    pStruct one_param;
+    int already_used;
+    pWgtrNode sub_node;
 
 	/** create this node **/
 	rx = ry = rwidth = rheight = flx = fly = flwidth = flheight = -1;
@@ -474,6 +478,33 @@ wgtr_internal_LoadParams(pObject obj, char* name, char* type, pWgtrNode template
 		wgtrCheckTemplate(this_node, obj, templates[i], class);
 		this_node->TemplatePaths[i] = nmSysStrdup(templates[i]->ThisTemplatePath);
 		}
+
+	/** Copy in top-level params? **/
+	if (!strcmp(type, "widget/component") && objGetAttrValue(obj, "use_toplevel_params", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "yes"))
+	    {
+	    for(i=0;i<client_params->nSubInf;i++)
+		{
+		one_param = client_params->SubInf[i];
+		if (!strcmp(one_param->Name, "mode") || !strcmp(one_param->Name, "path") || !strcmp(one_param->Name, "width") || !strcmp(one_param->Name, "height") || !strcmp(one_param->Name, "auto_destroy") || !strcmp(one_param->Name, "multiple_instantiation"))
+		    continue;
+		already_used = 0;
+		for(j=0;j<root->Children.nItems;j++)
+		    {
+		    sub_node = (pWgtrNode)(root->Children.Items[j]);
+		    if (!strcmp(sub_node->Type, "widget/parameter") && !strcmp(one_param->Name, sub_node->Name))
+			{
+			already_used = 1;
+			break;
+			}
+		    }
+		if (!already_used)
+		    {
+		    ptr = NULL;
+		    if (stAttrValue_ne(one_param, &ptr) == 0 && ptr)
+			wgtrAddProperty(this_node, one_param->Name, DATA_T_STRING, POD(&ptr), 0);
+		    }
+		}
+	    }
 	
 	/** loop through attributes to fill out the properties array **/
 	prop_name = objGetFirstAttr(obj);
@@ -608,7 +639,7 @@ wgtr_internal_AddChildrenRepeat(pObject obj, pWgtrNode this_node, pWgtrNode temp
 				goto error;
 			    /** Load in the properties and copy in the template **/
 			    
-			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, root, xoffset, yoffset)) == NULL)
+			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, root, xoffset, yoffset, client_params)) == NULL)
 				goto error;
 
 			    /** compute actual offsets that would have been used had the
@@ -705,7 +736,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 				goto error;
 
 			    /** Load in the properties and copy in the template **/
-			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, root, xoffset, yoffset)) == NULL)
+			    if ((child_node = wgtr_internal_LoadParams(child_obj, name, type, templates, root, xoffset, yoffset, client_params)) == NULL)
 				goto error;
 
 			    /** compute actual offsets that would have been used had the
@@ -850,7 +881,7 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 	    }
 
 	/** Load in the properties and copy in the template **/
-	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, root, xoffset, yoffset)) == NULL)
+	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, root, xoffset, yoffset, client_params)) == NULL)
 	    goto error;
 
 	/** If this is a visual widget, clear the x/y offsets **/
@@ -943,6 +974,8 @@ wgtr_internal_ParseOpenObjectRepeat(pObject obj, pWgtrNode templates[], pWgtrNod
 	    objQueryClose(qy);
 	return NULL;
     }
+
+
 pWgtrNode 
 wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root, pWgtrNode parent, pParamObjects context_objlist, pStruct client_params, int xoffset, int yoffset)
     {
@@ -1009,7 +1042,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		objQueryClose(qy);
 		qy = NULL;
 		}
-		objSetEvalContext(obj, context_objlist);
+	    objSetEvalContext(obj, context_objlist);
 	    }
 	/** Load new templates? **/
 	startat = -1;
@@ -1050,7 +1083,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	    }
 
 	/** Load in the properties and copy in the template **/
-	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, root, xoffset, yoffset)) == NULL)
+	if ((this_node = wgtr_internal_LoadParams(obj, name, type, my_templates, root, xoffset, yoffset, client_params)) == NULL)
 	    goto error;
 
 	/** If this is a visual widget, clear the x/y offsets **/
@@ -2331,3 +2364,38 @@ wgtrGetRoot(pWgtrNode tree)
     {
     return tree->Root;
     }
+
+int
+wgtr_internal_GetMatchingChildList_r(pWgtrNode parent, char* childtype, pWgtrNode* list, int* n_items, int max_items)
+    {
+    int i;
+    pWgtrNode child;
+
+	for(i=0;i<parent->Children.nItems;i++)
+	    {
+	    if (*n_items >= max_items) return 0;
+	    child = (pWgtrNode)(parent->Children.Items[i]);
+	    if (!strcmp(child->Type, childtype))
+		{
+		list[(*n_items)++] = child;
+		}
+	    else if (child->Flags & WGTR_F_NONVISUAL)
+		{
+		wgtr_internal_GetMatchingChildList_r(child, childtype, list, n_items, max_items);
+		}
+	    }
+
+    return 0;
+    }
+
+int
+wgtrGetMatchingChildList(pWgtrNode parent, char* childtype, pWgtrNode* list, int max_items)
+    {
+    int n_matches;
+
+	n_matches = 0;
+	wgtr_internal_GetMatchingChildList_r(parent, childtype, list, &n_matches, max_items);
+
+    return n_matches;
+    }
+
