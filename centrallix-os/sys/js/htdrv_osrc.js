@@ -120,6 +120,45 @@ function osrc_make_filter(q)
 			    str+=')';
 			    }
 			break;
+		    case 'stringarray':
+			if (val == null)
+			    {
+			    str=':'+q[i].oid+' is null ';
+			    }
+			else
+			    {
+			    str='(:'+q[i].oid+'=\"'+val[0]+'\"';
+			    for(var j=1;j<val.length;j++)
+				{
+				str+=' OR :'+q[i].oid+'=\"'+val[j]+'\"';
+				}
+			    str+=')';
+			    }
+			break;
+		    case 'datetimearray':
+			str='(:'+q[i].oid;
+			var dtfirst=true;
+			for(var j in val)
+			    {
+			    if(!dtfirst) str+= ' AND :' + q[i].oid;
+			    dtfirst=false;
+			    if(val[j].substring(0,2)=='>=')
+				str+=' >= \"'+val[j].substring(2)+'\"';
+			    else if(val[j].substring(0,2)=='<=')
+				str+=' <= \"'+val[j].substring(2)+'\"';
+			    else if(val[j].substring(0,2)=='=>')
+				str+=' >= \"'+val[j].substring(2)+'\"';
+			    else if(val[j].substring(0,2)=='=<')
+				str+=' <= \"'+val[j].substring(2)+'\"';
+			    else if(val[j].substring(0,1)=='>')
+				str+=' > \"'+val[j].substring(1)+'\"';
+			    else if(val[j].substring(0,1)=='<')
+				str+=' < \"'+val[j].substring(1)+'\"';
+			    else if(val[j].substring(0,1)=='=')
+				str+=' = \"'+val[j].substring(1)+'\"';
+			    }
+			str+=')';
+			break;
 		    default:
 			if(val.substring(0,2)=='>=')
 			    str=':'+q[i].oid+' >= '+val.substring(2);
