@@ -9,8 +9,21 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+function eb_getlist(content)
+    {
+    var vals = content.split(/,/);
+    if(content==vals[0])
+	return content;
+    else
+	{
+	return vals;
+	}
+    }
+
 function eb_getvalue()
     {
+    if(this.form.mode == 'Query')
+	return eb_getlist(this.content);
     return this.content;
     }
 
