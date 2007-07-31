@@ -1,0 +1,31 @@
+$Version=2$
+window_container "widget/component-decl"
+    {
+    component "widget/parameter" { type=string; default=null;}
+    title "widget/parameter" { type=string; default=null;}
+    w "widget/parameter" { type=integer; default=640; }
+    h "widget/parameter" { type=integer; default=480; }
+
+    visual = yes;
+    width=1024;
+    height=768;
+
+    mainwin "widget/childwindow"
+	{
+	x=runserver((1024 - :this:w) / 2);
+	y=runserver((768 - :this:h) / 2);
+	width=runserver(:this:w);
+	height=runserver(:this:h);
+
+	hdr_background='/sys/images/window_hdr.png';
+	bgcolor = "#c0c0c0";
+	title=runserver(condition(char_length(:this:title) > 0, :this:title, :this:component));
+	visible=true;
+	style=dialog;
+	this_cmp "widget/component"
+	    {
+	    path=runserver(:this:component);
+	    use_toplevel_params = yes;
+	    }
+	}
+    }

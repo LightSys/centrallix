@@ -1,0 +1,73 @@
+$Version=2$
+generic_form "widget/component-decl"
+    {
+    width=640;
+    height=480;
+
+    table "widget/parameter" { type=string; default="/samples/Months.csv"; badchars=" '\""; }
+
+    osrc "widget/osrc"
+	{
+	sql = runserver("select * from " + :this:table + "/rows");
+	baseobj = runserver(:this:table + "/rows");
+	replicasize=100;
+	readahead=12;
+	autoquery = onfirstreveal;
+
+	form "widget/form"
+	    {
+	    ctls "widget/component"
+		{
+		x=0;y=0;width=640;height=24;
+		path="/sys/cmp/form_controls.cmp";
+		bgcolor="#d0d0d0";
+		}
+	    vbox "widget/vbox"
+		{
+		x=10;y=40;width=200;cellsize=20; spacing=5;
+
+		rpt "widget/repeat"
+		    {
+		    sql = runserver("select :name, :datatype from " + :this:table + "/columns");
+		    field_cmp "widget/component"
+			{
+			path="/sys/cmp/smart_field.cmp";
+			field=runserver(:rpt:name);
+			text=runserver(:rpt:name);
+			ctl_type=runserver(condition(:rpt:datatype == 'datetime', 'datetime', condition(:rpt:name == 'comments', 'textarea', 'editbox')));
+			}
+		    }
+		}
+	    }
+
+	detail_pane "widget/pane"
+	    {
+	    x=10;y=310;width=620;height=160;
+	    style=lowered;
+
+	    detail "widget/table"
+		{
+		x=0;y=0;width=618;height=158;
+		mode=dynamicrow;
+
+		row1_bgcolor = "#ffffff";
+		row2_bgcolor = "#e0e0e0";
+		rowhighlight_bgcolor = "#000080";
+		rowheight = 20;
+		hdr_bgcolor = "#c0c0c0";
+		textcolorhighlight = "#ffffff";
+		textcolor = "#000000";
+
+		rpt2 "widget/repeat"
+		    {
+		    sql = runserver("select :name, :datatype from " + :this:table + "/columns");
+		    tbl_field "widget/table-column"
+			{
+			title = runserver(:rpt2:name);
+			fieldname = runserver(:rpt2:name);
+			}
+		    }
+		}
+	    }
+	}
+    }
