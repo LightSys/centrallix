@@ -60,10 +60,18 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.52 2007/06/12 15:05:35 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.53 2007/07/31 18:03:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.53  2007/07/31 18:03:09  gbeeley
+    - (feature) tooltips popup on cells whose data is partially obscured by
+      the column being too narrow
+    - (change) allow widget/repeat to be used to generate the list of columns
+      by using the new wgtrGetMatchingChildren() interface
+    - (feature) adding a "check" column type, which displays a check mark or
+      a dash depending on the underlying data.
+
     Revision 1.52  2007/06/12 15:05:35  gbeeley
     - (feature) if cx__obscure=yes is included in the URL as a param, the
       system will automatically randomize alphanumeric text in editboxes,
@@ -489,6 +497,8 @@
 
  **END-CVSDATA***********************************************************/
 
+#define HTTBL_MAX_COLS		(24)
+
 /** globals **/
 static struct 
     {
@@ -514,7 +524,7 @@ typedef struct
     int outer_border;
     int inner_border;
     int inner_padding;
-    pStructInf col_infs[24];
+    pStructInf col_infs[HTTBL_MAX_COLS];
     int ncols;
     int windowsize;
     int rowheight;
@@ -531,6 +541,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     {
     int colid;
     int colw;
+    char *coltype;
     char *coltitle;
     char *ptr;
     int i;
@@ -579,8 +590,10 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	for(colid=0;colid<t->ncols;colid++)
 	    {
 	    stAttrValue(stLookup(t->col_infs[colid],"title"),NULL,&coltitle,0);
+	    stAttrValue(stLookup(t->col_infs[colid],"type"),NULL,&coltype,0);
 	    stAttrValue(stLookup(t->col_infs[colid],"width"),&colw,NULL,0);
-	    htrAddScriptInit_va(s,"new Array(\"%STR&SYM\",\"%STR&ESCQ\",%POS),",t->col_infs[colid]->Name,coltitle,colw);
+	    htrAddScriptInit_va(s,"new Array(\"%STR&SYM\",\"%STR&ESCQ\",%INT,\"%STR&ESCQ\"),",
+		    t->col_infs[colid]->Name,coltitle,colw,coltype);
 	    }
 
 	htrAddScriptInit(s,"null)});\n");
@@ -594,6 +607,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    }
 
 	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
+	htrAddEventHandlerFunction(s,"document","MOUSEOUT","tbld","tbld_mouseout");
 	htrAddEventHandlerFunction(s,"document","MOUSEDOWN","tbld","tbld_mousedown");
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","tbld","tbld_mousemove");
 	htrAddEventHandlerFunction(s, "document","MOUSEUP","tbld","tbld_mouseup");
@@ -771,6 +785,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     int n, i;
     httbl_struct* t;
     int rval;
+    pWgtrNode children[HTTBL_MAX_COLS];
 
 	t = (httbl_struct*)nmMalloc(sizeof(httbl_struct));
 	if (!t) return -1;
@@ -874,10 +889,10 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (!*t->titlecolor) strcpy(t->titlecolor,t->textcolor);
 
 	/** Get column data **/
-	t->ncols = 0;
-	for (i=0;i<xaCount(&(tree->Children));i++)
+	t->ncols = wgtrGetMatchingChildList(tree, "widget/table-column", children, sizeof(children)/sizeof(pWgtrNode));
+	for (i=0;i<t->ncols;i++)
 	    {
-	    sub_tree = xaGetItem(&(tree->Children), i);
+	    sub_tree = children[i];
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/table-column") != 0)
 		{
@@ -890,21 +905,28 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    nmFree(t, sizeof(httbl_struct));
 		    return -1;
 		    }
-		t->col_infs[t->ncols] = stCreateStruct(ptr, "widget/table-column");
-		attr_inf = stAddAttr(t->col_infs[t->ncols], "width");
+		t->col_infs[i] = stCreateStruct(ptr, "widget/table-column");
+		attr_inf = stAddAttr(t->col_infs[i], "width");
 		if (wgtrGetPropertyValue(sub_tree, "width", DATA_T_INTEGER,POD(&n)) == 0)
 		    stAddValue(attr_inf, NULL, n);
 		else
 		    stAddValue(attr_inf, NULL, -1);
-		attr_inf = stAddAttr(t->col_infs[t->ncols], "title");
+		attr_inf = stAddAttr(t->col_infs[i], "title");
 		if (wgtrGetPropertyValue(sub_tree, "title", DATA_T_STRING,POD(&ptr)) == 0)
 		    {
 		    str = nmSysStrdup(ptr);
 		    stAddValue(attr_inf, str, 0);
 		    }
 		else
-		    stAddValue(attr_inf, t->col_infs[t->ncols]->Name, 0);
-		t->ncols++;
+		    stAddValue(attr_inf, t->col_infs[i]->Name, 0);
+		attr_inf = stAddAttr(t->col_infs[i], "type");
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check")))
+		    {
+		    str = nmSysStrdup(ptr);
+		    stAddValue(attr_inf, str, 0);
+		    }
+		else
+		    stAddValue(attr_inf, "text", 0);
 		}
 	    }
 	if(t->mode==0)
