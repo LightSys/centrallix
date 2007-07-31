@@ -10,7 +10,9 @@
 // GNU Lesser General Public License for more details.
 
 function dt_getvalue() {
-	if (this.DateObj)
+	if(this.form.mode == 'Query' && this.DateObj)
+	    return new Array('>= ' + dt_formatdate(this, this.DateObj, 3),'<= ' + dt_formatdate(this, this.DateObj2, 3));
+	else if (this.DateObj)
 	    return dt_formatdate(this, this.DateObj, 0);
 	else
 	    return null;
@@ -32,6 +34,25 @@ function dt_setvalue(v,nodrawdate) {
 	if (this.PaneLayer) {
 		dt_drawmonth(this.PaneLayer, this.DateObj);
 		dt_drawtime(this.PaneLayer, this.DateObj);
+	}
+}
+
+function dt_setvalue2(v,nodrawdate) {
+	if (v) {
+		this.DateObj2 = new Date(v);
+		this.TmpDateObj2 = new Date(v);
+		if (this.DateObj2 == 'Invalid Date') {
+			this.DateObj2 = new Date();
+			this.TmpDateObj2 = new Date();
+		}
+	} else {
+		this.DateObj2 = null;
+		this.TmpDateObj2 = null;
+	}
+	if(!nodrawdate) dt_writedate(this, dt_formatdate(this,this.DateObj2,2));
+	if (this.PaneLayer2) {
+		dt_drawmonth(this.PaneLayer2, this.DateObj2);
+		dt_drawtime(this.PaneLayer2, this.DateObj2);
 	}
 }
 
@@ -72,6 +93,23 @@ function dt_actionsetvalue(aparam) {
     }
 }
 
+function dt_changemode(){
+    var l = this.mainlayer;
+    if(this.form.mode == 'Query'){
+	if(!this.DateObj) this.DateObj = new Date();
+	if(!this.DateObj2)  this.DateObj2 = new Date();
+	this.DateObj.setHours(0);
+	this.DateObj.setMinutes(0);
+	this.DateObj.setSeconds(0);
+	this.DateObj2.setHours(23);
+	this.DateObj2.setMinutes(59);
+	this.DateObj2.setSeconds(59);
+    }
+    //get rid of old pane layers because they will need to be relabeled
+    this.PaneLayer = null;
+    this.PaneLayer2 = null;
+}
+
 // Date/Time Functions
 function dt_init(param){
 	var l = param.layer;
@@ -88,6 +126,7 @@ function dt_init(param){
 	//c1.mainlayer = l;
 	//c2.mainlayer = l;
 	l.setvalue   = dt_setvalue;
+	l.setvalue2  = dt_setvalue2;
 	l.getvalue   = dt_getvalue;
 	l.enable     = dt_enable;
 	l.readonly   = dt_readonly;
@@ -118,10 +157,14 @@ function dt_init(param){
 	if (param.id) {
 		l.DateObj = new Date(param.id);
 		l.TmpDateObj = new Date(param.id);
+		l.DateObj2 = new Date(param.id);
+		l.TmpDateObj2 = new Date(param.id);
 		dt_drawdate(l, l.DateObj);
 	} else {
 		l.DateObj = new Date();
 		l.TmpDateObj = new Date();
+		l.DateObj2 = new Date();
+		l.TmpDateObj2 = new Date();
 		dt_drawdate(l, '');
 	}
 	if (param.form) l.form = wgtrGetNode(l, param.form);
@@ -142,6 +185,9 @@ function dt_init(param){
 	ie.Add('MouseOut');
 	ie.Add('MouseMove');
 
+	if(l.form)
+	    l.form.ifcProbe(ifEvent).Hook('StatusChange',dt_changemode,l);
+
 	// Actions
 	var ia = l.ifcProbeAdd(ifAction);
 	ia.Add("SetValue", dt_actionsetvalue);
@@ -155,17 +201,33 @@ function dt_init(param){
 function dt_prepare(l) {
 	// Create the pane if needed.
 	if (!l.PaneLayer) {
-		l.PaneLayer = dt_create_pane(l,l.ubg,l.w2,l.h2,l.h);
+		l.PaneLayer = dt_create_pane(l,l.ubg,l.w2,l.h2,l.h,"Start");
 		l.PaneLayer.ml = l;
-
+		l.PaneLayer.myid = "PaneLayer1";
 		l.PaneLayer.HidLayer.Areas = l.PaneLayer.VisLayer.Areas = new Array();
 		l.PaneLayer.VisLayer.getfocushandler = dt_getfocus_day;
 		l.PaneLayer.HidLayer.getfocushandler = dt_getfocus_day;
 		l.PaneLayer.VisLayer.losefocushandler = dt_losefocus_day;
 		l.PaneLayer.HidLayer.losefocushandler = dt_losefocus_day;
 	}
-
+	if (!l.PaneLayer2) {
+	    l.PaneLayer2 = dt_create_pane(l,l.ubg,l.w2,l.h2,l.h,"End");
+	    l.PaneLayer2.ml = l;
+	    l.PaneLayer2.myid = "PaneLayer2";
+	    l.PaneLayer2.HidLayer.Areas = l.PaneLayer2.VisLayer.Areas = new Array();
+	    l.PaneLayer2.VisLayer.getfocushandler = dt_getfocus_day;
+	    l.PaneLayer2.HidLayer.getfocushandler = dt_getfocus_day;
+	    l.PaneLayer2.VisLayer.losefocushandler = dt_losefocus_day;
+	    l.PaneLayer2.HidLayer.losefocushandler = dt_losefocus_day;
+		
+	}
 	// redraw the month & time.
+	if(l.form.mode == 'Query'){
+	    l.TmpDateObj2 = (l.DateObj2?(new Date(l.DateObj2)):null);
+	    dt_drawmonth(l.PaneLayer2, l.TmpDateObj2);
+	    dt_drawtime(l.PaneLayer2, l.TmpDateObj2);
+	    if (!l.TmpDateObj2) l.TmpDateObj2 = new Date();
+	}
 	l.TmpDateObj = (l.DateObj?(new Date(l.DateObj)):null);
 	dt_drawmonth(l.PaneLayer, l.TmpDateObj);
 	dt_drawtime(l.PaneLayer, l.TmpDateObj);
@@ -175,6 +237,29 @@ function dt_prepare(l) {
 function dt_formatdate(l, d, fmt) {
 	var str;
 	switch (fmt) {
+		case 1: str = l.MonthsAbbrev[d.getMonth()] + ' ';
+			str += d.getDate() + ', ';
+			str += d.getYear()+1900;
+			str += ' - ';
+			str += l.MonthsAbbrev[l.DateObj2.getMonth()] + ' ';
+			str += l.DateObj2.getDate() + ', ';
+			str += l.DateObj2.getYear() + 1900;
+			break;
+		case 2: str = l.MonthsAbbrev[l.DateObj.getMonth()] + ' ';
+			str += l.DateObj.getDate() + ', ';
+			str += l.DateObj.getYear() + 1900;
+			str += ' - ';
+			str += l.MonthsAbbrev[d.getMonth()] + ' ';
+			str += d.getDate() + ', ';
+			str += d.getYear()+1900;
+			break;
+		case 3: //this one is compatible with an sql query
+			str = d.getDate() + ' ';
+			str += l.MonthsAbbrev[d.getMonth()] + ' ';
+			str += d.getYear() + 1900 + ' ';
+			str += htutil_strpad(d.getHours(), '0', 2)+':';
+			str += htutil_strpad(d.getMinutes(), '0', 2);
+			break;
 		case 0:
 		default:
 			str  = l.MonthsAbbrev[d.getMonth()] + ' ';
@@ -182,7 +267,6 @@ function dt_formatdate(l, d, fmt) {
 			str += d.getYear()+1900 + ', ';
 			str += htutil_strpad(d.getHours(), '0', 2)+':';
 			str += htutil_strpad(d.getMinutes(), '0', 2);
-			break;
 	}
 	return str;
 }
@@ -224,13 +308,24 @@ function dt_drawmonth(l, d) {
 	pg_removearea(l.VisLayer.NullArea);
 
 	var cur_dy = null;
-	if (l.ml.DateObj && TmpDate.getMonth() == l.ml.DateObj.getMonth() && TmpDate.getYear() == l.ml.DateObj.getYear())
+	if (l.myid != 'PaneLayer2' && l.ml.DateObj && TmpDate.getMonth() == l.ml.DateObj.getMonth() && TmpDate.getYear() == l.ml.DateObj.getYear())
 	    cur_dy = l.ml.DateObj.getDate();
+	if (l.myid == 'PaneLayer2' && l.ml.DateObj2 && TmpDate.getMonth() == l.ml.DateObj2.getMonth() && TmpDate.getYear() == l.ml.DateObj2.getYear())
+	    cur_dy = l.ml.DateObj2.getDate();
+	
 	rows=Math.ceil((num+col)/7);
+	if(l.ml.form.mode == 'Query'){
+	pg_set_style(l,'height',rows*20+110);
+	setClipHeight(l,rows*20+110);
+	moveTo(l.TimeHidLayer,0,rows*20+76);
+	moveTo(l.TimeVisLayer,0,rows*20+76);
+	}
+	else{
 	pg_set_style(l,'height',rows*20+90);
 	setClipHeight(l,rows*20+90);
 	moveTo(l.TimeHidLayer,0,rows*20+56);
 	moveTo(l.TimeVisLayer,0,rows*20+56);
+	}
 	var v='<TABLE width=175 height='+rows*20  +' border=0 cellpadding=0 cellspacing=0>';
 	for (var i=0; i<7*rows; i++) {
 		if (i!=0 && i%7==0) v+='</TR>';
@@ -238,6 +333,7 @@ function dt_drawmonth(l, d) {
 		v+='<TD width=25 height=18 valign=middle align=right>';
 		if (i>=col && dy<num) {
 			l.HidLayer.Areas[dy]=pg_addarea(l.HidLayer, 1+((i%7)*25), (1+(r*18)), 25, 18, 'dt', 'dt_day', 3);
+			l.HidLayer.Areas[dy].parentPaneId = l.myid;
 			var q=new Date(TmpDate);
 			q.setDate(dy+1);
 			l.HidLayer.Areas[dy].DateVal = q;
@@ -254,8 +350,10 @@ function dt_drawmonth(l, d) {
 	v+='</tr><tr><td colspan=4 align=center height=18 valign=middle><i>(<u>N</u>o Date)</i></td><td colspan=3 align=center height=18 valign=middle><i>(<u>T</u>oday)</i></td>';
 	l.HidLayer.NullArea = pg_addarea(l.HidLayer, 1, 1+(r+1)*18, 100, 16, 'dt', 'dt_null', 3);
 	l.HidLayer.NullArea.DateVal = null;
+	l.HidLayer.NullArea.parentPaneId = l.myid;
 	l.HidLayer.TodayArea = pg_addarea(l.HidLayer, 101, 1+(r+1)*18, 83, 16, 'dt', 'dt_today', 3);
 	l.HidLayer.TodayArea.DateVal = new Date();
+	l.HidLayer.TodayArea.parentPaneId = l.myid;
 	v+='</TR></TABLE>';
 
 	// Init the month data layer.
@@ -421,7 +519,7 @@ function dt_keyhandler(l,e,k) {
 			dt.typed_content += String.fromCharCode(k);
 			dt_update_typed(dt);
 		}
-	} else if (k == 'n'.charCodeAt() || k == 'N'.charCodeAt()) {
+	}/* else if (k == 'n'.charCodeAt() || k == 'N'.charCodeAt()) {
 		if (dt_current) {
 			dt_collapse(dt);
 			dt_current = null;
@@ -439,7 +537,16 @@ function dt_keyhandler(l,e,k) {
 		}
 		if (dt.form) dt.form.DataNotify(dt);
 		cn_activate(dt, 'DataChange');
-	} else if (k >= 48 && k < 58) { // 0 - 9
+	}*/
+	else if ((k >= 97 && k <= 122) ||( k>=65 && k<=90) || k ==45) { //letters or numbers or hyphen
+	    if(!dt_current) {
+		dt_expand(dt);
+		dt_current = dt;
+	    }
+	    dt.typed_content += String.fromCharCode(k);
+	    dt_update_typed(dt);
+	}
+	else if (k >= 48 && k < 58) { // 0 - 9
 		if (!dt_current) {
 			dt_expand(dt);
 			dt_current = dt;
@@ -462,28 +569,72 @@ function dt_keyhandler(l,e,k) {
 	return false;
 }
 
-function dt_parse_date(dt,content,drawdate){
-    if(drawdate) dt_setdata(dt,d);
-    var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
-    var vals = regex_dateformat.exec(content);
-    var d = new Date();
-    var now = new Date();
-    var origdate = (dt_current)?dt_current.TmpDateObj:now;
-    vals[1]--;
-    d.setMonth((vals[1]>=0)?vals[1]:origdate.getMonth());
-    d.setDate((vals[2])?vals[2]:origdate.getDate());
-    d.setYear((vals[3])?vals[3]:origdate.getFullYear());
-    d.setHours((vals[4])?vals[4]:origdate.getHours());
-    d.setMinutes((vals[5])?vals[5]:origdate.getMinutes());    
-    if (d.getFullYear() < now.getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0) //ten year window
-	d.setFullYear(d.getFullYear() + 100);
-    if(!(vals[3])){ //year not entered 
-	if (d.getMonth()==11 && now.getMonth()==0) //one month window
-	    d.setFullYear(now.getFullYear()-1);
-	else
-	    d.setFullYear(now.getFullYear());
+//offset is used because so that this will work with a date that starts somewhere in the middle of a regular expression
+//e.g. in query mode the user should enter date1-date2.  The first 5 captured values (1-5 since 0 is the whole match) will
+//pertain to the first date and the second 5 will pertain to the second date so we use an offset of 5.
+function dt_get_parsed_date(dt,origdate,vals,offset,now){
+	var d = new Date();
+	vals[1+offset]--;
+	d.setMonth((vals[1+offset]>=0)?vals[1+offset]:origdate.getMonth());
+	d.setDate((vals[2+offset])?vals[2+offset]:origdate.getDate());
+	d.setYear((vals[3+offset])?vals[3+offset]:origdate.getFullYear());
+	d.setHours((vals[4+offset])?vals[4+offset]:origdate.getHours());
+	d.setMinutes((vals[5+offset])?vals[5+offset]:origdate.getMinutes());    
+	if (d.getFullYear() < now.getFullYear()-90 && dt.typed_content.indexOf(d.getFullYear()) < 0) //ten year window
+	    d.setFullYear(d.getFullYear() + 100);
+	if(!(vals[3+offset])){ //year not entered 
+	    if (d.getMonth()==11 && now.getMonth()==0) //one month window
+		d.setFullYear(now.getFullYear()-1);
+	    else
+		d.setFullYear(now.getFullYear());
+	}
+	return d;
+}
+
+function dt_parsewords(dt) {
+    var retval;
+    var reg_now = /^now$/i;
+    var reg_tod = /^t(oday)?$/i;
+    var reg_yest = /^yesterday$/i;
+    if(dt.typed_content.match(reg_now) || dt.typed_content.match(reg_tod))
+	return new Date();
+    else if(dt.typed_content.match(reg_yest)){
+	retval = new Date();
+	retval.setDate(retval.getDate()-1);
+	return retval;
     }
-    dt.setvalue(d,!drawdate);
+    else return null;
+}
+
+function dt_parse_date(dt,content,drawdate){
+    var now = new Date();
+    var d1,d2;
+    var regex_letters = /.*[a-zA-Z]+.*/; //if there are letters
+    if(regex_letters.exec(content)){
+	d1 = dt_parsewords(dt);
+	dt.setvalue(d1,!drawdate);
+    }
+    else{
+	if(dt.form && dt.form.mode == 'Query'){
+	    var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}(?:\s?-\s?)?(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
+	    var vals = regex_dateformat.exec(content);
+	    var origdate = (dt_current)?dt_current.TmpDateObj:now;
+	    d1 = dt_get_parsed_date(dt,origdate,vals,0,now);
+	    origdate = (dt_current)?dt_current.TmpDateObj2:now;
+	    d2 = dt_get_parsed_date(dt,origdate,vals,5,now);
+	    
+	    dt.setvalue(d1,!drawdate);
+	    dt.setvalue2(d2,!drawdate);
+	}
+	else{
+	    //if(drawdate) dt_setdata(dt,d);
+	    var regex_dateformat = /(\d{0,2})\/?(\d{0,2})\/?(\d{0,4})(?: (\d{0,2}):(\d{0,2})){0,1}/;
+	    var vals = regex_dateformat.exec(content);
+	    var origdate = (dt_current)?dt_current.TmpDateObj:now;
+	    d1 = dt_get_parsed_date(dt,origdate,vals,0,now);
+	    dt.setvalue(d1,!drawdate);
+	}
+    }
     if (dt.form) dt.form.DataNotify(dt);
     cn_activate(dt, 'DataChange');
 }
@@ -503,6 +654,15 @@ function dt_getfocus(x,y,l) {
 	return 1;
 }
 
+function dt_addday(c,e,f){
+    //this adds a day if we are in query mode
+    if(f.parentPaneId == 'PaneLayer1'){
+	dt_writedate(dt_current,dt_formatdate(dt_current,f.DateVal,1));
+    }
+    else{
+	dt_writedate(dt_current,dt_formatdate(dt_current,f.DateVal,2));
+    }
+}
 
 // dt_getfocus_day is called when the user selects a particular date/time
 // in the popup calendar window
@@ -511,7 +671,9 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	if (e != 'dt_today' && e != 'dt_day' && e != 'dt_null') return;
 
 	// hide the drop down part of the control
-	dt_collapse(dt_current);
+	if(dt_current && dt_current.form && dt_current.form.mode != 'Query'){
+	    dt_collapse(dt_current);
+	}
 
 	// Tell form we just got focus
 	if (dt_current.form) 
@@ -520,17 +682,30 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	// Set the data value (after focus; form might reset our data
 	// value after it transitions to 'new' mode from 'nodata'
 	if (e == 'dt_today') f.DateVal = new Date();
-	if (!dt_current.TmpDateObj) 
-		dt_current.TmpDateObj = new Date(dt_current.DateObj);
-	if (f.DateVal) {
-	    dt_current.DateObj = new Date(f.DateVal);
-	    if (dt_current.TmpDateObj && e != 'dt_today') {
-		dt_current.DateObj.setHours(dt_current.TmpDateObj.getHours(), dt_current.TmpDateObj.getMinutes(), dt_current.TmpDateObj.getSeconds());
+	if(f.parentPaneId != 'PaneLayer2'){
+	    if (!dt_current.TmpDateObj) 
+		    dt_current.TmpDateObj = new Date(dt_current.DateObj);
+	    if (f.DateVal) {
+		dt_current.DateObj = new Date(f.DateVal);
+		if (dt_current.TmpDateObj && e != 'dt_today') {
+		    dt_current.DateObj.setHours(dt_current.TmpDateObj.getHours(), dt_current.TmpDateObj.getMinutes(), dt_current.TmpDateObj.getSeconds());
+		}
+	    } else {
+		dt_current.DateObj = null;
 	    }
-	} else {
-	    dt_current.DateObj = null;
 	}
-
+	else {
+	    if(!dt_current.TmpDateObj2)
+		dt_current.TmpDateObj2 = new Date(dt_current.DateObj2);
+	    if(f.DateVal) {
+		dt_current.DateObj2 = new Date(f.DateVal);
+		if(dt_current.TmpDateObj2 && e != 'dt_today') {
+		    dt_current.DateObj2.setHours(dt_current.TmpDateObj2.getHours(), dt_current.TmpDateObj2.getMinutes(), dt_current.TmpDateObj.getSeconds());
+		}
+	    } else {
+		dt_current.DateObj2 = null;
+	    }
+	}
 	// Tell form the value changed
 	if (dt_current.form) {
 		dt_current.form.DataNotify(dt_current);
@@ -538,10 +713,15 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	}
 
 	// draw the date/time on the collapsed control
-	dt_drawdate(dt_current, dt_current.DateObj);
-
-	// no longer current.
-	dt_current = null;
+	if(dt_current.form && dt_current.form.mode == 'Query'){
+	    dt_addday(c,e,f);
+	}
+	else{
+	    dt_drawdate(dt_current, dt_current.DateObj);
+	
+	    // no longer current.
+	    dt_current = null;
+	}
 }
 
 function dt_losefocus() {
@@ -553,7 +733,7 @@ function dt_losefocus_day() {
 	return true;
 }
 
-function dt_create_pane(ml,bg,w,h,h2) {
+function dt_create_pane(ml,bg,w,h,h2,name) {
 	var str;
 	var imgs;
 	//l = new Layer(1024);
@@ -563,12 +743,36 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	htr_setvisibility(l,'hidden');
 
 	str = "<BODY "+bg+">";
-	str += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+w+" height="+(h+20)+">";
+	str += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+w+" height="+(h+40)+">";
 	str += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>";
 	str += "	<TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(w-2)+"></TD>";
 	str += "	<TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>";
+	/*if (ml.form.mode == 'Query'){
+	    str += "<TR><TD width=175 height='18' align=center>"+name+"</TD></TR>";
+	    moveTo(ml.HidLayer, 0, 68);
+	    moveTo(ml.VisLayer, 0, 68);
+	    h+=20;
+	    //moveTo(ml.MonHidLayer, 38, 22);
+	    //moveTo(ml.MonVisLayer, 38, 22);
+	    //moveTo(ml.TimeHidLayer, 0, 176);
+	    //moveTo(ml.TimeVisLayer, 0, 176);
+	}
+	else{
+	    moveTo(ml.HidLayer, 0, 48);
+	    moveTo(ml.VisLayer, 0, 48);
+	    h-=20;
+	    //moveTo(ml.MonHidLayer, 38, 2);
+	    //moveTo(ml.MonVisLayer, 38, 2);
+	    //moveTo(ml.TimeHidLayer, 0, 156);
+	    //moveTo(ml.TimeVisLayer, 0, 156);
+	}*/
 	str += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(h-2)+" width=1></TD>";
 	str += "	<TD valign=top>";
+	if(ml.form.mode =='Query'){
+	    str += "        <TABLE height=20 cellpadding=0 cellspacing=0 border=0>";
+	    str += "        <TR><TD width="+w+" align=center><b>"+name+"</b></TD></TR></TABLE>";
+	    h+=20;
+	}
 	str += "	<TABLE height=25 cellpadding=0 cellspacing=0 border=0>";
 	str += "	<TR><TD width=18><IMG SRC=/sys/images/ico16aa.gif></TD>";
 	str += "		<TD width=18><IMG SRC=/sys/images/ico16ba.gif></TD>";
@@ -606,14 +810,24 @@ function dt_create_pane(ml,bg,w,h,h2) {
 	l.MonHidLayer = htr_new_layer(116,l);
 	//l.MonVisLayer = new Layer(1024, l);
 	l.MonVisLayer = htr_new_layer(116,l);
+	l.TimeHidLayer = htr_new_layer(1024, l);
+	l.TimeVisLayer = htr_new_layer(1024, l);
+	if(ml.form.mode == 'Query'){
+	    moveTo(l.HidLayer, 0, 68);
+	    moveTo(l.VisLayer, 0, 68);
+	    moveTo(l.MonHidLayer, 38, 22);
+	    moveTo(l.MonVisLayer, 38, 22);
+	    moveTo(l.TimeHidLayer, 0, 176);
+	    moveTo(l.TimeVisLayer, 0, 176);
+	}
+	else{
 	moveTo(l.HidLayer, 0, 48);
 	moveTo(l.VisLayer, 0, 48);
 	moveTo(l.MonHidLayer, 38, 2);
 	moveTo(l.MonVisLayer, 38, 2);
-	l.TimeHidLayer = htr_new_layer(1024, l);
-	l.TimeVisLayer = htr_new_layer(1024, l);
 	moveTo(l.TimeHidLayer, 0, 156);
 	moveTo(l.TimeVisLayer, 0, 156);
+	}
 	//l.HidLayer.y = l.VisLayer.y = 48;
 	//l.MonHidLayer.x = l.MonVisLayer.x = 38;
 	//l.MonHidLayer.y = l.MonVisLayer.y = 2;
@@ -653,12 +867,19 @@ function dt_expand(l) {
 	pg_stackpopup(l.PaneLayer, l);
 	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
 	htr_setvisibility(l.PaneLayer, 'inherit');
+	if(l.form.mode == 'Query'){
+	    pg_stackpopup(l.PaneLayer2, l);
+	    pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
+	    htr_setvisibility(l.PaneLayer2, 'inherit');
+	}
 	l.typed_content = '';
 }
 
 // collapse the date/time control
 function dt_collapse(l) {
 	htr_setvisibility(l.PaneLayer, 'hidden');
+	if(l.PaneLayer2)
+	    htr_setvisibility(l.PaneLayer2, 'hidden');
 }
 
 /*  Event Functions  */
@@ -671,7 +892,7 @@ function dt_domousedown(l) {
 		dt_toggle(p.mainlayer);
 	}
 	if (p.kind == 'dt' || p.kind == 'dt_day') {
-		if (dt_current) {
+		if (dt_current && ((dt_current.form.mode != 'Query' && p.kind =='dt_day') || p.kind == 'dt')) {
 			dt_current = null;
 			dt_collapse(p.mainlayer);
 		} else if (p.mainlayer.enabled == 'full') {
@@ -710,35 +931,70 @@ function dt_do_timeout() {
 	dt_timeout = setTimeout(dt_do_timeout, 50);
 }
 
-function dt_yrdn(first) {
+function dt_yrdn(first,pagey,id) {
+	if(id=='PaneLayer1'){
 	dt_current.TmpDateObj.setYear(dt_current.TmpDateObj.getYear()+1899);
 	dt_drawmonth(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_yrdn;
 	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	else{
+	    //alert("PaneLayer2");
+	    dt_current.TmpDateObj2.setYear(dt_current.TmpDateObj2.getYear()+1899);
+	    dt_drawmonth(dt_current.PaneLayer2,dt_current.TmpDateObj2);
+	    dt_timeout_fn = dt_yrdn;
+	    if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
 }
 
-function dt_yrup(first) {
+function dt_yrup(first,pagey,id) {
+	if(id=='PaneLayer1'){
 	dt_current.TmpDateObj.setYear(dt_current.TmpDateObj.getYear()+1901);
 	dt_drawmonth(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_yrup;
 	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	else{
+	    //alert("PaneLayer2");
+	    dt_current.TmpDateObj2.setYear(dt_current.TmpDateObj2.getYear()+1901);
+	    dt_drawmonth(dt_current.PaneLayer2,dt_current.TmpDateObj2);
+	    dt_timeout_fn = dt_yrup;
+	    if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
 }
 
-function dt_mndn(first) {
+function dt_mndn(first,pagey,id) {
+	if(id=='PaneLayer1'){
 	dt_current.TmpDateObj.setMonth(dt_current.TmpDateObj.getMonth()-1);
 	dt_drawmonth(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_mndn;
 	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	else{
+	dt_current.TmpDateObj2.setMonth(dt_current.TmpDateObj2.getMonth()-1);
+	dt_drawmonth(dt_current.PaneLayer2, dt_current.TmpDateObj2);
+	dt_timeout_fn = dt_mndn;
+	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
 }
 
-function dt_mnup(first) {
+function dt_mnup(first,pagey,id) {
+	if(id=='PaneLayer1'){
 	dt_current.TmpDateObj.setMonth(dt_current.TmpDateObj.getMonth()+1);
 	dt_drawmonth(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_mnup;
 	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	else{
+	dt_current.TmpDateObj2.setMonth(dt_current.TmpDateObj2.getMonth()+1);
+	dt_drawmonth(dt_current.PaneLayer2, dt_current.TmpDateObj2);
+	dt_timeout_fn = dt_mnup;
+	if (first) dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
 }
 
-function dt_edhr(first,pagey) {
+function dt_edhr(first,pagey,id) {
+	if(id=='PaneLayer1'){
 	if (first){ var y = pagey - getPageY(dt_current.PaneLayer.TimeVisLayer);
 		    dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.hr_img, y);
 		    dt_img_y = y;
@@ -748,9 +1004,22 @@ function dt_edhr(first,pagey) {
 	dt_current.TmpDateObj.setHours(dt_current.TmpDateObj.getHours() + ((dt_img_y>19)?-1:1));
 	dt_drawtime(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_edhr;
+	}
+	else{
+	if (first){ var y = pagey - getPageY(dt_current.PaneLayer2.TimeVisLayer);
+		    dt_set_rocker(dt_current.PaneLayer2.TimeVisLayer.hr_img, y);
+		    dt_img_y = y;
+		    dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	//used to use y instead of dt_img_y, but this doesn't work because of the way y gets set now
+	dt_current.TmpDateObj2.setHours(dt_current.TmpDateObj2.getHours() + ((dt_img_y>19)?-1:1));
+	dt_drawtime(dt_current.PaneLayer2, dt_current.TmpDateObj2);
+	dt_timeout_fn = dt_edhr;
+	}
 }
 
-function dt_edmn(first,pagey) {
+function dt_edmn(first,pagey,id) {
+	if(id=='PaneLayer1'){
 	if (first){ var y = pagey - getPageY(dt_current.PaneLayer.TimeVisLayer);
 		    dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.mn_img, y);
 		    dt_img_y = y;
@@ -759,9 +1028,22 @@ function dt_edmn(first,pagey) {
 	dt_current.TmpDateObj.setMinutes(dt_current.TmpDateObj.getMinutes() + ((dt_img_y>19)?-1:1));
 	dt_drawtime(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_edmn;
+	}
+	else{
+	if (first){ var y = pagey - getPageY(dt_current.PaneLayer2.TimeVisLayer);
+		    dt_set_rocker(dt_current.PaneLayer2.TimeVisLayer.mn_img, y);
+		    dt_img_y = y;
+		    dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	//used to use y instead of dt_img_y, but this doesn't work because of the way y gets set now
+	dt_current.TmpDateObj2.setMinutes(dt_current.TmpDateObj2.getMinutes() + ((dt_img_y>19)?-1:1));
+	dt_drawtime(dt_current.PaneLayer2, dt_current.TmpDateObj2);
+	dt_timeout_fn = dt_edmn;
+	}
 }
 
-function dt_edsc(first,pagey) {
+function dt_edsc(first,pagey,id) {
+	if(id=='PaneLayer1'){
 	if (first){ var y = pagey - getPageY(dt_current.PaneLayer.TimeVisLayer);
 		    dt_set_rocker(dt_current.PaneLayer.TimeVisLayer.sc_img, y);
 		    dt_img_y = y;
@@ -770,17 +1052,28 @@ function dt_edsc(first,pagey) {
 	dt_current.TmpDateObj.setSeconds(dt_current.TmpDateObj.getSeconds() + ((dt_img_y>19)?-1:1));
 	dt_drawtime(dt_current.PaneLayer, dt_current.TmpDateObj);
 	dt_timeout_fn = dt_edsc;
+	}
+	else{
+	if (first){ var y = pagey - getPageY(dt_current.PaneLayer2.TimeVisLayer);
+		    dt_set_rocker(dt_current.PaneLayer2.TimeVisLayer.sc_img, y);
+		    dt_img_y = y;
+		    dt_timeout = setTimeout(dt_do_timeout, 300);
+	}
+	//used to use y instead of dt_img_y, but this doesn't work because of the way y gets set now
+	dt_current.TmpDateObj2.setSeconds(dt_current.TmpDateObj2.getSeconds() + ((dt_img_y>19)?-1:1));
+	dt_drawtime(dt_current.PaneLayer2, dt_current.TmpDateObj2);
+	dt_timeout_fn = dt_edsc;
+	}
 }
 
 function dt_mousedown(e) {
-	//pg_debug(e.target.kind + 'y=' + e.pageY + '\n');
 	if (e.target.kind && e.target.kind.substr(0,5) == 'dtimg') {
-		eval('dt_' + e.target.kind.substr(6,4)+'(true,'+e.pageY + ')');
+		eval('dt_' + e.target.kind.substr(6,4)+'(true,'+e.pageY + ',\'' + e.layer.myid + '\')');
 	} else {
 		if (e.kind && e.kind.substr(0,2) == 'dt') {
 			dt_domousedown(e.layer);
 			if (e.kind == 'dt') cn_activate(e.mainlayer, 'MouseDown');
-		} else if (dt_current && dt_current != e.mainlayer) {
+		} else if (dt_current && dt_current != e.mainlayer && !(!e.kind && dt_current.form.mode =='Query')) {
 			dt_collapse(dt_current);
 			dt_current = null;
 		}
