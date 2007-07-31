@@ -45,10 +45,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.36 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.37 2007/07/31 17:38:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.37  2007/07/31 17:38:15  gbeeley
+    - (feature) adding tooltip capability to imagebutton
+
     Revision 1.36  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -378,6 +381,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
     int x,y,w,h;
     int id, i;
     pExpression code;
+    char* tooltip = NULL;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -433,6 +437,11 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strcpy(d_img, n_img);
 
+	if(wgtrGetPropertyValue(tree,"tooltip",DATA_T_STRING,POD(&ptr)) == 0)
+	    tooltip=nmSysStrdup(ptr);
+	else
+	    tooltip=nmSysStrdup("");
+
 	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_STRING && wgtrGetPropertyValue(tree,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
 	    {
 	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
@@ -454,8 +463,8 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
-	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT});\n",
-	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled);
+	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&ESCQ'});\n",
+	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled, tooltip);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)
@@ -479,6 +488,8 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for more sub-widgets within the imagebutton. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+
+	if (tooltip) nmSysFree(tooltip);
 
     return 0;
     }
