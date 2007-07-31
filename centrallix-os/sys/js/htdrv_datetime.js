@@ -573,7 +573,10 @@ function dt_keyhandler(l,e,k) {
 //e.g. in query mode the user should enter date1-date2.  The first 5 captured values (1-5 since 0 is the whole match) will
 //pertain to the first date and the second 5 will pertain to the second date so we use an offset of 5.
 function dt_get_parsed_date(dt,origdate,vals,offset,now){
-	var d = new Date();
+	/* javascript has a quirk that if the current date is say, july 31, then setting the month to february (1) will
+	   overflow and the month will actually get set to March (2)!!! So initialize this to 1,1,1 to make sure this
+	   doesn't happen! */
+	var d = new Date(1,1,1);
 	vals[1+offset]--;
 	d.setMonth((vals[1+offset]>=0)?vals[1+offset]:origdate.getMonth());
 	d.setDate((vals[2+offset])?vals[2+offset]:origdate.getDate());
