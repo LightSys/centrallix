@@ -30,10 +30,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.11 2007/04/03 15:50:04 gbeeley Exp $
+    $Id: apos.c,v 1.12 2007/07/31 18:08:47 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.12  2007/07/31 18:08:47  gbeeley
+    - (bugfix) when centering a childwindow (or other floating widget), do not
+      make the upper left corner go offscreen if the screen is too small.
+
     Revision 1.11  2007/04/03 15:50:04  gbeeley
     - (feature) adding capability to pass a widget to a component as a
       parameter (by reference).
@@ -1413,11 +1417,13 @@ pWgtrNode Child;
 		    if (abs(Child->pre_x - (VisualRef->pre_width - (Child->pre_x + Child->pre_width))) < 10)
 			{
 			    Child->x = (VisualRef->width - Child->width)/2;
+			    if (Child->x < 0) Child->x = 0;
 			    changed = 1;
 			}
 		    if (abs(Child->pre_y - (VisualRef->pre_height - (Child->pre_y + Child->pre_height))) < 10)
 			{
 			    Child->y = (VisualRef->height - Child->height)/2;
+			    if (Child->y < 0) Child->y = 0;
 			    changed = 1;
 			}
 
