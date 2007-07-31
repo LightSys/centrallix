@@ -850,14 +850,18 @@ function dd_clear_layers()
 
 function dd_changemode()
     {
-    //this==l
     if(this.form.mode == "Query")
 	{
 	this.selectedItems = null;
 	}
     else
 	{
-	//don't worry about it	
+	//unselect items
+	this.selectedItems = null;
+	for(k in this.Items)
+	    {
+	    htr_setbgcolor(this.Items[k],this.bg);
+	    }
 	}
 }
 
