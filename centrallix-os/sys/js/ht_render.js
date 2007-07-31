@@ -593,7 +593,7 @@ function htr_new_layer(w,p)
 	    {
 	    if (!p || p == document || p == window) p = document.body;
 	    nl = document.createElement('div');
-	    nl.style.width = w + "px";
+	    if (w) nl.style.width = w + "px";
 	    pg_set_style(nl, 'position','absolute');
 	    p.appendChild(nl);
 	    }
