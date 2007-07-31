@@ -255,6 +255,15 @@ function dd_keyhandler(l,e,k)
     return false;
     }
 
+function dd_notmember(val,list)
+    {
+    for(var i in list)
+	{
+	if(val==list[i]) return false;
+	}
+    return true;
+    }
+
 function dd_hilight_item(l,i)
     {
     if (i == null)
@@ -264,7 +273,7 @@ function dd_hilight_item(l,i)
 	else
 	    return;
 	}
-    if (l.SelectedItem != null)
+    if (l.SelectedItem != null && dd_notmember(l.SelectedItem, l.selectedItems))
 	dd_unhilight_item(l,l.SelectedItem);
     l.SelectedItem = i;
     htr_setbgcolor(l.Items[i], l.hl);
@@ -386,6 +395,10 @@ function dd_select_item(l,i)
 	    else
 		{
 		items = '<i>' + l.Values[l.selectedItems[j]].label + '</i>';
+		for(k in l.Items)
+		    {
+		    htr_setbgcolor(l.Items[k],l.bg);
+		    }
 		l.selectedItems = null;
 		break;
 		}
@@ -407,6 +420,7 @@ function dd_select_item(l,i)
 
     moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
     resizeTo(l.HidLayer, l.w, l.h);
+    
     htr_setvisibility(l.HidLayer, 'inherit');
     setClipWidth(l.HidLayer, l.w-21);
     htr_setvisibility(l.VisLayer, 'hidden');
@@ -749,7 +763,11 @@ function dd_mousedown(e)
 		    dd_select_item(dd_current, e.layer.index);
 		    dd_datachange(dd_current);
 		    }
-		dd_collapse(dd_current);
+		if(dd_current.form.mode != 'Query')
+		    dd_collapse(dd_current);
+		else 
+		    htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
+		    //dd_hilight_item(dd_current, e.layer.index);
         }
     else if (e.kind == 'dd_sc')
         {
