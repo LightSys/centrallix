@@ -9,6 +9,31 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+function tbld_format_cell(cell, color)
+    {
+    var txt;
+    var str = htutil_encode(String(cell.data));
+    if (cell.subkind != 'headercell' && this.cols[cell.colnum][3] == 'check')
+	{
+	if (str.toLowerCase() == 'n' || str.toLowerCase() == 'no' || str.toLowerCase == 'off' || str.toLowerCase == 'false' || str == '0' || str == '' || str == 'null')
+	    txt = '<img src="/sys/images/tbl_dash.gif">';
+	else
+	    txt = '<img src="/sys/images/tbl_check.gif">';
+	}
+    else
+	{
+	if(color)
+	    txt = '<font color='+htutil_encode(color)+'>'+str+'</font>';
+	else
+	    txt = str;
+	}
+    if (txt != cell.content)
+	{
+	pg_serialized_write(cell, txt, null);
+	cell.content = txt;
+	}
+    }
+
 function tbld_update(p1)
     {
     var txt;
@@ -80,16 +105,9 @@ function tbld_update(p1)
 			this.rows[i].fg.cols[j].data=htutil_obscure(this.osrc.replica[this.rows[i].fg.recnum][k].value);
 			if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
 			    this.rows[i].fg.cols[j].data='';
-			if(this.textcolor)
-			    txt = '<font color='+this.textcolor+'>'+this.rows[i].fg.cols[j].data+'<font>';
-			else
-			    txt = this.rows[i].fg.cols[j].data;
 			if (this.rows[i].fg.cols[j].content != txt)
 			    {
-			    pg_serialized_write(this.rows[i].fg.cols[j], txt, null);
-			    //this.rows[i].fg.cols[j].document.write(txt);
-			    //this.rows[i].fg.cols[j].document.close();
-			    this.rows[i].fg.cols[j].content = txt;
+			    this.FormatCell(this.rows[i].fg.cols[j], this.textcolor);
 			    }
 			}
 		    }
@@ -149,17 +167,7 @@ function tbld_select()
     //eval('this.'+this.table.row_bgndhigh+';');
     for(var i in this.cols)
 	{
-	if(this.table.textcolorhighlight)
-	    {
-	    txt = '<font color='+this.table.textcolorhighlight+'>'+this.cols[i].data+'<font>';
-	    if (txt != this.cols[i].content)
-		{
-		pg_serialized_write(this.cols[i], txt, null);
-		//this.cols[i].document.write(txt);
-		//this.cols[i].document.close();
-		this.cols[i].content = txt;
-		}
-	    }
+	this.table.FormatCell(this.cols[i], this.table.textcolorhighlight);
 	}
     if(tbld_current==this)
 	{
@@ -175,20 +183,7 @@ function tbld_deselect()
     //eval('this.'+(this.recnum%2?this.table.row_bgnd1:this.table.row_bgnd2)+';');
     for(var i in this.cols)
 	{
-	if(this.table.textcolorhighlight)
-	    {
-	    if(this.table.textcolor)
-		txt = '<font color='+this.table.textcolor+'>'+this.cols[i].data+'<font>';
-	    else
-		txt = this.cols[i].data;
-	    if (txt != this.cols[i].content)
-		{
-		pg_serialized_write(this.cols[i], txt, null);
-		//this.cols[i].document.write(txt);
-		//this.cols[i].document.close();
-		this.cols[i].content = txt;
-		}
-	    }
+	this.table.FormatCell(this.cols[i], this.table.textcolor);
 	}
     }
 
@@ -399,6 +394,20 @@ function tbld_init(param)
     if (t.windowsize > t.osrc.replicasize)
 	t.windowsize = t.osrc.replicasize;
 
+    // Handle column resizing and columns without widths
+    var total_w = 0;
+    for (var i in t.cols)
+	{
+	if (t.cols[i][2] < 0)
+	    t.cols[i][2] = 64;
+	total_w += t.cols[i][2];
+	}
+    var adj = param.width / total_w;
+    for (var i in t.cols)
+	{
+	t.cols[i][2] *= adj;
+	}
+
     t.maxwindowsize = t.windowsize;
     t.rows=new Array(t.windowsize+1);
     setClipWidth(t, param.width);
@@ -443,7 +452,8 @@ function tbld_init(param)
 	var hoffset=0;
 	for(var j=0;j<t.colcount;j++)
 	    {
-	    t.rows[i].fg.cols[j]=htr_new_layer(param.width,t.rows[i].fg);
+	    //t.rows[i].fg.cols[j]=htr_new_layer(param.width,t.rows[i].fg);
+	    t.rows[i].fg.cols[j]=htr_new_layer(null,t.rows[i].fg);
 	    var l = t.rows[i].fg.cols[j];
 	    htr_init_layer(l, t, "tabledynamic");
 	    l.ChangeWidth = tbld_change_width;
@@ -459,6 +469,7 @@ function tbld_init(param)
 	    if (t.colsep > 0 || t.dragcols)
 		l.initwidth -= (b*2+t.colsep);
 	    setClipWidth(l, l.initwidth);
+	    l.clip_w = l.initwidth;
 	    setClipHeight(l, t.rowheight-t.cellvspacing*2-t.innerpadding*2);
 	    //setClipLeft(l, -b);
 	    //t.rows[i].fg.cols[j].document.write('hi');
@@ -516,13 +527,12 @@ function tbld_init(param)
     htr_setbackground(t.rows[0].fg, t.hdr_bgnd);
     //eval('t.rows[0].fg.'+t.hdr_bgnd+';');
     t.down.m+='68 7265 736d6 16e';
+    t.FormatCell = tbld_format_cell;
     for(var i=0;i<t.colcount;i++)
 	{
 	t.rows[0].fg.cols[i].subkind='headercell';
-	if(t.titlecolor)
-	    pg_serialized_write(t.rows[0].fg.cols[i], '<font color='+t.titlecolor+'>'+t.cols[i][1]+'</font>', null);
-	else
-	    pg_serialized_write(t.rows[0].fg.cols[i], t.cols[i][1], null);
+	t.rows[0].fg.cols[i].data = t.cols[i][1];
+	t.FormatCell(t.rows[0].fg.cols[i], t.titlecolor);
 	}
     t.IsDiscardReady=new Function('return true;');
     t.DataAvailable=tbld_clear_layers;
@@ -604,6 +614,11 @@ function tbld_mouseover(e)
             {
             ly=ly.cell.row;
             }
+	else if (ly.subkind == 'cell' || ly.subkind == 'headercell')
+	    {
+	    if (ly.clip_w < getdocWidth(ly) && ly.data)
+		ly.tipid = pg_tooltip(ly.data, e.pageX, e.pageY);
+	    }
         if(ly.subkind=='row' || ly.subkind=='cell' || ly.subkind=='bg')
             {
             if(ly.row) ly=ly.row;
@@ -621,6 +636,23 @@ function tbld_mouseover(e)
         tbld_current.mouseout();
         tbld_current=null;
         }
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_mouseout(e)
+    {
+    var ly = e.layer;
+    if(ly.kind && ly.kind=='tabledynamic')
+	{
+	if (ly.subkind == 'cell' || ly.subkind == 'headercell')
+	    {
+	    if (ly.tipid)
+		{
+		pg_canceltip(ly.tipid);
+		ly.tipid = null;
+		}
+	    }
+	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -777,11 +809,12 @@ function tbld_mouseup(e)
                 var t = l.row.table;
                 if(l.clip_w==undefined) l.clip_w=getClipWidth(l);
                 var maxw = 0;
+		//htr_alert(t.rows[0].fg.cols[l.colnum], 1);
                 for(var i=0;i<t.maxwindowsize+1;i++)
                     {
                     j=l.colnum;
-                    if(t.rows[i].fg.cols[j].document.width>maxw)
-                        maxw=t.rows[i].fg.cols[j].document.width;
+                    if(getdocWidth(t.rows[i].fg.cols[j])>maxw)
+                        maxw=getdocWidth(t.rows[i].fg.cols[j]);
                     }
                 l.ChangeWidth(maxw-l.clip_w);
                 }
