@@ -35,10 +35,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.7 2005/09/24 20:19:18 gbeeley Exp $
+    $Id: multiquery.h,v 1.8 2007/07/31 17:39:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.8  2007/07/31 17:39:59  gbeeley
+    - (feature) adding "SELECT *" capability, rather than having to name each
+      attribute in every query.  Note - "select *" does result in a query
+      result set in which each row may differ in what attributes it has,
+      depending on the data source(s) used.
+
     Revision 1.7  2005/09/24 20:19:18  gbeeley
     - Adding "select ... from subtree /path" support to the SQL engine,
       allowing the retrieval of an entire subtree with one query.  Uses
@@ -169,6 +175,7 @@ typedef struct _QS
 #define MQ_SF_USED		1		/* QS has been used by another q-drv. */
 #define MQ_SF_FORUPDATE		2		/* SELECT query results can be updated */
 #define MQ_SF_FROMSUBTREE	4		/* SELECT ... FROM SUBTREE /path/name */
+#define MQ_SF_ASTERISK		8		/* SELECT clause uses 'SELECT *' */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -214,6 +221,7 @@ typedef struct
 
 #define MQ_F_ALLOWUPDATE	1
 #define MQ_F_NOMOREREC		2
+#define MQ_F_ASTERISK		4		/* "select *" */
 
 
 /*** Pseudo-object structure. ***/
@@ -223,6 +231,7 @@ typedef struct
     ParamObjects	ObjList;
     int			Serial;
     int			AttrID;
+    int			AstObjID;
     pObject		Obj;
     }
     PseudoObject, *pPseudoObject;

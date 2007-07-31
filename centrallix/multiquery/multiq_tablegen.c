@@ -46,10 +46,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_tablegen.c,v 1.6 2007/03/04 05:04:47 gbeeley Exp $
+    $Id: multiq_tablegen.c,v 1.7 2007/07/31 17:39:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_tablegen.c,v $
 
     $Log: multiq_tablegen.c,v $
+    Revision 1.7  2007/07/31 17:39:59  gbeeley
+    - (feature) adding "SELECT *" capability, rather than having to name each
+      attribute in every query.  Note - "select *" does result in a query
+      result set in which each row may differ in what attributes it has,
+      depending on the data source(s) used.
+
     Revision 1.6  2007/03/04 05:04:47  gbeeley
     - (change) This is a change to the way that expressions track which
       objects they were last evaluated against.  The old method was causing
@@ -252,7 +258,7 @@ mqtAnalyze(pMultiQuery mq)
 		xaAddItem(&qe->AttrNames, (void*)item->Presentation);
 		xaAddItem(&qe->AttrExprPtr, (void*)item->RawData.String);
 		xaAddItem(&qe->AttrCompiledExpr, (void*)item->Expr);
-		if (item->Expr->AggLevel > md->AggLevel) md->AggLevel = item->Expr->AggLevel;
+		if (item->Expr && item->Expr->AggLevel > md->AggLevel) md->AggLevel = item->Expr->AggLevel;
 		if (item->QELinkage)
 		    {
 		    if (item->QELinkage != recent)

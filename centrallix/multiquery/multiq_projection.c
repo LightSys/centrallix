@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.7 2007/02/17 04:18:14 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.8 2007/07/31 17:39:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.8  2007/07/31 17:39:59  gbeeley
+    - (feature) adding "SELECT *" capability, rather than having to name each
+      attribute in every query.  Note - "select *" does result in a query
+      result set in which each row may differ in what attributes it has,
+      depending on the data source(s) used.
+
     Revision 1.7  2007/02/17 04:18:14  gbeeley
     - (bugfix) SQL engine was not properly setting ObjCoverageMask on
       expression trees built from components of the where clause, thus
@@ -423,6 +429,8 @@ mqpAnalyze(pMultiQuery mq)
 		if (select_item->QELinkage != NULL) continue;
 		if (select_item->ObjCnt == 1 && (select_item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		    {
+		    if (select_item->Flags & MQ_SF_ASTERISK)
+			mq->Flags |= MQ_F_ASTERISK;
 		    xaAddItem(&qe->AttrNames, (void*)select_item->Presentation);
 		    xaAddItem(&qe->AttrExprPtr, (void*)select_item->RawData.String);
 		    xaAddItem(&qe->AttrCompiledExpr, (void*)select_item->Expr);

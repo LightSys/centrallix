@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.25 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: multiquery.c,v 1.26 2007/07/31 17:39:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.26  2007/07/31 17:39:59  gbeeley
+    - (feature) adding "SELECT *" capability, rather than having to name each
+      attribute in every query.  Note - "select *" does result in a query
+      result set in which each row may differ in what attributes it has,
+      depending on the data source(s) used.
+
     Revision 1.25  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -403,33 +409,53 @@ mq_internal_PostProcess(pQueryStructure qs, pQueryStructure sel, pQueryStructure
 	    /** Compile the expression **/
 	    subtree = (pQueryStructure)(sel->Children.Items[i]);
 	    for(j=0;j<qs->ObjList->nObjects;j++) qs->ObjList->Flags[j] &= ~EXPR_O_REFERENCED;
-	    subtree->Expr = expCompileExpression(subtree->RawData.String, qs->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
-	    if (!subtree->Expr) 
-	        {
-		mssError(0,"MQ","Error in SELECT list expression <%s>", subtree->RawData.String);
-		return -1;
+	    if (!strcmp(subtree->RawData.String,"*") || !strcmp(subtree->RawData.String,"* "))
+		{
+		subtree->Expr = NULL;
+		subtree->ObjCnt = qs->ObjList->nObjects;
+		strtcpy(subtree->Presentation, "*", sizeof(subtree->Presentation));
+		sel->Flags |= MQ_SF_ASTERISK;
+		subtree->Flags |= MQ_SF_ASTERISK;
+		if (subtree->ObjCnt == 0)
+		    {
+		    mssError(0,"MQ","Cannot use 'SELECT *' without at least one 'FROM' data source", subtree->RawData.String);
+		    return -1;
+		    }
+		for(j=0;j<qs->ObjList->nObjects;j++)
+		    {
+		    subtree->ObjFlags[j] = EXPR_O_REFERENCED;
+		    }
 		}
-	    for(cnt=j=0;j<qs->ObjList->nObjects;j++) 
-	        {
-		subtree->ObjFlags[j] = qs->ObjList->Flags[j];
-		if (subtree->ObjFlags[j] & EXPR_O_REFERENCED) cnt++;
-		}
-	    subtree->ObjCnt = cnt;
+	    else
+		{
+		subtree->Expr = expCompileExpression(subtree->RawData.String, qs->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+		if (!subtree->Expr) 
+		    {
+		    mssError(0,"MQ","Error in SELECT list expression <%s>", subtree->RawData.String);
+		    return -1;
+		    }
+		for(cnt=j=0;j<qs->ObjList->nObjects;j++) 
+		    {
+		    subtree->ObjFlags[j] = qs->ObjList->Flags[j];
+		    if (subtree->ObjFlags[j] & EXPR_O_REFERENCED) cnt++;
+		    }
+		subtree->ObjCnt = cnt;
 
-	    /** Determine if we need to assign it a generic name **/
-	    if (subtree->Presentation[0] == '\0')
-	        {
-		if (subtree->Expr->NodeType == EXPR_N_OBJECT && strcmp(((pExpression)(subtree->Expr->Children.Items[0]))->Name,"objcontent"))
+		/** Determine if we need to assign it a generic name **/
+		if (subtree->Presentation[0] == '\0')
 		    {
-		    strcpy(subtree->Presentation, ((pExpression)(subtree->Expr->Children.Items[0]))->Name);
-		    }
-		else if (subtree->Expr->NodeType == EXPR_N_PROPERTY && strcmp(subtree->Expr->Name,"objcontent"))
-		    {
-		    strcpy(subtree->Presentation, subtree->Expr->Name);
-		    }
-		else
-		    {
-		    sprintf(subtree->Presentation, "column_%3.3d", i);
+		    if (subtree->Expr->NodeType == EXPR_N_OBJECT && strcmp(((pExpression)(subtree->Expr->Children.Items[0]))->Name,"objcontent"))
+			{
+			strtcpy(subtree->Presentation, ((pExpression)(subtree->Expr->Children.Items[0]))->Name, sizeof(subtree->Presentation));
+			}
+		    else if (subtree->Expr->NodeType == EXPR_N_PROPERTY && strcmp(subtree->Expr->Name,"objcontent"))
+			{
+			strtcpy(subtree->Presentation, subtree->Expr->Name, sizeof(subtree->Presentation));
+			}
+		    else
+			{
+			snprintf(subtree->Presentation, sizeof(subtree->Presentation), "column_%3.3d", i);
+			}
 		    }
 		}
 	    }
@@ -1949,6 +1975,18 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		break;
 		}
 	    }
+
+	/** If select *, then loop through FROM objects **/
+	if (id == -1 && (p->Query->Flags & MQ_F_ASTERISK))
+	    {
+	    for(i=0;i<p->ObjList.nObjects;i++)
+		{
+		dt = objGetAttrType(p->ObjList.Objects[i], attrname);
+		if (dt > 0)
+		    return dt;
+		}
+	    }
+	    
 	if (id == -1) 
 	    {
 	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
@@ -1976,7 +2014,7 @@ int
 mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    int id=-1,i;
+    int id=-1,i, rval;
     pExpression exp;
 
     	/** Request for row id? **/
@@ -2003,6 +2041,18 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 		break;
 		}
 	    }
+
+	/** If select *, then loop through FROM objects **/
+	if (id == -1 && (p->Query->Flags & MQ_F_ASTERISK))
+	    {
+	    for(i=0;i<p->ObjList.nObjects;i++)
+		{
+		rval = objGetAttrValue(p->ObjList.Objects[i], attrname, datatype, value);
+		if (rval >= 0)
+		    return rval;
+		}
+	    }
+	    
 	if (id == -1)
 	    {
 	    /** Suppress the error message on certain attrs **/
@@ -2043,11 +2093,52 @@ char*
 mqGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
+    char* attrname = NULL;
+
+    	/** Check to see whether we're on current object. **/
+	mq_internal_CkSetObjList(p->Query, p);
 
     	/** Check overflow... **/
-	if (p->AttrID >= p->Query->Tree->AttrNames.nItems) return NULL;
+	while(!attrname)
+	    {
+	    if (p->AttrID >= p->Query->Tree->AttrNames.nItems) return NULL;
 
-    return p->Query->Tree->AttrNames.Items[p->AttrID++];
+	    /** Asterisk? **/
+	    attrname = p->Query->Tree->AttrNames.Items[p->AttrID];
+	    if (!strcmp(attrname,"*"))
+		{
+		attrname = NULL;
+		while(!attrname)
+		    {
+		    if (p->AstObjID == -1)
+			{
+			attrname = objGetFirstAttr(p->ObjList.Objects[0]);
+			p->AstObjID = 0;
+			}
+		    else	
+			{
+			attrname = objGetNextAttr(p->ObjList.Objects[p->AstObjID]);
+			}
+		    if (attrname == NULL)
+			{
+			p->AstObjID++;
+			if (p->AstObjID >= p->ObjList.nObjects)
+			    {
+			    p->AstObjID = -1;
+			    p->AttrID++;
+			    break;
+			    }
+			attrname = objGetFirstAttr(p->ObjList.Objects[p->AstObjID]);
+			}
+		    }
+		}
+	    else
+		{
+		p->AttrID++;
+		}
+	    }
+
+    return attrname;
     }
 
 
@@ -2060,6 +2151,7 @@ mqGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     pPseudoObject p = (pPseudoObject)inf_v;
 
     	/** Set attr id, and return next attr **/
+	p->AstObjID = -1;
 	p->AttrID = 0;
 
     return mqGetNextAttr(inf_v, oxt);
@@ -2073,7 +2165,7 @@ int
 mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTrxTree* oxt)
     {
     pPseudoObject p = (pPseudoObject)inf_v;
-    int i, id;
+    int i, id, rval, dt;
     pExpression exp;
 
     	/** Check to see whether we're on current object. **/
@@ -2089,6 +2181,21 @@ mqSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData value, pObjTr
 		break;
 		}
 	    }
+
+	/** If select *, then loop through FROM objects **/
+	if (id == -1 && (p->Query->Flags & MQ_F_ASTERISK))
+	    {
+	    for(i=0;i<p->ObjList.nObjects;i++)
+		{
+		dt = objGetAttrType(p->ObjList.Objects[i], attrname);
+		if (dt > 0)
+		    {
+		    rval = objSetAttrValue(p->ObjList.Objects[i], attrname, datatype, value);
+		    return rval;
+		    }
+		}
+	    }
+	    
 	if (id == -1)
 	    {
 	    mssError(1,"MQ","setattr: unknown attribute '%s' for multiquery result set", attrname);
@@ -2274,6 +2381,18 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 		break;
 		}
 	    }
+
+	/** If select *, then loop through FROM objects **/
+	if (id == -1 && (p->Query->Flags & MQ_F_ASTERISK))
+	    {
+	    for(i=0;i<p->ObjList.nObjects;i++)
+		{
+		ph = objPresentationHints(p->ObjList.Objects[i], attrname);
+		if (ph)
+		    return ph;
+		}
+	    }
+	    
 	if (id == -1) 
 	    {
 	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
