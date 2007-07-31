@@ -104,10 +104,10 @@ function dt_changemode(){
 	this.DateObj2.setHours(23);
 	this.DateObj2.setMinutes(59);
 	this.DateObj2.setSeconds(59);
+	this.PaneLayer = null;
+	this.PaneLayer2 = null;
     }
     //get rid of old pane layers because they will need to be relabeled
-    this.PaneLayer = null;
-    this.PaneLayer2 = null;
 }
 
 // Date/Time Functions
@@ -200,6 +200,10 @@ function dt_init(param){
 // load times).
 function dt_prepare(l) {
 	// Create the pane if needed.
+	if(l.form.mode != 'Query' && l.PaneLayer2){
+	    l.PaneLayer = null;
+	    l.PaneLayer2 = null;
+	}
 	if (!l.PaneLayer) {
 		l.PaneLayer = dt_create_pane(l,l.ubg,l.w2,l.h2,l.h,"Start");
 		l.PaneLayer.ml = l;
@@ -545,6 +549,8 @@ function dt_keyhandler(l,e,k) {
 	    }
 	    dt.typed_content += String.fromCharCode(k);
 	    dt_update_typed(dt);
+	    if(dt.form) dt.form.DataNotify(dt);
+	    cn_activate(dt, 'DataChange');
 	}
 	else if (k >= 48 && k < 58) { // 0 - 9
 		if (!dt_current) {
@@ -553,6 +559,8 @@ function dt_keyhandler(l,e,k) {
 		}
 		dt.typed_content += String.fromCharCode(k);
 		dt_update_typed(dt);
+		if(dt.form) dt.form.DataNotify(dt);
+		cn_activate(dt, 'DataChange');
 	} else if (k == '/'.charCodeAt() || k == ':'.charCodeAt()) {
 		if (dt_current && dt.typed_content) {
 			dt.typed_content += String.fromCharCode(k);
@@ -653,6 +661,7 @@ function dt_update_typed(l) {
 // dt_getfocus is called when the user selects or tabs to the control
 function dt_getfocus(x,y,l) {
 	if (this.enabled != 'full') return 0;
+	if(l.form) l.form.FocusNotify(l);
 	cn_activate(l, 'GetFocus');
 	return 1;
 }
