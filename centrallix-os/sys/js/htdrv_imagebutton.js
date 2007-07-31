@@ -96,6 +96,11 @@ function ib_mousemove(e)
     if (e.kind == 'ib' && e.mainlayer.enabled == true)
         {
         if (e.mainlayer.img && e.mainlayer.img.src != e.mainlayer.cImage.src) ib_setmode(e.mainlayer, 'p'); 
+	if (e.mainlayer.tipid)
+	    {
+	    pg_canceltip(e.mainlayer.tipid);
+	    e.mainlayer.tipid = pg_tooltip(e.mainlayer.tooltip, e.pageX, e.pageY);
+	    }
         cn_activate(e.mainlayer, 'MouseMove');
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
@@ -106,6 +111,8 @@ function ib_mouseover(e)
     if (e.kind == 'ib' && e.mainlayer.enabled == true)
         {
         if (e.mainlayer.img && (e.mainlayer.img.src != e.mainlayer.cImage.src)) ib_setmode(e.mainlayer, 'p');
+	if (e.mainlayer.tooltip)
+	    e.mainlayer.tipid = pg_tooltip(e.mainlayer.tooltip, e.pageX, e.pageY);
         cn_activate(e.mainlayer, 'MouseOver');
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
@@ -116,6 +123,9 @@ function ib_mouseout(e)
     if (e.kind == 'ib' && e.mainlayer.enabled == true)
         {
         if (e.mainlayer.img && e.mainlayer.img.src != e.mainlayer.cImage.src) ib_setmode(e.mainlayer, 'n'); 
+	if (e.mainlayer.tipid)
+	    pg_canceltip(e.mainlayer.tipid);
+	e.mainlayer.tipid = null;
         cn_activate(e.mainlayer.layer, 'MouseMove');
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
@@ -126,6 +136,7 @@ function ib_init(param)
     var l = param.layer;
     var w = param.width;
     var h = param.height;
+    l.tooltip = param.tooltip;
     //l.LSParent = param.parentobj;
     l.nofocus = true;
     if(cx__capabilities.Dom0NS)
