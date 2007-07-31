@@ -32,12 +32,14 @@ function htutil_unpack(str)
 function htutil_encode(s) 
     {
     var rs = '';
+    s = String(s);
     for(var i=0;i<s.length;i++) 
         {
 	if (s.charAt(i) == '<') rs += '&lt;';	
 	else if (s.charAt(i) == '>') rs += '&gt;';
 	else if (s.charAt(i) == '&') rs += '&amp;';
 	else if (s.charAt(i) == ' ') rs += '&nbsp;';
+	else if (s.charAt(i) == "'") rs += '&quot;';
 	else rs += s.charAt(i);
         }
     return rs;
