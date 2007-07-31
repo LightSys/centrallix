@@ -51,10 +51,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.17 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.18 2007/07/31 17:42:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.18  2007/07/31 17:42:15  gbeeley
+    - (bugfix) dt->Value should be initialized to 0 so that future compares
+      based on ->Value will work properly.
+
     Revision 1.17  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -1274,6 +1278,8 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	if (got_sec == -1) got_sec = 0;
 
 	/** Fix the values of the numbers to the internal representation. **/
+	dt->Value = 0;
+
 	/** First, the year. **/
 	if (got_yr < 5) 
 	    dt->Part.Year = got_yr + 100;
