@@ -196,7 +196,27 @@ function osrc_make_filter(q)
 			    if (val == null)
 				str=':'+q[i].oid+' is null ';
 			    else
-				str=':'+q[i].oid+'='+'"'+val+'"';
+				if(val.search(/^\*/)>=0) //* at beginning
+				    {
+				    val = val.substring(1); //pop off *
+				    str='right(:'+q[i].oid+','+val.length+')="'+val+'"';
+				    }
+				else if(val.search(/\*$/)>=0) //* at end
+				    {
+				    val=val.substring(0,val.length-1); //chop off *
+				    str='substring(:'+q[i].oid+','+1+','+val.length+')="'+val+'"';
+				    }
+				else if(val.indexOf('*')>=0) //* in middle
+				    {
+				    var ind = val.indexOf('*');
+				    var val1 = val.substring(0,ind);
+				    var val2 = val.substring(ind+1);
+				    str='(right(:'+q[i].oid+','+val2.length+')="'+val2+'"';
+				    str+=' AND ';
+				    str+='substring(:'+q[i].oid+',1,'+val1.length+')="'+val1+'")';
+				    }
+				else
+				    str=':'+q[i].oid+'='+'"'+val+'"';
 			    }
 			break;
 		    }
