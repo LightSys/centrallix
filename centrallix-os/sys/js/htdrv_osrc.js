@@ -104,6 +104,11 @@ function osrc_make_filter(q)
 		    case 'integer':
 			if (val == null)
 			    str=':'+q[i].oid+' is null ';
+			else if (val.search(/-/)>=0)
+			    {
+			    var parts = val.split(/-/);
+			    str='(:'+q[i].oid+'>='+parts[0]+' AND :'+q[i].oid+'<='+parts[1] + ')';
+			    }
 			else
 			    str=':'+q[i].oid+'='+val;
 			break;
@@ -112,10 +117,22 @@ function osrc_make_filter(q)
 			    str=':'+q[i].oid+' is null ';
 			else
 			    {
-			    str='(:'+q[i].oid+'='+val[0];
+			    if (val[0].search(/-/)>=0)
+			    {
+			    var parts = val[0].split(/-/);
+			    str='(:'+q[i].oid+'>='+parts[0]+' AND :'+q[i].oid+'<='+parts[1];
+			    }
+			    else
+				str='(:'+q[i].oid+'='+val[0];
 			    for(var j=1;j<val.length;j++)
 				{
-				str+=' OR :'+q[i].oid+'='+val[j];
+				if (val[j].search(/-/)>=0)
+				    {
+				    var parts = val[j].split(/-/);
+				    str+=' OR :'+q[i].oid+'>='+parts[0]+' AND :'+q[i].oid+'<='+parts[1];
+				    }
+				else
+				    str+=' OR :'+q[i].oid+'='+val[j];
 				}
 			    str+=')';
 			    }
