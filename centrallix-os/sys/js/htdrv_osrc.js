@@ -120,7 +120,7 @@ function osrc_make_filter(q)
 			    if (val[0].search(/-/)>=0)
 			    {
 			    var parts = val[0].split(/-/);
-			    str='(:'+q[i].oid+'>='+parts[0]+' AND :'+q[i].oid+'<='+parts[1];
+			    str='((:'+q[i].oid+'>='+parts[0]+' AND :'+q[i].oid+'<='+parts[1]+')';
 			    }
 			    else
 				str='(:'+q[i].oid+'='+val[0];
@@ -129,7 +129,7 @@ function osrc_make_filter(q)
 				if (val[j].search(/-/)>=0)
 				    {
 				    var parts = val[j].split(/-/);
-				    str+=' OR :'+q[i].oid+'>='+parts[0]+' AND :'+q[i].oid+'<='+parts[1];
+				    str+=' OR (:'+q[i].oid+'>='+parts[0]+' AND :'+q[i].oid+'<='+parts[1]+')';
 				    }
 				else
 				    str+=' OR :'+q[i].oid+'='+val[j];
