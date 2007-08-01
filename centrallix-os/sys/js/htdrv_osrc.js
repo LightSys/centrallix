@@ -196,7 +196,11 @@ function osrc_make_filter(q)
 			    if (val == null)
 				str=':'+q[i].oid+' is null ';
 			    else
-				if(val.search(/^\*/)>=0) //* at beginning
+				if (val.search(/^\*.\*$/)>=0)
+				    {
+				    str='charindex("'+val[1]+'",:'+q[i].oid+')>0';
+				    }
+				else if(val.search(/^\*/)>=0) //* at beginning
 				    {
 				    val = val.substring(1); //pop off *
 				    str='right(:'+q[i].oid+','+val.length+')="'+val+'"';
