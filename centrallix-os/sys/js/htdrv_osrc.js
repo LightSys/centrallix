@@ -189,8 +189,14 @@ function osrc_make_filter(q)
 			    str=':'+q[i].oid+' > '+val.substring(1);
 			else if(val.substring(0,1)=='<')
 			    str=':'+q[i].oid+' < '+val.substring(1);
-			//else if((/\\*/).test(val))
-			//    str=':'+q[i].oid+' LIKE "'+val+'"';
+			else if(val.indexOf('-')>=0)
+			    {
+			    //assume integer range in string
+			    var ind = val.indexOf('-');
+			    var val1 = val.substring(0,ind);
+			    var val2 = val.substring(ind+1);
+			    str='(:'+q[i].oid+'>='+val1+' AND :'+q[i].oid+'<='+val2+')';
+			    }
 			else
 			    {
 			    if (val == null)
