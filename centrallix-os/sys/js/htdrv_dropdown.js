@@ -29,7 +29,7 @@ function dd_setvalue(v)
     //pg_debug('dd_setvalue: ' + v);
     //if (!this.PaneLayer) this.PaneLayer = dd_create_pane(this);
     //pg_debug(' ... ');
-    for (var i=0; i < this.Values.length; i++)
+    for (var i in this.Values)
 	{
 	if (this.Values[i].value == v)
 	    {
@@ -295,6 +295,7 @@ function dd_unhilight_item(l,i)
 
 function dd_collapse(l)
     {
+	if(!l) return; //assume already collapsed
 	l.keystring = null;
 	l.match = null;
 	l.lastmatch = null;
@@ -417,7 +418,6 @@ function dd_select_item(l,i)
     //htr_write_content(l.HidLayer, c);
     pg_serialized_write(l.HidLayer, c, null);
     l.HidLayer.index = i;
-
     moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
     resizeTo(l.HidLayer, l.w, l.h);
     
@@ -436,7 +436,7 @@ function dd_select_item(l,i)
 	{
 	//change record
 	//alert(i);
-	l.osrc.MoveToRecord(i);
+	//l.osrc.MoveToRecord(i);
 	}
     cn_activate(l, "DataChange");
     }
@@ -623,6 +623,8 @@ function dd_create_pane(l)
     htr_setvisibility(p.ScrLayer, 'inherit');
 
     /**  Add items  **/
+    l.Items = null;
+    l.Items = new Array();
     for (var i=0; i < l.Values.length; i++)
 	{
 	if (!l.Items[i])
@@ -653,7 +655,8 @@ function dd_create_pane(l)
 
 function dd_add_items(l,ary)
     {
-    for(var i=0; i<ary.length;i++) 
+    l.Values = null;
+    for(var i in ary) 
 	{
 	ary[i].label = htutil_rtrim(ary[i].label);
 	ary[i].value = htutil_rtrim(ary[i].value);
@@ -754,7 +757,8 @@ function dd_mousedown(e)
 	    }
 		if(e.mainlayer.Mode == 3)
 		    {
-		    e.mainlayer.osrc.MoveToRecord(e.layer.index);
+		    if(e.mainlayer.Values[e.layer.index].osrcindex)
+			e.mainlayer.osrc.MoveToRecord(e.mainlayer.Values[e.layer.index].osrcindex); 
 		    dd_collapse(dd_current);
 		    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 		    }
@@ -824,6 +828,7 @@ function dd_update(p1)
     {
     var osrc = this.osrc;
     var l = this.mainlayer;
+    var targetval;
     //make array of labels and values wnames are irrelevant because there are no corresponding widgets
     var vals = new Array();
     for(var i in osrc.replica)
@@ -833,12 +838,16 @@ function dd_update(p1)
 	    {
 	    if(rec[k].oid == l.fieldname)
 		{
-		vals[vals.length] = new Object({wname: rec[k].oid, label: rec[k].value, value: rec[k].value}); //append object
+		if(i==osrc.CurrentRecord) targetval = vals.length;
+		vals[vals.length] = new Object({osrcindex: i, label: rec[k].value, value: rec[k].value}); //append object
+		break; //don't do duplicates
 		}
 	    }
 	}
     l.additems(l,vals);
-    dd_select_item(l,p1.id-1); //select the correct index (not zero based)
+    dd_select_item(l,targetval); //select the correct index
+    dd_collapse(this);
+    l.PaneLayer = null;
     }
 
 function dd_clear_layers()
