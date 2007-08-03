@@ -42,10 +42,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.34 2007/06/05 22:07:32 dkasper Exp $
+    $Id: htdrv_tab.c,v 1.35 2007/08/03 23:46:07 dkasper Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.35  2007/08/03 23:46:07  dkasper
+    - Added a mode property that defaults to static.  If it is set to dynamic
+      then the tab acts as an objectsource client, although it can also have
+      regular tabs in it as well.  It needs to have at least one tab inside it
+      with a fieldname which is then used to generate tabs each named according
+      to the data in that field.
+
     Revision 1.34  2007/06/05 22:07:32  dkasper
     - Added the visible property so that it can be watched for changes allowing
       dynamic tab hiding/showing
@@ -408,10 +415,13 @@ int
 httabRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
+    char* type,*field;
     char name[64];
     char tab_txt[128];
     char main_bg[128];
     char inactive_bg[128];
+    char page_type[32];
+    char fieldname[128];
     char sel[128];
     int sel_idx= -1;
     pWgtrNode tabpage_obj;
@@ -571,6 +581,20 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		if (!strcmp(ptr,"widget/tabpage"))
 		    {
 		    wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
+
+		    if(wgtrGetPropertyValue(tabpage_obj,"type",DATA_T_STRING,POD(&type)) != 0)
+			strcpy(page_type,"static");
+		    else if(!strcmp(type,"static") || !strcmp(type,"dynamic"))
+			strcpy(page_type,type);
+		    else
+			strcpy(page_type,"static");
+		    if(!strcmp(page_type,"dynamic"))
+			{
+			if(wgtrGetPropertyValue(tabpage_obj,"fieldname",DATA_T_STRING,POD(&field)) != 0)
+			    strcpy(fieldname,"NONE SELECTED");
+			else
+			    strtcpy(fieldname,field,sizeof(fieldname));
+			}
 		    tabcnt++;
 		    is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
 		    bg = is_selected?main_bg:inactive_bg;
@@ -685,6 +709,12 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		wgtrGetPropertyValue(tabpage_obj,"name",DATA_T_STRING,POD(&ptr));
 		tabcnt++;
 		is_selected = (tabcnt == sel_idx || (!*sel && tabcnt == 1) || !strcmp(sel,ptr));
+		if(wgtrGetPropertyValue(tabpage_obj,"type",DATA_T_STRING,POD(&type)) != 0)
+		    strcpy(page_type,"static");
+		else if(!strcmp(type,"static") || !strcmp(type,"dynamic"))
+		    strcpy(page_type,type);
+		else
+		    strcpy(page_type,"static");
 
 		/** Add the pane **/
 		if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
@@ -692,14 +722,14 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    htrAddStylesheetItem_va(s,"\t#tc%POSpane%POS { POSITION:absolute; VISIBILITY:%STR; LEFT:1px; TOP:1px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",
 			    id,tabcnt,is_selected?"inherit":"hidden",w-2,z+2);
 		    }
-
+		
 		/** Add script initialization to add a new tabpage **/
 		if (tloc == None)
-		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(null,wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&ESCQ');\n",
-			name, ptr, name, ptr);
+		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(null,wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&ESCQ','%STR&ESCQ','%STR&ESCQ');\n",
+			name, ptr, name, ptr,page_type,fieldname);
 		else
-		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(nodes[\"%STR&SYM\"],wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&ESCQ');\n",
-			name, ptr, ptr, name, ptr);
+		    htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].addTab(nodes[\"%STR&SYM\"],wgtrGetContainer(nodes[\"%STR&SYM\"]),nodes[\"%STR&SYM\"],'%STR&ESCQ','%STR&ESCQ','%STR&ESCQ');\n",
+			name, ptr, ptr, name, ptr,page_type,fieldname);
 
 		/** Add named global for the tabpage **/
 		subnptr = nmSysStrdup(ptr);
