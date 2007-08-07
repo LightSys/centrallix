@@ -61,15 +61,31 @@ function tc_makecurrent()
     this.setTabUnwatched();
     }
 
-
+function tc_makenotcurrent(t)
+    {
+    htr_setzindex(t.tabpage,htr_getzindex(t.tabctl) - 1);
+    htr_setvisibility(t.tabpage,'hidden');
+    if (t.tabctl.tloc != 4)
+	{
+	htr_setzindex(t,htr_getzindex(t.tabctl) - 1);
+	t.marker_image.src = '/sys/images/tab_lft3.gif';
+	moveBy(t, t.tabctl.xo, t.tabctl.yo);
+	setClipItem(t,t.tabctl.cl, getClipItem(t,t.tabctl.cl) + t.tabctl.ci);
+	if (t.tabctl.inactive_bgColor) htr_setbgcolor(t,t.tabctl.inactive_bgColor);
+	if (t.tabctl.inactive_bgnd) htr_setbgimage(t,t.tabctl.inactive_bgnd);
+	}
+    
+    }
 
 // Adds a new tab to the tab control
-function tc_addtab(l_tab, l_page, l, nm)
+function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
     {
     var newx;
     var newy;
     if (!l_tab) l_tab = new Object();
     l_tab.tabname = nm;
+    l_tab.type = type;
+    l_tab.fieldname = fieldname;
     l_tab.tabindex = this.tabs.length+1;
     htr_init_layer(l_page,l,'tc_pn');
     if (l.tloc != 4) 
@@ -79,6 +95,7 @@ function tc_addtab(l_tab, l_page, l, nm)
 	    {
 	    if (this.tabs.length > 0)
 		{
+		//alert(htr_getphyswidth(this.tabs[this.tabs.length-1]));
 		newx = getPageX(this.tabs[this.tabs.length-1]) + htr_getphyswidth(this.tabs[this.tabs.length-1]) + 1;
 		if (htr_getvisibility(this.tabs[this.tabs.length-1].tabpage) == 'inherit') newx += l.xo;
 		}
@@ -214,6 +231,103 @@ function tc_showcontainer()
     return true;
     }
 
+function tc_clear_tabs(tabs)
+    {
+    for(var i=0;i<tabs.length;i++)
+	{
+	if(tabs[i].type=='generated')
+	    {
+	    setClipWidth(tabs[i],0);
+	    if(!tabs[i].tabctl.tc_layer_cache) tabs[i].tabctl.tc_layer_cache = new Array();
+	    tabs[i].tabctl.tc_layer_cache.push(tabs[i]);
+	    tabs.splice(i,1);
+	    i--; //because we just removed an element
+	    }
+	}
+    }
+function tc_direct_parent(t){
+	    if(cx__capabilities.Dom0NS)
+		return t.parentLayer;
+	    else
+		return t.parentNode;
+}
+
+function tc_updated(p1)
+    {
+    var osrc = this.osrc;
+    var tabs = this.tabs;
+    var vals = new Array();
+    var targetval,targettab;
+
+    if(this.oldreplica && this.osrc.replica == this.oldreplica){
+	//replica is the same so just switch tabs!
+	for(var i in tabs)
+	    if(tabs[i].recordnumber == osrc.CurrentRecord)
+		{
+		tabs[i].makeCurrent();
+		tabs[i].tc_visible_changed('visible','hidden','inherit');
+		return; //done!
+		}
+    }
+    else this.oldreplica = this.osrc.replica;
+    tc_clear_tabs(this.tabs);
+    for(var i in tabs)
+	{
+	if(tabs[i].type!='dynamic')
+	    continue; //ignore non-dynamic tabs
+	//htr_setvisibility(tabs[i],'inherit');
+	htr_setvisibility(tabs[i],'hidden');
+	for(var j in osrc.replica)
+	    {
+	    var rec = osrc.replica[j];
+	    for(var k in rec)
+		{
+		if(rec[k].oid == tabs[i].fieldname)
+		    {
+		    vals[j] = rec[k].value;
+		    if(j==osrc.CurrentRecord) targetval = j;
+		    break; //this makes sure we don't do duplicates
+		    }
+		}
+	    }
+	for(var j in vals)
+	    {
+	    var newtab,tabparent,pageparent,newpage,content;
+	    //make sure there is never a tbody tag in content for NS4, ever.
+	    if(cx__capabilities.Dom0NS)
+		content = "\n    <table cellspacing=0 cellpadding=0 border=0><tr><td colspan=3 background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/white_1x1.png\"></td></tr><tr><td width=6><img src=\"/sys/images/white_1x1.png\" heigth=24 width=1><img src=\"/sys/images/tab_lft3.gif\" name=\"tb\" heigth=24></td><td valign=\"middle\" align=\"center\"><font color=\"black\"><b>&nbsp;"+vals[j]+"&nbsp;</b></font></td><td align=\"right><img src=\"/sys/images/dkgrey_1x1.png\" width=1 height=24></td></tr></table>\n";
+	    else
+		content = "\n    <table style=\"border-style: solid; border-color: white gray gray white; border-width: 1px 1px 0px;\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td><img src=\"/sys/images/tab_lft3.gif\" align=\"left\" height=\"24\" width=\"5\"></td><td align=\"center\"><b>&nbsp;"+vals[j]+"&nbsp;</b></td></tr></table>\n";
+	    tabparent = tc_direct_parent(tabs[i]);
+	    if(this.tc_layer_cache && this.tc_layer_cache.length >0) newtab = this.tc_layer_cache.pop();
+	    else newtab = htr_new_layer(null,tabparent);
+	    pageparent = tc_direct_parent(tabs[i].tabpage)
+	    newpage = htr_new_layer(null,pageparent);
+	    newtab.marker_image = tabs[i].marker_image;
+	    newtab.marker_image.src = '/sys/images/tab_lft3.gif';
+	    htr_write_content(newtab,content);
+	    htr_setvisibility(newtab,'inherit');
+	    htr_setvisibility(newpage,'inherit');
+	    htr_setzindex(newtab,14);
+	    this.addTab(newtab,newpage,this,vals[j],'generated','');
+	    setClipWidth(newtab,htr_getphyswidth(newtab));
+	    setClipHeight(newtab,26);
+	    
+	    newtab.osrcdata = vals[j];
+	    newtab.recordnumber = j;
+
+	    tc_makenotcurrent(newtab);
+	    if(j==targetval) targettab = newtab.tabindex-1;
+
+	    if(targettab){
+		this.tabs[targettab].makeCurrent();
+		this.tabs[targettab].tc_visible_changed('visible','hidden','inherit');
+	    }
+		    
+	    }
+	}
+    }
+
 function tc_init(param)
     {
     // Basic stuff...
@@ -241,6 +355,19 @@ function tc_init(param)
     htr_watch(l,"selected", "tc_selection_changed");
     htr_watch(l,"selected_index", "tc_selection_changed");
     l.tc_selection_changed = tc_selection_changed;
+
+    l.osrc = wgtrFindContainer(l, "widget/osrc");
+    if(l.osrc)
+	{
+	l.osrc.Register(l);
+	l.IsDiscardReady=new Function('return true');
+	l.DataAvailable=new Function('return true');
+	l.ObjectAvailable=tc_updated;
+	l.ReplicaMoved=new Function('return true');
+	l.OperationComplete=new Function('return true');
+	l.ObjectDeleted=tc_updated;
+	l.ObjectCreated=tc_updated;
+	}
 
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
@@ -303,7 +430,6 @@ function tc_visible_changed(prop,o,n)
     if(n) htr_setvisibility(this, 'inherit');
     else htr_setvisibility(this, 'hidden');
     // which tab should be selected? 
-    //why is visibility ending up as 'hide' in ns4?!?
     if(htr_getvisibility(t.tabs[t.selected_index-1])!='inherit')
 	{
 	//try default tab
@@ -343,13 +469,13 @@ function tc_visible_changed(prop,o,n)
 	}
     else if(this.tabctl.tloc == 0) //top
 	{
-	var currx = getRelativeX(t), curry = getRelativeY(t)-20; //currently height is fixed at 26
-	for(var i = 0; i< this.tabctl.tabs.length; i++)
+	var currx = getPageX(t), curry = getPageY(t)-22; //currently height is fixed at 26
+	for(var i in this.tabctl.tabs)
 	    {
 	    if(htr_getvisibility(this.tabctl.tabs[i])=='inherit')
 		{
 		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
-		moveTo(this.tabctl.tabs[i],currx,curry);
+		moveToAbsolute(this.tabctl.tabs[i],currx,curry);
 		currx+=getClipWidth(this.tabctl.tabs[i])+2;
 		if(this.tabctl.selected_index-1 == i)
 		    {
@@ -431,7 +557,15 @@ function tc_changeselection_3(c)
     {
     pg_reveal_event(c, c, 'Reveal');
     pg_reveal_event(c.tabctl.current_tab, c, 'Obscure');
-    c.makeCurrent();
+    if(c.recordnumber)
+	{
+	var osrc = this.osrc;
+	osrc.MoveToRecord(c.recordnumber);
+	//we don't need to make this current because it will get selected
+	//automatically when the record moves
+	}
+    else
+	c.makeCurrent();
     }
 
 function tc_mousedown(e)
