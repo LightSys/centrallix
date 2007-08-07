@@ -118,7 +118,7 @@ wgtalVerify(pWgtrVerifySession s)
 		    /** Repeat Widget Code - if other widget types have these flags may have to change **/
 		    /** This could also probably be modified to all other types of containers **/
 		    rptcount = xaCount(&(child->Children));
-		    if(count+rptcount>sizeof(widgetarray))
+		    if(count+rptcount>sizeof(widgetarray)/sizeof(pWgtrNode))
 			{
 			mssError(1, "WGTRAL", "Too many widgets inside '%s'",al->Name);
 			return -1;
