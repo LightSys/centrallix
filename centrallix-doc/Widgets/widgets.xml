@@ -194,6 +194,7 @@ cn1 "widget/connector"
 			<property name="highlight" type="integer">The color of the highlighted option when the mouse goes over the item.</property>
 			<property name="bgcolor" type="integer">The background color for the widget.</property>
 			<property name="fieldname" type="string">Fieldname (from the dataset) to bind this element to</property>
+			<property name="mode" type="string">If this is set to objectsource then the dropdown acts an objectsource client.</property>
 		</properties>
 		<children>
 			<child type="widget/dropdownitem">
@@ -909,6 +910,8 @@ MyScrollPane "widget/scrollpane"
 		<children>
 		    <child type="any">
 			    <childproperty name="title" type="string">The name of the tab page, which appears in the tab at the top of the control.</childproperty>
+			    <childproperty name="type" type="string">If this is set to dynamic then the tabpage will act as an objectsource client, displaying a tab for each item in the replica with title set to the value of the fieldname.</childproperty>
+			    <childproperty name="fieldname" type="string">This is the fieldname that the tabpage will use for its title.</childproperty>
 		    </child>
 		</children>
 		<sample>
@@ -1039,6 +1042,32 @@ tblFileList "widget/table"
 		<![CDATA[
 		]]>
 		</sample>
+	</widget>
+	<widget name="button" type="widget/button" visual="yes" container="no" formelement="no" description="A multipurpose button">
+	    <overview>
+		<p>Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.</p>
+	    </overview>
+	    <usage>
+		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored</p>
+	    </usage>
+	    <properties>
+		<property name="type" type="string">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)</property>	
+		<property name="bgcolor" type="string">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</property>
+		<property name="disable_color" type="string">A color, RGB or named, to be used for the button's text when it is disabled.</property>
+		<property name="enabled" type="yes/no or expr">Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.</property>
+		<property name="fgcolor1" type="string">A color, RGB or named, for the text on the button.  Default "white".</property>
+		<property name="fgcolor2" type="string">A color, RGB or named, for the text's 1-pixel drop-shadow.  Default "black".</property>
+		<property name="height" type="integer">height, in pixels, of the text button.</property>
+		<property name="text" type="string">The text to appear on the button.</property>
+		<property name="tristate" type="yes/no">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</property>
+		<property name="width" type="integer">The width, in pixels, of the text button.</property>
+		<property name="x" type="integer">x-coordinate of the upper left corner of the button, relative to its container.</property>
+		<property name="y" type="integer">y-coordinate of the upper left corner of the button, relative to its container.</property>
+		<property name="clickimage" type="string">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</property>
+		<property name="disabledimage" type="string">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</property>
+		<property name="image" type="string">The pathname of the image to be shown when the button is "idle".</property>
+		<property name="pointimage" type="string">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</property>
+	    </properties>
 	</widget>
 	<widget name="textbutton" type="widget/textbutton" visual="yes" container="no" formelement="no" description="A simple visual button widget built not from images but from a simple text string.">
 		<overview>
@@ -1192,5 +1221,34 @@ counter "widget/variable"
 	}
 		]]>
 		</sample>
+	</widget>
+	<widget name="repeat" type="widget/repeat" visual="no" formelement="no" container="yes" description="Repeat a subtree of widgets">
+	    <overview>
+		<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query</p>
+	    </overview>
+	    <usage><p>This widget has no content of its own, so it is only useful if it has widgets inside it.  It can be put inside an autolayout widget (vbox/hbox) for layout purposes, or the x and y coordinates could be specified through another query (ala runserver/runclient)</p></usage>
+	    <properties>
+		<property name="sql" type="string">The sql query that will be run on the server</property>
+	    </properties>
+	    <sample>
+		<![CDATA[
+$Version=2$
+// This is a repeat widget inside a vbox
+	vbox "widget/vbox"
+	    {
+	    x=10; y=10; cellsize=20; spacing=0;
+	    rpt "widget/repeat"
+		{
+		sql="SELECT :name FROM /samples WHERE substring(:name,1,1)='t'";
+		button "widget/button"
+		    {
+		    type="text";
+		    width=100; height=20;
+		    text=runserver(:rpt:name);
+		    }
+		}
+	    }
+		]]>
+	    </sample>
 	</widget>
 </widgets>
