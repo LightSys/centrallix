@@ -113,10 +113,10 @@ wgtalVerify(pWgtrVerifySession s)
 	    for(ins_at=i=0;i<count;i++)
 		{
 		child = (pWgtrNode)(xaGetItem(&(al->Children),i));
-		if(child->Flags & WGTR_F_NONVISUAL && child->Flags & WGTR_F_CONTAINER)
+		if(child->Flags & WGTR_F_CONTROL)
 		    {
-		    /** Repeat Widget Code - if other widget types have these flags may have to change **/
-		    /** This could also probably be modified to all other types of containers **/
+		    /** Code for the repeat widget that could be extended to work for other types
+		        of control structres that need to 'look through' to their subwidgets **/
 		    rptcount = xaCount(&(child->Children));
 		    if(count+rptcount>sizeof(widgetarray)/sizeof(pWgtrNode))
 			{
