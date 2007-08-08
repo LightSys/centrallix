@@ -48,7 +48,7 @@
 #define WGTR_F_NONVISUAL    1		/** a widget is visual by default, non-visual if this is set **/
 #define WGTR_F_CONTAINER    2		/** set for container widgets **/
 #define WGTR_F_FLOATING	    4		/** widgets that 'float' - childwindows and popup menus **/
-
+#define WGTR_F_CONTROL	    8		/** control structure (i.e. repeat) that should be 'looked through' to its subobjects **/
 
 typedef struct
     {
