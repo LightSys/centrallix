@@ -64,6 +64,7 @@ int
 wgtrptNew(pWgtrNode node)
     {
 	node->Flags |= WGTR_F_NONVISUAL;
+	node->Flags |= WGTR_F_CONTAINER;
 	node->Flags |= WGTR_F_CONTROL;
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
