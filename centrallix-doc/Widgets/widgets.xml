@@ -824,7 +824,7 @@ mypane "widget/pane"
 	</widget>
 	<widget name="radiobuttonpanel" type="widget/radiobuttonpanel" visual="yes" formelement="yes" container="no" description="A visual widget displaying a set of 'radio buttons'">
 		<overview>
-			<p>A radio button panel widget is a form element used to create a set of radio buttons on screen.  Only one radio button may be selected at a time.</p>
+			<p>A radio button panel widget is a form element used to create a set of radio buttons on screen.  Only one radio button may be selected at a time.  When the form goes into query mode the radio buttons change into checkboxes and more than one can be selected at a time.</p>
 		</overview>
 		<usage>
 			<p>The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).  The "widget/radiobuttonpanel" is the main widget, and can contain any number of "widget/radiobutton" widgets which specify the choices which will be present on the panel.  No other visual widgets can be contained within a radio button panel.</p>
@@ -942,6 +942,7 @@ MyScrollPane "widget/scrollpane"
 		<usage>
 			<p>The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.</p>
 			<p>Tab pages are added to a tab control by including widgets of type "widget/tabpage" within the "widget/tab" widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective "widget/tabpage" widgets in the structure file.Only widgets of type "widget/tabpage" should be placed inside a "widget/tab", with the exception of nonvisuals such as connectors.</p>
+			<p>Tab pages also have a 'visible' property which allows them to be hidden and revealed.  This is used if the type is set to dynamic, but can be used manually as well.</p>
 		</usage>
 		<properties>
 		    <property name="background" type="string" subtype="image">An image to be used as the background of the tab control.This is useful for adding control.</property>
@@ -960,6 +961,13 @@ MyScrollPane "widget/scrollpane"
 			    <childproperty name="fieldname" type="string">This is the fieldname that the tabpage will use for its title.</childproperty>
 		    </child>
 		</children>
+		<events>
+		    <event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+		    <event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+		    <event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
+		    <event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+		    <event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
+		</events>
 		<sample>
 		<![CDATA[
 $Version=2$
