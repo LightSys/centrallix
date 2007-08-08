@@ -177,8 +177,45 @@ cn1 "widget/connector"
 	</widget>
 -->
 	<widget name="datetime" type="widget/datetime" description="A visual widget for displaying and editing a date/time type value." visual="yes" formelement="yes" container="no">
-		<overview>
+		<overview>  The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.
 		</overview>
+		<usage>This widget can be placed within any visual widget.</usage>
+		<properties>
+			<property name="x" type="integer">x-coordinate of the upper left corner of the bar.</property>
+			<property name="y" type="integer">y-coordinate of the upper left corner of the bar.</property>
+			<property name="width" type="integer">width, in pixels, of the bar.</property>
+			<property name="height" type="integer">height, in pixels, of the bar.</property>
+			<property name="form" type="string">name of a form object that is a parent of the datetime widget (not required)</property>
+			<property name="fieldname" type="string">not used currently to my knowledge.</property>
+			<property name="sql" type="string">used to set the initial date by a query</property>
+			<property name="initialdate" type="string">used to set the initialdate by a string</property>
+			<property name="bgcolor" type="string">the background color of the bar and pane. (named or numeric)</property>
+			<property name="fgcolor" type="string">the foreground color of the bar and pane. (named or numeric)</property>
+		</properties>
+		<events>
+			<event name="Click">This event occurs when the user clicks the widget. No parameters are available from this event.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
+			<event name="LoseFocus">This event occurs when the datetime widget loses keyboard focus (if the user tabs off of it, for instance).</event>
+			<event name="GetFocus">This event occurs when the datetime widget receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</event>
+
+		</events>
+		<sample>
+	<![CDATA[
+	dda "widget/datetime" {
+	    x=15;y=15;
+	    width=200;
+	    height=20;
+	    fgcolor="#000000";
+	    bgcolor="#cfcfcf";
+	    //initialdate="12:34:56 May 3, 2002";
+	}
+	]]>
+		</sample>
 	</widget>
 	<widget name="dropdown" type="widget/dropdown" description="A visual widget which allows the user to select one from a number of options in a list which appears when the user clicks on the widget." visual="yes" formelement="yes" container="no">
 		<overview>
@@ -203,6 +240,14 @@ cn1 "widget/connector"
 			</child>
 		</children>
 		<events>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
+			<event name="LoseFocus">This event occurs when the edit bar of the dropdown loses keyboard focus (if the user tabs off of it, for instance).</event>
+			<event name="GetFocus">This event occurs when the edit bar receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</event>
 		</events>
 		<actions>
 		</actions>
@@ -247,6 +292,7 @@ myDropDown2 "widget/dropdown"
 	<widget name="editbox" type="widget/editbox" description="A visual widget which allows the entry of one line of textual data." visual="yes" formelement="yes" container="no">
 		<overview>
 			<p>An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).</p>
+			<p>  When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.</p>
 		</overview>
 		<usage>
 			<p>The editbox can be placed within any visual widget (or within a form widget).  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).  Editboxes cannot contain visual widgets.</p>
