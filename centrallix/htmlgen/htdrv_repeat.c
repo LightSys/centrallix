@@ -45,6 +45,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_repeat.c,v $
+    Revision 1.2  2007/08/08 23:17:09  dkasper
+    - Added the correct widget tree linkage so that subobjects can find the
+      correct container.
+
     Revision 1.1  2007/07/27 00:24:50  dkasper
     - Simple driver for the repeat widget.  All it does is register itself
       properly and render all its subwidgets since it is not a visual widget.
@@ -63,6 +67,7 @@ int
 htrptRender(pHtSession s, pWgtrNode tree, int z)
     {
 	/** Render Subwidgets **/
+	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 	htrRenderSubwidgets(s,tree,z);
     }
 
