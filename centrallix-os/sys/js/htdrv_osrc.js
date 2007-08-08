@@ -144,10 +144,58 @@ function osrc_make_filter(q)
 			    }
 			else
 			    {
-			    str='(:'+q[i].oid+'=\"'+val[0]+'\"';
+			    if (val[0].search(/^\*.+\*$/)>=0)
+				{
+				str='(charindex("'+val[0].substring(1,val[0].length-1)+'",:'+q[i].oid+')>0';
+				}
+			    else if(val[0].search(/^\*/)>=0) //* at beginning
+				{
+				val[0] = val[0].substring(1); //pop off *
+				str='(right(:'+q[i].oid+','+val[0].length+')="'+val[0]+'"';
+				}
+			    else if(val[0].search(/\*$/)>=0) //* at end
+				{
+				val[0]=val[0].substring(0,val[0].length-1); //chop off *
+				str='(substring(:'+q[i].oid+','+1+','+val[0].length+')="'+val[0]+'"';
+				}
+			    else if(val[0].indexOf('*')>=0) //* in middle
+				{
+				var ind = val[0].indexOf('*');
+				var val1 = val[0].substring(0,ind);
+				var val2 = val[0].substring(ind+1);
+				str='((right(:'+q[i].oid+','+val2.length+')="'+val2+'"';
+				str+=' AND ';
+				str+='substring(:'+q[i].oid+',1,'+val1.length+')="'+val1+'")';
+				}
+			    else
+				str='(:'+q[i].oid+'='+'"'+val[0]+'"';
 			    for(var j=1;j<val.length;j++)
 				{
-				str+=' OR :'+q[i].oid+'=\"'+val[j]+'\"';
+				if (val[j].search(/^\*.+\*$/)>=0)
+				    {
+				    str+=' OR charindex("'+val[j].substring(1,val[j].length-1)+'",:'+q[i].oid+')>0';
+				    }
+				else if(val[j].search(/^\*/)>=0) //* at beginning
+				    {
+				    val[j] = val[j].substring(1); //pop off *
+				    str+=' OR right(:'+q[i].oid+','+val[j].length+')="'+val[j]+'"';
+				    }
+				else if(val[j].search(/\*$/)>=0) //* at end
+				    {
+				    val[j]=val[j].substring(0,val[j].length-1); //chop off *
+				    str+=' OR substring(:'+q[i].oid+','+1+','+val[j].length+')="'+val[j]+'"';
+				    }
+				else if(val[j].indexOf('*')>=0) //* in middle
+				    {
+				    var ind = val[j].indexOf('*');
+				    var val1 = val[j].substring(0,ind);
+				    var val2 = val[j].substring(ind+1);
+				    str+=' OR (right(:'+q[i].oid+','+val2.length+')="'+val2+'"';
+				    str+=' AND ';
+				    str+='substring(:'+q[i].oid+',1,'+val1.length+')="'+val1+'")';
+				    }
+				else
+				    str+=' OR :'+q[i].oid+'='+'"'+val[j]+'"';
 				}
 			    str+=')';
 			    }
