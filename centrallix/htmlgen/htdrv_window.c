@@ -44,10 +44,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.50 2007/06/09 18:30:04 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.51 2007/09/18 17:53:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.51  2007/09/18 17:53:16  gbeeley
+    - (bugfix) handle the 'visible' property more flexibly
+
     Revision 1.50  2007/06/09 18:30:04  gbeeley
     - (feature) 'toplevel' property on childwindows allows them to be placed
       at the top level even if they are embedded within another widget such as
@@ -501,10 +504,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(title,name);
 
 	/** Marked not visible? **/
-	if (wgtrGetPropertyValue(tree,"visible",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if (!strcmp(ptr,"false")) visible = 0;
-	    }
+	visible = htrGetBoolean(tree, "visible", 1);
 
 	/** No titlebar? **/
 	if (wgtrGetPropertyValue(tree,"titlebar",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no"))
