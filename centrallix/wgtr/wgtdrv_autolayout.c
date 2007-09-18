@@ -51,19 +51,22 @@ int
 wgtalVerify(pWgtrVerifySession s)
     {
     pWgtrNode al = s->CurrWidget;
-    pWgtrNode child,rptchild;
+    pWgtrNode child;
     pWgtrNode widgetarray[64];
     pWgtrNode sortarray[64];
     int ord[64];
     int xo, yo;
     int al_type = -1;
-    int i, j, ins_at, rpti;
+    int i, j, rpti;
     char* ptr;
     int count,rptcount=0;
+    int wgt_cnt;
     int n;
+    int next_wgt;
     int spacing;
     int cellsize = -1;
     int maxsize = -1;
+    int possible_width, possible_height, tw, th, a1, a2;
 
 	/** Ignore this if it is just a spacer **/
 	if (strcmp(al->Type, "widget/autolayoutspacer") != 0)
@@ -101,33 +104,55 @@ wgtalVerify(pWgtrVerifySession s)
 	    if (wgtrGetPropertyValue(al, "cellsize", DATA_T_INTEGER, POD(&cellsize)) != 0)
 		cellsize = -1;
 
-	    /** Do the autolayout **/
-	    count = xaCount(&(al->Children));
-	    if (count > sizeof(sortarray)/sizeof(pWgtrNode))
+	    /** Auto-set width and height of this container? **/
+	    if (al->r_width < 0 && al->r_height >= 0)
 		{
-		mssError(1, "WGTRAL", "Too many widgets in inside %s '%s'", al->Type, al->Name);
-		return -1;
+		al->r_width = al->width = al->pre_width = wgtrGetMaxWidth(al, al->r_height);
 		}
-		
+	    else if (al->r_width >= 0 && al->r_height < 0)
+		{
+		al->r_height = al->height = al->pre_height = wgtrGetMaxHeight(al, al->r_width);
+		}
+	    else if (al->r_width < 0 && al->r_height < 0)
+		{
+		possible_width = wgtrGetMaxWidth(al, 2);
+		possible_height = wgtrGetMaxHeight(al, 2);
+		th = wgtrGetMaxHeight(al, possible_width);
+		a1 = possible_width * th;
+		tw = wgtrGetMaxWidth(al, possible_height);
+		a2 = possible_height * tw;
+		if (a1 > a2)
+		    {
+		    al->r_width = al->width = al->pre_width = possible_width;
+		    al->r_height = al->height = al->pre_height = th;
+		    }
+		else
+		    {
+		    al->r_width = al->width = al->pre_width = tw;
+		    al->r_height = al->height = al->pre_height = possible_height;
+		    }
+		}
+
 	    /** Grab the widgets and put them in a list **/
-	    for(ins_at=i=0;i<count;i++)
+	    count = xaCount(&(al->Children));
+	    for(wgt_cnt=i=0;i<count;i++)
 		{
 		child = (pWgtrNode)(xaGetItem(&(al->Children),i));
 		if(child->Flags & WGTR_F_CONTROL)
 		    {
 		    /** Code for the repeat widget that could be extended to work for other types
-		        of control structres that need to 'look through' to their subwidgets **/
+		     ** of control structres that need to 'look through' to their subwidgets
+		     **/
 		    rptcount = xaCount(&(child->Children));
-		    if(count+rptcount>sizeof(widgetarray)/sizeof(pWgtrNode))
+		    if(wgt_cnt+rptcount > sizeof(widgetarray)/sizeof(pWgtrNode))
 			{
 			mssError(1, "WGTRAL", "Too many widgets inside '%s'",al->Name);
 			return -1;
 			}
-		    for(rpti=0;rpti<rptcount;rpti++){
-			widgetarray[ins_at] = (pWgtrNode)(xaGetItem((&child->Children),rpti));
-			ins_at++;
+		    for(rpti=0;rpti<rptcount;rpti++)
+			{
+			widgetarray[wgt_cnt++] = (pWgtrNode)(xaGetItem((&child->Children),rpti));
 			}
-		    count+=rptcount;
 		    }
 		else if(child->Flags & WGTR_F_NONVISUAL)
 		    {
@@ -137,145 +162,46 @@ wgtalVerify(pWgtrVerifySession s)
 		    }
 		else
 		    {
-		    widgetarray[ins_at] = (pWgtrNode)(xaGetItem((&al->Children),i));
-		    ins_at++;
+		    if (wgt_cnt >= sizeof(sortarray)/sizeof(pWgtrNode))
+			{
+			mssError(1, "WGTRAL", "Too many widgets in inside %s '%s'", al->Type, al->Name);
+			return -1;
+			}
+		    widgetarray[wgt_cnt++] = (pWgtrNode)(xaGetItem((&al->Children),i));
 		    }
 		}
 
 	    /** Sort the list into the order they will be laid out **/
-	    for(i=0;i<count;i++)
+	    for(i=0;i<wgt_cnt;i++)
 		{
 		child = widgetarray[i];
-		if (wgtrGetPropertyValue(child, "autolayout_order", DATA_T_INTEGER, POD(&n)) == 0)
+		if (wgtrGetPropertyValue(child, "autolayout_order", DATA_T_INTEGER, POD(&n)) == 0 && n >= 0)
 		    {
-		    for(j=0;j<i;j++)
-			{
-			if (ord[j] > n)
-			    {
-			    ins_at = j;
-			    break;
-			    }
-			}
+		    ord[i] = n;
 		    }
 		else
 		    {
 		    if (i)
-			n = ord[i-1];
+			ord[i] = ord[i-1];
 		    else
-			n = 0;
+			ord[i] = 100;
 		    }
-		if (ins_at < i)
+		}
+	    for(i=0;i<wgt_cnt;i++)
+		{
+		next_wgt = 0;
+		for(j=0;j<wgt_cnt;j++)
 		    {
-		    memmove(sortarray+ins_at+1, sortarray+ins_at, sizeof(pWgtrNode)*(i-ins_at));
-		    memmove(ord+ins_at+1, ord+ins_at, sizeof(int)*(i-ins_at));
-		    }		
+		    if (ord[j] < ord[next_wgt]) next_wgt = j;
+		    }
+		sortarray[i] = widgetarray[next_wgt];
+		ord[next_wgt] = 0x7FFFFFFF;
 		}
 
-	    /*
-	    ** Grab the widgets, and sort them according to autolayout_order, if supplied. **
-	    //mssError(1,"WGTRAL","Count=%d",count);
-	    for(i=0;i<count;i++) //+rpttotal
-		{
-		child = (pWgtrNode)(xaGetItem(&(al->Children), i)); //-rpttotal
-		//mssError(1,"WGTRAL", "Found Child %s",child->Name);
-		if (child->Flags & WGTR_F_NONVISUAL && child->Flags & WGTR_F_CONTAINER)
-		    {
-		    //mssError(1, "WGTRAL", "Repeat widget found...");
-		    //count--; //don't count this widget
-		    rptcount = xaCount(&(child->Children));
-		    //mssError(1, "WGTRAL", "rpttotal=%d,count=%d",rpttotal,count);
-		    if (count + rpttotal > sizeof(sortarray)/sizeof(pWgtrNode))
-			{
-			mssError(1, "WGTRAL", "Too many widgets inside %s '%s'", child->Type, child->Name);
-			return -1;
-			}
-		    else
-			{
-			//do the normal routine only on the repeat widget's children instead of on the repeat widget
-			//mssError(1, "WGTRAL", "%d repeat children found", rptcount);
-			for(rpti=0;rpti<rptcount;rpti++)
-			    {
-			    rptchild = (pWgtrNode)(xaGetItem(&(child->Children),rpti));
-			    ins_at=i;
-			    if (rptchild->Flags & WGTR_F_NONVISUAL)
-				{
-				mssError(1, "WGTRAL", "Cannot place nonvisual widget '%s' inside repeat inside %s '%s'",rptchild->Name,al->Type,al->Name);
-				return -1;
-				}
-				ins_at = insertcount;
-				if(wgtrGetPropertyValue(rptchild, "autolayout_order", DATA_T_INTEGER, POD(&n)) == 0)
-				    {
-				    for(j=0;j<i+rpttotal;j++)
-					{
-					if (ord[j] > n)
-					    {
-					    ins_at = j;
-					    break;
-					    }
-					}
-				    }
-				else
-				    {
-				    if (i)
-					n = ord[i-1];
-				    else
-					n = 0;
-				    }
-				if (ins_at < i)
-				    {
-				    memmove(sortarray+ins_at+1, sortarray+ins_at, sizeof(pWgtrNode)*(i-ins_at));
-				    memmove(ord+ins_at+1, ord+ins_at, sizeof(int)*(i-ins_at));
-				    }
-				//mssError(1, "WGTRAL", "i=%d, rpti=%d, ins_at=%d",i,rpti,ins_at);
-				sortarray[ins_at] = rptchild;
-				ord[ins_at] = n;
-				//i++;
-				insertcount++;
-			    }
-			    rpttotal += rptcount;
-			}
-		    }
-		else if (child->Flags & WGTR_F_NONVISUAL)
-		    {
-		    mssError(1, "WGTRAL", "Cannot place nonvisual widget '%s' inside %s '%s'", 
-			    child->Name, al->Type, al->Name);
-		    return -1;
-		    }
-		ins_at = insertcount;
-		if (wgtrGetPropertyValue(child, "autolayout_order", DATA_T_INTEGER, POD(&n)) == 0)
-		    {
-		    for(j=0;j<i;j++)
-			{
-			if (ord[j] > n)
-			    {
-			    ins_at = j;
-			    break;
-			    }
-			}
-		    }
-		else
-		    {
-		    if (i)
-			n = ord[i-1];
-		    else
-			n = 0;
-		    }
-		if (ins_at < i)
-		    {
-		    memmove(sortarray+ins_at+1, sortarray+ins_at, sizeof(pWgtrNode)*(i-ins_at));
-		    memmove(ord+ins_at+1, ord+ins_at, sizeof(int)*(i-ins_at));
-		    }
-		sortarray[ins_at] = child;
-		ord[ins_at] = n;
-		insertcount++;
-		//mssError(1,"WGTRAL","i=%d,Count=%d,rpttotal=%d,insertcount=%d",i,count,rpttotal,insertcount);
-		}
-	    end old code */
 	    
-		//mssError(1,"WGTRAL","i=%d,Count=%d,rpttotal=%d",i,count,rpttotal);
 	    /** Ok, now set the x and y for all the widgets **/
 	    xo = yo = 0;
-	    for(i=0;i<count;i++)
+	    for(i=0;i<wgt_cnt;i++)
 		{
 		child = sortarray[i];
 		if (al_type == 0)	/* hbox */
