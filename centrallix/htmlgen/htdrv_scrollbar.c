@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_scrollbar.c,v 1.12 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_scrollbar.c,v 1.13 2007/09/18 17:48:41 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_scrollbar.c,v $
 
     $Log: htdrv_scrollbar.c,v $
+    Revision 1.13  2007/09/18 17:48:41  gbeeley
+    - (bugfix) Set range correctly when unspecified
+
     Revision 1.12  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -234,7 +237,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     int x,y,w,h,r;
-    int id, i;
+    int id, i, t;
     int visible = 1;
     char bcolor[64] = "";
     char bimage[64] = "";
@@ -308,12 +311,15 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Range of scrollbar (static or dynamic property) **/
-	if (wgtrGetPropertyType(tree,"range") == DATA_T_INTEGER && wgtrGetPropertyValue(tree,"range",DATA_T_INTEGER,POD(&r)) != 0)
+	if (is_horizontal)
+	    r = w;
+	else
+	    r = h;
+	if ((t = wgtrGetPropertyType(tree,"range")) == DATA_T_INTEGER)
 	    {
-	    if (is_horizontal) r = w;
-	    else r = h;
+	    wgtrGetPropertyValue(tree,"range",DATA_T_INTEGER,POD(&r));
 	    }
-	if (wgtrGetPropertyType(tree,"range") == DATA_T_CODE)
+	else if (t == DATA_T_CODE)
 	    {
 	    wgtrGetPropertyValue(tree,"range", DATA_T_CODE, POD(&code));
 	    htrAddExpression(s, name, "range", code);
