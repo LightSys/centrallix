@@ -137,6 +137,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_image.o \
 	wgtdrv_label.o \
 	wgtdrv_menu.o \
+	wgtdrv_multiscroll.o \
 	wgtdrv_objcanvas.o \
 	wgtdrv_osrc.o \
 	wgtdrv_page.o \
@@ -208,6 +209,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_parameter.o \
 	   htdrv_autolayout.o \
 	   htdrv_repeat.o \
+	   htdrv_multiscroll.o \
 
 HTDRIVERS=$(patsubst %,htmlgen/%,$(XHTDRIVERS)) \
 	   utility/iface_html.o

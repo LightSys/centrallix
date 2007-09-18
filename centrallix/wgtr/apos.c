@@ -30,10 +30,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: apos.c,v 1.12 2007/07/31 18:08:47 gbeeley Exp $
+    $Id: apos.c,v 1.13 2007/09/18 17:38:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/wgtr/apos.c,v $
 
     $Log: apos.c,v $
+    Revision 1.13  2007/09/18 17:38:49  gbeeley
+    - (feature) stubbing out multiscroll widget.
+    - (change) adding capability to auto-position module to allow a container
+      to not resize its contents (horiz and/or vert) if the contents can be
+      scrolled.
+
     Revision 1.12  2007/07/31 18:08:47  gbeeley
     - (bugfix) when centering a childwindow (or other floating widget), do not
       make the upper left corner go offscreen if the screen is too small.
@@ -680,12 +686,16 @@ int i=0, j=0, grandchildCount=0, childCount = xaCount(&(Parent->Children));
     theGrid = (pAposGrid)(Parent->LayoutGrid);
 
     /**Adjust the spaces between lines to fit the grid to the container**/
-    aposSpaceOutLines(&(theGrid->HLines), &(theGrid->Rows), (Parent->height - Parent->pre_height));	//rows
-    aposSpaceOutLines(&(theGrid->VLines), &(theGrid->Cols), (Parent->width - Parent->pre_width));	 //columns
+    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
+	aposSpaceOutLines(&(theGrid->HLines), &(theGrid->Rows), (Parent->height - Parent->pre_height));	//rows
+    if (!(Parent->Flags & WGTR_F_HSCROLLABLE))
+	aposSpaceOutLines(&(theGrid->VLines), &(theGrid->Cols), (Parent->width - Parent->pre_width));	 //columns
     
     /**modify the widgets' x,y,w, and h values to snap to their adjusted lines**/
-    aposSnapWidgetsToGrid(&(theGrid->HLines), APOS_ROW);	//rows
-    aposSnapWidgetsToGrid(&(theGrid->VLines), APOS_COL);	//columns
+    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
+	aposSnapWidgetsToGrid(&(theGrid->HLines), APOS_ROW);	//rows
+    if (!(Parent->Flags & WGTR_F_HSCROLLABLE))
+	aposSnapWidgetsToGrid(&(theGrid->VLines), APOS_COL);	//columns
     
     /**recursive call to auto-position subsequent visual containers, except windows**/
     for(i=0; i<childCount; ++i)

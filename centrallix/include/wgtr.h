@@ -49,6 +49,8 @@
 #define WGTR_F_CONTAINER    2		/** set for container widgets **/
 #define WGTR_F_FLOATING	    4		/** widgets that 'float' - childwindows and popup menus **/
 #define WGTR_F_CONTROL	    8		/** control structure (i.e. repeat) that should be 'looked through' to its subobjects **/
+#define	WGTR_F_VSCROLLABLE  16		/** contents are vertically scrollable.  Do not resize Y/height **/
+#define	WGTR_F_HSCROLLABLE  32		/** contents are horiz scrollable.  Do not resize X/width **/
 
 typedef struct
     {
@@ -196,6 +198,8 @@ int wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset);
 /** misc. functions **/
 pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints **/
 pExpression wgtrGetExpr(pWgtrNode widget, char* attrname);	/** Get an expression from a widget node **/
+int wgtrGetMaxWidth(pWgtrNode widget, int height);	/** get max usable width at a given height **/
+int wgtrGetMaxHeight(pWgtrNode widget, int width);	/** get max usable height at a given width **/
 
 /** verification functions **/
 int wgtrVerify(pWgtrNode tree, pWgtrClientInfo client_info);	/** Verify a widget-tree. s must be pHtSession **/

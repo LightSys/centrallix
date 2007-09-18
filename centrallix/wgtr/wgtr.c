@@ -2050,6 +2050,7 @@ wgtrInitialize()
 	wgttplInitialize();
 	wgtpaInitialize();
 	wgtalInitialize();
+	wgtmsInitialize();
 
     return 0;
     }
@@ -2397,5 +2398,85 @@ wgtrGetMatchingChildList(pWgtrNode parent, char* childtype, pWgtrNode* list, int
 	wgtr_internal_GetMatchingChildList_r(parent, childtype, list, &n_matches, max_items);
 
     return n_matches;
+    }
+
+int
+wgtrGetMaxWidth(pWgtrNode widget, int height)
+    {
+    int w;
+    int i, cnt;
+    pWgtrNode sibling;
+    pWgtrNode nephew;
+    int i2, cnt2;
+
+	/** absolute max width = container width minus x location **/
+	if(!widget->Parent) return 0;
+	w = widget->Parent->width - widget->x;
+
+	/** search siblings **/
+	cnt = xaCount(&widget->Parent->Children);
+	for(i=0;i<cnt;i++)
+	    {
+	    sibling = xaGetItem(&widget->Parent->Children, i);
+	    if (sibling == widget) continue;
+
+	    if (!(sibling->Flags & WGTR_F_NONVISUAL))
+		{
+		if (sibling->y <= widget->y + height && 
+		    sibling->y + sibling->height >= widget->y && 
+		    sibling->x > widget->x && sibling->x < widget->x + w)
+		    {
+		    w = sibling->x - widget->x;
+		    }
+		}
+	    else if (sibling->Flags & WGTR_F_CONTAINER)
+		{
+		/** Search inside nonvisuals **/
+		cnt2 = xaCount(&sibling->Children);
+		for(i2=0;i2<cnt2;i2++)
+		    {
+		    nephew = xaGetItem(&sibling->Children, i2);
+		    if (!(nephew->Flags & WGTR_F_NONVISUAL))
+			{
+			if (nephew->y <= widget->y + height && 
+			    nephew->y + nephew->height >= widget->y && 
+			    nephew->x > widget->x && nephew->x < widget->x + w)
+			    {
+			    w = nephew->x - widget->x;
+			    }
+			}
+		    }
+		}
+	    }
+
+    return w;
+    }
+
+int
+wgtrGetMaxHeight(pWgtrNode widget, int width)
+    {
+    int h;
+    int i, cnt;
+    pWgtrNode sibling;
+
+	/** absolute max height = container height minus y location **/
+	if(!widget->Parent) return 0;
+	h = widget->Parent->height - widget->y;
+
+	/** search siblings **/
+	cnt = xaCount(&widget->Parent->Children);
+	for(i=0;i<cnt;i++)
+	    {
+	    sibling = xaGetItem(&widget->Parent->Children, i);
+	    if (sibling == widget) continue;
+	    if (sibling->x <= widget->x + width && 
+		sibling->x + sibling->width >= widget->x && 
+		sibling->y > widget->y && sibling->y < widget->y + h)
+		{
+		h = sibling->y - widget->y;
+		}
+	    }
+
+    return h;
     }
 
