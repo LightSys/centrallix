@@ -45,6 +45,12 @@ function htutil_encode(s)
     return rs;
     }
 
+function htutil_nlbr(s)
+    {
+    var re = /\n\r?/g;
+    return String(s).replace(re, "<br>");
+    }
+
 function htutil_subst_last(str,subst) 
     {
     if(!str || !subst)
