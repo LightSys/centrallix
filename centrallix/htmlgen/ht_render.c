@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.68 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: ht_render.c,v 1.69 2007/09/18 18:16:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.69  2007/09/18 18:16:14  gbeeley
+    - (change) interface change to the QPrintf functions, required in order to
+      properly handle certain types of realloc or sliding-window buffer types
+      of situations.
+
     Revision 1.68  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -1032,7 +1037,7 @@ extern int __data_start;
  *** the fly.
  ***/
 int
-htr_internal_GrowFn(char** str, size_t* size, void* arg, int req_size)
+htr_internal_GrowFn(char** str, size_t* size, int offs, void* arg, int req_size)
     {
     pHtSession s = (pHtSession)arg;
     char* new_buf;
