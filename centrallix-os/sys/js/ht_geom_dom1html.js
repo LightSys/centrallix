@@ -87,12 +87,13 @@ function setClipItem(l, side, value)
     l.clip[side] = value;
     }
 
-function setClip(l, t, r, b, l)
+function setClip(ly, t, r, b, l)
     {
-    l.clip.top = t;
-    l.clip.right = r;
-    l.clip.bottom = b;
-    l.clip.left = l;
+    //ly.clip.top = t;
+    //ly.clip.right = r;
+    //ly.clip.bottom = b;
+    //ly.clip.left = l;
+    ly.clip.setall(t,r,b,l);
     }
 
 function getClipItem(l, side)
