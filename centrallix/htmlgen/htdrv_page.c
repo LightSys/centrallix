@@ -46,10 +46,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_page.c,v 1.81 2007/07/25 16:55:57 gbeeley Exp $
+    $Id: htdrv_page.c,v 1.82 2007/09/18 17:42:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_page.c,v $
 
     $Log: htdrv_page.c,v $
+    Revision 1.82  2007/09/18 17:42:54  gbeeley
+    - (change) allow font size to be specified on page and label, and do font
+      sizing in CSS px instead of using the old 1...7 HTML approach.
+
     Revision 1.81  2007/07/25 16:55:57  gbeeley
     - (bugfix) try to keep keystrokes from getting jumbled up by deleting any
       scheduled key repeat callback as needed.
@@ -634,6 +638,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     char msfocus2[64];
     char dtfocus1[64];	/* dt focus = navyblue rectangle */
     char dtfocus2[64];
+    int font_size = 12;
+    char font_name[128];
     int show_diag = 0;
     int w,h;
     char* path;
@@ -727,6 +733,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	show_diag = htrGetBoolean(tree, "show_diagnostics", 0);
 
+	wgtrGetPropertyValue(tree, "font_size", DATA_T_INTEGER, POD(&font_size));
+	if (font_size < 5 || font_size > 100) font_size = 12;
+
+	if (wgtrGetPropertyValue(tree, "font_name", DATA_T_STRING, POD(&ptr)) ==  0 && ptr)
+	    strtcpy(font_name, ptr, sizeof(font_name));
+	else
+	    strcpy(font_name, "");
+
 	/** Add global for page metadata **/
 	htrAddScriptGlobal(s, "page", "new Object()", 0);
 
@@ -750,6 +764,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_schedtimeout", "null", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeoutlist", "new Array()", 0);
 	htrAddScriptGlobal(s, "pg_schedtimeoutid", "0", 0);
+	htrAddScriptGlobal(s, "pg_schedtimeoutstamp", "0", 0);
 	htrAddScriptGlobal(s, "pg_insame", "false", 0);
 	htrAddScriptGlobal(s, "cn_browser", "null", 0);
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
@@ -859,6 +874,18 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem_va(s, "<BODY %STR>", bgstr);
 	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
 	    htrAddBodyItemLayerEnd(s,0);
+	    }
+
+	htrAddStylesheetItem_va(s, "\tbody { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n",
+		font_size > 0, font_size, *font_name, font_name);
+	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
+
+	if (s->Capabilities.Dom0NS)
+	    {
+	    htrAddStylesheetItem_va(s, "\ttd { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n",
+		font_size > 0, font_size, *font_name, font_name);
+	    htrAddStylesheetItem_va(s, "\tfont { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n",
+		font_size > 0, font_size, *font_name, font_name);
 	    }
 
 	htrAddBodyItem(s, "<DIV ID=\"pgtop\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");

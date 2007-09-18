@@ -44,6 +44,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.34  2007/09/18 17:42:54  gbeeley
+    - (change) allow font size to be specified on page and label, and do font
+      sizing in CSS px instead of using the old 1...7 HTML approach.
+
     Revision 1.33  2007/06/06 15:21:58  gbeeley
     - (feature) allow label, textarea, datetime to specify the form directly,
       for use inside a component
@@ -360,10 +364,12 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char form[64];
     int x=-1,y=-1,w,h;
     int id, i;
-    int fontsize;
+    /*int fontsize;*/
+    int font_size;
     char *text;
     char* tooltip;
     char stylestr[128];
+    int is_bold = 0;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -405,8 +411,12 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    fgcolor[0] = '\0';
 
 	/** font size in points **/
-	if (wgtrGetPropertyValue(tree,"fontsize",DATA_T_INTEGER,POD(&fontsize)) != 0)
-	    fontsize = 3;
+	if (wgtrGetPropertyValue(tree,"font_size",DATA_T_INTEGER,POD(&font_size)) != 0 || font_size < 5 || font_size > 100)
+	    font_size = -1;
+
+	/** bold? **/
+	if (wgtrGetPropertyValue(tree, "style", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr,"bold"))
+	    is_bold = 1;
 
 	align[0]='\0';
 	if(wgtrGetPropertyValue(tree,"align",DATA_T_STRING,POD(&ptr)) == 0)
@@ -437,9 +447,9 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
 	qpfPrintf(NULL, stylestr,sizeof(stylestr),
-		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\"><font size=%POS %STR>",
-		w,align,fontsize,fgcolor);
-	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&ESCQ', form:'%STR&ESCQ', text:'%STR&ESCQ', style:'%STR&ESCQ', tooltip:'%STR&ESCQ'});\n",
+		"<table border=0 width=\"%POS\"><tr><td align=\"%STR&HTE\">%[<b>%]<font %[style=\"font-size:%POSpx;\" %]%STR>",
+		w,align,is_bold,font_size > 0,font_size,fgcolor);
+	htrAddScriptInit_va(s, "    lbl_init(nodes['%STR&SYM'], {field:'%STR&ESCQ', form:'%STR&ESCQ', text:'%STR&ESCQWS', style:'%STR&ESCQ', tooltip:'%STR&ESCQ'});\n",
 		name, fieldname, form, text, stylestr, tooltip);
 
 	/** Script include to get functions **/
@@ -454,7 +464,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, 
-	    "\n%STR%STR&HTE</font></td></tr></table>\n", stylestr, text);
+	    "\n%STR%STR&HTENLBR</font></td></tr></table>\n", stylestr, text);
 
 	/** Check for more sub-widgets **/
 	for (i=0;xaCount(&(tree->Children));i++)
