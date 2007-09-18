@@ -45,10 +45,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_equijoin.c,v 1.8 2007/07/31 17:39:59 gbeeley Exp $
+    $Id: multiq_equijoin.c,v 1.9 2007/09/18 17:59:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_equijoin.c,v $
 
     $Log: multiq_equijoin.c,v $
+    Revision 1.9  2007/09/18 17:59:07  gbeeley
+    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
+      combined using AND.  This permits more flexible building of dynamic SQL
+      (no need to do fancy text processing in order to add another WHERE
+      constraint to the query).
+    - (bugfix) fix for crash when using "SELECT *" with a join.
+    - (change) permit the specification of one FROM source to be an "IDENTITY"
+      data source for the query.  That data source will be the one affected by
+      any inserting and deleting through the query.
+
     Revision 1.8  2007/07/31 17:39:59  gbeeley
     - (feature) adding "SELECT *" capability, rather than having to name each
       attribute in every query.  Note - "select *" does result in a query
@@ -407,7 +417,7 @@ mqjAnalyze(pMultiQuery mq)
 		for(i=0;i<select_qs->Children.nItems;i++)
 		    {
 		    select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-		    if ((select_item->Expr->ObjCoverageMask & ~(joined_objects | join_mask[found])) == 0)
+		    if (select_item->Expr && (select_item->Expr->ObjCoverageMask & ~(joined_objects | join_mask[found])) == 0)
 		        {
 			if (select_item->Flags & MQ_SF_ASTERISK)
 			    mq->Flags |= MQ_F_ASTERISK;

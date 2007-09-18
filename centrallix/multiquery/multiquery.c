@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.26 2007/07/31 17:39:59 gbeeley Exp $
+    $Id: multiquery.c,v 1.27 2007/09/18 17:59:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.27  2007/09/18 17:59:07  gbeeley
+    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
+      combined using AND.  This permits more flexible building of dynamic SQL
+      (no need to do fancy text processing in order to add another WHERE
+      constraint to the query).
+    - (bugfix) fix for crash when using "SELECT *" with a join.
+    - (change) permit the specification of one FROM source to be an "IDENTITY"
+      data source for the query.  That data source will be the one affected by
+      any inserting and deleting through the query.
+
     Revision 1.26  2007/07/31 17:39:59  gbeeley
     - (feature) adding "SELECT *" capability, rather than having to name each
       attribute in every query.  Note - "select *" does result in a query
@@ -498,6 +508,33 @@ mq_internal_PostProcess(pQueryStructure qs, pQueryStructure sel, pQueryStructure
 	    subtree->ObjCnt = cnt;
 	    }
 
+	/** Merge WHERE clauses if there are more than one **/
+	cnt = xaCount(&qs->Children);
+	where = NULL;
+	for(i=0;i<cnt;i++)
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    if (subtree->NodeType == MQ_T_WHERECLAUSE)
+		{
+		if (!where)
+		    {
+		    where = subtree;
+		    }
+		else
+		    {
+		    /** merge **/
+		    ptr = nmSysStrdup(where->RawData.String);
+		    xsQPrintf(&where->RawData, "( %STR ) and ( %STR )", ptr, subtree->RawData.String);
+
+		    /** remove the extra where clause **/
+		    xaRemoveItem(&qs->Children,i);
+		    i--;
+		    cnt--;
+		    mq_internal_FreeQS(subtree);
+		    }
+		}
+	    }
+
     return 0;
     }
 
@@ -707,7 +744,7 @@ mq_internal_SyntaxParse(pLxSession lxs)
     pQueryStructure limit_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel,subtr;
+    int t,parenlevel,subtr,identity;
     char* ptr;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
@@ -1253,6 +1290,12 @@ mq_internal_SyntaxParse(pLxSession lxs)
 		case FromItem:
 		    t = mlxNextToken(lxs);
 		    subtr = 0;
+		    identity = 0;
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
+			{
+			t = mlxNextToken(lxs);
+			identity = 1;
+			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("subtree", ptr))
 			{
 			t = mlxNextToken(lxs);
@@ -1269,6 +1312,7 @@ mq_internal_SyntaxParse(pLxSession lxs)
 		    new_qs->Presentation[0] = 0;
 		    new_qs->Name[0] = 0;
 		    if (subtr) new_qs->Flags |= MQ_SF_FROMSUBTREE;
+		    if (identity) new_qs->Flags |= MQ_SF_IDENTITY;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;
 		    mlxCopyToken(lxs,new_qs->Source,256);
@@ -1742,15 +1786,39 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
     pPseudoObject inf = (pPseudoObject)inf_v;
     int rval;
+    int objid = 0;
+    pQueryStructure from_qs;
 
 	/** Do a 'delete obj' operation on the source object **/
-	if (inf->ObjList.nObjects != 1)
+	objid = -1;
+	if (inf->ObjList.nObjects == 0)
 	    {
-	    mssError(1,"MQ","Could not delete - query has more than one source");
+	    mssError(1,"MQ","Could not delete - query must have at least one FROM source");
 	    return -1;
 	    }
-	rval = objDeleteObj((pObject)(inf->ObjList.Objects[0]));
-	inf->ObjList.Objects[0] = NULL;
+	else if (inf->ObjList.nObjects > 1)
+	    {
+	    from_qs = NULL;
+	    while((from_qs = mq_internal_FindItem(inf->Query->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+		{
+		if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && inf->ObjList.Objects[from_qs->QELinkage->SrcIndex])
+		    {
+		    objid = from_qs->QELinkage->SrcIndex;
+		    break;
+		    }
+		}
+	    }
+	else if (inf->ObjList.nObjects == 1)
+	    {
+	    objid = 0;
+	    }
+	if (objid < 0)
+	    {
+	    mssError(1,"MQ","Could not delete - multi-source query must have one valid FROM source labled as the query IDENTITY source");
+	    return -1;
+	    }
+	rval = objDeleteObj((pObject)(inf->ObjList.Objects[objid]));
+	inf->ObjList.Objects[objid] = NULL;
 	if (rval < 0) return rval;
 	
     return mqClose(inf_v, oxt);
@@ -2409,8 +2477,11 @@ mqPresentationHints(void* inf_v, char* attrname, pObjTrxTree* otx)
 	    if (e->ObjID >= 0)
 		{
 		obj = p->Query->QTree->ObjList->Objects[(int)e->ObjID];
-		ph = objPresentationHints(obj, attrname);
-		return ph;
+		if (obj)
+		    {
+		    ph = objPresentationHints(obj, attrname);
+		    return ph;
+		    }
 		}
 	    }
 

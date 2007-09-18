@@ -43,10 +43,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiq_projection.c,v 1.8 2007/07/31 17:39:59 gbeeley Exp $
+    $Id: multiq_projection.c,v 1.9 2007/09/18 17:59:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiq_projection.c,v $
 
     $Log: multiq_projection.c,v $
+    Revision 1.9  2007/09/18 17:59:07  gbeeley
+    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
+      combined using AND.  This permits more flexible building of dynamic SQL
+      (no need to do fancy text processing in order to add another WHERE
+      constraint to the query).
+    - (bugfix) fix for crash when using "SELECT *" with a join.
+    - (change) permit the specification of one FROM source to be an "IDENTITY"
+      data source for the query.  That data source will be the one affected by
+      any inserting and deleting through the query.
+
     Revision 1.8  2007/07/31 17:39:59  gbeeley
     - (feature) adding "SELECT *" capability, rather than having to name each
       attribute in every query.  Note - "select *" does result in a query
@@ -534,6 +544,7 @@ mqpAnalyze(pMultiQuery mq)
 	    qe->SrcIndex = src_idx;
 	    if (from_qs->Flags & MQ_SF_FROMSUBTREE) qe->Flags |= MQ_EF_FROMSUBTREE;
 	    from_qs->Flags |= MQ_SF_USED;
+	    from_qs->QELinkage = qe;
 
 	    /** Setup private data if needed **/
 	    if (qe->Flags & MQ_EF_FROMSUBTREE)

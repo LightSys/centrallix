@@ -35,10 +35,20 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.h,v 1.8 2007/07/31 17:39:59 gbeeley Exp $
+    $Id: multiquery.h,v 1.9 2007/09/18 17:59:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/multiquery.h,v $
 
     $Log: multiquery.h,v $
+    Revision 1.9  2007/09/18 17:59:07  gbeeley
+    - (change) permit multiple WHERE clauses in the SQL.  They are automatically
+      combined using AND.  This permits more flexible building of dynamic SQL
+      (no need to do fancy text processing in order to add another WHERE
+      constraint to the query).
+    - (bugfix) fix for crash when using "SELECT *" with a join.
+    - (change) permit the specification of one FROM source to be an "IDENTITY"
+      data source for the query.  That data source will be the one affected by
+      any inserting and deleting through the query.
+
     Revision 1.8  2007/07/31 17:39:59  gbeeley
     - (feature) adding "SELECT *" capability, rather than having to name each
       attribute in every query.  Note - "select *" does result in a query
@@ -176,6 +186,7 @@ typedef struct _QS
 #define MQ_SF_FORUPDATE		2		/* SELECT query results can be updated */
 #define MQ_SF_FROMSUBTREE	4		/* SELECT ... FROM SUBTREE /path/name */
 #define MQ_SF_ASTERISK		8		/* SELECT clause uses 'SELECT *' */
+#define MQ_SF_IDENTITY		16		/* SELECT ... FROM IDENTITY /path/name */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
