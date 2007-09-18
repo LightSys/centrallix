@@ -42,10 +42,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.35 2007/08/03 23:46:07 dkasper Exp $
+    $Id: htdrv_tab.c,v 1.36 2007/09/18 17:49:39 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.36  2007/09/18 17:49:39  gbeeley
+    - (bugfix) on browsers that support it, position the background image on a
+      tab control so it lines up vertically with the background on the tabs
+      at the top.
+
     Revision 1.35  2007/08/03 23:46:07  dkasper
     - Added a mode property that defaults to static.  If it is set to dynamic
       then the tab acts as an objectsource client, although it can also have
@@ -547,7 +552,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	if (s->Capabilities.Dom0NS || s->Capabilities.Dom0IE)
 	    htrAddStylesheetItem_va(s,"\t#tc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x+xoffset,y+yoffset,w,z+1);
 	else if (s->Capabilities.Dom2CSS)
-	    htrAddStylesheetItem_va(s,"\t#tc%POSbase { %STR }\n", id, main_bg);
+	    htrAddStylesheetItem_va(s,"\t#tc%POSbase { background-position: 0px -24px; %STR }\n", id, main_bg);
 
 	/** DOM Linkages **/
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tc%POSbase\")",id);
