@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.63 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.64 2007/09/18 17:33:46 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.64  2007/09/18 17:33:46  gbeeley
+    - (feature) adding widget/osrc-rule, which adds some declarative rule based
+      capabilities to the osrc widget.
+
     Revision 1.63  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -483,6 +487,67 @@ static struct {
 
 enum htosrc_autoquery_types { Never=0, OnLoad=1, OnFirstReveal=2, OnEachReveal=3  };
 
+/*** AddRule: add a declarative osrc rule to the generated document.
+ ***/
+int
+htosrc_internal_AddRule(pHtSession s, pWgtrNode tree, char* treename, pWgtrNode sub_tree)
+    {
+    char ruletype[32];
+    int query_delay;
+    int min_chars;
+    int trailing_wildcard;
+    int leading_wildcard;
+    char fieldname[64];
+    char* ptr;
+    pExpression code;
+
+	/** Get type of rule **/
+	if (wgtrGetPropertyValue(sub_tree, "ruletype", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTOSRC", "ruletype is required for widget/osrc-rule");
+	    return -1;
+	    }
+	strtcpy(ruletype, ptr, sizeof(ruletype));
+
+	/** Handle the rule based on the type **/
+	if (!strcmp(ruletype, "relationship"))
+	    {
+	    }
+	else if (!strcmp(ruletype, "filter"))
+	    {
+	    trailing_wildcard = htrGetBoolean(sub_tree, "trailing_wildcard", 1);
+	    leading_wildcard = htrGetBoolean(sub_tree, "leading_wildcard", 0);
+	    if (wgtrGetPropertyValue(sub_tree, "min_chars", DATA_T_INTEGER, POD(&min_chars)) != 0)
+		min_chars = 3;
+	    if (wgtrGetPropertyValue(sub_tree, "query_delay", DATA_T_INTEGER, POD(&query_delay)) != 0)
+		query_delay = 500;
+	    if (wgtrGetPropertyValue(sub_tree, "fieldname", DATA_T_STRING, POD(&ptr)) == 0)
+		strtcpy(fieldname, ptr, sizeof(fieldname));
+	    else
+		{
+		mssError(1, "HTOSRC", "fieldname is required for widget/osrc-rule of type 'filter'");
+		return -1;
+		}
+
+	    /** Get target **/
+	   if (wgtrGetPropertyType(sub_tree,"value") == DATA_T_CODE)
+	       {
+	       wgtrGetPropertyValue(sub_tree,"value",DATA_T_CODE,POD(&code));
+	       htrAddExpression(s, treename, wgtrGetDName(sub_tree), code);
+	       }
+
+	    /** Write the init line **/
+	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddRule('%STR&SYM', {dname:'%STR&SYM', field:'%STR&ESCQ', qd:%INT, mc:%INT, tw:%INT, lw:%INT});\n",
+		    treename, ruletype, wgtrGetDName(sub_tree), fieldname, 
+		    query_delay, min_chars, trailing_wildcard, leading_wildcard);
+	    }
+	else if (!strcmp(ruletype, "keying"))
+	    {
+	    }
+
+    return 0;
+    }
+
 /* 
    htosrcRender - generate the HTML code for the page.
    
@@ -589,7 +654,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&ESCQ\", filter:\"%STR&ESCQ\", baseobj:\"%STR&ESCQ\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT});\n",
+   htrAddScriptInit_va(s,"    osrc_init({loader:nodes[\"%STR&SYM\"], readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&ESCQWS\", filter:\"%STR&ESCQ\", baseobj:\"%STR&ESCQ\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT});\n",
 	 name,readahead,scrollahead,replicasize,sql,filter,
 	 baseobj?baseobj:"",name,aq,receive_updates);
    //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
@@ -607,7 +672,14 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
     for (i=0;i<count;i++)
 	{
 	sub_tree = xaGetItem(&(tree->Children), i);
-	htrRenderWidget(s, sub_tree, z);
+	if (wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/osrc-rule"))
+	    {
+	    htosrc_internal_AddRule(s, tree, name, sub_tree);
+	    }
+	else
+	    {
+	    htrRenderWidget(s, sub_tree, z);
+	    }
 	}
 
     nmSysFree(filter);
