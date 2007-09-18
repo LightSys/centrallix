@@ -55,10 +55,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_datafile.c,v 1.20 2007/07/31 18:07:53 gbeeley Exp $
+    $Id: objdrv_datafile.c,v 1.21 2007/09/18 18:08:20 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_datafile.c,v $
 
     $Log: objdrv_datafile.c,v $
+    Revision 1.21  2007/09/18 18:08:20  gbeeley
+    - (bugfix) incorrect page flush logic was leaving pages unwritten to the
+      file under certain circumstances.
+
     Revision 1.20  2007/07/31 18:07:53  gbeeley
     - (bugfix) something's fishy here.  Not sure why ParseRow was being
       called when a colsobj was being opened.  Sigh...
@@ -501,7 +505,9 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
     {
     pDatPage seq_pages[DAT_CACHE_MAXSEQ*2];
     pDatPage tmp;
-    int i,n_seq,n_srch,seq_tail,seq_head,id;
+    int n_seq,n_srch;
+    unsigned int i,id,seq_tail,seq_head;
+    unsigned int min_id, max_id;
 
     	/** Get the page flush semaphore **/
 	syGetSem(this->Node->FlushSem, 1, 0);
@@ -522,10 +528,16 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 	seq_tail = DAT_CACHE_MAXSEQ;
 	seq_head = DAT_CACHE_MAXSEQ;
 	tmp = this->Prev;
+
+	/** min and max id's to scan for.  Note: (~0U) is max unsigned int **/
+        min_id = (this->PageID < DAT_CACHE_MAXSEQ)?0:(this->PageID - DAT_CACHE_MAXSEQ + 1);
+        max_id = (this->PageID > (~0U) - DAT_CACHE_MAXSEQ)?(~0U):(this->PageID + DAT_CACHE_MAXSEQ - 1);
+
+	/** Do the scan. **/
 	while(tmp != &DAT_INF.PageList && n_srch < DAT_CACHE_MAXSEARCH && n_seq < DAT_CACHE_MAXSEQ)
 	    {
 	    if (!(tmp->Flags & DAT_CACHE_F_LOCKED) && tmp->Node == this->Node && 
-	        tmp->PageID > this->PageID-DAT_CACHE_MAXSEQ && tmp->PageID < this->PageID+DAT_CACHE_MAXSEQ)
+	        tmp->PageID >= min_id && tmp->PageID <= max_id)
 	        {
 		if (tmp->PageID < this->PageID)
 		    {
@@ -535,7 +547,7 @@ dat_internal_FlushPages(pDatData context, pDatPage this)
 		    }
 		else
 		    {
-		    id = DAT_CACHE_MAXSEQ - (this->PageID - tmp->PageID);
+		    id = DAT_CACHE_MAXSEQ + (tmp->PageID - this->PageID);
 		    seq_pages[id] = tmp;
 		    if (seq_tail < id) seq_tail = id;
 		    }
