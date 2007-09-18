@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_evaluate.c,v 1.17 2007/06/15 19:27:51 gbeeley Exp $
+    $Id: exp_evaluate.c,v 1.18 2007/09/18 17:40:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_evaluate.c,v $
 
     $Log: exp_evaluate.c,v $
+    Revision 1.18  2007/09/18 17:40:32  gbeeley
+    - (feature) allow a string to be multiplied by an integer, which causes
+      the string's contents to be repeated N times.
+
     Revision 1.17  2007/06/15 19:27:51  gbeeley
     - (bugfix) sql query selecting properties without a from clause caused a
       null pointer dereference, due to insufficient checking during expression
@@ -384,8 +388,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
     pExpression i0,i1;
     MoneyType m,m2;
     void* dptr;
-    int n;
+    int n, i;
     int is_negative = 0;
+    char* ptr;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -485,6 +490,36 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 			}
 		    tree->Types.Money.WholePart = -tree->Types.Money.WholePart;
 		    }
+		break;
+
+	    case DATA_T_STRING:
+		if (i1->DataType != DATA_T_INTEGER || i1->Integer < 0)
+		    {
+		    mssError(1,"EXP","Strings can only be multiplied by a non-negative integer");
+		    return -1;
+		    }
+		tree->DataType = DATA_T_STRING;
+		n = strlen(i0->String);
+	        if (tree->Alloc && tree->String)
+	            {
+		    nmSysFree(tree->String);
+		    tree->String = NULL;
+		    }
+		tree->Alloc = 0;
+		if (n*i1->Integer >= 64)
+		    {
+		    tree->String = (char*)nmSysMalloc(n*i1->Integer+1);
+		    tree->Alloc = 1;
+		    }
+		else
+		    tree->String = tree->Types.StringBuf;
+		ptr = tree->String;
+		for(i=0;i<i1->Integer;i++)
+		    {
+		    memcpy(ptr, i0->String, n);
+		    ptr += n;
+		    }
+		*ptr = '\0';
 		break;
 
 	    default:
