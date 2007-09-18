@@ -48,10 +48,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_attr.c,v 1.14 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: obj_attr.c,v 1.15 2007/09/18 18:03:14 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_attr.c,v $
 
     $Log: obj_attr.c,v $
+    Revision 1.15  2007/09/18 18:03:14  gbeeley
+    - (bugfix) when doing runserver() stuff in attributes, do not assume that
+      the underlying driver knows how to tell us that the "standard four"
+      attributes are all DATA_T_STRING.
+
     Revision 1.14  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -384,7 +389,11 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 
 	/** Get the type from the lowlevel driver **/
 	used_expr = 0;
-	osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
+	if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type") || !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation"))
+	    osmltype = DATA_T_STRING;
+	else
+	    osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
+	/*osmltype = objGetAttrType(this,attrname);*/
 	if (this->EvalContext && osmltype == DATA_T_CODE && (!this->AttrExpName || strcmp(attrname, this->AttrExpName)))
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, osmltype, POD(&exp), &(this->Session->Trx)) == 0)
