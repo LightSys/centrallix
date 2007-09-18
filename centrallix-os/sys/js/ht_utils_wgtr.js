@@ -12,23 +12,20 @@ function wgtrSetupTree(tree, ns, parent)
     {
     var _parentobj = parent?parent.obj:null;
     var _parentctr = parent?parent.cobj:null;
-    //if (tree.name == 'mainwin') htr_alert(_parentctr,1);
-    var e;
-    e = tree.obj;
-    if (tree.name == 'mainwin')
-	{
-	with (tree) var x = eval("_parentctr");
-	//htr_alert(x,1);
-	}
-    with (tree) tree.obj = eval(tree.obj);
-    //if (!tree.obj) alert('expression failed: ' + e);
+
+    if (tree.obj == 'new Object()')
+	tree.obj = new Object();
+    else
+	with (tree) tree.obj = eval(tree.obj);
+
     var _obj = tree.obj;
-    //if (ns) alert(typeof window);
-    e = tree.cobj;
-    with (tree) tree.cobj = eval(tree.cobj);
-    //if (!tree.cobj) alert('ctr expression failed: ' + e);
-    //if (tree.name == 'debugwin') htr_alert(tree.cobj,1);
-    //if (ns) alert(tree.cobj);
+    if (tree.cobj == '_obj')
+	tree.cobj = _obj;
+    else if (tree.cobj == '_parentctr')
+	tree.cobj = _parentctr;
+    else
+	with (tree) tree.cobj = eval(tree.cobj);
+
     if (ns) tree.obj.__WgtrNamespace = ns;
     wgtrAddToTree(tree.obj, tree.cobj, tree.name, tree.type, _parentobj, tree.vis);
     for(var i=0; i<tree.sub.length; i++)
