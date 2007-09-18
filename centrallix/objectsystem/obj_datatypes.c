@@ -51,10 +51,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_datatypes.c,v 1.18 2007/07/31 17:42:15 gbeeley Exp $
+    $Id: obj_datatypes.c,v 1.19 2007/09/18 18:05:35 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_datatypes.c,v $
 
     $Log: obj_datatypes.c,v $
+    Revision 1.19  2007/09/18 18:05:35  gbeeley
+    - (bugfix) fix a bug in string/money conversion where the value is between
+      $1.00 and $1.99.
+    - (bugfix) fix various bugs in datetime/string conversion.
+    - (bugfix) objDataCompare was using incorrect logic
+
     Revision 1.18  2007/07/31 17:42:15  gbeeley
     - (bugfix) dt->Value should be initialized to 0 so that future compares
       based on ->Value will work properly.
@@ -544,7 +550,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str)
 	if (strpbrk(fmt,"+-()[]")) automatic_sign = 0;
 
 	/** Determine the 'print' version of whole/fraction parts **/
-	if (m->WholePart > 0 || m->FractionPart == 0)
+	if (m->WholePart >= 0 || m->FractionPart == 0)
 	    {
 	    print_whole = m->WholePart;
 	    print_fract = m->FractionPart;
@@ -563,8 +569,10 @@ obj_internal_FormatMoney(pMoneyType m, char* str)
             if (automatic_sign)
                 {
                 automatic_sign = 0;
-                if (orig_print_whole>=0) *(str++) = ' ';
-                else *(str++) = '-';
+                if (orig_print_whole < 0)
+		    *(str++) = '-';
+                /*else
+		    *(str++) = ' ';*/
                 }
 	    switch(*fmt)
                 {
@@ -1125,6 +1133,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 
 	    /** Try to convert a number. **/
 	    last_num = strtol(startptr, &endptr, 10);
+	    if (last_num < 0) last_num = -last_num;
 	    if (endptr != startptr)
 	        {
 		/** Got a number **/
@@ -1140,13 +1149,13 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    /** Date field.  Check. **/
 		    if (reversed_day)
 		        {
-		        if (got_day == -1) got_day = last_num;
+		        if (got_day == -1) got_day = last_num-1;
 		        else if (got_mo == -1) got_mo = last_num-1;
 			}
 		    else
 		        {
 		        if (got_mo == -1) got_mo = last_num-1;
-		        else if (got_day == -1) got_day = last_num;
+		        else if (got_day == -1) got_day = last_num-1;
 			}
 		    endptr++;
 		    }
@@ -1162,7 +1171,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    else if (startptr != origptr && (startptr[-1] == '/' || startptr[-1] == '-'))
 		        {
 			/** For year in '1/1/1999' or day in '1/1' or '1/1 12pm 1999' **/
-			if (got_day == -1) got_day = last_num;
+			if (got_day == -1) got_day = last_num-1;
 			if (got_yr == -1) got_yr = last_num;
 			}
 		    else if (!strncasecmp(endptr,"AM",2) || !strncasecmp(endptr," AM",3) ||
@@ -1174,7 +1183,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    else if (got_mo != -1 && got_yr == -1 && got_day == -1)
 		        {
 			/** For the case 'Jan 1 1999', when just parsed 'Jan'. **/
-			got_day = last_num;
+			got_day = last_num-1;
 			}
 		    else if (startptr != origptr && startptr[-1] == '.')
 		        {
@@ -1188,7 +1197,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    else if (got_mo == -1 && got_yr == -1 && got_day == -1)
 		        {
 			/** For the case '1 Jan 1999' **/
-			got_day = last_num;
+			got_day = last_num-1;
 			}
 		    }
 		}
@@ -1281,7 +1290,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	dt->Value = 0;
 
 	/** First, the year. **/
-	if (got_yr < 5) 
+	if (got_yr < (t->tm_year - 100 + 10)) 
 	    dt->Part.Year = got_yr + 100;
 	else if (got_yr < 100)
 	    dt->Part.Year = got_yr + 0;
@@ -1290,7 +1299,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 
 	/** Next, month and day **/
 	dt->Part.Month = got_mo;
-	dt->Part.Day = got_day - 1;
+	dt->Part.Day = got_day;
 
 	/** Hour/minute/second **/
 	dt->Part.Hour = got_hr;
@@ -1351,7 +1360,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    while(scale > 4) { scale--; intval /= 10; }
 		    m->FractionPart = intval;
 		    }
-		if (m->WholePart < 0 && m->FractionPart != 0)
+		if (is_neg && m->FractionPart != 0)
 		    {
 		    m->WholePart--;
 		    m->FractionPart = 10000 - m->FractionPart;
@@ -1403,13 +1412,14 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
     double dblval;
 
     	/** Need to transpose v1 and v2 to simplify? **/
-	if ((data_type_1 != DATA_T_INTEGER && data_type_2 == DATA_T_INTEGER) ||
+	/*if ((data_type_1 != DATA_T_INTEGER && data_type_2 == DATA_T_INTEGER) ||
 	    (data_type_1 != DATA_T_STRING && data_type_2 == DATA_T_STRING) ||
 	    (data_type_1 != DATA_T_DATETIME && data_type_2 == DATA_T_DATETIME) ||
 	    (data_type_1 != DATA_T_MONEY && data_type_2 == DATA_T_MONEY) ||
 	    (data_type_1 != DATA_T_DOUBLE && data_type_2 == DATA_T_DOUBLE) ||
 	    (data_type_1 != DATA_T_INTVEC && data_type_2 == DATA_T_INTVEC) ||
-	    (data_type_1 != DATA_T_STRINGVEC && data_type_2 == DATA_T_STRINGVEC))
+	    (data_type_1 != DATA_T_STRINGVEC && data_type_2 == DATA_T_STRINGVEC))*/
+	if (data_type_1 > data_type_2)
 	    {
 	    tmptype = data_type_1;
 	    tmpptr = data_ptr_1;
@@ -1436,6 +1446,13 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		        cmp_value = intval - strtol((char*)data_ptr_2, NULL, 0);
 			break;
 
+		    case DATA_T_DOUBLE:
+		        dblval = *(double*)data_ptr_2;
+			if (intval > dblval) cmp_value = 1;
+			else if (intval < dblval) cmp_value = -1;
+			else cmp_value = 0;
+			break;
+
 		    case DATA_T_DATETIME:
 		    case DATA_T_STRINGVEC:
 		        err = 1;
@@ -1456,11 +1473,8 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			    cmp_value = intval - iv->Integers[0];
 			break;
 
-		    case DATA_T_DOUBLE:
-		        dblval = *(double*)data_ptr_2;
-			if (intval > dblval) cmp_value = 1;
-			else if (intval < dblval) cmp_value = -1;
-			else cmp_value = 0;
+		    default:
+			err = 1;
 			break;
 		    }
 	        break;
@@ -1506,6 +1520,50 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			else
 			    cmp_value = strcmp(strval, sv->Strings[0]);
 			break;
+
+		    default:
+			err = 1;
+			break;
+		    }
+	        break;
+
+	    case DATA_T_DOUBLE:
+	        dblval = *(double*)data_ptr_1;
+		switch(data_type_2)
+		    {
+		    case DATA_T_DOUBLE:
+		        if (dblval > *(double*)data_ptr_2) cmp_value = 1;
+			else if (dblval < *(double*)data_ptr_2) cmp_value = -1;
+			else cmp_value = 0;
+			break;
+
+		    case DATA_T_INTVEC:
+		        iv = (pIntVec)data_ptr_2;
+			if (iv->nIntegers != 1)
+			    {
+			    err = 1;
+			    }
+			else
+			    {
+			    if (dblval > iv->Integers[0]) cmp_value = 1;
+			    else if (dblval < iv->Integers[0]) cmp_value = -1;
+			    else cmp_value = 0;
+			    }
+			break;
+
+		    case DATA_T_MONEY:
+			m = (pMoneyType)data_ptr_2;
+		        dblval = m->WholePart + (m->FractionPart/10000.0);
+			if (dblval == *(double*)data_ptr_1) cmp_value = 0;
+			else if (dblval > *(double*)data_ptr_1) cmp_value = -1;
+			else cmp_value = 1;
+			break;
+
+		    case DATA_T_STRINGVEC:
+		    case DATA_T_DATETIME:
+		    default:
+		        err = 1;
+			break;
 		    }
 	        break;
 
@@ -1539,8 +1597,90 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			break;
 
 		    case DATA_T_MONEY:
-		    case DATA_T_DOUBLE:
 		    case DATA_T_STRINGVEC:
+		    default:
+		        err = 1;
+			break;
+		    }
+	        break;
+
+	    case DATA_T_INTVEC:
+	        iv = (pIntVec)data_ptr_1;
+		switch(data_type_2)
+		    {
+		    case DATA_T_INTVEC:
+			iv2 = (pIntVec)data_ptr_2;
+			cmp_value = 0;
+			for(i=0;i<iv->nIntegers || i<iv2->nIntegers;i++)
+			    {
+			    if (i == iv->nIntegers)
+				{
+				cmp_value = 1;
+				break;
+				}
+			    else if (i == iv2->nIntegers)
+				{
+				cmp_value = -1;
+				break;
+				}
+			    cmp_value = iv->Integers[i] - iv2->Integers[i];
+			    if (cmp_value != 0) break;
+			    }
+			break;
+
+		    case DATA_T_STRINGVEC:
+			err = 1;
+			break;
+
+		    case DATA_T_MONEY:
+			m = (pMoneyType)data_ptr_2;
+			if (iv->nIntegers != 2)
+			    {
+			    err = 1;
+			    }
+			else
+			    {
+		            if (m->WholePart > iv->Integers[0]) cmp_value = -1;
+			    else if (m->WholePart < iv->Integers[0]) cmp_value = 1;
+			    else cmp_value = iv->Integers[1] - m->FractionPart;
+			    }
+			break;
+
+		    default:
+			err = 1;
+			break;
+		    }
+	        break;
+
+	    case DATA_T_STRINGVEC:
+	        sv = (pStringVec)data_ptr_1;
+		switch(data_type_2)
+		    {
+		    case DATA_T_STRINGVEC:
+			sv2 = (pStringVec)data_ptr_2;
+			cmp_value = 0;
+			for(i=0;i<sv->nStrings || i<sv2->nStrings;i++)
+			    {
+			    if (i == sv->nStrings)
+				{
+				cmp_value = 1;
+				break;
+				}
+			    else if (i == sv2->nStrings)
+				{
+				cmp_value = -1;
+				break;
+				}
+			    cmp_value = strcmp(sv->Strings[i], sv2->Strings[i]);
+			    if (cmp_value != 0) break;
+			    }
+			break;
+
+		    case DATA_T_MONEY:
+			err = 1;
+			break;
+
+		    default:
 		        err = 1;
 			break;
 		    }
@@ -1557,118 +1697,15 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			else cmp_value = m->FractionPart - ((pMoneyType)data_ptr_2)->FractionPart;
 			break;
 
-		    case DATA_T_DOUBLE:
-		        dblval = m->WholePart + (m->FractionPart/10000.0);
-			if (dblval == *(double*)data_ptr_2) cmp_value = 0;
-			else if (dblval > *(double*)data_ptr_2) cmp_value = 1;
-			else cmp_value = -1;
-			break;
-
-		    case DATA_T_INTVEC:
-		        iv = (pIntVec)data_ptr_2;
-			if (iv->nIntegers != 2)
-			    {
-			    err = 1;
-			    }
-			else
-			    {
-		            if (m->WholePart > iv->Integers[0]) cmp_value = 1;
-			    else if (m->WholePart < iv->Integers[0]) cmp_value = -1;
-			    else cmp_value = m->FractionPart - iv->Integers[1];
-			    }
-			break;
-
-		    case DATA_T_STRINGVEC:
-		        err = 1;
+		    default:
+			err = 1;
 			break;
 		    }
 	        break;
 
-	    case DATA_T_DOUBLE:
-	        dblval = *(double*)data_ptr_1;
-		switch(data_type_2)
-		    {
-		    case DATA_T_DOUBLE:
-		        if (dblval > *(double*)data_ptr_2) cmp_value = 1;
-			else if (dblval < *(double*)data_ptr_2) cmp_value = -1;
-			else cmp_value = 0;
-			break;
-
-		    case DATA_T_INTVEC:
-		        iv = (pIntVec)data_ptr_2;
-			if (iv->nIntegers != 1)
-			    {
-			    err = 1;
-			    }
-			else
-			    {
-			    if (dblval > iv->Integers[0]) cmp_value = 1;
-			    else if (dblval < iv->Integers[0]) cmp_value = -1;
-			    else cmp_value = 0;
-			    }
-			break;
-
-		    case DATA_T_STRINGVEC:
-		        err = 1;
-			break;
-		    }
-	        break;
-
-	    case DATA_T_INTVEC:
-	        iv = (pIntVec)data_ptr_1;
-		if (data_type_2 == DATA_T_INTVEC)
-		    {
-		    iv2 = (pIntVec)data_ptr_2;
-		    cmp_value = 0;
-		    for(i=0;i<iv->nIntegers || i<iv2->nIntegers;i++)
-		        {
-			if (i == iv->nIntegers)
-			    {
-			    cmp_value = 1;
-			    break;
-			    }
-			else if (i == iv2->nIntegers)
-			    {
-			    cmp_value = -1;
-			    break;
-			    }
-			cmp_value = iv->Integers[i] - iv2->Integers[i];
-			if (cmp_value != 0) break;
-			}
-		    }
-		else
-		    {
-		    err = 1;
-		    }
-	        break;
-
-	    case DATA_T_STRINGVEC:
-	        sv = (pStringVec)data_ptr_1;
-		if (data_type_2 != DATA_T_STRINGVEC)
-		    {
-		    sv2 = (pStringVec)data_ptr_2;
-		    cmp_value = 0;
-		    for(i=0;i<sv->nStrings || i<sv2->nStrings;i++)
-		        {
-			if (i == sv->nStrings)
-			    {
-			    cmp_value = 1;
-			    break;
-			    }
-			else if (i == sv2->nStrings)
-			    {
-			    cmp_value = -1;
-			    break;
-			    }
-			cmp_value = strcmp(sv->Strings[i], sv2->Strings[i]);
-			if (cmp_value != 0) break;
-			}
-		    }
-		else
-		    {
-		    err = 1;
-		    }
-	        break;
+	    default:
+		err = 1;
+		break;
 	    }
 	if (cmp_value > 0) cmp_value = 1;
 	if (cmp_value < 0) cmp_value = -1;
