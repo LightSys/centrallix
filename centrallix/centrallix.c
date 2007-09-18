@@ -54,10 +54,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.44 2007/07/27 00:25:24 dkasper Exp $
+    $Id: centrallix.c,v 1.45 2007/09/18 18:15:06 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.45  2007/09/18 18:15:06  gbeeley
+    - (feature) add and stub out multiscroll widget.
+
     Revision 1.44  2007/07/27 00:25:24  dkasper
     - Added the repeat widget html driver file.
 
@@ -791,6 +794,7 @@ cxHtInit()
 	htparamInitialize();			/* parameter module */
 	htalInitialize();			/* autolayout module */
 	htrptInitialize();			/* repeat module */
+	htmsInitialize();			/* multiscroll module */
 
 	htcmpdInitialize();			/* component declaration */
 	htcmpInitialize();			/* component instance */
