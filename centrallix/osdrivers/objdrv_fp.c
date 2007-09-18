@@ -62,10 +62,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.1 2006/09/15 20:43:46 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.2 2007/09/18 18:10:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.2  2007/09/18 18:10:32  gbeeley
+    - (bugfix) filepro driver needs to objUnmanageObject() for objects opened
+      internally.
+    - (bugfix) filepro driver was not handling the enumeration of tables
+      correctly if a non-table file were present in the tables directory
+
     Revision 1.1  2006/09/15 20:43:46  gbeeley
     - (feature) Adding FilePro ObjectSystem driver.  This initial version is
       limited to readonly queries, and does not leverage indexes.
@@ -475,6 +481,7 @@ fp_internal_OpenFiles(pFpData inf)
 	    nmFree(files, sizeof(FpOpenFiles));
 	    return NULL;
 	    }
+	objUnmanageObject(s, files->FileList[0]);
 	xhAdd(&(tdata->OpenFiles), (void*)(files->OSMLSession), (void*)files);
 
     return files;
@@ -519,6 +526,7 @@ fp_internal_GetOpenFile(pFpData inf, char* filename, unsigned char key)
 	    else
 		{
 		files->FileList[open_idx] = objOpen(inf->Obj->Session, filename, O_RDONLY, 0600, "application/octet-stream");
+		objUnmanageObject(inf->Obj->Session, files->FileList[open_idx]);
 		if (!files->FileList[open_idx])
 		    return NULL;
 		files->FileKeys[open_idx] = key;
@@ -636,6 +644,7 @@ fp_internal_ReadDefinition(pFpData inf, char* map_path)
 	 **/
 	mapfile = objOpen(inf->Obj->Session, map_path, O_RDONLY, 0600, "application/octet-stream");
 	if (!mapfile) goto error;
+	objUnmanageObject(inf->Obj->Session, mapfile);
 
 	/** Open it up in the lexer so we can parse it **/
 	lxs = mlxGenericSession(mapfile, objRead, MLX_F_EOF | MLX_F_LINEONLY);
@@ -695,6 +704,7 @@ fp_internal_ReadEditsFile(pFpData inf, char* edits_path)
 	 **/
 	editfile = objOpen(inf->Obj->Session, edits_path, O_RDONLY, 0600, "application/octet-stream");
 	if (!editfile) goto error;
+	objUnmanageObject(inf->Obj->Session, editfile);
 	lxs = mlxGenericSession(editfile, objRead, MLX_F_EOF | MLX_F_LINEONLY);
 
 	while((t=mlxNextToken(lxs)) == MLX_TOK_STRING)
@@ -767,8 +777,10 @@ fp_internal_FindIndices(pFpData inf, char* table_path)
 	/** Run a query to find the indexes **/
 	qy_obj = objOpen(inf->Obj->Session, table_path, O_RDONLY, 0600, "system/directory");
 	if (!qy_obj) goto error;
+	objUnmanageObject(inf->Obj->Session, qy_obj);
 	qy = objOpenQuery(qy_obj, "substring(:name,1,6) == 'index.' AND char_length(:name) == 7", NULL, NULL, NULL);
 	if (!qy) goto error;
+	objUnmanageQuery(inf->Obj->Session, qy);
 	while((fetched_obj = objQueryFetch(qy, O_RDONLY)))
 	    {
 	    name = NULL;
@@ -1572,6 +1584,7 @@ fpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    nmFree(qy,sizeof(FpQuery));
 		    return NULL;
 		    }
+		objUnmanageObject(inf->Obj->Session, qy->LLObj);
 		qy->LLQuery = objOpenQuery(qy->LLObj, NULL, ":name", NULL, NULL);
 		if (!qy->LLQuery)
 		    {
@@ -1579,6 +1592,7 @@ fpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    nmFree(qy,sizeof(FpQuery));
 		    return NULL;
 		    }
+		objUnmanageQuery(inf->Obj->Session, qy->LLQuery);
 		qy->RowCnt = 0;
 		qy->LLRowCnt = 0;
 		break;
@@ -1627,6 +1641,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     int restype;
     pObject ll_obj;
     pFpColInf prikey;
+    char* endptr = NULL;
 
 	if (qy->RowCnt < 0) return NULL;
 
@@ -1643,6 +1658,13 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    inf->TData = tdata;
 	    inf->Obj = obj;
 
+	    if (endptr)
+		{
+		*endptr = '\0';
+		obj->Pathname->nElements--;
+		endptr = NULL;
+		}
+
 	    switch(qy->ObjInf->Type)
 		{
 		case FP_T_DATABASE:
@@ -1656,7 +1678,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			    return NULL;
 			    }
 			objGetAttrValue(ll_obj, "name", DATA_T_STRING, POD(&ptr));
-			snprintf(filename, sizeof(filename), "%s", ptr);
+			strtcpy(filename, ptr, sizeof(filename));
 			i = strlen(filename);
 			if (i <= 3 || strncmp(filename+i-3, ".fp", 3))
 			    break;
@@ -1754,7 +1776,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    if (!inf) continue;
 
 	    /** Build the filename. **/
-	    ptr = memchr(obj->Pathname->Elements[obj->Pathname->nElements-1],'\0',256);
+	    endptr = ptr = memchr(obj->Pathname->Elements[obj->Pathname->nElements-1],'\0',256);
 	    if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(filename) >= 255)
 		{
 		mssError(1,"FP","Pathname too long for internal representation");
