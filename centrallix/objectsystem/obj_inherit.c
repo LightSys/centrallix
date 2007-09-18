@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_inherit.c,v 1.3 2007/06/06 15:16:36 gbeeley Exp $
+    $Id: obj_inherit.c,v 1.4 2007/09/18 18:06:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_inherit.c,v $
 
     $Log: obj_inherit.c,v $
+    Revision 1.4  2007/09/18 18:06:26  gbeeley
+    - (bugfix) OSML inheritance layer must not assume that the underlying
+      driver implements presentation hints on its attributes.
+
     Revision 1.3  2007/06/06 15:16:36  gbeeley
     - (change) getting the obj_inherit module into the build
 
@@ -406,6 +410,7 @@ pObjPresentationHints
 oihPresentationHints(void* this_v, char* attrname, pObjTrxTree* oxt)
     {
     pObjInhPtr this = (pObjInhPtr)(this_v);
+    if (!(this->Obj->ILowLevelDriver->PresentationHints)) return NULL;
     return this->Obj->ILowLevelDriver->PresentationHints(this->LLParam,attrname,oxt);
     }
 
