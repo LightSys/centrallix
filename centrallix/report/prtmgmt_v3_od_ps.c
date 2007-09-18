@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -50,10 +52,14 @@
 
 /**CVSDATA***************************************************************
  
-    $Id: prtmgmt_v3_od_ps.c,v 1.6 2007/04/08 03:52:01 gbeeley Exp $
+    $Id: prtmgmt_v3_od_ps.c,v 1.7 2007/09/18 18:12:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/report/prtmgmt_v3_od_ps.c,v $
  
     $Log: prtmgmt_v3_od_ps.c,v $
+    Revision 1.7  2007/09/18 18:12:56  gbeeley
+    - (bugfix) clean up after yourself, you silly module!  Make sure to wait()
+      and clean up child processes so they aren't left hanging as zombies.
+
     Revision 1.6  2007/04/08 03:52:01  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -157,6 +163,7 @@ typedef struct _PPS
     pFile		TransWPipe;
     pFile		TransRPipe;
     pSemaphore		CompletionSem;
+    int			ChildPID;
     char		Buffer[512];
     }
     PrtPsodInf, *pPrtPsodInf;
@@ -209,7 +216,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.6 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.7 $ \n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
@@ -365,6 +372,7 @@ prt_psod_Worker(void* v)
     pFile transpipe_fd;
     int (*fn)();
     void* arg;
+    int status, rval;
     pSemaphore sem;
 
 	thSetName(NULL, "PRTMGMTv3 PSOD Worker");
@@ -386,6 +394,17 @@ prt_psod_Worker(void* v)
 		}
 	    }
 	fdClose(transpipe_fd, 0);
+
+	/** Clean up after the child process **/
+	while(1)
+	    {
+	    rval = waitpid(context->ChildPID, &status, WNOHANG);
+	    if (rval < 0) break;
+	    if (rval == context->ChildPID && WIFEXITED(status)) break;
+	    thSleep(500);
+	    }
+
+	/** Let parent thread know we're ready **/
 	syPostSem(sem, 1, 0);
 
     thExit();
@@ -452,7 +471,6 @@ prt_psod_OpenPDF(pPrtSession session)
     pPrtPsodInf context;
     int i;
     char* cmd = NULL;
-    int pid;
     int wfds[2];
     int rfds[2];
     gid_t gidlist[1];
@@ -489,14 +507,14 @@ prt_psod_OpenPDF(pPrtSession session)
 	    prt_psod_Close(context);
 	    return NULL;
 	    }
-	pid = fork();
-	if (pid < 0)
+	context->ChildPID = fork();
+	if (context->ChildPID < 0)
 	    {
 	    /** error **/
 	    prt_psod_Close(context);
 	    return NULL;
 	    }
-	else if (pid == 0)
+	else if (context->ChildPID == 0)
 	    {
 	    /** in child **/
 	    thLock();
