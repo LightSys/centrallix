@@ -42,10 +42,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.39 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.40 2007/09/18 17:52:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.40  2007/09/18 17:52:25  gbeeley
+    - (change) add an option to allow finer control of how the initial set of
+      branches (expansion) is displayed.
+    - (feature) adding a second, smaller, set of images to be used for
+      treeview graphics.  Later this needs to be handled by a theming mechanism.
+
     Revision 1.39  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -374,7 +380,9 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
     int x,y,w;
     int id, i;
     int show_root = 1;
-    int show_branches = 0;
+    int show_branches = 1;
+    int show_root_branch = 1;
+    int use_3d_lines;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -407,13 +415,27 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	if (show_root < 0) return -1;
 
 	/** How about branches? (branch decorations, etc.) **/
-	show_branches = htrGetBoolean(tree, "show_branches", 0);
+	show_branches = htrGetBoolean(tree, "show_branches", 1);
+
+	/** If not showing root, do we show the root branch? **/
+	show_root_branch = htrGetBoolean(tree, "show_root_branch", show_root);
+
+	/** 3-D lines or simple? **/
+	use_3d_lines = htrGetBoolean(tree, "use_3d_lines", 1);
 
 	/** Compensate hidden root position if not shown **/
 	if (!show_root)
 	    {
-	    if (!show_branches) x -= 20;
-	    y -= 20;
+	    if (use_3d_lines)
+		{
+		if (!show_branches && !show_root_branch) x -= 20;
+		y -= 20;
+		}
+	    else
+		{
+		if (!show_branches && !show_root_branch) x -= 16;
+		y -= 16;
+		}
 	    }
 
 	/** Get name **/
@@ -447,8 +469,8 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT});\n",
-		name, src, name, id, w, show_branches);
+	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&ESCQ\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT});\n",
+		name, src, name, id, w, show_branches, use_3d_lines, show_root_branch);
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js", 0);
