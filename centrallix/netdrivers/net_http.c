@@ -66,10 +66,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.74 2007/07/25 16:57:23 gbeeley Exp $
+    $Id: net_http.c,v 1.75 2007/09/18 18:00:57 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.75  2007/09/18 18:00:57  gbeeley
+    - (change) allow encoding of attribute name so that attribute names can
+      contain spaces and special characters.
+
     Revision 1.74  2007/07/25 16:57:23  gbeeley
     - (change) prepping codebase for addition of layered/reverse-inheritance
       development.
@@ -1916,8 +1920,9 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 
 	/** Write the HTML output. **/
 	xsInit(&xs);
-	xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://%.40s/?%s#%s'>%s:", 
-		tgt, attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
+	xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://", tgt);
+	xsConcatQPrintf(&xs, "%STR&HEX/?%STR#%STR'>%STR:", 
+		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
 	if (encode)
 	    nht_internal_Escape(&xs, dptr);
 	else
@@ -2078,6 +2083,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     double dbl;
     char* where;
     char* orderby;
+    int autoclose = 0;
     int retval;		/** FIXME FIXME FIXME FIXME FIXME FIXME **/
     
     handle_t session_handle;
@@ -2292,22 +2298,6 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    0);
 	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 	        }
-	    else if (!strcmp(request,"multiquery"))
-	        {
-		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
-		qy = objMultiQuery(objsess, ptr);
-		if (!qy)
-		    query_handle = XHN_INVALID_HANDLE;
-		else
-		    query_handle = xhnAllocHandle(&(sess->Hctx), qy);
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-		    query_handle);
-		if (DEBUG_OSML) printf("ls__mode=multiquery X" XHN_HANDLE_PRT "\n", query_handle);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		}
 	    else if (!strcmp(request,"objquery"))
 	        {
 		where=NULL;
@@ -2327,38 +2317,68 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		if (DEBUG_OSML) printf("ls__mode=objquery X" XHN_HANDLE_PRT "\n", query_handle);
 	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 		}
-	    else if (!strcmp(request,"queryfetch"))
+	    else if (!strcmp(request,"queryfetch") || !strcmp(request,"multiquery"))
 	        {
-		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
-		mode = strtol(ptr,NULL,0);
-		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__rowcount"),&ptr) < 0)
-		    n = 0x7FFFFFFF;
-		else
-		    n = strtol(ptr,NULL,0);
-		if (stAttrValue_ne(stLookup_ne(req_inf,"ls__startat"),&ptr) < 0)
-		    start = 0;
-		else
-		    start = strtol(ptr,NULL,0) - 1;
-		if (start < 0) start = 0;
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-		         0);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		while(start > 0 && (obj = objQueryFetch(qy,mode)))
+		fdQPrintf(conn->ConnFD,
+			"Content-Type: text/html\r\n"
+			"Pragma: no-cache\r\n"
+			"\r\n");
+		if (!strcmp(request,"multiquery"))
 		    {
-		    objClose(obj);
-		    start--;
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__sql"),&ptr) < 0) return -1;
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose"),&ptr) == 0 && strtol(ptr,NULL,0))
+			autoclose = 1;
+		    qy = objMultiQuery(objsess, ptr);
+		    if (!qy)
+			query_handle = XHN_INVALID_HANDLE;
+		    else
+			query_handle = xhnAllocHandle(&(sess->Hctx), qy);
+		    if (autoclose)
+			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
+			    XHN_INVALID_HANDLE);
+		    else
+			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
+			    query_handle);
+		    if (DEBUG_OSML) printf("ls__mode=multiquery X" XHN_HANDLE_PRT "\n", query_handle);
+		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 		    }
-		while(n > 0 && (obj = objQueryFetch(qy,mode)))
+		if (!strcmp(request,"queryfetch") || (qy && stAttrValue_ne(stLookup_ne(req_inf,"ls__autofetch"),&ptr) == 0 && strtol(ptr,NULL,0)))
 		    {
-		    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
-		    if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
-		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
-			objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
-		    nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
-		    n--;
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__objmode"),&ptr) < 0) return -1;
+		    mode = strtol(ptr,NULL,0);
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__rowcount"),&ptr) < 0)
+			n = 0x7FFFFFFF;
+		    else
+			n = strtol(ptr,NULL,0);
+		    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__startat"),&ptr) < 0)
+			start = 0;
+		    else
+			start = strtol(ptr,NULL,0) - 1;
+		    if (start < 0) start = 0;
+		    if (!strcmp(request,"queryfetch"))
+			{
+			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n", 0);
+			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+			}
+		    while(start > 0 && (obj = objQueryFetch(qy,mode)))
+			{
+			objClose(obj);
+			start--;
+			}
+		    while(n > 0 && (obj = objQueryFetch(qy,mode)))
+			{
+			if (!autoclose)
+			    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+			else
+			    obj_handle = n;
+			if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
+			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+			    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
+			nht_internal_WriteAttrs(obj,conn,obj_handle,1,encode_attrs);
+			n--;
+			if (autoclose) objClose(obj);
+			}
+		    if (autoclose) objQueryClose(qy);
 		    }
 		}
 	    else if (!strcmp(request,"queryclose"))
@@ -2678,6 +2698,16 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
     {
     char bgnd[128];
     char* ptr;
+    int font_size = -1;
+    char font_name[128];
+
+	/** Font sizes have an impact here **/
+	objGetAttrValue(target_obj, "font_size", DATA_T_INTEGER, POD(&font_size));
+	if (font_size < 5 || font_size > 100) font_size = -1;
+	if (objGetAttrValue(target_obj, "font_name", DATA_T_STRING, POD(&ptr)) == 0 && ptr)
+	    strtcpy(font_name, ptr, sizeof(font_name));
+	else
+	    strcpy(font_name, "");
 
 	/** Do we have a bgcolor / background? **/
 	if (objGetAttrValue(target_obj, "bgcolor", DATA_T_STRING, POD(&ptr)) == 0)
@@ -2694,21 +2724,22 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 	    }
 
 	/** Generate the snippet **/
-	fdPrintf(output, "<html>\n"
+	fdQPrintf(output,"<html>\n"
 			 "<head>\n"
 			 "    <meta http-equiv=\"Pragma\" CONTENT=\"no-cache\">\n"
 			 "    <style type=\"text/css\">\n"
 			 "        #l1 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
 			 "        #l2 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
+			 "        body { %[font-size:%POSpx; %]%[font-family:%STR&HTE; %]}\n"
 			 "    </style>\n"
 			 "</head>\n"
 			 "<script language=\"javascript\" src=\"/sys/js/startup.js\" DEFER></script>\n"
-			 "<body %s onload='startup();'>\n"
+			 "<body %STR onload='startup();'>\n"
 			 "    <img src='/sys/images/loading.gif'>\n"
 			 "    <div id=\"l1\">x<br>x</div>\n"
 			 "    <div id=\"l2\">xx</div>\n"
 			 "</body>\n"
-			 "</html>\n", bgnd);
+			 "</html>\n", font_size > 0, font_size, *font_name, font_name, bgnd);
 
     return 0;
     }
