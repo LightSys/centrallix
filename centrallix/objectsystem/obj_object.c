@@ -49,10 +49,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_object.c,v 1.27 2007/06/09 19:53:46 gbeeley Exp $
+    $Id: obj_object.c,v 1.28 2007/09/18 18:07:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_object.c,v $
 
     $Log: obj_object.c,v $
+    Revision 1.28  2007/09/18 18:07:18  gbeeley
+    - (bugfix) off-by-one error in checking for whether we've chomped the entire
+      pathname with drivers when opening a new object.
+
     Revision 1.27  2007/06/09 19:53:46  gbeeley
     - (feature) adding objGetPathname() method to return the full path of an
       object that is already open.
@@ -795,7 +799,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    else
 		        {
 			/** If the entire path has been used, this is a successful return. **/
-			if (this->SubPtr + this->SubCnt >= this->Pathname->nElements) break;
+			if (this->SubPtr + this->SubCnt > this->Pathname->nElements) break;
 
 			/** Otherwise, error out **/
 			obj_internal_PathPart(this->Pathname,0,0);
