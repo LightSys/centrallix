@@ -60,10 +60,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_table.c,v 1.53 2007/07/31 18:03:09 gbeeley Exp $
+    $Id: htdrv_table.c,v 1.54 2007/09/18 17:50:45 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_table.c,v $
 
     $Log: htdrv_table.c,v $
+    Revision 1.54  2007/09/18 17:50:45  gbeeley
+    - (feature) stub out options for reverse_order and allow_selection.
+    - (change) permit row height to auto adjust based on font size detected.
+
     Revision 1.53  2007/07/31 18:03:09  gbeeley
     - (feature) tooltips popup on cells whose data is partially obscured by
       the column being too narrow
@@ -534,6 +538,8 @@ typedef struct
     int dragcols;
     int colsep;
     int gridinemptyrows;
+    int allow_selection;
+    int reverse_order;
     } httbl_struct;
 
 int
@@ -579,20 +585,20 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tbld%POSpane\")",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&ESCQ\", textcolorhighlight:\"%STR&ESCQ\", titlecolor:\"%STR&ESCQ\", rowbgnd1:\"%STR&ESCQ\", rowbgnd2:\"%STR&ESCQ\", rowbgndhigh:\"%STR&ESCQ\", hdrbgnd:\"%STR&ESCQ\", followcurrent:%INT, dragcols:%INT, colsep:%INT, gridinemptyrows:%INT, cols:new Array(",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:nodes[\"%STR&SYM\"], scroll:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&ESCQ\", textcolorhighlight:\"%STR&ESCQ\", titlecolor:\"%STR&ESCQ\", rowbgnd1:\"%STR&ESCQ\", rowbgnd2:\"%STR&ESCQ\", rowbgndhigh:\"%STR&ESCQ\", hdrbgnd:\"%STR&ESCQ\", followcurrent:%INT, dragcols:%INT, colsep:%INT, gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, cols:new Array(",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->rowheight,
 		t->cellvspacing, t->cellhspacing,t->textcolor, 
 		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,
 		t->row_bgndhigh,t->hdr_bgnd,t->followcurrent,t->dragcols,
-		t->colsep,t->gridinemptyrows);
+		t->colsep,t->gridinemptyrows, t->reverse_order, t->allow_selection);
 	
 	for(colid=0;colid<t->ncols;colid++)
 	    {
 	    stAttrValue(stLookup(t->col_infs[colid],"title"),NULL,&coltitle,0);
 	    stAttrValue(stLookup(t->col_infs[colid],"type"),NULL,&coltype,0);
 	    stAttrValue(stLookup(t->col_infs[colid],"width"),&colw,NULL,0);
-	    htrAddScriptInit_va(s,"new Array(\"%STR&SYM\",\"%STR&ESCQ\",%INT,\"%STR&ESCQ\"),",
+	    htrAddScriptInit_va(s,"new Array(\"%STR&ESCQ\",\"%STR&ESCQ\",%INT,\"%STR&ESCQ\"),",
 		    t->col_infs[colid]->Name,coltitle,colw,coltype);
 	    }
 
@@ -804,7 +810,6 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->outer_border=0;
 	t->inner_border=0;
 	t->inner_padding=0;
-	t->followcurrent=1;
     
     	/** Get an id for thit. **/
 	t->id = (HTTBL.idcnt++);
@@ -823,19 +828,19 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&(t->w))) != 0) t->w = -1;
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&(t->h))) != 0) t->h = -1;
 	if (wgtrGetPropertyValue(tree,"windowsize",DATA_T_INTEGER,POD(&(t->windowsize))) != 0) t->windowsize = -1;
-	if (wgtrGetPropertyValue(tree,"rowheight",DATA_T_INTEGER,POD(&(t->rowheight))) != 0) t->rowheight = 15;
+	if (wgtrGetPropertyValue(tree,"rowheight",DATA_T_INTEGER,POD(&(t->rowheight))) != 0) t->rowheight = s->ClientInfo->ParagraphHeight*4/3;
 	if (wgtrGetPropertyValue(tree,"cellhspacing",DATA_T_INTEGER,POD(&(t->cellhspacing))) != 0) t->cellhspacing = 1;
 	if (wgtrGetPropertyValue(tree,"cellvspacing",DATA_T_INTEGER,POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
 
-	if (wgtrGetPropertyValue(tree,"dragcols",DATA_T_INTEGER,POD(&(t->dragcols))) != 0) t->dragcols = 1;
 	if (wgtrGetPropertyValue(tree,"colsep",DATA_T_INTEGER,POD(&(t->colsep))) != 0) t->colsep = 1;
-	if (wgtrGetPropertyValue(tree,"gridinemptyrows",DATA_T_INTEGER,POD(&(t->gridinemptyrows))) != 0) t->gridinemptyrows = 1;
+
+	t->dragcols = htrGetBoolean(tree, "dragcols", 1);
+	t->gridinemptyrows = htrGetBoolean(tree, "gridinemptyrows", 1);
+	t->allow_selection = htrGetBoolean(tree, "allow_selection", 1);
+	t->reverse_order = htrGetBoolean(tree, "reverse_order", 0);
 
 	/** Should we follow the current record around? **/
-	if (wgtrGetPropertyValue(tree,"followcurrent",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) t->followcurrent = 0;
-	    }
+	t->followcurrent = htrGetBoolean(tree, "followcurrent", 1);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) 
