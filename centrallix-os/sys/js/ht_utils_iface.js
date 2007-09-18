@@ -429,13 +429,16 @@ function ifValue()
 	{
 	if (this.Values[n])
 	    return this.Values[n].call(this.obj, n);
-	else if (pg_diag && this.NullNotExist == false)
+	else if (pg_diag && !this.NullNotExist)
 	    alert("Get value: " + this.obj.id + " does not implement value " + n);
+	else if (this.NullNotExist)
+	    return this.NullNotExist.call(this.obj, n);
 	return null;
 	}
-    function ifvalue_exists(n)
+    function ifvalue_exists(n, honest)
 	{
 	var v = this.Values[n]?true:false;
+	if (honest) return v;
 	if (this.NullNotExist && v == false) return true;
 	return v;
 	}
@@ -447,17 +450,17 @@ function ifValue()
 	{
 	this.Values[n] = null;
 	}
-    function ifvalue_setnonexistentbehavior(b)
+    function ifvalue_setnonexistentcallback(c)
 	{
-	this.NullNotExist = b;
+	this.NullNotExist = c;
 	}
-    this.NullNotExist = false;
+    this.NullNotExist = null;
     this.Values = new Object();
     this.getValue = ifvalue_getvalue;
     this.Exists = ifvalue_exists;
     this.Add = ifvalue_add;
     this.Remove = ifvalue_remove;
-    this.SetNonexistentBehavior = ifvalue_setnonexistentbehavior;
+    this.SetNonexistentCallback = ifvalue_setnonexistentcallback;
     }
 
 
