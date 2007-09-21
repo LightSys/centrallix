@@ -32,10 +32,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.7 2004/07/22 00:20:52 mmcgill Exp $
+    $Id: mtlexer.c,v 1.8 2007/09/21 23:13:03 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.8  2007/09/21 23:13:03  gbeeley
+    - (bugfix) handle NL's inside a quoted string when not using a user-
+      managed buffer.
+
     Revision 1.7  2004/07/22 00:20:52  mmcgill
     Added a magic number define for WgtrNode, and added xaInsertBefore and
     xaInsertAfter functions to the XArray module.
@@ -322,7 +326,7 @@ int
 mlxNextToken(pLxSession this)
     {
     char* ptr;
-    char ch;
+    char ch, prev_ch;
     int invert;
     int i,got_dot;
 
@@ -517,27 +521,46 @@ mlxNextToken(pLxSession this)
 		this->TokType = MLX_TOK_STRING;
 
 		/** Keep scanning until delimiter, unless delimiter preceeded by an escape **/
-		while(*ptr && (*ptr != this->Delimiter || ((this->Flags & MLX_F_NOUNESC) && ptr > this->Buffer && ptr[-1] == '\\')))
+		prev_ch = '\0';
+		while((*ptr != this->Delimiter || ((this->Flags & MLX_F_NOUNESC) && ptr > this->Buffer && ptr[-1] == '\\')))
 		    {
 		    ch=*ptr;
-		    /** Allow escape of delimiter. **/
-		    if (*ptr == '\\' && ptr[1] && !(this->Flags & MLX_F_NOUNESC))
+
+		    /** Load in more data? **/
+		    if (ch == '\0')
 			{
-			if (ptr[1] == 'n') ch='\n'; 
-			else if (ptr[1] == 't') ch='\t';
-			else if (ptr[1] == 'r') ch='\r';
-			else ch=ptr[1];
-			ptr++;
+			this->BufCnt = mlxReadLine(this,this->Buffer, 2047);
+			if (this->BufCnt <= 0)
+			    {
+			    mssError(1,"MLX","Unterminated string value");
+			    this->TokType = MLX_TOK_ERROR;
+			    break;
+			    }
+			this->BufPtr = this->Buffer;
+			ptr = this->Buffer;
+			continue;
 			}
+
+		    /** Allow escape of delimiter. **/
+		    if (prev_ch == '\\' && ch && !(this->Flags & MLX_F_NOUNESC))
+			{
+			if (ch == 'n') this->TokString[this->TokStrCnt-1]='\n'; 
+			else if (ptr[1] == 't') this->TokString[this->TokStrCnt-1]='\t';
+			else if (ptr[1] == 'r') this->TokString[this->TokStrCnt-1]='\r';
+			else this->TokString[this->TokStrCnt-1]=ch;
+			ptr++;
+			prev_ch = ch;
+			continue;
+			}
+
+		    /** Verify no overrun **/
+		    if (this->TokStrCnt >= 256) 
+			break;
+
 		    /** Copy the char. **/
 		    this->TokString[this->TokStrCnt++] = ch;
 		    ptr++;
-
-		    /** Verify no overrun **/
-		    if (this->TokStrCnt >= 255)
-			{
-			break;
-			}
+		    prev_ch = ch;
 		    }
 		
 		/** Found delimiter? **/
