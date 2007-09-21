@@ -32,7 +32,8 @@ function pg_get_style(element,attr)
 	if(attr == 'zIndex') attr = 'z-index';
 	if(attr.substring(0,5) == 'clip.')
 	    {
-	    return eval('element.' + attr);
+	    //return eval('element.' + attr);
+	    return element.clip[attr.substr(5)];
 	    }	
 	var comp_style = window.getComputedStyle(element,null);
 	var cssValue = comp_style.getPropertyCSSValue(attr);
@@ -509,7 +510,10 @@ function pg_setmodal(l)
 	setClipWidth(pg_masklayer, pg_width);
 	setClipHeight(pg_masklayer, pg_height);
 	resizeTo(pg_masklayer, pg_width, pg_height);
-	htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
+	if (cx__capabilities.CSS2)
+	    htr_setbgimage(pg_masklayer, "/sys/images/black_trans_50.png");
+	else
+	    htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
 	}
     if (l)
 	{
@@ -825,6 +829,8 @@ function pg_resize(l)
 	    alert("Cannot call pg_resize on a window on a non-NS4 browser");
 	    }
 	}
+    if (l.resized)
+	l.resized(maxwidth, maxheight);
     }
 
 /** Add a universal "is visible" function that handles inherited visibility. **/
@@ -1096,6 +1102,9 @@ function pg_init(l,a,gs,ct)
     // Events
     var ie = window.ifcProbeAdd(ifEvent);
     ie.Add("RightClick");
+    ie.Add("Load");
+
+    pg_addsched('window.ifcProbe(ifEvent).Activate("Load", {})', window, 100);
 
     return window;
     }
@@ -1160,27 +1169,58 @@ function pg_mvpginpt(ly)
     }
 
 
+function pg_updateschedtime()
+    {
+    var cur_tm = new Date();
+    var diff = cur_tm - pg_schedtimeoutstamp;
+    for(var i=0;i<pg_schedtimeoutlist.length;i++)
+        pg_schedtimeoutlist[i].tm = Math.max(0, pg_schedtimeoutlist[i].tm - diff);
+    }
+
 function pg_addschedtolist(s)
     {
-    var insert = pg_schedtimeoutlist.length;
-    for(var i=0;i<pg_schedtimeoutlist.length;i++)
+    var len = pg_schedtimeoutlist.length;
+    var insert = len; 
+    var diff = (new Date()) - pg_schedtimeoutstamp;
+    var reset_timer = (!len) || (s.tm < Math.max(0, pg_schedtimeoutlist[0].tm - diff));
+    if (reset_timer)
+	pg_stopschedtimeout();
+    else
+	s.tm += diff;
+    if (len > 0)
 	{
-	if (s.tm < pg_schedtimeoutlist[i].tm)
+	for(var i=0;i<len;i++)
 	    {
-	    insert = i;
-	    break;
+	    if (s.tm < pg_schedtimeoutlist[i].tm)
+		{
+		insert = i;
+		break;
+		}
 	    }
 	}
-    if (insert == pg_schedtimeoutlist.length)
+    if (insert == len)
 	pg_schedtimeoutlist.push(s);
     else
 	pg_schedtimeoutlist.splice(insert, 0, s);
+    if (reset_timer)
+	pg_startschedtimeout();
+    }
+
+function pg_stopschedtimeout()
+    {
+    if (pg_schedtimeout)
+	{
+	clearTimeout(pg_schedtimeout);
+	pg_schedtimeout = null;
+	pg_updateschedtime();
+	}
     }
 
 function pg_startschedtimeout()
     {
     if(!pg_schedtimeout && pg_schedtimeoutlist.length > 0) 
 	{
+	pg_schedtimeoutstamp = new Date();
 	if (window.pg_isloaded)
 	    pg_schedtimeout = setTimeout(pg_dosched, pg_schedtimeoutlist[0].tm);
 	else
@@ -1192,7 +1232,6 @@ function pg_addsched(e,o,t)
     {
     var sched = {exp:e, obj:o, tm:t, id:pg_schedtimeoutid++};
     pg_addschedtolist(sched);
-    pg_startschedtimeout();
     return sched.id;
     }
 
@@ -1200,7 +1239,6 @@ function pg_addsched_fn(o,f,p,t)
     {
     var sched = {func:f, obj:o, param:p, tm:t, id:pg_schedtimeoutid++};
     pg_addschedtolist(sched);
-    pg_startschedtimeout();
     return sched.id;
     }
 
@@ -1210,10 +1248,9 @@ function pg_delsched(id)
 	{
 	if (pg_schedtimeoutlist[i].id == id)
 	    {
+	    pg_stopschedtimeout();
 	    pg_schedtimeoutlist.splice(i, 1);
-	    if (pg_schedtimeoutlist.length == 0)
-		clearTimeout(pg_schedtimeout);
-	    pg_schedtimeout = null;
+	    pg_startschedtimeout();
 	    return true;
 	    }
 	}
@@ -1509,18 +1546,39 @@ function pg_setkbdfocus(l, a, xo, yo)
     }
 
 
+function pg_getrelcoord(l, sub_l)
+    {
+    var x = 0;
+    var y = 0;
+    while(sub_l && sub_l != l && sub_l != window)
+	{
+	x += getRelativeX(sub_l);
+	y += getRelativeY(sub_l);
+	sub_l = pg_get_container(sub_l);
+	}
+    return [x, y];
+    }
+
+
 // pg_show_containers() - makes sure containers, from innermost to
 // outermost, are displayed to the user.  Used when a control receives
 // keyboard focus to make sure control is visible to user.
-function pg_show_containers(l)
+function pg_show_containers(l, x, y)
     {
-    if (l == window || l == document) return true;
-    if (l.showcontainer && l.showcontainer() == false)
-	return false;
-    if (cx__capabilities.Dom0NS)
-	return pg_show_containers(l.parentLayer);
-    else if (cx__capabilities.Dom1HTML)
-	return pg_show_containers(l.parentNode);
+    var orig_l = l;
+    while (l && !wgtrIsNode(l))
+	{
+	if (l.showcontainer && l.showcontainer(orig_l, x, y) == false)
+	    return false;
+	l = pg_get_container(l);
+	}
+    while(l)
+	{
+	if (l.showcontainer && l.showcontainer(orig_l, x, y) == false)
+	    return false;
+	l = wgtrGetParent(l);
+	}
+    return true;
     }
 
 
