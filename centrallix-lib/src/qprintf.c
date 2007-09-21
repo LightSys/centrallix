@@ -36,10 +36,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: qprintf.c,v 1.4 2007/04/19 21:14:13 gbeeley Exp $
+    $Id: qprintf.c,v 1.5 2007/09/21 23:14:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/qprintf.c,v $
 
     $Log: qprintf.c,v $
+    Revision 1.5  2007/09/21 23:14:43  gbeeley
+    - (feature) adding ESCQWS and HTENLBR filters
+    - (change) the grow_fn interface needed to change in order to handle
+      sliding window buffer situations, such as those used by fdQPrintf()
+
     Revision 1.4  2007/04/19 21:14:13  gbeeley
     - (feature) adding &FILE and &PATH filters to qprintf.
     - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
@@ -94,7 +99,7 @@
 #define QPF_SPEC_T_QUOT		(7)
 #define QPF_SPEC_T_DQUOT	(8)
 #define QPF_SPEC_T_SYM		(9)
-#define QPF_SPEC_T_ESCQ		(10)
+#define QPF_SPEC_T_ESCQWS	(10)
 #define QPF_SPEC_T_NLEN		(11)
 #define QPF_SPEC_T_WS		(12)
 #define QPF_SPEC_T_ESCWS	(13)
@@ -110,7 +115,7 @@
 #define QPF_SPEC_T_DB64		(23)
 #define QPF_SPEC_T_RF		(24)
 #define QPF_SPEC_T_RR		(25)
-#define QPF_SPEC_T_HTE		(26)
+#define	QPF_SPEC_T_HTENLBR	(26)
 #define QPF_SPEC_T_DHTE		(27)
 #define QPF_SPEC_T_URL		(28)
 #define QPF_SPEC_T_DURL		(29)
@@ -120,8 +125,10 @@
 #define QPF_SPEC_T_SQLARG	(33)
 #define QPF_SPEC_T_SQLSYM	(34)
 #define QPF_SPEC_T_HTDATA	(35)
-#define QPF_SPEC_T_ENDFILT	(35)
-#define QPF_SPEC_T_MAXSPEC	(35)
+#define QPF_SPEC_T_HTE		(36)
+#define QPF_SPEC_T_ESCQ		(37)
+#define QPF_SPEC_T_ENDFILT	(37)
+#define QPF_SPEC_T_MAXSPEC	(37)
 
 /** Names for specifiers as used in format string - must match the above. **/
 const char*
@@ -137,7 +144,7 @@ qpf_spec_names[] =
     "QUOT",
     "DQUOT",
     "SYM",
-    "ESCQ",
+    "ESCQWS",
     "nLEN",
     "WS",
     "ESCWS",
@@ -153,7 +160,7 @@ qpf_spec_names[] =
     "DB64",
     "RF",
     "RR",
-    "HTE",
+    "HTENLBR",
     "DHTE",
     "URL",
     "DURL",
@@ -163,6 +170,8 @@ qpf_spec_names[] =
     "SQLARG",
     "SQLSYM",
     "HTDATA",	/* 35 */
+    "HTE",
+    "ESCQ",	/* 37 */
     NULL
     };
 
@@ -184,7 +193,10 @@ typedef struct
     int		(*ext_fns[QPF_MAX_EXTS])();
     char	is_source[QPF_MAX_EXTS];
     QPConvTable	quote_matrix;
+    QPConvTable	quote_ws_matrix;
+    QPConvTable	ws_matrix;
     QPConvTable	hte_matrix;
+    QPConvTable	htenlbr_matrix;
     QPConvTable	hex_matrix;
     }
     QPF_t;
@@ -248,6 +260,21 @@ qpfInitialize()
 	QPF.quote_matrix.Matrix['\\'] = "\\\\";
 	qpf_internal_SetupTable(&QPF.quote_matrix);
 
+	memset(&QPF.quote_ws_matrix, 0, sizeof(QPF.quote_ws_matrix));
+	QPF.quote_ws_matrix.Matrix['\''] = "\\'";
+	QPF.quote_ws_matrix.Matrix['"'] = "\\\"";
+	QPF.quote_ws_matrix.Matrix['\\'] = "\\\\";
+	QPF.quote_ws_matrix.Matrix['\n'] = "\\n";
+	QPF.quote_ws_matrix.Matrix['\t'] = "\\t";
+	QPF.quote_ws_matrix.Matrix['\r'] = "\\r";
+	qpf_internal_SetupTable(&QPF.quote_ws_matrix);
+
+	memset(&QPF.ws_matrix, 0, sizeof(QPF.ws_matrix));
+	QPF.ws_matrix.Matrix['\n'] = "\\n";
+	QPF.ws_matrix.Matrix['\t'] = "\\t";
+	QPF.ws_matrix.Matrix['\r'] = "\\r";
+	qpf_internal_SetupTable(&QPF.ws_matrix);
+
 	memset(&QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
 	QPF.hte_matrix.Matrix['<'] = "&lt;";
 	QPF.hte_matrix.Matrix['>'] = "&gt;";
@@ -258,6 +285,18 @@ qpfInitialize()
 	QPF.hte_matrix.Matrix['}'] = "&#125;";
 	QPF.hte_matrix.Matrix['\0'] = "&#0;";
 	qpf_internal_SetupTable(&QPF.hte_matrix);
+
+	memset(&QPF.htenlbr_matrix, 0, sizeof(QPF.htenlbr_matrix));
+	QPF.htenlbr_matrix.Matrix['<'] = "&lt;";
+	QPF.htenlbr_matrix.Matrix['>'] = "&gt;";
+	QPF.htenlbr_matrix.Matrix['&'] = "&amp;";
+	QPF.htenlbr_matrix.Matrix['"'] = "&quot;";
+	QPF.htenlbr_matrix.Matrix['\''] = "&#39;";
+	QPF.htenlbr_matrix.Matrix[';'] = "&#59;";
+	QPF.htenlbr_matrix.Matrix['}'] = "&#125;";
+	QPF.htenlbr_matrix.Matrix['\0'] = "&#0;";
+	QPF.htenlbr_matrix.Matrix['\n'] = "<br>";
+	qpf_internal_SetupTable(&QPF.htenlbr_matrix);
 
 	for(i=0;i<QPF_MATRIX_SIZE;i++)
 	    {
@@ -391,7 +430,7 @@ qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
 /*** qpfPrintf_grow() - returns whether the additional size will fit.
  ***/
 int
-qpfPrintf_grow(char** str, size_t* size, void* arg, int req_size)
+qpfPrintf_grow(char** str, size_t* size, int offs, void* arg, int req_size)
     {
     return (*size) >= req_size;
     }
@@ -459,7 +498,7 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 			    {
 			    rval += (tlen-1);
 			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+tlen+min_room <= (*dstsize), 1) || 
-				  (grow_fn(dstbuf, dstsize, grow_arg, (*dstoffs)+tlen+min_room))))
+				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+tlen+min_room))))
 				{
 				while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
 				limit -= tlen;
@@ -481,7 +520,7 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 			if (__builtin_expect(limit > 0, 1))
 			    {
 			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+1+min_room <= (*dstsize), 1) || 
-				  (grow_fn(dstbuf, dstsize, grow_arg, (*dstoffs)+1+min_room))))
+				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+1+min_room))))
 				{
 				(*dstbuf)[(*dstoffs)++] = srcbuf[i];
 				limit--;
@@ -559,7 +598,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 	/** this all fall apart if there isn't at least room for the
 	 ** null terminator!
 	 **/
-	if ((!*str || *size < 1) && !grow_fn(str, size, grow_arg, 1)) 
+	if ((!*str || *size < 1) && !grow_fn(str, size, cpoffset, grow_arg, 1)) 
 	    { rval = -EINVAL; QPERR(QPF_ERR_T_BUFOVERFLOW); goto error; }
 
 	/** search for %this-and-that (specifiers), copy everything else **/
@@ -573,7 +612,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 		{
 		cplen = (endptr - format);
 		if (__builtin_expect(nogrow, 0)) cplen = 0;
-		if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (nogrow || !grow_fn(str, size, grow_arg, cpoffset+cplen+1)))
+		if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (nogrow || !grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
 		    cplen = (*size)-cpoffset-1;
@@ -593,7 +632,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 		/** Simple specifiers **/
 		if (__builtin_expect(format[0] == '%', 0))
 		    {
-		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+2))))
+		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '%';
 		    else
 			{
@@ -605,7 +644,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 		    }
 		else if (__builtin_expect(format[0] == '&',0))
 		    {
-		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+2))))
+		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '&';
 		    else
 			{
@@ -807,9 +846,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 				    break;
 				
 				case QPF_SPEC_T_ESCQ:
+				case QPF_SPEC_T_ESCQWS:
+				case QPF_SPEC_T_ESCWS:
 				case QPF_SPEC_T_QUOT:
 				case QPF_SPEC_T_DQUOT:
 				case QPF_SPEC_T_HTE:
+				case QPF_SPEC_T_HTENLBR:
 				case QPF_SPEC_T_HEX:
 				    if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
 					{
@@ -823,6 +865,14 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 									min_room = 1;
 									quote = 0;
 									break;
+					    case QPF_SPEC_T_ESCQWS:	table = &QPF.quote_ws_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_ESCWS:	table = &QPF.ws_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
 					    case QPF_SPEC_T_QUOT:	table = &QPF.quote_matrix; 
 									min_room = 2;
 									quote = '\'';
@@ -832,6 +882,10 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 									quote = '"';
 									break;
 					    case QPF_SPEC_T_HTE:	table = &QPF.hte_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_HTENLBR:	table = &QPF.htenlbr_matrix;
 									min_room = 1;
 									quote = 0;
 									break;
@@ -864,7 +918,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 					    }
 					if (quote)
 					    {
-					    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+1+1))))
+					    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
 						{
 						(*str)[cpoffset++] = quote;
 						}
@@ -886,7 +940,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 					if (n != cpoffset - oldcpoffset) nogrow = 1;
 					if (quote)
 					    {
-					    if ((__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, grow_arg, cpoffset+1+1))))
+					    if ((__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
 						{
 						(*str)[cpoffset++] = quote;
 						}
@@ -921,7 +975,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, int (*grow_fn)(), 
 			    {
 			    copied += cplen;
 			    if (__builtin_expect(nogrow, 0)) cplen = 0;
-			    if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (!grow_fn(str, size, grow_arg, cpoffset+cplen+1)))
+			    if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (!grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
 				{
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
 				cplen = (*size) - cpoffset - 1;
