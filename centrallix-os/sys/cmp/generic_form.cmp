@@ -10,7 +10,7 @@ generic_form "widget/component-decl"
 	{
 	sql = runserver("select * from " + :this:table + "/rows");
 	baseobj = runserver(:this:table + "/rows");
-	replicasize=100;
+	replicasize=30;
 	readahead=12;
 	autoquery = onfirstreveal;
 
