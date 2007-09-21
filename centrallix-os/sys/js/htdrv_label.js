@@ -89,7 +89,7 @@ function lb_disable()
 
 function lb_update()
     {
-    pg_serialized_write(this, this.stylestr + htutil_encode(this.content) + "</font></td></tr></table>", null);
+    pg_serialized_write(this, this.stylestr + htutil_nlbr(htutil_encode(this.content)) + "</font></td></tr></table>", null);
     }
 
 function lb_cb_reveal(e)
