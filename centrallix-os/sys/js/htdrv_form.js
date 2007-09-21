@@ -24,6 +24,12 @@ function form_cb_register(element)
 	}
     }
 
+function form_cb_nonexistent(n)
+    {
+    // not created yet?
+    return null;
+    }
+
 function form_cb_getvalue(v)
     {
     if (v == 'recid') return this.recid;
@@ -212,10 +218,12 @@ function form_cb_object_available(data)
 	{
 	for(var j in this.data)
 	    {
-	    if (!this.ifcProbe(ifValue).Exists(this.data[j].oid))
+	    if (!this.ifcProbe(ifValue).Exists(this.data[j].oid, true))
+		{
 		this.ifcProbe(ifValue).Add(this.data[j].oid, form_cb_getvalue);
+		}
 	    }
-	if (this.didsearch && (this.didsearchlast || data.id == this.recid))
+	if (this.didsearch && (data.__osml_is_last || this.didsearchlast || data.id == this.recid))
 	    this.lastrecid = data.id;
 	this.recid = data.id;
 	for(var i in this.elements)
@@ -730,8 +738,6 @@ function form_action_queryexec()
     {
     if(!this.allowquery) {alert('Query not allowed');return 0;}
     if(!(this.mode=='Query')) {alert("You can't execute a query if you're not in Query mode.");return 0;}
-    var where = new String;
-    var firstone = true;
 /** build an query object to give the osrc **/
     var query=new Array();
     query.oid=null;
@@ -1150,7 +1156,7 @@ function form_init(form,param)
     iv.Add("is_queryexecutable",form_cb_getvalue);
     iv.Add("recid",form_cb_getvalue);
     iv.Add("lastrecid",form_cb_getvalue);
-    iv.SetNonexistentBehavior(true);
+    iv.SetNonexistentCallback(form_cb_nonexistent);
 
     return form;
     }
