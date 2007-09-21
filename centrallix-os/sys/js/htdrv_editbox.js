@@ -35,7 +35,7 @@ function eb_actionsetvalue(aparam)
 	this.setvalue(aparam.Value);
 	if (this.form) this.form.DataNotify(this, true);
 	this.changed=true;
-	cn_activate(this,"DataChange", {});
+	cn_activate(this,"DataModify", {});
 	}
     }
 
@@ -46,6 +46,7 @@ function eb_setvalue(v,f)
     if (eb_current == this)
 	c = v.length;
     this.Update(v, c);
+    cn_activate(this,"DataChange", {});
     }
 
 function eb_clearvalue()
@@ -297,8 +298,9 @@ function eb_keyhandler(l,e,k)
 	//if(k != 9 && k != 10 && k != 13 && k != 27 && eb_current.form) 
 	if (l.form) l.form.DataNotify(l);
 	l.changed=true;
-	cn_activate(l,"DataChange", {});
+	cn_activate(l,"DataModify", {});
 	}
+    if (k == 13 || k == 9 || k == 10) cn_activate(l, "DataChange", {});
     cn_activate(l, "KeyPress", {Key:k, Modifiers:e.modifiers, Content:l.content});
     return false;
     }
@@ -329,7 +331,11 @@ function eb_deselect()
 	{
 	cn_activate(eb_current,"LoseFocus", {});
 	eb_current.cursorlayer = null;
-	if (eb_current.changed) eb_current.changed=false;
+	if (eb_current.changed)
+	    {
+	    cn_activate(eb_current,"DataChange", {});
+	    eb_current.changed=false;
+	    }
 	eb_current.charOffset=0;
 	eb_current.cursorCol=0;
 	eb_current.Update(eb_current.content, eb_current.cursorCol);
@@ -506,6 +512,7 @@ function eb_init(param)
     ie.Add("GetFocus");
     ie.Add("LoseFocus");
     ie.Add("DataChange");
+    ie.Add("DataModify");
     ie.Add("KeyPress");
     ie.Add("TabPressed");
     ie.Add("ReturnPressed");
