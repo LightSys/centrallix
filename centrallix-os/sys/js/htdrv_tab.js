@@ -188,8 +188,10 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
     htr_watch(l_tab,"visible", "tc_visible_changed"); //visible property
     l_tab.tc_visible_changed = tc_visible_changed;
+
     // Show Container API
     l_page.showcontainer = tc_showcontainer;
+    l_tab.showcontainer = tc_showcontainer;
 
     return l_tab;
     }
