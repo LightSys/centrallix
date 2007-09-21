@@ -82,7 +82,7 @@ function tv_action_setroot(aparam)
     // Set the root
     if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
     if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches});
+    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches, use3d:this.use3d, showrb:this.showrb});
     //tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, pdoc:this.root.pdoc, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches});
     if (aparam.Expand == 'yes') this.root.expand();
     }
@@ -209,44 +209,46 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
     var start_img = (l.mainlayer.show_branches)?0:l.tree_depth;
     for(var i = start_img; i<l.tree_depth-1; i++)
 	{
-	if (l.parent.imgs[i] == '/sys/images/tree_middle_blank.gif' || l.parent.imgs[i] == '/sys/images/tree_corner_closed.gif' || l.parent.imgs[i] == '/sys/images/tree_corner_leaf.gif' || l.parent.imgs[i] == '/sys/images/tree_corner_open.gif')
-	    l.imgs[i] = '/sys/images/tree_middle_blank.gif';
+	if (l.parent.imgs[i] == l.root.imgnames.mid_blank || l.parent.imgs[i] == l.root.imgnames.cnr_closed || l.parent.imgs[i] == l.root.imgnames.cnr_leaf || l.parent.imgs[i] == l.root.imgnames.cnr_open)
+	    l.imgs[i] = l.root.imgnames.mid_blank;
 	else
-	    l.imgs[i] = '/sys/images/tree_middle_branch.gif';
+	    l.imgs[i] = l.root.imgnames.mid_branch;
 	}
     if (l.tree_depth > start_img)
 	{
 	if (is_last)
 	    {
 	    if (has_subobj == null || has_subobj == true)
-		l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_closed.gif';
+		l.imgs[l.tree_depth-1] = l.root.imgnames.cnr_closed;
 	    else
-		l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_leaf.gif';
+		l.imgs[l.tree_depth-1] = l.root.imgnames.cnr_leaf;
 	    }
 	else
 	    {
 	    if (has_subobj == null || has_subobj == true)
-		l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_closed.gif';
+		l.imgs[l.tree_depth-1] = l.root.imgnames.mid_closed;
 	    else
-		l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_leaf.gif';
+		l.imgs[l.tree_depth-1] = l.root.imgnames.mid_leaf;
 	    }
 	}
 
     // build the layer
     if(cx__capabilities.Dom0NS)
 	{
-	var tvtext = "";
+	var tvtext = "<nobr>";
 	for(var i = start_img; i<=l.tree_depth; i++)
-	    tvtext += "<IMG width='18' SRC='" + l.imgs[i] + "' align='left'>";
+	    tvtext += "<IMG width='" + l.root.iconwidth + "' SRC='" + l.imgs[i] + "' align='left'>";
 	tvtext += "&nbsp;<A HREF='" + link_href + "'>" +
-	    (link_bold?"<b>":"") + link_text + (link_bold?"<b>":"") + "</A>";
+	    (link_bold?"<b>":"") + htutil_encode(link_text) + (link_bold?"<b>":"") + "</A></nobr>";
 	if (l.tvtext != tvtext)
 	    {
 	    l.expanded = 0;
 	    l.tvtext = tvtext;
 	    l.document.tags.A.textDecoration = "none";
-	    l.document.writeln(l.tvtext);
-	    l.document.close();
+	    htr_write_content(l, l.tvtext);
+	    //l.document.writeln(l.tvtext);
+	    //l.document.close();
+	    l.document.tags.A.textDecoration = "none";
 	    //pg_serialized_write(l, l.tvtext, null);
 	    }
 	}
@@ -260,33 +262,36 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	    }
 
 	/** the image **/
+	var nobr = document.createElement('nobr');
+	l.appendChild(nobr);
 	for(var i = start_img; i<=l.tree_depth; i++)
 	    {
 	    var img = document.createElement('img');
-	    img.setAttribute('width', '18');
+	    img.setAttribute('width', '' + l.root.iconwidth);
 	    img.setAttribute('src',l.imgs[i]);
 	    img.setAttribute('align','left');
-	    l.appendChild(img);
+	    nobr.appendChild(img);
 	    }
 
 	/** the space - a0 is the unicode value for nbsp. **/
-	l.appendChild(document.createTextNode("\u00a0"));
+	nobr.appendChild(document.createTextNode("\u00a0"));
 
 	/** the link **/
 	var a = document.createElement('a');
 	a.setAttribute('href',link_href);
 	a.layer = l;
+	a.style.textDecoration = "none";
 	if(link_bold)
 	    {
 	    var bold = document.createElement('b');
-	    bold.appendChild(document.createTextNode(link_text));
+	    bold.appendChild(document.createTextNode(String(link_text).replace(/ /g, "\u00a0")));
 	    a.appendChild(bold);
 	    }
 	else
 	    {
-	    a.appendChild(document.createTextNode(link_text));
+	    a.appendChild(document.createTextNode(String(link_text).replace(/ /g, "\u00a0")));
 	    }
-	l.appendChild(a);
+	nobr.appendChild(a);
 	}
     else
 	{
@@ -331,7 +336,7 @@ function tv_GetLinkCnt(l)
 			}
 			o=l.parent.objptr[l.objn];
 		    var link_txt=l.objn+"&nbsp;("+typeof(o)+"):&nbsp;"+o;
-		    tv_build_layer(l,"/sys/images/ico01b.gif","",link_txt, false, false);
+		    tv_build_layer(l,l.root.imgnames.ico_file,"",link_txt, false, false);
 		    }
 		return 0;
 		}
@@ -349,7 +354,7 @@ function tv_GetLinkCnt(l)
 function tv_MakeRoom(tv_tgt_layer, linkcnt)
     {
     if (window != tv_tgt_layer.pdoc.tv_layer_tgt)
-	setClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt,getClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt)+ 20*(linkcnt));
+	setClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt,getClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt)+ tv_tgt_layer.root.rowheight*(linkcnt));
 
     var tgtTop = getRelativeY(tv_tgt_layer);
     var layers = pg_layers(tv_tgt_layer.pdoc);
@@ -357,10 +362,10 @@ function tv_MakeRoom(tv_tgt_layer, linkcnt)
 	{
 	var sl = layers[j];
 	var slTop = getRelativeY(sl);
-	if (slTop >= tgtTop + 20 && sl != tv_tgt_layer && htr_getvisibility(sl) == 'inherit')
-	    setRelativeY(sl, slTop+20*linkcnt);
+	if (slTop >= tgtTop + tv_tgt_layer.root.rowheight && sl != tv_tgt_layer && htr_getvisibility(sl) == 'inherit')
+	    setRelativeY(sl, slTop+tv_tgt_layer.root.rowheight*linkcnt);
 	}
-    return 20*linkcnt;
+    return tv_tgt_layer.root.rowheight*linkcnt;
     }
 
 function tv_clear_objs(l) { for(var i = 2; i<l.pdoc.layers.length;i++) l.pdoc.layers[i].objptr = null; }
@@ -369,7 +374,7 @@ function tv_BuildNewLayers(l, linkcnt)
     {
     /** pre-load some variables **/
     //var tgtClipWidth = tv_tgt_layer.clip.width;
-    var tgtClipWidth = tv_tgt_layer.mainlayer.setwidth - (getRelativeX(tv_tgt_layer) - getRelativeX(tv_tgt_layer.mainlayer)) - 20;
+    var tgtClipWidth = tv_tgt_layer.mainlayer.setwidth - (getRelativeX(tv_tgt_layer) - getRelativeX(tv_tgt_layer.mainlayer)) - tv_tgt_layer.root.iconwidth;
     var tgtX = getRelativeX(tv_tgt_layer);
     var tgtY = getRelativeY(tv_tgt_layer);
     var jsProps = null;
@@ -423,11 +428,11 @@ function tv_BuildNewLayers(l, linkcnt)
 		link_txt=j+" ("+t+"): ";
 		if(t=="function")
 		    {
-		    im='01';
+		    im = tv_tgt_layer.root.imgnames.ico_file;
 		    }
 		else
 		    {
-		    im = '02';
+		    im = tv_tgt_layer.root.imgnames.ico_folder;
 		    link_bold = 1;
 		    if(o.name) link_txt+=" "+o.name;
 		    }
@@ -439,11 +444,11 @@ function tv_BuildNewLayers(l, linkcnt)
 		else
 		    link_txt=j+" ("+t+"): "+o;
 		one_layer.objptr=null;
-		im = '01';
+		im = tv_tgt_layer.root.imgnames.ico_file;
 		}
 	    one_layer.isjs=true;
 	    one_layer.objn=j;
-	    can_expand = (im == '02');
+	    can_expand = (im == tv_tgt_layer.root.imgnames.ico_folder);
 	    }
 	else
 	    {
@@ -451,30 +456,30 @@ function tv_BuildNewLayers(l, linkcnt)
 	    link_href = links[i].href;
 	    one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
-	    im = '01';
+	    im = tv_tgt_layer.root.imgnames.ico_file;
 	    if (link_txt == '' || link_txt == null) link_txt = one_link;
 	    else link_txt = one_link + ' - ' + link_txt;
 	    //if (one_link.lastIndexOf('/') > 0) im = '02';
 	    //else 
 	    one_link = one_link + '/';
 	    var flags = cx_info_extract_flags(links[i].text);
-	    if (flags & cx_info_flags.can_have_subobj) im = '02';
+	    if (flags & cx_info_flags.can_have_subobj) im = tv_tgt_layer.root.imgnames.ico_folder;
 	    if (flags & cx_info_flags.no_subobj) can_expand = false;
 	    if (flags & cx_info_flags.has_subobj) can_expand = true;
 	    }
 
 	one_layer.tree_depth = one_layer.parent.tree_depth+1;
-	tv_build_layer(one_layer,"/sys/images/ico" + im + "b.gif",link_href,link_txt, link_bold, i == linkcnt, can_expand);
+	one_layer.root = tv_tgt_layer.root;
+	tv_build_layer(one_layer,im,link_href,link_txt, link_bold, i == linkcnt, can_expand);
 	one_layer.link_href = link_href;
 	one_layer.fname = tv_tgt_layer.fname + one_link;
-	one_layer.type = im;
 	one_layer.layer = one_layer;
 	/*if (cx__capabilities.Dom0NS)
 	    {*/
 	    if (l.mainlayer.show_branches)
-		moveTo(one_layer, tgtX, tgtY + 20*i);
+		moveTo(one_layer, tgtX, tgtY + tv_tgt_layer.root.rowheight*i);
 	    else
-		moveTo(one_layer, tgtX + 20, tgtY + 20*i);
+		moveTo(one_layer, tgtX + tv_tgt_layer.root.iconwidth, tgtY + tv_tgt_layer.root.rowheight*i);
 	    /*}
 	else if (cx__capabilities.Dom1HTML)
 	    {
@@ -501,7 +506,6 @@ function tv_BuildNewLayers(l, linkcnt)
 	one_layer.zIndex = tv_tgt_layer.zIndex;
 	one_layer.pdoc = tv_tgt_layer.pdoc;
 	one_layer.ld = tv_tgt_layer.ld;
-	one_layer.root = tv_tgt_layer.root;
 	//if (one_layer.clip.width != tgtClipWidth - one_layer.pageX + tv_tgt_layer.pageX)
 	//    one_layer.clip.width = tgtClipWidth - one_layer.pageX + tv_tgt_layer.pageX;
 	}
@@ -527,10 +531,10 @@ function tv_loaded(e)
 
     if (linkcnt < 0 && l.mainlayer.show_branches && l.tree_depth > 0)
 	{
-	if (l.imgs[l.tree_depth-1] == '/sys/images/tree_middle_open.gif')
-	    l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_leaf.gif';
-	else if (l.imgs[l.tree_depth-1] == '/sys/images/tree_corner_open.gif')
-	    l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_leaf.gif';
+	if (l.imgs[l.tree_depth-1] == l.root.imgnames.mid_open)
+	    l.imgs[l.tree_depth-1] = l.root.imgnames.mid_leaf;
+	else if (l.imgs[l.tree_depth-1] == l.root.imgnames.cnr_open)
+	    l.imgs[l.tree_depth-1] = l.root.imgnames.cnr_leaf;
 	var imgs = pg_images(l);
 	pg_set(imgs[l.tree_depth-1], 'src', l.imgs[l.tree_depth-1]);
 	}
@@ -560,12 +564,13 @@ function tv_loaded(e)
 	var pl = l.mainlayer.parentLayer.mainlayer;
 	if (pl.ifcProbe && pl.ifcProbe(ifAction).Exists('ScrollTo'))
 	    {
-	    pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:getRelativeY(l), RangeEnd:getRelativeY(l)+offset+20});
+	    pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:getRelativeY(l), RangeEnd:getRelativeY(l)+offset+l.root.rowheight});
 	    }
 	}
 
     pg_set(tv_tgt_layer.img,'src',tv_tgt_layer.img.realsrc);
-    pg_set(tv_tgt_layer.img,'src',htutil_subst_last(tv_tgt_layer.img.src,'b.gif'));
+    if (tv_tgt_layer.root.use3d)
+	pg_set(tv_tgt_layer.img,'src',htutil_subst_last(tv_tgt_layer.img.src,'b.gif'));
     tv_tgt_layer.img.realsrc = null;
     tv_tgt_layer = null;
     return false;
@@ -578,6 +583,41 @@ function tv_init(param)
     //l.LSParent = param.parent;
     l.fname = param.fname;
     l.show_branches = param.branches;
+    l.show_root_branch = param.showrb;
+    l.use3d = param.use3d;
+    l.imgnames = {};
+    if (l.use3d)
+	{
+	l.rowheight = 20;
+	l.iconwidth = 18;
+	l.imgnames.cnr_closed = '/sys/images/tree_corner_closed.gif';
+	l.imgnames.cnr_leaf = '/sys/images/tree_corner_leaf.gif';
+	l.imgnames.cnr_open = '/sys/images/tree_corner_open.gif';
+	l.imgnames.mid_blank = '/sys/images/tree_middle_blank.gif';
+	l.imgnames.mid_branch = '/sys/images/tree_middle_branch.gif';
+	l.imgnames.mid_closed = '/sys/images/tree_middle_closed.gif';
+	l.imgnames.mid_leaf = '/sys/images/tree_middle_leaf.gif';
+	l.imgnames.mid_open = '/sys/images/tree_middle_open.gif';
+	l.imgnames.ico_loading = '/sys/images/ico11c.gif';
+	l.imgnames.ico_file = '/sys/images/ico01b.gif';
+	l.imgnames.ico_folder = '/sys/images/ico02b.gif';
+	}
+    else
+	{
+	l.rowheight = 16;
+	l.iconwidth = 16;
+	l.imgnames.cnr_closed = '/sys/images/tree_sm_corner_closed.gif';
+	l.imgnames.cnr_leaf = '/sys/images/tree_sm_corner_leaf.gif';
+	l.imgnames.cnr_open = '/sys/images/tree_sm_corner_open.gif';
+	l.imgnames.mid_blank = '/sys/images/tree_sm_middle_blank.gif';
+	l.imgnames.mid_branch = '/sys/images/tree_sm_middle_branch.gif';
+	l.imgnames.mid_closed = '/sys/images/tree_sm_middle_closed.gif';
+	l.imgnames.mid_leaf = '/sys/images/tree_sm_middle_leaf.gif';
+	l.imgnames.mid_open = '/sys/images/tree_sm_middle_open.gif';
+	l.imgnames.ico_loading = '/sys/images/ico11_16x16.gif';
+	l.imgnames.ico_file = '/sys/images/ico01_16x16.gif';
+	l.imgnames.ico_folder = '/sys/images/ico02_16x16.gif';
+	}
     if (htr_getvisibility(l) == 'inherit')
 	{
 	l.tree_depth = 0;
@@ -588,6 +628,7 @@ function tv_init(param)
 	l.tree_depth = -1;
 	l.show_root = false;
 	}
+    if (l.show_root_branch) l.tree_depth = 0;
     var t;
     if(!l.is_initialized)
 	{ /* not re-init */
@@ -606,7 +647,7 @@ function tv_init(param)
 	}
     else
 	{ /* re-init */
-	tv_build_layer(l,"/sys/images/ico02b.gif","",l.fname,false,null);
+	tv_build_layer(l,l.root.imgnames.ico_folder,"",l.fname,false,null);
 	if (param.newroot)
 	    l.objptr = param.newroot;
 	else if (t=(/javascript:([a-zA-Z0-9_]*)/).exec(param.fname))
@@ -616,7 +657,6 @@ function tv_init(param)
 	l.isjs=true;
 	}
     l.expanded = 0;
-    l.type = '02';
     l.img = pg_images(l)[0];
     l.img.layer = l;
     l.img.kind = 'tv';
@@ -675,16 +715,16 @@ function tv_expand()
     if (l.expanded==1) return false;
     if (l.img.realsrc != null) return false;
     l.img.realsrc=l.img.src;
-    pg_set(l.img,'src','/sys/images/ico11c.gif');
+    pg_set(l.img,'src',l.root.imgnames.ico_loading);
     tv_tgt_layer = l;
     l.tvtext = '';
 
     if (l.mainlayer.show_branches && l.tree_depth > 0)
 	{
-	if (l.imgs[l.tree_depth-1] == '/sys/images/tree_middle_closed.gif')
-	    l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_open.gif';
-	else if (l.imgs[l.tree_depth-1] == '/sys/images/tree_corner_closed.gif')
-	    l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_open.gif';
+	if (l.imgs[l.tree_depth-1] == l.root.imgnames.mid_closed)
+	    l.imgs[l.tree_depth-1] = l.root.imgnames.mid_open;
+	else if (l.imgs[l.tree_depth-1] == l.root.imgnames.cnr_closed)
+	    l.imgs[l.tree_depth-1] = l.root.imgnames.cnr_open;
 	var imgs = pg_images(l);
 	pg_set(imgs[l.tree_depth-1], 'src', l.imgs[l.tree_depth-1]);
 	}
@@ -716,15 +756,15 @@ function tv_collapse()
     if (l.expanded==0) return false;
     if (l.img.realsrc != null) return false;
     l.img.realsrc=l.img.src;
-    pg_set(l.img,'src','/sys/images/ico11c.gif');
+    pg_set(l.img,'src',l.root.imgnames.ico_loading);
     tv_tgt_layer = l;
 
     if (l.mainlayer.show_branches && l.tree_depth > 0)
 	{
-	if (l.imgs[l.tree_depth-1] == '/sys/images/tree_middle_open.gif')
-	    l.imgs[l.tree_depth-1] = '/sys/images/tree_middle_closed.gif';
-	else if (l.imgs[l.tree_depth-1] == '/sys/images/tree_corner_open.gif')
-	    l.imgs[l.tree_depth-1] = '/sys/images/tree_corner_closed.gif';
+	if (l.imgs[l.tree_depth-1] == l.root.imgnames.mid_open)
+	    l.imgs[l.tree_depth-1] = l.root.imgnames.mid_closed;
+	else if (l.imgs[l.tree_depth-1] == l.root.imgnames.cnr_open)
+	    l.imgs[l.tree_depth-1] = l.root.imgnames.cnr_closed;
 	var imgs = pg_images(l);
 	pg_set(imgs[l.tree_depth-1], 'src', l.imgs[l.tree_depth-1]);
 	}
@@ -769,7 +809,7 @@ function tv_collapse()
 	var visibility = pg_get_style(sl,'visibility');
 	if (getRelativeY(sl) > getRelativeY(l) && (visibility == 'inherit' || visibility == 'visible') )
 	    {
-	    setRelativeY(sl, getRelativeY(sl)-20*cnt);
+	    setRelativeY(sl, getRelativeY(sl)-l.root.rowheight*cnt);
 	    }
 	}
     if(cx__capabilities.Dom0NS)
@@ -786,7 +826,8 @@ function tv_collapse()
 	}
 
     pg_set(l.img,'src',l.img.realsrc);
-    pg_set(l.img,'src',htutil_subst_last(l.img.src,'b.gif'));
+    if (l.root.use3d)
+	pg_set(l.img,'src',htutil_subst_last(l.img.src,'b.gif'));
     l.img.realsrc = null;
     }
 
@@ -831,7 +872,8 @@ function tv_mousedown(e)
         else
             {
             tv_target_img = e.target;
-            pg_set(tv_target_img.layer.img,'src',htutil_subst_last(tv_target_img.layer.img.src,'c.gif'));
+	    if (tv_target_img.layer.root.use3d)
+		pg_set(tv_target_img.layer.img,'src',htutil_subst_last(tv_target_img.layer.img.src,'c.gif'));
             }
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
