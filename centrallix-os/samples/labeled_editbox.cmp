@@ -1,12 +1,14 @@
 $Version=2$
 labeled_editbox "widget/component-decl"
     {
-    width=220;height=20;
+    width=220;height=runserver(condition(char_length(:this:preview_sql)>0,88,20));
 
-    form "widget/parameter" { type=object; find_container="widget/form";}
+    form "widget/parameter" { type=object; find_container="widget/form"; }
     field "widget/parameter" { type=string; }
     text "widget/parameter" { type=string; }
-    lookup_with "widget/parameter" { type=string; default=null;}
+    lookup_with "widget/parameter" { type=string; default=null; }
+    preview_sql "widget/parameter" { type=string; default=null; }
+    preview_field "widget/parameter" { type=string; default=null; }
     type "widget/parameter" { type=string; default="standard"; }
 
     SetValue "widget/component-decl-action" { }
@@ -23,6 +25,29 @@ labeled_editbox "widget/component-decl"
 	form=form; 
         create_hints "widget/hints" { condition=runserver(:this:type == 'create'); default = runclient(user_name()); style=readonly; }
         ro_hints "widget/hints" { condition=runserver(:this:type == 'readonly'); style=readonly; }
+	}
+    preview_osrc "widget/osrc"
+	{
+	condition=runserver(char_length(:this:preview_sql) > 0);
+	sql = runserver(:this:preview_sql);
+	autoquery=never;
+	replicasize=2;
+	readahead=1;
+	preview_pane "widget/pane"
+	    {
+	    x=100;y=24;width=120;height=64;
+	    //style=lowered;bgcolor="#d0d0d0";
+	    style=flat;
+	    preview_form "widget/form"
+		{
+		preview_label "widget/label"
+		    {
+		    fieldname=msg;
+		    x=0;y=0;width=118;height=62;fl_height=100;
+		    }
+		}
+	    }
+	linkage "widget/osrc-rule" { ruletype=filter; fieldname=runserver(:this:preview_field); value=runclient(:editbox:content); min_chars=1; trailing_wildcard=no; query_delay=1000;}
 	}
     lookup_btn "widget/textbutton"
 	{ 
