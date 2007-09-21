@@ -55,10 +55,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.38 2007/04/18 18:42:07 gbeeley Exp $
+    $Id: mtask.c,v 1.39 2007/09/21 23:11:49 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.39  2007/09/21 23:11:49  gbeeley
+    - (change) adhere to new grow_fn interface in qprintf
+    - (bugfix) incorrect logic in the Grow() function et al
+
     Revision 1.38  2007/04/18 18:42:07  gbeeley
     - (feature) hex encoding in qprintf (&HEX filter).
     - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
@@ -2803,15 +2807,16 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
  *** there.
  ***/
 int
-fdQPrintf_Grow(char** str, size_t* size, void* arg, int req_size)
+fdQPrintf_Grow(char** str, size_t* size, int offs, void* arg, int req_size)
     {
     pFile filedesc = (pFile)arg;
     int incr;
 
 	if (req_size <= *size) return 1;
-	if (req_size > filedesc->PrintfBufSize) return 0;
 
-	incr = *size - (filedesc->PrintfBuf - *str);
+	incr = offs - (filedesc->PrintfBuf - *str);
+	if (req_size - offs > filedesc->PrintfBufSize) return 0;
+
 	fdWrite(filedesc, filedesc->PrintfBuf, incr, 0, FD_U_PACKET);
 	(*size) += incr;
 	(*str) -= incr;
@@ -2843,7 +2848,8 @@ fdQPrintf_va(pFile filedesc, const char* fmt, va_list va)
 
 	/** Print it **/
 	rval = qpfPrintf_va_internal(NULL, &buf, &size, fdQPrintf_Grow, filedesc, fmt, va);
-	fdWrite(filedesc, filedesc->PrintfBuf, size - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
+	if (rval < 0) return rval;
+	fdWrite(filedesc, filedesc->PrintfBuf, rval - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
    
     return rval;
     }
