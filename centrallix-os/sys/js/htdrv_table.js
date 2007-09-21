@@ -29,7 +29,10 @@ function tbld_format_cell(cell, color)
 	}
     if (txt != cell.content)
 	{
-	pg_serialized_write(cell, txt, null);
+	if (cx__capabilities.Dom0NS) // only serialize for NS4
+	    pg_serialized_write(cell, txt, null);
+	else
+	    htr_write_content(cell, txt);
 	cell.content = txt;
 	}
     }
@@ -98,19 +101,19 @@ function tbld_update(p1)
 	    
 	    for(var j in this.rows[i].fg.cols)
 		{
+		txt = '';
 		for(var k in this.osrc.replica[this.rows[i].fg.recnum])
 		    {
 		    if(this.osrc.replica[this.rows[i].fg.recnum][k].oid==this.cols[j][0])
 			{
-			this.rows[i].fg.cols[j].data=htutil_obscure(this.osrc.replica[this.rows[i].fg.recnum][k].value);
-			if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
-			    this.rows[i].fg.cols[j].data='';
-			if (this.rows[i].fg.cols[j].content != txt)
-			    {
-			    this.FormatCell(this.rows[i].fg.cols[j], this.textcolor);
-			    }
+			txt=this.osrc.replica[this.rows[i].fg.recnum][k].value;
+			break;
 			}
 		    }
+		this.rows[i].fg.cols[j].data=htutil_obscure(txt);
+		if(this.rows[i].fg.cols[j].data == null || this.rows[i].fg.cols[j].data == undefined)
+		    this.rows[i].fg.cols[j].data='';
+		this.FormatCell(this.rows[i].fg.cols[j], this.textcolor);
 		}
 	    }
 	else
@@ -743,16 +746,16 @@ function tbld_mousedown(e)
             
             var colname=ly.row.table.cols[ly.colnum][0];
                 /** check for the this field already in the sort criteria **/
-            if(':'+colname+' asc'==neworder[0])
-                neworder[0]=':'+colname+' desc';
-            else if (':'+colname+' desc'==neworder[0])
-                neworder[0]=':'+colname+' asc';
+            if(':"'+colname+'" asc'==neworder[0])
+                neworder[0]=':"'+colname+'" desc';
+            else if (':"'+colname+'" desc'==neworder[0])
+                neworder[0]=':"'+colname+'" asc';
             else
                 {
                 for(i in neworder)
-                    if(neworder[i]==':'+colname+' asc' || neworder[i]==':'+colname+' desc')
+                    if(neworder[i]==':"'+colname+'" asc' || neworder[i]==':"'+colname+'" desc')
                         neworder.splice(i,1);
-                neworder.unshift(':'+colname+' asc');
+                neworder.unshift(':"'+colname+'" asc');
                 }
 	    ly.row.table.osrc.ifcProbe(ifAction).Invoke("OrderObject", {orderobj:neworder});
             //ly.row.table.osrc.ActionOrderObject(neworder);
