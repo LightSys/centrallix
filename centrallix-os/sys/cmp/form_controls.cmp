@@ -23,6 +23,12 @@ form_controls "widget/component-decl"
 	default = null;
 	}
 
+    deletable "widget/parameter"
+	{
+	type = "integer";
+	default = 1;
+	}
+
     form_ctl_pane "widget/pane"
 	{
 	x=0;y=0;width=400;height=26;
@@ -180,6 +186,7 @@ form_controls "widget/component-decl"
 		}
 	    btnDelete "widget/imagebutton"
 		{
+		condition=runserver(:this:deletable == 1);
 		y=3;
 		width=18;
 		height=18;
