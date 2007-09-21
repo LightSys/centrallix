@@ -32,10 +32,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: xstring.c,v 1.16 2007/04/19 21:14:13 gbeeley Exp $
+    $Id: xstring.c,v 1.17 2007/09/21 23:15:07 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/xstring.c,v $
 
     $Log: xstring.c,v $
+    Revision 1.17  2007/09/21 23:15:07  gbeeley
+    - (change) converting to new grow_fn interface (see qprintf)
+
     Revision 1.16  2007/04/19 21:14:13  gbeeley
     - (feature) adding &FILE and &PATH filters to qprintf.
     - (bugfix) include nLEN test earlier, make sure &FILE/PATH isn't tricked.
@@ -918,7 +921,7 @@ xsString(pXString this)
 /*** xs_internal_Grow - grow function needed by QPrintf
  ***/
 int
-xs_internal_Grow(char** str, size_t* size, void* arg, int req_size)
+xs_internal_Grow(char** str, size_t* size, int offs, void* arg, int req_size)
     {
     pXString this = (pXString)arg;
     int offset;
