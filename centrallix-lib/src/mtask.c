@@ -55,10 +55,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.39 2007/09/21 23:11:49 gbeeley Exp $
+    $Id: mtask.c,v 1.40 2007/10/19 23:26:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.40  2007/10/19 23:26:58  gbeeley
+    - (feature) adding thWaitTimed() as a convenience API function.
+
     Revision 1.39  2007/09/21 23:11:49  gbeeley
     - (change) adhere to new grow_fn interface in qprintf
     - (bugfix) incorrect logic in the Grow() function et al
@@ -1677,6 +1680,50 @@ thWait(pMTObject obj, int obj_type, int event_type, int arg_count)
 	    }
 
     return (code==1)?0:(-1);
+    }
+
+
+/*** THWAITTIMED waits on an event for a specified maximum amount of
+ *** time.  This uses thMultiWait(), but exists for the convenience of
+ *** the programmer since waiting on an event and on a timer is so
+ *** common a usage.  Return value is number of msec's remaining in the
+ *** timer, if the event happens, or -1 if the event does not occur.
+ ***/
+int
+thWaitTimed(pMTObject obj, int obj_type, int event_type, int arg_count, int msec)
+    {
+    EventReq the_event, timer;
+    pEventReq ev[2] = {&timer, &the_event};
+    int rval;
+    unsigned long start_ticks;
+    unsigned long used_ticks;
+
+	/** set up **/
+	ev[0]->Object = NULL;
+	ev[0]->ObjType = OBJ_T_MTASK;
+	ev[0]->EventType = EV_T_MT_TIMER;
+	ev[0]->ReqLen = msec;
+	ev[1]->Object = obj;
+	ev[1]->ObjType = obj_type;
+	ev[1]->EventType = event_type;
+	ev[1]->ReqLen = arg_count;
+
+	/** Wait on the event **/
+	start_ticks = mtRealTicks();
+	rval = thMultiWait(2, ev);
+	if (rval < 0) return -1;
+	used_ticks = mtRealTicks() - start_ticks;
+
+	/** Event did not happen? **/
+	if (the_event.Status != EV_S_COMPLETE)
+	    return -1;
+
+	/** Figure out how many msec elapsed **/
+	rval = used_ticks*1000/MTASK.TicksPerSec;
+	if (rval > msec || timer.Status == EV_S_COMPLETE)
+	    rval = msec;
+
+    return rval;
     }
 
 

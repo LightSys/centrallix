@@ -23,10 +23,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.h,v 1.20 2007/04/08 03:43:06 gbeeley Exp $
+    $Id: mtask.h,v 1.21 2007/10/19 23:26:58 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/mtask.h,v $
 
     $Log: mtask.h,v $
+    Revision 1.21  2007/10/19 23:26:58  gbeeley
+    - (feature) adding thWaitTimed() as a convenience API function.
+
     Revision 1.20  2007/04/08 03:43:06  gbeeley
     - (bugfix) some code quality fixes
     - (feature) MTASK integration with the Valgrind debugger.  Still some
@@ -429,6 +432,7 @@ int thYield();
 int thExit();
 int thKill(pThread thr);
 int thWait(pMTObject obj, int obj_type, int event_type, int arg_count);
+int thWaitTimed(pMTObject obj, int obj_type, int event_type, int arg_count, int msec);
 int thMultiWait(int event_cnt, pEventReq event_req[]);
 char* thGetName(pThread thr);
 pThread thCurrent();
