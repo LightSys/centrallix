@@ -1,7 +1,7 @@
 Summary: A base functionality library developed for the Centrallix server.
 Name: centrallix-lib
 Version: 0.7.5
-Release: 1
+Release: 2
 License: LGPL
 Group: System Environment/Libraries
 Source: centrallix-lib-%{version}.tgz

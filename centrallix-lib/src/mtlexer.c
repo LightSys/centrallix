@@ -32,10 +32,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.8 2007/09/21 23:13:03 gbeeley Exp $
+    $Id: mtlexer.c,v 1.9 2007/10/29 20:42:43 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.9  2007/10/29 20:42:43  gbeeley
+    - (bugfix) new changes to mtlexer had some problems dealing with special
+      and/or escaped characters.
+
     Revision 1.8  2007/09/21 23:13:03  gbeeley
     - (bugfix) handle NL's inside a quoted string when not using a user-
       managed buffer.
@@ -522,7 +526,7 @@ mlxNextToken(pLxSession this)
 
 		/** Keep scanning until delimiter, unless delimiter preceeded by an escape **/
 		prev_ch = '\0';
-		while((*ptr != this->Delimiter || ((this->Flags & MLX_F_NOUNESC) && ptr > this->Buffer && ptr[-1] == '\\')))
+		while((*ptr != this->Delimiter || ((this->Flags & MLX_F_NOUNESC) && prev_ch == '\\')))
 		    {
 		    ch=*ptr;
 
@@ -545,11 +549,11 @@ mlxNextToken(pLxSession this)
 		    if (prev_ch == '\\' && ch && !(this->Flags & MLX_F_NOUNESC))
 			{
 			if (ch == 'n') this->TokString[this->TokStrCnt-1]='\n'; 
-			else if (ptr[1] == 't') this->TokString[this->TokStrCnt-1]='\t';
-			else if (ptr[1] == 'r') this->TokString[this->TokStrCnt-1]='\r';
+			else if (ch == 't') this->TokString[this->TokStrCnt-1]='\t';
+			else if (ch == 'r') this->TokString[this->TokStrCnt-1]='\r';
 			else this->TokString[this->TokStrCnt-1]=ch;
 			ptr++;
-			prev_ch = ch;
+			prev_ch = '\0';
 			continue;
 			}
 
