@@ -64,10 +64,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.37 2007/03/05 20:02:44 gbeeley Exp $
+    $Id: test_obj.c,v 1.38 2007/11/16 21:39:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.38  2007/11/16 21:39:30  gbeeley
+    - (feature) added 'csv' command to generate CSV output from a query in
+      the test_obj command-line interface
+    - (feature) added capability to redirect output from test_obj to places
+      other than standard output, via commands entered at the prompt
+
     Revision 1.37  2007/03/05 20:02:44  gbeeley
     - (bugfix) make tab completion use a looser check for the possibility of
       subobjects.
@@ -291,6 +297,7 @@ struct
     char    Password[32];
     char    CmdFile[256];
     pFile   Output;
+    char    OutputFilename[256];
     char    Command[1024];
     }
     TESTOBJ;
@@ -331,7 +338,7 @@ printExpression(pExpression exp)
 	dst->buffer[dst->buflen]='\0';
 	expFreeParamList(tmplist);
 
-	printf("%s ",dst->buffer);
+	fdPrintf(TESTOBJ.Output,"%s ",dst->buffer);
 
 	free(dst->buffer);
 	nmFree(dst,sizeof(WriteStruct));
@@ -353,35 +360,35 @@ testobj_show_hints(pObject obj, char* attrname)
 	return -1;
 	}
 
-    printf("Presentation Hints for \"%s\":\n",attrname);
-    printf("  Constraint   : ");
-    printExpression(hints->Constraint); printf("\n");
-    printf("  DefaultExpr  : ");
-    printExpression(hints->DefaultExpr); printf("\n");
-    printf("  MinValue     : ");
-    printExpression(hints->MinValue); printf("\n");
-    printf("  MaxValue     : ");
-    printExpression(hints->MaxValue); printf("\n");
-    printf("  EnumList     : ");
+    fdPrintf(TESTOBJ.Output,"Presentation Hints for \"%s\":\n",attrname);
+    fdPrintf(TESTOBJ.Output,"  Constraint   : ");
+    printExpression(hints->Constraint); fdPrintf(TESTOBJ.Output,"\n");
+    fdPrintf(TESTOBJ.Output,"  DefaultExpr  : ");
+    printExpression(hints->DefaultExpr); fdPrintf(TESTOBJ.Output,"\n");
+    fdPrintf(TESTOBJ.Output,"  MinValue     : ");
+    printExpression(hints->MinValue); fdPrintf(TESTOBJ.Output,"\n");
+    fdPrintf(TESTOBJ.Output,"  MaxValue     : ");
+    printExpression(hints->MaxValue); fdPrintf(TESTOBJ.Output,"\n");
+    fdPrintf(TESTOBJ.Output,"  EnumList     : ");
     for(i=0;i<hints->EnumList.nItems;i++)
 	{
-	printf("    %s\n",(char*)xaGetItem(&hints->EnumList,i));
+	fdPrintf(TESTOBJ.Output,"    %s\n",(char*)xaGetItem(&hints->EnumList,i));
 	}
-    printf("\n");
-    printf("  EnumQuery    : %s\n",hints->EnumQuery);
-    printf("  Format       : %s\n",hints->Format);
-    printf("  VisualLength : %i\n",hints->VisualLength);
-    printf("  VisualLength2: %i\n",hints->VisualLength2);
-    printf("  BitmaskRO    : ");
+    fdPrintf(TESTOBJ.Output,"\n");
+    fdPrintf(TESTOBJ.Output,"  EnumQuery    : %s\n",hints->EnumQuery);
+    fdPrintf(TESTOBJ.Output,"  Format       : %s\n",hints->Format);
+    fdPrintf(TESTOBJ.Output,"  VisualLength : %i\n",hints->VisualLength);
+    fdPrintf(TESTOBJ.Output,"  VisualLength2: %i\n",hints->VisualLength2);
+    fdPrintf(TESTOBJ.Output,"  BitmaskRO    : ");
     for(i=0;i<32;i++)
 	{
-	printf("%i",hints->BitmaskRO>>(31-i) & 0x01);
+	fdPrintf(TESTOBJ.Output,"%i",hints->BitmaskRO>>(31-i) & 0x01);
 	}
-    printf("\n");
-    printf("  Style        : %i\n",hints->Style);
-    printf("  GroupID      : %i\n",hints->GroupID);
-    printf("  GroupName    : %s\n",hints->GroupName);
-    printf("  FriendlyName : %s\n",hints->FriendlyName);
+    fdPrintf(TESTOBJ.Output,"\n");
+    fdPrintf(TESTOBJ.Output,"  Style        : %i\n",hints->Style);
+    fdPrintf(TESTOBJ.Output,"  GroupID      : %i\n",hints->GroupID);
+    fdPrintf(TESTOBJ.Output,"  GroupName    : %s\n",hints->GroupName);
+    fdPrintf(TESTOBJ.Output,"  FriendlyName : %s\n",hints->FriendlyName);
 
     objFreeHints(hints);
     return 0;
@@ -407,113 +414,113 @@ testobj_show_attr(pObject obj, char* attrname)
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) 
 	    {
-	    printf("  %20.20s: (no such attribute)\n", attrname);
+	    fdPrintf(TESTOBJ.Output,"  %20.20s: (no such attribute)\n", attrname);
 	    return -1;
 	    }
 	switch(type)
 	    {
 	    case DATA_T_INTEGER:
 		if (objGetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval)) == 1)
-		    printf("  %20.20s: NULL",attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: %d",attrname, intval);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: %d",attrname, intval);
 		break;
 
 	    case DATA_T_STRING:
 		if (objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval)) == 1)
-		    printf("  %20.20s: NULL",attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: \"%s\"",attrname, stringval);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: \"%s\"",attrname, stringval);
 		break;
 
 	    case DATA_T_BINARY:
 		if (objGetAttrValue(obj,attrname,DATA_T_BINARY,POD(&bn)) == 1)
-		    printf("  %20.20s: NULL", attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL", attrname);
 		else
 		    {
-		    printf("  %20.20s: %d bytes: ", attrname, bn.Size);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: %d bytes: ", attrname, bn.Size);
 		    for(i=0;i<bn.Size;i++)
 			{
-			printf("%2.2x  ", bn.Data[i]);
+			fdPrintf(TESTOBJ.Output,"%2.2x  ", bn.Data[i]);
 			}
 		    }
 		break;
 
 	    case DATA_T_DATETIME:
 		if (objGetAttrValue(obj,attrname,DATA_T_DATETIME,POD(&dt)) == 1 || dt==NULL)
-		    printf("  %20.20s: NULL",attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: %2.2d-%2.2d-%4.4d %2.2d:%2.2d:%2.2d", 
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: %2.2d-%2.2d-%4.4d %2.2d:%2.2d:%2.2d", 
 			attrname,dt->Part.Month+1, dt->Part.Day+1, dt->Part.Year+1900,
 			dt->Part.Hour, dt->Part.Minute, dt->Part.Second);
 		break;
 	    
 	    case DATA_T_DOUBLE:
 		if (objGetAttrValue(obj,attrname,DATA_T_DOUBLE,POD(&dblval)) == 1)
-		    printf("  %20.20s: NULL",attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
 		else
-		    printf("  %20.20s: %g", attrname, dblval);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: %g", attrname, dblval);
 		break;
 
 	    case DATA_T_MONEY:
 		if (objGetAttrValue(obj,attrname,DATA_T_MONEY,POD(&m)) == 1 || m == NULL)
-		    printf("  %20.20s: NULL", attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL", attrname);
 		else
-		    printf("  %20.20s: %s", attrname, objDataToStringTmp(DATA_T_MONEY, m, 0));
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: %s", attrname, objDataToStringTmp(DATA_T_MONEY, m, 0));
 		break;
 
 	    case DATA_T_INTVEC:
 		if (objGetAttrValue(obj,attrname,DATA_T_INTVEC,POD(&iv)) == 1 || iv == NULL)
 		    {
-		    printf("  %20.20s: NULL",attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
 		    }
 		else
 		    {
-		    printf("  %20.20s: ", attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: ", attrname);
 		    for(i=0;i<iv->nIntegers;i++) 
-			printf("%d%s",iv->Integers[i],(i==iv->nIntegers-1)?"":",");
+			fdPrintf(TESTOBJ.Output,"%d%s",iv->Integers[i],(i==iv->nIntegers-1)?"":",");
 		    }
 		break;
 
 	    case DATA_T_STRINGVEC:
 		if (objGetAttrValue(obj,attrname,DATA_T_STRINGVEC,POD(&sv)) == 1 || sv == NULL)
 		    {
-		    printf("  %20.20s: NULL",attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
 		    }
 		else
 		    {
-		    printf("  %20.20s: ",attrname);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: ",attrname);
 		    for(i=0;i<sv->nStrings;i++) 
-			printf("\"%s\"%s",sv->Strings[i],(i==sv->nStrings-1)?"":",");
+			fdPrintf(TESTOBJ.Output,"\"%s\"%s",sv->Strings[i],(i==sv->nStrings-1)?"":",");
 		    }
 		break;
 
 	    default:
-		printf("  %20.20s: <unknown type>",attrname);
+		fdPrintf(TESTOBJ.Output,"  %20.20s: <unknown type>",attrname);
 		break;
 	    }
 	hints = objPresentationHints(obj, attrname);
 	if (hints)
 	    {
-	    printf(" [Hints: ");
-	    if (hints->EnumQuery != NULL) printf("EnumQuery=[%s] ", hints->EnumQuery);
-	    if (hints->Format != NULL) printf("Format=[%s] ", hints->Format);
-	    if (hints->AllowChars != NULL) printf("AllowChars=[%s] ", hints->AllowChars);
-	    if (hints->BadChars != NULL) printf("BadChars=[%s] ", hints->BadChars);
-	    if (hints->Length != 0) printf("Length=%d ", hints->Length);
-	    if (hints->VisualLength != 0) printf("VisualLength=%d ", hints->VisualLength);
-	    if (hints->VisualLength2 != 1) printf("VisualLength2=%d ", hints->VisualLength2);
-	    if (hints->Style != 0) printf("Style=%d ", hints->Style);
-	    if (hints->StyleMask != 0) printf("StyleMask=%d ", hints->StyleMask);
-	    if (hints->GroupID != -1) printf("GroupID=%d ", hints->GroupID);
-	    if (hints->GroupName != NULL) printf("GroupName=[%s] ", hints->GroupName);
-	    if (hints->FriendlyName != NULL) printf("FriendlyName=[%s] ", hints->FriendlyName);
-	    if (hints->Constraint != NULL) { printf("Constraint="); printExpression(hints->Constraint); }
-	    if (hints->DefaultExpr != NULL) { printf("DefaultExpr="); printExpression(hints->DefaultExpr); }
-	    if (hints->MinValue != NULL) { printf("MinValue="); printExpression(hints->MinValue); }
-	    if (hints->MaxValue != NULL) { printf("MaxValue="); printExpression(hints->MaxValue); }
+	    fdPrintf(TESTOBJ.Output," [Hints: ");
+	    if (hints->EnumQuery != NULL) fdPrintf(TESTOBJ.Output,"EnumQuery=[%s] ", hints->EnumQuery);
+	    if (hints->Format != NULL) fdPrintf(TESTOBJ.Output,"Format=[%s] ", hints->Format);
+	    if (hints->AllowChars != NULL) fdPrintf(TESTOBJ.Output,"AllowChars=[%s] ", hints->AllowChars);
+	    if (hints->BadChars != NULL) fdPrintf(TESTOBJ.Output,"BadChars=[%s] ", hints->BadChars);
+	    if (hints->Length != 0) fdPrintf(TESTOBJ.Output,"Length=%d ", hints->Length);
+	    if (hints->VisualLength != 0) fdPrintf(TESTOBJ.Output,"VisualLength=%d ", hints->VisualLength);
+	    if (hints->VisualLength2 != 1) fdPrintf(TESTOBJ.Output,"VisualLength2=%d ", hints->VisualLength2);
+	    if (hints->Style != 0) fdPrintf(TESTOBJ.Output,"Style=%d ", hints->Style);
+	    if (hints->StyleMask != 0) fdPrintf(TESTOBJ.Output,"StyleMask=%d ", hints->StyleMask);
+	    if (hints->GroupID != -1) fdPrintf(TESTOBJ.Output,"GroupID=%d ", hints->GroupID);
+	    if (hints->GroupName != NULL) fdPrintf(TESTOBJ.Output,"GroupName=[%s] ", hints->GroupName);
+	    if (hints->FriendlyName != NULL) fdPrintf(TESTOBJ.Output,"FriendlyName=[%s] ", hints->FriendlyName);
+	    if (hints->Constraint != NULL) { fdPrintf(TESTOBJ.Output,"Constraint="); printExpression(hints->Constraint); }
+	    if (hints->DefaultExpr != NULL) { fdPrintf(TESTOBJ.Output,"DefaultExpr="); printExpression(hints->DefaultExpr); }
+	    if (hints->MinValue != NULL) { fdPrintf(TESTOBJ.Output,"MinValue="); printExpression(hints->MinValue); }
+	    if (hints->MaxValue != NULL) { fdPrintf(TESTOBJ.Output,"MaxValue="); printExpression(hints->MaxValue); }
 	    nmFree(hints, sizeof(ObjPresentationHints));
-	    printf("]\n");
+	    fdPrintf(TESTOBJ.Output,"]\n");
 	    }
 
     return 0;
@@ -751,6 +758,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     pMoneyType m;
     MoneyType mval;
     pObjData pod;
+    ObjData od;
     int use_srctype;
     char mname[64];
     char mparam[256];
@@ -758,6 +766,10 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     int t,i;
     pObjectInfo info;
     Binary bn;
+    pFile try_file;
+    char* attrnames[128];
+    int attrtypes[128];
+    int n_attrs;
 
 	    /** Open a lexer session **/
 	    ls = mlxStringSession(cmd,MLX_F_ICASE | MLX_F_EOF);
@@ -797,11 +809,71 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		objSetWD(s,obj);
 		objClose(obj);
 		}
+	    else if (!strcmp(cmdname,"csv"))
+		{
+		if (!ptr)
+		    {
+		    printf("Usage: csv <query-text>\n");
+		    mlxCloseSession(ls);
+		    return -1;
+		    }
+		qy = objMultiQuery(s, cmd + 4);
+		if (!qy)
+		    {
+		    printf("csv: could not open query!\n");
+		    mlxCloseSession(ls);
+		    return -1;
+		    }
+		n_attrs = -1;
+		while((obj=objQueryFetch(qy, O_RDONLY)))
+		    {
+		    if (n_attrs < 0)
+			{
+			n_attrs = 0;
+			for(attrname=objGetFirstAttr(obj);attrname;attrname=objGetNextAttr(obj))
+			    {
+			    if (n_attrs < sizeof(attrnames) / sizeof(char*))
+				{
+				attrtypes[n_attrs] = objGetAttrType(obj,attrname);
+				attrnames[n_attrs] = nmSysStrdup(attrname);
+				fdQPrintf(TESTOBJ.Output,"%[,%]%STR&DQUOT",
+					n_attrs != 0,
+					attrname);
+				n_attrs++;
+				}
+			    }
+			fdPrintf(TESTOBJ.Output, "\n");
+			}
+		    for(i=0;i<n_attrs;i++)
+			{
+			if (objGetAttrValue(obj, attrnames[i], attrtypes[i], &od) == 0)
+			    {
+			    if (attrtypes [i] == DATA_T_CODE)
+				ptr = NULL;
+			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE)
+				ptr = objDataToStringTmp(attrtypes[i], &od, 0);
+			    else
+				ptr = objDataToStringTmp(attrtypes[i], od.Generic, 0);
+			    }
+			else
+			    {
+			    ptr = NULL;
+			    }
+			if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE || attrtypes[i] == DATA_T_MONEY || attrtypes[i] == DATA_T_DATETIME)
+			    fdQPrintf(TESTOBJ.Output, "%[,%]%STR", i!=0, ptr);
+			else
+			    fdQPrintf(TESTOBJ.Output, "%[,%]%STR&DQUOT", i!=0, ptr);
+			}
+		    fdPrintf(TESTOBJ.Output, "\n");
+		    objClose(obj);
+		    }
+		objQueryClose(qy);
+		}
 	    else if (!strcmp(cmdname,"query"))
 	        {
 		if (!ptr)
 		    {
-		    printf("Usage: query \"<query-text>\"\n");
+		    printf("Usage: query <query-text>\n");
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
@@ -821,46 +893,46 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			    {
 			    case DATA_T_INTEGER:
 			        if (objGetAttrValue(obj,attrname,DATA_T_INTEGER,POD(&intval)) == 1)
-			            printf("Attribute: [%s]  INTEGER  NULL\n", attrname);
+			            fdPrintf(TESTOBJ.Output,"Attribute: [%s]  INTEGER  NULL\n", attrname);
 				else
-			            printf("Attribute: [%s]  INTEGER  %d\n", attrname,intval);
+			            fdPrintf(TESTOBJ.Output,"Attribute: [%s]  INTEGER  %d\n", attrname,intval);
 				break;
 			    case DATA_T_STRING:
 			        if (objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval)) == 1)
-			            printf("Attribute: [%s]  STRING  NULL\n", attrname);
+			            fdPrintf(TESTOBJ.Output,"Attribute: [%s]  STRING  NULL\n", attrname);
 				else
-			            printf("Attribute: [%s]  STRING  \"%s\"\n", attrname,stringval);
+			            fdPrintf(TESTOBJ.Output,"Attribute: [%s]  STRING  \"%s\"\n", attrname,stringval);
 			        break;
 			    case DATA_T_DOUBLE:
 			        if (objGetAttrValue(obj,attrname,DATA_T_DOUBLE,POD(&dblval)) == 1)
-				    printf("Attribute: [%s]  DOUBLE  NULL\n", attrname);
+				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  DOUBLE  NULL\n", attrname);
 				else
-				    printf("Attribute: [%s]  DOUBLE  %g\n", attrname, dblval);
+				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  DOUBLE  %g\n", attrname, dblval);
 				break;
 			    case DATA_T_BINARY:
 				if (objGetAttrValue(obj,attrname,DATA_T_BINARY,POD(&bn)) == 1)
-				    printf("  %20.20s: NULL\n", attrname);
+				    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL\n", attrname);
 				else
 				    {
-				    printf("  %20.20s: %d bytes: ", attrname, bn.Size);
+				    fdPrintf(TESTOBJ.Output,"  %20.20s: %d bytes: ", attrname, bn.Size);
 				    for(i=0;i<bn.Size;i++)
 					{
-					printf("%2.2x  ", bn.Data[i]);
+					fdPrintf(TESTOBJ.Output,"%2.2x  ", bn.Data[i]);
 					}
-				    printf("\n");
+				    fdPrintf(TESTOBJ.Output,"\n");
 				    }
 				break;
 			    case DATA_T_DATETIME:
 			        if (objGetAttrValue(obj,attrname,DATA_T_DATETIME,POD(&dt)) == 1)
-				    printf("Attribute: [%s]  DATETIME  NULL\n", attrname);
+				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  DATETIME  NULL\n", attrname);
 				else
-				    printf("Attribute: [%s]  DATETIME  %s\n", attrname, objDataToStringTmp(type, dt, 0));
+				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  DATETIME  %s\n", attrname, objDataToStringTmp(type, dt, 0));
 				break;
 			    case DATA_T_MONEY:
 			        if (objGetAttrValue(obj,attrname,DATA_T_MONEY,POD(&m)) == 1)
-				    printf("Attribute: [%s]  MONEY  NULL\n", attrname);
+				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  MONEY  NULL\n", attrname);
 				else
-				    printf("Attribute: [%s]  MONEY  %s\n", attrname, objDataToStringTmp(type, m, 0));
+				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  MONEY  %s\n", attrname, objDataToStringTmp(type, m, 0));
 				break;
 			    }
 			}
@@ -978,7 +1050,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			MALLOC_AND_COPY(type,filetype);
 			objGetAttrValue(child_obj,"annotation",DATA_T_STRING,POD(&fileannot));
 			MALLOC_AND_COPY(annot,fileannot);
-			printf("%-32.32s  %-32.32s    %s\n",name,annot,type);
+			fdPrintf(TESTOBJ.Output,"%-32.32s  %-32.32s    %s\n",name,annot,type);
 			free(name);
 			free(type);
 			free(annot);
@@ -1003,30 +1075,30 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    {
 		    if (info->Flags)
 			{
-			printf("Flags: ");
-			if (info->Flags & OBJ_INFO_F_NO_SUBOBJ) printf("no_subobjects ");
-			if (info->Flags & OBJ_INFO_F_HAS_SUBOBJ) printf("has_subobjects ");
-			if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ) printf("can_have_subobjects ");
-			if (info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ) printf("cant_have_subobjects ");
-			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) printf("subobject_cnt_known ");
-			if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) printf("can_add_attrs ");
-			if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) printf("cant_add_attrs ");
-			if (info->Flags & OBJ_INFO_F_CAN_SEEK_FULL) printf("can_seek_full ");
-			if (info->Flags & OBJ_INFO_F_CAN_SEEK_REWIND) printf("can_seek_rewind ");
-			if (info->Flags & OBJ_INFO_F_CANT_SEEK) printf("cant_seek ");
-			if (info->Flags & OBJ_INFO_F_CAN_HAVE_CONTENT) printf("can_have_content ");
-			if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) printf("cant_have_content ");
-			if (info->Flags & OBJ_INFO_F_HAS_CONTENT) printf("has_content ");
-			if (info->Flags & OBJ_INFO_F_NO_CONTENT) printf("no_content ");
-			if (info->Flags & OBJ_INFO_F_SUPPORTS_INHERITANCE) printf("supports_inheritance ");
-			printf("\n");
+			fdPrintf(TESTOBJ.Output,"Flags: ");
+			if (info->Flags & OBJ_INFO_F_NO_SUBOBJ) fdPrintf(TESTOBJ.Output,"no_subobjects ");
+			if (info->Flags & OBJ_INFO_F_HAS_SUBOBJ) fdPrintf(TESTOBJ.Output,"has_subobjects ");
+			if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"can_have_subobjects ");
+			if (info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"cant_have_subobjects ");
+			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) fdPrintf(TESTOBJ.Output,"subobject_cnt_known ");
+			if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) fdPrintf(TESTOBJ.Output,"can_add_attrs ");
+			if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) fdPrintf(TESTOBJ.Output,"cant_add_attrs ");
+			if (info->Flags & OBJ_INFO_F_CAN_SEEK_FULL) fdPrintf(TESTOBJ.Output,"can_seek_full ");
+			if (info->Flags & OBJ_INFO_F_CAN_SEEK_REWIND) fdPrintf(TESTOBJ.Output,"can_seek_rewind ");
+			if (info->Flags & OBJ_INFO_F_CANT_SEEK) fdPrintf(TESTOBJ.Output,"cant_seek ");
+			if (info->Flags & OBJ_INFO_F_CAN_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"can_have_content ");
+			if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"cant_have_content ");
+			if (info->Flags & OBJ_INFO_F_HAS_CONTENT) fdPrintf(TESTOBJ.Output,"has_content ");
+			if (info->Flags & OBJ_INFO_F_NO_CONTENT) fdPrintf(TESTOBJ.Output,"no_content ");
+			if (info->Flags & OBJ_INFO_F_SUPPORTS_INHERITANCE) fdPrintf(TESTOBJ.Output,"supports_inheritance ");
+			fdPrintf(TESTOBJ.Output,"\n");
 			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
 			    {
-			    printf("Subobject count: %d\n", info->nSubobjects);
+			    fdPrintf(TESTOBJ.Output,"Subobject count: %d\n", info->nSubobjects);
 			    }
 			}
 		    }
-		puts("Attributes:");
+		fdPrintf(TESTOBJ.Output,"Attributes:\n");
 		testobj_show_attr(obj,"outer_type");
 		testobj_show_attr(obj,"inner_type");
 		testobj_show_attr(obj,"content_type");
@@ -1039,19 +1111,19 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    testobj_show_attr(obj,attrname);
 		    attrname = objGetNextAttr(obj);
 		    }
-		puts("\nMethods:");
+		fdPrintf(TESTOBJ.Output,"\nMethods:\n");
 		methodname = objGetFirstMethod(obj);
 		if (methodname)
 		    {
 		    while(methodname)
 			{
-			printf("  %20.20s()\n",methodname);
+			fdPrintf(TESTOBJ.Output,"  %20.20s()\n",methodname);
 			methodname = objGetNextMethod(obj);
 			}
 		    }
 		else
 		    {
-		    puts("  (no methods)");
+		    fdPrintf(TESTOBJ.Output,"  (no methods)\n");
 		    }
 		puts("");
 		objClose(obj);
@@ -1069,9 +1141,9 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		while((cnt=objRead(obj, sbuf, 255, 0, 0)) >0)
 		    {
 		    sbuf[cnt] = 0;
-		    write(1,sbuf,cnt);
+		    fdWrite(TESTOBJ.Output,sbuf,cnt,0,0);
 		    }
-		puts("");
+		fdPrintf(TESTOBJ.Output,"\n");
 		objClose(obj);
 		}
 	    else if (!strcmp(cmdname,"copy"))
@@ -1291,6 +1363,22 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    }
 		objClose(obj);
 		}
+	    else if (!strcmp(cmdname, "output"))
+		{
+		if (!ptr) ptr = "/dev/tty";
+		try_file = fdOpen(ptr, O_RDWR | O_CREAT | O_TRUNC, 0600);
+		if (!try_file)
+		    {
+		    mssErrorErrno(1,"CX","Unable to open output file '%s'",ptr);
+		    }
+		else
+		    {
+		    if (TESTOBJ.Output)
+			fdClose(TESTOBJ.Output, 0);
+		    TESTOBJ.Output = try_file;
+		    strtcpy(TESTOBJ.OutputFilename, ptr, sizeof(TESTOBJ.OutputFilename));
+		    }
+		}
 	    else if (!strcmp(cmdname,"help"))
 		{
 		printf("Available Commands:\n");
@@ -1298,11 +1386,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		printf("  cd       - Change the current working \"directory\" in the objectsystem.\n");
 		printf("  copy     - Copy one object's content to another.\n");
 		printf("  create   - Create a new object.\n");
+		printf("  csv      - Run a SQL query and print the results in CSV format.\n");
 		printf("  delete   - Delete an object.\n");
 		printf("  exec     - Call a method on an object.\n");
 		printf("  hints    - Show the presentation hints of an attribute (or object)\n");
 		printf("  help     - Displays this help screen.\n");
 		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
+		printf("  output   - Change where output goes.\n");
 		printf("  print    - Displays an object's content.\n");
 		printf("  query    - Runs a SQL query.\n");
 		printf("  quit     - Exits this application.\n");
@@ -1350,7 +1440,12 @@ start(void* v)
 
 	if (mssAuthenticate(user,pwd) < 0)
 	    puts("Warning: auth failed, running outside session context.");
-	TESTOBJ.Output = fdOpen("/dev/tty", O_RDWR, 0600);
+	TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	if (!TESTOBJ.Output)
+	    {
+	    strcpy(TESTOBJ.OutputFilename, "/dev/tty");
+	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	    }
 
 	/** Open a session **/
 	s = objOpenSession("/");
@@ -1435,9 +1530,10 @@ main(int argc, char* argv[])
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
+	strcpy(TESTOBJ.OutputFilename, "/dev/tty");
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"hc:qu:p:f:C:")) > 0)
+	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:")) > 0)
 	    {
 	    switch (ch)
 	        {
@@ -1458,6 +1554,9 @@ main(int argc, char* argv[])
 				break;
 
 		case 'q':	CxGlobals.QuietInit = 1;
+				break;
+
+		case 'o':	strtcpy(TESTOBJ.OutputFilename, optarg, sizeof(TESTOBJ.OutputFilename));
 				break;
 
 		case 'h':	printf("Usage:  test_obj [-c <config-file>]\n");
