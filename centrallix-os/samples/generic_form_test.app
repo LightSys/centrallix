@@ -7,10 +7,9 @@ generic_form_test "widget/page"
 
     csv_list_osrc "widget/osrc"
 	{
-	sql = "select path = '/lightsys/kardia_DB/' + :name from /lightsys/kardia_DB";
-	//sql = "select path = '/samples/' + :name from /samples where right(:name, 4) == '.csv'";
+	sql = "select path = '/samples/' + :name from /samples where right(:name, 4) == '.csv'";
 	autoquery = onload;
-	baseobj = "/lightsys/kardia_DB";
+	baseobj = "/samples";
 	replicasize = 25;
 	readahead = 12;
 
