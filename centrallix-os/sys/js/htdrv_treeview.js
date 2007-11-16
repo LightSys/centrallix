@@ -576,6 +576,84 @@ function tv_loaded(e)
     return false;
     }
 
+
+function tv_osrc_data_available()
+    {
+    //this.Clear();
+    }
+
+function tv_osrc_replica_moved()
+    {
+    //this.Refresh();
+    //if (this.param.show_select) this.SelectItemById(this.osrc.CurrentRecord);
+    }
+
+function tv_osrc_is_discard_ready()
+    {
+    return true;
+    }
+
+function tv_osrc_object_available(o)
+    {
+    //this.Refresh();
+    //if (this.param.show_select) this.SelectItemById(this.osrc.CurrentRecord);
+    }
+
+function tv_osrc_object_created(o)
+    {
+    //this.Refresh();
+    }
+
+function tv_osrc_object_modified(o)
+    {
+    //this.Refresh();
+    //if (this.param.show_select) this.SelectItemById(this.osrc.CurrentRecord);
+    }
+
+function tv_osrc_object_deleted(o)
+    {
+    //this.Refresh();
+    }
+
+function tv_osrc_operation_complete(o)
+    {
+    return true;
+    }
+
+function tv_add_rule(node, param)
+    {
+    node.treeview = this;
+    node.ruletype = param.ruletype;
+    if (node.ruletype == 'osrc-link')
+	{
+	node.osrc = wgtrGetNode(node, param.osrc);
+	node.pattern = param.pattern;
+	if (param.query_form)
+	    node.query_form = wgtrGetNode(node, param.query_form);
+
+	// OSRC client callbacks.
+	if (node.osrc)
+	    {
+	    node.DataAvailable = tv_osrc_data_available;
+	    node.ReplicaMoved = tv_osrc_replica_moved;
+	    node.IsDiscardReady = tv_osrc_is_discard_ready;
+	    node.ObjectAvailable = tv_osrc_object_available;
+	    node.ObjectCreated = tv_osrc_object_created;
+	    node.ObjectModified = tv_osrc_object_modified;
+	    node.ObjectDeleted = tv_osrc_object_deleted;
+	    node.OperationComplete = tv_osrc_operation_complete;
+	    node.osrc.Register(node);
+	    }
+	}
+    else if (node.ruletype == 'list')
+	{
+	node.pattern = param.pattern;
+	node.list = param.list;
+	}
+    return node;
+    }
+
+
 function tv_init(param)
     {
     var l = param.layer;
@@ -683,8 +761,10 @@ function tv_init(param)
     setClipWidth(l, param.width);
     l.setwidth = param.width;
     l.childimgs = '';
+
     l.collapse=tv_collapse;
     l.expand=tv_expand;
+    l.addRule = tv_add_rule;
 
     // Actions
     var ia=l.ifcProbeAdd(ifAction);
