@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_treeview.c,v 1.40 2007/09/18 17:52:25 gbeeley Exp $
+    $Id: htdrv_treeview.c,v 1.41 2007/11/16 21:47:23 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_treeview.c,v $
 
     $Log: htdrv_treeview.c,v $
+    Revision 1.41  2007/11/16 21:47:23  gbeeley
+    - (temp) some temporary changes which need to get into cvs right now just
+      for logistical reasons.
+
     Revision 1.40  2007/09/18 17:52:25  gbeeley
     - (change) add an option to allow finer control of how the initial set of
       branches (expansion) is displayed.
@@ -369,6 +373,13 @@ static struct
     HTTREE;
 
 
+/*int
+httree_internal_AddRule(pHtSession s, pWgtrNode parent, char* name, pWgtrNode child)
+    {
+    char* ruletype;
+    }*/
+
+
 /*** httreeRender - generate the HTML code for the page.
  ***/
 int
@@ -383,6 +394,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
     int show_branches = 1;
     int show_root_branch = 1;
     int use_3d_lines;
+    pWgtrNode sub_tree;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -502,7 +514,17 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Check for more sub-widgets within the treeview. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
+	    {
+	    sub_tree = xaGetItem(&(tree->Children), i);
+	    /*if (wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/osrc-rule"))
+		{
+		httree_internal_AddRule(s, tree, name, sub_tree);
+		}
+	    else
+		{*/
+		htrRenderWidget(s, sub_tree, z+2);
+		/*}*/
+	    }
 
     return 0;
     }
