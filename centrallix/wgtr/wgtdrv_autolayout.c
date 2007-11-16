@@ -65,8 +65,11 @@ wgtalVerify(pWgtrVerifySession s)
     int next_wgt;
     int spacing;
     int cellsize = -1;
-    int maxsize = -1;
+    int maxheight = -1;
+    int maxwidth = -1;
     int possible_width, possible_height, tw, th, a1, a2;
+    int column_width = -1, row_height = -1;
+    int column_offset = 0, row_offset = 0;
 
 	/** Ignore this if it is just a spacer **/
 	if (strcmp(al->Type, "widget/autolayoutspacer") != 0)
@@ -131,6 +134,20 @@ wgtalVerify(pWgtrVerifySession s)
 		    al->r_width = al->width = al->pre_width = tw;
 		    al->r_height = al->height = al->pre_height = possible_height;
 		    }
+		}
+
+	    /** Width of columns? **/
+	    if (al_type == 1 && wgtrGetPropertyValue(al, "column_width", DATA_T_INTEGER, POD(&column_width)) == 0)
+		{
+		if (column_width > al->r_width)
+		    column_width = al->r_width;
+		}
+
+	    /** Height of rows? **/
+	    if (al_type == 0 && wgtrGetPropertyValue(al, "row_height", DATA_T_INTEGER, POD(&row_height)) == 0)
+		{
+		if (row_height > al->r_height)
+		    row_height = al->r_height;
 		}
 
 	    /** Grab the widgets and put them in a list **/
@@ -208,33 +225,67 @@ wgtalVerify(pWgtrVerifySession s)
 		    {
 		    child->x = child->r_x = child->pre_x = xo;
 		    if (child->r_y < 0)
-			child->r_y = child->pre_y = child->y = 0;
+			child->r_y = child->pre_y = child->y = row_offset;
+		    else
+			child->r_y = child->pre_y = child->y = child->r_y + row_offset;
 		    if (child->r_height < 0 && al->r_height >= 0)
 			child->r_height = child->pre_height = child->height = al->r_height;
 		    if (child->r_width < 0 && cellsize >= 0)
 			child->r_width = child->pre_width = child->width = cellsize;
-		    if (child->r_height > maxsize)
-			maxsize = child->r_height;
+		    if (row_height > 0 && child->r_height > row_height)
+			child->r_height = child->pre_height = child->height = row_height;
+		    if (child->r_height > maxheight)
+			maxheight = child->r_height;
+		    if (child->r_x + child->r_width > al->r_width)
+			{
+			if (row_height > 0 && row_offset + row_height*2 + spacing <= al->r_height)
+			    {
+			    row_offset += (row_height + spacing);
+			    xo = 0;
+			    maxheight = -1;
+			    continue;
+			    }
+			else
+			    mssError(1, "WGTRAL", "Warning: overflow of end of hbox '%s'",al->Name);
+			}
 		    wgtrReverify(s, child);
 		    if (child->r_width >= 0)
 			xo += child->r_width;
 		    xo += spacing;
+		    if (maxwidth < xo) maxwidth = xo;
 		    }
 		else if (al_type == 1)	/* vbox */
 		    {
 		    if (child->r_x < 0)
-			child->r_x = child->pre_x = child->x = 0;
+			child->r_x = child->pre_x = child->x = column_offset;
+		    else
+			child->r_x = child->pre_x = child->x = child->r_x + column_offset;
 		    child->y = child->r_y = child->pre_y = yo;
 		    if (child->r_width < 0 && al->r_width >= 0)
 			child->r_width = child->pre_width = child->width = al->r_width;
 		    if (child->r_height < 0 && cellsize >= 0)
 			child->r_height = child->pre_height = child->height = cellsize;
-		    if (child->r_width > maxsize)
-			maxsize = child->r_width;
+		    if (column_width > 0 && child->r_width > column_width)
+			child->r_width = child->pre_width = child->width = column_width;
+		    if (child->r_width > maxwidth)
+			maxwidth = child->r_width;
+		    if (child->r_y + child->r_height > al->r_height)
+			{
+			if (column_width > 0 && column_offset + column_width*2 + spacing <= al->r_width)
+			    {
+			    column_offset += (column_width + spacing); 
+			    yo = 0;
+			    maxwidth = -1;
+			    continue;
+			    }
+			else
+			    mssError(1, "WGTRAL", "Warning: overflow of end of vbox '%s'",al->Name);
+			}
 		    wgtrReverify(s, child);
 		    if (child->r_height >= 0)
 			yo += child->r_height;
 		    yo += spacing;
+		    if (maxheight < yo) maxheight = yo;
 		    }
 		//mssError(1, "WGTRAL","x=%d,r_x=%d,pre_x=%d,y=%d",child->x,child->r_x,child->pre_x,child->y);
 		}
@@ -242,17 +293,17 @@ wgtalVerify(pWgtrVerifySession s)
 	    /** Set container size if needed **/
 	    if (al_type == 0)		/* hbox */
 		{
-		if (al->r_width < 0 && xo >= 0)
-		    al->r_width = al->pre_width = al->width = xo - spacing;
-		if (al->r_height < 0 && maxsize >= 0)
-		    al->r_height = al->pre_height = al->height = maxsize;
+		if (al->r_width < 0 && maxwidth >= 0)
+		    al->r_width = al->pre_width = al->width = maxwidth - spacing;
+		if (al->r_height < 0 && maxheight >= 0)
+		    al->r_height = al->pre_height = al->height = maxheight + row_offset;
 		}
 	    else if (al_type == 1)	/* vbox */
 		{
-		if (al->r_height < 0 && yo >= 0)
-		    al->r_height = al->pre_height = al->height = yo - spacing;
-		if (al->r_width < 0 && maxsize >= 0)
-		    al->r_width = al->pre_width = al->width = maxsize;
+		if (al->r_height < 0 && maxheight >= 0)
+		    al->r_height = al->pre_height = al->height = maxheight - spacing;
+		if (al->r_width < 0 && maxwidth >= 0)
+		    al->r_width = al->pre_width = al->width = maxwidth + column_offset;
 		}
 
 	    /** If Width/Height unspecified, occupy entire container **/

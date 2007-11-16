@@ -2376,7 +2376,7 @@ wgtr_internal_GetMatchingChildList_r(pWgtrNode parent, char* childtype, pWgtrNod
 	    {
 	    if (*n_items >= max_items) return 0;
 	    child = (pWgtrNode)(parent->Children.Items[i]);
-	    if (!strcmp(child->Type, childtype))
+	    if (!childtype || !strcmp(child->Type, childtype))
 		{
 		list[(*n_items)++] = child;
 		}
@@ -2400,81 +2400,113 @@ wgtrGetMatchingChildList(pWgtrNode parent, char* childtype, pWgtrNode* list, int
     return n_matches;
     }
 
+
+int
+wgtr_internal_GetMaxWidth_r(pWgtrNode widget, pWgtrNode search, int width, int height)
+    {
+    int cnt, i;
+    pWgtrNode search_child;
+
+	cnt = xaCount(&search->Children);
+	for(i=0;i<cnt;i++)
+	    {
+	    search_child = xaGetItem(&search->Children, i);
+	    if (search_child == widget) continue;
+
+	    if (!(search_child->Flags & WGTR_F_NONVISUAL))
+		{
+		if (search_child->y <= widget->y + height &&
+		    search_child->y + search_child->height >= widget->y &&
+		    search_child->x > widget->x && search_child->x < widget->x + width)
+		    {
+		    width = search_child->x - widget->x;
+		    }
+		}
+	    else if (search_child->Flags & WGTR_F_CONTAINER)
+		{
+		width = wgtr_internal_GetMaxWidth_r(widget, search_child, width, height);
+		}
+	    }
+
+    return width;
+    }
+
+
+/*** wgtrGetMaxWidth - determine the maximum width that a widget of the given
+ *** height can be without overlapping other visual widgets.
+ ***/
 int
 wgtrGetMaxWidth(pWgtrNode widget, int height)
     {
     int w;
-    int i, cnt;
-    pWgtrNode sibling;
-    pWgtrNode nephew;
-    int i2, cnt2;
+    pWgtrNode parent;
 
 	/** absolute max width = container width minus x location **/
-	if(!widget->Parent) return 0;
-	w = widget->Parent->width - widget->x;
+	parent = widget->Parent;
+	while (parent && parent->Parent && (parent->Flags & WGTR_F_NONVISUAL))
+	    parent = parent->Parent;
+	if(!parent) return 0;
+	w = parent->width - widget->x;
 
-	/** search siblings **/
-	cnt = xaCount(&widget->Parent->Children);
-	for(i=0;i<cnt;i++)
-	    {
-	    sibling = xaGetItem(&widget->Parent->Children, i);
-	    if (sibling == widget) continue;
-
-	    if (!(sibling->Flags & WGTR_F_NONVISUAL))
-		{
-		if (sibling->y <= widget->y + height && 
-		    sibling->y + sibling->height >= widget->y && 
-		    sibling->x > widget->x && sibling->x < widget->x + w)
-		    {
-		    w = sibling->x - widget->x;
-		    }
-		}
-	    else if (sibling->Flags & WGTR_F_CONTAINER)
-		{
-		/** Search inside nonvisuals **/
-		cnt2 = xaCount(&sibling->Children);
-		for(i2=0;i2<cnt2;i2++)
-		    {
-		    nephew = xaGetItem(&sibling->Children, i2);
-		    if (!(nephew->Flags & WGTR_F_NONVISUAL))
-			{
-			if (nephew->y <= widget->y + height && 
-			    nephew->y + nephew->height >= widget->y && 
-			    nephew->x > widget->x && nephew->x < widget->x + w)
-			    {
-			    w = nephew->x - widget->x;
-			    }
-			}
-		    }
-		}
-	    }
+	/** search siblings and descendents of siblings **/
+	w = wgtr_internal_GetMaxWidth_r(widget, parent, w, height);
 
     return w;
     }
 
+
+int
+wgtr_internal_GetMaxHeight_r(pWgtrNode widget, pWgtrNode search, int width, int height)
+    {
+    int cnt, i;
+    pWgtrNode search_child;
+
+	cnt = xaCount(&search->Children);
+	for(i=0;i<cnt;i++)
+	    {
+	    search_child = xaGetItem(&search->Children, i);
+	    if (search_child == widget) continue;
+
+	    if (!(search_child->Flags & WGTR_F_NONVISUAL))
+		{
+		if (search_child->x <= widget->x + width &&
+		    search_child->x + search_child->width >= widget->x &&
+		    search_child->y > widget->y && search_child->y < widget->y + height)
+		    {
+		    height = search_child->y - widget->y;
+		    }
+		}
+	    else if (search_child->Flags & WGTR_F_CONTAINER)
+		{
+		height = wgtr_internal_GetMaxHeight_r(widget, search_child, width, height);
+		}
+	    }
+
+    return height;
+    }
+
+
+/*** wgtrGetMaxHeight - determine the maximum height that a widget of the given
+ *** width can be without overlapping other visual widgets.
+ ***/
 int
 wgtrGetMaxHeight(pWgtrNode widget, int width)
     {
     int h;
-    int i, cnt;
-    pWgtrNode sibling;
+    pWgtrNode parent;
 
-	/** absolute max height = container height minus y location **/
-	if(!widget->Parent) return 0;
-	h = widget->Parent->height - widget->y;
+	/** absolute max width = container width minus x location **/
+	parent = widget->Parent;
+	while (parent && parent->Parent && (parent->Flags & WGTR_F_NONVISUAL))
+	    parent = parent->Parent;
+	if(!parent) return 0;
+	h = parent->height - widget->y;
 
-	/** search siblings **/
-	cnt = xaCount(&widget->Parent->Children);
-	for(i=0;i<cnt;i++)
+	/** search siblings and descendents of siblings **/
+	h = wgtr_internal_GetMaxHeight_r(widget, parent, width, h);
+	if (h > WGTR_DEFAULT_SPACING)
 	    {
-	    sibling = xaGetItem(&widget->Parent->Children, i);
-	    if (sibling == widget) continue;
-	    if (sibling->x <= widget->x + width && 
-		sibling->x + sibling->width >= widget->x && 
-		sibling->y > widget->y && sibling->y < widget->y + h)
-		{
-		h = sibling->y - widget->y;
-		}
+	    h -= WGTR_DEFAULT_SPACING;
 	    }
 
     return h;

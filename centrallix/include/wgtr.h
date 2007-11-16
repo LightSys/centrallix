@@ -52,6 +52,8 @@
 #define	WGTR_F_VSCROLLABLE  16		/** contents are vertically scrollable.  Do not resize Y/height **/
 #define	WGTR_F_HSCROLLABLE  32		/** contents are horiz scrollable.  Do not resize X/width **/
 
+#define WGTR_DEFAULT_SPACING (10)	/** default spacing between widgets **/
+
 typedef struct
     {
     int		MinWidth;
