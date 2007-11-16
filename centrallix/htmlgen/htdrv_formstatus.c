@@ -42,10 +42,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_formstatus.c,v 1.25 2007/04/19 21:26:49 gbeeley Exp $
+    $Id: htdrv_formstatus.c,v 1.26 2007/11/16 21:43:16 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_formstatus.c,v $
 
     $Log: htdrv_formstatus.c,v $
+    Revision 1.26  2007/11/16 21:43:16  gbeeley
+    - (bugfix) initial display should show "No Data", not "View".
+
     Revision 1.25  2007/04/19 21:26:49  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -351,11 +354,11 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** HTML body <DIV> element for the layers. **/
    if (!strcmp(style,"large"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatL01.png></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatL05.png></DIV>\n", id);
    else if (!strcmp(style,"largeflat"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatLF01.png></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatLF05.png></DIV>\n", id);
    else
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstat01.gif></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstat05.gif></DIV>\n", id);
 
    htrAddEventHandlerFunction(s,"document","MOUSEDOWN","fs","fs_mousedown");
    htrAddEventHandlerFunction(s,"document","MOUSEUP",  "fs","fs_mouseup");
