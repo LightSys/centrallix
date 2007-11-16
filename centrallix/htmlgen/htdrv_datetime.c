@@ -67,8 +67,11 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     int type;
     int x,y,w,h,w2=184,h2=190;
     int id, i;
+    int rval;
     DateTime dt;
     ObjData od;
+    pObjQuery qy;
+    pObject qy_obj;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 	    {
@@ -118,24 +121,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get initial date **/
 	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING,POD(&sql)) == 0) 
 	    {
-	    for (i=0;i<xaCount(&(tree->Children));i++)
-		{
-		attr = wgtrFirstPropertyName(tree);
-		if (!attr)
-		    {
-		    mssError(1, "HTDT", "There was an error getting date from your SQL query");
-		    return -1;
-		    }
-		type = wgtrGetPropertyType(tree, attr);
-		wgtrGetPropertyValue(tree, attr, type, &od);
-		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
-		    str = objDataToStringTmp(type, (void*)(&od), 0);
-		else
-		    str = objDataToStringTmp(type, (void*)(od.String), 0);
-		strtcpy(initialdate, str, sizeof(initialdate));
-		}
-/*
-	    if ((qy = objMultiQuery(w_obj->Session, sql))) 
+	    if ((qy = objMultiQuery(s->ObjSession, sql))) 
 		{
 		while ((qy_obj = objQueryFetch(qy, O_RDONLY)))
 		    {
@@ -153,12 +139,11 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 			str = objDataToStringTmp(type, (void*)(&od), 0);
 		    else
 			str = objDataToStringTmp(type, (void*)(od.String), 0);
-		    snprintf(initialdate, 64, "%s", str);
+		    strtcpy(initialdate, str, sizeof(initialdate));
 		    objClose(qy_obj);
 		    }
 		objQueryClose(qy);
 		}
-*/
 	    }
 	else if (wgtrGetPropertyValue(tree,"initialdate",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
@@ -297,10 +282,14 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.38 2007/06/06 15:21:58 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.39 2007/11/16 21:41:59 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.39  2007/11/16 21:41:59  gbeeley
+    - (bugfix) someone made a booboo cutting and pasting code in the
+      htdrv_datetime module ;)
+
     Revision 1.38  2007/06/06 15:21:58  gbeeley
     - (feature) allow label, textarea, datetime to specify the form directly,
       for use inside a component
