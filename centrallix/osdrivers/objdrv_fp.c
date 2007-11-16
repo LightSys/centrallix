@@ -62,10 +62,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_fp.c,v 1.2 2007/09/18 18:10:32 gbeeley Exp $
+    $Id: objdrv_fp.c,v 1.3 2007/11/16 21:48:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_fp.c,v $
 
     $Log: objdrv_fp.c,v $
+    Revision 1.3  2007/11/16 21:48:52  gbeeley
+    - (feature) adding support for the builtin filepro control fields for
+      create and modify uid and timestamp.
+
     Revision 1.2  2007/09/18 18:10:32  gbeeley
     - (bugfix) filepro driver needs to objUnmanageObject() for objects opened
       internally.
@@ -338,6 +342,9 @@ typedef struct
     unsigned int	Offset;
     pFpOpenFiles	OpenFiles;
     FpRecData		RowHeader;
+    DateTime		CreateDate;
+    DateTime		ModifyDate;
+    DateTime		ProcessDate;
     }
     FpData, *pFpData;
 
@@ -366,6 +373,27 @@ typedef struct
     FpQuery, *pFpQuery;
 
 
+char* fp_special_attr[] =
+    {
+    "__fp_create_date",
+    "__fp_create_uid",
+    "__fp_process_date",
+    "__fp_modify_date",
+    "__fp_modify_uid",
+    "last_modification",
+    };
+
+int fp_special_type[] =
+    {
+    DATA_T_DATETIME,
+    DATA_T_INTEGER,
+    DATA_T_DATETIME,
+    DATA_T_DATETIME,
+    DATA_T_INTEGER,
+    DATA_T_DATETIME,
+    };
+
+
 /*** GLOBALS ***/
 struct
     {
@@ -392,6 +420,66 @@ fp_internal_Timestamp()
 	t = times(&tms);
 
     return t;
+    }
+
+
+/*** fp_internal_StampToDate() - take a date stamp in a filepro
+ *** record metadata block and convert it into a DateTime value.
+ ***/
+int
+fp_internal_StampToDate(CXINT16 stamp, pDateTime dt)
+    {
+    int n_days;
+
+	/** no negative values ... **/
+	dt->Value = 0;
+	if (stamp < 0) return -1;
+
+	/** year **/
+	dt->Part.Year = 83;
+	while(1)
+	    {
+	    n_days = ((dt->Part.Year % 4) == 0 && (dt->Part.Year % 400) != 0)?366:365;
+	    if (stamp >= n_days)
+		{
+		stamp -= n_days;
+		dt->Part.Year++;
+		}
+	    else
+		break;
+	    }
+
+	/** month **/
+	while(1)
+	    {
+	    switch(dt->Part.Month)
+		{
+		case 3:		/* apr */
+		case 5:		/* jun */
+		case 8:		/* sep */
+		case 10:	/* nov */
+		    n_days = 30;
+		    break;
+		case 1:		/* feb */
+		    n_days = ((dt->Part.Year % 4) == 0 && (dt->Part.Year % 400) != 0)?29:28;
+		    break;
+		default:
+		    n_days = 31;
+		    break;
+		}
+	    if (stamp >= n_days)
+		{
+		stamp -= n_days;
+		dt->Part.Month++;
+		}
+	    else
+		break;
+	    }
+
+	/** Day **/
+	dt->Part.Day = stamp;
+
+    return 0;
     }
 
 
@@ -568,7 +656,7 @@ fp_internal_ParseDefinition(pFpTableInf tdata, pLxSession lxs)
     char* ptr;
     char* tptr;
     int n_bytes, n_columns;
-    int i;
+    int i,j,k,found;
     int total_len;
     pFpColInf cdata;
 
@@ -597,7 +685,25 @@ fp_internal_ParseDefinition(pFpTableInf tdata, pLxSession lxs)
 			nmMalloc(sizeof(FpColInf));
 	    if (!cdata) goto error;
 	    tdata->nColumns++;
+
+	    /** Make sure column name is unique **/
 	    strtcpy(cdata->Name, tptr, sizeof(cdata->Name));
+	    for(j=0;j<tdata->nColumns-1;j++)
+		{
+		if (j) snprintf(cdata->Name, sizeof(cdata->Name), "%s.%d", tptr, j);
+		found = 0;
+		for(k=0;k<tdata->nColumns-1;k++)
+		    {
+		    if (!strcmp(tdata->Columns[k]->Name, cdata->Name))
+			{
+			found = 1;
+			break;
+			}
+		    }
+		if (!found) break;
+		}
+
+	    /** Length and 'edit format' **/
 	    tptr = strsep(&ptr,":");
 	    if (!tptr) goto error;
 	    cdata->Length = strtol(tptr, NULL, 10);
@@ -1855,6 +1961,10 @@ fpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    return tdata->Columns[i]->Type;
 		    }
 		}
+	    for(i=0;i<sizeof(fp_special_attr)/sizeof(char*);i++) if (!strcmp(fp_special_attr[i], attrname))
+		{
+		return fp_special_type[i];
+		}
 	    }
 	else if (inf->Type == FP_T_COLUMN)
 	    {
@@ -2053,6 +2163,59 @@ fpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 		objCopyData(srcpod, val, t);
 		return 0;
 		}
+
+	    /** And standard attrs on every fp table row **/
+	    for(i=0;i<sizeof(fp_special_attr)/sizeof(char*);i++) if (!strcmp(fp_special_attr[i], attrname))
+		{
+		if (datatype != fp_special_type[i])
+		    {
+		    mssError(1,"FP","Type mismatch accessing attribute '%s' [requested=%s, actual=%s]", 
+			    attrname, obj_type_names[datatype], obj_type_names[fp_special_type[i]]);
+		    return -1;
+		    }
+		if (!strcmp(attrname, "__fp_create_date"))
+		    {
+		    if (fp_internal_StampToDate(inf->RowHeader.Valid.CreateDate, &inf->CreateDate) < 0) return -1;
+		    val->DateTime = &inf->CreateDate;
+		    return 0;
+		    }
+		else if (!strcmp(attrname, "__fp_create_uid"))
+		    {
+		    val->Integer = inf->RowHeader.Valid.CreateUID;
+		    return 0;
+		    }
+		else if (!strcmp(attrname, "__fp_modify_date"))
+		    {
+		    if (fp_internal_StampToDate(inf->RowHeader.Valid.UpdateDate, &inf->ModifyDate) < 0) return -1;
+		    val->DateTime = &inf->ModifyDate;
+		    return 0;
+		    }
+		else if (!strcmp(attrname, "__fp_modify_uid"))
+		    {
+		    val->Integer = inf->RowHeader.Valid.UpdateProcUID;
+		    return 0;
+		    }
+		else if (!strcmp(attrname, "__fp_process_date"))
+		    {
+		    if (fp_internal_StampToDate(inf->RowHeader.Valid.ProcDate, &inf->ProcessDate) < 0) return -1;
+		    val->DateTime = &inf->ProcessDate;
+		    return 0;
+		    }
+		else if (!strcmp(attrname, "last_modification"))
+		    {
+		    if (inf->RowHeader.Valid.ProcDate > inf->RowHeader.Valid.UpdateDate)
+			{
+			if (fp_internal_StampToDate(inf->RowHeader.Valid.ProcDate, &inf->ProcessDate) < 0) return -1;
+			val->DateTime = &inf->ProcessDate;
+			}
+		    else
+			{
+			if (fp_internal_StampToDate(inf->RowHeader.Valid.UpdateDate, &inf->ModifyDate) < 0) return -1;
+			val->DateTime = &inf->ModifyDate;
+			}
+		    return 0;
+		    }
+		}
 	    }
 
 	mssError(1,"FP","Invalid column for GetAttrValue");
@@ -2094,7 +2257,10 @@ fpGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 		tdata = inf->TData;
 
 	        /** Return attr in table inf **/
-		if (inf->CurAttr < tdata->nColumns) return tdata->Columns[inf->CurAttr++]->Name;
+		if (inf->CurAttr < tdata->nColumns)
+		    return tdata->Columns[inf->CurAttr++]->Name;
+		else if (inf->CurAttr < tdata->nColumns + (sizeof(fp_special_attr)/sizeof(char*)))
+		    return fp_special_attr[(inf->CurAttr++) - tdata->nColumns];
 	        break;
 	    }
 
