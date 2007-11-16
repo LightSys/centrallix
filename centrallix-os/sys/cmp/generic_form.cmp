@@ -24,7 +24,7 @@ generic_form "widget/component-decl"
 		}
 	    vbox "widget/vbox"
 		{
-		x=10;y=40;width=200;cellsize=20; spacing=5;
+		x=10;y=40;column_width=200;cellsize=20; spacing=5;
 
 		rpt "widget/repeat"
 		    {
