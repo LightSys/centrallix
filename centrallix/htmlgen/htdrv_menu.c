@@ -162,6 +162,33 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
     }
 
 
+int
+htmenu_internal_CheckAddItem(pHtSession s, pWgtrNode sub_tree, int is_horizontal, int is_popup, int is_onright, int row_h, int* mcnt, char* name, pXString xs)
+    {
+    char* ptr;
+    int is_submenu;
+
+	wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu"))
+	    {
+	    is_submenu = !strcmp(ptr,"widget/menu");
+	    if (is_onright ^ !(is_horizontal && htrGetBoolean(sub_tree, "onright", 0) == 1))
+		{
+		htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 
+			is_onright, row_h, *mcnt, name, xs);
+		(*mcnt)++;
+		}
+	    }
+	else if (!strcmp(ptr,"widget/menusep"))
+	    {
+	    htmenu_internal_AddSep(s, is_horizontal, row_h, *mcnt, name);
+	    (*mcnt)++;
+	    }
+
+    return 0;
+    }
+
+
 /*** htmenuRender - generate the HTML code for the menu widget.
  ***/
 int 
@@ -175,11 +202,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
     char *ptr;
     int x,y,w,h;
     int col_w, row_h;
-    int id, i, cnt, mcnt;
+    int id, i, j, cnt, cntj, mcnt;
     int is_horizontal;
     int is_popup;
-    int is_submenu;
+    /*int is_submenu;*/
     pWgtrNode sub_tree;
+    pWgtrNode sub_tree_child;
     pXString xs;
     int bx = 0;
 
@@ -321,7 +349,20 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	for (i=0;i<cnt;i++)
 	    {
 	    sub_tree = xaGetItem(&(menu->Children), i);
-	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+	    if (sub_tree->Flags & WGTR_F_CONTROL)
+		{
+		cntj = xaCount(&(sub_tree->Children));
+		for(j=0;j<cntj;j++)
+		    {
+		    sub_tree_child = xaGetItem(&(sub_tree->Children), j);
+		    htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs);
+		    }
+		}
+	    else
+		{
+		htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs);
+		}
+	    /*wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
 		{
 		is_submenu = !strcmp(ptr,"widget/menu");
@@ -335,7 +376,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		{
 		htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, name);
 		mcnt++;
-		}
+		}*/
 	    }
 	if (is_horizontal)
 	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
@@ -354,7 +395,20 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    for (i=0;i<cnt;i++)
 		{
 		sub_tree = xaGetItem(&(menu->Children), i);
-		wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
+		if (sub_tree->Flags & WGTR_F_CONTROL)
+		    {
+		    cntj = xaCount(&(sub_tree->Children));
+		    for(j=0;j<cntj;j++)
+			{
+			sub_tree_child = xaGetItem(&(sub_tree->Children), j);
+			htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs);
+			}
+		    }
+		else
+		    {
+		    htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs);
+		    }
+		/*wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
 		    {
 		    is_submenu = !strcmp(ptr,"widget/menu");
@@ -368,7 +422,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		    {
 		    htmenu_internal_AddSep(s, is_horizontal, row_h, mcnt, name);
 		    mcnt++;
-		    }
+		    }*/
 		}
 	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
 	    mcnt++;
@@ -403,7 +457,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	nmFree(xs, sizeof(XString));
 
 	/* Read and initialize the menu items */
-	cnt = xaCount(&(menu->Children));
+	/*cnt = xaCount(&(menu->Children));
 	for (i=0;i<cnt;i++)
 	    {
 	    sub_tree = xaGetItem(&(menu->Children), i);
@@ -411,7 +465,6 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    if (!strcmp(ptr,"widget/menuitem")) 
 		{
 		htrRenderSubwidgets(s, sub_tree, z+1);
-		/*sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;*/
 		} 
 	    else if (!strcmp(ptr,"widget/menusep"))
 		{
@@ -421,11 +474,30 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		{
 		htrRenderWidget(s, sub_tree, z+1);
 		}
-	    }
+	    }*/
+	htrRenderSubwidgets(s, menu, z+1);
 
     return 0;
     }
 
+int 
+htmenuRender_sep(pHtSession s, pWgtrNode menusep, int z) 
+    {
+
+	menusep->RenderFlags |= HT_WGTF_NOOBJECT;
+	htrRenderSubwidgets(s, menusep, z);
+
+    return 0;
+    }
+
+int 
+htmenuRender_item(pHtSession s, pWgtrNode menuitem, int z) 
+    {
+
+	htrRenderSubwidgets(s, menuitem, z);
+
+    return 0;
+    }
 
 /* 
    htmenuInitialize - register with the ht_render module.
@@ -457,6 +529,22 @@ htmenuInitialize()
 	/** Register. **/
 	htrRegisterDriver(drv);
 
+	htrAddSupport(drv, "dhtml");
+
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+	strcpy(drv->Name,"DHTML Menu Separator Driver");
+	strcpy(drv->WidgetName,"menusep");
+	drv->Render = htmenuRender_sep;
+	htrRegisterDriver(drv);
+	htrAddSupport(drv, "dhtml");
+
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+	strcpy(drv->Name,"DHTML Menu Widget Item Driver");
+	strcpy(drv->WidgetName,"menuitem");
+	drv->Render = htmenuRender_item;
+	htrRegisterDriver(drv);
 	htrAddSupport(drv, "dhtml");
 
 	HTMN.idcnt = 0;
