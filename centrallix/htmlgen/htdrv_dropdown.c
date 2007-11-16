@@ -141,6 +141,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
     htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
     htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+    htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
     htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js", 0);
 
     htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "dd", "dd_mousemove");
@@ -332,10 +333,13 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.59 2007/07/25 16:54:29 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.60 2007/11/16 21:42:34 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.60  2007/11/16 21:42:34  gbeeley
+    - (bugfix) dropdown requires ht_utils_hints.js
+
     Revision 1.59  2007/07/25 16:54:29  gbeeley
     - (feature) allow dropdown widget to directly specify what form it is
       using instead of just defaulting to a containing form.
