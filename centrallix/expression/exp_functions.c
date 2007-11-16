@@ -56,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.10 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: exp_functions.c,v 1.11 2007/11/16 21:40:09 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.11  2007/11/16 21:40:09  gbeeley
+    - (bugfix) quote() should return NULL if its parameter is NULL.
+
     Revision 1.10  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -964,15 +967,15 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     char* ptr;
     char* dst;
     tree->DataType = DATA_T_STRING;
+    if (i0 && (i0->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
     if (!i0 || i0->DataType != DATA_T_STRING || i1)
         {
 	mssError(1,"EXP","quote() requires one string parameter");
 	return -1;
-	}
-    if ((i0->Flags & EXPR_F_NULL))
-	{
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
 	}
     len = strlen(i0->String);
     ptr = i0->String;
