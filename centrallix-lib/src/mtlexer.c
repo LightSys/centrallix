@@ -32,10 +32,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtlexer.c,v 1.9 2007/10/29 20:42:43 gbeeley Exp $
+    $Id: mtlexer.c,v 1.10 2007/12/05 22:10:15 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtlexer.c,v $
 
     $Log: mtlexer.c,v $
+    Revision 1.10  2007/12/05 22:10:15  gbeeley
+    - (bugfix) fixing problem regarding quoting of chars in a string under
+      some circumstances
+
     Revision 1.9  2007/10/29 20:42:43  gbeeley
     - (bugfix) new changes to mtlexer had some problems dealing with special
       and/or escaped characters.
@@ -526,7 +530,7 @@ mlxNextToken(pLxSession this)
 
 		/** Keep scanning until delimiter, unless delimiter preceeded by an escape **/
 		prev_ch = '\0';
-		while((*ptr != this->Delimiter || ((this->Flags & MLX_F_NOUNESC) && prev_ch == '\\')))
+		while(prev_ch == '\\' || *ptr != this->Delimiter)
 		    {
 		    ch=*ptr;
 
