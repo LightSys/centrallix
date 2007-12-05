@@ -185,7 +185,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; }\n",id,x,y,w,h,z);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 
@@ -282,10 +282,14 @@ htdtInitialize()
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_datetime.c,v 1.39 2007/11/16 21:41:59 gbeeley Exp $
+    $Id: htdrv_datetime.c,v 1.40 2007/12/05 18:53:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_datetime.c,v $
 
     $Log: htdrv_datetime.c,v $
+    Revision 1.40  2007/12/05 18:53:40  gbeeley
+    - (change) Set cursor to 'default' (just a plain old pointer) when pointing
+      at text that should not normally be "selectable"
+
     Revision 1.39  2007/11/16 21:41:59  gbeeley
     - (bugfix) someone made a booboo cutting and pasting code in the
       htdrv_datetime module ;)

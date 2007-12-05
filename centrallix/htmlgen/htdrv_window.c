@@ -44,10 +44,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_window.c,v 1.51 2007/09/18 17:53:16 gbeeley Exp $
+    $Id: htdrv_window.c,v 1.52 2007/12/05 18:53:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_window.c,v $
 
     $Log: htdrv_window.c,v $
+    Revision 1.52  2007/12/05 18:53:40  gbeeley
+    - (change) Set cursor to 'default' (just a plain old pointer) when pointing
+      at text that should not normally be "selectable"
+
     Revision 1.51  2007/09/18 17:53:16  gbeeley
     - (bugfix) handle the 'visible' property more flexibly
 
@@ -585,7 +589,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    /** draw titlebar div **/
 	    if (has_titlebar)
 		{
-		htrAddStylesheetItem_va(s,"\t#wn%POStitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %POSpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %POS; color:%STR&HTE; %STR}\n", id, tbh-1-box_offset, z+1, txtcolor, hdr_bgnd_style);
+		htrAddStylesheetItem_va(s,"\t#wn%POStitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %POSpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %POS; color:%STR&HTE; cursor:default; %STR}\n", id, tbh-1-box_offset, z+1, txtcolor, hdr_bgnd_style);
 		htrAddStylesheetItem_va(s,"\t#wn%POStitlebar { border-style: solid; border-width: 0px 0px 1px 0px; border-color: gray; }\n", id);
 		}
 

@@ -123,7 +123,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,h,w,z);
+    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; }\n",id,x,y,h,w,z);
     htrAddStylesheetItem_va(s,"\t#dd%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
     htrAddStylesheetItem_va(s,"\t#dd%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
 
@@ -333,10 +333,14 @@ int htddInitialize() {
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_dropdown.c,v 1.60 2007/11/16 21:42:34 gbeeley Exp $
+    $Id: htdrv_dropdown.c,v 1.61 2007/12/05 18:53:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_dropdown.c,v $
 
     $Log: htdrv_dropdown.c,v $
+    Revision 1.61  2007/12/05 18:53:40  gbeeley
+    - (change) Set cursor to 'default' (just a plain old pointer) when pointing
+      at text that should not normally be "selectable"
+
     Revision 1.60  2007/11/16 21:42:34  gbeeley
     - (bugfix) dropdown requires ht_utils_hints.js
 

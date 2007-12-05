@@ -42,10 +42,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_tab.c,v 1.36 2007/09/18 17:49:39 gbeeley Exp $
+    $Id: htdrv_tab.c,v 1.37 2007/12/05 18:53:40 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_tab.c,v $
 
     $Log: htdrv_tab.c,v $
+    Revision 1.37  2007/12/05 18:53:40  gbeeley
+    - (change) Set cursor to 'default' (just a plain old pointer) when pointing
+      at text that should not normally be "selectable"
+
     Revision 1.36  2007/09/18 17:49:39  gbeeley
     - (bugfix) on browsers that support it, position the background image on a
       tab control so it lines up vertically with the background on the tabs
@@ -653,7 +657,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			}
 		    else if (s->Capabilities.Dom2CSS)
 			{
-			htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { %STR }\n",
+			htrAddStylesheetItem_va(s, "\t#tc%POStab%POS { cursor:default; %STR }\n",
 				id, tabcnt, bg);
 			if (tab_width <= 0)
 			    htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" style=\"position:absolute; visibility:inherit; left:%INTpx; top:%INTpx; overflow:hidden; z-index:%POS; \">\n", id, tabcnt, x+xtoffset, y+ytoffset, is_selected?(z+2):z);

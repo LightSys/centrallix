@@ -44,6 +44,10 @@
 /**CVSDATA***************************************************************
 
     $Log: htdrv_label.c,v $
+    Revision 1.35  2007/12/05 18:53:40  gbeeley
+    - (change) Set cursor to 'default' (just a plain old pointer) when pointing
+      at text that should not normally be "selectable"
+
     Revision 1.34  2007/09/18 17:42:54  gbeeley
     - (change) allow font size to be specified on page and label, and do font
       sizing in CSS px instead of using the old 1...7 HTML approach.
@@ -442,7 +446,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; }\n",id,x,y,w,z);
 
 	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"lbl%POS\")",id);
 	htrAddWgtrCtrLinkage(s, tree, "_obj");
