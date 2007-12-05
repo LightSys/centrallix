@@ -6037,13 +6037,36 @@ else
 
 fi;
 
+	if test "$SYBASE" != ""; then
+	    if test "$SYBASE_OCS" != ""; then
+		default_sybase_incdir="$SYBASE/$SYBASE_OCS/include"
+		default_sybase_libdir="$SYBASE/$SYBASE_OCS/lib"
+	    else
+		default_sybase_incdir="$SYBASE/include"
+		default_sybase_libdir="$SYBASE/lib"
+	    fi
+	else
+	    if test -d "/opt/sybase/"; then
+		if test -d /opt/sybase/OCS-*/include -a -d /opt/sybase/OCS-*/lib; then
+		    default_sybase_incdir="/opt/sybase/"OCS-*"/include"
+		    default_sybase_libdir="/opt/sybase/"OCS-*"/lib"
+		else
+		    default_sybase_incdir="/opt/sybase/include"
+		    default_sybase_libdir="/opt/sybase/lib"
+		fi
+	    else
+		default_sybase_incdir="/opt/sybase/include"
+		default_sybase_libdir="/opt/sybase/lib"
+	    fi
+	fi
+
 
 # Check whether --with-sybase-inc or --without-sybase-inc was given.
 if test "${with_sybase_inc+set}" = set; then
   withval="$with_sybase_inc"
   sybase_incdir="$withval"
 else
-  sybase_incdir="/opt/sybase/include"
+  sybase_incdir="$default_sybase_incdir"
 
 fi;
 
@@ -6053,7 +6076,7 @@ if test "${with_sybase_lib+set}" = set; then
   withval="$with_sybase_lib"
   sybase_libdir="$withval"
 else
-  sybase_libdir="/opt/sybase/lib"
+  sybase_libdir="$default_sybase_libdir"
 
 fi;
 

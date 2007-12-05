@@ -208,13 +208,36 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 	    WITH_SYBASE="$enableval", 
 	    WITH_SYBASE="yes"
 	)
+
+	if test "$SYBASE" != ""; then
+	    if test "$SYBASE_OCS" != ""; then
+		default_sybase_incdir="$SYBASE/$SYBASE_OCS/include"
+		default_sybase_libdir="$SYBASE/$SYBASE_OCS/lib"
+	    else
+		default_sybase_incdir="$SYBASE/include"
+		default_sybase_libdir="$SYBASE/lib"
+	    fi
+	else
+	    if test -d "/opt/sybase/"; then
+		if test -d /opt/sybase/OCS-*/include -a -d /opt/sybase/OCS-*/lib; then
+		    default_sybase_incdir="/opt/sybase/"OCS-*"/include"
+		    default_sybase_libdir="/opt/sybase/"OCS-*"/lib"
+		else
+		    default_sybase_incdir="/opt/sybase/include"
+		    default_sybase_libdir="/opt/sybase/lib"
+		fi
+	    else
+		default_sybase_incdir="/opt/sybase/include"
+		default_sybase_libdir="/opt/sybase/lib"
+	    fi
+	fi
  
 	AC_ARG_WITH(sybase-inc,
 	    AC_HELP_STRING([--with-sybase-inc=PATH],
 		[include path for Sybase headers (default is /opt/sybase/include)]
 	    ),
 	    sybase_incdir="$withval",
-	    sybase_incdir="/opt/sybase/include"
+	    sybase_incdir="$default_sybase_incdir"
 	)
  
 	AC_ARG_WITH(sybase-lib,
@@ -222,7 +245,7 @@ AC_DEFUN(CENTRALLIX_CHECK_SYBASE,
 		[library path for Sybase libraries (default is /opt/sybase/lib)]
 	    ),
 	    sybase_libdir="$withval",
-	    sybase_libdir="/opt/sybase/lib"
+	    sybase_libdir="$default_sybase_libdir"
 	)
 
 	ENABLE_SYBASE="no"
