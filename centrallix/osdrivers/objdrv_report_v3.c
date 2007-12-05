@@ -58,10 +58,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_report_v3.c,v 1.15 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: objdrv_report_v3.c,v 1.16 2007/12/05 19:00:00 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_report_v3.c,v $
 
     $Log: objdrv_report_v3.c,v $
+    Revision 1.16  2007/12/05 19:00:00  gbeeley
+    - (bugfix) null vs. not-null handling for aggregate values was not working
+      properly...
+
     Revision 1.15  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -739,7 +743,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
     {
     pObject obj = ((pQueryConn)qyobj)->QueryItem;
     pQueryConn qy = (pQueryConn)qyobj;
-    int n,i;
+    int n,i,was_null;
     pExpression exp;
     pStructInf subitem;
 
@@ -760,13 +764,14 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 	    	if (!strcmp(subitem->Name, attrname))
 	            {
 		    exp = (pExpression)(qy->AggregateExpList.Items[n]);
-		    if (datatype != exp->DataType && !(exp->Flags & EXPR_F_NULL))
+		    was_null = ((exp->Flags & EXPR_F_NULL) != 0);
+		    if (datatype != exp->DataType && !was_null)
 			{
 			mssError(1,"RPT","Type mismatch accessing query property '%s' [requested=%s, actual=%s]",
 				attrname, datatype, exp->DataType);
 			return -1;
 			}
-		    if (!(exp->Flags & EXPR_F_NULL)) switch(exp->DataType)
+		    if (!was_null) switch(exp->DataType)
 		        {
 			case DATA_T_INTEGER:	data_ptr->Integer = exp->Integer; break;
 			case DATA_T_DOUBLE:	data_ptr->Double = exp->Types.Double; break;
@@ -792,7 +797,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 		        expResetAggregates(exp, -1);
 		        expEvalTree(exp,qy->ObjList);
 			}
-		    return (exp->Flags & EXPR_F_NULL)?1:0;
+		    return was_null;
 		    }
 	   	n++;
 	    	}
