@@ -341,9 +341,11 @@ function ClipObject_GetPart(n)
     var a = this.arr;
     if (!a)
 	a = this.arr = ClipRegexp.exec(clip);
-    if(a)
-	return parseInt(a[n]);
-    else
+    if (!a)
+	a = this.arr = [0, 0, pg_get_style(this.obj, 'width'), pg_get_style(this.obj, 'height'), 0];
+    /*if(a)*/
+    return parseInt(a[n]);
+    /*else
 	{
 	if(n == 1 || n == 4)
 	    return 0;
@@ -354,7 +356,7 @@ function ClipObject_GetPart(n)
 	    else
 		return pg_get_style(this.obj,'height');
 	    }
-	}
+	}*/
     }
 
 function ClipObject(o)
