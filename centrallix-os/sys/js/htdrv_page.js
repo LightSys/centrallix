@@ -1171,7 +1171,7 @@ function pg_mvpginpt(ly)
 
 function pg_updateschedtime()
     {
-    var cur_tm = new Date();
+    var cur_tm = pg_timestamp();
     var diff = cur_tm - pg_schedtimeoutstamp;
     for(var i=0;i<pg_schedtimeoutlist.length;i++)
         pg_schedtimeoutlist[i].tm = Math.max(0, pg_schedtimeoutlist[i].tm - diff);
@@ -1181,8 +1181,11 @@ function pg_addschedtolist(s)
     {
     var len = pg_schedtimeoutlist.length;
     var insert = len; 
-    var diff = (new Date()) - pg_schedtimeoutstamp;
-    var reset_timer = (!len) || (s.tm < Math.max(0, pg_schedtimeoutlist[0].tm - diff));
+    var cur_ts = pg_timestamp();
+    var diff = cur_ts - pg_schedtimeoutstamp;
+    if (len) diff = Math.min(diff, pg_schedtimeoutlist[0].tm);
+    var reset_timer = (!len) || (s.tm < pg_schedtimeoutlist[0].tm - diff);
+    //pg_debug('' + (pg_timestamp()) + ': adding item ' + s.id + ' with delay ' + s.tm + '\n');
     if (reset_timer)
 	pg_stopschedtimeout();
     else
@@ -1220,11 +1223,12 @@ function pg_startschedtimeout()
     {
     if(!pg_schedtimeout && pg_schedtimeoutlist.length > 0) 
 	{
-	pg_schedtimeoutstamp = new Date();
-	if (window.pg_isloaded)
-	    pg_schedtimeout = setTimeout(pg_dosched, pg_schedtimeoutlist[0].tm);
-	else
-	    pg_schedtimeout = setTimeout(pg_dosched, Math.max(pg_schedtimeoutlist[0].tm,100));
+	pg_schedtimeoutstamp = pg_timestamp();
+	var len = pg_schedtimeoutlist[0].tm;
+	if (!window.pg_isloaded)
+	    len = Math.max(len,100);
+	pg_schedtimeout = setTimeout(pg_dosched, len);
+	//pg_debug('' + (pg_timestamp()) + ': starting timer for length ' + len + '\n');
 	}
     }
 
@@ -1289,6 +1293,7 @@ function pg_dosched()
 	    {
 	    pg_schedtimeoutlist[i].tm -= sched_item.tm;
 	    }
+	//pg_debug('' + (pg_timestamp()) + ': running item ' + sched_item.id + '\n');
 	if (sched_item.exp)
 	    {
 	    // evaluate expression
@@ -1540,6 +1545,11 @@ function pg_setkbdfocus(l, a, xo, yo)
     if (v)
 	{
 	pg_show_containers(l);
+	}
+    else
+	{
+	pg_curkbdarea = null;
+	pg_curkbdlayer = null;
 	}
 
     return v?true:false;
