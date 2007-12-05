@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_params.c,v 1.8 2007/03/21 04:48:08 gbeeley Exp $
+    $Id: exp_params.c,v 1.9 2007/12/05 18:48:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_params.c,v $
 
     $Log: exp_params.c,v $
+    Revision 1.9  2007/12/05 18:48:02  gbeeley
+    - (bugfix) Problem was causing several aggregate functions to not properly
+      reset to NULL on a new grouping, when used in a context where a "group"
+      may not have any rows at all.
+
     Revision 1.8  2007/03/21 04:48:08  gbeeley
     - (feature) component multi-instantiation.
     - (feature) component Destroy now works correctly, and "should" free the
@@ -446,6 +451,10 @@ exp_internal_ResetAggregates(pExpression this, int reset_id)
 	        this->AggExp->Types.Money.FractionPart = 0;
 	        this->Flags |= EXPR_F_AGGLOCKED;
 		}
+	    this->Integer = 0;
+	    this->Types.Double = 0;
+	    this->Types.Money.WholePart = 0;
+	    this->Types.Money.FractionPart = 0;
 	    if (!strcmp(this->Name,"count")) 
 	        {
 		this->Flags &= ~EXPR_F_NULL;
@@ -454,6 +463,7 @@ exp_internal_ResetAggregates(pExpression this, int reset_id)
 		}
 	    else
 	        {
+		if (this->AggExp) this->AggExp->Flags |= EXPR_F_NULL;
 		this->Flags |= EXPR_F_NULL;
 		}
 	    found_agg = 1;
