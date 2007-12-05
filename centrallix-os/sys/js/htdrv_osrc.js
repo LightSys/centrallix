@@ -25,18 +25,27 @@ function osrc_action_order_object(aparam) //order)
 
 function osrc_action_query_object(aparam) //q, formobj, readonly)
     {
+    this.QueueRequest({Request:'QueryObject', Param:aparam});
+    this.Dispatch();
+    }
+
+function osrc_query_object_handler(aparam)
+    {
     var q = aparam.query;
     var formobj = aparam.client;
     var readonly = aparam.ro;
-
-    if (!aparam.fromsync)
-	this.SyncID = osrc_syncid++;
 
     if(this.pending)
 	{
 	alert('There is already a query or movement in progress...');
 	return 0;
 	}
+
+    if (q) this.ApplyRelationships(q);
+
+    if (!aparam.fromsync)
+	this.SyncID = osrc_syncid++;
+
     this.pendingqueryobject=q;
     var statement=this.sql;
     if (statement.indexOf(' WHERE ') != -1)
@@ -80,8 +89,8 @@ function osrc_action_query_object(aparam) //q, formobj, readonly)
 	statement += ' FOR UPDATE'
     //statement+=';';
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj});
-    
     }
+    
 
 function osrc_make_filter(q)
     {
@@ -99,12 +108,13 @@ function osrc_make_filter(q)
 	    else
 		{
 		var val=q[i].value;
+		if (val == null) continue;
 		switch(q[i].type)
 		    {
 		    case 'integer':
 			if (val == null)
 			    str=':"'+q[i].oid+'" is null ';
-			else if (val.search(/-/)>=0)
+			else if (typeof val != 'number' && val.search(/-/)>=0)
 			    {
 			    var parts = val.split(/-/);
 			    str='(:"'+q[i].oid+'">='+parts[0]+' AND :"'+q[i].oid+'"<='+parts[1] + ')';
@@ -295,7 +305,59 @@ function osrc_make_filter(q)
     }
 
 
+function osrc_go_nogo(go_func, nogo_func)
+    {
+    this._unsaved_cnt = 0;
+    this._go_nogo_pending = true;
+    this._go_func = go_func;
+    this._nogo_func = nogo_func;
+
+    // First, take inventory of how many unsaved or unsure children
+    // are out there.
+    for(var i in this.child)
+	{
+	if ((typeof this.child[i].IsUnsaved) == 'undefined' || this.child[i].IsUnsaved == true)
+	    {
+	    this._unsaved_cnt++;
+	    this.child[i]._osrc_ready = false;
+	    }
+	else
+	    {
+	    this.child[i]._osrc_ready = true;
+	    }
+	}
+
+    // Now check with each, give it a chance to save its data
+    for(var i in this.child)
+	{
+	if (this.child[i]._osrc_ready == false)
+	    {
+	    if (this.child[i].IsDiscardReady() == true)
+		this._unsaved_cnt--;
+
+	    // Somebody already did a QueryCancel?
+	    if (!this._go_nogo_pending) break;
+	    }
+	}
+
+    // If none were unsaved or all have given the "go", then go ahead
+    // and perform the originally desired operation, otherwise wait on
+    // callbacks with QueryContinue or QueryCancel.
+    if (this._unsaved_cnt == 0 && this._go_nogo_pending)
+	{
+	this._go_nogo_pending = false;
+	this._go_func();
+	}
+    }
+
+
 function osrc_action_query(aparam) //q, formobj)
+    {
+    this.QueueRequest({Request:'Query', Param:aparam});
+    this.Dispatch();
+    }
+
+function osrc_query_handler(aparam)
     {
     var q = aparam.query;
     var formobj = aparam.client;
@@ -312,9 +374,10 @@ function osrc_action_query(aparam) //q, formobj)
     this.easyquery=q;
     this.pendingquery=htutil_escape(q);
     this.pending=true;
-    var someunsaved=false;
-/** Check if any children are modified and call IsDiscardReady if they are **/
-    for(var i in this.child)
+    //var someunsaved=false;
+    // Check if any children are modified and call IsDiscardReady if they are
+    this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2);
+    /*for(var i in this.child)
 	 {
 	 if(this.child[i].IsUnsaved)
 	     {
@@ -330,7 +393,7 @@ function osrc_action_query(aparam) //q, formobj)
     //if someunsaved is false, there were no unsaved forms, so no callbacks
     //  so, we'll just fake one using the first form....
     if(someunsaved) return 0;
-    this.QueryContinue(this.child[0]);
+    this.QueryContinue(this.child[0]);*/
     }
 
 function osrc_action_delete(aparam) //up,formobj)
@@ -431,6 +494,8 @@ function osrc_action_create_cb2()
     //Create an object through OSML
     if(!this.sid) this.sid=pg_links(this)[0].target;
     var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__sid=' + this.sid;
+    this.ApplyRelationships(this.createddata);
+    //htr_alert(this.createddata, 2);
     for(var i in this.createddata) if(i!='oid')
 	{
 	src+='&'+htutil_escape(this.createddata[i]['oid'])+'='+htutil_escape(this.createddata[i]['value']);
@@ -512,6 +577,7 @@ function osrc_action_modify(aparam) //up,formobj)
     //Modify an object through OSML
     //up[adsf][value];
     var src='/?cx__akey='+akey+'&ls__mode=osml&ls__req=setattrs&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
+    this.ApplyRelationships(up);
     for(var i in up) if(i!='oid')
 	{
 	src+='&'+htutil_escape(up[i]['oid'])+'='+htutil_escape(up[i]['value']);
@@ -568,18 +634,33 @@ function osrc_cb_query_continue(o)
     {
     //if there is no pending query, don't save the status
     //  this is here to protect against form1 vetoing the move, then form2 reporting it is ready to go
-    if(!this.pending) return 0;
+    //if(!this.pending) return 0;
     //Current form ready
-    if(o)
-    	o._osrc_ready = true;
+    //if(o)
+    //	o._osrc_ready = true;
+    if (o && o._osrc_ready == false)
+	{
+	o._osrc_ready = true;
+	this._unsaved_cnt--;
+	if (this._unsaved_cnt <= 0 && this._go_nogo_pending)
+	    {
+	    this._go_nogo_pending = false;
+	    this._go_func();
+	    }
+	}
     //If all other forms are ready then go
-    for(var i in this.child)
-	 {
-	 if(this.child[i]._osrc_ready == false)
-	      {
-	      return 0;
-	      }
-	 }
+    //for(var i in this.child)
+//	 {
+//	 if(this.child[i]._osrc_ready == false)
+//	      {
+//	      return 0;
+//	      }
+//	 }
+    }
+
+
+function osrc_cb_query_continue_2()
+    {
     //everyone looks ready, let's go
     this.init=true;
     if(this.pendingquery) // this could be a movement or a new query....
@@ -590,10 +671,10 @@ function osrc_cb_query_continue(o)
 	this.pendingquery=null;
 	this.pendingqueryobject=null;
 	this.pendingorderobject=null;
-	for(var i in this.child)
+	/*for(var i in this.child)
 	     {
 	     this.child[i]._osrc_ready=false;
-	     }
+	     }*/
 
 	this.ClearReplica();
 	this.moveop=true;
@@ -606,17 +687,23 @@ function osrc_cb_query_continue(o)
 	this.RecordToMoveTo=null;
 	}
     this.pending=false;
+    this.Dispatch();
     }
 
 function osrc_cb_query_cancel()
     {
-    this.pendingquery = null;
-    for(var i in this.child)
-	 {
-	 this.child[i]._osrc_ready=false;
-	 }
+    if (this._go_nogo_pending)
+	{
+	this._go_nogo_pending = false;
+	this._nogo_func();
+	}
+    }
+
+function osrc_cb_query_cancel_2()
+    {
     this.pendingquery=null;
     this.pending=false;
+    this.Dispatch();
     }
 
 function osrc_cb_request_object(aparam)
@@ -624,9 +711,9 @@ function osrc_cb_request_object(aparam)
     return 0;
     }
 
-function osrc_cb_register(aparam)
+function osrc_cb_register(client)
     {
-    this.child.push(aparam);
+    this.child.push(client);
     }
 
 function osrc_open_session(cb)
@@ -678,6 +765,7 @@ function osrc_get_qid()
 	{
 	this.pending=false;
 	this.GiveAllCurrentRecord();
+	this.Dispatch();
 	}
     else
 	{
@@ -754,7 +842,7 @@ function osrc_clear_replica()
     this.CurrentRecord=1;/* the current record */
     this.OSMLRecord=0;/* the last record we got from the OSML */
 
-/** Clear replica **/
+    /** Clear replica **/
     if(this.replica)
 	for(var i in this.replica)
 	    this.oldoids.push(this.replica[i].oid);
@@ -810,6 +898,7 @@ function osrc_end_query()
 	{
 	pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+qid, osrc_close_query);
 	}
+    this.Dispatch();
     return 0;
     }
 
@@ -904,6 +993,8 @@ function osrc_oldoid_cleanup()
 	else
 	    alert('session is invalid');
 	}
+    else
+	this.Dispatch();
     }
  
 function osrc_oldoid_cleanup_cb()
@@ -913,6 +1004,7 @@ function osrc_oldoid_cleanup_cb()
     this.onload=null;
     delete this.oldoids;
     this.oldoids=new Array();
+    this.Dispatch();
     }
  
 function osrc_close_query()
@@ -972,6 +1064,14 @@ function osrc_tell_all_replica_moved()
 
 function osrc_move_to_record(recnum, from_internal)
     {
+    this.QueueRequest({Request:'MoveTo', Param:{recnum:recnum, from_internal:from_internal}});
+    this.Dispatch();
+    }
+
+function osrc_move_to_record_handler(param)
+    {
+    var recnum = param.recnum;
+    var from_internal = param.from_internal;
     if(recnum<1)
 	{
 	//alert("Can't move past beginning.");
@@ -983,11 +1083,12 @@ function osrc_move_to_record(recnum, from_internal)
 	return 0;
 	}
     this.pending=true;
-    var someunsaved=false;
+    //var someunsaved=false;
     this.RecordToMoveTo=recnum;
     if (!from_internal)
 	this.SyncID = osrc_syncid++;
-    for(var i in this.child)
+    this.GoNogo(osrc_cb_query_continue_2, osrc_cb_query_cancel_2);
+    /*for(var i in this.child)
 	 {
 	 if(this.child[i].IsUnsaved)
 	     {
@@ -1000,11 +1101,11 @@ function osrc_move_to_record(recnum, from_internal)
 	     {
 	     this.child[i]._osrc_ready=true;
 	     }
-	 }
+	 }*/
     //if someunsaved is false, there were no unsaved forms, so no callbacks
     //  we can just continue
-    if(someunsaved) return 0;
-    this.MoveToRecordCB(recnum);
+    /*if(someunsaved) return 0;
+    this.MoveToRecordCB(recnum);*/
     }
 
 function osrc_move_to_record_cb(recnum)
@@ -1032,6 +1133,7 @@ function osrc_move_to_record_cb(recnum)
 	{
 	this.GiveAllCurrentRecord();
 	this.pending=false;
+	this.Dispatch();
 	return 1;
 	}
     else
@@ -1084,6 +1186,7 @@ function osrc_move_to_record_cb(recnum)
 		this.pending=false;
 		this.CurrentRecord=this.LastRecord;
 		this.GiveAllCurrentRecord();
+		this.Dispatch();
 		}
 	    return 0;
 	    }
@@ -1103,6 +1206,7 @@ function osrc_get_qid_startat()
 	this.startat = null;
 	this.pending=false;
 	this.GiveAllCurrentRecord();
+	this.Dispatch();
 	return;
 	}
     this.OSMLRecord=this.startat-1;
@@ -1166,6 +1270,7 @@ function osrc_scroll_to(recnum)
 	{
 	this.TellAllReplicaMoved();
 	this.pending=false;
+	this.Dispatch();
 	return 1;
 	}
     else
@@ -1212,6 +1317,7 @@ function osrc_scroll_to(recnum)
 		this.pending=false;
 		this.TargetRecord=this.LastRecord;
 		this.TellAllReplicaMoved();
+		this.Dispatch();
 		}
 	    return 0;
 	    }
@@ -1253,8 +1359,10 @@ function osrc_action_sync(param)
     var p=this.parentosrc.CurrentRecord;
     for(var i=1;i<10;i++)
 	{
-	this.ParentKey[i]=eval('param.ParentKey'+i);
-	this.ChildKey[i]=eval('param.ChildKey'+i);
+	//this.ParentKey[i]=eval('param.ParentKey'+i);
+	//this.ChildKey[i]=eval('param.ChildKey'+i);
+	this.ParentKey[i]=param['ParentKey'+i];
+	this.ChildKey[i]=param['ChildKey'+i];
 	if(this.ParentKey[i])
 	    {
 	    if (!this.parentosrc.replica[p])
@@ -1365,6 +1473,72 @@ function osrc_action_double_sync_cb()
     this.childosrc.ifcProbe(ifAction).Invoke("QueryObject", {query:query, client:null, ro:this.readonly});
     }
 
+
+/** called by child to get a template to build a new object for creation **/
+function osrc_cb_new_object_template()
+    {
+    var obj = this.NewReplicaObj(0, 0);
+
+    this.ApplyRelationships(obj);
+    return obj;
+    }
+
+function osrc_apply_rel(obj)
+    {
+    var cnt = 0;
+    while(typeof obj[cnt] != 'undefined') cnt++;
+
+    // First, check for relationships that might imply key values
+    for(var i in osrc_relationships)
+	{
+	var rl = osrc_relationships[i];
+	if ((rl.osrc == this && rl.is_slave) || (rl.target_osrc == this && !rl.is_slave))
+	    {
+	    if (rl.osrc == this)
+		{
+		var tgt = rl.target_osrc;
+		var srckey = 'key_';
+		var tgtkey = 'target_key_';
+		}
+	    else
+		{
+		var tgt = rl.osrc;
+		var srckey = 'target_key_';
+		var tgtkey = 'key_';
+		}
+	    if (tgt.CurrentRecord && tgt.replica && tgt.replica[tgt.CurrentRecord])
+		{
+		for(var k=1;k<=5;k++)
+		    {
+		    if (!rl[tgtkey + k]) continue;
+		    for(var j in tgt.replica[tgt.CurrentRecord])
+			{
+			var col = tgt.replica[tgt.CurrentRecord][j];
+			if (col == null || typeof col != 'object') continue;
+			if (col.oid == rl[tgtkey + k])
+			    {
+			    var found = false;
+			    for(var l in obj)
+				{
+				if (obj[l] == null || typeof obj[l] != 'object') continue;
+				if (obj[l].oid == rl[srckey + k])
+				    {
+				    found = true;
+				    obj[l] = {type:col.type, value:col.value, hints:col.hints, oid:rl[srckey + k]};
+				    }
+				}
+			    if (!found)
+				obj[cnt++] = {type:col.type, value:col.value, hints:col.hints, oid:rl[srckey + k]};
+			    }
+			}
+		    }
+		}
+	    }
+	}
+
+    return;
+    }
+
 /** called by child when all or part of the child is shown to the user **/
 function osrc_cb_reveal(child)
     {
@@ -1374,6 +1548,7 @@ function osrc_cb_reveal(child)
     if (this.revealed_children > 1) return 0;
 
     // User requested onReveal?  If so, do that here.
+    //if (!this.bh_finished) return 0;
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);
     else if (this.autoquery == this.AQonEachReveal)
@@ -1436,10 +1611,11 @@ function osrc_do_filter(r)
 
 function osrc_filter_changed(prop, oldv, newv)
     {
-    for(var i in this.rulelist)
+    var osrc = wgtrFindContainer(this, "widget/osrc");
+    for(var i in osrc.rulelist)
 	{
-	var rl = this.rulelist[i];
-	if (rl.dname == prop)
+	var rl = osrc.rulelist[i];
+	if (rl.ruletype == 'osrc_filter' && rl.widget == this)
 	    {
 	    if (rl.schedid)
 		{
@@ -1449,7 +1625,7 @@ function osrc_filter_changed(prop, oldv, newv)
 	    var nv = new String(newv);
 	    if (nv.length >= rl.mc)
 		{
-		rl.schedid = pg_addsched_fn(this, 'osrc_do_filter', [rl], rl.qd);
+		rl.schedid = pg_addsched_fn(osrc, 'osrc_do_filter', [rl], rl.qd);
 		rl.filter_to_use = nv;
 		}
 	    }
@@ -1458,15 +1634,183 @@ function osrc_filter_changed(prop, oldv, newv)
     }
 
 
-function osrc_add_rule(ruletype, param)
+function osrc_add_rule(rule_widget)
     {
-    param.rt = ruletype;
-    if (ruletype == 'filter')
+    var rl = {ruletype:rule_widget.ruletype, widget:rule_widget};
+    if (rl.ruletype == 'osrc_filter')
 	{
-	this[param.dname] = null;
-	htr_watch(this, param.dname, "osrc_filter_changed");
+	rl.mc = rule_widget.min_chars;
+	if (rl.mc == null) rl.mc = 1;
+	rl.qd = rule_widget.query_delay;
+	if (rl.qd == null) rl.qd = 1000;
+	rl.tw = rule_widget.trailing_wildcard;
+	if (rl.tw == null) rl.tw = 1;
+	rl.lw = rule_widget.leading_wildcard;
+	if (rl.lw == null) rl.lw = 0;
+	rl.field = rule_widget.fieldname;
+	rule_widget._osrc_filter_changed = osrc_filter_changed;
+	htr_watch(rule_widget, "value", "_osrc_filter_changed");
+	this.rulelist.push(rl);
 	}
-    this.rulelist.push(param);
+    else if (rl.ruletype == 'osrc_relationship')
+	{
+	for(var keynum = 1; keynum <= 5; keynum++)
+	    {
+	    rl['key_' + keynum] = rule_widget['key_' + keynum];
+	    rl['target_key_' + keynum] = rule_widget['target_key_' + keynum];
+	    }
+	rl.osrc = this;
+	rl.target_osrc = wgtrGetNode(this, rule_widget.target);
+	rl.is_slave = rule_widget.is_slave;
+	if (rl.is_slave == null)
+	    rl.is_slave = 1;
+	osrc_relationships.push(rl);
+	}
+    }
+
+
+function osrc_queue_request(r)
+    {
+    this.request_queue.push(r);
+    }
+
+
+function osrc_dispatch()
+    {
+    if (this.pending) return;
+    var req = null;
+    while ((req = this.request_queue.shift()) != null)
+	{
+	switch(req.Request)
+	    {
+	    case 'Query':
+		this.QueryHandler(req.Param);
+		break;
+
+	    case 'QueryObject':
+		this.QueryObjectHandler(req.Param);
+		break;
+
+	    case 'MoveTo':
+		this.MoveToRecordHandler(req.Param);
+		break;
+	    }
+	if (this.pending) break;
+	}
+    return;
+    }
+
+
+// OSRC Client routines (for linking with another osrc)
+function osrc_oc_resync()
+    {
+    //alert('Resync: ' + this.sql);
+    var sync_param = {ParentOSRC:this.master_osrc};
+    for(var i=1; i<=10;i++)
+	{
+	sync_param['ParentKey'+i] = this.master_keys['master_'+i];
+	sync_param['ChildKey'+i] = this.master_keys['slave_'+i];
+	}
+    this.ifcProbe(ifAction).Invoke("Sync", sync_param);
+    }
+
+function osrc_oc_data_available()
+    {
+    return;
+    }
+
+function osrc_oc_replica_moved()
+    {
+    this.Resync();
+    return;
+    }
+
+function osrc_oc_is_discard_ready()
+    {
+    this.GoNogo(osrc_oc_is_discard_ready_yes, osrc_oc_is_discard_ready_no);
+    return false;
+    }
+
+function osrc_oc_is_discard_ready_yes()
+    {
+    this.master_osrc.QueryContinue(this);
+    }
+
+function osrc_oc_is_discard_ready_no()
+    {
+    this.master_osrc.QueryCancel(this);
+    }
+
+function osrc_oc_object_available(o)
+    {
+    this.Resync();
+    return;
+    }
+
+function osrc_oc_object_created(o)
+    {
+    this.Resync();
+    return;
+    }
+
+function osrc_oc_object_modified(o)
+    {
+    this.Resync();
+    return;
+    }
+
+function osrc_oc_object_deleted(o)
+    {
+    this.Resync();
+    return;
+    }
+
+function osrc_oc_operation_complete(o)
+    {
+    return true;
+    }
+
+
+// Bottom Half of the initialization - after everything has had a chance
+// to osrc_init()
+function osrc_init_bh()
+    {
+    // Search for relationships... then register as an osrc client
+    for(var i in osrc_relationships)
+	{
+	var rl = osrc_relationships[i];
+	if ((rl.osrc == this && rl.is_slave) || (rl.target_osrc == this && !rl.is_slave))
+	    {
+	    if (rl.osrc == this)
+		{
+		this.master_osrc = rl.target_osrc;
+		var masterkey = 'target_key_';
+		var slavekey = 'key_';
+		}
+	    else
+		{
+		this.master_osrc = rl.osrc;
+		var masterkey = 'key_';
+		var slavekey = 'target_key_';
+		}
+	    this.master_osrc.Register(this);
+	    //alert('Register: ' + this.sql);
+	    this.master_keys = {};
+	    for(var i=1;i<=10;i++)
+		{
+		this.master_keys['master_' + i] = rl[masterkey + i];
+		this.master_keys['slave_' + i] = rl[slavekey + i];
+		}
+	    //pg_addsched_fn(this, "Resync", [], 0);
+	    }
+	}
+    this.bh_finished = true;
+
+    // Autoquery on load?  Reveal event already occurred?
+    /*if (this.autoquery == this.AQonLoad) 
+	pg_addsched_fn(this,'InitQuery', [], 0);
+    else if (this.revealed_children && (this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
+	pg_addsched_fn(this,'InitQuery', [], 0);*/
     }
 
 
@@ -1486,6 +1830,9 @@ function osrc_init(param)
     loader.autoquery = param.autoquery;
     loader.revealed_children = 0;
     loader.rulelist = [];
+    loader.SyncID = osrc_syncid++;
+    loader.bh_finished = false;
+    loader.request_queue = [];
 
     // autoquery types - must match htdrv_osrc.c's enum declaration
     loader.AQnever = 0;
@@ -1493,7 +1840,9 @@ function osrc_init(param)
     loader.AQonFirstReveal = 2;
     loader.AQonEachReveal = 3;
 
-    loader.AddRule = osrc_add_rule;
+    // Handle declarative rules
+    loader.addRule = osrc_add_rule;
+
     loader.osrc_do_filter = osrc_do_filter;
     loader.osrc_filter_changed = osrc_filter_changed;
     loader.ParseOneAttr = osrc_parse_one_attr;
@@ -1501,9 +1850,13 @@ function osrc_init(param)
     loader.NewReplicaObj = osrc_new_replica_object;
     loader.PruneReplica = osrc_prune_replica;
     loader.ClearReplica = osrc_clear_replica;
+    loader.ApplyRelationships = osrc_apply_rel;
     loader.EndQuery = osrc_end_query;
     loader.DoFetch = osrc_do_fetch;
     loader.FetchNext = osrc_fetch_next;
+    loader.GoNogo = osrc_go_nogo;
+    loader.QueueRequest = osrc_queue_request;
+    loader.Dispatch = osrc_dispatch;
     loader.GiveAllCurrentRecord=osrc_give_all_current_record;
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
@@ -1511,6 +1864,10 @@ function osrc_init(param)
     loader.oldoids = new Array();
     loader.sid = null;
     loader.qid = null;
+
+    loader.MoveToRecordHandler = osrc_move_to_record_handler;
+    loader.QueryObjectHandler = osrc_query_object_handler;
+    loader.QueryHandler = osrc_query_handler;
    
     // Actions
     var ia = loader.ifcProbeAdd(ifAction);
@@ -1547,6 +1904,8 @@ function osrc_init(param)
     loader.QueryContinue = osrc_cb_query_continue;
     loader.QueryCancel = osrc_cb_query_cancel;
     loader.RequestObject = osrc_cb_request_object;
+    loader.NewObjectTemplate = osrc_cb_new_object_template;
+    loader.InitBH = osrc_init_bh;
     loader.Register = osrc_cb_register;
     loader.Reveal = osrc_cb_reveal;
     loader.Obscure = osrc_cb_obscure;
@@ -1562,14 +1921,29 @@ function osrc_init(param)
     loader.InitQuery = osrc_init_query;
     loader.cleanup = osrc_cleanup;
 
+    // OSRC Client interface -- for linking osrc's together
+    loader.DataAvailable = osrc_oc_data_available;
+    loader.ReplicaMoved = osrc_oc_replica_moved;
+    loader.IsDiscardReady = osrc_oc_is_discard_ready;
+    loader.ObjectAvailable = osrc_oc_object_available;
+    loader.ObjectCreated = osrc_oc_object_created;
+    loader.ObjectModified = osrc_oc_object_modified;
+    loader.ObjectDeleted = osrc_oc_object_deleted;
+    loader.OperationComplete = osrc_oc_operation_complete;
+
+    // OSRC Client interface helpers
+    loader.Resync = osrc_oc_resync;
+
     // Request replication messages
     loader.request_updates = param.requestupdates?1:0;
     if (param.requestupdates) pg_msg_request(loader, pg_msg.MSG_REPMSG);
     loader.ControlMsg = osrc_cb_control_msg;
 
-    // Autoquery on load?
     if (loader.autoquery == loader.AQonLoad) 
-	pg_addsched("InitQuery()", loader, 0);
+	pg_addsched_fn(loader,'InitQuery', [], 0);
+
+    // Finish initialization...
+    pg_addsched_fn(loader, "InitBH", [], 0);
 
     return loader;
     }
