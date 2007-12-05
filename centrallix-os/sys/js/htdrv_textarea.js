@@ -515,8 +515,8 @@ function tx_keyhandler(l,e,k)
 /** Set focus to a new textarea **/
 function tx_select(x,y,l,c,n)
     {
-    if (l.form) l.form.FocusNotify(l);
     if (l.enabled != 'full') return 0;
+    if (l.form) l.form.FocusNotify(l);
     var cheight = 0;
     l.cursorRow = 0;
     for (var i = 0; i<l.rows.length;i++)
@@ -558,9 +558,12 @@ function tx_select(x,y,l,c,n)
 function tx_deselect()
     {
     htr_setvisibility(ibeam_current, 'hidden');
-    if (tx_current) tx_current.cursorlayer = null;
-    cn_activate(tx_current, 'LoseFocus');
-    tx_current = null;
+    if (tx_current)
+	{
+	tx_current.cursorlayer = null;
+	cn_activate(tx_current, 'LoseFocus');
+	tx_current = null;
+	}
     return true;
     }
 
