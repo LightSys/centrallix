@@ -364,48 +364,49 @@ function dd_select_item(l,i)
     var c = "<TABLE height=" + (pg_parah) + " cellpadding=1 cellspacing=0 border=0><TR><TD valign=middle nowrap>";
     if (i!=null)
 	{
-	if(l.form.mode == 'Query'){
-	if(!l.selectedItems)
+	if(l.form && l.form.mode == 'Query')
 	    {
-	    l.selectedItems = new Array();
-	    l.selectedItems[0]=i;
-	    }
-	else
-	    {
-	    for(var k=0;k<l.selectedItems.length;k++)
-		if(l.selectedItems[k]==i)
-		    break;
-	    if(k == l.selectedItems.length)
-		l.selectedItems.push(i);
-	    }
-	/*if (!(i==0 && l.Values[i].value==null)) 
-	    c += l.Values[i].label;
-	else
-	    c += '<i>' + l.Values[i].label + '</i>';*/
-	var firstone = true;
-	var items = '';
-	for(j in l.selectedItems)
-	    {
-	    if(!firstone)
-		items += ', ';
-	    firstone = false;
-	    if( !(l.selectedItems[j]==0 && l.Values[l.selectedItems[j]].value==null))
+	    if(!l.selectedItems)
 		{
-		items += l.Values[l.selectedItems[j]].label; //this should be the only value if they pick none
+		l.selectedItems = new Array();
+		l.selectedItems[0]=i;
 		}
 	    else
 		{
-		items = '<i>' + l.Values[l.selectedItems[j]].label + '</i>';
-		for(k in l.Items)
-		    {
-		    htr_setbgcolor(l.Items[k],l.bg);
-		    }
-		l.selectedItems = null;
-		break;
+		for(var k=0;k<l.selectedItems.length;k++)
+		    if(l.selectedItems[k]==i)
+			break;
+		if(k == l.selectedItems.length)
+		    l.selectedItems.push(i);
 		}
-	    }
+	    /*if (!(i==0 && l.Values[i].value==null)) 
+		c += l.Values[i].label;
+	    else
+		c += '<i>' + l.Values[i].label + '</i>';*/
+	    var firstone = true;
+	    var items = '';
+	    for(j in l.selectedItems)
+		{
+		if(!firstone)
+		    items += ', ';
+		firstone = false;
+		if( !(l.selectedItems[j]==0 && l.Values[l.selectedItems[j]].value==null))
+		    {
+		    items += l.Values[l.selectedItems[j]].label; //this should be the only value if they pick none
+		    }
+		else
+		    {
+		    items = '<i>' + l.Values[l.selectedItems[j]].label + '</i>';
+		    for(k in l.Items)
+			{
+			htr_setbgcolor(l.Items[k],l.bg);
+			}
+		    l.selectedItems = null;
+		    break;
+		    }
+		}
 	    c+= items;
-	}
+	    }
 	else
 	    {
 	    if( !(i==0 && l.Values[i].value==null))
@@ -548,7 +549,7 @@ function dd_create_pane(l)
     // Create the layer
     l.NumElements = l.Values.length;
     l.h2 = ((l.NumDisplay<l.NumElements?l.NumDisplay:l.NumElements)*(pg_parah))+4;
-    var p = htr_new_layer(1024,pg_toplevel_layer(l));
+    var p = htr_new_layer(null,pg_toplevel_layer(l));
     //pg_debug(' x ');
     htr_init_layer(p, l, 'dd_pn');
     htr_setvisibility(p, 'hidden');
@@ -575,7 +576,7 @@ function dd_create_pane(l)
     setClipWidth(p, l.w);
 
     /**  Create scroll background layer  **/
-    p.ScrLayer = htr_new_layer(1024, p);
+    p.ScrLayer = htr_new_layer(null, p);
     htr_init_layer(p.ScrLayer, p, "dd_sc");
     moveTo(p.ScrLayer, 2, 2);
     setClipHeight(p.ScrLayer, l.h2);
@@ -584,7 +585,7 @@ function dd_create_pane(l)
 	/**  If we need a scrollbar, put one in  **/
 	setClipWidth(p.ScrLayer, getClipWidth(p) - 22);
 
-	p.BarLayer = htr_new_layer(1024, p)
+	p.BarLayer = htr_new_layer(null, p)
 	htr_init_layer(p.BarLayer, l, 'dd_sc');
 	moveTo(p.BarLayer, l.w-20, 2);
 	htr_setvisibility(p.BarLayer, 'inherit');
@@ -601,7 +602,7 @@ function dd_create_pane(l)
 	l.imgup = imgs[0];
 	l.imgdn = imgs[2];
 
-	p.TmbLayer = htr_new_layer(1024, p);
+	p.TmbLayer = htr_new_layer(null, p);
 	imgs[0].thum = imgs[1].thum = imgs[2].thum = p.TmbLayer;
 	moveTo(p.TmbLayer, l.w-20, 20);
 	htr_setvisibility(p.TmbLayer, 'inherit');
@@ -623,19 +624,20 @@ function dd_create_pane(l)
     htr_setvisibility(p.ScrLayer, 'inherit');
 
     /**  Add items  **/
+    var w = getClipWidth(p.ScrLayer);
     l.Items = null;
     l.Items = new Array();
     for (var i=0; i < l.Values.length; i++)
 	{
 	if (!l.Items[i])
 	    {
-	    l.Items[i] = htr_new_layer(1024, p.ScrLayer);
+	    l.Items[i] = htr_new_layer(w, p.ScrLayer);
 	    htr_init_layer(l.Items[i], l, 'dd_itm');
 	    }
 	moveTo(l.Items[i], 1, i*(pg_parah));
-	setClipWidth(l.Items[i], getClipWidth(p.ScrLayer));
+	setClipWidth(l.Items[i], w);
 	setClipHeight(l.Items[i], (pg_parah));
-	resizeTo(l.Items[i], getClipWidth(p.ScrLayer), (pg_parah));
+	resizeTo(l.Items[i], w, (pg_parah));
 	if (i==0 && l.Values[i].value == null)
 	    htr_write_content(l.Items[i], '<i>' + l.Values[i].label + '</i>');
 	    //pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
@@ -755,23 +757,23 @@ function dd_mousedown(e)
             dd_datachange(dd_current);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
-		if(e.mainlayer.Mode == 3)
-		    {
-		    if(e.mainlayer.Values[e.layer.index].osrcindex)
-			e.mainlayer.osrc.MoveToRecord(e.mainlayer.Values[e.layer.index].osrcindex); 
-		    dd_collapse(dd_current);
-		    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-		    }
-		else
-		    {
-		    dd_select_item(dd_current, e.layer.index);
-		    dd_datachange(dd_current);
-		    }
-		if(dd_current.form.mode != 'Query')
-		    dd_collapse(dd_current);
-		else 
-		    htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
-		    //dd_hilight_item(dd_current, e.layer.index);
+	if(e.mainlayer.Mode == 3)
+	    {
+	    if(e.mainlayer.Values[e.layer.index].osrcindex)
+		e.mainlayer.osrc.MoveToRecord(e.mainlayer.Values[e.layer.index].osrcindex); 
+	    dd_collapse(dd_current);
+	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+	    }
+	else
+	    {
+	    dd_select_item(dd_current, e.layer.index);
+	    dd_datachange(dd_current);
+	    }
+	if(!dd_current.form || dd_current.form.mode != 'Query')
+	    dd_collapse(dd_current);
+	else 
+	    htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
+	    //dd_hilight_item(dd_current, e.layer.index);
         }
     else if (e.kind == 'dd_sc')
         {
