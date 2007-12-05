@@ -41,10 +41,12 @@ function eb_actionsetvalue(aparam)
 
 function eb_setvalue(v,f)
     {
-    v = new String(v);
+    this.was_null = (v == null);
+    if (v != null)
+	v = new String(v);
     var c = 0;
     if (eb_current == this)
-	c = v.length;
+	c = eb_length(v);
     this.Update(v, c);
     cn_activate(this,"DataChange", {});
     }
@@ -129,6 +131,8 @@ function eb_settext_cb()
 
 function eb_settext(l,txt)
     {
+    var vistxt = txt;
+    if (vistxt == null) vistxt = '';
     l.set_content(txt);
     if (!l.is_busy)
 	{
@@ -136,11 +140,11 @@ function eb_settext(l,txt)
 	l.viscontent = txt;
 	if (cx__capabilities.Dom0NS) // only serialize EB's for NS4
 	    {
-	    pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(txt)) + '</pre> ', eb_settext_cb);
+	    pg_serialized_write(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ', eb_settext_cb);
 	    }
 	else
 	    {
-	    htr_write_content(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(txt)) + '</pre> ');
+	    htr_write_content(l.HiddenLayer, '<pre style="padding:0px; margin:0px;">' + htutil_encode(htutil_obscure(vistxt)) + '</pre> ');
 	    l.eb_settext_cb();
 	    }
 	}
@@ -178,14 +182,24 @@ function eb_set_r_img(l, stat)
     }
 
 
+function eb_length(c)
+    {
+    if (c == null)
+	return 0;
+    else
+	return c.length;
+    }
+
+
 // Update the text, cursor, and left/right edge arrows
 function eb_update(txt, cursor)
     {
     var newx;
     var newclipl, newclipw;
     var diff = cursor - this.cursorCol;
-    var ldiff = txt.length - this.content.length;
-    txt = String(txt);
+    if (txt != null)
+	txt = new String(txt);
+    var ldiff = eb_length(txt) - eb_length(this.content);
     this.cursorCol = cursor;
     if (this.cursorCol < 0) this.cursorCol = 0;
     if (this.cursorCol > this.charWidth + this.charOffset)
@@ -200,7 +214,7 @@ function eb_update(txt, cursor)
 	{
 	this.charOffset--;
 	}
-    if (this.charOffset < txt.length - this.charWidth && this.cursorCol - this.charOffset > this.charWidth*2/3 && ldiff < 0)
+    if (this.charOffset < eb_length(txt) - this.charWidth && this.cursorCol - this.charOffset > this.charWidth*2/3 && ldiff < 0)
 	{
 	this.charOffset = this.cursorCol - parseInt(this.charWidth*2/3);
 	}
@@ -232,7 +246,7 @@ function eb_update(txt, cursor)
 	moveToAbsolute(ibeam_current, getPageX(this.HiddenLayer) + this.cursorCol*text_metric.charWidth, getPageY(this.HiddenLayer));
     eb_settext(this, txt);
     eb_set_l_img(this, this.charOffset > 0);
-    eb_set_r_img(this, this.charOffset + this.charWidth < txt.length);
+    eb_set_r_img(this, this.charOffset + this.charWidth < eb_length(txt));
     if (eb_current == this)
 	pg_set_style(ibeam_current,'visibility', 'inherit');
     }
@@ -243,6 +257,7 @@ function eb_keyhandler(l,e,k)
     if(!eb_current) return;
     if(eb_current.enabled!='full') return 1;
     var txt = l.content;
+    var vistxt = (txt == null)?'':txt;
     var newtxt = txt;
     var cursoradj = 0;
     if (k == 9)
@@ -262,7 +277,7 @@ function eb_keyhandler(l,e,k)
 	}
     if (k >= 32 && k < 127)
 	{
-	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + String.fromCharCode(k) + txt.substr(l.cursorCol,txt.length), l._form_type);
+	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + String.fromCharCode(k) + vistxt.substr(l.cursorCol,vistxt.length), l._form_type);
 	if (newtxt != txt)
 	    {
 	    cursoradj = 1;
@@ -270,20 +285,20 @@ function eb_keyhandler(l,e,k)
 	}
     else if (k == 8 && l.cursorCol > 0)
 	{
-	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol-1) + txt.substr(l.cursorCol,txt.length));
+	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol-1) + vistxt.substr(l.cursorCol,eb_length(txt)));
 	if (newtxt != txt)
 	    {
 	    cursoradj = -1;
 	    }
 	}
-    else if (k == 21 && txt.length > 0)
+    else if (k == 21 && eb_length(txt) > 0)
 	{
 	newtxt = "";
 	cursoradj = -l.cursorCol;
 	}
-    else if (k == 127 && l.cursorCol < txt.length)
+    else if (k == 127 && l.cursorCol < eb_length(txt))
 	{
-	newtxt = cx_hints_checkmodify(l,txt,txt.substr(0,l.cursorCol) + txt.substr(l.cursorCol+1,txt.length));
+	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + vistxt.substr(l.cursorCol+1,eb_length(txt)));
 	}
     else
 	{
@@ -291,6 +306,7 @@ function eb_keyhandler(l,e,k)
 	}
     if (newtxt != txt || cursoradj != 0)
 	{
+	if (l.was_null && newtxt == '') newtxt = null;
 	l.Update(newtxt, l.cursorCol + cursoradj);
 	}
     if (newtxt != txt)
@@ -310,10 +326,10 @@ function eb_select(x,y,l,c,n,a,k)
     if(l.enabled != 'full') return 0;
     if(l.form) l.form.FocusNotify(l);
     if (k)
-	l.cursorCol = l.content.length;
+	l.cursorCol = eb_length(l.content);
     else
 	l.cursorCol = Math.round((x + getPageX(l) - getPageX(l.ContentLayer))/text_metric.charWidth);
-    if (l.cursorCol > l.content.length) l.cursorCol = l.content.length;
+    if (l.cursorCol > eb_length(l.content)) l.cursorCol = eb_length(l.content);
     if (eb_current) eb_current.cursorlayer = null;     
     eb_current = l;    
     eb_current.cursorlayer = ibeam_current;    
@@ -348,7 +364,7 @@ function eb_deselect()
 
 function eb_mselect(x,y,l,c,n,a)
     {
-    if (this.charOffset > 0 || this.charOffset + this.charWidth < this.content.length)
+    if (this.charOffset > 0 || this.charOffset + this.charWidth < eb_length(this.content))
 	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, getPageX(this) + x, getPageY(this) + y);
     else if (this.tooltip)
 	this.tipid = pg_tooltip(this.tooltip, getPageX(this) + x, getPageY(this) + y);
@@ -455,6 +471,7 @@ function eb_init(param)
     l.viscontent = '';
     l.content = '';
     l.Update = eb_update;
+    l.was_null = false;
 
     // Callbacks
     l.keyhandler = eb_keyhandler;
