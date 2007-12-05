@@ -47,7 +47,8 @@ labeled_editbox "widget/component-decl"
 		    }
 		}
 	    }
-	linkage "widget/osrc-rule" { ruletype=filter; fieldname=runserver(:this:preview_field); value=runclient(:editbox:content); min_chars=1; trailing_wildcard=no; query_delay=1000;}
+	//linkage "widget/osrc-rule" { ruletype=filter; fieldname=runserver(:this:preview_field); value=runclient(:editbox:content); min_chars=1; trailing_wildcard=no; query_delay=1000;}
+	linkage "widget/rule" { ruletype=osrc_filter; fieldname=runserver(:this:preview_field); value=runclient(:editbox:content); min_chars=1; trailing_wildcard=no; query_delay=1000;}
 	}
     lookup_btn "widget/textbutton"
 	{ 
