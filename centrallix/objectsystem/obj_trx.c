@@ -45,10 +45,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_trx.c,v 1.12 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: obj_trx.c,v 1.13 2007/12/05 18:58:29 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_trx.c,v $
 
     $Log: obj_trx.c,v $
+    Revision 1.13  2007/12/05 18:58:29  gbeeley
+    - (bugfix) Failure to attach a QueryFetch()ed object to the right point in
+      an existing transaction (or, rather, attaching it to the wrong point) was
+      causing data corruption.
+
     Revision 1.12  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -159,6 +164,7 @@ typedef struct
 typedef struct
     {
     pObject	Obj;
+    pObjTrxPtr	Inf;
     pObjQuery	Query;
     void*	LLParam;
     }
@@ -825,6 +831,7 @@ oxtOpenQuery(void* this_v, char* query, pObjTrxTree* oxt)
 
 	/** Call the low level driver. **/
 	qy->Obj = this->Obj;
+	qy->Inf = this;
 	qy->LLParam = this->Obj->TLowLevelDriver->OpenQuery(this->LLParam,query,oxt);
 	if (!(qy->LLParam))
 	    {
@@ -853,20 +860,31 @@ oxtQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pObjTrxPtr subobj;
     pObjTrxQuery qy = (pObjTrxQuery)qy_v;
+    pObjTrxTree new_oxt = NULL;
+    pObjTrxTree* pass_oxt = &new_oxt;
 
     	/** Allocate the subobject **/
 	subobj = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
 	if (!subobj) return NULL;
+
+	/** In a transaction? **/
+	if (qy->Inf->Trx)
+	    {
+	    new_oxt = obj_internal_AllocTree();
+	    new_oxt->OpType = OXT_OP_NONE;
+	    new_oxt->Status = OXT_S_COMPLETE;
+	    obj_internal_AddChildTree(qy->Inf->Trx, new_oxt);
+	    }
 	
 	/** Call the lowlevel driver **/
-	subobj->LLParam = qy->Obj->TLowLevelDriver->QueryFetch(qy->LLParam, obj, mode, oxt);
+	subobj->LLParam = qy->Obj->TLowLevelDriver->QueryFetch(qy->LLParam, obj, mode, pass_oxt);
 	if (!(subobj->LLParam)) 
 	    {
 	    nmFree(subobj,sizeof(ObjTrxPtr));
 	    return NULL;
 	    }
 	subobj->Obj = obj;
-	subobj->Trx = *oxt;
+	subobj->Trx = *pass_oxt;
 
     return subobj;
     }
