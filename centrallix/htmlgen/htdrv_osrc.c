@@ -44,10 +44,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_osrc.c,v 1.64 2007/09/18 17:33:46 gbeeley Exp $
+    $Id: htdrv_osrc.c,v 1.65 2007/12/05 18:56:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_osrc.c,v $
 
     $Log: htdrv_osrc.c,v $
+    Revision 1.65  2007/12/05 18:56:18  gbeeley
+    - (feature) adding declarative "widget/rule" widget, which has multiple
+      purposes in defining rule-based behavior for different kinds of widgets.
+      First use is replacing "osrc-rule" on objectsource widgets and in
+      providing osrc relationships to be declared rather than handled via
+      connectors.
+
     Revision 1.64  2007/09/18 17:33:46  gbeeley
     - (feature) adding widget/osrc-rule, which adds some declarative rule based
       capabilities to the osrc widget.
@@ -487,6 +494,7 @@ static struct {
 
 enum htosrc_autoquery_types { Never=0, OnLoad=1, OnFirstReveal=2, OnEachReveal=3  };
 
+#if 00
 /*** AddRule: add a declarative osrc rule to the generated document.
  ***/
 int
@@ -530,11 +538,11 @@ htosrc_internal_AddRule(pHtSession s, pWgtrNode tree, char* treename, pWgtrNode 
 		}
 
 	    /** Get target **/
-	   if (wgtrGetPropertyType(sub_tree,"value") == DATA_T_CODE)
-	       {
-	       wgtrGetPropertyValue(sub_tree,"value",DATA_T_CODE,POD(&code));
-	       htrAddExpression(s, treename, wgtrGetDName(sub_tree), code);
-	       }
+	    if (wgtrGetPropertyType(sub_tree,"value") == DATA_T_CODE)
+		{
+		wgtrGetPropertyValue(sub_tree,"value",DATA_T_CODE,POD(&code));
+		htrAddExpression(s, treename, wgtrGetDName(sub_tree), code);
+		}
 
 	    /** Write the init line **/
 	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddRule('%STR&SYM', {dname:'%STR&SYM', field:'%STR&ESCQ', qd:%INT, mc:%INT, tw:%INT, lw:%INT});\n",
@@ -547,6 +555,7 @@ htosrc_internal_AddRule(pHtSession s, pWgtrNode tree, char* treename, pWgtrNode 
 
     return 0;
     }
+#endif
 
 /* 
    htosrcRender - generate the HTML code for the page.
@@ -649,6 +658,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
    htrAddScriptGlobal(s, "osrc_syncid", "0", 0);
+   htrAddScriptGlobal(s, "osrc_relationships", "[]", 0);
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
@@ -672,14 +682,18 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
     for (i=0;i<count;i++)
 	{
 	sub_tree = xaGetItem(&(tree->Children), i);
+#if 00
 	if (wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/osrc-rule"))
 	    {
 	    htosrc_internal_AddRule(s, tree, name, sub_tree);
 	    }
 	else
 	    {
+#endif
 	    htrRenderWidget(s, sub_tree, z);
+#if 00
 	    }
+#endif
 	}
 
     nmSysFree(filter);
@@ -721,6 +735,31 @@ int htosrcInitialize() {
    htrAddSupport(drv, "dhtml");
 
    HTOSRC.idcnt = 0;
+
+   /** Rule types **/
+   htruleRegister("osrc_filter",
+		"value",		DATA_T_CODE,
+		"trailing_wildcard",	HT_DATA_T_BOOLEAN,
+		"leading_wildcard",	HT_DATA_T_BOOLEAN,
+		"query_delay",		DATA_T_INTEGER,
+		"fieldname",		DATA_T_STRING,
+		"min_chars",		DATA_T_INTEGER,
+		NULL);
+
+   htruleRegister("osrc_relationship",
+		"target",		DATA_T_STRING,
+		"key_1",		DATA_T_STRING,
+		"target_key_1",		DATA_T_STRING,
+		"key_2",		DATA_T_STRING,
+		"target_key_2",		DATA_T_STRING,
+		"key_3",		DATA_T_STRING,
+		"target_key_3",		DATA_T_STRING,
+		"key_4",		DATA_T_STRING,
+		"target_key_4",		DATA_T_STRING,
+		"key_5",		DATA_T_STRING,
+		"target_key_5",		DATA_T_STRING,
+		"is_slave",		HT_DATA_T_BOOLEAN,
+		NULL);
 
    return 0;
 }

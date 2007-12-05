@@ -54,10 +54,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: centrallix.c,v 1.45 2007/09/18 18:15:06 gbeeley Exp $
+    $Id: centrallix.c,v 1.46 2007/12/05 18:56:18 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/centrallix.c,v $
 
     $Log: centrallix.c,v $
+    Revision 1.46  2007/12/05 18:56:18  gbeeley
+    - (feature) adding declarative "widget/rule" widget, which has multiple
+      purposes in defining rule-based behavior for different kinds of widgets.
+      First use is replacing "osrc-rule" on objectsource widgets and in
+      providing osrc relationships to be declared rather than handled via
+      connectors.
+
     Revision 1.45  2007/09/18 18:15:06  gbeeley
     - (feature) add and stub out multiscroll widget.
 
@@ -753,6 +760,7 @@ cxHtInit()
 
 	/** Init the html-generation subsystem **/
 	htrInitialize();			/* HTML generator */
+	htruleInitialize();			/* rule module */
 	htpageInitialize();			/* DHTML page generator */
 	htspaneInitialize();			/* scrollable pane module */
 	httreeInitialize();			/* treeview module */

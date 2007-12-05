@@ -2051,6 +2051,7 @@ wgtrInitialize()
 	wgtpaInitialize();
 	wgtalInitialize();
 	wgtmsInitialize();
+	wgtruleInitialize();
 
     return 0;
     }
