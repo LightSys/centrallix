@@ -56,10 +56,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: exp_functions.c,v 1.11 2007/11/16 21:40:09 gbeeley Exp $
+    $Id: exp_functions.c,v 1.12 2007/12/05 18:43:55 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/expression/exp_functions.c,v $
 
     $Log: exp_functions.c,v $
+    Revision 1.12  2007/12/05 18:43:55  gbeeley
+    - (bugfix) fix for min(string) crashing due to invalid free()
+
     Revision 1.11  2007/11/16 21:40:09  gbeeley
     - (bugfix) quote() should return NULL if its parameter is NULL.
 
@@ -1332,6 +1335,7 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	    tree->DataType = i0->DataType;
 	    tree->String = tree->Types.StringBuf;
 	    tree->String[0] = '\0';
+	    tree->Alloc = 0;
 	    tree->Integer = 0;
 	    tree->Types.Double = 0;
 	    tree->Types.Money.FractionPart = 0;
