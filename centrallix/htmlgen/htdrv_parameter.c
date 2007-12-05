@@ -46,10 +46,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_parameter.c,v 1.4 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_parameter.c,v 1.5 2007/12/05 18:51:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_parameter.c,v $
 
     $Log: htdrv_parameter.c,v $
+    Revision 1.5  2007/12/05 18:51:54  gbeeley
+    - (change) parameters on a static component should not be automatically
+      deployed to the client; adding deploy_to_client boolean on parameters
+      to cause the old behavior.
+
     Revision 1.4  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -123,6 +128,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
     XString xs;
     pObjPresentationHints hints;
     pStruct find_inf;
+    int deploy_to_client;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
 	    {
@@ -145,7 +151,11 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTPARAM","Invalid parameter data type for '%s'", name);
 	    return -1;
 	    }
-	if (!strcmp(type, "object") && wgtrGetPropertyValue(tree,"find_container",DATA_T_STRING,POD(&ptr)) == 0)
+
+	deploy_to_client = htrGetBoolean(tree, "deploy_to_client", s->IsDynamic || !strcmp(type, "object"));
+
+	if (!strcmp(type, "object") && deploy_to_client && 
+		wgtrGetPropertyValue(tree,"find_container",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(findcontainer, ptr, sizeof(findcontainer));
 	else
 	    findcontainer[0] = '\0';
@@ -154,33 +164,39 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_parameter.js", 0);
 
 	/** Value supplied? **/
-	find_inf = stLookup_ne(s->Params, name);
+	if (deploy_to_client)
+	    find_inf = stLookup_ne(s->Params, name);
+	else
+	    find_inf = NULL;
 
 	/** Script init **/
 	htrAddScriptInit_va(s, "    pa_init(nodes[\"%STR&SYM\"], {type:'%STR&ESCQ', findc:'%STR&ESCQ', val:%[null%]%[\"%STR&HEX\"%]});\n", 
 		name, type, findcontainer, !find_inf, find_inf, find_inf?find_inf->StrVal:"");
 
 	/** Parameter has presentation-hints components to it.  Set those. **/
-	hints = wgtrWgtToHints(tree);
-	if (!hints)
+	if (deploy_to_client)
 	    {
-	    mssError(0, "HTPARAM", "Error in parameter data");
-	    return -1;
+	    hints = wgtrWgtToHints(tree);
+	    if (!hints)
+		{
+		mssError(0, "HTPARAM", "Error in parameter data");
+		return -1;
+		}
+	    xsInit(&xs);
+	    hntEncodeHints(hints, &xs);
+	    htrAddScriptInit_va(s, "    cx_set_hints(nodes[\"%STR&SYM\"], '%STR&ESCQ', 'app');\n",
+		    name, xs.String);
+	    xsDeInit(&xs);
+	    objFreeHints(hints);
 	    }
-	xsInit(&xs);
-	hntEncodeHints(hints, &xs);
-	htrAddScriptInit_va(s, "    cx_set_hints(nodes[\"%STR&SYM\"], '%STR&ESCQ', 'app');\n",
-		name, xs.String);
-	xsDeInit(&xs);
+
 	htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].Verify();\n", name);
 
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
-	/** Check for more sub-widgets within the conn entity.... connectors only **/
+	/** Check for more sub-widgets within the param **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
-
-	objFreeHints(hints);
 
     return 0;
     }

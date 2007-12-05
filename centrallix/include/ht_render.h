@@ -34,10 +34,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.h,v 1.34 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: ht_render.h,v 1.35 2007/12/05 18:51:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/include/ht_render.h,v $
 
     $Log: ht_render.h,v $
+    Revision 1.35  2007/12/05 18:51:54  gbeeley
+    - (change) parameters on a static component should not be automatically
+      deployed to the client; adding deploy_to_client boolean on parameters
+      to cause the old behavior.
+
     Revision 1.34  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -376,6 +381,10 @@
 #define HT_FIELDNAME_SIZE (60)
 
 
+/*** Extensions to data types ***/
+#define HT_DATA_T_BOOLEAN   (100)
+
+
 /** WGTR deployment method private data value, used to hold various
  ** dhtml specific add-on values for particular widgets
  **/
@@ -592,6 +601,7 @@ typedef struct
     /*char	Context[64];*/
     pWgtrClientInfo ClientInfo;
     pHtNamespace Namespace;		/* current namespace */
+    int		IsDynamic;
     }
     HtSession, *pHtSession;
 
@@ -670,6 +680,9 @@ int htrAddSupport(pHtDriver drv, char* className);
 char* htrParamValue(pHtSession s, char* paramname);
 pHtDriver htrLookupDriver(pHtSession s, char* type_name);
 int htrBuildClientWgtr(pHtSession s, pWgtrNode tree);
+
+/** For the rule module... **/
+int htruleRegister(char* ruletype, ...);
 
 #endif /* _HT_RENDER_H */
 

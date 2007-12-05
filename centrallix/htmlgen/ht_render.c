@@ -53,10 +53,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: ht_render.c,v 1.69 2007/09/18 18:16:14 gbeeley Exp $
+    $Id: ht_render.c,v 1.70 2007/12/05 18:51:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/ht_render.c,v $
 
     $Log: ht_render.c,v $
+    Revision 1.70  2007/12/05 18:51:54  gbeeley
+    - (change) parameters on a static component should not be automatically
+      deployed to the client; adding deploy_to_client boolean on parameters
+      to cause the old behavior.
+
     Revision 1.69  2007/09/18 18:16:14  gbeeley
     - (change) interface change to the QPrintf functions, required in order to
       properly handle certain types of realloc or sliding-window buffer types
@@ -2029,6 +2034,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	s->ClientInfo = c_info;
 	s->Namespace = &(s->Page.RootNamespace);
 	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
+	s->IsDynamic = 1;
 
 	/** Parent container name specified? **/
 	if ((ptr = htrParamValue(s, "cx__graft")))

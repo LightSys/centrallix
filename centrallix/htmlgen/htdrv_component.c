@@ -47,10 +47,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.9 2007/07/25 16:53:41 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.10 2007/12/05 18:51:54 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.10  2007/12/05 18:51:54  gbeeley
+    - (change) parameters on a static component should not be automatically
+      deployed to the client; adding deploy_to_client boolean on parameters
+      to cause the old behavior.
+
     Revision 1.9  2007/07/25 16:53:41  gbeeley
     - (feature) adding "toplevel" boolean property to component, so that
       component windows can be brought into the application at the top level
@@ -273,6 +278,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char* path;
     char* templates[WGTR_MAX_TEMPLATE];
     int is_toplevel;
+    int old_is_dynamic = 0;
 
 	/** Verify capabilities **/
 	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
@@ -351,6 +357,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->GraftPoint = nmSysStrdup(sbuf);
 	    old_params = s->Params;
 	    s->Params = params;
+	    old_is_dynamic = s->IsDynamic;
+	    s->IsDynamic = 0;
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
@@ -412,6 +420,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    nmSysFree(s->GraftPoint);
 	    s->GraftPoint = old_graft;
 	    old_graft = NULL;
+	    s->IsDynamic = old_is_dynamic;
+	    old_is_dynamic = 0;
 	    }
 	else
 	    {
@@ -451,6 +461,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	/** Clean up **/
 	if (params)
 	    stFreeInf_ne(params);
+	if (s->IsDynamic == 0 && old_is_dynamic)
+	    s->IsDynamic = 1;
 	if (s->GraftPoint && old_graft)
 	    {
 	    nmSysFree(s->GraftPoint);
