@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.27 2007/09/18 17:59:07 gbeeley Exp $
+    $Id: multiquery.c,v 1.28 2007/12/05 18:57:17 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.28  2007/12/05 18:57:17  gbeeley
+    - (bugfix) request-notify was causing trouble when a "select *" was being
+      done, causing updates through a select * query to cause a crash.
+
     Revision 1.27  2007/09/18 17:59:07  gbeeley
     - (change) permit multiple WHERE clauses in the SQL.  They are automatically
       combined using AND.  This permits more flexible building of dynamic SQL
@@ -1596,11 +1600,18 @@ mq_internal_UpdateNotify(void* v)
 	/** Find attributes affected by it **/
 	for(i=0;i<p->Query->Tree->AttrCompiledExpr.nItems;i++)
 	    {
-	    exp = (pExpression)(p->Query->Tree->AttrCompiledExpr.Items[i]);
-	    if (expContainsAttr(exp, objid, n->Name))
+	    if (!strcmp(p->Query->Tree->AttrNames.Items[i], "*"))
 		{
-		/** Got one.  Trigger an event on this. **/
-		objDriverAttrEvent(p->Obj, p->Query->Tree->AttrNames.Items[i], NULL, 1);
+		objDriverAttrEvent(p->Obj, n->Name, NULL, 1);
+		}
+	    else
+		{
+		exp = (pExpression)(p->Query->Tree->AttrCompiledExpr.Items[i]);
+		if (expContainsAttr(exp, objid, n->Name))
+		    {
+		    /** Got one.  Trigger an event on this. **/
+		    objDriverAttrEvent(p->Obj, p->Query->Tree->AttrNames.Items[i], NULL, 1);
+		    }
 		}
 	    }
 
