@@ -44,6 +44,7 @@ function cxjs_substring(s,p,l)
     }
 function cxjs_eval(x)
     {
+    if (typeof x == 'object') x = x.toString();
     return eval(x);
     }
 
@@ -275,7 +276,7 @@ function htr_set_event_target(l, et)
 	l.layer = et;
     }
 
-function htr_search_element(e,id)
+/*function htr_search_element(e,id)
     {
     var sl = e.firstChild;
     var ck_sl = null;
@@ -288,6 +289,21 @@ function htr_search_element(e,id)
 		return ck_sl;
 	sl = sl.nextSibling;
 	}
+    }*/
+
+function htr_search_element(e, id)
+    {
+    var found = document.getElementById(id);
+    if (found.tagName != 'DIV' && found.tagName != 'IFRAME')
+	return null;
+    var search = found.parentNode;
+    while(search)
+	{
+	if (search == e) return found;
+	if (search == document || search == window) return null;
+	search = search.parentNode;
+	}
+    return null;
     }
 
 function htr_get_layers(l)
