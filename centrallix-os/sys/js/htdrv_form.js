@@ -171,14 +171,14 @@ function form_cb_is_discard_ready()
     if(!this.IsUnsaved)
 	{
 	this.osrc.QueryContinue(this);
-	return 0;
+	return false;
 	}
     var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('this.osrc.QueryContinue(this);'));this.cb['OperationCompleteFail'].add(this,new Function('this.osrc.QueryCancel(this);'));this.ifcProbe(ifAction).Invoke(\"Save\");");
     this.cb['_3bConfirmSave'].add(this,savefunc);
     this.cb['_3bConfirmDiscard'].add(this,new Function('this.ClearAll();this.osrc.QueryContinue(this);'));
     this.cb['_3bConfirmCancel'].add(this,new Function('this.osrc.QueryCancel(this);'));
     this.show3bconfirm();
-    return 0;
+    return false;
     
     if(confirm("OK to save or discard changes, CANCEL to stay here"))
 	{
@@ -196,6 +196,55 @@ function form_cb_is_discard_ready()
     else
 	{ /* cancel (don't allow new query) */
 	this.osrc.QueryCancel(this);
+	}
+    return false;
+    }
+
+function form_load_fields(data)
+    {
+    var name_to_id = [];
+
+    for(var j in data)
+	{
+	if (data[j].oid)
+	    name_to_id[data[j].oid] = j;
+	}
+
+    for(var i in this.elements)
+	{
+	if (!this.elements[i]._form_type && (typeof name_to_id[this.elements[i].fieldname]) != 'undefined')
+	    this.elements[i]._form_type = data[name_to_id[this.elements[i].fieldname]].type;
+
+	if (this.elements[i].fieldname == '__position')
+	    {
+	    var txt = "";
+	    if (this.mode == "New")
+		{
+		txt = "**NEW**";
+		}
+	    else
+		{
+		if (this.recid && this.recid > 0)
+		    txt += (this.recid);
+		else
+		    txt += "??";
+		if (this.lastrecid && this.lastrecid > 0)
+		    txt += ("/" + this.lastrecid);
+		else
+		    txt += "";
+		}
+	    this.elements[i].setvalue(txt);
+	    }
+	else if ((typeof name_to_id[this.elements[i].fieldname]) != 'undefined' && (typeof data[name_to_id[this.elements[i].fieldname]].value) != 'undefined')
+	    {
+	    var id = name_to_id[this.elements[i].fieldname];
+	    this.elements[i].setvalue(data[id].value);
+	    cx_set_hints(this.elements[i], data[id].hints, 'data');
+	    }
+	else
+	    {
+	    this.elements[i].clearvalue();
+	    }
 	}
     }
 
@@ -226,49 +275,9 @@ function form_cb_object_available(data)
 	if (this.didsearch && (data.__osml_is_last || this.didsearchlast || data.id == this.recid))
 	    this.lastrecid = data.id;
 	this.recid = data.id;
-	for(var i in this.elements)
-	    {
-	    if(this.elements[i]._form_fieldid==undefined)
-		{
-		if (this.elements[i].fieldname == '__position')
-		    this.elements[i]._form_fieldid = '__position';
-		else
-		    {
-		    for(var j in this.data)
-			{
-			if(this.elements[i].fieldname && this.elements[i].fieldname==this.data[j].oid)
-			    {
-			    this.elements[i]._form_type=data[j].type;
-			    this.elements[i]._form_fieldid=j;
-			    }
-			}
-		    }
-		if(this.elements[i]._form_fieldid==undefined)
-		    this.elements[i]._form_fieldid=null;
-		}
-	    if (this.elements[i]._form_fieldid == '__position')
-		{
-		var txt = "";
-		if (this.recid && this.recid > 0)
-		    txt += (this.recid);
-		else
-		    txt += "??";
-		if (this.lastrecid && this.lastrecid > 0)
-		    txt += ("/" + this.lastrecid);
-		else
-		    txt += "";
-		this.elements[i].setvalue(txt);
-		}
-	    else if (this.elements[i]._form_fieldid!=null && this.data[this.elements[i]._form_fieldid].value)
-		{
-		this.elements[i].setvalue(this.data[this.elements[i]._form_fieldid].value);
-		cx_set_hints(this.elements[i], this.data[this.elements[i]._form_fieldid].hints, 'data');
-		}
-	    else
-		{
-		this.elements[i].clearvalue();
-		}
-	    }
+
+	this.LoadFields(this.data);
+
 	this.SendEvent('DataLoaded');
 	}
     this.didsearch = false;
@@ -617,11 +626,13 @@ function form_change_mode(newmode)
 	{
 	for(var e in this.elements)
 	    {
-	    if (this.elements[e].cx_hints) 
-		{
-		cx_hints_setup(this.elements[e]);
-		cx_hints_startnew(this.elements[e]);
-		}
+	    if (this.elements[e].cx_hints) cx_hints_setup(this.elements[e]);
+	    }
+	if (this.osrc)
+	    this.LoadFields(this.osrc.NewObjectTemplate());
+	for(var e in this.elements)
+	    {
+	    if (this.elements[e].cx_hints) cx_hints_startnew(this.elements[e]);
 	    }
 	}
     else if (newmode == 'Modify')
@@ -1111,6 +1122,7 @@ function form_init(form,param)
     form.ChangeMode = form_change_mode;
     form.SendEvent = form_send_event;
     form.BuildDataObj = form_build_dataobj;
+    form.LoadFields = form_load_fields;
     form.Reveal = form_cb_reveal;
     //form.InitQuery = form_init_query;
     form.ActionSaveSuccessCB = form_action_save_success;
