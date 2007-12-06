@@ -43,10 +43,17 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.28 2007/12/05 18:57:17 gbeeley Exp $
+    $Id: multiquery.c,v 1.29 2007/12/06 01:02:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.29  2007/12/06 01:02:02  gbeeley
+    - (bugfix) partial correction for an issue where unqualified WHERE items
+      were not being attached to the correct FROM source.  This can only be
+      fully corrected once we have a way to determine subobject attributes
+      without actually querying for those subobjects.  Was an issue when
+      searching (via osrc) through a SQL join.
+
     Revision 1.28  2007/12/05 18:57:17  gbeeley
     - (bugfix) request-notify was causing trouble when a "select *" was being
       done, causing updates through a select * query to cause a crash.
@@ -393,6 +400,25 @@ mq_internal_SetChainedReferences(pQueryStructure qs, pQueryStructure clause)
     }
 
 
+int
+mq_internal_ExprToPresentation(pExpression exp, char* pres, int maxlen)
+    {
+
+	if (exp->NodeType == EXPR_N_OBJECT && strcmp(((pExpression)(exp->Children.Items[0]))->Name,"objcontent"))
+	    {
+	    strtcpy(pres, ((pExpression)(exp->Children.Items[0]))->Name, maxlen);
+	    return 0;
+	    }
+	else if (exp->NodeType == EXPR_N_PROPERTY && strcmp(exp->Name,"objcontent"))
+	    {
+	    strtcpy(pres, exp->Name, maxlen);
+	    return 0;
+	    }
+
+    return -1;
+    }
+
+
 /*** mq_internal_PostProcess - performs some additional processing on the
  *** SELECT, FROM, ORDER-BY, and WHERE clauses after the initial parse has been
  *** completed.
@@ -458,15 +484,7 @@ mq_internal_PostProcess(pQueryStructure qs, pQueryStructure sel, pQueryStructure
 		/** Determine if we need to assign it a generic name **/
 		if (subtree->Presentation[0] == '\0')
 		    {
-		    if (subtree->Expr->NodeType == EXPR_N_OBJECT && strcmp(((pExpression)(subtree->Expr->Children.Items[0]))->Name,"objcontent"))
-			{
-			strtcpy(subtree->Presentation, ((pExpression)(subtree->Expr->Children.Items[0]))->Name, sizeof(subtree->Presentation));
-			}
-		    else if (subtree->Expr->NodeType == EXPR_N_PROPERTY && strcmp(subtree->Expr->Name,"objcontent"))
-			{
-			strtcpy(subtree->Presentation, subtree->Expr->Name, sizeof(subtree->Presentation));
-			}
-		    else
+		    if (mq_internal_ExprToPresentation(subtree->Expr, subtree->Presentation, sizeof(subtree->Presentation)) < 0)
 			{
 			snprintf(subtree->Presentation, sizeof(subtree->Presentation), "column_%3.3d", i);
 			}
@@ -548,7 +566,7 @@ mq_internal_PostProcess(pQueryStructure qs, pQueryStructure sel, pQueryStructure
  *** filters...
  ***/
 int
-mq_internal_DetermineCoverage(pExpression where_clause, pQueryStructure qs_where, int level)
+mq_internal_DetermineCoverage(pExpression where_clause, pQueryStructure qs_where, pQueryStructure qs_select, int level)
     {
     int i,v;
     int sum_objmask = 0;
@@ -556,10 +574,36 @@ mq_internal_DetermineCoverage(pExpression where_clause, pQueryStructure qs_where
     int is_covered = 1;
     pExpression exp;
     pQueryStructure where_item = NULL;
+    pQueryStructure select_item = NULL;
+    char presentation[64];
 
-    	/** IF this is an OBJECT or PROPERTY node, just grab the coverage mask. **/
-	if ((where_clause->NodeType == EXPR_N_OBJECT || where_clause->NodeType == EXPR_N_PROPERTY) || where_clause->Children.nItems == 0)
+	/** Check coverage mask for leaf nodes first **/
+	if (where_clause->NodeType == EXPR_N_PROPERTY && where_clause->ObjID == EXPR_OBJID_CURRENT)
 	    {
+	    /** If no object specified, make sure we have the obj id and thus coverage mask correct **/
+	    sum_objmask = where_clause->ObjCoverageMask;
+	    for(i=0;i<qs_select->Children.nItems;i++)
+	        {
+		select_item = (pQueryStructure)(qs_select->Children.Items[i]);
+		if (select_item->Expr && mq_internal_ExprToPresentation(select_item->Expr, presentation, sizeof(presentation)) == 0)
+		    {
+		    if (!strcmp(presentation, where_clause->Name))
+			{
+			sum_objmask = where_clause->ObjCoverageMask = select_item->Expr->ObjCoverageMask;
+			where_clause->ObjID = select_item->Expr->ObjID;
+			break;
+			}
+		    }
+		}
+	    }
+	else if (where_clause->Children.nItems == 0)
+	    {
+	    /** IF this is a non-property leaf node, just grab the coverage mask. **/
+	    sum_objmask = where_clause->ObjCoverageMask;
+	    }
+	else if (where_clause->NodeType == EXPR_N_OBJECT)
+	    {
+	    /** If an object node, just grab the coverage mask **/
 	    sum_objmask = where_clause->ObjCoverageMask;
 	    }
 	else
@@ -569,7 +613,7 @@ mq_internal_DetermineCoverage(pExpression where_clause, pQueryStructure qs_where
 	        {
 		/** Call sub-expression **/
 	        exp = (pExpression)(where_clause->Children.Items[i]);
-	        mq_internal_DetermineCoverage(exp, qs_where, level+1);
+	        mq_internal_DetermineCoverage(exp, qs_where, qs_select, level+1);
 
 		/** Sum up the object mask of objs involved, and determine outer members **/
 	        sum_objmask |= exp->ObjCoverageMask;
@@ -1630,7 +1674,7 @@ mqStartQuery(pObjSession session, char* query_text)
     {
     pMultiQuery this;
     pLxSession lxs;
-    pQueryStructure qs, sub_qs;
+    pQueryStructure qs, select_qs, sub_qs;
     char* exp;
     int i;
     pQueryDriver qdrv;
@@ -1689,7 +1733,8 @@ mqStartQuery(pObjSession session, char* query_text)
 	    mq_internal_ProcessWhere(this->WhereClause, this->WhereClause, &(this->QTree));
 
 	    /** Break the where clause into tiny little chunks **/
-	    mq_internal_DetermineCoverage(this->WhereClause, qs, 0);
+	    select_qs = mq_internal_FindItem(this->QTree, MQ_T_SELECTCLAUSE, NULL);
+	    mq_internal_DetermineCoverage(this->WhereClause, qs, select_qs, 0);
 	    if (this->WhereClause->Flags & EXPR_F_CVNODE) this->WhereClause = NULL;
 
 	    /** Optimize the "little chunks" **/
