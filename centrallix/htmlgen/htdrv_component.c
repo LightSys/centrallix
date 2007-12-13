@@ -47,10 +47,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_component.c,v 1.10 2007/12/05 18:51:54 gbeeley Exp $
+    $Id: htdrv_component.c,v 1.11 2007/12/13 23:24:02 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_component.c,v $
 
     $Log: htdrv_component.c,v $
+    Revision 1.11  2007/12/13 23:24:02  gbeeley
+    - (bugfix) component widget should render subwidgets, in order to get any
+      connectors rendered.
+
     Revision 1.10  2007/12/05 18:51:54  gbeeley
     - (change) parameters on a static component should not be automatically
       deployed to the client; adding deploy_to_client boolean on parameters
@@ -454,6 +458,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, "");
 	    htrAddStylesheetItem_va(s,"\t#cmp%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n", id);
 	    }
+
+	htrRenderSubwidgets(s, tree, z+1);
 
 	rval = 0;
 
