@@ -76,6 +76,26 @@ AC_DEFUN(CHECK_MTASK_DEBUG,
     ]
 )
 
+AC_DEFUN(CHECK_DEBUG,
+    [
+	AC_MSG_CHECKING(if debugging should be enabled)
+	AC_ARG_ENABLE(debugging,
+	    AC_HELP_STRING([--enable-debugging],
+		[enable debugging support (-g enabled regardless, unless optimization also turned on)]
+	    ),
+	    WITH_DEBUGGING="$enableval",
+	    WITH_DEBUGGING="no"
+	)
+	if test "$WITH_DEBUGGING" = "no"; then
+	    AC_MSG_RESULT(no)
+	else
+	    AC_MSG_RESULT(yes)
+	    AC_DEFINE(NMMALLOC_DEBUG,1,[enable newmalloc subsystem debugging])
+	    AC_DEFINE(NMMALLOC_PROFILING,1,[enable newmalloc subsystem profiling])
+	fi
+    ]
+)
+
 AC_DEFUN(CHECK_HARDENING,
     [
 	AC_MSG_CHECKING(if application-level hardening desired)
@@ -88,10 +108,18 @@ AC_DEFUN(CHECK_HARDENING,
 	)
 	if test "$WITH_HARDENING" = "none"; then
 	    AC_MSG_RESULT(none)
-	    CFLAGS="$CFLAGS -DNDEBUG"
+	    if test "$WITH_DEBUGGING" = "no"; then
+		CFLAGS="$CFLAGS -DNDEBUG"
+	    else
+		CFLAGS="$CFLAGS"
+	    fi
 	elif test "$WITH_HARDENING" = "low"; then
 	    AC_MSG_RESULT([low: magic number checking])
-	    CFLAGS="$CFLAGS -DNDEBUG -DDBMAGIC"
+	    if test "$WITH_DEBUGGING" = "no"; then
+		CFLAGS="$CFLAGS -DNDEBUG -DDBMAGIC"
+	    else
+		CFLAGS="$CFLAGS -DDBMAGIC"
+	    fi
 	    AC_DEFINE(USING_DBMAGIC,1,[defined to 1 if -DDBMAGIC is being passed to the compiler; enabled unless optimization is in use])
 	elif test "$WITH_HARDENING" = "medium"; then
 	    AC_MSG_RESULT([medium: magic number checking and assertions])

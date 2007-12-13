@@ -842,6 +842,8 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-mtask-debug    enable mTask debugging support
+  --enable-debugging      enable debugging support (-g enabled regardless,
+                          unless optimization also turned on)
   --enable-optimization   turn on build optimization; incompatible with the
                           --with-hardening=high option
   --enable-valgrind-integration
@@ -3975,6 +3977,37 @@ _ACEOF
 
 
 
+	echo "$as_me:$LINENO: checking if debugging should be enabled" >&5
+echo $ECHO_N "checking if debugging should be enabled... $ECHO_C" >&6
+	# Check whether --enable-debugging or --disable-debugging was given.
+if test "${enable_debugging+set}" = set; then
+  enableval="$enable_debugging"
+  WITH_DEBUGGING="$enableval"
+else
+  WITH_DEBUGGING="no"
+
+fi;
+	if test "$WITH_DEBUGGING" = "no"; then
+	    echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+	else
+	    echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+
+cat >>confdefs.h <<\_ACEOF
+#define NMMALLOC_DEBUG 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define NMMALLOC_PROFILING 1
+_ACEOF
+
+	fi
+
+
+
+
 	echo "$as_me:$LINENO: checking if application-level hardening desired" >&5
 echo $ECHO_N "checking if application-level hardening desired... $ECHO_C" >&6
 
@@ -3989,11 +4022,19 @@ fi;
 	if test "$WITH_HARDENING" = "none"; then
 	    echo "$as_me:$LINENO: result: none" >&5
 echo "${ECHO_T}none" >&6
-	    CFLAGS="$CFLAGS -DNDEBUG"
+	    if test "$WITH_DEBUGGING" = "no"; then
+		CFLAGS="$CFLAGS -DNDEBUG"
+	    else
+		CFLAGS="$CFLAGS"
+	    fi
 	elif test "$WITH_HARDENING" = "low"; then
 	    echo "$as_me:$LINENO: result: low: magic number checking" >&5
 echo "${ECHO_T}low: magic number checking" >&6
-	    CFLAGS="$CFLAGS -DNDEBUG -DDBMAGIC"
+	    if test "$WITH_DEBUGGING" = "no"; then
+		CFLAGS="$CFLAGS -DNDEBUG -DDBMAGIC"
+	    else
+		CFLAGS="$CFLAGS -DDBMAGIC"
+	    fi
 
 cat >>confdefs.h <<\_ACEOF
 #define USING_DBMAGIC 1

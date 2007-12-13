@@ -46,6 +46,9 @@ CHECK_PROFILE
 dnl Enable mTask debugging
 CHECK_MTASK_DEBUG
 
+dnl Enable debugging
+CHECK_DEBUG
+
 dnl Check security hardening facilities
 CHECK_HARDENING
 

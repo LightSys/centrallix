@@ -81,6 +81,12 @@
 /* enable mTask debugging */
 #undef MTASK_DEBUG
 
+/* enable newmalloc subsystem debugging */
+#undef NMMALLOC_DEBUG
+
+/* enable newmalloc subsystem profiling */
+#undef NMMALLOC_PROFILING
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 

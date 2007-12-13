@@ -38,10 +38,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.c,v 1.8 2007/04/18 18:42:07 gbeeley Exp $
+    $Id: newmalloc.c,v 1.9 2007/12/13 23:10:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/newmalloc.c,v $
 
     $Log: newmalloc.c,v $
+    Revision 1.9  2007/12/13 23:10:25  gbeeley
+    - (change) adding --enable-debugging to the configure script, and without
+      debug turned on, disable a lot of the nmMalloc() / nmFree() instrument-
+      ation that was using at least 95% of the cpu time in Centrallix.
+    - (bugfix) fixed a few int vs. size_t warnings in MTASK.
+
     Revision 1.8  2007/04/18 18:42:07  gbeeley
     - (feature) hex encoding in qprintf (&HEX filter).
     - (feature) auto addition of quotes (&QUOT and &DQUOT filters).
@@ -173,7 +179,9 @@ nmInitialize()
 	for(i=0;i<=MAX_SIZE;i++) usagecnt[i] = 0;
 	for(i=0;i<=MAX_SIZE;i++) nmsys_outcnt[i] = 0;
 	for(i=0;i<=MAX_SIZE;i++) nmsys_outcnt_delta[i] = 0;
+#ifdef BLK_LEAK_CHECK
 	for(i=0;i<MAX_BLOCKS;i++) blks[i] = NULL;
+#endif
 	nmFreeCnt=0;
 	nmMallocCnt=0;
 	nmMallocHits=0;
@@ -328,38 +336,52 @@ nmMalloc(size)
 
     	if (!isinit) nmInitialize();
 
+#ifdef GLOBAL_BLK_COUNTING
 	nmMallocCnt++;
+#endif
 
+#ifdef BUFFER_OVERFLOW_CHECKING
 	nmCheckAll();
+#endif
 
     	if (size <= MAX_SIZE && size >= MIN_SIZE)
 	    {
+#ifdef SIZED_BLK_COUNTING
 	    outcnt[size]++;
 	    usagecnt[size]++;
+#endif
 	    if (lists[size] == NULL)
 		{
 		tmp = (void*)nmDebugMalloc(size);
 		}
 	    else
 		{
+#ifdef GLOBAL_BLK_COUNTING
 		nmMallocHits++;
+#endif
 	        tmp = lists[size];
 		ASSERTMAGIC(tmp,MGK_FREEMEM);
 	        lists[size]=lists[size]->Next;
+#ifdef SIZED_BLK_COUNTING
 		listcnt[size]--;
+#endif
 		}
 	    }
 	else
 	    {
+#ifdef GLOBAL_BLK_COUNTING
 	    nmMallocTooBig++;
 	    if (size > nmMallocLargest) nmMallocLargest = size;
+#endif
 	    tmp = (void*)nmDebugMalloc(size);
 	    }
 
 	if (!tmp && err_fn) err_fn("Insufficient system memory for operation.");
 	else OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
 
+#ifdef BUFFER_OVERFLOW_CHECKING
 	nmCheckAll();
+#endif
 
 #ifdef BLK_LEAK_CHECK
 	for(i=0;i<MAX_BLOCKS;i++)
@@ -395,9 +417,13 @@ nmFree(ptr,size)
 
     	if (!isinit) nmInitialize();
 
+#ifdef GLOBAL_BLK_COUNTING
 	nmFreeCnt++;
+#endif
 
+#ifdef BUFFER_OVERFLOW_CHECKING
 	nmCheckAll();
+#endif
 
 #ifdef BLK_LEAK_CHECK
 	for(i=0;i<MAX_BLOCKS;i++)
@@ -428,10 +454,14 @@ nmFree(ptr,size)
 		tmp = OVERLAY(tmp)->Next;
 		}
 #endif
+#ifdef SIZED_BLK_COUNTING
 	    outcnt[size]--;
+#endif
 	    OVERLAY(ptr)->Next = lists[size];
 	    lists[size] = OVERLAY(ptr);
+#ifdef SIZED_BLK_COUNTING
 	    listcnt[size]++;
+#endif
 	    OVERLAY(ptr)->Magic = MGK_FREEMEM;
 	    }
 	else
@@ -442,7 +472,9 @@ nmFree(ptr,size)
 	    }
 #endif
 
+#ifdef BUFFER_OVERFLOW_CHECKING
 	nmCheckAll();
+#endif
 
     return;
     }
@@ -570,7 +602,9 @@ nmSysMalloc(int size)
     ptr = (char*)nmDebugMalloc(size+4);
     if (!ptr) return NULL;
     *(int*)ptr = size;
+#ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]++;
+#endif
     return (void*)(ptr+4);
 #else
     return (void*)nmDebugMalloc(size);
@@ -583,7 +617,9 @@ nmSysFree(void* ptr)
 #ifdef NM_USE_SYSMALLOC
     int size;
     size = *(int*)(((char*)ptr)-4);
+#ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
+#endif
     nmDebugFree(((char*)ptr)-4);
 #else
     nmDebugFree(ptr);
@@ -601,9 +637,13 @@ nmSysRealloc(void* ptr, int newsize)
     size = *(int*)(((char*)ptr)-4);
     newptr = (char*)nmDebugRealloc((((char*)ptr)-4), newsize+4);
     if (!newptr) return NULL;
+#ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
+#endif
     *(int*)newptr = newsize;
+#ifdef SIZED_BLK_COUNTING
     if (newsize > 0 && newsize <= MAX_SIZE) nmsys_outcnt[newsize]++;
+#endif
     return (void*)(newptr+4);
 #else
     return (void*)nmDebugRealloc(ptr,newsize);

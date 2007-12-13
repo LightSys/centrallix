@@ -28,3 +28,6 @@
 /* defined to 1 if valgrind integration is enabled */
 #undef USING_VALGRIND
 
+#undef NMMALLOC_DEBUG
+
+#undef NMMALLOC_PROFILING

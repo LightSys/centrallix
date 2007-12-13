@@ -28,10 +28,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: newmalloc.h,v 1.3 2007/04/08 03:43:06 gbeeley Exp $
+    $Id: newmalloc.h,v 1.4 2007/12/13 23:10:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/include/newmalloc.h,v $
 
     $Log: newmalloc.h,v $
+    Revision 1.4  2007/12/13 23:10:25  gbeeley
+    - (change) adding --enable-debugging to the configure script, and without
+      debug turned on, disable a lot of the nmMalloc() / nmFree() instrument-
+      ation that was using at least 95% of the cpu time in Centrallix.
+    - (bugfix) fixed a few int vs. size_t warnings in MTASK.
+
     Revision 1.3  2007/04/08 03:43:06  gbeeley
     - (bugfix) some code quality fixes
     - (feature) MTASK integration with the Valgrind debugger.  Still some
@@ -58,9 +64,15 @@ typedef struct _ov
     }
     Overlay,*pOverlay;
 
-#define BLK_LEAK_CHECK	0
+#ifdef NMMALLOC_DEBUG
+#define	BLK_LEAK_CHECK	1
+#define	DUP_FREE_CHECK	1
+#endif
 
-#define DUP_FREE_CHECK	1
+#ifdef NMMALLOC_PROFILING
+#define GLOBAL_BLK_COUNTING	1
+#define SIZED_BLK_COUNTING	1
+#endif
 
 /** nmMalloc block caching causes Valgrind to lose track of what call
  ** stack actually allocated the block to begin with.  So if we're using

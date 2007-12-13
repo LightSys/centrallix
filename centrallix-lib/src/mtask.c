@@ -55,10 +55,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: mtask.c,v 1.40 2007/10/19 23:26:58 gbeeley Exp $
+    $Id: mtask.c,v 1.41 2007/12/13 23:10:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix-lib/src/mtask.c,v $
 
     $Log: mtask.c,v $
+    Revision 1.41  2007/12/13 23:10:25  gbeeley
+    - (change) adding --enable-debugging to the configure script, and without
+      debug turned on, disable a lot of the nmMalloc() / nmFree() instrument-
+      ation that was using at least 95% of the cpu time in Centrallix.
+    - (bugfix) fixed a few int vs. size_t warnings in MTASK.
+
     Revision 1.40  2007/10/19 23:26:58  gbeeley
     - (feature) adding thWaitTimed() as a convenience API function.
 
@@ -408,7 +414,8 @@ evFile(int ev_type, void* obj)
     int code = 0;
     fd_set readfds,writefds,exceptfds;
     struct timeval tmout;
-    int arg,len;
+    int arg;
+    size_t len;
 
     	if (fd->Status == FD_S_CLOSING) return -1;
 
@@ -468,6 +475,7 @@ evFile(int ev_type, void* obj)
 int
 evPipe(int ev_type, void* obj)
     {
+    return 0;
     }
 
 
@@ -935,7 +943,8 @@ mtSched()
     pThread thr_sleep_init = NULL; /* if thread just did a thSleep */
     pEventReq event;
     int k = 0;
-    int arg,len;
+    int arg;
+    size_t len;
     int x[1];
 
     	dbg_write(0,"x",1);
@@ -2880,7 +2889,7 @@ fdQPrintf_va(pFile filedesc, const char* fmt, va_list va)
     {
     int rval;
     char* buf;
-    int size;
+    size_t size;
 
 	/** Alloc a printf buf? **/
 	if (!filedesc->PrintfBuf)
@@ -3196,7 +3205,7 @@ netAcceptTCP(pFile net_filedesc, int flags)
     int s;
     pEventReq event = NULL;
     struct sockaddr_in remoteaddr;
-    int addrlen;
+    size_t addrlen;
     int v;
     int arg;
 
@@ -3327,7 +3336,8 @@ netConnectTCP(const char* host_name, const char* service_name, int flags)
     {
     pFile connected_fd;
     struct sockaddr_in remoteaddr;
-    int s,arg,len;
+    int s,arg;
+    size_t len;
     struct servent *srv;
     struct hostent *h;
     unsigned short port;
@@ -3626,7 +3636,8 @@ netConnectUDP(const char* host_name, const char* service_name, int flags)
     {
     pFile connected_fd;
     struct sockaddr_in remoteaddr;
-    int s,arg,len;
+    int s,arg;
+    size_t len;
     struct servent *srv;
     struct hostent *h;
     unsigned short port;
