@@ -43,10 +43,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.29 2007/12/06 01:02:02 gbeeley Exp $
+    $Id: multiquery.c,v 1.30 2007/12/13 23:28:52 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.30  2007/12/13 23:28:52  gbeeley
+    - (bugfix) when determining to which FROM source to attach an unqualified
+      WHERE item, and the item is mentioned twice in the SELECT clause since
+      it appears from more than one FROM source, give precedence to earlier
+      FROM sources, not earlier SELECT items.
+
     Revision 1.29  2007/12/06 01:02:02  gbeeley
     - (bugfix) partial correction for an issue where unqualified WHERE items
       were not being attached to the correct FROM source.  This can only be
@@ -572,6 +578,7 @@ mq_internal_DetermineCoverage(pExpression where_clause, pQueryStructure qs_where
     int sum_objmask = 0;
     int sum_outermask = 0;
     int is_covered = 1;
+    int min_id;
     pExpression exp;
     pQueryStructure where_item = NULL;
     pQueryStructure select_item = NULL;
@@ -582,16 +589,16 @@ mq_internal_DetermineCoverage(pExpression where_clause, pQueryStructure qs_where
 	    {
 	    /** If no object specified, make sure we have the obj id and thus coverage mask correct **/
 	    sum_objmask = where_clause->ObjCoverageMask;
+	    min_id = 255;
 	    for(i=0;i<qs_select->Children.nItems;i++)
 	        {
 		select_item = (pQueryStructure)(qs_select->Children.Items[i]);
 		if (select_item->Expr && mq_internal_ExprToPresentation(select_item->Expr, presentation, sizeof(presentation)) == 0)
 		    {
-		    if (!strcmp(presentation, where_clause->Name))
+		    if (!strcmp(presentation, where_clause->Name) && select_item->Expr->ObjID < min_id)
 			{
 			sum_objmask = where_clause->ObjCoverageMask = select_item->Expr->ObjCoverageMask;
-			where_clause->ObjID = select_item->Expr->ObjID;
-			break;
+			min_id = where_clause->ObjID = select_item->Expr->ObjID;
 			}
 		    }
 		}
