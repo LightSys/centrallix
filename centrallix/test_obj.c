@@ -64,10 +64,15 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: test_obj.c,v 1.38 2007/11/16 21:39:30 gbeeley Exp $
+    $Id: test_obj.c,v 1.39 2007/12/13 23:23:04 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/test_obj.c,v $
 
     $Log: test_obj.c,v $
+    Revision 1.39  2007/12/13 23:23:04  gbeeley
+    - (bugfix) test_obj should behave itself when inserting a new record /
+      object and the name isn't immediately available at the beginning of
+      the insert operation.
+
     Revision 1.38  2007/11/16 21:39:30  gbeeley
     - (feature) added 'csv' command to generate CSV output from a query in
       the test_obj command-line interface
@@ -770,6 +775,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
     char* attrnames[128];
     int attrtypes[128];
     int n_attrs;
+    int name_was_null;
 
 	    /** Open a lexer session **/
 	    ls = mlxStringSession(cmd,MLX_F_ICASE | MLX_F_EOF);
@@ -1244,10 +1250,18 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
+		name_was_null = 0;
 		if (!strcmp(ptr,"*"))
 		    {
-		    objGetAttrValue(obj, "name", DATA_T_STRING, POD(&stringval));
-		    printf("New object name is '%s'\n", stringval);
+		    if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&stringval)) == 1)
+			{
+			printf("New object name cannot yet be determined - please enter attributes first.\n");
+			name_was_null = 1;
+			}
+		    else
+			{
+			printf("New object name is '%s'\n", stringval);
+			}
 		    }
 		puts("Enter attributes, blank line to end.");
 		rl_bind_key ('\t', rl_insert_text);
@@ -1290,6 +1304,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode)
 			    }
 			if (pod) objSetAttrValue(obj,attrname,type,pod);
 			}
+		    }
+		if (name_was_null)
+		    {
+		    if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&stringval)) == 1)
+			printf("New object name cannot be determined - something went wrong.\n");
+		    else
+			printf("New object name is '%s'\n", stringval);
 		    }
 		if (objClose(obj) < 0) mssPrintError(TESTOBJ.Output);
 		rl_bind_key ('\t', handle_tab);
