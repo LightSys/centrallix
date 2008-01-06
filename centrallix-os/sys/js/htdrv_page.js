@@ -539,11 +539,17 @@ function pg_isinlayer(outer,inner)
     var i = 0;
     if(cx__capabilities.Dom1HTML)
         {
-		for(i=0;i<outer.childNodes.length;i++)
-			{
-			if (outer.childNodes[i] == inner) return true;
-			if (pg_isinlayer(outer.childNodes[i], inner)) return true;
-			}        
+//		for(i=0;i<outer.childNodes.length;i++)
+//			{
+//			if (outer.childNodes[i] == inner) return true;
+//			if (pg_isinlayer(outer.childNodes[i], inner)) return true;
+//			}        
+	while(inner)
+	    {
+	    if (inner == outer) return true;
+	    if (inner == window || inner == document) return false;
+	    inner = inner.parentNode;
+	    }
         }
     else
         {
