@@ -17,11 +17,33 @@ function osrc_init_query()
     this.ifcProbe(ifAction).Invoke("QueryObject", {qy:null, client:null, ro:this.readonly});
     }
 
+
 function osrc_action_order_object(aparam) //order)
     {
     this.pendingorderobject=aparam.orderobj;
     this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly});
     }
+
+
+function osrc_action_query_param(aparam)
+    {
+    var qo = [];
+    var t;
+    for (var i in aparam)
+	{
+	if (i == '_Origin') continue;
+	if (typeof aparam[i] == 'string')
+	    t = 'string';
+	else if (typeof aparam[i] == 'number')
+	    t = 'integer';
+	else
+	    t = 'string';
+	qo.push({oid:i, value:aparam[i], type:t});
+	}
+    qo.joinstring = 'AND';
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:qo, client:null, ro:this.readonly});
+    }
+
 
 function osrc_action_query_object(aparam) //q, formobj, readonly)
     {
@@ -48,9 +70,9 @@ function osrc_query_object_handler(aparam)
 
     this.pendingqueryobject=q;
     var statement=this.sql;
-    if (statement.indexOf(' WHERE ') != -1)
-	var sep = ' HAVING ';
-    else
+    //if (statement.indexOf(' WHERE ') != -1)
+//	var sep = ' HAVING ';
+  //  else
 	var sep = ' WHERE ';
     var firstone=true;
     
@@ -90,6 +112,20 @@ function osrc_query_object_handler(aparam)
     //statement+=';';
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:formobj});
     }
+
+
+function osrc_make_filter_integer(col,val)
+    {
+    if (val == null)
+	return ':"' + col.oid + '" is null ';
+    else if (typeof val != 'number' && val.search(/-/)>=0)
+	{
+	var parts = val.split(/-/);
+	return '(:"' + col.oid + '">=' + parts[0] + ' AND :"' + col.oid + '"<=' + parts[1] + ')';
+	}
+    else
+	return ':' + col.oid + '=' + val;
+    }
     
 
 function osrc_make_filter(q)
@@ -109,42 +145,27 @@ function osrc_make_filter(q)
 		{
 		var val=q[i].value;
 		if (val == null) continue;
+
 		switch(q[i].type)
 		    {
 		    case 'integer':
-			if (val == null)
-			    str=':"'+q[i].oid+'" is null ';
-			else if (typeof val != 'number' && val.search(/-/)>=0)
-			    {
-			    var parts = val.split(/-/);
-			    str='(:"'+q[i].oid+'">='+parts[0]+' AND :"'+q[i].oid+'"<='+parts[1] + ')';
-			    }
-			else
-			    str=':'+q[i].oid+'='+val;
+			str = osrc_make_filter_integer(q[i], val);
 			break;
+
 		    case 'integerarray':
 			if (val == null)
-			    str=':'+q[i].oid+' is null ';
-			else
+			    str = ':"' + q[i].oid + '" is null ';
+			else if (val.length)
 			    {
-			    if (val[0].search(/-/)>=0)
-			    {
-			    var parts = val[0].split(/-/);
-			    str='((:"'+q[i].oid+'">='+parts[0]+' AND :"'+q[i].oid+'"<='+parts[1]+')';
-			    }
-			    else
-				str='(:"'+q[i].oid+'"='+val[0];
-			    for(var j=1;j<val.length;j++)
+			    str = "(";
+			    for(var j=0;j<val.length;j++)
 				{
-				if (val[j].search(/-/)>=0)
-				    {
-				    var parts = val[j].split(/-/);
-				    str+=' OR (:"'+q[i].oid+'">='+parts[0]+' AND :"'+q[i].oid+'"<='+parts[1]+')';
-				    }
-				else
-				    str+=' OR :"'+q[i].oid+'"='+val[j];
+				if (j) str += " OR ";
+				str += "(";
+				str += osrc_make_filter_integer(q[i], val[j]);
+				str += ")";
 				}
-			    str+=')';
+			    str += ")";
 			    }
 			break;
 		    case 'stringarray':
@@ -236,6 +257,7 @@ function osrc_make_filter(q)
 			str+=')';
 			break;
 		    default:
+			//htr_alert(val, 1);
 			if(val.substring(0,2)=='>=')
 			    str=':"'+q[i].oid+'" >= '+val.substring(2);
 			else if(val.substring(0,2)=='<=')
@@ -714,6 +736,35 @@ function osrc_cb_request_object(aparam)
 function osrc_cb_register(client)
     {
     this.child.push(client);
+    client.__osrc_osrc = this;
+    if (typeof client.is_savable != 'undefined')
+	{
+	if (client.is_savable)
+	    this.savable_client_count++;
+	client.__osrc_savable_changed = osrc_cb_savable_changed;
+	htr_watch(client, 'is_savable', '__osrc_savable_changed');
+	}
+    else if (typeof client.is_client_savable != 'undefined')
+	{
+	if (client.is_client_savable)
+	    this.savable_client_count++;
+	client.__osrc_savable_changed = osrc_cb_savable_changed;
+	htr_watch(client, 'is_client_savable', '__osrc_savable_changed');
+	}
+    }
+
+function osrc_cb_savable_changed(p,o,n)
+    {
+    var osrc = this.__osrc_osrc;
+    if (o && !n)
+	osrc.savable_client_count--;
+    else if (!o && n)
+	osrc.savable_client_count++;
+    if (osrc.is_client_savable && osrc.savable_client_count == 0)
+	osrc.is_client_savable = false;
+    else if (!osrc.is_client_savable && osrc.savable_client_count > 0)
+	osrc.is_client_savable = true;
+    return n;
     }
 
 function osrc_open_session(cb)
@@ -1580,6 +1631,8 @@ function osrc_cb_control_msg(m)
 function osrc_get_value(n)
     {
     var v = null;
+    if (n == 'is_client_savable')
+	return this.is_client_savable;
     if (this.CurrentRecord && this.replica && this.replica[this.CurrentRecord])
 	{
 	for(var i in this.replica[this.CurrentRecord])
@@ -1814,6 +1867,28 @@ function osrc_init_bh()
     }
 
 
+function osrc_action_save_clients(aparam)
+    {
+    if (!this.is_client_savable) return;
+
+    // Do this in two steps - save our immediate clients first, then pass the word
+    // on to clients of clients.  This minimizes the chance of failures due to
+    // relational integrity constraints.
+    for (var c in this.child)
+	{
+	var cld = this.child[c];
+	if (typeof cld.is_savable != 'undefined' && cld.is_savable)
+	    cld.ifcProbe(ifAction).Invoke('Save', {});
+	}
+    for (var c in this.child)
+	{
+	var cld = this.child[c];
+	if (typeof cld.is_client_savable != 'undefined' && cld.is_client_savable)
+	    cld.ifcProbe(ifAction).Invoke('SaveClients', {});
+	}
+    }
+
+
 /**  OSRC Initializer **/
 function osrc_init(param)
     {
@@ -1864,6 +1939,7 @@ function osrc_init(param)
     loader.oldoids = new Array();
     loader.sid = null;
     loader.qid = null;
+    loader.savable_client_count = 0;
 
     loader.MoveToRecordHandler = osrc_move_to_record_handler;
     loader.QueryObjectHandler = osrc_query_object_handler;
@@ -1874,6 +1950,7 @@ function osrc_init(param)
     //loader.ActionClear=osrc_action_clear;
     ia.Add("Query", osrc_action_query);
     ia.Add("QueryObject", osrc_action_query_object);
+    ia.Add("QueryParam", osrc_action_query_param);
     ia.Add("OrderObject", osrc_action_order_object);
     ia.Add("Delete", osrc_action_delete);
     ia.Add("Create", osrc_action_create);
@@ -1884,6 +1961,7 @@ function osrc_init(param)
     ia.Add("Last", osrc_move_last);
     ia.Add("Sync", osrc_action_sync);
     ia.Add("DoubleSync", osrc_action_double_sync);
+    ia.Add("SaveClients", osrc_action_save_clients);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);
@@ -1933,6 +2011,9 @@ function osrc_init(param)
 
     // OSRC Client interface helpers
     loader.Resync = osrc_oc_resync;
+
+    // Client side maintained properties
+    loader.is_client_savable = false;
 
     // Request replication messages
     loader.request_updates = param.requestupdates?1:0;
