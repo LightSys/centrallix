@@ -335,12 +335,14 @@ function ClipObject_GetPart(n)
     {
     if(n>4 || n<1)
 	return null;
-    var clip = this.obj.style.clip;
-    if(!clip)
-	clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
     var a = this.arr;
     if (!a)
+	{
+	var clip = this.obj.style.clip;
+	if(!clip)
+	    clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
 	a = this.arr = ClipRegexp.exec(clip);
+	}
     if (!a)
 	a = this.arr = [0, 0, pg_get_style(this.obj, 'width'), pg_get_style(this.obj, 'height'), 0];
     /*if(a)*/
