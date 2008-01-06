@@ -399,6 +399,10 @@ function ifEvent()
 	}
     function ifevent_connect(e,t,a,pl)
 	{
+	if (this.late_binding && !this.Events[e])
+	    {
+	    this.Add(e);
+	    }
 	if (this.Events[e])
 	    {
 	    eo = {to:this.obj, fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e};
@@ -412,6 +416,12 @@ function ifEvent()
 	{
 	return (this.Events[e])?true:false;
 	}
+    function ifevent_enable_late()
+	{
+	this.late_binding = true;
+	}
+    this.late_binding = false;
+    this.EnableLateConnectBinding = ifevent_enable_late;
     this.Events = new Array();
     this.Add = ifevent_add;
     this.Hook = ifevent_hook;
