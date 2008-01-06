@@ -480,6 +480,7 @@ function cmp_init(param)
 
     // Events
     var ie = node.ifcProbeAdd(ifEvent);
+    ie.EnableLateConnectBinding();
     ie.Add("LoadComplete");
 
     // Actions
