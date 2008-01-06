@@ -1053,10 +1053,6 @@ function form_init(form,param)
     form.revealed_elements = 0;
     form.osrc = wgtrFindContainer(form, "widget/osrc");
     //if (!form.osrc) alert('no osrc container!');
-    if(form.osrc)
-	{
-	form.osrc.Register(form);
-	}
     form.IsUnsaved = false;
     form.name = param.name;
     form.Pending = false;
@@ -1169,6 +1165,11 @@ function form_init(form,param)
     iv.Add("recid",form_cb_getvalue);
     iv.Add("lastrecid",form_cb_getvalue);
     iv.SetNonexistentCallback(form_cb_nonexistent);
+
+    if(form.osrc)
+	{
+	form.osrc.Register(form);
+	}
 
     return form;
     }
