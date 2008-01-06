@@ -40,10 +40,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: hints.c,v 1.9 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: hints.c,v 1.10 2008/01/06 20:20:56 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/utility/hints.c,v $
 
     $Log: hints.c,v $
+    Revision 1.10  2008/01/06 20:20:56  gbeeley
+    - (bugfix) properly duplicate string values when copying a hints structure,
+      to avoid double free problems.
+
     Revision 1.9  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -1018,6 +1022,12 @@ objDuplicateHints(pObjPresentationHints hints)
 	if (hints->DefaultExpr) new_hints->DefaultExpr = expDuplicateExpression(hints->DefaultExpr);
 	if (hints->MinValue) new_hints->MinValue = expDuplicateExpression(hints->MinValue);
 	if (hints->MaxValue) new_hints->MaxValue = expDuplicateExpression(hints->MaxValue);
+
+	/** Duplicate string values **/
+	if (hints->EnumQuery) new_hints->EnumQuery = nmSysStrdup(hints->EnumQuery);
+	if (hints->Format) new_hints->Format = nmSysStrdup(hints->Format);
+	if (hints->GroupName) new_hints->GroupName = nmSysStrdup(hints->GroupName);
+	if (hints->FriendlyName) new_hints->FriendlyName = nmSysStrdup(hints->FriendlyName);
 	
 	/** All Done **/
 	return new_hints;
