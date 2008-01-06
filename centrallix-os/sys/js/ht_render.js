@@ -294,7 +294,7 @@ function htr_set_event_target(l, et)
 function htr_search_element(e, id)
     {
     var found = document.getElementById(id);
-    if (found.tagName != 'DIV' && found.tagName != 'IFRAME')
+    if (!found || (found.tagName != 'DIV' && found.tagName != 'IFRAME'))
 	return null;
     var search = found.parentNode;
     while(search)
@@ -339,8 +339,8 @@ function htr_get_subelement(id)
 
 function htr_subel(l, id)
     {
-    if (pg_namespaces)
-	for(var ns in pg_namespaces) ;
+//    if (pg_namespaces)
+//	for(var ns in pg_namespaces) ;
     if (cx__capabilities.Dom0NS)
 	{
 	if (!l) 
