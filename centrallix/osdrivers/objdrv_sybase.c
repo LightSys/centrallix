@@ -70,10 +70,16 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.26 2007/06/01 18:24:09 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.27 2008/01/06 20:19:32 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.27  2008/01/06 20:19:32  gbeeley
+    - (bugfix) fixed a memory issue related to some presentation hints
+      structures causing crashes.
+    - (change) if no sp_primarykey keys are declared on a table, then look
+      for "alter table" style primary key constraints/indexes.
+
     Revision 1.26  2007/06/01 18:24:09  gbeeley
     - (bugfix) presentation hints structure was being zapped by memset after
       the xaInit, causing a deallocation failure on FreeHints later on.
@@ -351,6 +357,7 @@ typedef struct
     char	Types[SYBD_MAX_NUM_TYPES][SYBD_MAX_TYPE_LEN];
     XHashTable	TypeNameToID;					/** for figuring out id from name **/
     pObjPresentationHints	TypeHints[SYBD_MAX_NUM_TYPES];		/** for storing hint info about each type **/
+    int		Version;
     }
     SybdNode, *pSybdNode;
 
@@ -922,11 +929,11 @@ sybd_internal_GetDefaultHints(int usertype)
 //	    case 10: /** numeric **/
 //		break;
 	    case 11: /** money **/
-		hints->Format="money";
+		hints->Format=nmSysStrdup("money");
 		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		break;
 	    case 12: /** datetime **/
-		hints->Format="datetime";
+		hints->Format=nmSysStrdup("datetime");
 		break;
 //	    case 13: /** intn **/
 //		break;
@@ -939,6 +946,7 @@ sybd_internal_GetDefaultHints(int usertype)
 		hints->StyleMask |= OBJ_PH_STYLE_NOTNULL;
 		hints->MaxValue = expCompileExpression("1", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		hints->MinValue = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		break;
 //	    case 17: /** moneyn **/
 //		hints->Format="money";
@@ -953,10 +961,10 @@ sybd_internal_GetDefaultHints(int usertype)
 	    case 20: /** image **/
 		break;
 	    case 21: /** smallmoney **/
-		hints->Format="money";
+		hints->Format=nmSysStrdup("money");
 		break;
 	    case 22: /** smalldatetime **/
-		hints->Format="datetime";
+		hints->Format=nmSysStrdup("datetime");
 		break;
 	    case 23: /** real **/
 		hints->DefaultExpr = expCompileExpression("0", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -1113,6 +1121,7 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
     unsigned char is_variable, length;
     pStructInf type_hints, type_inf;
     pParamObjects tmplist;
+    char ver_buf[255];
 
     	/** First, do a lookup in the db node cache. **/
 	db_node = (pSybdNode)xhLookup(&(SYBD_INF.DBNodes),path);
@@ -1201,10 +1210,30 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 	/** find the typehints part of the node, if there is one **/
 	type_hints = stLookup(snnode->Data, "typehints");
 
-	/** Get a connection and get the types list. **/
+	/** Get a connection and get the version and types list. **/
 	s = sybd_internal_GetConn(db_node, mssUserName(), mssPassword());
 	if (s)
 	    {
+	    if ((cmd=sybd_internal_Exec(s,"select @@version")))
+		{
+		while(ct_results(cmd, &restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+		    {
+		    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
+		        {
+			ct_get_data(cmd, 1, ver_buf, sizeof(ver_buf)-1, (CS_INT*)&i);
+			if (i >= 0 && i < sizeof(ver_buf))
+			    {
+			    ver_buf[i] = '\0';
+			    ptr = strchr(ver_buf, '/');
+			    if (ptr && ptr[1])
+				{
+				db_node->Version = strtoul(ptr+1, NULL, 10);
+				}
+			    }
+			}
+		    }
+		sybd_internal_Close(cmd);
+		}
 	    if ((cmd=sybd_internal_Exec(s,"select usertype,name,length,variable from systypes")))
 	        {
 		while(ct_results(cmd, &restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
@@ -1282,6 +1311,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
     char* ptr;
     char* tmpptr;
     int l,i,col,find_col,restype;
+    int n, t;
     CS_COMMAND* cmd;
 
 	/** Valid table name check. **/
@@ -1436,6 +1466,59 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	    sybd_internal_Close(cmd);
 	    }
 
+	/** No primary keys from sp_primarykey?  Use sysindexes instead **/
+	if (tdata->nKeys == 0)
+	    {
+	    snprintf(sbuf, sizeof(sbuf), "SELECT char_length(convert(varchar(255),keys1)), keys1 FROM sysindexes i, sysobjects o where i.id = o.id and o.name='%s' and (i.status & 2048) = 2048", table);
+	    if ((cmd = sybd_internal_Exec(session, sbuf)))
+		{
+		while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+		    {
+		    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
+		        {
+			n = 0;
+			ct_get_data(cmd, 1, &n, 4, (CS_INT*)&i);
+			if (n > 0 && n < 255 && (n & 0x0F) == 0)
+			    {
+			    ct_get_data(cmd, 2, sbuf, sizeof(sbuf)-1, (CS_INT*)&i);
+			    if (i == n)
+				{
+				t = n/16;
+				for(l=0;l<t;l++)
+				    {
+				    if (node->Version >= 15)
+					col = sbuf[l*16 + 4];
+				    else
+					col = sbuf[l*16 + 2];
+				    if (col == 0) continue;
+				    find_col = -1;
+				    for(i=0;i<tdata->nCols;i++) if (tdata->ColIDs[i] == col)
+					{
+					find_col = i;
+					break;
+					}
+				    if (find_col >= 0)
+					{
+					tdata->KeyCols[tdata->nKeys] = find_col;
+					tdata->Keys[tdata->nKeys] = tdata->Cols[find_col];
+					tdata->ColFlags[find_col] |= SYBD_CF_PRIKEY;
+					tdata->ColKeys[find_col] = tdata->nKeys;
+					tdata->nKeys++;
+					}
+				    else
+					{
+					tdata->nKeys = 0;
+					break;
+					}
+				    }
+				}
+			    }
+			}
+		    }
+		sybd_internal_Close(cmd);
+		}
+	    }
+
 	/** Next, get annotation information for the table and for its rows. **/
 	tdata->Annotation[0] = 0;
 	tdata->RowAnnotExpr = NULL;
@@ -1562,6 +1645,7 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
     int i,col=0;
     char* ptr;
     int n_left;
+    int n;
 
     	/** Get pointers to the key data. **/
 	ptr = fbuf;
@@ -1571,27 +1655,38 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
 	    if (i>0) *(ptr++)='|';
 	    col = 0;
 	    keyptrs[i] = NULL;
-	    switch(tdata->ColTypes[tdata->KeyCols[i]])
-	        {
-		case 7: /** INT **/
-		    memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
-		    snprintf(ptr,n_left,"%d",col);
-		    break;
-		case 6: /** SMALLINT **/
-		    memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 2);
-		    snprintf(ptr,n_left, "%d", col);
-		    break;
-		case 5: /** TINYINT **/
-		case 16: /** BIT **/
-		    memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 1);
-		    snprintf(ptr,n_left, "%d", col);
-		    break;
-		case 1: /** CHAR **/
-		case 2: /** VARCHAR **/
-		case 18: /** SYSNAME **/
-		case 19: /** TEXT **/
-		    snprintf(ptr,n_left,"%s", inf->ColPtrs[tdata->KeyCols[i]]);
-		    break;
+	    if (inf->ColPtrs[tdata->KeyCols[i]])
+		{
+		switch(tdata->ColTypes[tdata->KeyCols[i]])
+		    {
+		    case 7: /** INT **/
+			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
+			snprintf(ptr,n_left,"%d",col);
+			break;
+		    case 6: /** SMALLINT **/
+			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 2);
+			snprintf(ptr,n_left, "%d", col);
+			break;
+		    case 5: /** TINYINT **/
+		    case 16: /** BIT **/
+			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 1);
+			snprintf(ptr,n_left, "%d", col);
+			break;
+		    case 1: /** CHAR **/
+		    case 2: /** VARCHAR **/
+		    case 18: /** SYSNAME **/
+		    case 19: /** TEXT **/
+			n = strlen(inf->ColPtrs[tdata->KeyCols[i]]);
+			while(n > 1 && inf->ColPtrs[tdata->KeyCols[i]][n-1] == ' ')
+			    n--;
+			snprintf(ptr,n_left,"%*.*s", n, n, inf->ColPtrs[tdata->KeyCols[i]]);
+			break;
+		    }
+		}
+	    else
+		{
+		/** NULL value ??? **/
+		ptr[0] = '\0';
 		}
 	    n_left -= strlen(ptr);
 	    ptr += strlen(ptr);
@@ -1622,18 +1717,19 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
     int i;
     int is_string;
     char* sptr;
+    int t;
 
 	/** Lookup the key data **/
 	key = sybd_internal_GetTableInf(node,session,table);
 	if (!key) return NULL;
 
 	/** Build the where clause condition **/
-	if (strlen(filename) > 119)
+	if (strlen(filename) >= sizeof(fbuf))
 	    {
 	    mssError(1,"SYBD","Filename too long for concat key");
 	    return NULL;
 	    }
-	strcpy(fbuf,filename);
+	strtcpy(fbuf,filename, sizeof(fbuf));
 	ptr = strtok(fbuf,"|");
 	wbuf[0]=0;
 	wptr = wbuf;
@@ -1645,13 +1741,14 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		mssError(1,"SYBD","Illegal concat key length in filename (too long)");
 		return NULL;
 		}
-	    if ((wbuf + 255) - wptr <= 5 + 1 + strlen(key->Keys[i]) + strlen(ptr) + 2 + 1)
+	    if ((wbuf + 255) - wptr <= 5 + 2 + strlen(key->Keys[i]) + strlen(ptr) + 2 + 2)
 		{
 		mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
 		return NULL;
 		}
 	    is_string = 1;
-	    if (strspn(ptr,"01234567890-") == strlen(ptr) && (!ptr[0] || !strchr(ptr+1,'-'))) is_string=0;
+	    t = sybd_internal_GetCxType(key->ColTypes[key->KeyCols[i]]);
+	    if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE) is_string = 0;
 	    if (wbuf[0]) 
 	        {
 		strcpy(wptr," AND ");
@@ -3288,7 +3385,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		if (query->SortBy[0])
 		    {
 		    xsConcatenate(&sql," ORDER BY ", 10);
-		    for(i=0;query->SortBy[i];i++)
+		    for(i=0;query->SortBy[i] && i < (sizeof(query->SortBy)/sizeof(void*));i++)
 			{
 			if (i != 0) xsConcatenate(&sql, ", ", 2);
 			sybd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->TableInf),1,&sql);
