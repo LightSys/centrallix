@@ -47,10 +47,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: obj_query.c,v 1.16 2007/04/08 03:52:00 gbeeley Exp $
+    $Id: obj_query.c,v 1.17 2008/01/06 20:17:05 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/objectsystem/obj_query.c,v $
 
     $Log: obj_query.c,v $
+    Revision 1.17  2008/01/06 20:17:05  gbeeley
+    - (change) reworking of part of objOpenQuery, possible bugfix here as well
+
     Revision 1.16  2007/04/08 03:52:00  gbeeley
     - (bugfix) various code quality fixes, including removal of memory leaks,
       removal of unused local variables (which create compiler warnings),
@@ -327,6 +330,33 @@ objMultiQuery(pObjSession session, char* query)
     }
 
 
+/*** obj_internal_ParseCriteria() - set up query criteria when opening a
+ *** new query.
+ ***/
+int
+obj_internal_ParseCriteria(pObjQuery this, char* query, pExpression tree)
+    {
+
+	if (query && *query)
+	    {
+	    /** Query text supplied **/
+	    this->Tree = (void*)expCompileExpression(query, (pParamObjects)(this->ObjList), MLX_F_ICASE | MLX_F_FILENAMES, 0);
+	    if (!(this->Tree))
+	        {
+		return -1;
+		}
+	    this->Flags |= OBJ_QY_F_ALLOCTREE;
+	    }
+	else
+	    {
+	    /** Compiled expression tree, or no criteria at all, supplied **/
+	    this->Tree = tree;
+	    }
+
+    return 0;
+    }
+
+
 /*** objOpenQuery - issue a query against just one object, with no joins.
  ***/
 pObjQuery 
@@ -360,63 +390,50 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	this->Magic = MGK_OBJQUERY;
 	this->ObjList = NULL;
 	this->Tree = NULL;
-
-	/** Ok, first parse the query. **/
 	linked_obj = objLinkTo(obj);
 	this->Obj = linked_obj;
         this->ObjList = (void*)expCreateParamList();
 	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, 0);
-	if (query && *query)
+
+	/** Ok, first parse the query. **/
+	if (obj_internal_ParseCriteria(this, query, tree) < 0)
 	    {
-	    this->Tree = (void*)expCompileExpression(query, (pParamObjects)(this->ObjList), MLX_F_ICASE | MLX_F_FILENAMES, 0);
-	    if (!(this->Tree))
-	        {
-		mssError(0,"OSML","Query search criteria is invalid");
-		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
-		goto error_return;
-		}
-	    this->Flags |= OBJ_QY_F_ALLOCTREE;
-	    }
-	else
-	    {
-	    if (tree)
-	        {
-	        this->Tree = tree;
-		}
-	    else
-	        {
-		this->Tree = NULL;
-		}
+	    mssError(0,"OSML","Query search criteria is invalid");
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
+	    goto error_return;
 	    }
 
 	/** Now, parse the order-by clause **/
 	if (orderbyexp)
 	    {
-	    for(i=0;orderbyexp[i];i++)
+	    for(i=0;i < sizeof(this->SortBy)/sizeof(void*);i++)
 	        {
-		if (i >= sizeof(this->SortBy)/sizeof(void*)) break;
 		this->SortBy[i] = orderbyexp[i];
+		if (!orderbyexp[i]) break;
 		}
-	    this->SortBy[i] = orderbyexp[i];
 	    }
 	else if (order_by)
 	    {
 	    lxs = mlxStringSession(order_by, MLX_F_EOF | MLX_F_FILENAMES | MLX_F_ICASER);
-	    for(i=0;(sort_item=exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC));i++)
+	    for(i=0;i < sizeof(this->SortBy)/sizeof(void*);i++)
 	        {
-		if (i >= sizeof(this->SortBy)/sizeof(void*)) break;
+		sort_item = exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC);
 		this->SortBy[i] = sort_item;
+		if (!sort_item) break;
 		t = mlxNextToken(lxs);
 		if (t == MLX_TOK_EOF)
 		    {
 		    i++;
+		    if (i < sizeof(this->SortBy)/sizeof(void*))
+			this->SortBy[i] = NULL;
 		    break;
 		    }
-		if (t == MLX_TOK_COMMA) continue;
-		mssError(1,"OSML","Invalid search criteria '%s'", order_by);
-		goto error_return;
+		else if (t != MLX_TOK_COMMA)
+		    {
+		    mssError(1,"OSML","Invalid sort criteria '%s'", order_by);
+		    goto error_return;
+		    }
 		}
-	    this->SortBy[i] = NULL;
 	    mlxCloseSession(lxs);
 	    lxs = NULL;
 	    }
