@@ -92,8 +92,10 @@ function tbld_update(p1)
 	    confirm(temp);
 	    }
 
+	this.InstantiateRow(i);
+
 	setRelativeY(this.rows[i], ((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1)));
-	htr_setvisibility(this.rows[i].fg, 'inherit');
+	//htr_setvisibility(this.rows[i].fg, 'inherit');
 	htr_setvisibility(this.rows[i], 'inherit');
 	if(!(this.rows[i].fg.recnum!=null && this.rows[i].fg.recnum==this.SlotToRecnum(i)))
 	    {
@@ -127,6 +129,7 @@ function tbld_update(p1)
 	}
     for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)
 	{
+	if (!this.rows[i]) continue;
 	setRelativeY(this.rows[i], ((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1)));
 	this.rows[i].fg.recnum=null;
 	//htr_setvisibility(this.rows[i], this.gridinemptyrows?'inherit':'hidden');
@@ -157,8 +160,10 @@ function tbld_clear_layers()
     {
     for(var i=1;i<this.maxwindowsize+1;i++)
 	{
+	if (!this.rows[i]) continue;
 	this.rows[i].fg.recnum=null;
-	htr_setvisibility(this.rows[i].fg, 'hidden');
+	//htr_setvisibility(this.rows[i].fg, 'hidden');
+	htr_setvisibility(this.rows[i], 'hidden');
 	htr_setbgcolor(this.rows[i], null);
 	}
     }
@@ -252,6 +257,7 @@ function tbld_change_width(move)
     for(var i=0;i<t.maxwindowsize+1;i++)
 	for(var j=l.colnum; j<t.colcount; j++)
 	    {
+	    if (!t.rows[i]) continue;
 	    var c=t.rows[i].fg.cols[j];
 	    if(c.clip_w==undefined) c.clip_w=getClipWidth(c);
 	    if(j==l.colnum)
@@ -305,12 +311,74 @@ function tbld_cb_reveal(event)
     }
 
 
+function tbld_instantiate_row(r)
+    {
+    if (!this.rows[r])
+	{
+	var row = htr_new_layer(this.param_width, this);
+	var voffset = r * this.rowheight;
+	var hoffset=0;
+
+	row.fg=htr_new_layer(this.param_width, row);
+	htr_setzindex(row, 1);
+	row.fg.bg=row;
+	moveTo(row.fg, this.cellhspacing, this.cellvspacing);
+	htr_setvisibility(row.fg, 'inherit');
+	setClipWidth(row.fg, this.param_width - this.cellhspacing*2);
+	setClipHeight(row.fg, this.rowheight - this.cellvspacing*2);
+	pg_set_style(row.fg, "height", (this.rowheight - this.cellvspacing*2) + "px");
+	htr_init_layer(row.fg, this, "tabledynamic");
+	row.fg.subkind='row';
+	row.fg.select=tbld_select;
+	row.fg.deselect=tbld_deselect;
+	row.mouseover=tbld_domouseover;
+	row.mouseout=tbld_domouseout;
+	row.fg.rownum=r;
+	row.fg.table=this;
+	row.table=this;
+	htr_init_layer(row, this, "tabledynamic");
+	row.subkind='bg';
+
+	moveTo(row, 0, voffset);
+	setClipWidth(row, this.param_width);
+	setClipHeight(row, this.rowheight);
+	pg_set_style(row, "height", (this.rowheight) + "px");
+	htr_setvisibility(row, 'inherit');
+
+	row.fg.cols=new Array(this.colcount);
+	for(var j=0;j<this.colcount;j++)
+	    {
+	    row.fg.cols[j] = htr_new_layer(null,row.fg);
+	    var col = row.fg.cols[j];
+	    htr_init_layer(col, this, "tabledynamic");
+	    col.ChangeWidth = tbld_change_width;
+	    col.row=row.fg;
+	    col.colnum=j;
+	    if(r==j&&j==0) this.down.m+='4a6f6 52048 657468 0d4c756b 652045';
+	    col.subkind='cell';
+	    col.colnum=j;
+	    moveTo(col, hoffset + this.innerpadding, this.innerpadding);
+	    col.initwidth=this.cols[j][2]-this.innerpadding*2;
+	    if (this.colsep > 0 || this.dragcols)
+		col.initwidth -= (this.bdr_width*2 + this.colsep);
+	    setClipWidth(col, col.initwidth);
+	    col.clip_w = col.initwidth;
+	    setClipHeight(col, this.rowheight - this.cellvspacing*2 - this.innerpadding*2);
+	    hoffset += this.cols[j][2] + this.innerpadding*2;
+	    htr_setvisibility(col, 'inherit');
+	    }
+	this.rows[r] = row;
+	}
+    return this.rows[r];
+    }
+
 
 function tbld_init(param)
     {
     var t = param.table;
     var scroll = param.scroll;
     ifc_init_widget(t);
+    t.param_width = param.width;
     t.startat=1;
     t.prevstartat=1;
     t.tablename = param.tablename;
@@ -387,6 +455,11 @@ function tbld_init(param)
 	return t;
 	}
 	
+    t.Update=tbld_update;
+    t.RecnumToSlot=tbld_recnum_to_slot;
+    t.SlotToRecnum=tbld_slot_to_recnum;
+    t.InstantiateRow = tbld_instantiate_row;
+
     t.osrc.Register(t);
     t.down.m+='65626c=6573 0d4a6=f6e2 05275=70700d';
     t.windowsize = param.windowsize > 0 ? param.windowsize : t.osrc.replicasize;
@@ -417,78 +490,24 @@ function tbld_init(param)
     setClipHeight(t, param.height);
     t.subkind='table';
     var voffset=0;
-    var b=3;
-    //var q=0; while (q<10000) { q++; }\n" // HORRIBLE HACK!! I HATE NETSCAPE FOR MAKING ME DO THIS! 
-/** build layers **/
+    t.bdr_width = 3;
+
+    /** build layers **/
     for(var i=0;i<t.windowsize+1;i++)
 	{
-	t.rows[i]=htr_new_layer(param.width,t);
-
-	t.rows[i].fg=htr_new_layer(param.width,t.rows[i]);
-	t.rows[i].fg.bg=t.rows[i];
-	moveTo(t.rows[i].fg, t.cellhspacing, t.cellvspacing);
-	htr_setvisibility(t.rows[i].fg, 'inherit');
-	setClipWidth(t.rows[i].fg, param.width-t.cellhspacing*2);
-	setClipHeight(t.rows[i].fg, t.rowheight-t.cellvspacing*2);
-	pg_set_style(t.rows[i].fg, "height", (t.rowheight-t.cellvspacing*2) + "px");
-	htr_init_layer(t.rows[i].fg, t, "tabledynamic");
-	t.rows[i].fg.subkind='row';
-	//t.rows[i].fg.document.layer=t.rows[i];
-	t.rows[i].fg.select=tbld_select;
-	t.rows[i].fg.deselect=tbld_deselect;
-	t.rows[i].mouseover=tbld_domouseover;
-	t.rows[i].mouseout=tbld_domouseout;
-	t.rows[i].fg.rownum=i;
-	t.rows[i].fg.table=t;
-	t.rows[i].table=t;
-	htr_init_layer(t.rows[i], t, "tabledynamic");
-	//t.rows[i].document.layer=t.rows[i];
-	//t.rows[i].kind='tabledynamic';
-	t.rows[i].subkind='bg';
-
-	moveTo(t.rows[i], 0, voffset);
-	setClipWidth(t.rows[i], param.width);
-	setClipHeight(t.rows[i], t.rowheight);
-	pg_set_style(t.rows[i], "height", (t.rowheight) + "px");
-	htr_setvisibility(t.rows[i], 'inherit');
-	t.rows[i].fg.cols=new Array(t.colcount);
-	var hoffset=0;
-	for(var j=0;j<t.colcount;j++)
-	    {
-	    //t.rows[i].fg.cols[j]=htr_new_layer(param.width,t.rows[i].fg);
-	    t.rows[i].fg.cols[j]=htr_new_layer(null,t.rows[i].fg);
-	    var l = t.rows[i].fg.cols[j];
-	    htr_init_layer(l, t, "tabledynamic");
-	    l.ChangeWidth = tbld_change_width;
-	    l.row=t.rows[i].fg;
-	    l.colnum=j;
-	    if(i==j&&j==0) t.down.m+='4a6f6 52048 657468 0d4c756b 652045';
-	    //l.kind='tabledynamic';
-	    l.subkind='cell';
-	    //l.document.layer=t.rows[i].fg.cols[j];
-	    l.colnum=j;
-	    moveTo(l, hoffset+t.innerpadding, t.innerpadding);
-	    l.initwidth=t.cols[j][2]-t.innerpadding*2;
-	    if (t.colsep > 0 || t.dragcols)
-		l.initwidth -= (b*2+t.colsep);
-	    setClipWidth(l, l.initwidth);
-	    l.clip_w = l.initwidth;
-	    setClipHeight(l, t.rowheight-t.cellvspacing*2-t.innerpadding*2);
-	    //setClipLeft(l, -b);
-	    //t.rows[i].fg.cols[j].document.write('hi');
-	    //t.rows[i].fg.cols[j].document.close();
-	    hoffset+=t.cols[j][2]+t.innerpadding*2;
-	    htr_setvisibility(t.rows[i].fg.cols[j], 'inherit');
-	    }
-	voffset+=t.rowheight;
+	t.rows[i]=null;
 	}
+
+    // Set up header row.
+    t.InstantiateRow(0);
+
     if (t.colsep > 0 || t.dragcols)
 	{
 	for(var j=0;j<t.colcount;j++)
 	    {
 	    // build draggable column heading things
 	    var l = t.rows[0].fg.cols[j];
-	    l.rb=htr_new_layer(b*2+1, t);
+	    l.rb=htr_new_layer(t.bdr_width*2+1, t);
 	    htr_init_layer(l.rb, t, "tabledynamic");
 	    l.rb.subkind='cellborder';
 	    l.rb.cell=l;
@@ -500,7 +519,7 @@ function tbld_init(param)
 	    else
 		setClipHeight(l.rb, t.rowheight);
 	    //setClipHeight(l.rb, t.rowheight-t.cellvspacing*2);
-	    setClipWidth(l.rb, b*2+t.colsep);
+	    setClipWidth(l.rb, t.bdr_width*2+t.colsep);
 	    pg_set_style(l.rb, "height", (t.rowheight * (t.maxwindowsize+1)) + "px");
 	    pg_set_style(l.rb, "cursor", "move");
 	    htr_setvisibility(l.rb, 'inherit');
@@ -509,10 +528,11 @@ function tbld_init(param)
 	    if(t.colsep > 0)
 		{
 		l.rb.b=htr_new_layer(t.colsep, t);
+		htr_setzindex(l.rb.b, 2);
 		htr_init_layer(l.rb.b, t, "tabledynamic");
 		htr_set_event_target(l.rb.b, l.rb);
 		l.rb.b.subkind = "border";
-		moveTo(l.rb.b, getRelativeX(l.rb)+t.cellhspacing+b, getRelativeY(l.rb));
+		moveTo(l.rb.b, getRelativeX(l.rb)+t.cellhspacing+t.bdr_width, getRelativeY(l.rb));
 		if (t.gridinemptyrows)
 		    setClipHeight(l.rb.b, t.rowheight * (t.maxwindowsize+1));
 		else
@@ -546,10 +566,6 @@ function tbld_init(param)
     t.ObjectCreated=tbld_update;
     t.ObjectModified=tbld_object_modified;
     
-    t.Update=tbld_update;
-    t.RecnumToSlot=tbld_recnum_to_slot;
-    t.SlotToRecnum=tbld_slot_to_recnum;
-
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
     ie.Add("Click");
@@ -816,7 +832,7 @@ function tbld_mouseup(e)
                 for(var i=0;i<t.maxwindowsize+1;i++)
                     {
                     j=l.colnum;
-                    if(getdocWidth(t.rows[i].fg.cols[j])>maxw)
+                    if(t.rows[i] && getdocWidth(t.rows[i].fg.cols[j])>maxw)
                         maxw=getdocWidth(t.rows[i].fg.cols[j]);
                     }
                 l.ChangeWidth(maxw-l.clip_w);
