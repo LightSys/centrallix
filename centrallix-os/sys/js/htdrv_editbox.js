@@ -11,6 +11,7 @@
 
 function eb_getlist(content)
     {
+    if (!content) return content;
     var vals = content.split(/,/);
     if(content==vals[0])
 	return content;
@@ -53,11 +54,12 @@ function eb_setvalue(v,f)
 
 function eb_clearvalue()
     {
+    this.was_null = true;
     // fake it by just making the content invisible - much faster :)
     if (this != eb_current)
 	{
-	this.set_content('');
-	this.viscontent = '';
+	this.set_content(null);
+	this.viscontent = null;
 	this.charOffset = 0;
 	this.cursorCol = 0;
 	htr_setvisibility(this.mainlayer.ContentLayer, 'hidden');
@@ -66,7 +68,7 @@ function eb_clearvalue()
 	}
     else
 	{
-	this.Update('', 0);
+	this.Update(null, 0);
 	}
     }
 
