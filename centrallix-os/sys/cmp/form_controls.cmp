@@ -10,6 +10,12 @@ form_controls "widget/component-decl"
 	find_container = "widget/form";
 	}
 
+    osrc "widget/parameter"
+	{
+	type = "object";
+	find_container = "widget/osrc";
+	}
+
     bgcolor "widget/parameter"
 	{
 	type = "string";
@@ -27,6 +33,12 @@ form_controls "widget/component-decl"
 	{
 	type = "integer";
 	default = 1;
+	}
+
+    save_mode "widget/parameter"
+	{
+	type = "string";
+	default = "form";
 	}
 
     detail_window "widget/parameter"
@@ -127,6 +139,7 @@ form_controls "widget/component-decl"
 
 	    btnSave "widget/imagebutton"
 		{
+		condition=runserver(:this:save_mode == 'form');
 		y=3;
 		width=18;
 		height=18;
@@ -137,6 +150,20 @@ form_controls "widget/component-decl"
 		tooltip = "Save Changes";
 		enabled = runclient(:form:is_savable);
 		cnSave "widget/connector" { event="Click"; target=form; action="Save"; }
+		}
+	    btnSaveOsrc "widget/imagebutton"
+		{
+		condition=runserver(:this:save_mode == 'osrc');
+		y=3;
+		width=18;
+		height=18;
+		image="/sys/images/ico20a.gif";
+		pointimage="/sys/images/ico20b.gif";
+		clickimage="/sys/images/ico20c.gif";
+		disabledimage="/sys/images/ico20d.gif";
+		tooltip = "Save Changes";
+		enabled = runclient(:osrc:is_client_savable);
+		cnSaveOsrc "widget/connector" { event="Click"; target=osrc; action="SaveClients"; }
 		}
 	    btnSearch "widget/imagebutton"
 		{
