@@ -70,10 +70,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: objdrv_sybase.c,v 1.27 2008/01/06 20:19:32 gbeeley Exp $
+    $Id: objdrv_sybase.c,v 1.28 2008/01/18 23:55:12 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/osdrivers/objdrv_sybase.c,v $
 
     $Log: objdrv_sybase.c,v $
+    Revision 1.28  2008/01/18 23:55:12  gbeeley
+    - (bugfix) fix some potential connection pool leaks
+
     Revision 1.27  2008/01/06 20:19:32  gbeeley
     - (bugfix) fixed a memory issue related to some presentation hints
       structures causing crashes.
@@ -2420,6 +2423,10 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		}
 	    }
 
+	/** Release session, for now **/
+	sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+	inf->SessionID = NULL;
+
     return (void*)inf;
     }
 
@@ -2820,6 +2827,9 @@ sybdCommit(void* inf_v, pObjTrxTree* oxt)
 			return -1;
 			}
 
+		    sybd_internal_ReleaseConn(inf->Node, inf->SessionID);
+		    inf->SessionID = NULL;
+
 		    /** Complete the oxt. **/
 		    (*oxt)->Status = OXT_S_COMPLETE;
 
@@ -2852,7 +2862,7 @@ sybdClose(void* inf_v, pObjTrxTree* oxt)
 	    inf->ReadSessID = NULL;
 	    }
 
-	/** Commit changes **/
+	/** Commit changes (this closes WriteSessID too) **/
 	rval = sybdCommit(inf_v, oxt);
 
 	/** Disconnect the DB session, if needed. **/
@@ -3408,6 +3418,7 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		xsDeInit(&sql);
 		if ((qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf))==NULL)
 		    {
+		    sybd_internal_ReleaseConn(inf->Node, qy->SessionID);
 		    nmFree(qy,sizeof(SybdQuery));
 		    mssError(0,"SYBD","Could not execute SQL for query on table object");
 		    return NULL;
@@ -4112,11 +4123,13 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			{
 			mssError(1,"SYBD","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
 				attrname, obj_type_names[datatype], obj_type_names[type]);
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
 			return -1;
 			}
 		    ptr = sybd_internal_FilenameToKey(inf->Node, sess,inf->TablePtr,inf->RowColPtr);
 		    if (!ptr)
 			{
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
 			return -1;
 			}
 		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
@@ -4139,6 +4152,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    cmd = sybd_internal_Exec(sess,sbuf);
 		    if (!cmd) 
 		        {
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
 			mssError(1,"SYBD","Could not execute SQL to update attribute value");
 			return -1;
 			}
