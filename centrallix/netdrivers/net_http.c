@@ -66,10 +66,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: net_http.c,v 1.75 2007/09/18 18:00:57 gbeeley Exp $
+    $Id: net_http.c,v 1.76 2008/01/18 23:54:26 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/netdrivers/net_http.c,v $
 
     $Log: net_http.c,v $
+    Revision 1.76  2008/01/18 23:54:26  gbeeley
+    - (change) add entropy to pool from web connection timings.
+
     Revision 1.75  2007/09/18 18:00:57  gbeeley
     - (change) allow encoding of attribute name so that attribute names can
       contain spaces and special characters.
@@ -3784,6 +3787,8 @@ nht_internal_ConnHandler(void* connfd_v)
     pNhtConn conn = NULL;
     pNhtSessionData nsess;
     int akey[2];
+    unsigned long t;
+    unsigned char t_lsb;
 
     	/*printf("ConnHandler called, stack ptr = %8.8X\n",&s);*/
 
@@ -3804,6 +3809,11 @@ nht_internal_ConnHandler(void* connfd_v)
 	    msg = "Error parsing headers";
 	    goto error;
 	    }
+
+	/** Add some entropy to the pool - just the LSB of the time **/
+	t = htonl(mtRealTicks());
+	t_lsb = t & 0xFF;
+	cxssAddEntropy(&t_lsb, 1, 4);
 
 	/** Did client send authentication? **/
 	if (!*(conn->Auth))
