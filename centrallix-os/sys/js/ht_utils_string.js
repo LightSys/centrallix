@@ -39,7 +39,8 @@ function htutil_encode(s)
 	else if (s.charAt(i) == '>') rs += '&gt;';
 	else if (s.charAt(i) == '&') rs += '&amp;';
 	else if (s.charAt(i) == ' ') rs += '&nbsp;';
-	else if (s.charAt(i) == "'") rs += '&quot;';
+	else if (s.charAt(i) == "'") rs += '&#39;';
+	else if (s.charAt(i) == "\"") rs += '&quot;';
 	else rs += s.charAt(i);
         }
     return rs;
