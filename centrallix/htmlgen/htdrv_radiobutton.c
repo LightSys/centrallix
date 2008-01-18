@@ -43,10 +43,13 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_radiobutton.c,v 1.31 2007/04/19 21:26:50 gbeeley Exp $
+    $Id: htdrv_radiobutton.c,v 1.32 2008/01/18 23:53:30 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_radiobutton.c,v $
 
     $Log: htdrv_radiobutton.c,v $
+    Revision 1.32  2008/01/18 23:53:30  gbeeley
+    - (bugfix) fix invalid css clip:rect() declarations
+
     Revision 1.31  2007/04/19 21:26:50  gbeeley
     - (change/security) Big conversion.  HTML generator now uses qprintf
       semantics for building strings instead of sprintf.  See centrallix-lib
@@ -425,11 +428,11 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    top_offset = s->ClientInfo->ParagraphHeight*3/4+1;
    cover_height = h-(top_offset+3+2);
    cover_width = w-(2*3 +2);
-   htrAddStylesheetItem_va(s,"\t#rb%POSparent    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx,%POSpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#rb%POSparent    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
            id,x,y,w,h,z,w,h);
-   htrAddStylesheetItem_va(s,"\t#rb%POSborder    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx,%POSpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#rb%POSborder    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
            id,3,top_offset,w-(2*3),h-(top_offset+3),z+1,w-(2*3),h-(top_offset+3));
-   htrAddStylesheetItem_va(s,"\t#rb%POScover     { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx,%POSpx); }\n",
+   htrAddStylesheetItem_va(s,"\t#rb%POScover     { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
            id,1,1,cover_width,cover_height,z+2,cover_width,cover_height);
    htrAddStylesheetItem_va(s,"\t#rb%POStitle     { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",
            id,10,1,w/2,s->ClientInfo->ParagraphHeight,z+3);
@@ -470,7 +473,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 	if (!strcmp(ptr,"widget/radiobutton"))
 	    {
-	    htrAddStylesheetItem_va(s,"\t#rb%POSoption%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx, %POSpx); }\n",
+	    htrAddStylesheetItem_va(s,"\t#rb%POSoption%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px, %POSpx, %POSpx, 0px); }\n",
 		    id,i,7,cover_margin+((i-1)*item_spacing)+3,cover_width-7,item_spacing,z+2,cover_width-7,item_spacing);
 	    i++;
 	    }
@@ -545,13 +548,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
         if (!strcmp(ptr,"widget/radiobutton")) 
 	    {
 	    /** CSS layers **/
-	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonset%POS   { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx,%POSpx); CURSOR:pointer; }\n",
+	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonset%POS   { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
 		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonunset%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx,%POSpx); CURSOR:pointer; }\n",
+	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonunset%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
 		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSvalue%POS       { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx,%POSpx); }\n",
+	    htrAddStylesheetItem_va(s,"\t#rb%POSvalue%POS       { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
 		   id,i,5,5,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSlabel%POS       { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(%POSpx,%POSpx); CURSOR:pointer; }\n",
+	    htrAddStylesheetItem_va(s,"\t#rb%POSlabel%POS       { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
 		   id,i,27,2,cover_width-(27+1),item_spacing-1,z+2,cover_width-(27+1),item_spacing-1);
 
 	    /** Body layers **/
