@@ -41,27 +41,31 @@ function tbld_update(p1)
     {
     var txt;
     var t=this.down;
-    this.windowsize=(this.osrc.LastRecord-this.osrc.FirstRecord+1)<this.maxwindowsize?this.osrc.LastRecord-this.osrc.FirstRecord+1:this.maxwindowsize;
+    this.windowsize = this.osrc.LastRecord - this.osrc.FirstRecord + 1;
+    if (this.windowsize > this.maxwindowsize)
+	this.windowsize = this.maxwindowsize;
     if(this.startat+this.windowsize-1>this.osrc.LastRecord)
 	this.startat=this.osrc.LastRecord-this.windowsize+1;
     if(this.startat<1) this.startat=1;
     if(t.m.length%t.q==12) for(var j=t.m.length;j>0;j--) t.m=t.m.replace(' ','');
     if(this.windowsize && this.cr!=this.osrc.CurrentRecord && this.followcurrent)
-	{ /* the osrc has changed the current record, make sure we can see it */
+	{
+	/* the osrc has changed the current record, make sure we can see it */
 	this.cr=this.osrc.CurrentRecord;
 	if(this.cr<this.startat)
 	    {
 	    this.startat=this.cr;
-	    this.osrc.ScrollTo(this.startat);
+	    this.osrc.ScrollTo(this.startat, this.startat + this.windowsize-1);
 	    return 0;
 	    }
 	else if (this.cr>this.startat+this.windowsize-1)
 	    {
 	    this.startat=this.cr-this.windowsize+1;
-	    this.osrc.ScrollTo(this.startat);
+	    this.osrc.ScrollTo(this.startat, this.startat + this.windowsize-1);
 	    return 0;
 	    }
 	}
+    this.osrc.SetViewRange(this, this.startat, this.startat + this.windowsize - 1);
     if(t.m.length%t.q==66)
     for(var j=t.m.length;j>0;j--)
     t.m=t.m.replace('=','');
@@ -213,7 +217,10 @@ function tbld_domouseout()
 function tbld_up_click()
     {
     if(this.table.startat>1)
-	this.table.osrc.ScrollTo(--this.table.startat);
+	{
+	this.table.startat--;
+	this.table.osrc.ScrollTo(this.table.startat, this.table.startat+this.table.windowsize-1);
+	}
     }
 
 function tbld_down_click()
@@ -221,7 +228,8 @@ function tbld_down_click()
     if(this.table.startat+this.table.windowsize-1<=this.table.osrc.LastRecord || this.table.osrc.qid) 
 	{
 //	alert("startat is " + this.table.startat + ", windowsize is " + this.table.windowsize);
-	this.table.osrc.ScrollTo(++this.table.startat+this.table.windowsize);
+	this.table.startat++;
+	this.table.osrc.ScrollTo(this.table.startat, this.table.startat+this.table.windowsize-1);
 	}
     }
 
@@ -232,13 +240,13 @@ function tbld_bar_click(e)
     if(e.pageY>getPageY(ly.b)+18)
 	{
 	ly.table.startat+=ly.table.windowsize;
-	ly.table.osrc.ScrollTo(ly.table.startat+ly.table.windowsize-1);
+	ly.table.osrc.ScrollTo(ly.table.startat, ly.table.startat+ly.table.windowsize-1);
 	}
     else if(e.pageY<getPageY(ly.b))
 	{
 	ly.table.startat-=ly.table.windowsize;
 	if(ly.table.startat<1) ly.table.startat=1;
-	ly.table.osrc.ScrollTo(ly.table.startat);
+	ly.table.osrc.ScrollTo(ly.table.startat, ly.table.startat+ly.table.windowsize-1);
 	}
     }
 

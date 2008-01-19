@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2008 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -733,10 +733,17 @@ function osrc_cb_request_object(aparam)
     return 0;
     }
 
+function osrc_cb_set_view_range(client, startrec, endrec)
+    {
+    client.__osrc_viewrange = [startrec, endrec];
+    return;
+    }
+
 function osrc_cb_register(client)
     {
     this.child.push(client);
     client.__osrc_osrc = this;
+    client.__osrc_viewrange = null;
     if (typeof client.is_savable != 'undefined')
 	{
 	if (client.is_savable)
@@ -866,6 +873,19 @@ function osrc_prune_replica(most_recent_id)
 	this.LastRecord = most_recent_id;
 	while(this.LastRecord-this.FirstRecord >= this.replicasize)
 	    {
+	    // don't go past current record
+	    if (this.FirstRecord == this.CurrentRecord || this.FirstRecord == this.TargetRecord[0]) break;
+	    var found = false;
+	    for(var c in this.child)
+		{
+		if (this.child[c].__osrc_viewrange && this.FirstRecord == this.child[c].__osrc_viewrange[0])
+		    {
+		    found = true;
+		    break;
+		    }
+		}
+	    if (found) break;
+
 	    // clean up replica
 	    this.oldoids.push(this.replica[this.FirstRecord].oid);
 	    delete this.replica[this.FirstRecord];
@@ -876,7 +896,21 @@ function osrc_prune_replica(most_recent_id)
 	{
 	this.FirstRecord = most_recent_id;
 	while(this.LastRecord-this.FirstRecord >= this.replicasize)
-	    { /* clean up replica */
+	    { 
+	    // don't go past current record
+	    if (this.LastRecord == this.CurrentRecord || this.LastRecord == this.TargetRecord[1]) break;
+	    for(var c in this.child)
+		{
+		var found = false;
+		if (this.child[c].__osrc_viewrange && this.LastRecord == this.child[c].__osrc_viewrange[1])
+		    {
+		    found = true;
+		    break;
+		    }
+		}
+	    if (found) break;
+
+	    // clean up replica
 	    if (this.replica[this.LastRecord])
 		{
 		this.oldoids.push(this.replica[this.LastRecord].oid);
@@ -889,7 +923,7 @@ function osrc_prune_replica(most_recent_id)
 
 function osrc_clear_replica()
     {
-    this.TargetRecord=1;/* the record we're aiming for -- go until we get it*/
+    this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
     this.CurrentRecord=1;/* the current record */
     this.OSMLRecord=0;/* the last record we got from the OSML */
 
@@ -921,7 +955,7 @@ function osrc_parse_one_row(lnk, i)
 function osrc_do_fetch(rowcnt)
     {
     this.querysize = rowcnt?rowcnt:1;
-    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + (rowcnt?("&ls__rowcount="+rowcnt):""), osrc_fetch_next);
+    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + (rowcnt?("&ls__rowcount="+rowcnt):"") + (this.startat?("&ls__startat="+this.startat):""), osrc_fetch_next);
     }
 
 function osrc_end_query()
@@ -955,12 +989,11 @@ function osrc_end_query()
 
 function osrc_fetch_next()
     {
-    pg_debug("osrc_fetch_next()\n");
-    pg_debug(this.id + ": FetchNext()\n");
+    pg_debug(this.id + ": FetchNext() ==> " + pg_links(this).length + "\n");
     //alert('fetching....');
     if(!this.qid)
 	{
-	confirm("ERR: " + this.baseobj + " ==> " + this.qid);
+	if (pg_diag) confirm("ERR: " + this.baseobj + " ==> " + this.qid);
 	//alert('something is wrong...');
 	//alert(this.src);
 	}
@@ -989,11 +1022,13 @@ function osrc_fetch_next()
 	    this.replica[this.OSMLRecord][j] = row[j];
 	    }
 	}
+    pg_debug("   Fetch returned " + rowcnt + " rows, querysize was " + this.querysize + ".\n");
+
     // make sure we bring this.LastRecord back down to the top of our replica...
     while(!this.replica[this.LastRecord])
 	this.LastRecord--;
 
-    if(this.LastRecord<this.TargetRecord)
+    if(this.LastRecord<this.TargetRecord[1])
 	{ 
 	// didn't get a full fetch?  end query if so
 	if (rowcnt < this.querysize)
@@ -1022,19 +1057,16 @@ function osrc_fetch_next()
 	    else
 		this.TellAllReplicaMoved();
 	    this.pending=false;
-	    this.onload=osrc_oldoid_cleanup;
-	    this.onload();
+	    this.osrc_oldoid_cleanup();
 	    }
 	}
     }
 
 function osrc_oldoid_cleanup()
     {
-    this.onload=null;
     if(this.oldoids && this.oldoids[0])
 	{
 	this.pending=true;
-	this.onload=osrc_oldoid_cleanup_cb;
 	var src='';
 	for(var i in this.oldoids)
 	    src+=this.oldoids[i];
@@ -1052,7 +1084,6 @@ function osrc_oldoid_cleanup_cb()
     {
     this.pending=false;
     //alert('cb recieved');
-    this.onload=null;
     delete this.oldoids;
     this.oldoids=new Array();
     this.Dispatch();
@@ -1062,8 +1093,7 @@ function osrc_close_query()
     {
     //Close Query
     this.qid=null;
-    this.onload=osrc_oldoid_cleanup;
-    this.onload();
+    this.osrc_oldoid_cleanup();
     //confirm("closing " + this.baseobj);
     //this.onload = osrc_close_session;
     //pg_set(this,'src','/?ls__mode=osml&ls__req=queryclose&ls__qid=' + this.qid);
@@ -1080,7 +1110,6 @@ function osrc_close_object()
 function osrc_close_session()
     {
     //Close Session
-    this.onload = null;
     pg_serialized_load(this, '/?cx__akey='+akey+'&ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid, osrc_oldoid_cleanup);
     //this.onload=osrc_oldoid_cleanup;
     //pg_set(this,'src','/?ls__mode=osml&ls__req=closesession&ls__sid=' + this.sid);
@@ -1179,7 +1208,8 @@ function osrc_move_to_record_cb(recnum)
 	     }
 	 }
 /* If we're here, we're ready to go */
-    this.TargetRecord=this.CurrentRecord=recnum;
+    this.TargetRecord = [recnum, recnum];
+    this.CurrentRecord = recnum;
     if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)
 	{
 	this.GiveAllCurrentRecord();
@@ -1207,8 +1237,7 @@ function osrc_move_to_record_cb(recnum)
 		}
 	    else
 		{
-		this.onload=osrc_open_query_startat;
-		this.onload();
+		this.osrc_open_query_startat();
 		}
 	    return 0;
 	    }
@@ -1216,7 +1245,6 @@ function osrc_move_to_record_cb(recnum)
 	    { /* data is farther on, act normal */
 	    if(this.qid)
 		{
-		this.onload=osrc_fetch_next;
 		if(this.CurrentRecord == Number.MAX_VALUE)
 		    {
 		    /* rowcount defaults to a really high number if not set */
@@ -1246,12 +1274,18 @@ function osrc_move_to_record_cb(recnum)
 
 function osrc_open_query_startat()
     {
-    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql="+this.query, osrc_get_qid_startat);
+    if(this.FirstRecord - this.startat < this.replicasize)
+	this.querysize = this.FirstRecord - this.startat;
+    else
+	this.querysize = this.replicasize;
+    pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autofetch=1&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.querysize + "&ls__sql=" + this.query, osrc_get_qid_startat);
+    //pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql="+this.query, osrc_get_qid_startat);
     }
 
 function osrc_get_qid_startat()
     {
-    this.qid=pg_links(this)[0].target;
+    var lnk = pg_links(this);
+    this.qid=lnk[0].target;
     if (!this.qid)
 	{
 	this.startat = null;
@@ -1261,15 +1295,26 @@ function osrc_get_qid_startat()
 	return;
 	}
     this.OSMLRecord=this.startat-1;
-    this.onload=osrc_fetch_next;
     //this.FirstRecord=this.startat;
-    if(this.startat-this.TargetRecord+1<this.replicasize)
+    /*if(this.startat-this.TargetRecord+1<this.replicasize)
 	{
 	this.DoFetch(this.TargetRecord - this.startat + 1);
+	}*/
+    if (lnk.length > 1)
+	{
+	// did an autofetch - we have the data already
+	this.FetchNext();
 	}
     else
 	{
-	this.DoFetch(this.replicasize);
+	if(this.FirstRecord - this.startat < this.replicasize)
+	    {
+	    this.DoFetch(this.FirstRecord - this.startat);
+	    }
+	else
+	    {
+	    this.DoFetch(this.replicasize);
+	    }
 	}
     this.startat=null;
     }
@@ -1312,12 +1357,14 @@ function osrc_scroll_next_page()
     this.ScrollTo(this.LastRecord+this.replicasize);
     }
 
-function osrc_scroll_to(recnum)
+function osrc_scroll_to(startrec, endrec)
     {
+    pg_debug(this.id + ": ScrollTo(" + startrec + "," + endrec + ")\n");
+    pg_debug("   first/last/cur/osml: " + this.FirstRecord + "/" + this.LastRecord + "/" + this.CurrentRecord + "/" + this.OSMLRecord + "\n");
     this.moveop=false;
-    this.TargetRecord=recnum;
+    this.TargetRecord = [startrec, endrec];
     this.SyncID = osrc_syncid++;
-    if(this.TargetRecord <= this.LastRecord && this.TargetRecord >= this.FirstRecord)
+    if(this.TargetRecord[1] <= this.LastRecord && this.TargetRecord[0] >= this.FirstRecord)
 	{
 	this.TellAllReplicaMoved();
 	this.pending=false;
@@ -1326,17 +1373,17 @@ function osrc_scroll_to(recnum)
 	}
     else
 	{
-	if(this.TargetRecord < this.FirstRecord)
-	    { /* data is further back, need new query */
-	    if(this.FirstRecord-this.TargetRecord<this.scrollahead)
+	if(this.TargetRecord[0] < this.FirstRecord)
+	    {
+	    /* data is further back, need new query */
+	    if(this.FirstRecord-this.TargetRecord[0]<this.scrollahead)
 		{
 		this.startat=(this.FirstRecord-this.scrollahead)>0?(this.FirstRecord-this.scrollahead):1;
 		}
 	    else
 		{
-		this.startat=this.TargetRecord;
+		this.startat=this.TargetRecord[0];
 		}
-	    this.onload=osrc_open_query_startat;
 	    if(this.qid)
 		{
 		//pg_set(this,'src',"/?ls__mode=osml&ls__req=queryclose&ls__sid="+this.sid+"&ls__qid="+this.qid);
@@ -1344,29 +1391,30 @@ function osrc_scroll_to(recnum)
 		}
 	    else
 		{
-		this.onload();
+		this.osrc_open_query_startat();
 		}
 	    return 0;
 	    }
 	else
-	    { /* data is farther on, act normal */
+	    {
+	    /* data is farther on, act normal */
 	    if(this.qid)
 		{
-		this.onload=osrc_fetch_next;
-		if(this.TargetRecord == Number.MAX_VALUE)
+		if(this.TargetRecord[1] == Number.MAX_VALUE)
 		    {
 		    /* rowcount defaults to a really high number if not set */
 		    this.DoFetch();
 		    }
 		else
 		    {
+		    /* need to increase replica size to accomodate? */
 		    this.DoFetch(this.scrollahead);
 		    }
 		}
 	    else
 		{
 		this.pending=false;
-		this.TargetRecord=this.LastRecord;
+		this.TargetRecord[1]=this.LastRecord;
 		this.TellAllReplicaMoved();
 		this.Dispatch();
 		}
@@ -1889,6 +1937,18 @@ function osrc_action_save_clients(aparam)
     }
 
 
+function osrc_print_debug()
+    {
+    var str = "\n";
+    str += "First Record.... " + this.FirstRecord + "\n";
+    str += "Last Record..... " + this.LastRecord + "\n";
+    str += "Current Record.. " + this.CurrentRecord + "\n";
+    str += "Target Record... [" + this.TargetRecord[0] + "," + this.TargetRecord[1] + "]\n";
+    str += "OSML Record..... " + this.OSMLRecord + "\n";
+    return str;
+    }
+
+
 /**  OSRC Initializer **/
 function osrc_init(param)
     {
@@ -1898,6 +1958,7 @@ function osrc_init(param)
     loader.readahead=param.readahead;
     loader.scrollahead=param.scrollahead;
     loader.replicasize=param.replicasize;
+    loader.initreplicasize = param.replicasize;
     loader.sql=param.sql;
     loader.filter=param.filter;
     loader.baseobj=param.baseobj;
@@ -1920,6 +1981,9 @@ function osrc_init(param)
 
     loader.osrc_do_filter = osrc_do_filter;
     loader.osrc_filter_changed = osrc_filter_changed;
+    loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
+    loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
+    loader.osrc_open_query_startat = osrc_open_query_startat;
     loader.ParseOneAttr = osrc_parse_one_attr;
     loader.ParseOneRow = osrc_parse_one_row;
     loader.NewReplicaObj = osrc_new_replica_object;
@@ -1983,6 +2047,7 @@ function osrc_init(param)
     loader.QueryCancel = osrc_cb_query_cancel;
     loader.RequestObject = osrc_cb_request_object;
     loader.NewObjectTemplate = osrc_cb_new_object_template;
+    loader.SetViewRange = osrc_cb_set_view_range;
     loader.InitBH = osrc_init_bh;
     loader.Register = osrc_cb_register;
     loader.Reveal = osrc_cb_reveal;
@@ -2014,6 +2079,9 @@ function osrc_init(param)
 
     // Client side maintained properties
     loader.is_client_savable = false;
+
+    // Debugging functions
+    loader.print_debug = osrc_print_debug;
 
     // Request replication messages
     loader.request_updates = param.requestupdates?1:0;
