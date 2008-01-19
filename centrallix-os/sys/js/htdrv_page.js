@@ -2311,7 +2311,8 @@ function pg_keydown(e)
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
         pg_keyschedid = pg_addsched("pg_keytimeoutid = setTimeout(pg_keytimeout, 200)",window,0);
-        if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+        //if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+        if (pg_keyhandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -2380,7 +2381,8 @@ function pg_keypress(e)
         if (k == pg_lastkey) pg_lastkey = -1;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	pg_keytimeoutid = null;
-        if (pg_keypresshandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+        //if (pg_keypresshandler(k, e.Dom2Event.modifiers, e.Dom2Event))
+        if (pg_keypresshandler(k, e.modifiers, e))
 	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
 	else
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;

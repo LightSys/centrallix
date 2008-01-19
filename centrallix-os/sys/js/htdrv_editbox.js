@@ -49,6 +49,7 @@ function eb_setvalue(v,f)
     if (eb_current == this)
 	c = eb_length(v);
     this.Update(v, c);
+    this.addHistory(v);
     cn_activate(this,"DataChange", {});
     }
 
@@ -193,6 +194,32 @@ function eb_length(c)
     }
 
 
+function eb_add_history(txt)
+    {
+    if (txt == null) txt = this.content;
+    this.hist_offset = -1;
+    if (txt != null && txt != '')
+	{
+	for(var i=0;i<this.value_history.length;i++)
+	    {
+	    if (this.value_history[i] == (txt + ''))
+		{
+		this.value_history.splice(i,1);
+		break;
+		}
+	    }
+	this.value_history.splice(0,0,txt);
+	if (this.value_history.length > 32)
+	    this.value_history.pop();
+	return true;
+	}
+    else
+	{
+	return false;
+	}
+    }
+
+
 // Update the text, cursor, and left/right edge arrows
 function eb_update(txt, cursor)
     {
@@ -270,6 +297,7 @@ function eb_keyhandler(l,e,k)
     if (k == 10 || k == 13)
 	{
 	if(l.form) l.form.RetNotify(this);
+	l.addHistory();
 	cn_activate(l,'ReturnPressed', {});
 	}
     if (k == 27)
@@ -302,8 +330,59 @@ function eb_keyhandler(l,e,k)
 	{
 	newtxt = cx_hints_checkmodify(l,txt,vistxt.substr(0,l.cursorCol) + vistxt.substr(l.cursorCol+1,eb_length(txt)));
 	}
+    else if (k == 0 && e.keyName == 'home')
+	{
+	cursoradj = -l.cursorCol;
+	}
+    else if (k == 0 && e.keyName == 'end')
+	{
+	cursoradj = eb_length(txt) - l.cursorCol;
+	}
+    else if (k == 0 && e.keyName == 'left' && l.cursorCol > 0)
+	{
+	cursoradj = -1;
+	}
+    else if (k == 0 && e.keyName == 'right' && l.cursorCol < eb_length(txt))
+	{
+	cursoradj = 1;
+	}
+    else if (k == 0 && e.keyName == 'up' && l.hist_offset < l.value_history.length - 1)
+	{
+	if (l.hist_offset == -1)
+	    {
+	    if (l.addHistory())
+		l.hist_offset = 0;
+	    }
+	l.hist_offset++;
+	newtxt = l.value_history[l.hist_offset];
+	if (l.cursorCol > eb_length(newtxt) || l.cursorCol == eb_length(txt))
+	    cursoradj = eb_length(newtxt) - l.cursorCol;
+	}
+    else if (k == 0 && e.keyName == 'down')
+	{
+	if (l.hist_offset == -1)
+	    {
+	    l.addHistory();
+	    newtxt = "";
+	    cursoradj = -l.cursorCol;
+	    }
+	else if (l.hist_offset == 0)
+	    {
+	    l.hist_offset--;
+	    newtxt = "";
+	    cursoradj = -l.cursorCol;
+	    }
+	else
+	    {
+	    l.hist_offset--;
+	    newtxt = l.value_history[l.hist_offset];
+	    if (l.cursorCol > eb_length(newtxt) || l.cursorCol == eb_length(txt))
+		cursoradj = eb_length(newtxt) - l.cursorCol;
+	    }
+	}
     else
 	{
+	//if (k != 27 && pg_username == 'gbeeley') htr_alert(e, 1);
 	return true;
 	}
     if (newtxt != txt || cursoradj != 0)
@@ -358,6 +437,7 @@ function eb_deselect()
 	eb_current.cursorCol=0;
 	eb_current.Update(eb_current.content, eb_current.cursorCol);
 	htr_setvisibility(ibeam_current, 'hidden');
+	eb_current.addHistory();
 	eb_current = null;
 	}
     return true;
@@ -473,7 +553,10 @@ function eb_init(param)
     l.viscontent = '';
     l.content = '';
     l.Update = eb_update;
+    l.addHistory = eb_add_history;
     l.was_null = false;
+    l.value_history = [];
+    l.hist_offset = -1;
 
     // Callbacks
     l.keyhandler = eb_keyhandler;

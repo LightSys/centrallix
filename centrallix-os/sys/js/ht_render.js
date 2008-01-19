@@ -60,6 +60,21 @@ function htr_event(e)
 	cx__event.Dom2Event = e;
 	cx__event.type = e.type;
 	cx__event.which = e.button+1;
+	cx__event.modifiers = e.modifiers;
+	if (e.type == 'keypress' || e.type == 'keydown' || e.type == 'keyup')
+	    {
+	    cx__event.key = e.which;
+	    switch(e.keyCode)
+		{
+		case e.DOM_VK_HOME:	cx__event.keyName = 'home'; break;
+		case e.DOM_VK_END:	cx__event.keyName = 'end'; break;
+		case e.DOM_VK_LEFT:	cx__event.keyName = 'left'; break;
+		case e.DOM_VK_RIGHT:	cx__event.keyName = 'right'; break;
+		case e.DOM_VK_UP:	cx__event.keyName = 'up'; break;
+		case e.DOM_VK_DOWN:	cx__event.keyName = 'down'; break;
+		default:		cx__event.keyName = null; break;
+		}
+	    }
 
 	// move up from text nodes and spans to containers
 	var t = e.target;
@@ -81,6 +96,8 @@ function htr_event(e)
 	cx__event.pageY = e.pageY;
 	cx__event.which = e.which;
 	cx__event.modifiers = e.modifiers;
+	cx__event.key = e.which;
+	cx__event.keyName = null;
 
 	cx__event.x = e.x;
 	cx__event.y = e.y;
@@ -118,6 +135,8 @@ function htr_event(e)
 	cx__event.which = e.button;
 	cx__event.keyCode = e.keyCode;
 	cx__event.modifiers = e.accessKey;
+	cx__event.key = e.keyCode;
+	cx__event.keyName = null;
 
 	cx__event.x = e.offsetX;
 	cx__event.y = e.offsetY;
