@@ -45,10 +45,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: htdrv_imagebutton.c,v 1.37 2007/07/31 17:38:15 gbeeley Exp $
+    $Id: htdrv_imagebutton.c,v 1.38 2008/02/17 07:42:31 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/htmlgen/htdrv_imagebutton.c,v $
 
     $Log: htdrv_imagebutton.c,v $
+    Revision 1.38  2008/02/17 07:42:31  gbeeley
+    - (feature) when held down, imagebutton can generate repeated MouseDown
+      events.
+
     Revision 1.37  2007/07/31 17:38:15  gbeeley
     - (feature) adding tooltip capability to imagebutton
 
@@ -378,6 +382,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
     char c_img[128];
     char d_img[128];
     int is_enabled = 1;
+    int button_repeat = 0;
     int x,y,w,h;
     int id, i;
     pExpression code;
@@ -447,6 +452,8 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
 	    }
 
+	button_repeat = htrGetBoolean(tree, "repeat", 0);
+
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#ib%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
@@ -463,8 +470,8 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
-	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&ESCQ'});\n",
-	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled, tooltip);
+	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&ESCQ', p:'%STR&ESCQ', c:'%STR&ESCQ', d:'%STR&ESCQ', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&ESCQ', repeat:%INT});\n",
+	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled, tooltip, button_repeat);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)
