@@ -440,3 +440,12 @@ function wgtrFind(v)
 	}
     return null;
     }
+
+function wgtrGetChildren(n)
+    {
+	// make sure this is actually a tree
+	if (!node || !node.__WgtrName) 
+	    { pg_debug("wgtrGetChildren - node was not a WgtrNode!\n"); return false; }
+
+	return node.__WgtrChildren;
+    }
