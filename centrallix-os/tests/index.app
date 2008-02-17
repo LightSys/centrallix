@@ -68,7 +68,7 @@ Page1 "widget/page"
 			event="DblClick";
 			target="Page1";
 			action="LoadPage";
-			Source="eparam.data.name";
+			Source=runclient(:OSRC1:name);
 			}
 		    }
 		}
