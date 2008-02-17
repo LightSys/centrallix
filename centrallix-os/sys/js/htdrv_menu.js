@@ -408,14 +408,19 @@ function mn_init(param)
     var nmstr = 'xy_' + param.name;
     menu.coords = new Array();
     menu.ckboxs = new Array();
+    var search;
     for(var i=0; i<imgs.length; i++)
 	{
 	if (imgs[i].name.substr(0,nmstr.length) == nmstr)
 	    {
 	    var x = getRelativeX(imgs[i]);
-	    if (isNaN(x)) x = imgs[i].offsetLeft + imgs[i].offsetParent.offsetLeft;
+	    if (isNaN(x))
+		for(x=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
+		    x += search.offsetLeft;
 	    var y = getRelativeY(imgs[i]);
-	    if (isNaN(y)) y = imgs[i].offsetTop + imgs[i].offsetParent.offsetTop;
+	    if (isNaN(y))
+		for(y=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
+		    y += search.offsetTop;
 	    menu.coords.push(new Object());
 	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].x = x;
 	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].y = y;
