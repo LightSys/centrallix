@@ -43,10 +43,14 @@
 
 /**CVSDATA***************************************************************
 
-    $Id: multiquery.c,v 1.30 2007/12/13 23:28:52 gbeeley Exp $
+    $Id: multiquery.c,v 1.31 2008/02/17 07:43:25 gbeeley Exp $
     $Source: /srv/bld/centrallix-repo/centrallix/multiquery/multiquery.c,v $
 
     $Log: multiquery.c,v $
+    Revision 1.31  2008/02/17 07:43:25  gbeeley
+    - (change) handle system attrbutes (name, inner_type, etc.) automatically
+      on queries, even if query has a join.
+
     Revision 1.30  2007/12/13 23:28:52  gbeeley
     - (bugfix) when determining to which FROM source to attach an unqualified
       WHERE item, and the item is mentioned twice in the SELECT clause since
@@ -2147,6 +2151,7 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
     pPseudoObject p = (pPseudoObject)inf_v;
     int id=-1,i, rval;
     pExpression exp;
+    pQueryStructure from_qs;
 
     	/** Request for row id? **/
 	if (!strcmp(attrname,"ls__rowid"))
@@ -2188,9 +2193,27 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	    {
 	    /** Suppress the error message on certain attrs **/
 	    if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname, "outer_type") || !strcmp(attrname, "annotation"))
-	        return -1;
-	    mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
-	    return -1;
+		{
+		/** for 'system' attrs, try to find 'identity' source **/
+		from_qs = NULL;
+		i = -1;
+		while((from_qs = mq_internal_FindItem(p->Query->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+		    {
+		    if (from_qs->QELinkage && from_qs->QELinkage->SrcIndex >= 0 && (from_qs->Flags & MQ_SF_IDENTITY) && p->ObjList.Objects[from_qs->QELinkage->SrcIndex])
+			{
+			i = from_qs->QELinkage->SrcIndex;
+			break;
+			}
+		    }
+	        if (i == -1) return -1;
+		rval = objGetAttrValue(p->ObjList.Objects[i], attrname, datatype, value);
+		return rval;
+		}
+	    else
+		{
+		mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
+		return -1;
+		}
 	    }
 
 	/** Evaluate the expression to get the value **/
