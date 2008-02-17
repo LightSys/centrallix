@@ -40,6 +40,8 @@ index "widget/page"
 		    x=0;y=0;width=178;
 		    show_branches=yes;
 		    show_root=no;
+		    show_root_branch = yes;
+		    use_3d_lines=no;
 		    source="/samples/samples.qyt/";
 
 		    tree_click "widget/connector"
