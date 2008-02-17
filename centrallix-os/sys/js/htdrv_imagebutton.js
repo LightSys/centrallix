@@ -55,7 +55,24 @@ function ib_setmode(ly, mode)
 	}
     if (newsrc == ly.cursrc) return;
     ly.cursrc = newsrc;
+    ly.curmode = mode;
     pg_set(ly.img, 'src', newsrc);
+    }
+
+function ib_trigger()
+    {
+    if (this.do_repeat)
+	{
+	if (!this.trigger_schedid)
+	    {
+	    this.trigger_schedid = pg_addsched_fn(this, 'trigger', [], 500);
+	    }
+	else
+	    {
+	    this.trigger_schedid = pg_addsched_fn(this, 'trigger', [], 200);
+	    }
+	}
+    cn_activate(this, 'MouseDown');
     }
 
 function ib_mousedown(e)
@@ -63,7 +80,7 @@ function ib_mousedown(e)
     if (e.kind=='ib' && e.mainlayer.enabled==true)
         {
 	ib_setmode(e.mainlayer, 'c');
-        cn_activate(e.mainlayer, 'MouseDown');
+	e.mainlayer.trigger();
         ib_cur_img = e.mainlayer.img;
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
@@ -73,19 +90,23 @@ function ib_mouseup(e)
     {
     if (ib_cur_img)
         {
-        if (e.pageX >= getPageX(ib_cur_img.layer) &&
-            e.pageX < getPageX(ib_cur_img.layer) + getClipWidth(ib_cur_img.layer) &&
-            e.pageY >= getPageY(ib_cur_img.layer) &&
-            e.pageY < getPageY(ib_cur_img.layer) + getClipHeight(ib_cur_img.layer))
+	var ly = ib_cur_img.layer;
+        if (e.pageX >= getPageX(ly) &&
+            e.pageX < getPageX(ly) + getClipWidth(ly) &&
+            e.pageY >= getPageY(ly) &&
+            e.pageY < getPageY(ly) + getClipHeight(ly))
             {
             cn_activate(e.mainlayer, 'Click');
             cn_activate(e.mainlayer, 'MouseUp');
-	    ib_setmode(ib_cur_img.layer, 'p');
+	    if (ly.curmode != 'd') ib_setmode(ly, 'p');
             }
         else
             {
-	    ib_setmode(ib_cur_img.layer, 'n');
+	    if (ly.curmode != 'd') ib_setmode(ly, 'n');
             }
+	if (ly.trigger_schedid)
+	    pg_delsched(ly.trigger_schedid);
+	ly.trigger_schedid = null;
         ib_cur_img = null;
         }
     return EVENT_ALLOW_DEFAULT_ACTION | EVENT_CONTINUE;
@@ -137,6 +158,7 @@ function ib_init(param)
     var w = param.width;
     var h = param.height;
     l.tooltip = param.tooltip;
+    l.do_repeat = param.repeat;
     //l.LSParent = param.parentobj;
     l.nofocus = true;
     if(cx__capabilities.Dom0NS)
@@ -159,6 +181,8 @@ function ib_init(param)
     l.img.kind = 'ib';
     l.cursrc = param.n;
     setClipWidth(l, w);
+
+    l.trigger = ib_trigger;
 
     l.buttonName = param.name;
     if (h == -1) l.nImage = new Image();
@@ -198,5 +222,9 @@ function ib_init(param)
     ie.Add("MouseMove");
     
     l.enabled = param.enable;
+    if (l.enabled)
+	l.curmode = 'n';
+    else
+	l.curmode = 'd';
     }
 
