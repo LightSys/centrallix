@@ -20,6 +20,13 @@ function tbld_format_cell(cell, color)
 	else
 	    txt = '<img src="/sys/images/tbl_check.gif">';
 	}
+    else if (cell.subkind != 'headercell' && this.cols[cell.colnum][3] == 'image')
+	{
+	if (str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/')
+	    txt = '';
+	else
+	    txt = '<img src="' + htutil_encode(str) + '">';
+	}
     else
 	{
 	if(color)
@@ -101,7 +108,7 @@ function tbld_update(p1)
 	setRelativeY(this.rows[i], ((this.rowheight)*(this.SlotToRecnum(i)-this.startat+1)));
 	//htr_setvisibility(this.rows[i].fg, 'inherit');
 	htr_setvisibility(this.rows[i], 'inherit');
-	if(!(this.rows[i].fg.recnum!=null && this.rows[i].fg.recnum==this.SlotToRecnum(i)))
+	if(this.noskip || !(this.rows[i].fg.recnum!=null && this.rows[i].fg.recnum==this.SlotToRecnum(i)))
 	    {
 	    this.rows[i].fg.recnum=this.SlotToRecnum(i);
 	    
@@ -131,6 +138,7 @@ function tbld_update(p1)
 	else
 	    this.rows[i].fg.deselect();
 	}
+    this.noskip = false;
     for(var i=this.windowsize+1;i<this.maxwindowsize+1;i++)
 	{
 	if (!this.rows[i]) continue;
@@ -151,6 +159,12 @@ function tbld_update(p1)
 	    }
 	}
     t.a++;
+    }
+
+function tbld_object_deleted()
+    {
+    this.noskip = true;
+    this.Update();
     }
 
 function tbld_object_modified(current)
@@ -389,6 +403,7 @@ function tbld_init(param)
     t.param_width = param.width;
     t.startat=1;
     t.prevstartat=1;
+    t.noskip = false;
     t.tablename = param.tablename;
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
@@ -570,7 +585,7 @@ function tbld_init(param)
     t.ObjectAvailable=tbld_update;
     t.ReplicaMoved=tbld_update;
     t.OperationComplete=new Function();
-    t.ObjectDeleted=tbld_update;
+    t.ObjectDeleted=tbld_object_deleted;
     t.ObjectCreated=tbld_update;
     t.ObjectModified=tbld_object_modified;
     

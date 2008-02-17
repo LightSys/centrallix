@@ -444,10 +444,6 @@ function osrc_action_delete_cb()
 	var cr=this.replica[recnum];
 	if(cr)
 	    {
-	    // Notify osrc clients (forms/tables/etc)
-	    for(var i in this.child)
-		this.child[i].ObjectDeleted(recnum);
-
 	    // Remove the deleted row
 	    delete this.replica[recnum];
 
@@ -460,6 +456,10 @@ function osrc_action_delete_cb()
 	    delete this.replica[this.LastRecord];
 	    this.LastRecord--;
 	    if (this.OSMLRecord > 0) this.OSMLRecord--;
+
+	    // Notify osrc clients (forms/tables/etc)
+	    for(var i in this.child)
+		this.child[i].ObjectDeleted(recnum);
 
 	    // Need to fetch another record (delete was on last one in replica)?
 	    if (this.CurrentRecord > this.LastRecord)
@@ -515,7 +515,7 @@ function osrc_action_create_cb2()
     {
     //Create an object through OSML
     if(!this.sid) this.sid=pg_links(this)[0].target;
-    var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__sid=' + this.sid;
+    var src = this.baseobj + '/*?cx__akey='+akey+'&ls__mode=osml&ls__req=create&ls__reopen_sql=' + htutil_escape(this.sql) + '&ls__sid=' + this.sid;
     this.ApplyRelationships(this.createddata);
     //htr_alert(this.createddata, 2);
     for(var i in this.createddata) if(i!='oid')
@@ -534,14 +534,14 @@ function osrc_action_create_cb()
 	this.CurrentRecord = this.LastRecord;
 	var recnum=this.CurrentRecord;
 	var cr=this.replica[this.CurrentRecord];
-	if(!cr) cr = new Array();
+	if(!cr) cr = [];
 
 	for(var i in this.createddata) // update replica
 	    {
 	    /*for(var j in cr)
 		if(cr[j].oid==this.createddata[i].oid)
 		    cr[j].value=this.createddata[i].value;*/
-	    cr[i] = new Array();
+	    cr[i] = [];
 	    cr[i].oid = this.createddata[i].oid;
 	    cr[i].value = this.createddata[i].value;
 	    cr[i].id = i;
@@ -550,38 +550,38 @@ function osrc_action_create_cb()
 	this.replica[this.CurrentRecord] = cr;
 
 	// Check new/corrected data provided by server
-	/*var server_rec = this.ParseOneRow(links, 1);
-	var diff = 0;
+	var server_rec = this.ParseOneRow(links, 1);
 	for(var i in server_rec)
 	    {
+	    var max_j = 0;
 	    found = 0;
 	    for(var j in cr)
 		{
-		if (cr[j].oid == server_rec[i].oid && cr[j].value != server_rec[i].value)
+		if (cr[j].oid == server_rec[i].oid)
 		    {
 		    cr[j].value = server_rec[i].value;
 		    cr[j].type = server_rec[i].type;
-		    diff = 1;
 		    found = 1;
 		    }
+		if (j > max_j) max_j = j;
 		}
 	    if (!found)
 		{
-		cr[server_rec[i].oid] = new Array();
-		cr[server_rec[i].oid].oid = server_rec[i].oid;
-		cr[server_rec[i].oid].value = server_rec[i].value;
-		cr[server_rec[i].oid].type = server_rec[i].type;
-		cr[server_rec[i].oid].id = server_rec[i].oid;
-		cr[server_rec[i].oid].hints = server_rec[i].hints;
+		max_j++;
+		cr[max_j] = {};
+		cr[max_j].oid = server_rec[i].oid;
+		cr[max_j].value = server_rec[i].value;
+		cr[max_j].type = server_rec[i].type;
+		cr[max_j].id = max_j;
+		cr[max_j].hints = server_rec[i].hints;
 		}
-	    }*/
+	    }
 
 	//alert(this.replica[this.CurrentRecord].oid);
 	this.formobj.OperationComplete(true);
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum);
-	/*if (diff)
-	    this.GiveAllCurrentRecord();*/
+	this.GiveAllCurrentRecord();
 	}
     else
 	{
@@ -806,7 +806,7 @@ function osrc_open_query()
 	return 0;
 	}
     //pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql=" + this.query, osrc_get_qid);
-    pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autofetch=1&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.replicasize + "&ls__sql=" + this.query, osrc_get_qid);
+    pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.replicasize + "&ls__sql=" + this.query, osrc_get_qid);
     this.querysize = this.replicasize;
     }
 
@@ -943,7 +943,7 @@ function osrc_parse_one_row(lnk, i)
     var row = new Array();
     var cnt = 0;
     var tgt = lnk[i].target;
-    while(i < lnk.length && lnk[i].target == tgt)
+    while(i < lnk.length && (lnk[i].target == tgt || lnk[i].target == 'R'))
 	{
 	row[cnt] = this.ParseOneAttr(lnk[i]);
 	cnt++;
@@ -955,7 +955,7 @@ function osrc_parse_one_row(lnk, i)
 function osrc_do_fetch(rowcnt)
     {
     this.querysize = rowcnt?rowcnt:1;
-    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + (rowcnt?("&ls__rowcount="+rowcnt):"") + (this.startat?("&ls__startat="+this.startat):""), osrc_fetch_next);
+    pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=queryfetch&ls__sid="+this.sid+"&ls__qid="+this.qid+"&ls__objmode=0&ls__notify=" + this.request_updates + (rowcnt?("&ls__rowcount="+rowcnt):"") + (this.startat?("&ls__startat="+this.startat):""), osrc_fetch_next);
     }
 
 function osrc_end_query()
@@ -1278,7 +1278,7 @@ function osrc_open_query_startat()
 	this.querysize = this.FirstRecord - this.startat;
     else
 	this.querysize = this.replicasize;
-    pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autofetch=1&ls__objmode=0&ls__encode=1&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.querysize + "&ls__sql=" + this.query, osrc_get_qid_startat);
+    pg_serialized_load(this,"/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__autofetch=1&ls__objmode=0&ls__notify=" + this.request_updates + "&ls__rowcount=" + this.querysize + "&ls__sql=" + this.query, osrc_get_qid_startat);
     //pg_serialized_load(this, "/?cx__akey="+akey+"&ls__mode=osml&ls__req=multiquery&ls__sid="+this.sid+"&ls__sql="+this.query, osrc_get_qid_startat);
     }
 
